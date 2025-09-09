@@ -10,6 +10,7 @@ using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.IO;
+using Microsoft.Maui.Storage;
 
 namespace ActualChat.App.Maui.Module;
 

@@ -1,6 +1,5 @@
 ﻿using ActualChat.Diagnostics;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Diagnostics;
@@ -10,17 +9,16 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 {
-    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AudioRecorder.create";
     private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
     private static bool DebugMode => Constants.DebugMode.AudioRecording;
 
     private readonly AsyncLock _stateLock = new(LockReentryMode.CheckedPass);
     private readonly MutableState<AudioRecorderState> _state;
+    private readonly IAudioRecorderEngine _engine;
     private SessionTokens? _sessionTokens;
 
     private DotNetObjectReference<IAudioRecorderBackend>? _blazorRef;
-    private IJSObjectReference _jsRef = null!;
     private Activity? _recordingActivity;
 
     private AppUIHub Hub { get; }
@@ -47,12 +45,13 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         _state = Hub.StateFactory.NewMutable(
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
+        _engine = Hub.Services.GetRequiredService<IAudioRecorderEngine>();
         WhenInitialized = Initialize();
         return;
 
         async Task Initialize() {
             _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef).ConfigureAwait(false);
+            await _engine.InitializeAsync(this).ConfigureAwait(false);
         }
     }
 
@@ -61,9 +60,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         using var releaser = await _stateLock.Lock().ConfigureAwait(false);
         releaser.MarkLockedLocally();
 
-        await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
+        if (_engine is JSRecorderEngine jsEngine) {
+            // JS engine holds JS object; nothing to dispose here beyond engine lifetime
+        }
         _blazorRef.DisposeSilently();
-        _jsRef = null!;
         _blazorRef = null!;
     }
 
@@ -96,9 +96,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         MarkStarting(chatId);
         try {
-            var isStarted = await _jsRef
-                .InvokeAsync<bool>("startRecording", CancellationToken.None, chatId, repliedChatEntryId, sessionToken)
-                .AsTask().WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
+            var isStarted = await _engine.StartAsync(chatId, repliedChatEntryId, sessionToken, cancellationToken).WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
             if (!isStarted) {
                 MicrophonePermission.ForgetCached();
                 Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);
@@ -138,22 +136,19 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public async ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _jsRef.InvokeVoidAsync("ensureConnected", CancellationToken.None, quickReconnect)
-            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _engine.EnsureConnected(quickReconnect, cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask ConversationSignal(CancellationToken cancellationToken)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _jsRef.InvokeVoidAsync("conversationSignal", CancellationToken.None)
-            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _engine.ConversationSignal(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<AudioDiagnosticsState> RunDiagnostics(CancellationToken cancellationToken)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return await _jsRef.InvokeAsync<AudioDiagnosticsState>("runDiagnostics", CancellationToken.None)
-            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await _engine.RunDiagnostics(cancellationToken).ConfigureAwait(false);
     }
 
     // JS backend callback handlers
@@ -222,13 +217,12 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private async Task<bool> StopRecordingUnsafe()
     {
         var chatId = State.Value.ChatId;
-        if (chatId is null || _jsRef == null!)
+        if (chatId is null)
             return true; // Nothing to do
 
         // This method should reliably stop the recording, so we don't use normal cancellation here
         try {
-            await _jsRef.InvokeVoidAsync("stopRecording", CancellationToken.None)
-                .AsTask().WaitAsync(StopRecordingTimeout).ConfigureAwait(false);
+            await _engine.StopAsync(CancellationToken.None).WaitAsync(StopRecordingTimeout).ConfigureAwait(false);
         }
         catch (JSDisconnectedException) { } // Circuit is disposed or disposing
         catch (ObjectDisposedException) { } // Circuit is disposed or disposing
@@ -245,8 +239,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     internal async Task<bool?> CheckPermission(CancellationToken cancellationToken = default)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        var state = await _jsRef.InvokeAsync<string>("checkPermission", CancellationToken.None)
-            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        var state = await _engine.CheckPermissionAsync(cancellationToken).ConfigureAwait(false);
         return state switch {
             "prompt" => null,
             "denied" => false,
@@ -258,8 +251,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     internal async Task<bool> RequestPermission(CancellationToken cancellationToken = default)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return await _jsRef.InvokeAsync<bool>("requestPermission", CancellationToken.None)
-            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await _engine.RequestPermissionAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // MarkXxx

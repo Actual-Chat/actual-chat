@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using Microsoft.Maui.Storage;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
@@ -12,7 +13,7 @@ namespace ActualChat.App.Maui.Services.Recording;
 ///     - Context: 64 samples prepended to each window (total model input = 576 floats)
 ///     - Recurrent state: [2,1,128] float tensor persisted between calls
 /// </summary>
-public sealed class VoiceActivityDetector : IAsyncDisposable, IDisposable
+public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable, IDisposable
 {
     // AUDIO_REC constants (subset)
     public const int SampleRate = 16_000; // AUDIO_REC.SAMPLE_RATE
@@ -52,6 +53,7 @@ public sealed class VoiceActivityDetector : IAsyncDisposable, IDisposable
     private DenseTensor<float> _state = new (new float[2 * 1 * 128], new[] { 2, 1, 128 });
     private RunningUnitMedian? _whenTalkingProbMedian;
 
+    public readonly HostInfo HostInfo = services.HostInfo();
     public VoiceActivityChange LastActivityEvent { get; private set; } = VoiceActivityChange.NoVoiceActivity;
 
     public ValueTask DisposeAsync()
@@ -87,6 +89,37 @@ public sealed class VoiceActivityDetector : IAsyncDisposable, IDisposable
         ms.Position = 0;
 
         var options = new SessionOptions();
+        // Configure execution providers depending on platform. We always keep CPU as a fallback.
+        try {
+            switch (HostInfo.AppKind)
+            {
+            case AppKind.Android:
+                // Prefer NNAPI if available. Note: calling order matters, last appended has highest priority.
+                options.AppendExecutionProvider_CPU();
+                options.AppendExecutionProvider_Nnapi();
+                break;
+            case AppKind.Ios or AppKind.MacOS:
+                // Prefer CoreML on iOS with CPU fallback.
+                options.AppendExecutionProvider_CPU();
+                options.AppendExecutionProvider_CoreML();
+                break;
+            case AppKind.Windows:
+                // Windows: prefer DirectML if available (GPU), then CPU.
+                options.AppendExecutionProvider_CPU();
+                options.AppendExecutionProvider_DML();
+                break;
+            default:
+                // Other platforms (including Wasm): CPU only.
+                options.AppendExecutionProvider_CPU();
+                break;
+            }
+        }
+        catch {
+            // If any EP is not supported by the current runtime build, fall back to safe CPU-only.
+            options = new SessionOptions();
+            options.AppendExecutionProvider_CPU();
+        }
+
         _session = new InferenceSession(ms.ToArray(), options);
 
         ResetProcessingState();
