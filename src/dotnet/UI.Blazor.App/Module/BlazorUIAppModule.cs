@@ -206,7 +206,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<IFileUploaderService>(c => new FileUploaderService(c));
         services.AddScoped<UploadSessionManager>(c => new UploadSessionManager(
             c.GetRequiredService<IUploadSessionRepository>(),
-            c.GetRequiredService<IFileUploaderService>()));
+            c.GetRequiredService<IFileUploaderService>(),
+            c.LogFor<UploadSessionManager>()));
         services.AddScoped(c => new UploadApp(c.GetRequiredService<UploadSessionManager>(), c));
         services.AddScoped(c => new FileUploadQueue());
     }

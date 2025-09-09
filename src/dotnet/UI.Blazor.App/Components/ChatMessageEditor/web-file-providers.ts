@@ -36,6 +36,11 @@ export class WebFileProviders
         return NullableJSObjectReference.create(provider);
     }
 
+    public static async deleteFileHandleFromDb(fileHandleDbKey : string)
+    {
+        await deleteFileHandle(fileHandleDbKey);
+    }
+
     public static grantFileUploadPermissions() {
         void grantFileUploadPermissionsInvoker.invoke();
     }

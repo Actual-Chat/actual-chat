@@ -10,7 +10,8 @@ public partial interface IFileProvider
     string FileName { get; }
     long FileSize { get; }
     Task PrepareForSaving();
-    Task ClearBeforeRemoving();
     Task<IFileUploadOperation> CreateUploadOperation();
-    Task<bool> CheckAccess(UploadSessionContext context);
+    void Initialize(IServiceProvider services);
+    Task<bool> CheckAccess();
+    Task ClearBeforeRemoving();
 }

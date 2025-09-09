@@ -2,6 +2,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class UploadApp(UploadSessionManager uploadSessionManager, IServiceProvider services)
 {
+    private ILogger Log => services.LogFor(GetType());
+
     public Task Start()
         => BackgroundTask.Run(StartInternal);
 
@@ -15,14 +17,14 @@ public class UploadApp(UploadSessionManager uploadSessionManager, IServiceProvid
 
             foreach (var session1 in sessions) {
                 var session = await uploadSessionManager.GetSession(session1.SessionId).ConfigureAwait(false);
+                session.FileProvider.Initialize(services);
                 if (session1.Status is UploadStatus.Completed or UploadStatus.Cancelled) {
                     var deleteTask = uploadSessionManager.DeleteSession(session1.SessionId);
                     deleteTasks.Add(deleteTask);
                     continue;
                 }
 
-                var context = new UploadSessionContext(session, services);
-                var checkTask = ResumeInternal(session, context);
+                var checkTask = ResumeInternal(session ,deleteTasks);
                 checkTasks.Add(checkTask);
             }
 
@@ -31,8 +33,8 @@ public class UploadApp(UploadSessionManager uploadSessionManager, IServiceProvid
                 try {
                     await checkTask.ConfigureAwait(false);
                 }
-                catch (Exception e) {
-                    //Tracer.Point($"Failed to resume session: {e}");
+                catch (Exception ex) {
+                    Log.LogWarning(ex, "Failed to resume session");
                 }
             }
             await Task.WhenAll(deleteTasks).ConfigureAwait(false);
@@ -40,30 +42,43 @@ public class UploadApp(UploadSessionManager uploadSessionManager, IServiceProvid
                 try {
                     await deleteTask.ConfigureAwait(false);
                 }
-                catch (Exception e) {
-                    //Tracer.Point($"Failed to resume session: {e}");
+                catch (Exception ex) {
+                    Log.LogWarning(ex, "Failed to delete session");
                 }
             }
             await repo.Flush().ConfigureAwait(false);
         }
         catch(Exception ex2) {
-            // Intended
+            Log.LogError(ex2, "Failed to resume upload sessions");
         }
     }
 
-    private async Task ResumeInternal(UploadSession session, UploadSessionContext context)
+    private async Task<bool> ResumeInternal(UploadSession session, List<Task> deleteTasks)
     {
-        try {
-            var checkAccess = await session.FileProvider.CheckAccess(context).ConfigureAwait(false);
-            if (!checkAccess)
-                return;
-        }
-        catch (Exception ex) {
-            return;
+        if (!await CheckAccessSafely(session).ConfigureAwait(false)) {
+            deleteTasks.Add(BackgroundTask.Run(async () => {
+                Log.LogInformation("About to cancel session {SessionId} because file is not accessible", session.SessionId);
+                await uploadSessionManager.CancelSession(session.SessionId).ConfigureAwait(false);
+                await uploadSessionManager.DeleteSession(session.SessionId).ConfigureAwait(false);
+            }));
+            return false;
         }
 
         await uploadSessionManager.ResumeSession(session.SessionId).ConfigureAwait(false);
+        Log.LogInformation("Resumed session {SessionId}", session.SessionId);
+        return true;
+    }
+
+    private async Task<bool> CheckAccessSafely(UploadSession session)
+    {
+        try {
+            var checkAccess = await session.FileProvider.CheckAccess().ConfigureAwait(false);
+            if (checkAccess)
+                return true;
+        }
+        catch (Exception ex) {
+            Log.LogWarning(ex, "Failed to check access to file");
+        }
+        return false;
     }
 }
-
-public record UploadSessionContext(UploadSession Session, IServiceProvider Services);

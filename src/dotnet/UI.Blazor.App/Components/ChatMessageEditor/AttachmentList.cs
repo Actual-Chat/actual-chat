@@ -114,6 +114,7 @@ public class AttachmentList(UploadSessionManager uploadSessionManager, ILogger<A
         var webFileProvider = new WebFileProvider {
             FileName = attachment.FileName,
             FileSize = attachment.Length,
+            ChatId = chatId,
             WebFileProviderInternal = webFileProviderInternal,
         };
 

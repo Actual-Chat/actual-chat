@@ -1,3 +1,6 @@
+using Serilog;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 using System.Collections.Concurrent;
@@ -6,14 +9,16 @@ public class UploadSessionManager
 {
     private readonly IUploadSessionRepository _repository;
     private readonly IFileUploaderService _fileUploader;
+    private readonly ILogger _log;
 
     private readonly ConcurrentDictionary<string, UploadSession> _sessions = new (StringComparer.Ordinal);
     private Moment Now => Moment.Now;
 
-    public UploadSessionManager(IUploadSessionRepository repository, IFileUploaderService fileUploader)
+    public UploadSessionManager(IUploadSessionRepository repository, IFileUploaderService fileUploader, ILogger log)
     {
         _repository = repository;
         _fileUploader = fileUploader;
+        _log = log;
 
         _fileUploader.OnProgress += HandleProgress;
         _fileUploader.OnCompleted += HandleCompleted;
@@ -31,8 +36,7 @@ public class UploadSessionManager
 
         await fileProvider.PrepareForSaving().ConfigureAwait(false);
 
-        var session = new UploadSession
-        {
+        var session = new UploadSession {
             SessionId = Guid.NewGuid().ToString(),
             FileId = Guid.NewGuid().ToString(),
             FileProvider = fileProvider,
@@ -84,6 +88,7 @@ public class UploadSessionManager
 
         await session.FileProvider.ClearBeforeRemoving().ConfigureAwait(false);
         await _repository.Delete(sessionId).ConfigureAwait(false);
+        _log.LogInformation("Deleted session {SessionId}", sessionId);
     }
 
     public async Task<IEnumerable<UploadSession>> GetActiveSessionsAsync()
