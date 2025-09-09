@@ -84,7 +84,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var conversationId = _conversationId;
-        var conversation = await Conversations.Get(conversationId, cancellationToken).ConfigureAwait(false);
+        var conversation = await Conversations.Get(Session, conversationId, cancellationToken).ConfigureAwait(false);
         if (conversation == null)
             return Model.None;
 
@@ -102,7 +102,7 @@
         => ChatUI.ToggleExpandConversation(_conversationId);
 
     private void OnReSummarize(Conversation conversation)
-        => Conversations.ReSummarize(conversation.Id, CancellationToken.None);
+        => Conversations.OnReSummarize(new Conversations_Summarize(Session, conversation.Id), CancellationToken.None);
 
     private void Reply() {}
 
