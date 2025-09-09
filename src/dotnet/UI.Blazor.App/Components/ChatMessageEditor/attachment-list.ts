@@ -2,8 +2,7 @@ import { Tune, TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 import { Log } from 'logging';
 import { isSupportedImage, isSupportedVideo } from "media-types";
 import { fromEvent, Subject, takeUntil } from 'rxjs';
-import { WebFileProvider } from './web-file-providers';
-
+import { WebFileProvider } from '../../Services/FileUploads/web-file-providers';
 
 const { debugLog, errorLog } = Log.get('Attachments');
 

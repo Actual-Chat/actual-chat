@@ -50,6 +50,8 @@ public class UploadSessionManager
         _sessions[session.SessionId] = session;
         await _repository.Save(session).ConfigureAwait(false);
 
+        _log.LogInformation("Created session {SessionId}", session.SessionId);
+
         return session;
     }
 

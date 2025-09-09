@@ -244,7 +244,7 @@ export class ChatMessageEditor {
                 if (!file)
                     continue; // Should not happen, but just in case
 
-                if (await this.attachmentList.add(this.chatId, file))
+                if (await this.attachmentList.add(this.chatId, file, null))
                     this.updateHasContent();
             }
         }
