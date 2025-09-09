@@ -4,7 +4,8 @@
     var startDate = GetStartDateString();
 }
 
-<div class="@cls">
+<div class="@cls"
+     data-menu="@(Conversation != null ? MenuRef.New<ConversationMenu>(Conversation.Id.Value, true.ToString()) : null)">
     <div class="bg-wrapper">
         <div class="c-ending @_loadingCls" @onclick="OnMessageCountClick">
             <div class="c-content">
@@ -27,6 +28,7 @@
     [Inject] private UIHub Hub { get; set; } = null!;
     private TuneUI TuneUI => Hub.TuneUI;
 
+    [Parameter] public Conversation? Conversation { get; set; }
     [Parameter] public TranslatedText Title { get; set; } = TranslatedText.None;
     [Parameter] public int MessageCount { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
