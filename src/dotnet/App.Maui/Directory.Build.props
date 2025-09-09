@@ -4,6 +4,8 @@
 
   <ItemGroup>
     <Using Include="ActualChat.App.Maui.AppServicesAccessor" Static="true" />
+    <Using Include="Microsoft.Maui" />
+    <Using Include="Microsoft.Maui.Controls" />
   </ItemGroup>
 
 </Project>
