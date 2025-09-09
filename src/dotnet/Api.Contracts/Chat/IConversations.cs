@@ -8,4 +8,10 @@ public interface IConversations : IComputeService
         ChatId chatId,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<Conversation?> Get(ConversationId conversationId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    Task<Conversation?> ReSummarize(ConversationId conversationId, CancellationToken cancellationToken);
 }

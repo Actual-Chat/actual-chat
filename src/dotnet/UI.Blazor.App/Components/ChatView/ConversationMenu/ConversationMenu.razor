@@ -1,0 +1,86 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, ConversationMenu.Model>
+@{
+    var m = State.Value;
+    if (State.Value == Model.None)
+        return;
+
+    var expandCollapseButtonTitle = _isOpen ? "Collapse conversation" : "Expand conversation";
+}
+
+<div class="message-menu">
+    <MenuEntry
+        Icon="icon-share"
+        Text="@expandCollapseButtonTitle"
+        Click="@(() => ToggleShowMessage())">
+    </MenuEntry>
+    @if (m.IsOwner) {
+        <MenuEntry
+            Icon="icon-refresh"
+            Text="Re-summarize"
+            Click="@(() => OnReSummarize(m.Conversation))">
+        </MenuEntry>
+    }
+</div>
+
+@code {
+    private bool _isOpen;
+    private ConversationId _conversationId = null!;
+
+    private IConversations Conversations => Hub.Conversations;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private IChats Chats => Hub.Chats;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [ var sConversationId, var sIsOpen ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _conversationId = ConversationId.Parse(sConversationId);
+        _isOpen = bool.Parse(sIsOpen);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var conversationId = _conversationId;
+        var conversation = await Conversations.Get(conversationId, cancellationToken).ConfigureAwait(false);
+        if (conversation == null)
+            return Model.None;
+
+        var authorId = conversation.AuthorIds.FirstOrDefault();
+        var chatId = authorId?.ChatId;
+        if (chatId == null)
+            return new() {
+                Conversation = conversation,
+                IsOwner = false,
+            };
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var isOwner = chat != null && (chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer);
+
+        return new() {
+            Conversation = conversation,
+            IsOwner = isOwner,
+        };
+    }
+
+    private void ToggleShowMessage()
+        => ChatUI.ToggleExpandConversation(_conversationId);
+
+    private void OnReSummarize(Conversation conversation)
+        => Conversations.ReSummarize(conversation.Id, CancellationToken.None);
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public Conversation Conversation { get; init; } = null!;
+        public bool IsOwner { get; init; }
+    }
+}

@@ -16,7 +16,8 @@
     if (ScreenSize.IsNarrow() && maxShowCount > 5)
         maxShowCount = 5;
 }
-<div class="@cls">
+<div class="@cls"
+     data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
     <CascadingValue Value="@_fakeEntry" IsFixed="true">
     <div class="c-details">
         <div class="c-summary">
@@ -83,6 +84,7 @@
     private bool _isOpen;
     private ConversationMessage? _lastMessage;
     private ChatEntry _fakeEntry = null!;
+    private ConversationId? _conversationId;
 
     private ChatUI ChatUI => Hub.ChatUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
@@ -113,7 +115,8 @@
             return;
 
         var conversation = Message.Conversation!;
-        var chatEntryId = TextEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
+        _conversationId = conversation.Id;
+        var chatEntryId = TextEntryId.New(_conversationId.ChatId, _conversationId.StartEntryLid);
         _fakeEntry = new (chatEntryId);
         _lastMessage = Message;
     }
