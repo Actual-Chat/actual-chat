@@ -84,7 +84,6 @@
     private bool _isOpen;
     private ConversationMessage? _lastMessage;
     private ChatEntry _fakeEntry = null!;
-    private ConversationId? _conversationId;
 
     private ChatUI ChatUI => Hub.ChatUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
@@ -115,8 +114,7 @@
             return;
 
         var conversation = Message.Conversation!;
-        _conversationId = conversation.Id;
-        var chatEntryId = TextEntryId.New(_conversationId.ChatId, _conversationId.StartEntryLid);
+        var chatEntryId = TextEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
         _fakeEntry = new (chatEntryId);
         _lastMessage = Message;
     }
