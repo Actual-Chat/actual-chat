@@ -33,13 +33,14 @@ public partial class WebFileProvider : IFileProvider
             CancellationToken cancellationToken = default;
             var chatId = context.Session.ChatId;
             var backend = new FileUploaderBackend();
-            var jsRef = await js
-                .InvokeAsync<IJSObjectReference?>(JSCreateMethod,
+            var nullableRef = await js
+                .InvokeAsync<NullableJSObjectReference>(JSCreateMethod,
                     cancellationToken,
                     FileHandleDbKey,
                     chatId,
                     backend.BlazorRef)
                 .ConfigureAwait(false);
+            var jsRef = nullableRef.Value;
             if (jsRef is null)
                 return false;
 

@@ -5,6 +5,7 @@ import { OperationCancelledError, PromiseSource } from 'promises';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 import { v4 as uuidv4 } from "uuid";
+import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 
 const { debugLog, errorLog } = Log.get('WebFileProvider');
 
@@ -19,19 +20,20 @@ type ProgressReporter = (progressPercent: number) => void;
 
 export class WebFileProviders
 {
-    public static async tryCreateFromFileHandleDbKey(fileHandleDbKey : string, chatId : string, blazorRef: DotNet.DotNetObject) : Promise<(WebFileProvider | undefined)> {
+    public static async tryCreateFromFileHandleDbKey(fileHandleDbKey : string, chatId : string, blazorRef: DotNet.DotNetObject) : Promise<NullableJSObjectReference> {
         const fileHandle = await getFileHandle(fileHandleDbKey);
         if (fileHandle == null) {
             await deleteFileHandle(fileHandleDbKey);
-            return undefined;
+            return NullableJSObjectReference.create(null);
         }
 
         const granted = await requestFileHandlePermission(fileHandle, "read");
         if (!granted) {
-            return undefined;
+            return NullableJSObjectReference.create(null);
         }
         const file = await fileHandle.getFile();
-        return new WebFileProvider(fileHandleDbKey, fileHandle, file, file.name, chatId, blazorRef);
+        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, file, file.name, chatId, blazorRef);
+        return NullableJSObjectReference.create(provider);
     }
 
     public static grantFileUploadPermissions() {

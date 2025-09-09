@@ -49,5 +49,7 @@ export * from './Components/YoutubePlayer/youtube-player';
 export * from './Components/demand-user-interaction';
 export * from './Components/delayed-invoker';
 
+export * from './JSRuntime/nullable-js-object-reference';
+
 
 export { VirtualListEdge } from './Components/VirtualList/ts/virtual-list-edge';
