@@ -49,7 +49,7 @@ public static class AppxManifestGenerator
 
         if (!string.IsNullOrEmpty(version))
             UpdateAttr("//default:Package/default:Identity", "Version",version);
-        UpdateAttr("//default:Package/default:Identity", "Name",$"ActualChatInc.Voxt{packageIdentityNameSuffix}");
+        UpdateAttr("//default:Package/default:Identity", "Name",$"ActualChatInc.ActualChat{packageIdentityNameSuffix}");
         UpdateAttr("//uap5:StartupTask", "DisplayName", $"Voxt{startupTaskDisplayNameSuffix}");
 
         await Write(manifestPath, doc, cancellationToken).ConfigureAwait(false);
