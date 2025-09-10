@@ -144,10 +144,10 @@
         sb.AppendLine(m.Title.Text);
         sb.AppendLine();
         var description = await ChatMarkupHub.ApplyMentionNamer(m.Description.Markup, cancellationToken).ConfigureAwait(false);
-        sb.AppendLine(description.ToReadableText());
+        sb.AppendLine(description.ToClipboardText());
         sb.AppendLine();
         var summary = await ChatMarkupHub.ApplyMentionNamer(m.Summary.Markup, cancellationToken).ConfigureAwait(false);
-        sb.AppendLine(summary.ToReadableText());
+        sb.AppendLine(summary.ToClipboardText());
         return sb.ToStringAndRelease();
     }
 
