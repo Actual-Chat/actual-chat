@@ -21,7 +21,7 @@
         <MenuEntry
             Icon="icon-resummarize"
             Text="Re-summarize"
-            Click="@(() => OnReSummarize(m.Conversation))">
+            Click="@(() => OnReSummarize())">
         </MenuEntry>
     }
     <MenuEntry
@@ -65,10 +65,10 @@
 @code {
     private bool _isOpen;
     private ConversationId _conversationId = null!;
-    private IChatMarkupHub _chatMarkupHub = null!;
 
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private IConversations Conversations => Hub.Conversations;
+    private ConversationUI ConversationUI => Hub.ConversationUI;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
@@ -79,7 +79,6 @@
 
         _conversationId = ConversationId.Parse(sConversationId);
         _isOpen = bool.Parse(sIsOpen);
-        _chatMarkupHub = ChatMarkupHubFactory[_conversationId.ChatId];
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -110,28 +109,15 @@
     private void ToggleShowMessage()
         => ChatUI.ToggleExpandConversation(_conversationId);
 
-    private void OnReSummarize(Conversation conversation)
-        => Conversations.OnReSummarize(new Conversations_Summarize(Session, conversation.Id), CancellationToken.None);
+    private void OnReSummarize()
+        => UICommander.Call(new Conversations_Summarize(Session, _conversationId));
 
     private async Task OnCopyToClipboardRequested() {
-        var text = await GetText();
-        await ClipboardUI.WriteText(text).ConfigureAwait(false);
-    }
-
-    private async Task<string> GetText() {
+        var cancellationToken = CancellationToken.None;
         var m = State.Value;
-        CancellationToken cancellationToken = default;
-        var sb = StringBuilderExt.Acquire();
-        sb.AppendLine(m.Conversation.Title);
-        sb.AppendLine();
-        var descriptionMarkup = _chatMarkupHub.Parser.Parse(m.Conversation.Description);
-        var description = await _chatMarkupHub.ApplyMentionNamer(descriptionMarkup, cancellationToken).ConfigureAwait(false);
-        sb.AppendLine(description.ToClipboardText());
-        sb.AppendLine();
-        var summaryMarkup = _chatMarkupHub.Parser.Parse(m.Conversation.Summary);
-        var summary = await _chatMarkupHub.ApplyMentionNamer(summaryMarkup, cancellationToken).ConfigureAwait(false);
-        sb.AppendLine(summary.ToClipboardText());
-        return sb.ToStringAndRelease();
+        var translatedConversation = await ConversationUI.GetTranslatedConversation(m.Conversation, cancellationToken);
+        var text = await ConversationUI.GetClipboardText(translatedConversation, cancellationToken);
+        await ClipboardUI.WriteText(text).ConfigureAwait(false);
     }
 
     private void Reply() {}
