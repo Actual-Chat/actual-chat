@@ -204,11 +204,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         });
         services.AddScoped<IUploadSessionRepository>(c => new UploadSessionRepository(c));
         services.AddScoped<IFileUploaderService>(c => new FileUploaderService(c));
-        services.AddScoped<UploadSessionManager>(c => new UploadSessionManager(
-            c.GetRequiredService<IUploadSessionRepository>(),
-            c.GetRequiredService<IFileUploaderService>(),
-            c.LogFor<UploadSessionManager>()));
-        services.AddScoped(c => new UploadApp(c.GetRequiredService<UploadSessionManager>(), c));
-        services.AddScoped(c => new FileUploadQueue());
+        services.AddScoped<UploadSessions>(c => new UploadSessions(c.AppUIHub()));
+        services.AddScoped(c => new UploadApp(c.AppUIHub()));
+        services.AddScoped(_ => new FileUploadQueue());
     }
 }

@@ -2,24 +2,24 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class SendingMessageAttachmentList : IAttachmentList
 {
-    private readonly UploadSessionManager _uploadSessionManager;
+    private readonly UploadSessions _uploadSessions;
     private Attachment[] _attachments;
 
-    private SendingMessageAttachmentList(Attachment[] attachments, UploadSessionManager uploadSessionManager)
+    private SendingMessageAttachmentList(Attachment[] attachments, UploadSessions uploadSessions)
     {
         _attachments = attachments;
-        _uploadSessionManager = uploadSessionManager;
+        _uploadSessions = uploadSessions;
     }
 
-    public static async Task<SendingMessageAttachmentList> Create(Dispatcher dispatcher, UploadSessionManager uploadSessionManager, Attachment[] attachments)
+    public static async Task<SendingMessageAttachmentList> Create(Dispatcher dispatcher, UploadSessions uploadSessions, Attachment[] attachments)
     {
-        var list = new SendingMessageAttachmentList(attachments, uploadSessionManager);
+        var list = new SendingMessageAttachmentList(attachments, uploadSessions);
 
         foreach (var attachment in attachments) {
             var sessionId = attachment.UploadSessionId;
             if (sessionId.IsNullOrEmpty())
                 throw new InvalidOperationException($"Can not arrange upload for attachment '{attachment.Id}' because no upload session specified");
-            var uploadSession = await uploadSessionManager.GetSession(sessionId).ConfigureAwait(false);
+            var uploadSession = await uploadSessions.GetSession(sessionId).ConfigureAwait(false);
             AttachmentExt.ObserveUploadProgress(
                 uploadSession.ProgressTracker,
                 updater => {
@@ -55,8 +55,8 @@ public class SendingMessageAttachmentList : IAttachmentList
             throw new InvalidOperationException($"Can not find given attachment.");
 
         _attachments = _attachments.Where(c => c != attachment).ToArray();
-        await _uploadSessionManager.CancelSession(attachment.UploadSessionId).ConfigureAwait(false);
-        await _uploadSessionManager.DeleteSession(attachment.UploadSessionId).ConfigureAwait(false);
+        await _uploadSessions.CancelSession(attachment.UploadSessionId).ConfigureAwait(false);
+        await _uploadSessions.DeleteSession(attachment.UploadSessionId).ConfigureAwait(false);
     }
 
     private void OnChanged()

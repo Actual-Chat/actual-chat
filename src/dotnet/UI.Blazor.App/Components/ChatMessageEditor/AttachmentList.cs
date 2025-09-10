@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AttachmentList(Dispatcher dispatcher, UploadSessionManager uploadSessionManager, ILogger<AttachmentList> log) : IAttachmentList, IAttachmentListBackend
+public class AttachmentList(Dispatcher dispatcher, UploadSessions uploadSessions, ILogger<AttachmentList> log) : IAttachmentList, IAttachmentListBackend
 {
     public static Exception FileTooBigError()
         => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
@@ -42,7 +42,7 @@ public class AttachmentList(Dispatcher dispatcher, UploadSessionManager uploadSe
             _attachments = _attachments.Remove(attachmentInfo);
         }
         if (attachmentInfo.UploadSession is not null)
-            await uploadSessionManager.CancelSession(attachmentInfo.UploadSession.SessionId);
+            await uploadSessions.CancelSession(attachmentInfo.UploadSession.SessionId);
         await InvokeRemove(attachment);
         OnChanged();
     }
@@ -56,7 +56,7 @@ public class AttachmentList(Dispatcher dispatcher, UploadSessionManager uploadSe
         }
         foreach (var attachmentInfo in clone) {
             if (attachmentInfo.UploadSession is not null)
-                await uploadSessionManager.CancelSession(attachmentInfo.UploadSession.SessionId).ConfigureAwait(false);
+                await uploadSessions.CancelSession(attachmentInfo.UploadSession.SessionId).ConfigureAwait(false);
         }
         await InvokeClear();
         OnChanged();
@@ -119,9 +119,9 @@ public class AttachmentList(Dispatcher dispatcher, UploadSessionManager uploadSe
         UpdateAttachment(attachment.Id, a => a with { FileProvider = webFileProvider });
 
         try {
-            var uploadSession = await uploadSessionManager.CreateSession(chatId, webFileProvider);
+            var uploadSession = await uploadSessions.CreateSession(chatId, webFileProvider);
             info.UploadSession = uploadSession;
-            await uploadSessionManager.ResumeSession(uploadSession.SessionId);
+            await uploadSessions.ResumeSession(uploadSession.SessionId);
             UpdateAttachment(attachment.Id, a => a with { UploadSessionId = uploadSession.SessionId });
             AttachmentExt.ObserveUploadProgress(
                 uploadSession.ProgressTracker,

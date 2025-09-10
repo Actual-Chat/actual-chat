@@ -1,25 +1,28 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class UploadApp(UploadSessionManager uploadSessionManager, IServiceProvider services)
+public class UploadApp(AppUIHub hub)
 {
-    private ILogger Log => services.LogFor(GetType());
+    private UploadSessions UploadSessions => hub.UploadSessions;
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= hub.LogFor<UploadApp>();
 
     public Task Start()
         => BackgroundTask.Run(StartInternal);
 
     private async Task StartInternal()
     {
+        var services = hub.Services;
         try {
             var repo = services.GetRequiredService<IUploadSessionRepository>();
             var deleteTasks = new List<Task>();
             var checkTasks = new List<Task>();
-            var sessions = await uploadSessionManager.GetActiveSessionsAsync().ConfigureAwait(false);
+            var sessions = await UploadSessions.GetActiveSessionsAsync().ConfigureAwait(false);
 
             foreach (var session1 in sessions) {
-                var session = await uploadSessionManager.GetSession(session1.SessionId).ConfigureAwait(false);
+                var session = await UploadSessions.GetSession(session1.SessionId).ConfigureAwait(false);
                 session.FileProvider.Initialize(services);
                 if (session1.Status is UploadStatus.Completed or UploadStatus.Cancelled) {
-                    var deleteTask = uploadSessionManager.DeleteSession(session1.SessionId);
+                    var deleteTask = UploadSessions.DeleteSession(session1.SessionId);
                     deleteTasks.Add(deleteTask);
                     continue;
                 }
@@ -61,13 +64,13 @@ public class UploadApp(UploadSessionManager uploadSessionManager, IServiceProvid
         if (!await CheckAccessSafely(session).ConfigureAwait(false)) {
             deleteTasks.Add(BackgroundTask.Run(async () => {
                 Log.LogInformation("About to cancel session {SessionId} because file is not accessible", session.SessionId);
-                await uploadSessionManager.CancelSession(session.SessionId).ConfigureAwait(false);
-                await uploadSessionManager.DeleteSession(session.SessionId).ConfigureAwait(false);
+                await UploadSessions.CancelSession(session.SessionId).ConfigureAwait(false);
+                await UploadSessions.DeleteSession(session.SessionId).ConfigureAwait(false);
             }));
             return false;
         }
 
-        await uploadSessionManager.ResumeSession(session.SessionId).ConfigureAwait(false);
+        await UploadSessions.ResumeSession(session.SessionId).ConfigureAwait(false);
         Log.LogInformation("Resumed session {SessionId}", session.SessionId);
         return true;
     }

@@ -20,7 +20,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     private readonly Task _pruneSendingMessagesTask;
 
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
-    private UploadSessionManager UploadSessionManager => Hub.UploadSessionManager;
+    private UploadSessions UploadSessions => Hub.UploadSessions;
     private Moment Now => Hub.Clocks.SystemClock.Now;
 
     public SendingMessages(AppUIHub hub) : base(hub)
@@ -66,7 +66,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 if (uploadSessionId.IsNullOrEmpty()) {
                     if (attachment.FileProvider is null)
                         throw new InvalidOperationException($"Can not arrange upload for attachment '{attachment.Id}' because no file provider specified");
-                    var uploadSession = await UploadSessionManager.CreateSession(cmd.ChatId, attachment.FileProvider).ConfigureAwait(false);
+                    var uploadSession = await UploadSessions.CreateSession(cmd.ChatId, attachment.FileProvider).ConfigureAwait(false);
                     uploadSessionId = uploadSession.SessionId;
                 }
                 var attachEntry = new AttachFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType);
@@ -120,19 +120,19 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             };
             // TODO: to think what to do with this. For now UploadApp is responsible for resuming stored sessions.
             try {
-                var session = await UploadSessionManager.GetSession(attachment.UploadSessionId).ConfigureAwait(false);
+                var session = await UploadSessions.GetSession(attachment.UploadSessionId).ConfigureAwait(false);
                 var fileProvider = session.FileProvider;
             }
             catch (Exception e) {
 
             }
-            // await UploadSessionManager.ResumeSession(attachEntry.UploadSessionId).ConfigureAwait(false);
+            // await UploadSessions.ResumeSession(attachEntry.UploadSessionId).ConfigureAwait(false);
             attachments.Add(attachment);
         }
         if (attachments.Count == 0)
             return null;
 
-        var attachmentList = await SendingMessageAttachmentList.Create(Dispatcher, UploadSessionManager, attachments.ToArray()).ConfigureAwait(false);
+        var attachmentList = await SendingMessageAttachmentList.Create(Dispatcher, UploadSessions, attachments.ToArray()).ConfigureAwait(false);
         return new AttachmentUploads(attachmentList);
     }
 
@@ -169,8 +169,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         // TODO: implement cleanup. Remove stored request. Remove correspondent uploading sessions.
         foreach (var entryAttachFileRequest in entry.AttachFileRequests) {
             try {
-                await UploadSessionManager.CancelSession(entryAttachFileRequest.UploadSessionId).ConfigureAwait(false);
-                await UploadSessionManager.DeleteSession(entryAttachFileRequest.UploadSessionId).ConfigureAwait(false);
+                await UploadSessions.CancelSession(entryAttachFileRequest.UploadSessionId).ConfigureAwait(false);
+                await UploadSessions.DeleteSession(entryAttachFileRequest.UploadSessionId).ConfigureAwait(false);
             }
             catch (Exception e) {
                 Log.LogError(e, "Failed to cancel+delete upload session '{UploadSessionId}' for post request '{Id}'",

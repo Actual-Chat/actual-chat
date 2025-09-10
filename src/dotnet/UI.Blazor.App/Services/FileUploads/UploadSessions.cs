@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 using System.Collections.Concurrent;
 
-public class UploadSessionManager
+public class UploadSessions : UIServiceBase<AppUIHub>
 {
     private readonly IUploadSessionRepository _repository;
     private readonly IFileUploaderService _fileUploader;
@@ -11,11 +11,11 @@ public class UploadSessionManager
     private readonly ConcurrentDictionary<string, UploadSession> _sessions = new (StringComparer.Ordinal);
     private Moment Now => Moment.Now;
 
-    public UploadSessionManager(IUploadSessionRepository repository, IFileUploaderService fileUploader, ILogger log)
+    public UploadSessions(AppUIHub hub) :base(hub)
     {
-        _repository = repository;
-        _fileUploader = fileUploader;
-        _log = log;
+        _repository = hub.Services.GetRequiredService<IUploadSessionRepository>();
+        _fileUploader = hub.Services.GetRequiredService<IFileUploaderService>();
+        _log = hub.LogFor<UploadSessions>();
 
         _fileUploader.OnProgress += HandleProgress;
         _fileUploader.OnCompleted += HandleCompleted;
@@ -45,7 +45,7 @@ public class UploadSessionManager
 
         _sessions[session.SessionId] = session;
         await _repository.Save(session).ConfigureAwait(false);
-        var copy = await _repository.Get(session.SessionId).ConfigureAwait(false);
+        // var copy = await _repository.Get(session.SessionId).ConfigureAwait(false);
 
         _log.LogInformation("Created session {SessionId}", session.SessionId);
 
