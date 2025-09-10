@@ -1,13 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using StringBuilderExt = ActualLab.Text.StringBuilderExt
 @inherits ComputedMenuBase<AppUIHub, ConversationMenu.Model>
 @{
     var m = State.Value;
     if (State.Value == Model.None)
         return;
 
-    var textToCopy = $"{m.Conversation.Title}{Environment.NewLine}" +
-                     $"{m.Conversation.Description}{Environment.NewLine}" +
-                     $"{m.Conversation.Summary}";
     var expandCollapseButtonTitle = _isOpen ? "Collapse conversation" : "Expand conversation";
     var expandCollapseButtonIcon = _isOpen ? "icon-collapse" : "icon-expand";
 }
@@ -29,7 +27,7 @@
     <MenuEntry
         Icon="icon-copy"
         Text="Copy summary"
-        Click="@(() => SelectionUI.CopyTextToClipboard(textToCopy))">
+        Click="@OnCopyToClipboardRequested">
     </MenuEntry>
     @if (m.EnableIncompleteUI) {
         <MenuEntry
@@ -67,11 +65,13 @@
 @code {
     private bool _isOpen;
     private ConversationId _conversationId = null!;
+    private IChatMarkupHub _chatMarkupHub = null!;
 
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private IConversations Conversations => Hub.Conversations;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
-    private SelectionUI SelectionUI => Hub.SelectionUI;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
 
     protected override void OnParametersSet() {
         if (Arguments is not [ var sConversationId, var sIsOpen ])
@@ -79,6 +79,7 @@
 
         _conversationId = ConversationId.Parse(sConversationId);
         _isOpen = bool.Parse(sIsOpen);
+        _chatMarkupHub = ChatMarkupHubFactory[_conversationId.ChatId];
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -112,9 +113,28 @@
     private void OnReSummarize(Conversation conversation)
         => Conversations.OnReSummarize(new Conversations_Summarize(Session, conversation.Id), CancellationToken.None);
 
-    private void Reply() {}
+    private async Task OnCopyToClipboardRequested() {
+        var text = await GetText();
+        await ClipboardUI.WriteText(text).ConfigureAwait(false);
+    }
 
-    private void CopySummary() {}
+    private async Task<string> GetText() {
+        var m = State.Value;
+        CancellationToken cancellationToken = default;
+        var sb = StringBuilderExt.Acquire();
+        sb.AppendLine(m.Conversation.Title);
+        sb.AppendLine();
+        var descriptionMarkup = _chatMarkupHub.Parser.Parse(m.Conversation.Description);
+        var description = await _chatMarkupHub.ApplyMentionNamer(descriptionMarkup, cancellationToken).ConfigureAwait(false);
+        sb.AppendLine(description.ToClipboardText());
+        sb.AppendLine();
+        var summaryMarkup = _chatMarkupHub.Parser.Parse(m.Conversation.Summary);
+        var summary = await _chatMarkupHub.ApplyMentionNamer(summaryMarkup, cancellationToken).ConfigureAwait(false);
+        sb.AppendLine(summary.ToClipboardText());
+        return sb.ToStringAndRelease();
+    }
+
+    private void Reply() {}
 
     private void Forward() {}
 
