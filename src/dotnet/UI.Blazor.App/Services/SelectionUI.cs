@@ -56,6 +56,11 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         Clear();
     }
 
+    public async Task CopyTextToClipboard(string text) {
+        await ClipboardUI.WriteText(text).ConfigureAwait(false);
+        Clear();
+    }
+
     private async Task<string> GetTextToCopy(IReadOnlySet<ChatEntryId> selection)
     {
         var showAuthor = selection.Count > 1;

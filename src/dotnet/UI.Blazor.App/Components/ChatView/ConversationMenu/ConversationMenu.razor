@@ -5,6 +5,9 @@
     if (State.Value == Model.None)
         return;
 
+    var textToCopy = $"{m.Conversation.Title}{Environment.NewLine}" +
+                     $"{m.Conversation.Description}{Environment.NewLine}" +
+                     $"{m.Conversation.Summary}";
     var expandCollapseButtonTitle = _isOpen ? "Collapse conversation" : "Expand conversation";
     var expandCollapseButtonIcon = _isOpen ? "icon-collapse" : "icon-expand";
 }
@@ -24,39 +27,41 @@
         </MenuEntry>
     }
     <MenuEntry
-        Icon="icon-reply"
-        FocusOnEditor="true"
-        Text="Reply"
-        Click="@Reply">
-    </MenuEntry>
-    <MenuEntry
         Icon="icon-copy"
         Text="Copy summary"
-        Click="@CopySummary">
+        Click="@(() => SelectionUI.CopyTextToClipboard(textToCopy))">
     </MenuEntry>
-    <CopyTrigger Tooltip="" CopyText="" Class="ac-menu-item !p-0">
+    @if (m.EnableIncompleteUI) {
         <MenuEntry
-            Icon="icon-copy"
-            Text="Copy summary link">
+            Icon="icon-reply"
+            FocusOnEditor="true"
+            Text="Reply"
+            Click="@Reply">
         </MenuEntry>
-    </CopyTrigger>
-    <MenuEntry
-        Icon="icon-share"
-        Text="Forward"
-        Click="@Forward">
-    </MenuEntry>
-    <MenuEntry
-        Class="warning-item"
-        Icon="icon-trash03"
-        Text="Delete"
-        Click="@Delete">
-    </MenuEntry>
-    <MenuEntrySeparator/>
-    <MenuEntry
-        Icon="icon-select"
-        Text="Select"
-        Click="@Select">
-    </MenuEntry>
+        <CopyTrigger Tooltip="" CopyText="" Class="ac-menu-item !p-0">
+            <MenuEntry
+                Icon="icon-copy"
+                Text="Copy summary link">
+            </MenuEntry>
+        </CopyTrigger>
+        <MenuEntry
+            Icon="icon-share"
+            Text="Forward"
+            Click="@Forward">
+        </MenuEntry>
+        <MenuEntry
+            Class="warning-item"
+            Icon="icon-trash03"
+            Text="Delete"
+            Click="@Delete">
+        </MenuEntry>
+        <MenuEntrySeparator/>
+        <MenuEntry
+            Icon="icon-select"
+            Text="Select"
+            Click="@Select">
+        </MenuEntry>
+    }
 </div>
 
 @code {
@@ -66,6 +71,7 @@
     private IConversations Conversations => Hub.Conversations;
     private ChatUI ChatUI => Hub.ChatUI;
     private IChats Chats => Hub.Chats;
+    private SelectionUI SelectionUI => Hub.SelectionUI;
 
     protected override void OnParametersSet() {
         if (Arguments is not [ var sConversationId, var sIsOpen ])
@@ -92,9 +98,11 @@
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var isOwner = chat != null && (chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer);
 
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new() {
             Conversation = conversation,
             IsOwner = isOwner,
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -121,5 +129,6 @@
 
         public Conversation Conversation { get; init; } = null!;
         public bool IsOwner { get; init; }
+        public bool EnableIncompleteUI { get; init; }
     }
 }
