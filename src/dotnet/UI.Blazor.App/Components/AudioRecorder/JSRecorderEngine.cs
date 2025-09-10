@@ -16,11 +16,17 @@ public class JSRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
     }
 
     public async Task<bool> StartAsync(ChatId chatId, ChatEntryId? repliedChatEntryId, string sessionToken, CancellationToken cancellationToken = default)
-        => await _jsRef.InvokeAsync<bool>("startRecording", CancellationToken.None, chatId, repliedChatEntryId, sessionToken).AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        => await _jsRef.InvokeAsync<bool>("startRecording", CancellationToken.None, chatId, repliedChatEntryId, sessionToken)
+            .AsTask()
+            .WaitAsync(AudioRecorder.StartRecordingTimeout, cancellationToken)
+            .ConfigureAwait(false);
 
     public async Task<bool> StopAsync(CancellationToken cancellationToken = default)
     {
-        await _jsRef.InvokeVoidAsync("stopRecording", CancellationToken.None).AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("stopRecording", CancellationToken.None)
+            .AsTask()
+            .WaitAsync(AudioRecorder.StopRecordingTimeout, cancellationToken)
+            .ConfigureAwait(false);
         return true;
     }
 

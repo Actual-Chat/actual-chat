@@ -1,4 +1,5 @@
 ﻿using ActualChat.UI.Blazor.App.Services;
+using Microsoft.Maui.ApplicationModel;
 
 namespace ActualChat.App.Maui;
 

@@ -9,8 +9,8 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 {
-    private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
+    public static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
+    public static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
     private static bool DebugMode => Constants.DebugMode.AudioRecording;
 
     private readonly AsyncLock _stateLock = new(LockReentryMode.CheckedPass);
@@ -18,7 +18,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private readonly IAudioRecorderEngine _engine;
     private SessionTokens? _sessionTokens;
 
-    private DotNetObjectReference<IAudioRecorderBackend>? _blazorRef;
     private Activity? _recordingActivity;
 
     private AppUIHub Hub { get; }
@@ -50,7 +49,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         return;
 
         async Task Initialize() {
-            _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             await _engine.InitializeAsync(this).ConfigureAwait(false);
         }
     }
@@ -59,12 +57,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     {
         using var releaser = await _stateLock.Lock().ConfigureAwait(false);
         releaser.MarkLockedLocally();
-
-        if (_engine is JSRecorderEngine jsEngine) {
-            // JS engine holds JS object; nothing to dispose here beyond engine lifetime
-        }
-        _blazorRef.DisposeSilently();
-        _blazorRef = null!;
     }
 
     public async Task StartRecording(
