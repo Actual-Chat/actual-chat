@@ -5,7 +5,7 @@
 }
 
 <div class="@cls"
-     data-menu="@(MenuRef.New<ConversationMenu>(Conversation.Id.Value, true.ToString()))">
+     data-menu="@(MenuRef.New<ConversationMenu>(Conversation.Id.Value, IsSeparated.ToString()))">
     <div class="bg-wrapper">
         <div class="c-ending @_loadingCls" @onclick="OnMessageCountClick">
             <div class="c-content">
