@@ -638,13 +638,15 @@ body.narrow .narrow-panel .rec-icon i {
 }
 
 /*Record OFF to ON*/
-
+.record-off-to-on .rec-icon.off {
+    @apply opacity-0;
+}
 /*Record ON to OFF*/
 .record-on-to-off .rec-icon.on {
-    opacity: 0;
+    @apply opacity-0;
 }
 .record-on-to-off.applying-changes .rec-icon.off {
-    @apply opacity-100;
+    @apply opacity-0;
 }
 
 /*Text-mode and Narrow-panel */
