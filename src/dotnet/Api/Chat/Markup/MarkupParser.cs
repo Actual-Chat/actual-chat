@@ -226,7 +226,7 @@ public partial class MarkupParser : IMarkupParser
 
     // List
     private static readonly Parser<char, Markup> UnorderedListItem =
-        from _ in OneOf(Char('-'), Char('*'), Char('+')).Before(WhitespaceChar)
+        from _ in OneOf(Char('-'), Char('*')).Before(WhitespaceChar)
         from content in TextBlock.ManyMarkup()
         from _1 in EndOfLine.Optional()
         select (Markup)new ListItemMarkup(content);
