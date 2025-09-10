@@ -151,7 +151,7 @@
         => _attachments.Remove(attachment);
 
     private AttachmentList CreateAttachmentList()
-        => new(Services.GetRequiredService<UploadSessionManager>(), Services.LogFor<AttachmentList>());
+        => new(Hub.Dispatcher, Hub.UploadSessionManager, Hub.LogFor<AttachmentList>());
 
     public sealed class ResetIntent : IAsyncDisposable {
         private readonly Func<ValueTask> _confirm;

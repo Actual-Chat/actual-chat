@@ -187,7 +187,7 @@
                 var repliedEntryLid = relatedChatEntryId?.LocalId;
                 cmd = new PostMessageRequest(Chat.Id, null, text) {
                     RepliedEntryLid = repliedEntryLid,
-                    AttachmentUploads = AttachmentUploads.From(attachmentListSnapshot.Attachments),
+                    Attachments = attachmentListSnapshot.Attachments,
                 };
             }
             var postTask = await SendingMessages.Post(cmd, CancellationToken.None);

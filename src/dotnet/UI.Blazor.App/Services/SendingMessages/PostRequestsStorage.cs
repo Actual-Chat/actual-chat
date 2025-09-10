@@ -10,10 +10,10 @@ public class PostRequestsStorage(AppUIHub hub)
     private readonly AsyncLock _asyncLock = new(LockReentryMode.CheckedFail);
     private LocalSettings LocalSettings => hub.LocalSettings;
 
-    public async Task Add(PostRequestEntry entry, CancellationToken cancellationToken)
+    public async Task Add(PostMessageRequestEntry entry, CancellationToken cancellationToken)
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
-        var entries = await LocalSettings.Get<PostRequestEntry[]>(EntryKey, cancellationToken).ConfigureAwait(false);
+        var entries = await LocalSettings.Get<PostMessageRequestEntry[]>(EntryKey, cancellationToken).ConfigureAwait(false);
         entries ??= [];
         var list = entries.ToList();
         list.Add(entry);
@@ -21,17 +21,17 @@ public class PostRequestsStorage(AppUIHub hub)
         await LocalSettings.Set(EntryKey, entries, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<PostRequestEntry[]> GetStored(CancellationToken cancellationToken)
+    public async Task<PostMessageRequestEntry[]> GetStored(CancellationToken cancellationToken)
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
-        var entries = await LocalSettings.Get<PostRequestEntry[]>(EntryKey, cancellationToken).ConfigureAwait(false);
+        var entries = await LocalSettings.Get<PostMessageRequestEntry[]>(EntryKey, cancellationToken).ConfigureAwait(false);
         return entries ?? [];
     }
 
     public async Task<bool> Remove(string uuid, CancellationToken cancellationToken)
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
-        var entries = await LocalSettings.Get<PostRequestEntry[]>(EntryKey, cancellationToken).ConfigureAwait(false);
+        var entries = await LocalSettings.Get<PostMessageRequestEntry[]>(EntryKey, cancellationToken).ConfigureAwait(false);
         entries ??= [];
         var list = entries.ToList();
         var entryToRemove = list.Find(c => OrdinalEquals(c.Uuid, uuid));
@@ -45,10 +45,25 @@ public class PostRequestsStorage(AppUIHub hub)
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record PostRequestEntry(
+public partial record PostMessageRequestEntry(
     [property: DataMember, MemoryPackOrder(0)] string Uuid,
-    [property: DataMember, MemoryPackOrder(1)] PostMessageRequest Request,
-    [property: DataMember, MemoryPackOrder(2)] Moment Now) : IHasId<string>
+    [property: DataMember, MemoryPackOrder(1)] Moment Now,
+    [property: DataMember, MemoryPackOrder(2)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(3)] long? LocalId,
+    [property: DataMember, MemoryPackOrder(4)] string Text,
+    [property: DataMember, MemoryPackOrder(5)] Option<long?> RepliedEntryLid,
+    [property: DataMember, MemoryPackOrder(6)] AttachFileRequestEntry[] AttachFileRequests
+    ) : IHasId<string>
 {
     string IHasId<string>.Id => Uuid;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record AttachFileRequestEntry(
+    [property: DataMember, MemoryPackOrder(0)] string UploadSessionId,
+    [property: DataMember, MemoryPackOrder(1)] string FileName,
+    [property: DataMember, MemoryPackOrder(2)] string FileType
+) : IHasId<string>
+{
+    string IHasId<string>.Id => UploadSessionId;
 }

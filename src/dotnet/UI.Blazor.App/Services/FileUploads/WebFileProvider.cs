@@ -12,10 +12,8 @@ public partial class WebFileProvider : IFileProvider
     [DataMember, MemoryPackOrder(0)]
     public string FileName { get; init; } = "";
     [DataMember, MemoryPackOrder(1)]
-    public long FileSize { get; init; }
+    public string FileHandleDbKey { get; set; } = "";
     [DataMember, MemoryPackOrder(2)]
-    private string FileHandleDbKey { get; set; } = "";
-    [DataMember, MemoryPackOrder(3)]
     public ChatId ChatId { get; set; } = null!;
     [IgnoreDataMember, MemoryPackIgnore]
     public IWebFileProviderInternal? WebFileProviderInternal { get; set; }

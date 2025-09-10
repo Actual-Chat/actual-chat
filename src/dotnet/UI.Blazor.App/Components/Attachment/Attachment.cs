@@ -1,26 +1,20 @@
 using ActualChat.Media;
-using MemoryPack;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record Attachment(
-    [property: DataMember, MemoryPackOrder(1)] int Id,
-    [property: DataMember, MemoryPackOrder(2)] string Url,
-    [property: DataMember, MemoryPackOrder(3)] string FileName,
-    [property: DataMember, MemoryPackOrder(4)] string FileType,
-    [property: DataMember, MemoryPackOrder(5)] int Length,
-    [property: DataMember, MemoryPackOrder(6)] int Progress = 0,
-    [property: DataMember, MemoryPackOrder(7)] MediaId? MediaId = null,
-    [property: DataMember, MemoryPackOrder(8)] MediaId? ThumbnailMediaId = null)
+public record Attachment(int Id, string Url, string FileName, string FileType)
 {
-    [IgnoreDataMember, MemoryPackIgnore]
-    public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
-    [IgnoreDataMember, MemoryPackIgnore]
-    public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
-    [IgnoreDataMember, MemoryPackIgnore]
-    public bool Failed { get; init; }
-    [IgnoreDataMember, MemoryPackIgnore]
+    public int Progress { get; init; }
+    public MediaId? MediaId { get; init; }
+    public MediaId? ThumbnailMediaId { get; init; }
     [MemberNotNullWhen(true, nameof(MediaId))]
-    public bool Uploaded => Progress == 100 && MediaId != null;
+    public bool Uploaded => MediaId != null;
+    public bool Failed { get; init; }
+
+    public IFileProvider? FileProvider { get; init; }
+    public string UploadSessionId { get; init; } = "";
+
+    public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
+    public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
 }

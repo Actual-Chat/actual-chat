@@ -1,6 +1,3 @@
-using Serilog;
-using ILogger = Microsoft.Extensions.Logging.ILogger;
-
 namespace ActualChat.UI.Blazor.App.Services;
 
 using System.Collections.Concurrent;
@@ -43,12 +40,12 @@ public class UploadSessionManager
             Status = UploadStatus.Pending,
             CreatedAt = Now,
             LastUpdatedAt = Now,
-
             ChatId = chatId,
         };
 
         _sessions[session.SessionId] = session;
         await _repository.Save(session).ConfigureAwait(false);
+        var copy = await _repository.Get(session.SessionId).ConfigureAwait(false);
 
         _log.LogInformation("Created session {SessionId}", session.SessionId);
 

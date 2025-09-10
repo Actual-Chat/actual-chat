@@ -3,12 +3,12 @@ using ActualChat.Hashing;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public record SendingMessage(
+    string Uuid,
     ChatId ChatId,
     long? LocalId,
     Moment BeginsAt,
     string Content,
     HashString ContentHash,
-    string Uuid,
     AttachmentUploads? AttachmentUploads,
     CancellationTokenSource CancellationTokenSource) : IDisposable
 {

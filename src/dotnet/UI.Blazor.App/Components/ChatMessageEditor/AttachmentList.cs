@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AttachmentList(UploadSessionManager uploadSessionManager, ILogger<AttachmentList> log) : IAttachmentList, IAttachmentListBackend
+public class AttachmentList(Dispatcher dispatcher, UploadSessionManager uploadSessionManager, ILogger<AttachmentList> log) : IAttachmentList, IAttachmentListBackend
 {
     public static Exception FileTooBigError()
         => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
@@ -80,7 +80,7 @@ public class AttachmentList(UploadSessionManager uploadSessionManager, ILogger<A
             if (_attachments.Count >= Constants.Attachments.FileCountLimit)
                 return StandardError.Constraint("Too many files. Max allowed number is 10.");
 
-            var attachment = new Attachment(id, url, fileName ?? "", fileType ?? "", length);
+            var attachment = new Attachment(id, url, fileName ?? "", fileType ?? "");
             _attachments = _attachments.Add(new AttachmentInfo(attachment));
             return null;
         }
@@ -113,52 +113,29 @@ public class AttachmentList(UploadSessionManager uploadSessionManager, ILogger<A
         var attachment = info.Attachment;
         var webFileProvider = new WebFileProvider {
             FileName = attachment.FileName,
-            FileSize = attachment.Length,
             ChatId = chatId,
             WebFileProviderInternal = webFileProviderInternal,
         };
+        UpdateAttachment(attachment.Id, a => a with { FileProvider = webFileProvider });
 
         try {
             var uploadSession = await uploadSessionManager.CreateSession(chatId, webFileProvider);
             info.UploadSession = uploadSession;
             await uploadSessionManager.ResumeSession(uploadSession.SessionId);
-            ObserveUploadProgress(uploadSession, attachment);
+            UpdateAttachment(attachment.Id, a => a with { UploadSessionId = uploadSession.SessionId });
+            AttachmentExt.ObserveUploadProgress(
+                uploadSession.ProgressTracker,
+                updater => {
+                    _ = dispatcher.InvokeAsync(() => {
+                        UpdateAttachment(attachment.Id, updater);
+                        OnChanged();
+                    });
+                });
         }
         catch (Exception ex) {
             log.LogError(ex, "Failed to create/resume upload session");
             fileUploaderBackend.Dispose();
         }
-    }
-
-    private void ObserveUploadProgress(UploadSession uploadSession, Attachment attachment)
-    {
-        // TODO: get rid of this hack, ProgressTracker should be able to report progress on the current thread.
-        var synchronousContext = SynchronizationContext.Current;
-        // Observe upload progress.
-        var tracker = uploadSession.ProgressTracker;
-        var id = attachment.Id;
-        tracker.Progress.ProgressChanged += (_, value) => {
-            synchronousContext.Post(v => {
-                UpdateAttachment(id, x => x with { Progress = (int)(double)v! });
-                OnChanged();
-            }, value);
-        };
-        _ = tracker.Task.ContinueWith(t => {
-            if (t.IsCompletedSuccessfully) {
-                var mediaContent = t.Result;
-                UpdateAttachment(id, x => x with {
-                    MediaId = mediaContent.MediaId,
-                    ThumbnailMediaId = mediaContent.ThumbnailMediaId,
-                });
-                OnChanged();
-            }
-            else if (t.IsFaulted) {
-                UpdateAttachment(id, x => x with {
-                    Failed = true,
-                });
-                OnChanged();
-            }
-        }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
     private void OnChanged()

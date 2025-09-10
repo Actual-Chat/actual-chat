@@ -8,7 +8,6 @@ namespace ActualChat.UI.Blazor.App.Services;
 public partial interface IFileProvider
 {
     string FileName { get; }
-    long FileSize { get; }
     Task PrepareForSaving();
     Task<IFileUploadOperation> CreateUploadOperation();
     void Initialize(IServiceProvider services);

@@ -201,7 +201,7 @@
             }, TaskScheduler.Default);
             //fileUploadOperation.Start();
             Hub.Services.GetRequiredService<FileUploadQueue>().Enqueue(fileUploadOperation);
-            var attachment = new Attachment(attachments.Count, file.Url, fileName,  mediaType ?? "", (int)streamLength);
+            var attachment = new Attachment(attachments.Count, file.Url, fileName,  mediaType ?? "");
             var uploadOperation = new AttachmentUploadOperation(attachment, fileUploadOperation);
             attachments.Add(uploadOperation);
         }
@@ -214,7 +214,7 @@
     {
         var cmd = new PostMessageRequest(chatId, null, comment) {
             RepliedEntryLid = null,
-            AttachmentUploads = AttachmentUploads.From(attachments),
+            Attachments = attachments,
         };
         var postTask = await SendingMessages.Post(cmd, default).ConfigureAwait(false);
         var chatEntry = await postTask.ConfigureAwait(false);

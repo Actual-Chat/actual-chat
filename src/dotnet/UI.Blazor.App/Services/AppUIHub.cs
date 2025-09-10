@@ -47,6 +47,8 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public SendingMessages SendingMessages => field ??= Services.GetRequiredService<SendingMessages>();
     [field: AllowNull, MaybeNull]
+    public UploadSessionManager UploadSessionManager => field ??= Services.GetRequiredService<UploadSessionManager>();
+    [field: AllowNull, MaybeNull]
     public ActiveChatsUI ActiveChatsUI => field ??= Services.GetRequiredService<ActiveChatsUI>();
     [field: AllowNull, MaybeNull]
     public AuthorUI AuthorUI => field ??= Services.GetRequiredService<AuthorUI>();

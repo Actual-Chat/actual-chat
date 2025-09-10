@@ -51,6 +51,9 @@ public class UploadApp(UploadSessionManager uploadSessionManager, IServiceProvid
         catch(Exception ex2) {
             Log.LogError(ex2, "Failed to resume upload sessions");
         }
+
+        // Resume sending messages
+        _ = services.GetRequiredService<SendingMessages>();
     }
 
     private async Task<bool> ResumeInternal(UploadSession session, List<Task> deleteTasks)
