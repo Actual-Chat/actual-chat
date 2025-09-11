@@ -177,7 +177,7 @@
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
     private AttachmentList2 UploadFiles(IIncomingShareFileDownloader filesDownloader, FileUploader uploader, ChatId chatId, IEnumerable<IncomingShareFile> files) {
         Exception? fileSizeLimitError = null;
-        var attachments = new List<AttachmentUploadOperation>();
+        var attachments = new List<Attachment>();
         foreach (var file in files) {
             var (stream, mediaType) = filesDownloader.OpenInputStream(file.Url);
             if (stream == null) {
@@ -192,18 +192,18 @@
                 continue;
             }
             filesDownloader.TryExtractFileName(file.Url, out var fileName);
-            var progress = new Progress<double>();
-            var fileUploadOperation = uploader.CreateUploadOperation(chatId, stream, mediaType, fileName, progress);
-            _ = fileUploadOperation.Task.ContinueWith(async _ => {
-                await fileUploadOperation.Task.SilentAwait(false);
-                // NOTE: dispose stream when upload completed or canceled.
-                await stream.DisposeSilentlyAsync();
-            }, TaskScheduler.Default);
-            //fileUploadOperation.Start();
-            Hub.Services.GetRequiredService<FileUploadQueue>().Enqueue(fileUploadOperation);
-            var attachment = new Attachment(attachments.Count, file.Url, fileName,  mediaType ?? "");
-            var uploadOperation = new AttachmentUploadOperation(attachment, fileUploadOperation);
-            attachments.Add(uploadOperation);
+            var fileProvider = new IncomingShareFileProvider {
+                FileName = fileName,
+                FileUrl = file.Url,
+                MediaType = mediaType,
+                Uploader = uploader,
+                ChatId = chatId,
+                Stream = stream,
+            };
+            var attachment = new Attachment(attachments.Count, file.Url, fileName, mediaType ?? "") {
+                FileProvider = fileProvider,
+            };
+            attachments.Add(attachment);
         }
         if (fileSizeLimitError != null)
             Services.UICommander().ShowError(fileSizeLimitError);

@@ -2,9 +2,7 @@ using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-[MemoryPackable]
-[MemoryPackUnion(0, typeof(WebFileProvider))]
-// [MemoryPackUnion(1, typeof(LocalFileProvider))]
+[MemoryPackable(GenerateType.NoGenerate)]
 public partial interface IFileProvider
 {
     string FileName { get; }
@@ -14,3 +12,12 @@ public partial interface IFileProvider
     Task<bool> CheckAccess();
     Task ClearBeforeRemoving();
 }
+
+// NOTE(DF): This is a workaround for the following issue:
+// When I apply MemoryPackUnion to the interface, this is working on Desktop, but fails on Android (MAUI) with an error:
+// System.BadImageFormatException: Method has no body.
+[MemoryPackUnionFormatter(typeof(IFileProvider))]
+[MemoryPackUnion(0, typeof(WebFileProvider))]
+[MemoryPackUnion(1, typeof(IncomingShareFileProvider))]
+// [MemoryPackUnion(1, typeof(LocalFileProvider))]
+public partial class FileProviderUnionFormatter;
