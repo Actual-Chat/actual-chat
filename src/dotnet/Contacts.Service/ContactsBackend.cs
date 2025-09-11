@@ -670,16 +670,17 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         var (id, expectedVersion, change) = command;
         var ownerId = id.OwnerId;
-        var chatId = id.ChatId;
 
         if (Invalidation.IsActive) {
             _ = GetThreadContact(ownerId, id, default);
-            ThreadChatId? invChatId = chatId as ThreadChatId;
+            var threadChatId = (ThreadChatId)id.ChatId;
+            ThreadChatId? invChatId = threadChatId;
             while (invChatId is not null) {
                 _ = ListThreadIdsForChat(ownerId, invChatId.ParentChatId, default);
                 invChatId = invChatId.ParentChatId as ThreadChatId;
             }
-            if (chatId is PlaceChatId placeChatId)
+            var outermostParentChatId = threadChatId.GetOutermostParent();
+            if (outermostParentChatId is PlaceChatId placeChatId)
                 _ = ListThreadIdsForPlace(ownerId, placeChatId.PlaceId, default);
             return default!;
         }
