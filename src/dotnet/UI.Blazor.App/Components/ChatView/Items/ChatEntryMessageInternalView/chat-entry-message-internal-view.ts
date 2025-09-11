@@ -35,7 +35,7 @@ export class ChatEntryMessageInternalView {
         if (!content && !this.messageMarkup.classList.contains('streaming'))
             this.messageMarkup.classList.add('empty');
 
-        this.scrollbarDelta = this.getRemInPixels() * 14 / 16;
+        this.scrollbarDelta = this.getRemInPixels();
 
         this.playableText = this.messageMarkup.querySelector('.playable-text-markup');
 
@@ -85,6 +85,19 @@ export class ChatEntryMessageInternalView {
 
     private updateMarkupSize: MutationCallback = (mutations) => {
         mutations.forEach(mutation => {
+            const targetEl = mutation.target instanceof HTMLElement
+                ? mutation.target
+                : mutation.target.parentElement;
+
+            if (!targetEl)
+                return;
+
+            const codeParent = targetEl.closest('code');
+            if (codeParent) {
+                this.normalizeCodeBlocks(this.messageMarkup.querySelectorAll<HTMLElement>('code'));
+                return;
+            }
+
             if (mutation.type === 'characterData' &&
                 mutation.target.nodeType === Node.TEXT_NODE) {
                 const element = mutation.target.parentElement as HTMLElement;
@@ -101,7 +114,7 @@ export class ChatEntryMessageInternalView {
                         this.onTranscriptionFinalizedResize();
                     }
                     if (node instanceof HTMLElement
-                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup', 'code-block-markup'].some(cls => node.classList.contains(cls))) {
+                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup'].some(cls => node.classList.contains(cls))) {
                         if (this.messageMarkup.classList.contains('empty')) {
                             this.messageMarkup.classList.remove('empty');
                         } else {
@@ -111,7 +124,7 @@ export class ChatEntryMessageInternalView {
                 });
                 mutation.removedNodes.forEach((node) => {
                     if (node instanceof HTMLElement
-                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup', 'code-block-markup'].some(cls => node.classList.contains(cls))) {
+                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup'].some(cls => node.classList.contains(cls))) {
                         this.changeSizeForText();
                     }
                 });
@@ -151,9 +164,20 @@ export class ChatEntryMessageInternalView {
         this.messageMarkup.addEventListener('transitionend', this.onTransitionEndBound);
     }
 
-    private changeSizeForText(slow: boolean = false) {
+    private normalizeCodeBlocks(codeBlocks: NodeListOf<HTMLElement>) {
+        codeBlocks.forEach(codeEl => {
+            codeEl.style.height = "auto";
+            if (codeEl.scrollWidth > codeEl.clientWidth) {
+                codeEl.style.height = codeEl.getBoundingClientRect().height + this.scrollbarDelta / 4 + 'px';
+            } else
+                codeEl.style.height = codeEl.getBoundingClientRect().height + 'px';
+        });
+        this.changeSizeForText(false, true);
+    }
+
+    private changeSizeForText(slow: boolean = false, withCodeBlock: boolean = false) {
         const actualHeight = this.getActualHeight();
-        if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels() * 0.8)
+        if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels() && !withCodeBlock)
             return;
 
         if (actualHeight > this.markupHeight) {
@@ -169,18 +193,6 @@ export class ChatEntryMessageInternalView {
         let style = sendingStatus ? getComputedStyle(sendingStatus) : null;
         if (sendingStatus && style && style.position === 'absolute') {
             sendingStatus.style.display = 'none';
-        }
-
-        const markups = Array.from(this.messageMarkup.children)
-            .filter(el => el instanceof HTMLElement && !el.classList.contains('chat-message-sending-status')) as HTMLElement[];
-
-        const allCodeBlocks = markups.length > 0 && markups.every(el => el.classList.contains('code-block-markup'));
-
-        if (allCodeBlocks) {
-            const rects = markups.map(el => el.getBoundingClientRect());
-            const top = Math.min(...rects.map(r => r.top));
-            const bottom = Math.max(...rects.map(r => r.bottom));
-            return Math.ceil(bottom - top) + this.scrollbarDelta;
         }
 
         const range = document.createRange();
