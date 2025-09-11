@@ -42,18 +42,35 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     // [ComputeMethod]
     public virtual async Task<ThreadChatId[]> ListIdsForPlace(
         Session session,
-        PlaceId parentPlaceId,
+        PlaceId? parentPlaceId,
         CancellationToken cancellationToken)
     {
-        await Places.Get(session, parentPlaceId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the place
+        if (parentPlaceId is not null)
+            await Places.Get(session, parentPlaceId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the place
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (account.IsGuest)
             return [];
 
-        var placeContacts = await ContactsBackend.ListIds(account.Id, parentPlaceId, cancellationToken).ConfigureAwait(false);
-        var placeChatIds = placeContacts.Select(c => c.ChatId).Where(c => c.Kind is ChatKind.Place).ToHashSet();
-        var placeTheadIds = await ContactsBackend.ListThreadIdsForPlace(account.Id, parentPlaceId, cancellationToken).ConfigureAwait(false);
-        return placeTheadIds.Where(c => placeChatIds.Contains(c.GetOutermostParent())).ToArray();
+        if (parentPlaceId is not null) {
+            var placeContacts = await ContactsBackend
+                .ListIds(account.Id, parentPlaceId, cancellationToken)
+                .ConfigureAwait(false);
+            var placeChatIds = placeContacts.Select(c => c.ChatId).Where(c => c.Kind is ChatKind.Place).ToHashSet();
+            var placeTheadIds = await ContactsBackend
+                .ListThreadIdsForPlace(account.Id, parentPlaceId, cancellationToken)
+                .ConfigureAwait(false);
+            return placeTheadIds.Where(c => placeChatIds.Contains(c.GetOutermostParent())).ToArray();
+        }
+        else {
+            var chatContacts = await ContactsBackend
+                .ListIds(account.Id, null, cancellationToken)
+                .ConfigureAwait(false);
+            var chatIds = chatContacts.Select(c => c.ChatId).Where(c => c.Kind is ChatKind.Group or ChatKind.Peer).ToHashSet();
+            var placeTheadIds = await ContactsBackend
+                .ListThreadIdsForPlace(account.Id, parentPlaceId, cancellationToken)
+                .ConfigureAwait(false);
+            return placeTheadIds.Where(c => chatIds.Contains(c.GetOutermostParent())).ToArray();
+        }
     }
 
     // [ComputeMethod]

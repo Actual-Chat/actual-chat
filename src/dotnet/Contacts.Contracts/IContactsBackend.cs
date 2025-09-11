@@ -10,9 +10,9 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ContactId[]> ListIdsForSearch(UserId userId, ContactSubset contactSubset, bool includePublic, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<ContactId[]> ListIdsForGroupContactSearch(UserId userId, ContactSubset contactSubset, CancellationToken cancellationToken);
+    Task<ContactId[]> ListIdsForGroupContactSearch(UserId userId, ContactSubset contactSubset, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<ContactId[]> ListPeerContactIds(UserId userId, PlaceId? placeId, CancellationToken cancellationToken);
+    Task<ContactId[]> ListPeerContactIds(UserId userId, PlaceId? placeId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ContactId[]> ListIds(UserId ownerId, PlaceId? placeId, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -22,7 +22,7 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ThreadChatId[]> ListThreadIdsForChat(UserId ownerId, ChatId parentChatId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ThreadChatId[]> ListThreadIdsForPlace(UserId ownerId, PlaceId parentPlaceId, CancellationToken cancellationToken);
+    Task<ThreadChatId[]> ListThreadIdsForPlace(UserId ownerId, PlaceId? parentPlaceId, CancellationToken cancellationToken);
 
     // Non-compute methods
     Task<Contact[]> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken);

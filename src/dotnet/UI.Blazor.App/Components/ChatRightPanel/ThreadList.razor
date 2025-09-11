@@ -27,11 +27,6 @@
                 Category = ComputedStateComponent.GetStateCategory(t),
             });
 
-    protected override void OnParametersSet() {
-        if (ChatId is null && PlaceId is null)
-            throw StandardError.Constraint("ChatId or PlaceId parameter should be provided.");
-    }
-
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
         var placeId = PlaceId;
@@ -42,10 +37,8 @@
 
             threadIds = await ChatThreads.ListIdsForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
         }
-        else if (placeId is not null)
-            threadIds = await ChatThreads.ListIdsForPlace(Session, placeId, cancellationToken).ConfigureAwait(false);
         else
-            return Model.None;
+            threadIds = await ChatThreads.ListIdsForPlace(Session, placeId, cancellationToken).ConfigureAwait(false);
 
         var threadChats = await threadIds
             .Select(c => Chats.Get(Session, c, cancellationToken))
