@@ -10,6 +10,7 @@ public static class Links
 
     public static readonly LocalUrl Home = default;
     public static readonly LocalUrl Docs = "/docs";
+    public static readonly LocalUrl Privacy = "/docs/privacy";
     public static readonly LocalUrl NotFound = "/404";
     public static readonly LocalUrl Chats = "/chat";
     public static readonly LocalUrl Logs = "/test/logs";
