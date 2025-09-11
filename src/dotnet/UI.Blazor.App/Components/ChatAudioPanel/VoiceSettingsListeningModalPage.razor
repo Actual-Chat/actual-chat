@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Kvas
 @inherits ComputedStateComponent<AppUIHub, VoiceSettingsListeningModalPage.ComputedModel>
 @{
     var m = State.Value;
@@ -45,19 +44,15 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-
-        var userChatSettings = await AccountSettings
-            .GetUserChatSettings(chatId, cancellationToken)
-            .ConfigureAwait(false);
-
-        return new (userChatSettings.ListeningMode);
+        var listeningMode = await AccountSettings.GetListeningMode(chatId, cancellationToken).ConfigureAwait(false);
+        return new (listeningMode);
     }
 
     private async Task SetListeningMode(ListeningMode listeningMode) {
         var chatId = ChatId;
 
         // Save new settings
-        await AccountSettings.UpdateUserChatSettings(chatId, x => x with { ListeningMode = listeningMode }, CancellationToken.None);
+        await AccountSettings.SetListeningMode(chatId, listeningMode, CancellationToken.None);
         if (listeningMode == ListeningMode.Forever) {
             await Hub.ChatAudioUI.SetListeningState(chatId, true);
             await AccountSettings.UpdateUserListeningSettings(x => x.WithAlwaysListeningChat(chatId), default);
