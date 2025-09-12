@@ -30,7 +30,7 @@
             <div class="c-short">
                 @TranslationFragments.TranslatedMarkupWithMark(m.Description)
                 @if (!_isOpen) {
-                    <span class="show-more-btn" @onclick="@ToggleDetails"> Show more</span>
+                    <span class="show-more-btn" @onclick="@ToggleDetails"> Show items</span>
                 }
             </div>
         </div>
@@ -38,7 +38,7 @@
             <div class="c-long">
                 <div class="c-long-content @detailsCls">
                     @TranslationFragments.TranslatedMarkupWithMark(m.Summary)
-                    <span class="show-more-btn" @onclick="@ToggleDetails"> Show less</span>
+                    <span class="show-more-btn" @onclick="@ToggleDetails"> Hide items</span>
                 </div>
             </div>
         }

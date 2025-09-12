@@ -45,7 +45,7 @@ export function resetMediaSessionMetadata(): void {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: `Ready`,
             artist: 'Voxt',
-            artwork: [{ src: '/_applogo-dark.svg' }]
+            artwork: [{ src: '/_applogo-dark_voxt.svg' }]
         });
         navigator.mediaSession.playbackState = 'none';
         navigator.mediaSession.setPositionState({

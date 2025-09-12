@@ -33,7 +33,7 @@ internal static class AppPathResolver
         var result = (
             from path in probePaths
             let wwwroot = path & "wwwroot"
-            where File.Exists(wwwroot & "favicon.ico")
+            where File.Exists(wwwroot & "favicon_voxt.ico")
             select wwwroot
             ).FirstOrDefault();
 

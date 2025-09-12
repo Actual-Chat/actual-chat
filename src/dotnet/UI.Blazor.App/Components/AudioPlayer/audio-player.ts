@@ -269,7 +269,7 @@ export class AudioPlayer implements Resettable {
                     title: `${title} @ ${album}`,
                     album: album,
                     artist: 'Voxt',
-                    artwork: [{ src: '/_applogo-dark.svg' }],
+                    artwork: [{ src: '/_applogo-dark_voxt.svg' }],
                 });
                 navigator.mediaSession.playbackState = 'playing';
                 navigator.mediaSession.setPositionState({
