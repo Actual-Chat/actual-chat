@@ -610,10 +610,10 @@ public class NotificationsBackend(IServiceProvider services)
          => chat.Kind switch {
              ChatKind.Group or ChatKind.Place or ChatKind.Thread => chat.Picture?.ContentId.IsNullOrEmpty() == false
                  ? UrlMapper.ContentUrl(chat.Picture.ContentId)
-                 : "/favicon.ico",
+                 : "/favicon_voxt.ico",
              ChatKind.Peer => author.Avatar.Media?.ContentId.IsNullOrEmpty() == false
                  ? UrlMapper.ContentUrl(author.Avatar.Media.ContentId)
-                 : "/favicon.ico",
+                 : "/favicon_voxt.ico",
              _ => throw new ArgumentOutOfRangeException($"{nameof(chat)}.{nameof(chat.Kind)}", chat.Kind, null),
          };
 

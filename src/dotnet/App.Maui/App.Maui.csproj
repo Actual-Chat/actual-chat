@@ -424,11 +424,14 @@
     <MauiIcon Include="Resources\AppIcon\appicon.svg" />
 
     <!-- Splash Screen -->
-    <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" Color="#0C003D" BaseSize="200,200" />
+    <MauiSplashScreen Include="Resources\Splash\splashscreen_voxt.svg">
+      <Color>#0C003D</Color>
+      <BaseSize>200,200</BaseSize>
+    </MauiSplashScreen>
 
     <!-- Images: none -->
     <MauiImage Remove="Resources\Images\**" />
-    <MauiImage Include="Resources\Splash\splashscreen.svg" />
+    <MauiImage Include="Resources\Splash\splashscreen_voxt.svg" />
     <MauiXaml Remove="Resources\Images\**" />
     <EmbeddedResource Remove="Resources\Images\**" />
 
@@ -528,6 +531,10 @@
     <Content Remove="Resources\Images\**" />
     <Content Remove="wwwroot\dist\images\webonly\**" />
     <None Remove="wwwroot\dist\images\webonly\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MauiAsset Include="wwwroot\loading_icon_voxt.svg" />
   </ItemGroup>
 
   <!-- Targets & overrides.
