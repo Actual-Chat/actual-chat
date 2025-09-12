@@ -1,17 +1,13 @@
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Components;
-using Microsoft.Maui.ApplicationModel;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services.Recording;
 
-public class MauiRecorderEngine : IAudioRecorderEngine
+public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
 {
-    private IAudioRecorderBackend _backend;
-
-    public Task InitializeAsync(IAudioRecorderBackend backend, CancellationToken cancellationToken = default)
-    {
-        _backend = backend;
-        return Task.CompletedTask;
-    }
+    [field: AllowNull, MaybeNull]
+    public MicrophonePermissionHandler MicrophonePermissionHandler => field ??= hub.Services.GetRequiredService<MicrophonePermissionHandler>();
 
     public Task<bool> StartAsync(
         ChatId chatId,
@@ -29,45 +25,12 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     public ValueTask ConversationSignal(CancellationToken cancellationToken)
         => ValueTask.CompletedTask;
 
-    public async Task<string?> CheckPermissionAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var status = await Permissions.CheckStatusAsync<Permissions.Microphone>();
-            return status switch
-            {
-                PermissionStatus.Granted => "granted",
-                PermissionStatus.Denied => "denied",
-                PermissionStatus.Restricted => "restricted",
-                _ => "prompt",
-            };
-        }
-        catch
-        {
-            return "unknown";
-        }
-    }
-
-    public async Task<bool> RequestPermissionAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var status = await Permissions.RequestAsync<Permissions.Microphone>();
-            return status == PermissionStatus.Granted;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     public async Task<AudioRecorder.AudioDiagnosticsState> RunDiagnostics(CancellationToken cancellationToken)
     {
-        var permissionStatus = await CheckPermissionAsync(cancellationToken);
-        var hasPermission = permissionStatus == "granted";
+        var permissionStatus = await MicrophonePermissionHandler.Check(cancellationToken);
 
         return new AudioRecorder.AudioDiagnosticsState {
-            HasMicrophonePermission = hasPermission,
+            HasMicrophonePermission = permissionStatus,
         };
     }
 }

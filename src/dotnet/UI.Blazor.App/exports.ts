@@ -41,6 +41,7 @@ export * from './notification-ui';
 
 export * from './Components/AudioPlayer/audio-player';
 export * from './Components/AudioRecorder/audio-recorder';
+export * from './Components/AudioRecorder/web-microphone-permission-handler';
 export * from './Components/AudioRecorder/opus-media-recorder';
 export * from './Components/AudioRecorder/opus-media-recorder-contracts';
 export * from './Pages/AudioRecorderTestPage/audio-recorder-test-page';

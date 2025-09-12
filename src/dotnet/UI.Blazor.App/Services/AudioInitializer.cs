@@ -53,8 +53,6 @@ public sealed partial class AudioInitializer(UIHub hub)
         await JS
             .InvokeVoidAsync(JSInitMethod, CancellationToken.None, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
             .AsTask().WaitAsync(InitializeTimeout, cancellationToken).ConfigureAwait(false);
-        var audioRecorder = Services.GetRequiredService<AudioRecorder>();
-        await audioRecorder.WhenInitialized.ConfigureAwait(false);
     }
 
     // ReSharper disable once InconsistentNaming

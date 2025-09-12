@@ -3,6 +3,7 @@ using ActualChat.UI.Blazor.Diagnostics;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Sentry;
 using Sentry.OpenTelemetry;
 
 namespace ActualChat.App.Maui.Sentry;

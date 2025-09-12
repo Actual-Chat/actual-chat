@@ -1,6 +1,5 @@
 import { DeviceInfo } from 'device-info';
 import { EventHandler } from 'event-handling';
-import { tryQueryPermissionState } from 'permissions';
 import { OpusMediaRecorder, opusMediaRecorder } from './opus-media-recorder';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
@@ -9,6 +8,7 @@ import { recordingAudioContextSource } from '../../Services/audio-context-source
 import { VoiceActivityChange } from './workers/audio-vad-contract';
 import { Log } from 'logging';
 import { throttle } from 'promises';
+import { WebMicrophonePermissionHandler } from './web-microphone-permission-handler';
 
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
@@ -70,71 +70,6 @@ export class AudioRecorder {
         } catch (e) {
             errorLog?.log(`dispose: failed to stop recording`, e);
             throw e;
-        }
-    }
-
-    /** Called from Blazor  */
-    public async checkPermission(): Promise<PermissionState> {
-        debugLog?.log(`-> checkPermission()`);
-        try {
-            const hasMicrophone = await this.hasMicrophone();
-            debugLog?.log(`checkPermission(): hasMicrophone=`, hasMicrophone);
-
-            const state = await tryQueryPermissionState('microphone');
-            if (state !== null)
-                return state;
-
-            return hasMicrophone
-                ? 'prompt'
-                : 'denied';
-        }
-        finally {
-            debugLog?.log(`<- checkPermission()`);
-        }
-    }
-
-    /** Called from Blazor  */
-    public async requestPermission(): Promise<boolean> {
-        debugLog?.log(`-> requestPermission()`);
-        try {
-            const hasMicrophone = await this.hasMicrophone();
-            const hasPermission = await this.hasPermission();
-
-            if (!hasMicrophone || !hasPermission) {
-                // Requests microphone permission
-                let stream: MediaStream | null = null;
-                try {
-                    debugLog?.log(`requestPermission: detecting active tracks to stop`);
-                    if (BrowserInfo.hostKind === 'MauiApp' && DeviceInfo.isIos ) {
-                        // iOS MAUI keeps microphone acquired, so let's return true there to avoid user complains
-                        return true;
-                    }
-                    else {
-                        // Better integration with native mobile audio pipeline - we are resetting to defaults
-                        if ('audioSession' in navigator) {
-                            // @ts-ignore
-                            navigator.audioSession['type'] = 'auto';
-                        }
-                        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                        await OpusMediaRecorder.stopStreamTracks(stream);
-                    }
-                }
-                catch (error) {
-                    errorLog?.log(`requestPermission: failed to request microphone permissions`, error);
-                    return false;
-                }
-                finally {
-                    await OpusMediaRecorder.stopStreamTracks(stream);
-                    stream = null;
-                }
-
-                return true;
-            }
-
-            return hasMicrophone;
-        }
-        finally {
-            debugLog?.log(`<- requestPermission()`);
         }
     }
 
@@ -208,8 +143,8 @@ export class AudioRecorder {
         diagnosticsState.isPlayerInitialized = AudioPlayer.isInitialized;
 
         const isMaui = BrowserInfo.hostKind == 'MauiApp';
-        const hasMicrophone = await this.hasMicrophone();
-        const hasPermission = await this.hasPermission();
+        const hasMicrophone = await WebMicrophonePermissionHandler.hasMicrophone();
+        const hasPermission = await WebMicrophonePermissionHandler.hasPermission();
         if (!isMaui)
             diagnosticsState.hasMicrophonePermission = hasMicrophone && hasPermission;
 
@@ -249,19 +184,5 @@ export class AudioRecorder {
         }
     }
 
-    private async hasMicrophone(): Promise<boolean> {
-        const isMaui = BrowserInfo.hostKind == 'MauiApp';
-        let hasMicrophone = false;
-        if (navigator.mediaDevices?.enumerateDevices) {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const inputDevices = devices.filter(d => d.kind === 'audioinput');
-            const inputDevice = inputDevices.pop();
-            hasMicrophone = (inputDevice && inputDevice.deviceId !== '') || isMaui;
-        }
-        return hasMicrophone;
-    }
 
-    private async hasPermission(): Promise<boolean> {
-        return (await tryQueryPermissionState('microphone')) === 'granted';
-    }
 }

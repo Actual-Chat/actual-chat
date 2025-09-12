@@ -35,7 +35,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public MicrophonePermissionHandler MicrophonePermission
         => field ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
     public IState<AudioRecorderState> State => _state;
-    public Task WhenInitialized { get; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioRecorder))]
     public AudioRecorder(AppUIHub hub)
@@ -45,12 +44,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
         _engine = Hub.Services.GetRequiredService<IAudioRecorderEngine>();
-        WhenInitialized = Initialize();
-        return;
-
-        async Task Initialize() {
-            await _engine.InitializeAsync(this).ConfigureAwait(false);
-        }
     }
 
     protected override async Task DisposeAsyncCore()
@@ -64,7 +57,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         ChatEntryId? repliedChatEntryId,
         CancellationToken cancellationToken = default)
     {
-        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         var audioInitializer = Hub.Services.GetRequiredService<AudioInitializer>();
         await audioInitializer.WhenInitialized.ConfigureAwait(false);
 
@@ -118,7 +110,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     public async Task<bool> StopRecording(CancellationToken cancellationToken = default)
     {
-        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         using var releaser = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
         releaser.MarkLockedLocally();
 
@@ -126,22 +117,13 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     }
 
     public async ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
-    {
-        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _engine.EnsureConnected(quickReconnect, cancellationToken).ConfigureAwait(false);
-    }
+        => await _engine.EnsureConnected(quickReconnect, cancellationToken).ConfigureAwait(false);
 
     public async ValueTask ConversationSignal(CancellationToken cancellationToken)
-    {
-        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _engine.ConversationSignal(cancellationToken).ConfigureAwait(false);
-    }
+        => await _engine.ConversationSignal(cancellationToken).ConfigureAwait(false);
 
     public async Task<AudioDiagnosticsState> RunDiagnostics(CancellationToken cancellationToken)
-    {
-        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return await _engine.RunDiagnostics(cancellationToken).ConfigureAwait(false);
-    }
+        => await _engine.RunDiagnostics(cancellationToken).ConfigureAwait(false);
 
     // JS backend callback handlers
     [JSInvokable]
@@ -226,24 +208,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         }
         MarkStopped();
         return true;
-    }
-
-    internal async Task<bool?> CheckPermission(CancellationToken cancellationToken = default)
-    {
-        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        var state = await _engine.CheckPermissionAsync(cancellationToken).ConfigureAwait(false);
-        return state switch {
-            "prompt" => null,
-            "denied" => false,
-            "granted" => true,
-            _ => null,
-        };
-    }
-
-    internal async Task<bool> RequestPermission(CancellationToken cancellationToken = default)
-    {
-        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return await _engine.RequestPermissionAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // MarkXxx

@@ -185,6 +185,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
         services.AddScoped<AudioInitializer>(c => new AudioInitializer(c.UIHub()));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c.AppUIHub()));
+        services.AddScoped<IAudioRecorderBackend>(c => c.GetRequiredService<AudioRecorder>());
         services.AddScoped<IAudioRecorderEngine>(c => new JSRecorderEngine(c.AppUIHub()));
         if (HostInfo.HostKind != HostKind.MauiApp) {
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
