@@ -204,7 +204,7 @@ export class ChatMessageEditor {
 
     /** Called by Blazor */
     public onAttachClick = ((acceptTypes: string) => {
-        this.attachmentList.showFilePicker(acceptTypes);
+        void this.attachmentList.showFilePicker(acceptTypes);
         if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
             this.updateHasContent();

@@ -65,10 +65,18 @@ export class AttachmentListView {
         TuneUI.play(Tune.ChangeAttachments);
         // NOTE: acceptTypes is not empty on an Android platform only. Let's implement it later.
         if (acceptTypes === "" && hasShowOpenFilePicker(window)) {
-            const files = await window.showOpenFilePicker({
-                multiple: true,
-            });
-            await this.onFilesPicked(files);
+            try {
+                const files = await window.showOpenFilePicker({
+                    multiple: true,
+                });
+                await this.onFilesPicked(files);
+            }
+            catch (e) {
+                // NOTE: showOpenFilePicker throws AbortError when the user cancels the picker.
+                const isAbortError = e instanceof DOMException && e.name == 'AbortError';
+                if (!isAbortError)
+                    errorLog?.log('showOpenFilePicker failed', e);
+            }
         }
         else {
             this.filePickerElement.accept = acceptTypes;
