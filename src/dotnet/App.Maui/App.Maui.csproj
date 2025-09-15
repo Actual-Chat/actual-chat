@@ -420,8 +420,15 @@
   <!-- Resources -->
 
   <ItemGroup>
-    <!-- App Icon -->
-    <MauiIcon Include="Resources\AppIcon\appicon.svg" />
+    <!-- App icon for Android -->
+    <MauiIcon Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'"
+              Include="Resources\AppIcon\appicon_android.svg"/>
+
+    <!-- App icon for Windows -->
+    <MauiIcon Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'"
+              Include="Resources\AppIcon\appicon_win.svg"/>
+
+    <MauiIcon Include="Resources\AppIcon\appicon.svg"/>
 
     <!-- Splash Screen -->
     <MauiSplashScreen Include="Resources\Splash\splashscreen_voxt.svg">
