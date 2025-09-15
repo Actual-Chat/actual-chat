@@ -9,14 +9,6 @@ using ActualChat.App.Maui.Services.Recording;
 using WinRT;
 
 namespace ActualChat.App.Maui.Recording;
-//
-// [ComImport]
-// [Guid("5B0D3235-4DBA-4D44-865E-8F1D0E4FD04D")]
-// [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-// internal unsafe interface IMemoryBufferByteAccess
-// {
-//     void GetBuffer(out byte* buffer, out uint capacity);
-// }
 
 public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCapture
 {
@@ -33,7 +25,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
         var settings = new AudioGraphSettings(AudioRenderCategory.Communications) {
             // Let AudioGraph choose optimal processing; we're only capturing
-            QuantumSizeSelectionMode = QuantumSizeSelectionMode.SystemDefault,
+            QuantumSizeSelectionMode = QuantumSizeSelectionMode.ClosestToDesired,
             DesiredSamplesPerQuantum = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.VadFrameDurationMs,
         };
 
@@ -94,23 +86,11 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
                     unsafe {
                         // Access raw bytes
-                        // var byteAccess = reference as IMemoryBufferByteAccess;
                         WindowsRuntimeMarshal.TryGetDataUnsafe(reference, out IntPtr dataPtr, out var capacity);
-                        // var byteAccess = reference.As<IMemoryBufferByteAccess>();
-                        // var memoryBuffer = Windows.Storage.Streams.Buffer.CreateCopyFromMemoryBuffer(buffer);
-                        // buffer.
-                        // memoryBuffer.Cop()
-                        // byteAccess.GetBuffer(out var dataPtr, out var capacity);
-                        // var dataPtr = (float*)reference.;
                         if (dataPtr == IntPtr.Zero || capacity == 0)
                             return;
 
-                        // buffer.Length reports actual data length in bytes
-                        var lengthBytes = (int)buffer.Length;
-                        if (lengthBytes <= 0)
-                            return;
-
-                        var floatCount = lengthBytes / sizeof(float);
+                        var floatCount = capacity / sizeof(float);
 
                         // TODO(AK): optimize and reuse some buffers here
                         var managed = new float[floatCount];
@@ -119,7 +99,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                         Buffer.MemoryCopy((void*)dataPtr,
                             Unsafe.AsPointer(ref managed[0]),
                             (long)floatCount * sizeof(float),
-                            lengthBytes);
+                            capacity);
 
                         // Enqueue; ownership passed to consumer
                         channel.Writer.TryWrite(managed);

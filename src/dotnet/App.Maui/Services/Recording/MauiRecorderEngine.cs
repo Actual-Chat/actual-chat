@@ -11,10 +11,13 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
     private CancellationTokenSource? _recordingCts;
 
     [field: AllowNull, MaybeNull]
-    public MicrophonePermissionHandler MicrophonePermissionHandler => field ??= hub.Services.GetRequiredService<MicrophonePermissionHandler>();
+    private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= hub.Services.GetRequiredService<MicrophonePermissionHandler>();
 
     [field: AllowNull, MaybeNull]
-    public IAudioCapture AudioCapture => field ??= hub.Services.GetRequiredService<IAudioCapture>();
+    private IAudioCapture AudioCapture => field ??= hub.Services.GetRequiredService<IAudioCapture>();
+
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= hub.LogFor<MauiRecorderEngine>();
 
     public async Task<bool> StartAsync(
         ChatId chatId,
@@ -81,7 +84,7 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
     {
         var frames = AudioCapture.Capture(cancellationToken);
         await foreach (var frame in frames)
-            Console.WriteLine($"Got frame {frame.Length} with gain={AudioExt.ApproximateGain(frame.Span)}");
+            Log.LogInformation("Got frame {FrameLength} with gain={ApproximateGain}", frame.Length, AudioExt.ApproximateGain(frame.Span));
 
         return true;
     }
