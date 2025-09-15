@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public record Attachment(int Id, string Url, string FileName, string FileType)
+public record Attachment(int Id, string PreviewUrl, string FileName, string FileType)
 {
     public int Progress { get; init; }
     public MediaId? MediaId { get; init; }

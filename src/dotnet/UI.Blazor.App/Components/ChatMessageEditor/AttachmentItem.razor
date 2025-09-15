@@ -22,13 +22,13 @@
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
             @if (attachment.IsImage) {
-                <img src="@attachment.Url" alt="Image attachment" class="@plugClass"/>
+                <img src="@attachment.PreviewUrl" alt="Image attachment" class="@plugClass"/>
             } else if (attachment.IsVideo) {
                 <video preload="metadata" class="@plugClass">
-                    <source src="@attachment.Url#t=0.5"/>
+                    <source src="@attachment.PreviewUrl#t=0.5"/>
                 </video>
             } else {
-                <FileAttachmentView Attachment="@attachment"/>
+                <FileAttachmentView FileType="@attachment.FileType"/>
             }
             @if (!attachment.Uploaded) {
                 <span class="spinner-icon-wrapper">
