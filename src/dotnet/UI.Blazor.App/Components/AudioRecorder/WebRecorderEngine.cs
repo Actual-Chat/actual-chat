@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class JSRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
+public class WebRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AudioRecorder.create";
     private IJSObjectReference _jsRef = null!;

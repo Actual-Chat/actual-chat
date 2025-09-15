@@ -273,7 +273,11 @@ public static partial class Constants
     public static class Audio
     {
         public const int OpusFrameDurationMs = 20;
+        public const int VadFrameDurationMs = 30;
         public const int Bitrate = 32000;
+        public const int Channels = 1;
+        public const int RecordingSampleRate = 16000;
+        public const int PlaybackSampleRate = 48000;
         public static readonly TimeSpan OpusFrameDuration = TimeSpan.FromMilliseconds(OpusFrameDurationMs);
         public static readonly TimeSpan ListeningDuration = TimeSpan.FromSeconds(60);
         public static readonly TimeSpan RecordingDuration = TimeSpan.FromSeconds(30);

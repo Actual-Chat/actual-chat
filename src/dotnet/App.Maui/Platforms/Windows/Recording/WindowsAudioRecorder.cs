@@ -3,7 +3,6 @@ using Windows.Media.Audio;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Media.Render;
-using ActualChat.App.Maui.Interop;
 using ActualChat.UI.Blazor.App.Components;
 
 namespace ActualChat.App.Maui.Recording;
@@ -43,7 +42,7 @@ public class WindowsAudioRecorder
 
             // Create output node for frame processing
             _frameOutputNode = _audioGraph.CreateFrameOutputNode();
-            _audioGraph.QuantumProcessed += OnQuantumProcessed;
+            // _audioGraph.QuantumProcessed += OnQuantumProcessed;
         }
     }
 
@@ -86,36 +85,36 @@ public class WindowsAudioRecorder
         }
     }
 
-    private async void OnQuantumProcessed(AudioGraph sender, object args)
-    {
-        if (!_isRecording)
-            return;
-
-        try
-        {
-            using var frame = _frameOutputNode.GetFrame();
-            using var audioBuffer = frame.LockBuffer(AudioBufferAccessMode.Read);
-            using var bufferReference = audioBuffer.CreateReference();
-
-            unsafe {
-                // ReSharper disable once SuspiciousTypeConversion.Global
-                ((IMemoryBufferByteAccess)bufferReference).GetBuffer(out byte* bufferPtr, out uint capacity);
-
-                if (capacity >= sizeof(float)) {
-                    int floatCount = (int)(capacity / sizeof(float));
-                    var span = new ReadOnlySpan<float>((float*)bufferPtr, floatCount);
-
-                    //TODO: Implement OnAudioDataReceived method
-                    // await _backend.OnAudioDataReceived(span, CancellationToken.None);
-
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Windows Audio Processing Error: {ex.Message}");
-        }
-    }
+    // private async void OnQuantumProcessed(AudioGraph sender, object args)
+    // {
+    //     if (!_isRecording)
+    //         return;
+    //
+    //     try
+    //     {
+    //         using var frame = _frameOutputNode.GetFrame();
+    //         using var audioBuffer = frame.LockBuffer(AudioBufferAccessMode.Read);
+    //         using var bufferReference = audioBuffer.CreateReference();
+    //
+    //         unsafe {
+    //             // ReSharper disable once SuspiciousTypeConversion.Global
+    //             ((IMemoryBufferByteAccess)bufferReference).GetBuffer(out byte* bufferPtr, out uint capacity);
+    //
+    //             if (capacity >= sizeof(float)) {
+    //                 int floatCount = (int)(capacity / sizeof(float));
+    //                 var span = new ReadOnlySpan<float>((float*)bufferPtr, floatCount);
+    //
+    //                 //TODO: Implement OnAudioDataReceived method
+    //                 // await _backend.OnAudioDataReceived(span, CancellationToken.None);
+    //
+    //             }
+    //         }
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         System.Diagnostics.Debug.WriteLine($"Windows Audio Processing Error: {ex.Message}");
+    //     }
+    // }
 
     public ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
     {

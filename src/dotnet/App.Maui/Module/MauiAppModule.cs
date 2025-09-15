@@ -1,9 +1,12 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
@@ -45,6 +48,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
+        services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
+        services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));

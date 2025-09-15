@@ -11,7 +11,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
     private IStreamClient StreamClient => Hub.StreamClient;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private AudioDownloader AudioDownloader => Hub.AudioDownloader;
-    private AudioInitializer AudioInitializer => Hub.AudioInitializer;
+    private IAudioInitializer AudioInitializer => Hub.AudioInitializer;
     private MomentClockSet Clocks => Hub.Clocks;
     private UrlMapper UrlMapper => Hub.UrlMapper;
     private ILogger Log { get; }

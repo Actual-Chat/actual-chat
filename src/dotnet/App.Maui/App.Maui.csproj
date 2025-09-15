@@ -139,6 +139,9 @@
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="sqlite-net-pcl" />
+    <!-- SignalR client needed for AudioStreamer -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
     <!--
       An extra package to use SQLite on MAUI:
       https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->

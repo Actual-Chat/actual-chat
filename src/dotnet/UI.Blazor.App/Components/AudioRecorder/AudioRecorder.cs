@@ -57,7 +57,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         ChatEntryId? repliedChatEntryId,
         CancellationToken cancellationToken = default)
     {
-        var audioInitializer = Hub.Services.GetRequiredService<AudioInitializer>();
+        var audioInitializer = Hub.AudioInitializer;
         await audioInitializer.WhenInitialized.ConfigureAwait(false);
 
         using var releaser = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);

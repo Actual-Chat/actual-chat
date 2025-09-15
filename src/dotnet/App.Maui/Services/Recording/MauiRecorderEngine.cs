@@ -6,21 +6,63 @@ namespace ActualChat.App.Maui.Services.Recording;
 
 public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
 {
+    private AudioStreamer? _streamer;
+    private AudioStreamer.AudioStream? _currentStream;
+    private CancellationTokenSource? _recordingCts;
+
     [field: AllowNull, MaybeNull]
     public MicrophonePermissionHandler MicrophonePermissionHandler => field ??= hub.Services.GetRequiredService<MicrophonePermissionHandler>();
 
-    public Task<bool> StartAsync(
+    [field: AllowNull, MaybeNull]
+    public IAudioCapture AudioCapture => field ??= hub.Services.GetRequiredService<IAudioCapture>();
+
+    public async Task<bool> StartAsync(
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         string sessionToken,
         CancellationToken cancellationToken = default)
-        => throw new NotImplementedException();
+    {
+        // Initialize and connect AudioStreamer
+        _streamer ??= new AudioStreamer(hub.HostInfo.BaseUrl);
+        await _streamer.EnsureConnected(quickReconnect: true, cancellationToken).ConfigureAwait(false);
 
-    public Task<bool> StopAsync(CancellationToken cancellationToken = default)
-        => throw new NotImplementedException();
+        _recordingCts = cancellationToken.CreateLinkedTokenSource();
+        var token = _recordingCts.Token;
 
-    public ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
+        _ = BackgroundTask.Run(async () => {
+                await CaptureMicrophone(token).ConfigureAwait(false);
+            },
+            token);
+
+
+        // // Create a new stream; preSkip is unknown in MAUI path yet, set to 0
+        // _currentStream = _streamer.CreateStream(sessionToken, preSkip: 0, chatId.ToString(), repliedChatEntryId?.ToString());
+        // _currentStream.StartStreaming();
+        return true;
+    }
+
+    public async Task<bool> StopAsync(CancellationToken cancellationToken = default)
+    {
+        var recordingCts = _recordingCts;
+        _recordingCts = null;
+        if (recordingCts != null)
+            await recordingCts.CancelAsync();
+
+        var stream = _currentStream;
+        if (stream == null)
+            return true;
+
+        stream.Complete();
+        await stream.DisposeAsync();
+        _currentStream = null;
+        return true;
+    }
+
+    public async ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
+    {
+        _streamer ??= new AudioStreamer(hub.HostInfo.BaseUrl);
+        await _streamer.EnsureConnected(quickReconnect, cancellationToken).ConfigureAwait(false);
+    }
 
     public ValueTask ConversationSignal(CancellationToken cancellationToken)
         => ValueTask.CompletedTask;
@@ -31,6 +73,16 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
 
         return new AudioRecorder.AudioDiagnosticsState {
             HasMicrophonePermission = permissionStatus,
+            IsConnected = _currentStream != null || (_streamer?.IsConnected ?? false),
         };
+    }
+
+    private async Task<bool> CaptureMicrophone(CancellationToken cancellationToken)
+    {
+        var frames = AudioCapture.Capture(cancellationToken);
+        await foreach (var frame in frames)
+            Console.WriteLine($"Got frame {frame.Length} with gain={AudioExt.ApproximateGain(frame.Span)}");
+
+        return true;
     }
 }

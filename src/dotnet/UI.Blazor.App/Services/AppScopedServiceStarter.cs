@@ -127,7 +127,7 @@ public sealed class AppScopedServiceStarter
                 Hub.Services.GetRequiredService<DebugUI>();
 
             await Task.Delay(baseDelay * 2, cancellationToken).ConfigureAwait(false);
-            Hub.AudioInitializer.Start();
+            Hub.AudioInitializer.StartInitialization();
             if (hostKind.IsApp())
                 await StartHostedServices().ConfigureAwait(false);
 

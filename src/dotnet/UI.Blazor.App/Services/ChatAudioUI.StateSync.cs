@@ -147,7 +147,7 @@ public partial class ChatAudioUI
 
     private async Task RecordChat(Computed<RecordingState> cRecordingState, CancellationToken cancellationToken)
     {
-        AudioInitializer.Start();
+        AudioInitializer.StartInitialization();
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
         var (chatId, language) = cRecordingState.Value;
