@@ -162,11 +162,12 @@ internal static class WebFileProviders
 {
     private static readonly string JSDeleteMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.deleteFileHandleFromDb";
 
-    public static ValueTask<bool> DeleteFileHandleFromDb(IJSRuntime jsRuntime, string fileHandleDbKey)
+    public static async ValueTask<bool> DeleteFileHandleFromDb(IJSRuntime jsRuntime, string fileHandleDbKey)
     {
         if (fileHandleDbKey.IsNullOrEmpty())
-            return ValueTask.FromResult(false);
+            return false;
 
-        return jsRuntime.InvokeAsync<bool>(JSDeleteMethod, fileHandleDbKey);
+        await jsRuntime.InvokeVoidAsync(JSDeleteMethod, fileHandleDbKey).ConfigureAwait(false);
+        return true;
     }
 }

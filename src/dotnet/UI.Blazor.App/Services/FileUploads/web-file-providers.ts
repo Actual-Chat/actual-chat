@@ -38,7 +38,12 @@ export class WebFileProviders
 
     public static async deleteFileHandleFromDb(fileHandleDbKey : string)
     {
-        await deleteFileHandle(fileHandleDbKey);
+        try {
+            await deleteFileHandle(fileHandleDbKey);
+        }
+        catch (e) {
+            errorLog?.log('Failed to delete file handle from db', e);
+        }
     }
 
     public static grantFileUploadPermissions() {
