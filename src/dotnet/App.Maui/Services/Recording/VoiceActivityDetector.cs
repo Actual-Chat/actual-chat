@@ -76,7 +76,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     ///     Initializes the VAD by loading the ONNX model from the app package.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task EnsureInitialized(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
         if (_session != null)
@@ -245,9 +245,12 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         return VadResult.Event(currentEvent);
     }
 
+    public void ConversationSignal()
+        => _lastConversationSignalAtSample = _sampleCount;
+
     /// <summary>
     ///     Appends a single 32ms mono PCM window (Float32, 16 kHz) and returns speech probability [0..1].
-    ///     Returns null if InitializeAsync has not completed yet.
+    ///     Returns null if EnsureInitialized has not completed yet.
     /// </summary>
     /// <param name="monoPcm">512-sample window of mono PCM at 16 kHz</param>
     private float? AppendChunkInternal(ReadOnlySpan<float> monoPcm)

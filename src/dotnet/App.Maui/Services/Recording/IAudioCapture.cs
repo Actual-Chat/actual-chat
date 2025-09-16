@@ -1,6 +1,8 @@
+using System.Buffers;
+
 namespace ActualChat.App.Maui.Services.Recording;
 
 public interface IAudioCapture
 {
-    Task<IAsyncEnumerable<ReadOnlyMemory<float>>?> Capture(CancellationToken cancellationToken);
+    Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken);
 }

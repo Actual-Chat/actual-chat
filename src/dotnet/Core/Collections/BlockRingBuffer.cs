@@ -9,6 +9,10 @@ public class BlockRingBuffer<T>
     private int _writeIndex; // Producer's write position
     private int _readIndex;  // Consumer's read position
     private int _pendingReadIndex; // Tracks pending consumption
+    private TaskCompletionSource? _whenPulledTcs;
+    private TaskCompletionSource? _whenPushedTcs;
+    private Task _whenPulled;
+    private Task _whenPushed;
 
     public int Capacity => _mask;
 
@@ -24,6 +28,9 @@ public class BlockRingBuffer<T>
     public bool IsFull => Count >= Capacity;
     public int RemainingCapacity => Math.Max(0, Capacity - Count);
     public bool HasRemainingCapacity => !IsFull;
+
+    public Task WhenPulled => _whenPulled;
+    public Task WhenPushed => _whenPushed;
 
     public BlockRingBuffer(int minCapacity)
         : this(new T[Bits.GreaterOrEqualPowerOf2((ulong)Math.Max(2, minCapacity + 1))])
@@ -42,6 +49,8 @@ public class BlockRingBuffer<T>
         _writeIndex = 0;
         _readIndex = 0;
         _pendingReadIndex = 0;
+        _whenPushed = Task.CompletedTask;
+        _whenPulled = Task.CompletedTask;
     }
 
     public bool TryPush(ReadOnlySpan<T> data)
@@ -50,17 +59,17 @@ public class BlockRingBuffer<T>
         if (length == 0)
             return true;
 
-        if (length > Capacity)
-            return false; // Can't produce larger than capacity
-
         // For SPSC, read consumer position once
         var currentRead = Volatile.Read(ref _readIndex);
         var currentWrite = Volatile.Read(ref _writeIndex);
 
         // Calculate available space
         var used = (currentWrite - currentRead) & _mask;
-        if (used + length > Capacity)
+        if (used + length > Capacity) {
+            _whenPulledTcs = new TaskCompletionSource();
+            _whenPulled = _whenPulledTcs.Task;
             return false; // Not enough space
+        }
 
         // Write data with wraparound support
         var writePos = currentWrite & _mask;
@@ -76,6 +85,7 @@ public class BlockRingBuffer<T>
 
         // Update write index (single producer, so this is safe)
         Volatile.Write(ref _writeIndex, currentWrite + length);
+        _whenPushedTcs?.TrySetResult();
 
         return true;
     }
@@ -102,6 +112,8 @@ public class BlockRingBuffer<T>
 
         if (available < length) {
             block = null;
+            _whenPushedTcs = new TaskCompletionSource();
+            _whenPushed = _whenPushedTcs.Task;
             return false;
         }
 
@@ -109,6 +121,8 @@ public class BlockRingBuffer<T>
         if (Interlocked.CompareExchange(ref _pendingReadIndex, currentRead + length, currentRead) != currentRead) {
             // Another thread updated pending read index, fail
             block = null;
+            _whenPushedTcs = new TaskCompletionSource();
+            _whenPushed = _whenPushedTcs.Task;
             return false;
         }
 
@@ -142,7 +156,10 @@ public class BlockRingBuffer<T>
             ? block
             : throw StandardError.Unavailable("Not enough data to pull");
 
-    public ReadOnlySpan<T> GetAvailableContinuousData()
+
+    // Internal methods
+
+    internal ReadOnlySpan<T> GetAvailableContinuousData()
     {
         var readIndex = Volatile.Read(ref _readIndex);
         var writeIndex = Volatile.Read(ref _writeIndex);
@@ -168,10 +185,11 @@ public class BlockRingBuffer<T>
 
         var available = (currentWrite - currentRead) & _mask;
         if (available < length)
-            throw new InvalidOperationException("Cannot commit more than available data");
+            throw StandardError.Internal("Cannot commit more than available data");
 
         Volatile.Write(ref _readIndex, currentRead + length);
         Volatile.Write(ref _pendingReadIndex, currentRead + length);
+        _whenPulledTcs?.TrySetResult();
     }
 
     // Nested types

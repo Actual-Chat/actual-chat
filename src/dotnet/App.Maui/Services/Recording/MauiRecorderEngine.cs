@@ -1,5 +1,7 @@
+using System.Buffers;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services.Recording;
@@ -10,11 +12,17 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
     private AudioStreamer.AudioStream? _currentStream;
     private CancellationTokenSource? _recordingCts;
 
+    private BlockRingBuffer<float>? _vadRingBuffer;
+    private BlockRingBuffer<float>? _encodingRingBuffer;
+
     [field: AllowNull, MaybeNull]
     private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= hub.Services.GetRequiredService<MicrophonePermissionHandler>();
 
     [field: AllowNull, MaybeNull]
     private IAudioCapture AudioCapture => field ??= hub.Services.GetRequiredService<IAudioCapture>();
+
+    [field: AllowNull, MaybeNull]
+    private VoiceActivityDetector VoiceActivityDetector => field ??= hub.Services.GetRequiredService<VoiceActivityDetector>();
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor<MauiRecorderEngine>();
@@ -73,7 +81,10 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
     }
 
     public ValueTask ConversationSignal(CancellationToken cancellationToken)
-        => ValueTask.CompletedTask;
+    {
+        VoiceActivityDetector.ConversationSignal();
+        return ValueTask.CompletedTask;
+    }
 
     public async Task<AudioRecorder.AudioDiagnosticsState> RunDiagnostics(CancellationToken cancellationToken)
     {
@@ -85,9 +96,65 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
         };
     }
 
-    private async Task ProcessMicrophoneStream(IAsyncEnumerable<ReadOnlyMemory<float>> frames, CancellationToken cancellationToken)
+    private async Task ProcessMicrophoneStream(IAsyncEnumerable<IMemoryOwner<float>> frames, CancellationToken cancellationToken)
     {
-        await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false))
-            Log.LogInformation("Got frame {FrameLength} with gain={ApproximateGain}", frame.Length, AudioExt.ApproximateGain(frame.Span));
+        var vadRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10); // 10 seconds of VAD buffer
+        var encodingRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10); // 10 seconds of encoding buffer
+        await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            using var _ = frame;
+            var memory = frame.Memory;
+
+            var isVadBufferPushed = vadRingBuffer.TryPush(memory.Span);
+            var isEncodingBufferPushed = encodingRingBuffer.TryPush(memory.Span);
+            if (!isVadBufferPushed || !isEncodingBufferPushed)
+                await Task.WhenAll(
+                    vadRingBuffer.WhenPulled,
+                    encodingRingBuffer.WhenPulled).ConfigureAwait(false);
+            Log.LogInformation("Got frame {FrameLength} with gain={ApproximateGain}",
+                memory.Length,
+                AudioExt.ApproximateGain(memory.Span));
+        }
     }
+
+    private async Task DetectSpeech(
+        BlockRingBuffer<float> buffer,
+        ChannelWriter<VoiceActivityChange> vadChannel,
+        CancellationToken cancellationToken)
+    {
+        var vad = VoiceActivityDetector;
+        await vad.EnsureInitialized(cancellationToken).ConfigureAwait(false);
+        vad.Reset();
+
+        while (!cancellationToken.IsCancellationRequested) {
+            if (!buffer.TryPull(Constants.Audio.VadFrameLength, out var frame)) {
+                await buffer.WhenPushed.ConfigureAwait(false);
+                continue;
+            }
+            using var _ = frame;
+            var vadResult = vad.AppendChunk(frame.Memory.Span);
+            if (vadResult.HasEvent)
+                await vadChannel.WriteAsync(vadResult.Change.Value, cancellationToken);
+
+            // TODO: Send gain to the JS side for button animation
+        }
+    }
+
+    // private class RecordingProcess(AppUIHub hub): UIWorkerBase<AppUIHub>(hub)
+    // {
+    //     protected override Task OnRun(CancellationToken cancellationToken)
+    //     {
+    //         var baseChains = new[] {
+    //             AsyncChain.From(InvalidateIsSelectedChatUnlisted),
+    //             AsyncChain.From(PlayTuneOnNewMessages),
+    //         };
+    //         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
+    //         return (
+    //             from chain in baseChains
+    //             select chain
+    //                 .Log(LogLevel.Debug, Log)
+    //                 .RetryForever(retryDelays, Log)
+    //             ).RunIsolated(cancellationToken);
+    //     }
+    // }
+
 }

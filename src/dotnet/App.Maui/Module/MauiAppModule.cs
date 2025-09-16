@@ -48,8 +48,11 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
+
+        // Audio
         services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
+        services.AddSingleton<VoiceActivityDetector>(c => new VoiceActivityDetector(c));
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));

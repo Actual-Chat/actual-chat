@@ -1,12 +1,11 @@
+using System.Buffers;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Media;
 using Windows.Media.Audio;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Media.Render;
-using Windows.Foundation;
 using ActualChat.App.Maui.Services.Recording;
-using WinRT;
 
 namespace ActualChat.App.Maui.Recording;
 
@@ -14,7 +13,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 {
     public ILogger<WindowsAudioCapture> Log { get; } = log;
 
-    public async Task<IAsyncEnumerable<ReadOnlyMemory<float>>?> Capture(CancellationToken cancellationToken)
+    public async Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
     {
         // Desired input format: LPCM float32 mono
         var encoding = AudioEncodingProperties.CreatePcm(
@@ -50,7 +49,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         var outputNode = graph.CreateFrameOutputNode(encoding);
         inputNode.AddOutgoingConnection(outputNode);
 
-        var channel = Channel.CreateUnbounded<Memory<float>>(new UnboundedChannelOptions {
+        var channel = Channel.CreateUnbounded<IMemoryOwner<float>>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = false,
             AllowSynchronousContinuations = false,
@@ -78,19 +77,19 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                     if (dataPtr == IntPtr.Zero || capacity == 0)
                         return;
 
-                    var floatCount = capacity / sizeof(float);
-
-                    // TODO(AK): optimize and reuse some buffers here
-                    var managed = new float[floatCount];
+                    var floatCount = (int)capacity / sizeof(float);
+                    var outBuffer = ArrayPool<float>.Shared.Rent(floatCount);
 
                     // Copy unmanaged bytes to managed float[]
-                    Buffer.MemoryCopy((void*)dataPtr,
-                        Unsafe.AsPointer(ref managed[0]),
-                        (long)floatCount * sizeof(float),
-                        capacity);
+                    fixed (float* outPtr = &outBuffer[0])
+                        Buffer.MemoryCopy(
+                            (void*)dataPtr,
+                            outPtr,
+                            (long)floatCount * sizeof(float),
+                            capacity);
 
                     // Enqueue; ownership passed to consumer
-                    channel.Writer.TryWrite(managed);
+                    channel.Writer.TryWrite(new BufferReference(new Memory<float>(outBuffer, 0, floatCount), outBuffer));
                 }
             }
             catch (Exception e) {
@@ -111,7 +110,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         // Return async iterator as a nested method
         return Enumerate(cancellationToken);
 
-        async IAsyncEnumerable<ReadOnlyMemory<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
+        async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
             await using var ctr = ct.Register(() => {
                 try {
@@ -143,5 +142,14 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 graph.DisposeSilently();
             }
         }
+    }
+
+
+    private readonly struct BufferReference(Memory<float> memory, float[] rentedBuffer) : IMemoryOwner<float>
+    {
+        public Memory<float> Memory { get; } = memory;
+
+        public void Dispose()
+            => ArrayPool<float>.Shared.Return(rentedBuffer);
     }
 }
