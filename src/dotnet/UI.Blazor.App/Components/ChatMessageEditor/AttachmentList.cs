@@ -2,168 +2,72 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AttachmentList(Dispatcher dispatcher, UploadSessions uploadSessions, ILogger<AttachmentList> log) : IAttachmentList, IAttachmentListBackend
+public class AttachmentList(UploadSessions uploadSessions) : IAttachmentList
 {
     public static Exception FileTooBigError()
         => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
 
-    private readonly Lock _lock = new();
-    private ImmutableList<AttachmentInfo> _attachments = ImmutableList<AttachmentInfo>.Empty;
-    private IJSObjectReference? JSRef { get; set; }
-    private DotNetObjectReference<IAttachmentListBackend>? BlazorRef { get; set; }
+    private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
 
     public int Count => _attachments.Count;
-    public IEnumerable<Attachment> Items => _attachments.Select(x => x.Attachment);
+    public IEnumerable<Attachment> Items => _attachments;
     public event EventHandler? Changed;
-    public event EventHandler<Exception>? FailedToAdd;
-
-    public async Task AttachTo(IJSObjectReference jsRef)
-    {
-        if (BlazorRef != null)
-            throw StandardError.Internal("Already attached.");
-
-        BlazorRef = DotNetObjectReference.Create<IAttachmentListBackend>(this);
-        JSRef = await jsRef.InvokeAsync<IJSObjectReference>("attachList", BlazorRef);
-    }
-
-    public async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null;
-    }
 
     public async Task Remove(Attachment attachment) {
-        AttachmentInfo? attachmentInfo;
-        lock (_lock) {
-            attachmentInfo = _attachments.Find(c => c.Attachment == attachment);
-            if (attachmentInfo is null)
-                throw StandardError.Internal("Attachment not found.");
-            _attachments = _attachments.Remove(attachmentInfo);
-        }
-        if (attachmentInfo.UploadSession is not null)
-            await uploadSessions.CancelSession(attachmentInfo.UploadSession.SessionId);
-        await InvokeRemove(attachment);
+        if (!_attachments.Contains(attachment))
+            throw StandardError.Internal("Attachment not found.");
+        _attachments = _attachments.Remove(attachment);
+        await CancelAndDisposeAttachment(attachment);
         OnChanged();
     }
 
     public async Task Clear()
     {
-        ImmutableList<AttachmentInfo> clone;
-        lock (_lock) {
-            clone = _attachments;
-            _attachments = _attachments.Clear();
-        }
-        foreach (var attachmentInfo in clone) {
-            if (attachmentInfo.UploadSession is not null)
-                await uploadSessions.CancelSession(attachmentInfo.UploadSession.SessionId).ConfigureAwait(false);
-        }
-        await InvokeClear();
+        var clone = _attachments;
+        _attachments = _attachments.Clear();
+        await clone.Select(CancelAndDisposeAttachment).Collect();
         OnChanged();
     }
 
-    [JSInvokable]
-    public bool OnAttachmentAdded(int id, string url, string? fileName, string? fileType, int length) {
-        var error = TryAdd();
-        if (error != null) {
-            FailedToAdd?.Invoke(this, error);
-            return false;
-        }
-
-        OnChanged();
-        return true;
-
-        Exception? TryAdd() {
-            if (length > Constants.Attachments.FileSizeLimit)
-                return FileTooBigError();
-
-            if (_attachments.Count >= Constants.Attachments.FileCountLimit)
-                return StandardError.Constraint("Too many files. Max allowed number is 10.");
-
-            var attachment = new Attachment(id, url, fileName ?? "", fileType ?? "");
-            _attachments = _attachments.Add(new AttachmentInfo(attachment));
-            return null;
-        }
-    }
-
-    [JSInvokable]
-    public async Task OnCreateUploaderRequested(int id, string sChatId) {
-        var info = FindAttachmentById(id);
-        if (info is null)
+    private async Task CancelAndDisposeAttachment(Attachment a)
+    {
+        if (!a.UploadSessionId.IsNullOrEmpty())
+            await uploadSessions.CancelSession(a.UploadSessionId).ConfigureAwait(false);
+        if (a.FileProvider is null)
             return;
 
-        WebFileProviderInternal? webFileProviderInternal;
-        var chatId = ChatId.Parse(sChatId);
-        var fileUploaderBackend = new FileUploaderBackend();
-        try {
-            var webProviderInternalRef = await JSRef!
-                .InvokeAsync<IJSObjectReference>("createFileProvider", id, fileUploaderBackend.BlazorRef)
-                .ConfigureAwait(true); // Continue on Blazor context.
-            webFileProviderInternal = new WebFileProviderInternal(
-                webProviderInternalRef,
-                fileUploaderBackend,
-                true);
-        }
-        catch (Exception ex) {
-            log.LogError(ex, "Failed to create file provider");
-            fileUploaderBackend.Dispose();
-            return;
-        }
-
-        var attachment = info.Attachment;
-        var webFileProvider = new WebFileProvider {
-            FileName = attachment.FileName,
-            ChatId = chatId,
-            WebFileProviderInternal = webFileProviderInternal,
-        };
-        UpdateAttachment(attachment.Id, a => a with { FileProvider = webFileProvider });
-
-        try {
-            var uploadSession = await uploadSessions.CreateSession(chatId, webFileProvider);
-            info.UploadSession = uploadSession;
-            await uploadSessions.ResumeSession(uploadSession.SessionId);
-            UpdateAttachment(attachment.Id, a => a with { UploadSessionId = uploadSession.SessionId });
-            AttachmentExt.ObserveUploadProgress(
-                uploadSession.ProgressTracker,
-                updater => {
-                    _ = dispatcher.InvokeAsync(() => {
-                        UpdateAttachment(attachment.Id, updater);
-                        OnChanged();
-                    });
-                });
-        }
-        catch (Exception ex) {
-            log.LogError(ex, "Failed to create/resume upload session");
-            fileUploaderBackend.Dispose();
-        }
+        await a.FileProvider.ClearBeforeRemoving();
+        if (a.FileProvider is IAsyncDisposable asyncDisposable)
+            await asyncDisposable.DisposeSilentlyAsync();
     }
 
     private void OnChanged()
         => Changed?.Invoke(this, EventArgs.Empty);
 
-    private ValueTask InvokeClear()
-        => JSRef?.InvokeVoidAsync("clear") ?? ValueTask.CompletedTask;
+    public void UpdateAttachment(string id, Func<Attachment, Attachment> updater) {
+        var i = _attachments.FindIndex(x => OrdinalEquals(x.Id, id));
+        if (i < 0)
+            return;
 
-    private ValueTask InvokeRemove(Attachment attachment)
-        => JSRef?.InvokeVoidAsync("remove", attachment.Id) ?? ValueTask.CompletedTask;
-
-    private AttachmentInfo? FindAttachmentById(int id)
-        => _attachments.Find(c => c.Attachment.Id == id);
-
-    private void UpdateAttachment(int id, Func<Attachment, Attachment> updater) {
-        lock (_lock) {
-            var i = _attachments.FindIndex(x => x.Attachment.Id == id);
-            if (i < 0)
-                return;
-
-            var info = _attachments[i];
-            var newInfo = info with { Attachment = updater(info.Attachment) };
-            _attachments = _attachments.SetItem(i, newInfo);
-        }
+        var attachment = _attachments[i];
+        _attachments = _attachments.SetItem(i, updater(attachment));
+        OnChanged();
     }
 
-    private sealed record AttachmentInfo(Attachment Attachment)
+    public Exception? CheckCanAdd(int length)
     {
-        public UploadSession? UploadSession { get; set; }
+        if (length > Constants.Attachments.FileSizeLimit)
+            return FileTooBigError();
+
+        if (_attachments.Count >= Constants.Attachments.FileCountLimit)
+            return StandardError.Constraint("Too many files. Max allowed number is 10.");
+
+        return null;
     }
+
+    public void Add(Attachment attachment)
+        => _attachments = _attachments.Add(attachment);
+
+    public ValueTask DisposeAsync()
+        => default;
 }

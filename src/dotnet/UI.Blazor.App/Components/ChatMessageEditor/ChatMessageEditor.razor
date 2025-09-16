@@ -9,6 +9,13 @@
 @implements IAsyncDisposable
 @{
     var placeholder = ScreenSize.IsNarrow() ? "Message..." : "Write a message - or simply record one!";
+
+    RenderFragment RenderAttachmentListView() =>
+        @<AttachmentListView
+             @key="AttachmentListKey"
+             AttachmentListHolder="@_attachmentListHolder"
+             OnSendClick="@(() => Post())"
+             OnAddClick="@(() => OnAttachClick(""))"/>;
 }
 
 <OnUIEvent TEvent="@FocusChatMessageEditorEvent" Handler="OnFocusChatMessageEditorEvent" />
@@ -17,14 +24,10 @@
 <OnUIEvent TEvent="@AttachButtonClickEvent" Handler="OnAttachButtonClickEvent" />
 <OnUIEvent TEvent="@MentionButtonClickEvent" Handler="OnMentionButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor">
+    <input class="attachment-web-file-picker" type="file" hidden multiple/>
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         @if (ScreenSize.IsWide()) {
-            <AttachmentListView
-                @key="AttachmentListKey"
-                @ref="AttachmentListRef"
-                OnSendClick="@(() => Post())"/>
-        }
-        @if (ScreenSize.IsWide()) {
+            @RenderAttachmentListView()
             <RelatedChatEntryPanel/>
         }
         <div class="c-content">
@@ -66,10 +69,7 @@
                 </div>
             </div>
             @if (ScreenSize.IsNarrow()) {
-                <AttachmentListView
-                    @key="AttachmentListKey"
-                    @ref="AttachmentListRef"
-                    OnSendClick="@(() => Post())"/>
+                @RenderAttachmentListView()
                 <div class="rounded-sub-footer"></div>
                 <RelatedChatEntryPanel/>
             }
@@ -86,11 +86,13 @@
     private static object MarkupEditorKey { get; } = new();
 
     private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
+    private readonly AttachmentWebFilePickerBackend _attachmentWebFilePickerBackend;
+    private AttachmentListHolder _attachmentListHolder = null!;
+    private bool _hasAttachments;
     private bool Autofocus => ScreenSize.IsWide() && !BrowserInfo.IsTouchCapable;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
-    private AttachmentListView AttachmentListRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
     private SharedResourcePool<ChatId, SyncedState<ReadPosition>>.Lease? ReadPositionStateLease { get; set; }
     private SentAttachmentsStorage? AttachmentsStorage { get; set; }
@@ -101,12 +103,21 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private SendingMessages SendingMessages => Hub.SendingMessages;
+    private WebFileAttachments WebFileAttachments { get; set; } = null!;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatMessageEditor))]
-    public ChatMessageEditor() { }
+    public ChatMessageEditor() {
+        _attachmentWebFilePickerBackend = new AttachmentWebFilePickerBackend(OnFilePicked);
+    }
+
+    protected override void OnInitialized() {
+        _attachmentListHolder = new AttachmentListHolder(Hub, Chat.Id);
+        _attachmentListHolder.Changed += OnAttachmentListChanged;
+        WebFileAttachments =  new WebFileAttachments(Hub);
+    }
 
     public async ValueTask DisposeAsync() {
         if (AttachmentsStorage != null)
@@ -116,6 +127,7 @@
         JSRef = null!;
         ReadPositionStateLease.DisposeSilently();
         ReadPositionStateLease = null!;
+        _attachmentWebFilePickerBackend.Dispose();
     }
 
     protected override async Task OnParametersSetAsync() {
@@ -131,22 +143,22 @@
 
         if (JSRef != null!) {
             // Only when rendered
-            await AttachmentListRef.Clear();
+            await _attachmentListHolder.Attachments.Clear();
             await UpdateChatId();
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
-            await Task.WhenAll(MarkupEditorRef.WhenReady, AttachmentListRef.WhenReady);
-            if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, _attachmentWebFilePickerBackend.BlazorRef);
+            await MarkupEditorRef.WhenReady;
+            if (JSRef == null! || MarkupEditorRef.JSRef == null!)
                 return; // Dispose may happen during await above
 
-            await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
+            await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef);
             await UpdateChatId();
             await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
-            if (JSRef == null! || MarkupEditorRef.JSRef == null! || AttachmentListRef.JSRef == null!)
+            if (JSRef == null! || MarkupEditorRef.JSRef == null!)
                 return; // Dispose may happen during await above
 
             AttachmentsStorage = Hub.Services.GetRequiredService<SentAttachmentsStorage>();
@@ -165,7 +177,7 @@
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
 
-        var attachmentListSnapshot = await AttachmentListRef.PopSnapshot();
+        var attachmentListSnapshot = _attachmentListHolder.PopSnapshot();
         if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Count == 0) {
             await attachmentListSnapshot.DisposeAsync();
             return;
@@ -239,7 +251,18 @@
     }
 
     private async Task OnAttachClick(string acceptTypes)
-        => await JSRef.InvokeVoidAsync("onAttachClick", acceptTypes);
+        => await JSRef.InvokeVoidAsync("showWebFilePickerDialog", acceptTypes);
+
+    private void OnAttachmentListChanged(object? sender, EventArgs e) {
+        var lastHasAttachments = _hasAttachments;
+        var hasAttachments = _attachmentListHolder.Attachments.Count > 0;
+        _hasAttachments = hasAttachments;
+        if (hasAttachments != lastHasAttachments)
+            _ = NotifyAttachmentListChanged(hasAttachments);
+    }
+
+    private async Task NotifyAttachmentListChanged(bool hasAttachments)
+        => await JSRef.InvokeVoidAsync("notifyAttachmentListChanged", hasAttachments);
 
     // Event handlers
 
@@ -265,8 +288,12 @@
 
     private async Task SetAttachments(SentAttachmentsStorage attachmentsStorage)
     {
-        await AttachmentListRef.SetSentAttachments(attachmentsStorage.Urls);
+        await _attachmentListHolder.SetSentAttachments(attachmentsStorage.Urls);
         attachmentsStorage.Clear();
+    }
+
+    private Task<bool> OnFilePicked(AttachmentWebFilePickerBackend.FileInfo fileInfo) {
+        return WebFileAttachments.TryAddWebFileAttachment(_attachmentListHolder, fileInfo, Chat.Id);
     }
 
     // UIEventHub event handlers

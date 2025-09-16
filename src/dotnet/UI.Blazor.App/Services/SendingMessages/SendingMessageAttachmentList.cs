@@ -32,9 +32,9 @@ public class SendingMessageAttachmentList : IAttachmentList
         return list;
     }
 
-    private void UpdateAttachment(int attachmentId, Func<Attachment, Attachment> updater)
+    private void UpdateAttachment(string attachmentId, Func<Attachment, Attachment> updater)
     {
-        var attachment = _attachments.FirstOrDefault(x => x.Id == attachmentId);
+        var attachment = _attachments.FirstOrDefault(x => OrdinalEquals(x.Id, attachmentId));
         if (attachment is null)
             throw new InvalidOperationException($"Can not find attachment with id '{attachmentId}'");
 

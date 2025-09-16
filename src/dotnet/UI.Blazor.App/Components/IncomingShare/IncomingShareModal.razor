@@ -200,7 +200,7 @@
                 ChatId = chatId,
                 Stream = stream,
             };
-            var attachment = new Attachment(attachments.Count, file.Url, fileName, mediaType ?? "") {
+            var attachment = new Attachment(new Guid().ToString(), file.Url, fileName, mediaType ?? "") {
                 FileProvider = fileProvider,
             };
             attachments.Add(attachment);
