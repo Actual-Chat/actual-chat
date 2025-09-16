@@ -31,9 +31,14 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
 
         _recordingCts = cancellationToken.CreateLinkedTokenSource();
         var token = _recordingCts.Token;
+        var microphoneStream = await AudioCapture.Capture(cancellationToken).ConfigureAwait(false);
+        if (microphoneStream is null) {
+            Log.LogWarning("Microphone stream is unavailable");
+            return false;
+        }
 
         _ = BackgroundTask.Run(async () => {
-                await CaptureMicrophone(token).ConfigureAwait(false);
+                await ProcessMicrophoneStream(microphoneStream, token).ConfigureAwait(false);
             },
             token);
 
@@ -80,12 +85,9 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
         };
     }
 
-    private async Task<bool> CaptureMicrophone(CancellationToken cancellationToken)
+    private async Task ProcessMicrophoneStream(IAsyncEnumerable<ReadOnlyMemory<float>> frames, CancellationToken cancellationToken)
     {
-        var frames = AudioCapture.Capture(cancellationToken);
-        await foreach (var frame in frames)
+        await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false))
             Log.LogInformation("Got frame {FrameLength} with gain={ApproximateGain}", frame.Length, AudioExt.ApproximateGain(frame.Span));
-
-        return true;
     }
 }

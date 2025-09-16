@@ -14,7 +14,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 {
     public ILogger<WindowsAudioCapture> Log { get; } = log;
 
-    public async IAsyncEnumerable<Memory<float>> Capture([EnumeratorCancellation] CancellationToken cancellationToken)
+    public async Task<IAsyncEnumerable<ReadOnlyMemory<float>>?> Capture(CancellationToken cancellationToken)
     {
         // Desired input format: LPCM float32 mono
         var encoding = AudioEncodingProperties.CreatePcm(
@@ -34,30 +34,86 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             throw new InvalidOperationException($"AudioGraph creation failed: {graphCreate.Status}");
 
         var graph = graphCreate.Graph;
-        AudioDeviceInputNode? inputNode = null;
-        AudioFrameOutputNode? outputNode = null;
+
+        var inputCreate = await graph
+            .CreateDeviceInputNodeAsync(MediaCategory.Communications, encoding)
+            .AsTask(cancellationToken);
+        if (inputCreate.Status != AudioDeviceNodeCreationStatus.Success || inputCreate.DeviceInputNode is null) {
+            // Unable to get microphone stream
+            try { graph.DisposeSilently(); } catch { /* ignore */ }
+            return null;
+        }
+
+        var inputNode = inputCreate.DeviceInputNode;
+
+        // Frame output in the same format
+        var outputNode = graph.CreateFrameOutputNode(encoding);
+        inputNode.AddOutgoingConnection(outputNode);
+
+        var channel = Channel.CreateUnbounded<Memory<float>>(new UnboundedChannelOptions {
+            SingleReader = true,
+            SingleWriter = false,
+            AllowSynchronousContinuations = false,
+        });
+
+        // Quantum callback: pull frames and push decoded float32 mono samples
+        graph.QuantumProcessed += (sender, args) => {
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            try {
+                using var frame = outputNode!.GetFrame();
+                if (frame is null)
+                    return;
+
+                using var buffer = frame.LockBuffer(AudioBufferAccessMode.Read);
+                using var reference = buffer.CreateReference();
+
+                if (reference is null)
+                    return;
+
+                unsafe {
+                    // Access raw bytes
+                    WindowsRuntimeMarshal.TryGetDataUnsafe(reference, out IntPtr dataPtr, out var capacity);
+                    if (dataPtr == IntPtr.Zero || capacity == 0)
+                        return;
+
+                    var floatCount = capacity / sizeof(float);
+
+                    // TODO(AK): optimize and reuse some buffers here
+                    var managed = new float[floatCount];
+
+                    // Copy unmanaged bytes to managed float[]
+                    Buffer.MemoryCopy((void*)dataPtr,
+                        Unsafe.AsPointer(ref managed[0]),
+                        (long)floatCount * sizeof(float),
+                        capacity);
+
+                    // Enqueue; ownership passed to consumer
+                    channel.Writer.TryWrite(managed);
+                }
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to process audio frame");
+                // Best effort: ignore frame-level issues
+            }
+        };
 
         try {
-            var inputCreate = await graph
-                .CreateDeviceInputNodeAsync(MediaCategory.Communications, encoding)
-                .AsTask(cancellationToken);
-            if (inputCreate.Status != AudioDeviceNodeCreationStatus.Success || inputCreate.DeviceInputNode is null)
-                throw new InvalidOperationException($"DeviceInputNode creation failed: {inputCreate.Status}");
+            outputNode.Start();
+            graph.Start();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to start audio graph");
+            return null;
+        }
 
-            inputNode = inputCreate.DeviceInputNode;
+        // Return async iterator as a nested method
+        return Enumerate(cancellationToken);
 
-            // Frame output in the same format
-            outputNode = graph.CreateFrameOutputNode(encoding);
-            inputNode.AddOutgoingConnection(outputNode);
-
-            var channel = Channel.CreateUnbounded<Memory<float>>(new UnboundedChannelOptions {
-                SingleReader = true,
-                SingleWriter = false,
-                AllowSynchronousContinuations = false,
-            });
-
-            // Signal loop to stop and finish channel on cancellation
-            await using var ctr = cancellationToken.Register(() => {
+        async IAsyncEnumerable<ReadOnlyMemory<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
+        {
+            await using var ctr = ct.Register(() => {
                 try {
                     graph?.Stop();
                 }
@@ -68,69 +124,24 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 channel.Writer.TryComplete();
             });
 
-            // Quantum callback: pull frames and push decoded float32 mono samples
-            graph.QuantumProcessed += (sender, args) => {
-                if (cancellationToken.IsCancellationRequested)
-                    return;
-
-                try {
-                    using var frame = outputNode!.GetFrame();
-                    if (frame is null)
-                        return;
-
-                    using var buffer = frame.LockBuffer(AudioBufferAccessMode.Read);
-                    using var reference = buffer.CreateReference();
-
-                    if (reference is null)
-                        return;
-
-                    unsafe {
-                        // Access raw bytes
-                        WindowsRuntimeMarshal.TryGetDataUnsafe(reference, out IntPtr dataPtr, out var capacity);
-                        if (dataPtr == IntPtr.Zero || capacity == 0)
-                            return;
-
-                        var floatCount = capacity / sizeof(float);
-
-                        // TODO(AK): optimize and reuse some buffers here
-                        var managed = new float[floatCount];
-
-                        // Copy unmanaged bytes to managed float[]
-                        Buffer.MemoryCopy((void*)dataPtr,
-                            Unsafe.AsPointer(ref managed[0]),
-                            (long)floatCount * sizeof(float),
-                            capacity);
-
-                        // Enqueue; ownership passed to consumer
-                        channel.Writer.TryWrite(managed);
-                    }
-                }
-                catch (Exception e) {
-                    Log.LogError(e, "Failed to process audio frame");
-                    // Best effort: ignore frame-level issues
-                }
-            };
-
-            outputNode.Start();
-            graph.Start();
-
-            // Yield frames until cancellation; channel completes in cancellation handler
-            await foreach (var block in channel.Reader.ReadAllAsync(cancellationToken).SuppressCancellation(cancellationToken).ConfigureAwait(false))
-                yield return block;
-        }
-        finally {
             try {
-                outputNode?.Stop();
-                graph.Stop();
+                await foreach (var block in channel.Reader.ReadAllAsync(ct).SuppressCancellation(ct).ConfigureAwait(false))
+                    yield return block;
             }
-            catch {
-                /* ignore */
-            }
+            finally {
+                try {
+                    outputNode?.Stop();
+                    graph.Stop();
+                }
+                catch {
+                    /* ignore */
+                }
 
-            // Dispose nodes and graph
-            inputNode.DisposeSilently();
-            outputNode.DisposeSilently();
-            graph.DisposeSilently();
+                // Dispose nodes and graph
+                inputNode.DisposeSilently();
+                outputNode.DisposeSilently();
+                graph.DisposeSilently();
+            }
         }
     }
 }
