@@ -8,6 +8,7 @@ public class BlockRingBuffer<T>
     private readonly int _mask;
     private int _writeIndex; // Producer's write position
     private int _readIndex;  // Consumer's read position
+    private int _pendingReadIndex; // Tracks pending consumption
 
     public int Capacity => _mask;
 
@@ -40,6 +41,7 @@ public class BlockRingBuffer<T>
         _buffer = buffer;
         _writeIndex = 0;
         _readIndex = 0;
+        _pendingReadIndex = 0;
     }
 
     public bool TryPush(ReadOnlySpan<T> data)
@@ -78,38 +80,67 @@ public class BlockRingBuffer<T>
         return true;
     }
 
-    public ConsumableBlock Pull(int length)
+    public bool TryPull(int length, [NotNullWhen(true)] out IMemoryOwner<T>? block)
     {
-        if (length <= 0)
-            return default;
+        if (length <= 0) {
+            block = null;
+            return false;
+        }
 
+        // Check if there's already a pending consumption
+        var currentPending = Volatile.Read(ref _pendingReadIndex);
         var currentRead = Volatile.Read(ref _readIndex);
-        var currentWrite = Volatile.Read(ref _writeIndex);
 
+        // If there's pending consumption, we can't provide a new block
+        if (currentPending != currentRead) {
+            block = null;
+            return false;
+        }
+
+        var currentWrite = Volatile.Read(ref _writeIndex);
         var available = (currentWrite - currentRead) & _mask;
-        if (available < length)
-            return default;
+
+        if (available < length) {
+            block = null;
+            return false;
+        }
+
+        // Reserve this consumption by updating pending read index
+        if (Interlocked.CompareExchange(ref _pendingReadIndex, currentRead + length, currentRead) != currentRead) {
+            // Another thread updated pending read index, fail
+            block = null;
+            return false;
+        }
 
         var readPos = currentRead & _mask;
 
-        if (readPos + length <= _buffer.Length)
+        if (readPos + length <= _buffer.Length) {
             // No wraparound, can use zero-copy
-            return new ConsumableBlock(new ReadOnlyMemory<T>(_buffer, readPos, length), buffer: this);
+            block = new ConsumableBlock(new Memory<T>(_buffer, readPos, length), buffer: this);
+            return true;
+        }
 
         // Wraparound required, need to copy to contiguous memory
         var rented = ArrayPool<T>.Shared.Rent(length);
         try {
             var firstPart = _buffer.Length - readPos;
             _buffer.AsSpan(readPos, firstPart).CopyTo(rented.AsSpan(0, firstPart));
-            _buffer.AsSpan(0, length - firstPart)
-                .CopyTo(rented.AsSpan(firstPart, length - firstPart));
-            return new ConsumableBlock(new ReadOnlyMemory<T>(rented, 0, length), rented, this);
+            _buffer.AsSpan(0, length - firstPart).CopyTo(rented.AsSpan(firstPart, length - firstPart));
+            block = new ConsumableBlock(new Memory<T>(rented, 0, length), rented, this);
+            return true;
         }
         catch {
             ArrayPool<T>.Shared.Return(rented);
+            // Reset pending read index on failure
+            Volatile.Write(ref _pendingReadIndex, currentRead);
             throw;
         }
     }
+
+    public IMemoryOwner<T> Pull(int length)
+        => TryPull(length, out var block)
+            ? block
+            : throw StandardError.Unavailable("Not enough data to pull");
 
     public ReadOnlySpan<T> GetAvailableContinuousData()
     {
@@ -140,17 +171,19 @@ public class BlockRingBuffer<T>
             throw new InvalidOperationException("Cannot commit more than available data");
 
         Volatile.Write(ref _readIndex, currentRead + length);
+        Volatile.Write(ref _pendingReadIndex, currentRead + length);
     }
 
     // Nested types
 
-    public readonly struct ConsumableBlock : IDisposable
+    private readonly struct ConsumableBlock : IMemoryOwner<T>
     {
-        public readonly ReadOnlyMemory<T> Memory;
         private readonly T[]? _rented;
         private readonly BlockRingBuffer<T>? _buffer;
 
-        internal ConsumableBlock(ReadOnlyMemory<T> memory, T[]? rented = null, BlockRingBuffer<T>? buffer = null)
+        public Memory<T> Memory { get; }
+
+        internal ConsumableBlock(Memory<T> memory, T[]? rented = null, BlockRingBuffer<T>? buffer = null)
         {
             Memory = memory;
             _rented = rented;
