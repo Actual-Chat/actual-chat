@@ -4,11 +4,14 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class AttachmentListHolder : UIServiceBase<AppUIHub>
 {
-    private readonly Lock _lock = new ();
-    private AttachmentList _attachments;
     private readonly ChatId _chatId;
+    private AttachmentList _attachments;
 
     private UploadSessions UploadSessions => Hub.UploadSessions;
+
+    public event EventHandler? Changed;
+
+    public AttachmentList Attachments => _attachments;
 
     public AttachmentListHolder(AppUIHub hub, ChatId chatId) : base(hub)
     {
@@ -17,23 +20,12 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
         SubscribeToListEvents(_attachments);
     }
 
-    public event EventHandler? Changed;
-
-    public AttachmentList Attachments {
-        get {
-            lock (_lock)
-                return _attachments;
-        }
-    }
-
     public ResetIntent PopSnapshot() {
-        AttachmentList attachments;
-        lock (_lock) {
-            UnsubscribeFromListEvents(_attachments);
-            attachments = _attachments;
-            _attachments = CreateAttachmentList();
-            SubscribeToListEvents(_attachments);
-        }
+        Dispatcher.AssertAccess();
+        UnsubscribeFromListEvents(_attachments);
+        var attachments = _attachments;
+        _attachments = CreateAttachmentList();
+        SubscribeToListEvents(_attachments);
         RaiseChanged();
         return new (attachments, () => Rollback(attachments), () => Release(attachments));
     }
@@ -42,15 +34,17 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
         => new (UploadSessions);
 
     private ValueTask Release(AttachmentList attachments)
-        => attachments.DisposeSilentlyAsync();
+    {
+        Dispatcher.AssertAccess();
+        return attachments.DisposeSilentlyAsync();
+    }
 
     private async ValueTask Rollback(AttachmentList attachments) {
+        Dispatcher.AssertAccess();
         AttachmentList? backup = null;
-        lock (_lock) {
-            if (_attachments.Count == 0) {
-                backup = _attachments;
-                _attachments = attachments;
-            }
+        if (_attachments.Count == 0) {
+            backup = _attachments;
+            _attachments = attachments;
         }
         if (backup != null) {
             UnsubscribeFromListEvents(backup);
@@ -71,7 +65,6 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
 
     private void RaiseChanged()
         => Changed?.Invoke(this, EventArgs.Empty);
-
 
     public async Task SetSentAttachments(string[] urls) {
         throw new NotImplementedException();
