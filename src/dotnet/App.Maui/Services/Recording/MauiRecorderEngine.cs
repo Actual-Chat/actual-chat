@@ -7,8 +7,9 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services.Recording;
 
-public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
+public class MauiRecorderEngine : IAudioRecorderEngine
 {
+    private static readonly TimeSpan RecordingFiledInterval = TimeSpan.FromMilliseconds(500);
     private static readonly string JSSetRecordingMethod = $"{BlazorUIAppModule.ImportName}.RecorderStateHub.setRecording";
     private static readonly string JSSetConnectedMethod = $"{BlazorUIAppModule.ImportName}.RecorderStateHub.setConnected";
     private static readonly string JSSetSignalDetectedMethod = $"{BlazorUIAppModule.ImportName}.RecorderStateHub.setSignalDetected";
@@ -17,6 +18,7 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
     private static readonly string JSMicrophoneIsCapturedMethod = $"{BlazorUIAppModule.ImportName}.RecorderStateHub.microphoneIsCaptured";
 
     private readonly Lock _sync = new();
+    private readonly Debouncer<Unit> _noSignalDetectedDebouncer;
 
     private ChatId? _chatId;
     private AudioStreamer? _streamer;
@@ -26,23 +28,30 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
     private bool _isConnected;
     private bool _isSignalDetected;
     private bool _isVoiceActive;
+    private readonly UIHub _hub;
+
+    public MauiRecorderEngine(UIHub hub)
+    {
+        _hub = hub;
+        _noSignalDetectedDebouncer = Debouncer.New<Unit>(hub.Clocks.CoarseCpuClock, RecordingFiledInterval, _ => SetSignalDetected(false).AsTask());
+    }
 
     [field: AllowNull, MaybeNull]
-    private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= hub.Services.GetRequiredService<MicrophonePermissionHandler>();
+    private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= _hub.Services.GetRequiredService<MicrophonePermissionHandler>();
 
     [field: AllowNull, MaybeNull]
-    private IAudioCapture AudioCapture => field ??= hub.Services.GetRequiredService<IAudioCapture>();
+    private IAudioCapture AudioCapture => field ??= _hub.Services.GetRequiredService<IAudioCapture>();
 
     [field: AllowNull, MaybeNull]
-    private VoiceActivityDetector VoiceActivityDetector => field ??= hub.Services.GetRequiredService<VoiceActivityDetector>();
+    private VoiceActivityDetector VoiceActivityDetector => field ??= _hub.Services.GetRequiredService<VoiceActivityDetector>();
 
     [field: AllowNull, MaybeNull]
-    private IAudioRecorderBackend AudioRecorderBackend => field ??= hub.Services.GetRequiredService<IAudioRecorderBackend>();
+    private IAudioRecorderBackend AudioRecorderBackend => field ??= _hub.Services.GetRequiredService<IAudioRecorderBackend>();
 
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= hub.LogFor<MauiRecorderEngine>();
+    private ILogger Log => field ??= _hub.LogFor<MauiRecorderEngine>();
 
-    private IJSRuntime JS => hub.JS;
+    private IJSRuntime JS => _hub.JS;
 
     public async Task<bool> StartAsync(
         ChatId chatId,
@@ -51,7 +60,7 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
         CancellationToken cancellationToken = default)
     {
         // Initialize and connect AudioStreamer
-        _streamer ??= new AudioStreamer(hub.HostInfo.BaseUrl);
+        _streamer ??= new AudioStreamer(_hub.HostInfo.BaseUrl);
         await _streamer.EnsureConnected(quickReconnect: true, cancellationToken).ConfigureAwait(false);
         await SetConnected(true).ConfigureAwait(false);
 
@@ -116,12 +125,13 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
         await SetRecording(false).ConfigureAwait(false);
         await SetVoiceActive(false).ConfigureAwait(false);
         await SetSignalDetected(false).ConfigureAwait(false);
+        _noSignalDetectedDebouncer.Reset();
         return true;
     }
 
     public async ValueTask EnsureConnected(bool quickReconnect, CancellationToken cancellationToken)
     {
-        _streamer ??= new AudioStreamer(hub.HostInfo.BaseUrl);
+        _streamer ??= new AudioStreamer(_hub.HostInfo.BaseUrl);
         await _streamer.EnsureConnected(quickReconnect, cancellationToken).ConfigureAwait(false);
     }
 
@@ -181,6 +191,9 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
 
     private ValueTask SetSignalDetected(bool isSignalDetected)
     {
+        if (isSignalDetected)
+            _noSignalDetectedDebouncer.Debounce(Unit.Default); // Schedule a debounced no signal detected event
+
         var previous = Interlocked.Exchange(ref _isSignalDetected, isSignalDetected);
         if (previous == isSignalDetected)
             return ValueTask.CompletedTask;

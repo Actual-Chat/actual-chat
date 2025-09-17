@@ -1,6 +1,5 @@
-import { DeviceInfo } from 'device-info';
 import { EventHandler } from 'event-handling';
-import { OpusMediaRecorder, opusMediaRecorder } from './opus-media-recorder';
+import { opusMediaRecorder } from './opus-media-recorder';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { AudioPlayer } from '../AudioPlayer/audio-player';
