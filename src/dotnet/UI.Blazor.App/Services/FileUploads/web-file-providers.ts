@@ -63,11 +63,12 @@ export class WebFileProviders
 export class WebFileProvider {
     private readonly fileUpload: FileUpload;
     private readonly reporter: FileUploadProgressReporter;
+    private previewUrl: string | null = null;
 
     constructor(
         private fileHandleDbKey: string,
         private readonly fileHandle: FileSystemFileHandle | null,
-        file: Blob,
+        private readonly file: Blob,
         fileName: string,
         chatId: string,
         blazorRef: DotNet.DotNetObject
@@ -83,6 +84,21 @@ export class WebFileProvider {
                 void this.reporter.reportUploadFailed();
             }
         });
+    }
+
+    public createPreviewUrl() : string
+    {
+        if (!this.previewUrl)
+            this.previewUrl = URL.createObjectURL(this.file);
+        return this.previewUrl;
+    }
+
+    public revokePreviewUrl() : void
+    {
+        if (!this.previewUrl)
+            return;
+        URL.revokeObjectURL(this.previewUrl);
+        this.previewUrl = null;
     }
 
     public async saveFileHandleToDb() : Promise<string>

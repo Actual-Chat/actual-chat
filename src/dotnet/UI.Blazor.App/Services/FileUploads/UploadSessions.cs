@@ -31,6 +31,7 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         if (fileProvider == null)
             throw new ArgumentNullException(nameof(fileProvider));
 
+        fileProvider.Initialize(Hub.Services);
         await fileProvider.PrepareForSaving().ConfigureAwait(false);
 
         var session = new UploadSession {
@@ -137,6 +138,7 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         session = await _repository.Get(sessionId).ConfigureAwait(false)
                   ?? throw new InvalidOperationException($"Upload session {sessionId} not found");
 
+        session.FileProvider.Initialize(Hub.Services);
         _sessions[sessionId] = session;
         return session;
     }

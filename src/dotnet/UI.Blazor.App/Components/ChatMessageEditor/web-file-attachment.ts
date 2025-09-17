@@ -29,13 +29,13 @@ export class WebFileAttachments
             return null;
 
         const file = fileInfo.file;
-        const url = URL.createObjectURL(file);
-
+        let previewUrl = "";
         try {
             const provider = new WebFileProvider('', fileInfo.fileHandle, file, file.name, chatId, blazorRef);
+            previewUrl = provider.createPreviewUrl();
             const attachment: WebFileAttachment = {
                 id: uuidv4(),
-                previewUrl: url,
+                previewUrl: previewUrl,
                 fileProvider: provider,
             };
             this.attachments.set(attachment.id, attachment);
@@ -49,7 +49,8 @@ export class WebFileAttachments
         }
         catch (e) {
             errorLog?.log('Failed to create a web file attachment', e);
-            URL.revokeObjectURL(url);
+            if (previewUrl)
+                URL.revokeObjectURL(previewUrl);
             return null;
         }
     }
@@ -63,9 +64,9 @@ export class WebFileAttachments
 
         if (attachment.fileProvider) {
             attachment.fileProvider.cancel();
+            attachment.fileProvider.revokePreviewUrl();
             await attachment.fileProvider.removeFileHandleFromDb();
         }
-        URL.revokeObjectURL(attachment.previewUrl);
         this.attachments.delete(id);
     }
 }

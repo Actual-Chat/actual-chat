@@ -119,22 +119,35 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 UploadSessionId = attachEntry.UploadSessionId,
             };
             // TODO: to think what to do with this. For now UploadApp is responsible for resuming stored sessions.
+            var attachmentIsOk = false;
             try {
                 var session = await UploadSessions.GetSession(attachment.UploadSessionId).ConfigureAwait(false);
                 var fileProvider = session.FileProvider;
-                if (attachment.PreviewUrl.IsNullOrEmpty()) {
-                    previewUrl = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
-                    if (!previewUrl.IsNullOrEmpty()) {
-                        attachment = attachment with {
-                            PreviewUrl = previewUrl,
-                        };
+                var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
+                if (canAccess) {
+                    if (attachment.PreviewUrl.IsNullOrEmpty()) {
+                        previewUrl = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
+                        if (!previewUrl.IsNullOrEmpty()) {
+                            attachment = attachment with {
+                                PreviewUrl = previewUrl,
+                            };
+                        }
                     }
+                    attachmentIsOk = true;
                 }
             }
             catch (Exception e) {
-
+                Log.LogError(e, "Failed to get upload session '{UploadSessionId}'", attachment.UploadSessionId);
+                // Intended
             }
-            // await UploadSessions.ResumeSession(attachEntry.UploadSessionId).ConfigureAwait(false);
+            if (!attachmentIsOk) {
+                attachment = attachment with {
+                    Failed = true
+                };
+            }
+            else {
+                await UploadSessions.ResumeSession(attachment.UploadSessionId).ConfigureAwait(false);
+            }
             attachments.Add(attachment);
         }
         if (attachments.Count == 0)

@@ -76,6 +76,7 @@ public partial class WebFileProvider : IFileProvider
     public async Task ClearBeforeRemoving()
     {
         if (WebFileProviderInternal is not null) {
+            await WebFileProviderInternal.RevokePreviewUrl().ConfigureAwait(false);
             await WebFileProviderInternal.DeleteFileHandleFromDb().ConfigureAwait(false);
             return;
         }
@@ -84,7 +85,12 @@ public partial class WebFileProvider : IFileProvider
     }
 
     public Task<string> GetPreviewUrl()
-        => Task.FromResult(string.Empty);
+    {
+        var @internal = WebFileProviderInternal;
+        if (@internal is null)
+            throw new InvalidOperationException("Upload can't be created.");
+        return @internal.CreatePreviewUrl().AsTask();
+    }
 
     public Task<IFileUploadOperation> CreateUploadOperation()
     {
@@ -98,6 +104,8 @@ public partial class WebFileProvider : IFileProvider
 
 public interface IWebFileProviderInternal
 {
+    ValueTask<string> CreatePreviewUrl();
+    ValueTask RevokePreviewUrl();
     ValueTask<string> SaveFileHandleToDb();
     ValueTask<bool> DeleteFileHandleFromDb();
     Task<IFileUploadOperation> CreateUploadOperation();
@@ -120,6 +128,12 @@ public class WebFileProviderInternal : IWebFileProviderInternal
         Backend = backend;
         IsOriginal = isOriginal;
     }
+
+    public ValueTask<string> CreatePreviewUrl()
+        => _jsRef.InvokeAsync<string>("createPreviewUrl");
+
+    public ValueTask RevokePreviewUrl()
+        => _jsRef.InvokeVoidAsync("revokePreviewUrl");
 
     public ValueTask<string> SaveFileHandleToDb()
         => _jsRef.InvokeAsync<string>("saveFileHandleToDb");
@@ -151,6 +165,12 @@ public class WebFileProviderInternal : IWebFileProviderInternal
 
 public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fileHandleDbKey) : IWebFileProviderInternal
 {
+    public ValueTask<string> CreatePreviewUrl()
+        => throw new NotImplementedException();
+
+    public ValueTask RevokePreviewUrl()
+        => throw new NotSupportedException();
+
     public ValueTask<string> SaveFileHandleToDb()
         => throw new NotSupportedException();
 

@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
-    private static readonly string JSPrepareMethod = $"{BlazorUIAppModule.ImportName}.WebFileAttachments.create";
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileAttachments.create";
 
     private UploadSessions UploadSessions => Hub.UploadSessions;
 
@@ -18,10 +18,12 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         }
         WebFileProviderInternal? webFileProviderInternal;
         var fileUploaderBackend = new FileUploaderBackend();
+        string previewUrl = "";
         try {
             var webFileAttachment = await JS
-                .InvokeAsync<CreateWebFileAttachmentResult>(JSPrepareMethod, fileInfo.Id, chatId.Value, fileUploaderBackend.BlazorRef)
+                .InvokeAsync<CreateWebFileAttachmentResult>(JSCreateMethod, fileInfo.Id, chatId.Value, fileUploaderBackend.BlazorRef)
                 .ConfigureAwait(true); // Continue on Blazor context.
+            previewUrl = webFileAttachment.PreviewUrl;
             webFileProviderInternal = new WebFileProviderInternal(
                 webFileAttachment.FileProvider,
                 fileUploaderBackend,
@@ -38,8 +40,10 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             ChatId = chatId,
             WebFileProviderInternal = webFileProviderInternal,
         };
+        if (previewUrl.IsNullOrEmpty())
+            previewUrl = await webFileProvider.GetPreviewUrl();
         var attachment = new Attachment(Guid.NewGuid().ToString(),
-            fileInfo.FileName,
+            previewUrl,
             fileInfo.FileName,
             fileInfo.FileType) {
             FileProvider = webFileProvider
