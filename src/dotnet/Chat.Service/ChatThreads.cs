@@ -51,26 +51,17 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         if (account.IsGuest)
             return [];
 
-        if (parentPlaceId is not null) {
-            var placeContacts = await ContactsBackend
-                .ListIds(account.Id, parentPlaceId, cancellationToken)
-                .ConfigureAwait(false);
-            var placeChatIds = placeContacts.Select(c => c.ChatId).Where(c => c.Kind is ChatKind.Place).ToHashSet();
-            var placeTheadIds = await ContactsBackend
-                .ListThreadIdsForPlace(account.Id, parentPlaceId, cancellationToken)
-                .ConfigureAwait(false);
-            return placeTheadIds.Where(c => placeChatIds.Contains(c.GetOutermostParent())).ToArray();
-        }
-        else {
-            var chatContacts = await ContactsBackend
-                .ListIds(account.Id, null, cancellationToken)
-                .ConfigureAwait(false);
-            var chatIds = chatContacts.Select(c => c.ChatId).Where(c => c.Kind is ChatKind.Group or ChatKind.Peer).ToHashSet();
-            var placeTheadIds = await ContactsBackend
-                .ListThreadIdsForPlace(account.Id, parentPlaceId, cancellationToken)
-                .ConfigureAwait(false);
-            return placeTheadIds.Where(c => chatIds.Contains(c.GetOutermostParent())).ToArray();
-        }
+        var placeContacts = await ContactsBackend
+            .ListIds(account.Id, parentPlaceId, cancellationToken)
+            .ConfigureAwait(false);
+        Func<ChatId, bool> chatFilter = parentPlaceId is not null
+            ? c => c.Kind is ChatKind.Place
+            : c => c.Kind is ChatKind.Group or ChatKind.Peer;
+        var placeChatIds = placeContacts.Select(c => c.ChatId).Where(chatFilter).ToHashSet();
+        var placeTheadIds = await ContactsBackend
+            .ListThreadIdsForPlace(account.Id, parentPlaceId, cancellationToken)
+            .ConfigureAwait(false);
+        return placeTheadIds.Where(c => placeChatIds.Contains(c.GetOutermostParent())).ToArray();
     }
 
     // [ComputeMethod]
