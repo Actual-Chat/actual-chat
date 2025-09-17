@@ -56,6 +56,8 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     public readonly HostInfo HostInfo = services.HostInfo();
     public VoiceActivityChange LastActivityEvent { get; private set; } = VoiceActivityChange.NoVoiceActivity;
 
+    public bool IsInitialized => _session != null;
+
     public ValueTask DisposeAsync()
     {
         Dispose();

@@ -2,7 +2,6 @@ using System.Buffers;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Module;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
 
@@ -118,10 +117,20 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
     public async Task<AudioRecorder.AudioDiagnosticsState> RunDiagnostics(CancellationToken cancellationToken)
     {
         var permissionStatus = await MicrophonePermissionHandler.Check(cancellationToken);
+        var lastVadEvent = VoiceActivityDetector.LastActivityEvent;
 
         return new AudioRecorder.AudioDiagnosticsState {
             HasMicrophonePermission = permissionStatus,
             IsConnected = _currentStream != null || (_streamer?.IsConnected ?? false),
+            HasMicrophoneStream = _isSignalDetected,
+            LastVadEvent = new AudioRecorder.VadEvent {
+                Kind = lastVadEvent.Kind.ToString(),
+                Offset = lastVadEvent.OffsetSeconds,
+                Duration = lastVadEvent.DurationSeconds ?? 0,
+                SpeechProb = lastVadEvent.SpeechProb,
+            },
+            IsSignalDetected = _isSignalDetected,
+            IsVadActive = VoiceActivityDetector.IsInitialized,
         };
     }
 
@@ -268,10 +277,9 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
                 await vadChannel.WriteAsync(vadResult.Change.Value, cancellationToken);
                 await SetVoiceActive(vadResult.Change.Value.Kind == VoiceActivityKind.Start).ConfigureAwait(false);
             }
-            else if (vad.LastActivityEvent.Kind == VoiceActivityKind.Start) {
+            else if (vad.LastActivityEvent.Kind == VoiceActivityKind.Start)
                 // Notify JS about audio power to keep heartbeat and UI animations
                 await OnAudioPowerChange(vadResult.Gain).ConfigureAwait(false);
-            }
         }
     }
 
