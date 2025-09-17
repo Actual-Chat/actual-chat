@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Windows.Foundation;
 using Windows.Media;
 using Windows.Media.Audio;
 using Windows.Media.Capture;
@@ -55,48 +56,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             AllowSynchronousContinuations = false,
         });
 
-        // Quantum callback: pull frames and push decoded float32 mono samples
-        graph.QuantumProcessed += (sender, args) => {
-            if (cancellationToken.IsCancellationRequested)
-                return;
-
-            try {
-                using var frame = outputNode!.GetFrame();
-                if (frame is null)
-                    return;
-
-                using var buffer = frame.LockBuffer(AudioBufferAccessMode.Read);
-                using var reference = buffer.CreateReference();
-
-                if (reference is null)
-                    return;
-
-                unsafe {
-                    // Access raw bytes
-                    WindowsRuntimeMarshal.TryGetDataUnsafe(reference, out IntPtr dataPtr, out var capacity);
-                    if (dataPtr == IntPtr.Zero || capacity == 0)
-                        return;
-
-                    var floatCount = (int)capacity / sizeof(float);
-                    var outBuffer = ArrayPool<float>.Shared.Rent(floatCount);
-
-                    // Copy unmanaged bytes to managed float[]
-                    fixed (float* outPtr = &outBuffer[0])
-                        Buffer.MemoryCopy(
-                            (void*)dataPtr,
-                            outPtr,
-                            (long)floatCount * sizeof(float),
-                            capacity);
-
-                    // Enqueue; ownership passed to consumer
-                    channel.Writer.TryWrite(new BufferReference(new Memory<float>(outBuffer, 0, floatCount), outBuffer));
-                }
-            }
-            catch (Exception e) {
-                Log.LogError(e, "Failed to process audio frame");
-                // Best effort: ignore frame-level issues
-            }
-        };
+        graph.QuantumStarted += QuantumEventHandler;
 
         try {
             outputNode.Start();
@@ -128,6 +88,8 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                     yield return block;
             }
             finally {
+                // Stop graph and detach event handler
+                graph.QuantumStarted -= QuantumEventHandler;
                 try {
                     outputNode?.Stop();
                     graph.Stop();
@@ -140,6 +102,49 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 inputNode.DisposeSilently();
                 outputNode.DisposeSilently();
                 graph.DisposeSilently();
+            }
+        }
+
+        void QuantumEventHandler(AudioGraph sender, object args)
+        {
+            // Quantum callback: pull frames and push decoded float32 mono samples
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            try {
+                using var frame = outputNode!.GetFrame();
+                if (frame is null)
+                    return;
+
+                using var buffer = frame.LockBuffer(AudioBufferAccessMode.Read);
+                using var reference = buffer.CreateReference();
+
+                if (reference is null)
+                    return;
+
+                unsafe {
+                    // Access raw bytes
+                    WindowsRuntimeMarshal.TryGetDataUnsafe(reference, out IntPtr dataPtr, out var capacity);
+                    if (dataPtr == IntPtr.Zero || capacity == 0)
+                        return;
+
+                    var floatCount = (int)capacity / sizeof(float);
+                    var outBuffer = ArrayPool<float>.Shared.Rent(floatCount);
+
+                    // Copy unmanaged bytes to managed float[]
+                    fixed (float* outPtr = &outBuffer[0])
+                        Buffer.MemoryCopy((void*)dataPtr,
+                            outPtr,
+                            (long)floatCount * sizeof(float),
+                            capacity);
+
+                    // Enqueue; ownership passed to consumer
+                    channel.Writer.TryWrite(new BufferReference(new Memory<float>(outBuffer, 0, floatCount), outBuffer));
+                }
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to process audio frame");
+                // Best effort: ignore frame-level issues
             }
         }
     }

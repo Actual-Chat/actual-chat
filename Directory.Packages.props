@@ -171,6 +171,7 @@
     <PackageVersion Include="Microsoft.JSInterop" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.JSInterop.WebAssembly" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.22.1" />
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.22.1" />
     <PackageVersion Include="MimeKit" Version="4.5.0" />
     <PackageVersion Include="Mjml.Net" Version="4.8.0" />
     <PackageVersion Include="NATS.Net" Version="2.6.1" />

@@ -132,7 +132,6 @@
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
     <PackageReference Include="Sentry.Serilog" />
     <PackageReference Include="Sentry.Extensions.Logging" />
     <PackageReference Include="Sentry.OpenTelemetry" />
@@ -150,6 +149,7 @@
 
   <!-- Platform-specific package references -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
     <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
@@ -167,6 +167,7 @@
     <PackageReference Include="System.Net.WebSockets" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
     <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Plugin.Firebase.CloudMessaging" />
     <PackageReference Include="Plugin.Firebase.Crashlytics" />
@@ -178,6 +179,10 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Serilog.Sinks.File" />
+<!--    <PackageReference Include="Microsoft.ML.OnnxRuntime">-->
+<!--      <ExcludeAssets>runtime</ExcludeAssets>-->
+<!--    </PackageReference>-->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
   </ItemGroup>
 
   <!-- Common Windows, iOS and Android build properties -->
