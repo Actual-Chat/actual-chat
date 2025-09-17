@@ -16,6 +16,8 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
     private static readonly string JSOnAudioPowerChangeMethod = $"{BlazorUIAppModule.ImportName}.RecorderStateHub.onAudioPowerChange";
     private static readonly string JSMicrophoneIsCapturedMethod = $"{BlazorUIAppModule.ImportName}.RecorderStateHub.microphoneIsCaptured";
 
+    private readonly Lock _sync = new();
+
     private ChatId? _chatId;
     private AudioStreamer? _streamer;
     private AudioStreamer.AudioStream? _currentStream;
@@ -53,9 +55,16 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
         await _streamer.EnsureConnected(quickReconnect: true, cancellationToken).ConfigureAwait(false);
         await SetConnected(true).ConfigureAwait(false);
 
-        _recordingCts = cancellationToken.CreateLinkedTokenSource();
-        var token = _recordingCts.Token;
-        var microphoneStream = await AudioCapture.Capture(cancellationToken).ConfigureAwait(false);
+        // Ensure only one active recording CTS
+        var newCts = cancellationToken.CreateLinkedTokenSource();
+        var prevCts = Interlocked.Exchange(ref _recordingCts, newCts);
+        if (prevCts != null) {
+            try { await prevCts.CancelAsync(); } catch { /* ignore */ }
+            prevCts.Dispose();
+        }
+        var token = newCts.Token;
+
+        var microphoneStream = await AudioCapture.Capture(token).ConfigureAwait(false);
         if (microphoneStream is null) {
             Log.LogWarning("Microphone stream is unavailable");
             await SetRecording(false).ConfigureAwait(false);
@@ -63,7 +72,8 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
         }
 
         // Start recording
-        _chatId = chatId;
+        lock (_sync)
+            _chatId = chatId;
         await SetRecording(true).ConfigureAwait(false);
         await SetSignalDetected(false).ConfigureAwait(false);
         await SetVoiceActive(false).ConfigureAwait(false);
@@ -73,7 +83,6 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
             },
             token);
 
-
         // // Create a new stream; preSkip is unknown in MAUI path yet, set to 0
         // _currentStream = _streamer.CreateStream(sessionToken, preSkip: 0, chatId.ToString(), repliedChatEntryId?.ToString());
         // _currentStream.StartStreaming();
@@ -82,23 +91,31 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
 
     public async Task<bool> StopAsync(CancellationToken cancellationToken = default)
     {
-        var recordingCts = _recordingCts;
-        _recordingCts = null;
-        if (recordingCts != null)
-            await recordingCts.CancelAsync();
+        var recordingCts = Interlocked.Exchange(ref _recordingCts, null);
+        if (recordingCts != null) {
+            try { await recordingCts.CancelAsync(); } catch { /* ignore */ }
+            recordingCts.Dispose();
+        }
 
-        var stream = _currentStream;
+        AudioStreamer.AudioStream? stream;
+        lock (_sync) {
+            stream = _currentStream;
+            _currentStream = null;
+            _chatId = null;
+        }
+
         if (stream == null) {
             await SetRecording(false).ConfigureAwait(false);
             await SetVoiceActive(false).ConfigureAwait(false);
+            await SetSignalDetected(false).ConfigureAwait(false);
             return true;
         }
 
         stream.Complete();
         await stream.DisposeAsync();
-        _currentStream = null;
         await SetRecording(false).ConfigureAwait(false);
         await SetVoiceActive(false).ConfigureAwait(false);
+        await SetSignalDetected(false).ConfigureAwait(false);
         return true;
     }
 
@@ -119,17 +136,23 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
         var permissionStatus = await MicrophonePermissionHandler.Check(cancellationToken);
         var lastVadEvent = VoiceActivityDetector.LastActivityEvent;
 
+        bool isSignalDetected, isConnected;
+        lock (_sync) {
+            isSignalDetected = _isSignalDetected;
+            isConnected = _currentStream != null || (_streamer?.IsConnected ?? false);
+        }
+
         return new AudioRecorder.AudioDiagnosticsState {
             HasMicrophonePermission = permissionStatus,
-            IsConnected = _currentStream != null || (_streamer?.IsConnected ?? false),
-            HasMicrophoneStream = _isSignalDetected,
+            IsConnected = isConnected,
+            HasMicrophoneStream = isSignalDetected,
             LastVadEvent = new AudioRecorder.VadEvent {
                 Kind = lastVadEvent.Kind.ToString(),
                 Offset = lastVadEvent.OffsetSeconds,
                 Duration = lastVadEvent.DurationSeconds ?? 0,
                 SpeechProb = lastVadEvent.SpeechProb,
             },
-            IsSignalDetected = _isSignalDetected,
+            IsSignalDetected = isSignalDetected,
             IsVadActive = VoiceActivityDetector.IsInitialized,
         };
     }
@@ -138,40 +161,40 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
 
     private ValueTask SetRecording(bool isRecording)
     {
-        if (_isRecording == isRecording)
+        var previous = Interlocked.Exchange(ref _isRecording, isRecording);
+        if (previous == isRecording)
             return ValueTask.CompletedTask;
 
-        _isRecording = isRecording;
         StateHasChanged();
         return JS.InvokeVoidAsync(JSSetRecordingMethod, isRecording);
     }
 
     private ValueTask SetConnected(bool isConnected)
     {
-        if (_isConnected == isConnected)
+        var previous = Interlocked.Exchange(ref _isConnected, isConnected);
+        if (previous == isConnected)
             return ValueTask.CompletedTask;
 
-        _isConnected = isConnected;
         StateHasChanged();
         return JS.InvokeVoidAsync(JSSetConnectedMethod, isConnected);
     }
 
     private ValueTask SetSignalDetected(bool isSignalDetected)
     {
-        if (_isSignalDetected == isSignalDetected)
+        var previous = Interlocked.Exchange(ref _isSignalDetected, isSignalDetected);
+        if (previous == isSignalDetected)
             return ValueTask.CompletedTask;
 
-        _isSignalDetected = isSignalDetected;
         StateHasChanged();
         return JS.InvokeVoidAsync(JSSetSignalDetectedMethod, isSignalDetected);
     }
 
     private ValueTask SetVoiceActive(bool isVoiceActive)
     {
-        if (_isVoiceActive == isVoiceActive)
+        var previous = Interlocked.Exchange(ref _isVoiceActive, isVoiceActive);
+        if (previous == isVoiceActive)
             return ValueTask.CompletedTask;
 
-        _isVoiceActive = isVoiceActive;
         StateHasChanged();
         return JS.InvokeVoidAsync(JSSetVoiceActiveMethod, isVoiceActive);
     }
@@ -179,17 +202,34 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
     private ValueTask OnAudioPowerChange(double power)
         => JS.InvokeVoidAsync(JSOnAudioPowerChangeMethod, power);
 
-    private ValueTask MicrophoneIsCaptured(double gain)
-        => JS.InvokeVoidAsync(JSMicrophoneIsCapturedMethod, gain);
+    private async ValueTask MicrophoneIsCaptured(double gain)
+    {
+        await SetSignalDetected(true).ConfigureAwait(false);
+        await JS.InvokeVoidAsync(JSMicrophoneIsCapturedMethod, gain).ConfigureAwait(false);
+    }
 
     private void StateHasChanged()
-        => AudioRecorderBackend.OnRecordingStateChange(_isRecording, _isSignalDetected, _isConnected, _isVoiceActive);
+    {
+        bool isRecording, isSignalDetected, isConnected, isVoiceActive;
+        lock (_sync) {
+            isRecording = _isRecording;
+            isSignalDetected = _isSignalDetected;
+            isConnected = _isConnected;
+            isVoiceActive = _isVoiceActive;
+        }
+        AudioRecorderBackend.OnRecordingStateChange(isRecording, isSignalDetected, isConnected, isVoiceActive);
+    }
 
     private async Task RecordingHeartbeat(CancellationToken cancellationToken)
     {
         try {
-            var chatId = _chatId;
-            if (!_isRecording)
+            ChatId? chatId;
+            bool isRecording;
+            lock (_sync) {
+                chatId = _chatId;
+                isRecording = _isRecording;
+            }
+            if (!isRecording)
                 return;
 
             if (chatId is null) {
@@ -197,8 +237,8 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
                 return;
             }
 
-            var isRecording = AudioRecorderBackend.IsRecording(chatId.Value);
-            if (isRecording)
+            var backendRecording = AudioRecorderBackend.IsRecording(chatId.Value);
+            if (backendRecording)
                 return;
 
             await StopAsync(cancellationToken).ConfigureAwait(false);
@@ -209,7 +249,6 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
             throw;
         }
     }
-
 
     private async Task ProcessMicrophoneStream(IAsyncEnumerable<IMemoryOwner<float>> frames, CancellationToken cancellationToken)
     {
@@ -223,38 +262,53 @@ public class MauiRecorderEngine(UIHub hub) : IAudioRecorderEngine
         var sw = Stopwatch.StartNew();
         var minInterval = TimeSpan.FromMilliseconds(200);
         var lastMicCapturedAt = TimeSpan.Zero;
+        var signaledMicCaptured = false;
 
         var detectSpeechTask = BackgroundTask.Run(async () => {
                 await DetectSpeech(vadRingBuffer, vadChannel.Writer, cancellationToken).ConfigureAwait(false);
             },
             cancellationToken);
 
-        await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            using var _ = frame;
-            var memory = frame.Memory;
+        try {
+            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                using var _ = frame;
+                var memory = frame.Memory;
 
-            var isVadBufferPushed = vadRingBuffer.TryPush(memory.Span);
-            var isEncodingBufferPushed = encodingRingBuffer.TryPush(memory.Span);
-            if (!isVadBufferPushed || !isEncodingBufferPushed)
-                await Task.WhenAll(
-                    vadRingBuffer.WhenPulled,
-                    encodingRingBuffer.WhenPulled).ConfigureAwait(false);
+                var isVadBufferPushed = vadRingBuffer.TryPush(memory.Span);
+                var isEncodingBufferPushed = encodingRingBuffer.TryPush(memory.Span);
+                if (!isVadBufferPushed || !isEncodingBufferPushed)
+                    await Task.WhenAll(
+                        vadRingBuffer.WhenPulled,
+                        encodingRingBuffer.WhenPulled).ConfigureAwait(false);
 
-            var gain = AudioExt.ApproximateGain(memory.Span);
-            Log.LogInformation("Got frame {FrameLength} with gain={ApproximateGain}",
-                memory.Length,
-                gain);
+                // Mark that we have a live microphone stream as soon as frames arrive
+                if (!signaledMicCaptured) {
+                    signaledMicCaptured = true;
+                    await SetSignalDetected(true).ConfigureAwait(false);
+                }
 
-            // Throttle JS interop call to once per 200 ms
-            var now = sw.Elapsed;
-            if (now - lastMicCapturedAt >= minInterval) {
-                lastMicCapturedAt = now;
-                await MicrophoneIsCaptured(gain).ConfigureAwait(false);
+                var gain = AudioExt.ApproximateGain(memory.Span);
+                // Log.LogInformation("Got frame {FrameLength} with gain={ApproximateGain}",
+                //     memory.Length,
+                //     gain);
+
+                // Throttle JS interop call to once per 200 ms
+                var now = sw.Elapsed;
+                if (now - lastMicCapturedAt >= minInterval) {
+                    lastMicCapturedAt = now;
+                    await MicrophoneIsCaptured(gain).ConfigureAwait(false);
+                }
+
+                await RecordingHeartbeat(cancellationToken).ConfigureAwait(false);
             }
-
-            await RecordingHeartbeat(cancellationToken).ConfigureAwait(false);
+            await detectSpeechTask.ConfigureAwait(false);
         }
-        await detectSpeechTask.ConfigureAwait(false);
+        finally {
+            // Ensure UI/JS/Backend state is consistent when stream ends
+            await SetVoiceActive(false).ConfigureAwait(false);
+            await SetSignalDetected(false).ConfigureAwait(false);
+            await SetRecording(false).ConfigureAwait(false);
+        }
     }
 
     private async Task DetectSpeech(
