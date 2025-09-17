@@ -1,8 +1,8 @@
 import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { filter, scan, Subscription } from 'rxjs';
-import { OpusMediaRecorder } from '../AudioRecorder/opus-media-recorder';
 import { clamp, RunningMax, translate } from 'math';
+import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 200 * 30ms = 3s
 
@@ -113,8 +113,8 @@ class ActiveRecordingSvg extends LitElement {
         });
         this.observer.observe(this);
 
-        const recorderState$ = OpusMediaRecorder.recorderStateChanged$;
-        const signalPower$ = OpusMediaRecorder.audioPowerChanged$
+        const recorderState$ = RecorderStateHub.recorderStateChanged$;
+        const signalPower$ = RecorderStateHub.audioPowerChanged$
             .pipe(filter((p, i) => i % 2 === 0))
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
                 const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;

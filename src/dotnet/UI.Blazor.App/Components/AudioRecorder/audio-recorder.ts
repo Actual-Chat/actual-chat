@@ -9,6 +9,8 @@ import { VoiceActivityChange } from './workers/audio-vad-contract';
 import { Log } from 'logging';
 import { throttle } from 'promises';
 import { WebMicrophonePermissionHandler } from './web-microphone-permission-handler';
+import { RecorderStateHub } from './recorder-state-hub';
+import { Subscription } from 'rxjs';
 
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
 
@@ -23,7 +25,6 @@ export class AudioDiagnosticsState {
     public lastVadEvent?: VoiceActivityChange;
     public lastVadFrameProcessedAt?: number;
     public isConnected?: boolean;
-    public lastFrameProcessedAt?: number;
     public vadWorkletState?: 'running' | 'ready' | 'inactive' | 'terminated';
     public lastVadWorkletFrameProcessedAt?: number;
     public encoderWorkletState?: 'running' | 'ready' | 'inactive' | 'terminated';
@@ -35,6 +36,8 @@ const HEARTBEAT_INTERVAL = 2000; // ms
 export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly onReconnected: EventHandler<void>;
+    private readonly recorderStateChangedSubscription: Subscription;
+    private readonly recordingHeartbeatSubscription: Subscription;
 
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
     private chatId?: string;
@@ -54,9 +57,12 @@ export class AudioRecorder {
     public constructor(blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.ensureConnected(true));
-        opusMediaRecorder.subscribeToStateChanges((isRecording, isSignalDetected, isConnected, isVoiceActive) =>
-            this.onRecordingStateChange(isRecording, isSignalDetected, isConnected, isVoiceActive));
-        opusMediaRecorder.subscribeToRecordingHeartbeat(() => this.heartbeatThrottled());
+        this.recorderStateChangedSubscription = RecorderStateHub.recorderStateChanged$.subscribe(state => this.onRecordingStateChange(
+            state.isRecording,
+            state.isSignalDetected,
+            state.isConnected,
+            state.isVoiceActive));
+        this.recordingHeartbeatSubscription = RecorderStateHub.recordingHeartbeat$.subscribe(() => this.heartbeatThrottled());
     }
 
     /** Called from Blazor */
@@ -67,6 +73,8 @@ export class AudioRecorder {
             BrowserInit.reconnectedEvents.remove(this.onReconnected);
         try {
             await opusMediaRecorder.stop();
+            this.recorderStateChangedSubscription.unsubscribe();
+            this.recordingHeartbeatSubscription.unsubscribe();
         } catch (e) {
             errorLog?.log(`dispose: failed to stop recording`, e);
             throw e;
