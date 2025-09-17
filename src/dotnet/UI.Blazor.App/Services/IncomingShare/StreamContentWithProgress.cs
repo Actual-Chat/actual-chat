@@ -25,6 +25,8 @@ public class StreamContentWithProgress : HttpContent
         while ((read = await _stream.ReadAsync(buffer.AsMemory(0, buffer.Length), _cancellationToken).ConfigureAwait(false)) > 0) {
             await targetStream.WriteAsync(buffer.AsMemory(0, read), _cancellationToken).ConfigureAwait(false);
             uploaded += read;
+            // Simulate upload throttling.
+            // await Task.Delay(100, _cancellationToken).ConfigureAwait(false);
 
             if (totalBytes > 0 && _progress != null)
                 _progress.Report((double)uploaded / totalBytes * 100);

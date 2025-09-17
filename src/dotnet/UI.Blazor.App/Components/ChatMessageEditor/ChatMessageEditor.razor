@@ -104,6 +104,8 @@
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private SendingMessages SendingMessages => Hub.SendingMessages;
     private WebFileAttachments WebFileAttachments { get; set; } = null!;
+    private CustomFileAttachments CustomFileAttachments { get; set; } = null!;
+    private IAttachmentFilePicker? AttachmentFilePicker { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -117,6 +119,8 @@
         _attachmentListHolder = new AttachmentListHolder(Hub, Chat.Id);
         _attachmentListHolder.Changed += OnAttachmentListChanged;
         WebFileAttachments =  new WebFileAttachments(Hub);
+        CustomFileAttachments =  new CustomFileAttachments(Hub);
+        AttachmentFilePicker = Hub.Services.GetService<IAttachmentFilePicker>();
     }
 
     public async ValueTask DisposeAsync() {
@@ -250,8 +254,14 @@
         await MarkupEditorRef.JSRef.InvokeVoidAsync("beginMention");
     }
 
-    private async Task OnAttachClick(string acceptTypes)
-        => await JSRef.InvokeVoidAsync("showWebFilePickerDialog", acceptTypes);
+    private async Task OnAttachClick(string acceptTypes) {
+        if (AttachmentFilePicker is not null) {
+            var files = await AttachmentFilePicker.OnAttachClick(acceptTypes);
+            await OnAttachFilesPicked(files);
+        } else {
+            await JSRef.InvokeVoidAsync("showWebFilePickerDialog", acceptTypes);
+        }
+    }
 
     private void OnAttachmentListChanged(object? sender, EventArgs e) {
         var lastHasAttachments = _hasAttachments;
@@ -294,6 +304,12 @@
 
     private Task<bool> OnFilePicked(AttachmentWebFilePickerBackend.FileInfo fileInfo) {
         return WebFileAttachments.TryAddWebFileAttachment(_attachmentListHolder, fileInfo, Chat.Id);
+    }
+
+    private async Task OnAttachFilesPicked(AttachFileInfo[] files) {
+        foreach (var fileInfo in files) {
+            await CustomFileAttachments.TryAddCustomFileAttachment(_attachmentListHolder, fileInfo, Chat.Id);
+        }
     }
 
     // UIEventHub event handlers

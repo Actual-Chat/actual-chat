@@ -16,16 +16,20 @@ public class UploadApp(AppUIHub hub)
             var repo = services.GetRequiredService<IUploadSessionRepository>();
             var deleteTasks = new List<Task>();
             var checkTasks = new List<Task>();
-            var sessions = await UploadSessions.GetActiveSessionsAsync().ConfigureAwait(false);
+            var sessions = (await UploadSessions.GetActiveSessionsAsync().ConfigureAwait(false))
+                .OrderBy(c => c.CreatedAt)
+                .ToArray();
 
             foreach (var session1 in sessions) {
                 var session = await UploadSessions.GetSession(session1.SessionId).ConfigureAwait(false);
                 session.FileProvider.Initialize(services);
-                if (session1.Status is UploadStatus.Completed or UploadStatus.Cancelled) {
+                if (session1.Status is UploadStatus.Cancelled) {
                     var deleteTask = UploadSessions.DeleteSession(session1.SessionId);
                     deleteTasks.Add(deleteTask);
                     continue;
                 }
+                if (session1.Status is UploadStatus.Completed or UploadStatus.Failed)
+                    continue;
 
                 var checkTask = ResumeInternal(session ,deleteTasks);
                 checkTasks.Add(checkTask);

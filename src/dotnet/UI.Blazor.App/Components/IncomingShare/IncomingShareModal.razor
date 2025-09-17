@@ -124,12 +124,11 @@
             Modal.Close(true);
             try {
                 var fileDownloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
-                var uploader = Services.GetRequiredService<FileUploader>();
                 var postTasks = new List<Task<ChatEntry?>>();
                 foreach (var chatId in selectedChatIds) {
                     var comment = _comment;
                     foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                        var attachmentList = UploadFiles(fileDownloader, uploader, chatId, filesChunk);
+                        var attachmentList = UploadFiles(fileDownloader, chatId, filesChunk);
                         var postTask = PostMessage(chatId, comment, attachmentList);
                         comment = "";
                         postTasks.Add(postTask);
@@ -175,7 +174,7 @@
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
-    private AttachmentList2 UploadFiles(IIncomingShareFileDownloader filesDownloader, FileUploader uploader, ChatId chatId, IEnumerable<IncomingShareFile> files) {
+    private AttachmentList2 UploadFiles(IIncomingShareFileDownloader filesDownloader, ChatId chatId, IEnumerable<IncomingShareFile> files) {
         Exception? fileSizeLimitError = null;
         var attachments = new List<Attachment>();
         foreach (var file in files) {
@@ -196,10 +195,10 @@
                 FileName = fileName,
                 FileUrl = file.Url,
                 MediaType = mediaType,
-                Uploader = uploader,
                 ChatId = chatId,
                 Stream = stream,
             };
+            fileProvider.Initialize(Hub.Services);
             var attachment = new Attachment(new Guid().ToString(), file.Url, fileName, mediaType ?? "") {
                 FileProvider = fileProvider,
             };

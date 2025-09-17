@@ -114,14 +114,22 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             var attachEntry = attachEntries[i];
             var sourceAttachment = sourceAttachmentsCopy?[i];
             // TODO: Where to take url from when we app is restarted and we restore attachments?
-            var url = sourceAttachment?.PreviewUrl ?? "";
-            var attachment = new Attachment(Guid.NewGuid().ToString(), url, attachEntry.FileName, attachEntry.FileType) {
+            var previewUrl = sourceAttachment?.PreviewUrl ?? "";
+            var attachment = new Attachment(Guid.NewGuid().ToString(), previewUrl, attachEntry.FileName, attachEntry.FileType) {
                 UploadSessionId = attachEntry.UploadSessionId,
             };
             // TODO: to think what to do with this. For now UploadApp is responsible for resuming stored sessions.
             try {
                 var session = await UploadSessions.GetSession(attachment.UploadSessionId).ConfigureAwait(false);
                 var fileProvider = session.FileProvider;
+                if (attachment.PreviewUrl.IsNullOrEmpty()) {
+                    previewUrl = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
+                    if (!previewUrl.IsNullOrEmpty()) {
+                        attachment = attachment with {
+                            PreviewUrl = previewUrl,
+                        };
+                    }
+                }
             }
             catch (Exception e) {
 

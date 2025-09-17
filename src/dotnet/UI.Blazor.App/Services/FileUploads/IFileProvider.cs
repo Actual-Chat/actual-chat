@@ -11,6 +11,7 @@ public partial interface IFileProvider
     void Initialize(IServiceProvider services);
     Task<bool> CheckAccess();
     Task ClearBeforeRemoving();
+    Task<string> GetPreviewUrl();
 }
 
 // NOTE(DF): This is a workaround for the following issue:
@@ -19,5 +20,5 @@ public partial interface IFileProvider
 [MemoryPackUnionFormatter(typeof(IFileProvider))]
 [MemoryPackUnion(0, typeof(WebFileProvider))]
 [MemoryPackUnion(1, typeof(IncomingShareFileProvider))]
-// [MemoryPackUnion(1, typeof(LocalFileProvider))]
+[MemoryPackUnion(2, typeof(LocalFileProvider))]
 public partial class FileProviderUnionFormatter;

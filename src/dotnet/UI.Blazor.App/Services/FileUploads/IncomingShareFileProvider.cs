@@ -5,6 +5,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class IncomingShareFileProvider : IFileProvider
 {
+    private IServiceProvider _services = null!;
+
     [DataMember, MemoryPackOrder(0)]
     public string FakeField { get; init; } = "";
     [IgnoreDataMember, MemoryPackIgnore]
@@ -14,11 +16,14 @@ public partial class IncomingShareFileProvider : IFileProvider
     [IgnoreDataMember, MemoryPackIgnore]
     public string? MediaType { get; init; } = "";
     [IgnoreDataMember, MemoryPackIgnore]
-    public FileUploader? Uploader { get; init; }
-    [IgnoreDataMember, MemoryPackIgnore]
     public ChatId? ChatId { get; init; }
     [IgnoreDataMember, MemoryPackIgnore]
     public Stream? Stream { get; init; }
+
+    private FileUploader Uploader => _services.GetRequiredService<FileUploader>();
+
+    public void Initialize(IServiceProvider services)
+        => this._services = services;
 
     public Task PrepareForSaving()
         // Do nothing. The Provider does not support recovery after the app restarts. Hence, no need to save anything.
@@ -37,13 +42,12 @@ public partial class IncomingShareFileProvider : IFileProvider
         return Task.FromResult<IFileUploadOperation>(fileUploadOperation);
     }
 
-    public void Initialize(IServiceProvider services)
-    {
-    }
-
     public Task<bool> CheckAccess()
         => Task.FromResult(false); // Does not support recovery after app restart.
 
     public Task ClearBeforeRemoving()
         => Task.CompletedTask;
+
+    public Task<string> GetPreviewUrl()
+        => Task.FromResult(string.Empty);
 }

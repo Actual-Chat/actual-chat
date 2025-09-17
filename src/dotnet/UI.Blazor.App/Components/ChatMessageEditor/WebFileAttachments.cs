@@ -51,7 +51,7 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         // TODO(DF): review these code correctness.
         string uploadSessionId = "";
         try {
-            var uploadSession = await UploadSessions.CreateSession(chatId, webFileProvider);
+            var uploadSession = await UploadSessions.CreateSession(chatId, attachment.FileProvider);
             uploadSessionId = uploadSession.SessionId;
             list.UpdateAttachment(attachment.Id, a => a with { UploadSessionId = uploadSession.SessionId });
             await UploadSessions.ResumeSession(uploadSession.SessionId);

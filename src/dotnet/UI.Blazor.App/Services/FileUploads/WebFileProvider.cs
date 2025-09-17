@@ -83,6 +83,9 @@ public partial class WebFileProvider : IFileProvider
         await WebFileProviders.DeleteFileHandleFromDb(JS, FileHandleDbKey).ConfigureAwait(false);
     }
 
+    public Task<string> GetPreviewUrl()
+        => Task.FromResult(string.Empty);
+
     public Task<IFileUploadOperation> CreateUploadOperation()
     {
         var @internal = WebFileProviderInternal;
