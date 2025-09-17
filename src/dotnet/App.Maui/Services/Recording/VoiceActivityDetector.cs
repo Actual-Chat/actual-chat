@@ -16,9 +16,8 @@ namespace ActualChat.App.Maui.Services.Recording;
 public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable, IDisposable
 {
     // AUDIO_REC constants (subset)
-    public const int SampleRate = 16_000; // AUDIO_REC.SAMPLE_RATE
-    private const int WindowMs = 32; // AR window used by neural VAD
-    private const int WindowSamples = SampleRate * WindowMs / 1000; // 512
+    public const int SampleRate = Constants.Audio.RecordingSampleRate; // AUDIO_REC.SAMPLE_RATE
+    private const int WindowSamples = Constants.Audio.VadFrameLength; // 512
     private const double MinRecordingGain = 0.0005; // AR.MIN_RECORDING_GAIN
 
     // AUDIO_VAD constants (subset)
@@ -36,6 +35,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     private readonly float[] _buffer = new float[InputSamples];
     private readonly float[] _context = new float[ContextSamples];
     private readonly RunningEma _longProbEma = new (0.5f, 64);
+    private readonly RunningEma _gainEma = new (0, 10);
 
     // Processing state (mirrors TS VoiceActivityDetectorBase)
     private readonly RunningEma _probEma = new (0.5f, 5);
@@ -147,7 +147,9 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         _sampleCount += monoPcm.Length;
         var currentEvent = LastActivityEvent;
 
-        var gain = ApproximateGain(monoPcm);
+        var rawGain = ApproximateGain(monoPcm);
+        _gainEma.AppendSample(rawGain);
+        var gain = _gainEma.Value;
         if (gain < MinRecordingGain && currentEvent.Kind == VoiceActivityKind.End)
             return VadResult.GainOnly(gain);
 
@@ -302,6 +304,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         _probEma.Reset();
         _longProbEma.Reset();
         _probMedian.Reset();
+        _gainEma.Reset();
         _whenTalkingProbMedian = null;
         _sampleCount = 0;
         _pauseOffset = null;

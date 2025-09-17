@@ -273,7 +273,7 @@ public static partial class Constants
     public static class Audio
     {
         public const int OpusFrameDurationMs = 20;
-        public const int VadFrameDurationMs = 30;
+        public const int VadFrameDurationMs = 32;
         public const int OpusFrameLength = RecordingSampleRate / 1000 * OpusFrameDurationMs;
         public const int VadFrameLength = RecordingSampleRate / 1000 * VadFrameDurationMs;
         public const int Bitrate = 32000;
