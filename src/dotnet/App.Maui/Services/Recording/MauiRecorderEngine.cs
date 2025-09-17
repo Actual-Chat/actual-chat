@@ -4,6 +4,7 @@ using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
+using OpusSharp.Core;
 
 namespace ActualChat.App.Maui.Services.Recording;
 
@@ -326,7 +327,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     private async Task DetectSpeech(
         BlockRingBuffer<float> buffer,
-        ChannelWriter<VoiceActivityChange> vadChannel,
+        ChannelWriter<VoiceActivityChange> vadEvents,
         CancellationToken cancellationToken)
     {
         var vad = VoiceActivityDetector;
@@ -341,13 +342,75 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             using var _ = frame;
             var vadResult = vad.AppendChunk(frame.Memory.Span);
             if (vadResult.HasEvent) {
-                await vadChannel.WriteAsync(vadResult.Change.Value, cancellationToken);
+                await vadEvents.WriteAsync(vadResult.Change.Value, cancellationToken);
                 await SetVoiceActive(vadResult.Change.Value.Kind == VoiceActivityKind.Start).ConfigureAwait(false);
             }
             else if (vad.LastActivityEvent.Kind == VoiceActivityKind.Start)
                 // Notify JS about audio power to keep heartbeat and UI animations
                 await OnAudioPowerChange(vadResult.Gain).ConfigureAwait(false);
         }
+    }
+
+    private async Task Encode(
+        BlockRingBuffer<float> buffer,
+        ChannelWriter<IMemoryOwner<byte>> encodedFrames,
+        CancellationToken cancellationToken)
+    {
+        // Uses OpusSharp to encode 16kHz mono float PCM into 20ms Opus packets
+        const int maxOpusPacketSize = 4096; // Generous upper bound for a single Opus packet
+        OpusEncoder? encoder = null;
+        try {
+            encoder = new OpusEncoder(
+                Constants.Audio.RecordingSampleRate,
+                Constants.Audio.Channels,
+                OpusPredefinedValues.OPUS_APPLICATION_VOIP);
+
+            while (!cancellationToken.IsCancellationRequested) {
+                if (!buffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
+                    await buffer.WhenPushed.ConfigureAwait(false);
+                    continue;
+                }
+
+                using var _ = frame;
+                var pcm = frame.Memory.Span; // float PCM samples, length = OpusFrameLength
+
+                // Rent a large enough buffer for an Opus packet
+                var rented = MemoryPool<byte>.Shared.Rent(maxOpusPacketSize);
+                try {
+                    var outSpan = rented.Memory.Span;
+                    var encodedSize = encoder.Encode(pcm, Constants.Audio.OpusFrameLength, outSpan, maxOpusPacketSize);
+                    if (encodedSize <= 0) {
+                        // Drop frame on encode error
+                        rented.Dispose();
+                        continue;
+                    }
+
+                    // Wrap to expose only the meaningful slice while owning the rented memory
+                    var owner = new PooledSliceOwner(rented, encodedSize);
+                    await encodedFrames.WriteAsync(owner, cancellationToken).ConfigureAwait(false);
+                }
+                catch {
+                    // Ensure rented memory is released on any encode error before loop continues
+                    rented.Dispose();
+                    throw;
+                }
+            }
+        }
+        finally {
+            try { encoder?.Dispose(); } catch { /* ignore */ }
+            encodedFrames.TryComplete();
+        }
+    }
+
+    private async Task Send(CancellationToken cancellationToken)
+    {
+
+    }
+
+    private readonly struct PooledSliceOwner(IMemoryOwner<byte> rented, int length) : IMemoryOwner<byte>
+    {
+        public Memory<byte> Memory => rented.Memory[..length];
+        public void Dispose() => rented.Dispose();
     }
 
     // private class RecordingProcess(AppUIHub hub): UIWorkerBase<AppUIHub>(hub)

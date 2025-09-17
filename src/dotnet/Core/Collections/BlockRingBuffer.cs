@@ -135,16 +135,17 @@ public class BlockRingBuffer<T>
         }
 
         // Wraparound required, need to copy to contiguous memory
-        var rented = ArrayPool<T>.Shared.Rent(length);
+        var owner = MemoryPool<T>.Shared.Rent(length);
         try {
             var firstPart = _buffer.Length - readPos;
-            _buffer.AsSpan(readPos, firstPart).CopyTo(rented.AsSpan(0, firstPart));
-            _buffer.AsSpan(0, length - firstPart).CopyTo(rented.AsSpan(firstPart, length - firstPart));
-            block = new ConsumableBlock(new Memory<T>(rented, 0, length), rented, this);
+            var span = owner.Memory.Span;
+            _buffer.AsSpan(readPos, firstPart).CopyTo(span[..firstPart]);
+            _buffer.AsSpan(0, length - firstPart).CopyTo(span.Slice(firstPart, length - firstPart));
+            block = new ConsumableBlock(owner.Memory[..length], owner, this);
             return true;
         }
         catch {
-            ArrayPool<T>.Shared.Return(rented);
+            owner.Dispose();
             // Reset pending read index on failure
             Volatile.Write(ref _pendingReadIndex, currentRead);
             throw;
@@ -196,12 +197,12 @@ public class BlockRingBuffer<T>
 
     private readonly struct ConsumableBlock : IMemoryOwner<T>
     {
-        private readonly T[]? _rented;
+        private readonly IMemoryOwner<T>? _rented;
         private readonly BlockRingBuffer<T>? _buffer;
 
         public Memory<T> Memory { get; }
 
-        internal ConsumableBlock(Memory<T> memory, T[]? rented = null, BlockRingBuffer<T>? buffer = null)
+        internal ConsumableBlock(Memory<T> memory, IMemoryOwner<T>? rented = null, BlockRingBuffer<T>? buffer = null)
         {
             Memory = memory;
             _rented = rented;
@@ -210,8 +211,7 @@ public class BlockRingBuffer<T>
 
         public void Dispose()
         {
-            if (_rented != null)
-                ArrayPool<T>.Shared.Return(_rented);
+            _rented?.Dispose();
 
             // Auto-commit the consumed length when disposing
             if (_buffer != null && !Memory.IsEmpty)
@@ -219,6 +219,5 @@ public class BlockRingBuffer<T>
         }
 
         public static implicit operator ReadOnlyMemory<T>(ConsumableBlock block) => block.Memory;
-        public bool IsValid => !Memory.IsEmpty;
     }
 }

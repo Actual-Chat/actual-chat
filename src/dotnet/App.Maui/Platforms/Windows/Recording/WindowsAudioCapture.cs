@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.Foundation;
 using Windows.Media;
 using Windows.Media.Audio;
 using Windows.Media.Capture;
@@ -129,17 +128,20 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                         return;
 
                     var floatCount = (int)capacity / sizeof(float);
-                    var outBuffer = ArrayPool<float>.Shared.Rent(floatCount);
+                    var owner = MemoryPool<float>.Shared.Rent(floatCount);
+                    try {
+                        var dst = owner.Memory.Span.Slice(0, floatCount);
+                        var src = new ReadOnlySpan<float>((void*)dataPtr, floatCount);
+                        src.CopyTo(dst);
 
-                    // Copy unmanaged bytes to managed float[]
-                    fixed (float* outPtr = &outBuffer[0])
-                        Buffer.MemoryCopy((void*)dataPtr,
-                            outPtr,
-                            (long)floatCount * sizeof(float),
-                            capacity);
-
-                    // Enqueue; ownership passed to consumer
-                    channel.Writer.TryWrite(new BufferReference(new Memory<float>(outBuffer, 0, floatCount), outBuffer));
+                        // Enqueue; ownership passed to consumer
+                        if (!channel.Writer.TryWrite(new BufferReference(owner.Memory[..floatCount], owner)))
+                            owner.Dispose();
+                    }
+                    catch {
+                        owner.Dispose();
+                        throw;
+                    }
                 }
             }
             catch (Exception e) {
@@ -149,12 +151,9 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         }
     }
 
-
-    private readonly struct BufferReference(Memory<float> memory, float[] rentedBuffer) : IMemoryOwner<float>
+    private readonly struct BufferReference(Memory<float> memory, IMemoryOwner<float> owner): IMemoryOwner<float>
     {
         public Memory<float> Memory { get; } = memory;
-
-        public void Dispose()
-            => ArrayPool<float>.Shared.Return(rentedBuffer);
+        public void Dispose() => owner.Dispose();
     }
 }

@@ -178,6 +178,8 @@
     <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />
+    <PackageVersion Include="OpusSharp.Core" Version="1.5.2.2" />
+    <PackageVersion Include="OpusSharp.Natives" Version="1.5.2.2" />
     <PackageVersion Include="RestEase" Version="1.6.4" />
     <PackageVersion Include="Pidgin" Version="3.4.0" />
     <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.8" />

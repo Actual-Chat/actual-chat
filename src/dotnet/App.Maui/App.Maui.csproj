@@ -179,10 +179,13 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Serilog.Sinks.File" />
+<!--    Commented out as both runtime and DirectML runtime have same biney names -->
 <!--    <PackageReference Include="Microsoft.ML.OnnxRuntime">-->
 <!--      <ExcludeAssets>runtime</ExcludeAssets>-->
 <!--    </PackageReference>-->
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
+    <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
 
   <!-- Common Windows, iOS and Android build properties -->
