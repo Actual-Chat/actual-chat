@@ -299,7 +299,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         CancellationToken cancellationToken)
     {
         var vadRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10); // 10 seconds of VAD buffer
-        var encodingRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10); // 10 seconds of encoding buffer
+        // Keep encoding buffer small to maintain ~pre-roll without growing too large
+        var encodingRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 2); // ~2 seconds of encoding buffer
         var vadChannel = Channel.CreateUnbounded<VoiceActivityChange>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
@@ -314,6 +315,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         CancellationTokenSource? encodeCts = null;
         Task? encodeTask = null;
         Task? sendTask = null;
+
         var vadReader = vadChannel.Reader;
         var processToken = cancellationToken;
         var detectSpeechTask = BackgroundTask.Run(async () => {
@@ -329,7 +331,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                            .ConfigureAwait(false))
                         if (change.Kind == VoiceActivityKind.Start) {
                             // Start a new encode/send pipeline if not already active
-                            if (encodeTask is { IsCompleted: false })
+                            var currentEncodeTask = Volatile.Read(ref encodeTask);
+                            if (currentEncodeTask is { IsCompleted: false })
                                 continue;
 
                             var channel = Channel.CreateUnbounded<IMemoryOwner<byte>>(new UnboundedChannelOptions {
@@ -337,18 +340,22 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                                 SingleWriter = true,
                                 AllowSynchronousContinuations = true,
                             });
-                            encodeCts = CancellationTokenSource.CreateLinkedTokenSource(processToken);
-                            var encodeToken = encodeCts.Token;
-                            encodeTask = BackgroundTask.Run(async () => {
+                            var localEncodeCts = CancellationTokenSource.CreateLinkedTokenSource(processToken);
+                            var encodeToken = localEncodeCts.Token;
+                            var localEncodeTask = BackgroundTask.Run(async () => {
                                     await Encode(encodingRingBuffer, channel.Writer, encodeToken)
                                         .ConfigureAwait(false);
                                 },
-                                encodeCts.Token);
-                            sendTask = BackgroundTask.Run(async () => {
-                                    // send reads until channel completes
-                                    await Send(channel.Reader, encodeToken).ConfigureAwait(false);
+                                encodeToken);
+                            var localSendTask = BackgroundTask.Run(async () => {
+                                    // send encoded packets until the channel completes
+                                    // do not use encodeToken
+                                    await Send(channel.Reader, processToken).ConfigureAwait(false);
                                 },
-                                encodeCts.Token);
+                                encodeToken);
+                            _ = Interlocked.Exchange(ref encodeCts, localEncodeCts);
+                            _ = Interlocked.Exchange(ref encodeTask, localEncodeTask);
+                            _ = Interlocked.Exchange(ref sendTask, localSendTask);
                         }
                         else if (change.Kind == VoiceActivityKind.End) {
                             // Stop current encoding and wait for send completion
@@ -364,12 +371,14 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                             var localSendTask = Interlocked.Exchange(ref sendTask, null);
                             if (localEncodeTask != null)
                                 try { await localEncodeTask.ConfigureAwait(false); }
-                                catch {
+                                catch (Exception e) {
+                                    Log.LogError(e, "Failed to stop encode task");
                                     // ignored
                                 }
                             if (localSendTask != null)
                                 try { await localSendTask.ConfigureAwait(false); }
-                                catch {
+                                catch (Exception e) {
+                                    Log.LogError(e, "Failed to stop send task");
                                     // ignored
                                 }
                         }
@@ -386,8 +395,37 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 var memory = frame.Memory;
 
                 var isVadBufferPushed = vadRingBuffer.TryPush(memory.Span);
-                var isEncodingBufferPushed = encodingRingBuffer.TryPush(memory.Span);
-                if (!isVadBufferPushed || !isEncodingBufferPushed)
+
+                // If encoding is inactive, proactively trim encodingRingBuffer to avoid stalling,
+                // but keep a rolling pre-roll (buffer capacity is small, ~2s) to avoid clicks on start.
+                var currentEncodeTask = Volatile.Read(ref encodeTask);
+                var isEncodingActive = currentEncodeTask is { IsCompleted: false };
+                bool isEncodingBufferPushed;
+                if (isEncodingActive)
+                    isEncodingBufferPushed = encodingRingBuffer.TryPush(memory.Span);
+                else {
+                    // Try to push; if full, pull & drop Opus-sized chunks until push succeeds
+                    isEncodingBufferPushed = encodingRingBuffer.TryPush(memory.Span);
+                    if (!isEncodingBufferPushed) {
+                        // Drain oldest audio in Opus-sized chunks to make room
+                        // Keep trying a few times; each successful pull frees space
+                        // We intentionally don't await WhenPulled() here since no consumer is pulling.
+                        var safetyIters = 0;
+                        while (!isEncodingBufferPushed && safetyIters++ < 32) {
+                            if (encodingRingBuffer.TryPull(Constants.Audio.OpusFrameLength, out var dropped))
+                                using (dropped) {
+                                    /* drop to free space */
+                                }
+                            else
+                                // Not enough data to form an Opus frame; nothing to drop — give up on this frame
+                                break;
+
+                            isEncodingBufferPushed = encodingRingBuffer.TryPush(memory.Span);
+                        }
+                    }
+                }
+
+                if (!isVadBufferPushed || (isEncodingActive && !isEncodingBufferPushed))
                     await Task.WhenAll(
                             vadRingBuffer.WhenPulled,
                             encodingRingBuffer.WhenPulled)
@@ -479,22 +517,30 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         CancellationToken cancellationToken)
     {
         try {
-            async IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
-            {
-                while (!cancellationToken.IsCancellationRequested) {
-                    if (!buffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
-                        await buffer.WhenPushed.ConfigureAwait(false);
-                        continue;
-                    }
-                    yield return frame; // ownership transferred to consumer
-                }
-            }
-
             await foreach (var packet in AudioCodec.Encode(ReadFrames(), cancellationToken).ConfigureAwait(false))
                 await encodedFrames.WriteAsync(packet, cancellationToken).ConfigureAwait(false);
         }
+        catch (OperationCanceledException) {
+            // ignore
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to encode audio");
+            throw;
+        }
         finally {
             encodedFrames.TryComplete();
+        }
+        return;
+
+        async IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
+        {
+            while (!cancellationToken.IsCancellationRequested) {
+                if (!buffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
+                    await buffer.WhenPushed.ConfigureAwait(false);
+                    continue;
+                }
+                yield return frame; // ownership transferred to consumer
+            }
         }
     }
 
