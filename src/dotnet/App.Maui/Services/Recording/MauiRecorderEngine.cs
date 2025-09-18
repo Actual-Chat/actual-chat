@@ -1,33 +1,13 @@
 using System.Buffers;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Components;
-using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services.Recording;
 
 public class MauiRecorderEngine : IAudioRecorderEngine
 {
     private static readonly TimeSpan RecordingFiledInterval = TimeSpan.FromMilliseconds(500);
-
-    private static readonly string JSSetRecordingMethod =
-        $"{BlazorUIAppModule.ImportName}.RecorderStateHub.setRecording";
-
-    private static readonly string JSSetConnectedMethod =
-        $"{BlazorUIAppModule.ImportName}.RecorderStateHub.setConnected";
-
-    private static readonly string JSSetSignalDetectedMethod =
-        $"{BlazorUIAppModule.ImportName}.RecorderStateHub.setSignalDetected";
-
-    private static readonly string JSSetVoiceActiveMethod =
-        $"{BlazorUIAppModule.ImportName}.RecorderStateHub.setVoiceActive";
-
-    private static readonly string JSOnAudioPowerChangeMethod =
-        $"{BlazorUIAppModule.ImportName}.RecorderStateHub.onAudioPowerChange";
-
-    private static readonly string JSMicrophoneIsCapturedMethod =
-        $"{BlazorUIAppModule.ImportName}.RecorderStateHub.microphoneIsCaptured";
 
     private readonly Lock _sync = new ();
     private readonly Debouncer<Unit> _noSignalDetectedDebouncer;
@@ -65,7 +45,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     [field: AllowNull] [field: MaybeNull]
     private ILogger Log => field ??= _hub.LogFor<MauiRecorderEngine>();
 
-    private IJSRuntime JS => _hub.JS;
+    [field: AllowNull] [field: MaybeNull]
+    private RecorderStateHub RecorderStateHub => field ??= _hub.Services.GetRequiredService<RecorderStateHub>();
 
     public MauiRecorderEngine(UIHub hub)
     {
@@ -204,7 +185,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             return ValueTask.CompletedTask;
 
         StateHasChanged();
-        return JS.InvokeVoidAsync(JSSetRecordingMethod, isRecording);
+        return RecorderStateHub.SetRecording(isRecording);
     }
 
     private ValueTask SetConnected(bool isConnected)
@@ -214,7 +195,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             return ValueTask.CompletedTask;
 
         StateHasChanged();
-        return JS.InvokeVoidAsync(JSSetConnectedMethod, isConnected);
+        return RecorderStateHub.SetConnected(isConnected);
     }
 
     private ValueTask SetSignalDetected(bool isSignalDetected)
@@ -227,7 +208,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             return ValueTask.CompletedTask;
 
         StateHasChanged();
-        return JS.InvokeVoidAsync(JSSetSignalDetectedMethod, isSignalDetected);
+        return RecorderStateHub.SetSignalDetected(isSignalDetected);
     }
 
     private ValueTask SetVoiceActive(bool isVoiceActive)
@@ -237,16 +218,16 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             return ValueTask.CompletedTask;
 
         StateHasChanged();
-        return JS.InvokeVoidAsync(JSSetVoiceActiveMethod, isVoiceActive);
+        return RecorderStateHub.SetVoiceActive(isVoiceActive);
     }
 
     private ValueTask OnAudioPowerChange(double power)
-        => JS.InvokeVoidAsync(JSOnAudioPowerChangeMethod, power);
+        => RecorderStateHub.OnAudioPowerChange(power);
 
     private async ValueTask MicrophoneIsCaptured(double gain)
     {
         await SetSignalDetected(true).ConfigureAwait(false);
-        await JS.InvokeVoidAsync(JSMicrophoneIsCapturedMethod, gain).ConfigureAwait(false);
+        await RecorderStateHub.MicrophoneIsCaptured(gain).ConfigureAwait(false);
     }
 
     private void StateHasChanged()
