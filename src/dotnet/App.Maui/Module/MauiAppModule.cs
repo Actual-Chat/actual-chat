@@ -57,8 +57,11 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddSingleton<VoiceActivityDetector>(c => new VoiceActivityDetector(c));
 
-        // TODO(AK): Replace with NativeAudioPlaybackEngineFactory
+#if WINDOWS
+        services.AddScoped<IAudioPlaybackEngineFactory>(c => new ActualChat.App.Maui.Services.Playback.MauiAudioPlaybackEngineFactory(c));
+#else
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new WebAudioPlaybackEngineFactory(c));
+#endif
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));
