@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>10.5.19</ActualLabFusionVersion>
+    <ActualLabFusionVersion>10.5.24</ActualLabFusionVersion>
     <AspNetCoreVersion>9.0.8</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>9.0.8</EntityFrameworkCoreVersion>
@@ -13,7 +13,7 @@
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>[9.0.8,)</MicrosoftExtensionsVersion>
     <NpgsqlVersion>9.0.3</NpgsqlVersion>
-    <RedisVersion>2.8.37</RedisVersion>
+    <RedisVersion>2.9.11</RedisVersion>
     <SignalRVersion>[9.0.8,)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.12.0</OpenTelemetryVersion>
