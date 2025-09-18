@@ -256,7 +256,7 @@
 
     private async Task OnAttachClick(string acceptTypes) {
         if (AttachmentFilePicker is not null) {
-            var files = await AttachmentFilePicker.OnAttachClick(acceptTypes);
+            var files = await AttachmentFilePicker.PickFiles(acceptTypes);
             await OnAttachFilesPicked(files);
         } else {
             await JSRef.InvokeVoidAsync("showWebFilePickerDialog", acceptTypes);

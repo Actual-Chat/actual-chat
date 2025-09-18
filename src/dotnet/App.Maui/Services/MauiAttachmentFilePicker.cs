@@ -5,15 +5,13 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiAttachmentFilePicker : IAttachmentFilePicker
 {
-    public async Task<AttachFileInfo[]> OnAttachClick(string acceptTypes)
+    public async Task<AttachFileInfo[]> PickFiles(string acceptTypes)
     {
         var temp = await FilePicker.Default.PickMultipleAsync().ConfigureAwait(true);
         var filesResults = temp.ToArray();
-        return filesResults.Length == 0 ? [] : await CreateAttachments(filesResults).ConfigureAwait(false);
-    }
+        if (filesResults.Length == 0)
+            return [];
 
-    private async Task<AttachFileInfo[]> CreateAttachments(FileResult[] filesResults)
-    {
         var fileInfos = new List<AttachFileInfo>();
         foreach (var fileResult in filesResults) {
             long fileLength;

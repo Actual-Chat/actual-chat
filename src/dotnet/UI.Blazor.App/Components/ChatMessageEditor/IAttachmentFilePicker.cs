@@ -6,5 +6,5 @@ public record AttachFileInfo(string FileName, string FileType, int Length, IFile
 
 public interface IAttachmentFilePicker
 {
-    Task<AttachFileInfo[]> OnAttachClick(string acceptTypes);
+    Task<AttachFileInfo[]> PickFiles(string acceptTypes);
 }
