@@ -79,7 +79,7 @@ internal sealed class AudioStreamer
     {
         private string? _repliedChatEntryId = repliedChatEntryId;
 
-        private readonly ConcurrentQueue<byte[]> _frames = new();
+        private readonly ConcurrentQueue<byte[]> _audioPacketQueue = new();
         private readonly SemaphoreSlim _dataAvailable = new(0);
         private volatile bool _isCompleted;
         private Task? _streamTask;
@@ -87,13 +87,12 @@ internal sealed class AudioStreamer
 
         public void AddFrame(ReadOnlySpan<byte> frame)
         {
-            if (_isCompleted || frame.IsEmpty) return;
-            // Copy frame into pooled array to avoid external mutations
-            var buffer = ArrayPool<byte>.Shared.Rent(frame.Length);
-            frame.CopyTo(buffer);
-            _frames.Enqueue(buffer.AsSpan(0, frame.Length).ToArray()); // shrink to exact length
+            if (_isCompleted || frame.IsEmpty)
+                return;
+
+            _audioPacketQueue.Enqueue(frame.ToArray());
             // Cap buffer size
-            while (_frames.Count > MaxBufferedFrames && _frames.TryDequeue(out var _)) {
+            while (_audioPacketQueue.Count > MaxBufferedFrames && _audioPacketQueue.TryDequeue(out _)) {
                 // drop oldest frames on overflow
             }
             _dataAvailable.Release();
@@ -127,35 +126,39 @@ internal sealed class AudioStreamer
                 var batch = new List<byte[]>(MaxPackFrames);
                 while (!_cts.IsCancellationRequested) {
                     // Wait for data if needed
-                    if (batch.Count == 0 && _frames.IsEmpty) {
-                        if (_isCompleted) break;
+                    if (batch.Count == 0 && _audioPacketQueue.IsEmpty) {
+                        if (_isCompleted)
+                            break;
+
                         await _dataAvailable.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false);
                     }
 
                     // Fill batch
-                    while (batch.Count < MaxPackFrames && _frames.TryDequeue(out var f)) {
-                        batch.Add(f);
-                    }
+                    while (batch.Count < MaxPackFrames && _audioPacketQueue.TryDequeue(out var audioPacket))
+                        batch.Add(audioPacket);
 
-                    if (batch.Count == 0) continue;
+                    if (batch.Count == 0)
+                        continue;
 
                     // Send packet
-                    var packet = batch.ToArray();
-                    await channel.Writer.WriteAsync(packet, _cts.Token).ConfigureAwait(false);
+                    var packetBatch = batch.ToArray();
+                    await channel.Writer.WriteAsync(packetBatch, _cts.Token).ConfigureAwait(false);
                     batch.Clear();
 
                     // Pacing to avoid overlaps similar to TS
-                    var delay = packet.Length * FrameDurationMs / 2; // MAX_SPEED ~2
+                    var delay = packetBatch.Length * FrameDurationMs / 2; // MAX_SPEED ~2
                     if (delay > 0)
                         await Task.Delay(delay, _cts.Token).ConfigureAwait(false);
 
-                    if (_isCompleted && _frames.IsEmpty) break;
+                    if (_isCompleted && _audioPacketQueue.IsEmpty)
+                        break;
                 }
             }
             catch { /* ignore */ }
             finally {
                 channel.Writer.TryComplete();
-                try { await sendTask.ConfigureAwait(false); } catch { }
+                try { await sendTask.ConfigureAwait(false); }
+                catch { /* ignore */ }
             }
         }
 
@@ -163,7 +166,8 @@ internal sealed class AudioStreamer
         {
             await _cts.CancelAsync();
             if (_streamTask != null)
-                try { await _streamTask.ConfigureAwait(false); } catch { }
+                try { await _streamTask.ConfigureAwait(false); }
+                catch { /* ignore */ }
             _cts.Dispose();
         }
     }

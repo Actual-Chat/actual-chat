@@ -7,9 +7,9 @@ namespace ActualChat.App.Maui.Services.Recording;
 
 public class MauiRecorderEngine : IAudioRecorderEngine
 {
-    private static readonly TimeSpan RecordingFiledInterval = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan RecordingFailedInterval = TimeSpan.FromMilliseconds(500);
 
-    private readonly Lock _sync = new ();
+    private readonly Lock _sync = new();
     private readonly Debouncer<Unit> _noSignalDetectedDebouncer;
 
     private ChatId? _chatId;
@@ -25,19 +25,16 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private readonly UIHub _hub;
 
     [field: AllowNull] [field: MaybeNull]
-    private MicrophonePermissionHandler MicrophonePermissionHandler
-        => field ??= _hub.Services.GetRequiredService<MicrophonePermissionHandler>();
+    private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= _hub.Services.GetRequiredService<MicrophonePermissionHandler>();
 
     [field: AllowNull] [field: MaybeNull]
     private IAudioCapture AudioCapture => field ??= _hub.Services.GetRequiredService<IAudioCapture>();
 
     [field: AllowNull] [field: MaybeNull]
-    private VoiceActivityDetector VoiceActivityDetector
-        => field ??= _hub.Services.GetRequiredService<VoiceActivityDetector>();
+    private VoiceActivityDetector VoiceActivityDetector => field ??= _hub.Services.GetRequiredService<VoiceActivityDetector>();
 
     [field: AllowNull] [field: MaybeNull]
-    private IAudioRecorderBackend AudioRecorderBackend
-        => field ??= _hub.Services.GetRequiredService<IAudioRecorderBackend>();
+    private IAudioRecorderBackend AudioRecorderBackend => field ??= _hub.Services.GetRequiredService<IAudioRecorderBackend>();
 
     [field: AllowNull] [field: MaybeNull]
     private IAudioCodec AudioCodec => field ??= _hub.Services.GetRequiredService<IAudioCodec>();
@@ -51,8 +48,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     public MauiRecorderEngine(UIHub hub)
     {
         _hub = hub;
-        _noSignalDetectedDebouncer = Debouncer.New<Unit>(hub.Clocks.CoarseCpuClock,
-            RecordingFiledInterval,
+        _noSignalDetectedDebouncer = Debouncer.New<Unit>(
+            hub.Clocks.CoarseCpuClock,
+            RecordingFailedInterval,
             _ => SetSignalDetected(false).AsTask());
     }
 
@@ -60,24 +58,19 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         string sessionToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
+        // Stop any existing recording first
+        await StopAsync(cancellationToken).ConfigureAwait(false);
+
         // Initialize and connect AudioStreamer
         _streamer ??= new AudioStreamer(_hub.HostInfo.BaseUrl);
         await _streamer.EnsureConnected(true, cancellationToken).ConfigureAwait(false);
         await SetConnected(true).ConfigureAwait(false);
 
-        // Ensure only one active recording CTS
-        var newCts = cancellationToken.CreateLinkedTokenSource();
-        var prevCts = Interlocked.Exchange(ref _recordingCts, newCts);
-        if (prevCts != null) {
-            try { await prevCts.CancelAsync(); }
-            catch {
-                /* ignore */
-            }
-            prevCts.Dispose();
-        }
-        var token = newCts.Token;
+        // Create a new recording context
+        _recordingCts = cancellationToken.CreateLinkedTokenSource();
+        var token = _recordingCts.Token;
 
         var microphoneStream = await AudioCapture.Capture(token).ConfigureAwait(false);
         if (microphoneStream is null) {
@@ -86,32 +79,24 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             return false;
         }
 
-        // Start recording
-        lock (_sync) {
-            _chatId = chatId;
-            _sessionToken = sessionToken;
-            _repliedChatEntryId = repliedChatEntryId;
-        }
-        await SetRecording(true).ConfigureAwait(false);
-        await SetSignalDetected(false).ConfigureAwait(false);
-        await SetVoiceActive(false).ConfigureAwait(false);
+        // Set the recording context
+        SetRecordingContext(chatId, sessionToken, repliedChatEntryId);
 
-        _ = BackgroundTask.Run(async () => {
-                await ProcessMicrophoneStream(microphoneStream, token).ConfigureAwait(false);
-            },
-            token);
+        // Update state
+        await InitializeRecordingState().ConfigureAwait(false);
 
+        // Start processing in the background
+        _ = BackgroundTask.Run(() => ProcessAudioStream(microphoneStream, token), token);
         return true;
     }
 
     public async Task<bool> StopAsync(CancellationToken cancellationToken = default)
     {
         var recordingCts = Interlocked.Exchange(ref _recordingCts, null);
-        if (recordingCts != null) {
+        if (recordingCts != null)
+        {
             try { await recordingCts.CancelAsync(); }
-            catch {
-                /* ignore */
-            }
+            catch { /* ignore */ }
             recordingCts.Dispose();
         }
 
@@ -119,21 +104,18 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         lock (_sync) {
             stream = _currentStream;
             _currentStream = null;
-            _chatId = null;
+            ClearRecordingContext();
         }
 
-        if (stream == null) {
-            await SetRecording(false).ConfigureAwait(false);
-            await SetVoiceActive(false).ConfigureAwait(false);
-            await SetSignalDetected(false).ConfigureAwait(false);
-            return true;
+        if (stream != null) {
+            try { stream.Complete(); }
+            catch { /* ignore */ }
+
+            try { await stream.DisposeAsync(); }
+            catch { /* ignore */ }
         }
 
-        stream.Complete();
-        await stream.DisposeAsync();
-        await SetRecording(false).ConfigureAwait(false);
-        await SetVoiceActive(false).ConfigureAwait(false);
-        await SetSignalDetected(false).ConfigureAwait(false);
+        await ResetRecordingState().ConfigureAwait(false);
         _noSignalDetectedDebouncer.Reset();
         return true;
     }
@@ -176,7 +158,41 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         };
     }
 
-    // Private methods
+    #region State Management
+
+    private void SetRecordingContext(ChatId chatId, string sessionToken, ChatEntryId? repliedChatEntryId)
+    {
+        lock (_sync)
+        {
+            _chatId = chatId;
+            _sessionToken = sessionToken;
+            _repliedChatEntryId = repliedChatEntryId;
+        }
+    }
+
+    private void ClearRecordingContext()
+    {
+        lock (_sync)
+        {
+            _chatId = null;
+            _sessionToken = null;
+            _repliedChatEntryId = null;
+        }
+    }
+
+    private async Task InitializeRecordingState()
+    {
+        await SetRecording(true).ConfigureAwait(false);
+        await SetSignalDetected(false).ConfigureAwait(false);
+        await SetVoiceActive(false).ConfigureAwait(false);
+    }
+
+    private async Task ResetRecordingState()
+    {
+        await SetRecording(false).ConfigureAwait(false);
+        await SetVoiceActive(false).ConfigureAwait(false);
+        await SetSignalDetected(false).ConfigureAwait(false);
+    }
 
     private ValueTask SetRecording(bool isRecording)
     {
@@ -184,7 +200,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         if (previous == isRecording)
             return ValueTask.CompletedTask;
 
-        StateHasChanged();
+        NotifyStateChange();
         return RecorderStateHub.SetRecording(isRecording);
     }
 
@@ -194,20 +210,20 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         if (previous == isConnected)
             return ValueTask.CompletedTask;
 
-        StateHasChanged();
+        NotifyStateChange();
         return RecorderStateHub.SetConnected(isConnected);
     }
 
     private ValueTask SetSignalDetected(bool isSignalDetected)
     {
         if (isSignalDetected)
-            _noSignalDetectedDebouncer.Debounce(Unit.Default); // Schedule a debounced no signal detected event
+            _noSignalDetectedDebouncer.Debounce(Unit.Default);
 
         var previous = Interlocked.Exchange(ref _isSignalDetected, isSignalDetected);
         if (previous == isSignalDetected)
             return ValueTask.CompletedTask;
 
-        StateHasChanged();
+        NotifyStateChange();
         return RecorderStateHub.SetSignalDetected(isSignalDetected);
     }
 
@@ -217,7 +233,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         if (previous == isVoiceActive)
             return ValueTask.CompletedTask;
 
-        StateHasChanged();
+        NotifyStateChange();
         return RecorderStateHub.SetVoiceActive(isVoiceActive);
     }
 
@@ -230,16 +246,33 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         await RecorderStateHub.MicrophoneIsCaptured(gain).ConfigureAwait(false);
     }
 
-    private void StateHasChanged()
+    private void NotifyStateChange()
     {
         bool isRecording, isSignalDetected, isConnected, isVoiceActive;
-        lock (_sync) {
+        lock (_sync)
+        {
             isRecording = _isRecording;
             isSignalDetected = _isSignalDetected;
             isConnected = _isConnected;
             isVoiceActive = _isVoiceActive;
         }
         AudioRecorderBackend.OnRecordingStateChange(isRecording, isSignalDetected, isConnected, isVoiceActive);
+    }
+
+    #endregion
+
+    #region Audio Processing
+    private async Task ProcessAudioStream(
+        IAsyncEnumerable<IMemoryOwner<float>> frames,
+        CancellationToken cancellationToken)
+    {
+        try {
+            var processor = new AudioStreamProcessor(this, Log);
+            await processor.Process(frames, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            await ResetRecordingState().ConfigureAwait(false);
+        }
     }
 
     private async Task RecordingHeartbeat(CancellationToken cancellationToken)
@@ -272,205 +305,229 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         }
     }
 
-    private async Task ProcessMicrophoneStream(
-        IAsyncEnumerable<IMemoryOwner<float>> frames,
-        CancellationToken cancellationToken)
+    #endregion
+
+    #region AudioStreamProcessor
+    private async Task<AudioStreamer.AudioStream?> CreateAudioStream(CancellationToken token)
     {
-        // Buffers: keep small encoding buffer for ~2s preroll; VAD buffer to form VAD-sized chunks
-        var vadRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10); // ~10s
-        var encodingRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 2); // ~2s
+        string? sessionToken;
+        ChatId? chatId;
+        string? repliedChatEntryId;
 
-        var sw = Stopwatch.StartNew();
-        var minInterval = TimeSpan.FromMilliseconds(200);
-        var lastMicCapturedAt = TimeSpan.Zero;
-        var processToken = cancellationToken;
+        lock (_sync) {
+            sessionToken = _sessionToken;
+            chatId = _chatId;
+            repliedChatEntryId = _repliedChatEntryId?.ToString();
+        }
 
-        // VAD state and combined encode+send worker
-        var vad = VoiceActivityDetector;
-        await vad.EnsureInitialized(processToken).ConfigureAwait(false);
-        vad.Reset();
-        bool voiceActive = false;
+        if (sessionToken is null || chatId is null)
+            return null;
 
-        CancellationTokenSource? encodeSendCts = null;
-        Task? encodeSendTask = null;
+        _streamer ??= new AudioStreamer(_hub.HostInfo.BaseUrl);
+        await _streamer.EnsureConnected(true, token).ConfigureAwait(false);
+        await SetConnected(_streamer.IsConnected).ConfigureAwait(false);
 
-        try {
-            await foreach (var frame in frames.WithCancellation(processToken).ConfigureAwait(false)) {
-                using var _ = frame;
-                var memory = frame.Memory;
+        var stream = _streamer.CreateStream(sessionToken, 0, chatId.ToString(), repliedChatEntryId);
+        lock (_sync) {
+            _currentStream = stream;
+            _repliedChatEntryId = null; // Clear so it's only used once
+        }
+        stream.StartStreaming();
+        return stream;
+    }
 
-                // Push current microphone frame into both buffers
-                var isVadPushed = vadRingBuffer.TryPush(memory.Span);
+    private void CompleteAudioStream(AudioStreamer.AudioStream stream)
+    {
+        try { stream.Complete(); }
+        catch { /* ignore */ }
 
-                // Maintain encoding buffer with small rolling preroll
-                bool isEncodingPushed;
-                if (voiceActive)
-                    isEncodingPushed = encodingRingBuffer.TryPush(memory.Span);
-                else {
-                    isEncodingPushed = encodingRingBuffer.TryPush(memory.Span);
-                    if (!isEncodingPushed) {
-                        // Trim oldest audio in Opus-sized chunks to keep constant size preroll
-                        var retryCount = 0;
-                        while (!isEncodingPushed && retryCount++ < 32) {
-                            if (encodingRingBuffer.TryPull(Constants.Audio.OpusFrameLength, out var dropped))
-                                using (dropped) { /* drop */ }
-                            else
-                                break;
-                            isEncodingPushed = encodingRingBuffer.TryPush(memory.Span);
-                        }
+        lock (_sync)
+            if (ReferenceEquals(_currentStream, stream))
+                _currentStream = null;
+    }
+
+    // Separate class to handle the complex audio processing logic
+    private sealed class AudioStreamProcessor(MauiRecorderEngine engine, ILogger log)
+    {
+        private readonly VoiceActivityDetector _vad = engine.VoiceActivityDetector;
+        private readonly IAudioCodec _audioCodec = engine.AudioCodec;
+
+        private readonly BlockRingBuffer<float> _vadBuffer = new (Constants.Audio.RecordingSampleRate * 10); // 10s
+        private readonly BlockRingBuffer<float> _encodingBuffer = new (Constants.Audio.RecordingSampleRate * 2); // 2s
+
+        private CancellationTokenSource? _encodeSendCts;
+        private Task? _encodeSendTask;
+        private bool _voiceActive;
+        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
+
+        public async Task Process(
+            IAsyncEnumerable<IMemoryOwner<float>> frames,
+            CancellationToken cancellationToken)
+        {
+            await _vad.EnsureInitialized(cancellationToken).ConfigureAwait(false);
+            _vad.Reset();
+
+            var lastMicCapturedAt = TimeSpan.Zero;
+            var minInterval = TimeSpan.FromMilliseconds(200);
+
+            try {
+                await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                    using var _ = frame;
+                    var memory = frame.Memory;
+
+                    // Process the audio frame
+                    await ProcessAudioFrame(memory, cancellationToken).ConfigureAwait(false);
+
+                    // Throttle microphone capture notifications
+                    var now = _stopwatch.Elapsed;
+                    if (now - lastMicCapturedAt >= minInterval) {
+                        lastMicCapturedAt = now;
+                        var gain = AudioExt.ApproximateGain(memory.Span);
+                        await engine.MicrophoneIsCaptured(gain).ConfigureAwait(false);
+                    }
+
+                    // Process VAD events
+                    await ProcessVadEvents(cancellationToken).ConfigureAwait(false);
+
+                    // Heartbeat check
+                    await engine.RecordingHeartbeat(cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally {
+                await StopEncodeSendWorker().ConfigureAwait(false);
+            }
+        }
+
+        private async Task ProcessAudioFrame(ReadOnlyMemory<float> frame, CancellationToken cancellationToken)
+        {
+            // Push frame to buffers
+            var isVadPushed = _vadBuffer.TryPush(frame.Span);
+            bool isEncodingPushed;
+
+            if (_voiceActive)
+                isEncodingPushed = _encodingBuffer.TryPush(frame.Span);
+            else {
+                isEncodingPushed = _encodingBuffer.TryPush(frame.Span);
+                if (!isEncodingPushed) {
+                    // Trim oldest audio to maintain preroll
+                    var retryCount = 0;
+                    while (!isEncodingPushed && retryCount++ < 32) {
+                        if (_encodingBuffer.TryPull(Constants.Audio.OpusFrameLength, out var dropped))
+                            using (dropped) {
+                                /* drop */
+                            }
+                        else
+                            break;
+
+                        isEncodingPushed = _encodingBuffer.TryPush(frame.Span);
                     }
                 }
-
-                if (!isVadPushed || (voiceActive && !isEncodingPushed))
-                    await Task.WhenAll(vadRingBuffer.WhenPulled, encodingRingBuffer.WhenPulled).ConfigureAwait(false);
-
-                await SetSignalDetected(true).ConfigureAwait(false);
-
-                // Throttle JS interop for microphone gain
-                var now = sw.Elapsed;
-                if (now - lastMicCapturedAt >= minInterval) {
-                    lastMicCapturedAt = now;
-                    var gain = AudioExt.ApproximateGain(memory.Span);
-                    await MicrophoneIsCaptured(gain).ConfigureAwait(false);
-                }
-
-                // Consume VAD-sized chunks and react to events inline
-                while (vadRingBuffer.TryPull(Constants.Audio.VadFrameLength, out var vadFrame)) {
-                    using var __ = vadFrame;
-                    var vadResult = vad.AppendChunk(vadFrame.Memory.Span);
-
-                    if (vadResult.HasEvent) {
-                        if (vadResult.Change.Value.Kind == VoiceActivityKind.Start) {
-                            if (voiceActive)
-                                continue;
-
-                            // Start combined encode+send worker + stream
-                            var stream = await StartStreamingIfPossible(processToken).ConfigureAwait(false);
-                            if (stream == null)
-                                continue;
-
-                            var localCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                            var localTask = BackgroundTask.Run(
-                                async () => await EncodeAndSend(encodingRingBuffer, stream, localCts.Token).ConfigureAwait(false),
-                                localCts.Token);
-                            encodeSendCts = localCts;
-                            encodeSendTask = localTask;
-                            voiceActive = true;
-                            await SetVoiceActive(true).ConfigureAwait(false);
-                        } else {
-                            // VAD End: stop worker if running
-                            if (!voiceActive)
-                                continue;
-
-                            voiceActive = false;
-                            await SetVoiceActive(false).ConfigureAwait(false);
-
-                            // Capture and null the worker references sequentially; Interlocked is unnecessary here
-                            var localCts = encodeSendCts;
-                            encodeSendCts = null;
-                            if (localCts != null) {
-                                try { await localCts.CancelAsync(); } catch { /* ignore */ }
-                                localCts.Dispose();
-                            }
-
-                            var localTask = encodeSendTask;
-                            encodeSendTask = null;
-                            if (localTask != null)
-                                try { await localTask.ConfigureAwait(false); } catch (Exception e) {
-                                    Log.LogError(e, "Failed to stop encode/send worker");
-                                }
-                        }
-                    } else if (vad.LastActivityEvent.Kind == VoiceActivityKind.Start)
-                        // Maintain UI/JS heartbeat/animations
-                        await OnAudioPowerChange(vadResult.Gain).ConfigureAwait(false);
-                }
-
-                await RecordingHeartbeat(processToken).ConfigureAwait(false);
             }
-        }
-        finally {
-            // Ensure worker and stream are stopped
-            try {
-                if (encodeSendCts != null) {
-                    try { await encodeSendCts.CancelAsync(); } catch { /* ignore */ }
-                    encodeSendCts.Dispose();
-                }
-                if (encodeSendTask != null)
-                    try { await encodeSendTask.ConfigureAwait(false); } catch { /* ignore */ }
-            }
-            catch { /* ignore */ }
 
-            await SetVoiceActive(false).ConfigureAwait(false);
-            await SetSignalDetected(false).ConfigureAwait(false);
-            await SetRecording(false).ConfigureAwait(false);
-        }
-        return;
+            if (!isVadPushed || (_voiceActive && !isEncodingPushed))
+                await Task.WhenAll(_vadBuffer.WhenPulled, _encodingBuffer.WhenPulled)
+                    .WaitAsync(cancellationToken)
+                    .ConfigureAwait(false);
 
-        async Task<AudioStreamer.AudioStream?> StartStreamingIfPossible(CancellationToken token)
+            await engine.SetSignalDetected(true).ConfigureAwait(false);
+        }
+
+        private async Task ProcessVadEvents(CancellationToken cancellationToken)
         {
-            // Capture context
-            string? sessionToken;
-            ChatId? chatId;
-            string? repliedChatEntryId;
-            lock (_sync) {
-                sessionToken = _sessionToken;
-                chatId = _chatId;
-                repliedChatEntryId = _repliedChatEntryId?.ToString();
-            }
-            if (sessionToken is null || chatId is null)
-                return null;
+            while (_vadBuffer.TryPull(Constants.Audio.VadFrameLength, out var vadFrame)) {
+                using var _ = vadFrame;
+                var vadResult = _vad.AppendChunk(vadFrame.Memory.Span);
 
-            _streamer ??= new AudioStreamer(_hub.HostInfo.BaseUrl);
-            await _streamer.EnsureConnected(true, token).ConfigureAwait(false);
-            await SetConnected(_streamer.IsConnected).ConfigureAwait(false);
-
-            var stream = _streamer.CreateStream(sessionToken, 0, chatId.ToString(), repliedChatEntryId);
-            lock (_sync) {
-                _currentStream = stream;
-                // Clear replied id so it's only used once
-                _repliedChatEntryId = null;
+                if (vadResult.HasEvent)
+                    await HandleVadEvent(vadResult.Change!.Value, cancellationToken).ConfigureAwait(false);
+                else if (_vad.LastActivityEvent.Kind == VoiceActivityKind.Start)
+                    // Maintain UI/JS heartbeat
+                    await engine.OnAudioPowerChange(vadResult.Gain).ConfigureAwait(false);
             }
-            stream.StartStreaming();
-            return stream;
         }
 
-        async Task EncodeAndSend(BlockRingBuffer<float> buffer, AudioStreamer.AudioStream stream, CancellationToken token)
+        private async Task HandleVadEvent(VoiceActivityChange change, CancellationToken cancellationToken)
+        {
+            if (change.Kind == VoiceActivityKind.Start) {
+                if (_voiceActive) return;
+
+                var stream = await engine.CreateAudioStream(cancellationToken).ConfigureAwait(false);
+                if (stream == null) return;
+
+                var localCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                var localTask = BackgroundTask.Run(
+                    () => EncodeAndSend(stream, localCts.Token),
+                    localCts.Token);
+
+                _encodeSendCts = localCts;
+                _encodeSendTask = localTask;
+                _voiceActive = true;
+                await engine.SetVoiceActive(true).ConfigureAwait(false);
+            }
+            else // VoiceActivityKind.End
+            {
+                if (!_voiceActive) return;
+
+                _voiceActive = false;
+                await engine.SetVoiceActive(false).ConfigureAwait(false);
+                await StopEncodeSendWorker().ConfigureAwait(false);
+            }
+        }
+
+        private async Task StopEncodeSendWorker()
+        {
+            var localCts = Interlocked.Exchange(ref _encodeSendCts, null);
+            if (localCts != null) {
+                try { await localCts.CancelAsync(); }
+                catch {
+                    /* ignore */
+                }
+                localCts.Dispose();
+            }
+
+            var localTask = Interlocked.Exchange(ref _encodeSendTask, null);
+            if (localTask != null)
+                try { await localTask.ConfigureAwait(false); }
+                catch (Exception e) {
+                    log.LogError(e, "Failed to stop encode/send worker");
+                }
+        }
+
+        private async Task EncodeAndSend(AudioStreamer.AudioStream stream, CancellationToken token)
         {
             try {
-                await foreach (var packet in AudioCodec.Encode(ReadFrames(), token).ConfigureAwait(false)) {
+                await foreach (var packet in _audioCodec.Encode(ReadFrames(), token).ConfigureAwait(false)) {
                     using var _ = packet;
                     var frame = packet.Memory.Span;
                     if (frame.Length == 0)
                         continue;
+
                     stream.AddFrame(frame);
                 }
             }
             catch (OperationCanceledException) {
-                // ignore
+                // Expected when stopping
             }
             catch (Exception e) {
-                Log.LogError(e, "Failed to encode/send audio");
-                throw;
+                log.LogError(e, "Failed to encode/send audio");
             }
             finally {
-                try { stream.Complete(); } catch { /* ignore */ }
-                try { await stream.DisposeAsync(); } catch { /* ignore */ }
-                lock (_sync)
-                    if (ReferenceEquals(_currentStream, stream))
-                        _currentStream = null;
+                engine.CompleteAudioStream(stream);
+                await stream.DisposeAsync();
             }
-            return;
+        }
 
-            async IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
-            {
-                while (!token.IsCancellationRequested) {
-                    if (!buffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
-                        await buffer.WhenPushed.ConfigureAwait(false);
-                        continue;
-                    }
-                    yield return frame; // ownership transferred to encoder
+        private async IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
+        {
+            while (!_encodeSendCts!.Token.IsCancellationRequested) {
+                if (!_encodingBuffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
+                    await _encodingBuffer.WhenPushed.ConfigureAwait(false);
+                    continue;
                 }
+                yield return frame; // ownership transferred to encoder
             }
         }
     }
+    #endregion
 }
+
