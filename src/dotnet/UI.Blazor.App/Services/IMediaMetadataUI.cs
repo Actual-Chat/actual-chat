@@ -9,7 +9,7 @@ public record MediaMetadata(
         => new (
             $"{trackInfo.Author.Avatar.Name} @ {trackInfo.Chat.Title}",
             "Voxt",
-            "/_applogo-dark.svg");
+            "/_applogo-dark_voxt.svg");
 }
 
 public interface IMediaMetadataUI

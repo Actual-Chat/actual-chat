@@ -330,7 +330,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddSource(MLSearchInstruments.ActivitySource.Name)
             .AddAspNetCoreInstrumentation(opt => {
                 var excludedPaths = new PathString[] {
-                    "/favicon.ico",
+                    "/favicon_voxt.ico",
                     "/metrics",
                     "/status",
                     "/_blazor",

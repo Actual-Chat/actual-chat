@@ -69,7 +69,7 @@ export class Connectivity {
             try {
                 if (delayMs > 0)
                     await delayAsync(delayMs);
-                const response = await fetch('/favicon.ico', { cache: 'no-store' });
+                const response = await fetch('/favicon_voxt.ico', { cache: 'no-store' });
                 if (response.ok)
                     return true;
             }

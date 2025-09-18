@@ -16,11 +16,13 @@
     if (ScreenSize.IsNarrow() && maxShowCount > 5)
         maxShowCount = 5;
 }
-<div class="@cls">
+<div class="@cls"
+     data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
     <CascadingValue Value="@_fakeEntry" IsFixed="true">
     <div class="c-details">
         <div class="c-summary">
             <ConversationMessageHeader
+                Conversation="@conversation"
                 Title="@m.Title"
                 MessageCount="@messageCount"
                 StartsAt="@startsAt"
@@ -28,7 +30,7 @@
             <div class="c-short">
                 @TranslationFragments.TranslatedMarkupWithMark(m.Description)
                 @if (!_isOpen) {
-                    <span class="show-more-btn" @onclick="@ToggleDetails"> Show more</span>
+                    <span class="show-more-btn" @onclick="@ToggleDetails"> Show items</span>
                 }
             </div>
         </div>
@@ -36,7 +38,7 @@
             <div class="c-long">
                 <div class="c-long-content @detailsCls">
                     @TranslationFragments.TranslatedMarkupWithMark(m.Summary)
-                    <span class="show-more-btn" @onclick="@ToggleDetails"> Show less</span>
+                    <span class="show-more-btn" @onclick="@ToggleDetails"> Hide items</span>
                 </div>
             </div>
         }

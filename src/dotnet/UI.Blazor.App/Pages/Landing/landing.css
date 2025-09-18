@@ -18,7 +18,7 @@
 }
 .landing .page > .c-content {
     @apply gap-x-12;
-    @apply h-full;
+    @apply h-full max-w-320 lg:max-w-352;
     @apply pt-30 pb-16;
     @apply overflow-hidden;
 }
@@ -140,6 +140,7 @@ body.narrow .landing .title-text.main {
 }
 .landing .landing-header > .c-content {
     @apply flex-1 flex-x;
+    @apply max-w-320 lg:max-w-352;
 }
 .landing .landing-header > .c-content {
     @apply flex-1 flex-x;
@@ -619,7 +620,7 @@ body.narrow .landing .page-5 > .c-content > .c-row.c-first {
 }
 .landing .page-6 > .c-content {
     @apply relative;
-    @apply flex-y self-start lg:gap-y-8;
+    @apply flex-y lg:gap-y-8;
     @apply w-full;
     @apply pb-0;
 }
@@ -820,9 +821,32 @@ body.narrow .landing .landing-links {
 
 /* Landing Footer */
 .landing .landing-footer {
-    @apply flex-x;
+    @apply flex-x justify-center;
     @apply p-4 md:py-8 md:px-16;
     @apply bg-01;
+}
+.landing .landing-footer .c-content {
+    @apply flex-x items-center justify-center;
+    @apply w-full max-w-320 lg:max-w-352;
+}
+.landing .landing-footer .c-content .c-left {
+    @apply flex-1 flex-y gap-y-4;
+}
+.landing .landing-footer .c-content .c-left .c-links {
+    @apply flex-y md:flex-x md:gap-x-12 justify-start;
+    @apply text-01;
+}
+.landing .landing-footer .c-content .c-left .c-copyright {
+    @apply flex items-end;
+    @apply min-h-8;
+    @apply text-01 text-sm;
+}
+.landing .landing-footer .c-content .c-right {
+    @apply flex-y gap-y-3 items-end;
+    @apply text-01;
+}
+body.narrow .landing .landing-footer .c-content .c-right {
+    @apply hidden;
 }
 
 /* Download Button */

@@ -253,7 +253,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
     }
 
-    // [CommandHandler]
+    [CommandHandler]
     public virtual async Task<Conversation> OnSummarize(
         ConversationBackend_Summarize command,
         CancellationToken cancellationToken)

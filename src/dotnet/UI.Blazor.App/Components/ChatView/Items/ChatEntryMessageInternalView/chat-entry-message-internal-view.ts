@@ -6,7 +6,8 @@ export class ChatEntryMessageInternalView {
     private blazorRef: DotNet.DotNetObject;
     private readonly messageMarkup: HTMLElement;
     private playableText: HTMLElement | null;
-    private markupHeight: number;
+    private markupHeight: number = 0;
+    private scrollbarDelta = 0;
     private mutationObserver: MutationObserver;
     private resizeObserver: ResizeObserver;
     private observerOptions = {
@@ -33,6 +34,8 @@ export class ChatEntryMessageInternalView {
         let content = this.messageMarkup.textContent;
         if (!content && !this.messageMarkup.classList.contains('streaming'))
             this.messageMarkup.classList.add('empty');
+
+        this.scrollbarDelta = this.getRemInPixels();
 
         this.playableText = this.messageMarkup.querySelector('.playable-text-markup');
 
@@ -82,6 +85,19 @@ export class ChatEntryMessageInternalView {
 
     private updateMarkupSize: MutationCallback = (mutations) => {
         mutations.forEach(mutation => {
+            const targetEl = mutation.target instanceof HTMLElement
+                ? mutation.target
+                : mutation.target.parentElement;
+
+            if (!targetEl)
+                return;
+
+            const codeParent = targetEl.closest('code');
+            if (codeParent) {
+                this.normalizeCodeBlocks(this.messageMarkup.querySelectorAll<HTMLElement>('code'));
+                return;
+            }
+
             if (mutation.type === 'characterData' &&
                 mutation.target.nodeType === Node.TEXT_NODE) {
                 const element = mutation.target.parentElement as HTMLElement;
@@ -148,9 +164,20 @@ export class ChatEntryMessageInternalView {
         this.messageMarkup.addEventListener('transitionend', this.onTransitionEndBound);
     }
 
-    private changeSizeForText(slow: boolean = false) {
+    private normalizeCodeBlocks(codeBlocks: NodeListOf<HTMLElement>) {
+        codeBlocks.forEach(codeEl => {
+            codeEl.style.height = "auto";
+            if (codeEl.scrollWidth > codeEl.clientWidth) {
+                codeEl.style.height = codeEl.getBoundingClientRect().height + this.scrollbarDelta / 4 + 'px';
+            } else
+                codeEl.style.height = codeEl.getBoundingClientRect().height + 'px';
+        });
+        this.changeSizeForText(false, true);
+    }
+
+    private changeSizeForText(slow: boolean = false, withCodeBlock: boolean = false) {
         const actualHeight = this.getActualHeight();
-        if (Math.abs(actualHeight - this.markupHeight) < this.getRemInPixels())
+        if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels() && !withCodeBlock)
             return;
 
         if (actualHeight > this.markupHeight) {
@@ -170,13 +197,7 @@ export class ChatEntryMessageInternalView {
 
         const range = document.createRange();
         range.selectNodeContents(this.messageMarkup);
-        const height = Math.ceil(range.getBoundingClientRect().height);
-
-        if (sendingStatus && style && style.position === 'absolute') {
-            sendingStatus.style.display = '';
-        }
-
-        return height;
+        return Math.ceil(range.getBoundingClientRect().height);
     }
 
     private onTransitionEndBound = (e: TransitionEvent) => this.onTransitionEnd(e);

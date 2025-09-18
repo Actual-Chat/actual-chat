@@ -1,0 +1,154 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using StringBuilderExt = ActualLab.Text.StringBuilderExt
+@inherits ComputedMenuBase<AppUIHub, ConversationMenu.Model>
+@{
+    var m = State.Value;
+    if (State.Value == Model.None)
+        return;
+
+    var expandCollapseButtonTitle = _isOpen ? "Collapse conversation" : "Expand conversation";
+    var expandCollapseButtonIcon = _isOpen ? "icon-collapse" : "icon-expand";
+}
+
+<div class="message-menu">
+    <MenuEntry
+        Icon="@expandCollapseButtonIcon"
+        Text="@expandCollapseButtonTitle"
+        Class="important-item"
+        Click="@(() => ToggleShowMessage())">
+    </MenuEntry>
+    @if (m.IsOwner) {
+        <MenuEntry
+            Icon="icon-resummarize"
+            Text="Re-summarize"
+            Click="@(() => OnReSummarize(m.Conversation))">
+        </MenuEntry>
+    }
+    <MenuEntry
+        Icon="icon-copy"
+        Text="Copy summary"
+        Click="@OnCopyToClipboardRequested">
+    </MenuEntry>
+    @if (m.EnableIncompleteUI) {
+        <MenuEntry
+            Icon="icon-reply"
+            FocusOnEditor="true"
+            Text="Reply"
+            Click="@Reply">
+        </MenuEntry>
+        <CopyTrigger Tooltip="" CopyText="" Class="ac-menu-item !p-0">
+            <MenuEntry
+                Icon="icon-copy"
+                Text="Copy summary link">
+            </MenuEntry>
+        </CopyTrigger>
+        <MenuEntry
+            Icon="icon-share"
+            Text="Forward"
+            Click="@Forward">
+        </MenuEntry>
+        <MenuEntry
+            Class="warning-item"
+            Icon="icon-trash03"
+            Text="Delete"
+            Click="@Delete">
+        </MenuEntry>
+        <MenuEntrySeparator/>
+        <MenuEntry
+            Icon="icon-select"
+            Text="Select"
+            Click="@Select">
+        </MenuEntry>
+    }
+</div>
+
+@code {
+    private bool _isOpen;
+    private ConversationId _conversationId = null!;
+    private IChatMarkupHub _chatMarkupHub = null!;
+
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
+    private IConversations Conversations => Hub.Conversations;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private IChats Chats => Hub.Chats;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [ var sConversationId, var sIsOpen ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _conversationId = ConversationId.Parse(sConversationId);
+        _isOpen = bool.Parse(sIsOpen);
+        _chatMarkupHub = ChatMarkupHubFactory[_conversationId.ChatId];
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var conversationId = _conversationId;
+        var conversation = await Conversations.Get(Session, conversationId, cancellationToken).ConfigureAwait(false);
+        if (conversation == null)
+            return Model.None;
+
+        var chatId = conversationId.ChatId;
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var isOwner = chat != null && (chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer);
+
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        return new() {
+            Conversation = conversation,
+            IsOwner = isOwner,
+            EnableIncompleteUI = enableIncompleteUI,
+        };
+    }
+
+    private void ToggleShowMessage()
+        => ChatUI.ToggleExpandConversation(_conversationId);
+
+    private void OnReSummarize(Conversation conversation)
+        => Conversations.OnReSummarize(new Conversations_Summarize(Session, conversation.Id), CancellationToken.None);
+
+    private async Task OnCopyToClipboardRequested() {
+        var text = await GetText();
+        await ClipboardUI.WriteText(text).ConfigureAwait(false);
+    }
+
+    private async Task<string> GetText() {
+        var m = State.Value;
+        CancellationToken cancellationToken = default;
+        var sb = StringBuilderExt.Acquire();
+        sb.AppendLine(m.Conversation.Title);
+        sb.AppendLine();
+        var descriptionMarkup = _chatMarkupHub.Parser.Parse(m.Conversation.Description);
+        var description = await _chatMarkupHub.ApplyMentionNamer(descriptionMarkup, cancellationToken).ConfigureAwait(false);
+        sb.AppendLine(description.ToClipboardText());
+        sb.AppendLine();
+        var summaryMarkup = _chatMarkupHub.Parser.Parse(m.Conversation.Summary);
+        var summary = await _chatMarkupHub.ApplyMentionNamer(summaryMarkup, cancellationToken).ConfigureAwait(false);
+        sb.AppendLine(summary.ToClipboardText());
+        return sb.ToStringAndRelease();
+    }
+
+    private void Reply() {}
+
+    private void Forward() {}
+
+    private void Delete() {}
+
+    private void Select() {}
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public Conversation Conversation { get; init; } = null!;
+        public bool IsOwner { get; init; }
+        public bool EnableIncompleteUI { get; init; }
+    }
+}
