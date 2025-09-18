@@ -22,6 +22,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private readonly Debouncer<Unit> _noSignalDetectedDebouncer;
 
     private ChatId? _chatId;
+    private string? _sessionToken;
+    private ChatEntryId? _repliedChatEntryId;
     private AudioStreamer? _streamer;
     private AudioStreamer.AudioStream? _currentStream;
     private CancellationTokenSource? _recordingCts;
@@ -82,8 +84,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         }
 
         // Start recording
-        lock (_sync)
+        lock (_sync) {
             _chatId = chatId;
+            _sessionToken = sessionToken;
+            _repliedChatEntryId = repliedChatEntryId;
+        }
         await SetRecording(true).ConfigureAwait(false);
         await SetSignalDetected(false).ConfigureAwait(false);
         await SetVoiceActive(false).ConfigureAwait(false);
@@ -402,9 +407,54 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         }
     }
 
-    private async Task Send(CancellationToken cancellationToken)
+    private async Task Send(ChannelReader<IMemoryOwner<byte>> encodedFrames, CancellationToken cancellationToken)
     {
+        // Ensure streamer exists
+        _streamer ??= new AudioStreamer(_hub.HostInfo.BaseUrl);
 
+        // Capture context
+        string? sessionToken;
+        ChatId? chatId;
+        string? repliedChatEntryId;
+        lock (_sync) {
+            sessionToken = _sessionToken;
+            chatId = _chatId;
+            repliedChatEntryId = _repliedChatEntryId?.ToString();
+        }
+        if (sessionToken is null || chatId is null)
+            return; // nothing to send without context
+
+        await _streamer.EnsureConnected(quickReconnect: true, cancellationToken).ConfigureAwait(false);
+        await SetConnected(_streamer.IsConnected).ConfigureAwait(false);
+
+        // Create and start stream
+        var stream = _streamer.CreateStream(sessionToken, preSkip: 0, chatId.ToString(), repliedChatEntryId);
+        lock (_sync) {
+            _currentStream = stream;
+            // Clear replied id so it's only used once
+            _repliedChatEntryId = null;
+        }
+        stream.StartStreaming();
+
+        try {
+            await foreach (var owner in encodedFrames.ReadAllAsync(cancellationToken).SuppressCancellation(cancellationToken).ConfigureAwait(false)) {
+                using var _ = owner;
+                var frame = owner.Memory.Span;
+                if (frame.Length == 0) continue;
+                stream.AddFrame(frame);
+            }
+        }
+        catch (OperationCanceledException) {
+            // ignore
+        }
+        finally {
+            try { stream.Complete(); } catch { }
+            try { await stream.DisposeAsync(); } catch { }
+            lock (_sync) {
+                if (ReferenceEquals(_currentStream, stream))
+                    _currentStream = null;
+            }
+        }
     }
 
     private readonly struct PooledSliceOwner(IMemoryOwner<byte> rented, int length) : IMemoryOwner<byte>
@@ -412,23 +462,4 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         public Memory<byte> Memory => rented.Memory[..length];
         public void Dispose() => rented.Dispose();
     }
-
-    // private class RecordingProcess(AppUIHub hub): UIWorkerBase<AppUIHub>(hub)
-    // {
-    //     protected override Task OnRun(CancellationToken cancellationToken)
-    //     {
-    //         var baseChains = new[] {
-    //             AsyncChain.From(InvalidateIsSelectedChatUnlisted),
-    //             AsyncChain.From(PlayTuneOnNewMessages),
-    //         };
-    //         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-    //         return (
-    //             from chain in baseChains
-    //             select chain
-    //                 .Log(LogLevel.Debug, Log)
-    //                 .RetryForever(retryDelays, Log)
-    //             ).RunIsolated(cancellationToken);
-    //     }
-    // }
-
 }

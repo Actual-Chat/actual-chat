@@ -165,6 +165,8 @@
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="System.Net.WebSockets" />
+    <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <PackageReference Include="Microsoft.ML.OnnxRuntime" />
