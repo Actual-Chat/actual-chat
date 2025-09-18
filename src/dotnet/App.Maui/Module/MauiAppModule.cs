@@ -51,6 +51,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Audio
         services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
+        services.AddScoped<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddSingleton<VoiceActivityDetector>(c => new VoiceActivityDetector(c));
 

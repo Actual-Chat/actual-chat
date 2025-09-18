@@ -4,7 +4,6 @@ using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
-using OpusSharp.Core;
 
 namespace ActualChat.App.Maui.Services.Recording;
 
@@ -50,6 +49,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     [field: AllowNull, MaybeNull]
     private IAudioRecorderBackend AudioRecorderBackend => field ??= _hub.Services.GetRequiredService<IAudioRecorderBackend>();
+
+    [field: AllowNull, MaybeNull]
+    private IAudioCodec AudioCodec => field ??= _hub.Services.GetRequiredService<IAudioCodec>();
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= _hub.LogFor<MauiRecorderEngine>();
@@ -361,48 +363,23 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         ChannelWriter<IMemoryOwner<byte>> encodedFrames,
         CancellationToken cancellationToken)
     {
-        // Uses OpusSharp to encode 16kHz mono float PCM into 20ms Opus packets
-        const int maxOpusPacketSize = 4096; // Generous upper bound for a single Opus packet
-        OpusEncoder? encoder = null;
         try {
-            encoder = new OpusEncoder(
-                Constants.Audio.RecordingSampleRate,
-                Constants.Audio.Channels,
-                OpusPredefinedValues.OPUS_APPLICATION_VOIP);
-
-            while (!cancellationToken.IsCancellationRequested) {
-                if (!buffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
-                    await buffer.WhenPushed.ConfigureAwait(false);
-                    continue;
-                }
-
-                using var _ = frame;
-                var pcm = frame.Memory.Span; // float PCM samples, length = OpusFrameLength
-
-                // Rent a large enough buffer for an Opus packet
-                var rented = MemoryPool<byte>.Shared.Rent(maxOpusPacketSize);
-                try {
-                    var outSpan = rented.Memory.Span;
-                    var encodedSize = encoder.Encode(pcm, Constants.Audio.OpusFrameLength, outSpan, maxOpusPacketSize);
-                    if (encodedSize <= 0) {
-                        // Drop frame on encode error
-                        rented.Dispose();
+            async IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
+            {
+                while (!cancellationToken.IsCancellationRequested) {
+                    if (!buffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
+                        await buffer.WhenPushed.ConfigureAwait(false);
                         continue;
                     }
+                    yield return frame; // ownership transferred to consumer
+                }
+            }
 
-                    // Wrap to expose only the meaningful slice while owning the rented memory
-                    var owner = new PooledSliceOwner(rented, encodedSize);
-                    await encodedFrames.WriteAsync(owner, cancellationToken).ConfigureAwait(false);
-                }
-                catch {
-                    // Ensure rented memory is released on any encode error before loop continues
-                    rented.Dispose();
-                    throw;
-                }
+            await foreach (var packet in AudioCodec.Encode(ReadFrames(), cancellationToken).WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                await encodedFrames.WriteAsync(packet, cancellationToken).ConfigureAwait(false);
             }
         }
         finally {
-            try { encoder?.Dispose(); } catch { /* ignore */ }
             encodedFrames.TryComplete();
         }
     }
