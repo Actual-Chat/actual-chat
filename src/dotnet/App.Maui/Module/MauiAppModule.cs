@@ -3,10 +3,12 @@ using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.MediaPlayback;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Components.AudioPlayer;
 using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
@@ -54,6 +56,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddSingleton<VoiceActivityDetector>(c => new VoiceActivityDetector(c));
+
+        // TODO(AK): Replace with NativeAudioPlaybackEngineFactory
+        services.AddScoped<IAudioPlaybackEngineFactory>(c => new WebAudioPlaybackEngineFactory(c));
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));

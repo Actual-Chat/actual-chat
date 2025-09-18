@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
+using ActualChat.UI.Blazor.App.Components.AudioPlayer;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
 using ActualChat.UI.Blazor.App.Components.Settings;
@@ -189,6 +190,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         if (HostInfo.HostKind != HostKind.MauiApp) {
             services.AddScoped<IAudioInitializer>(c => new AudioInitializer(c.UIHub()));
             services.AddScoped<IAudioRecorderEngine>(c => new WebRecorderEngine(c.AppUIHub()));
+            services.AddScoped<IAudioPlaybackEngineFactory>(c => new WebAudioPlaybackEngineFactory(c));
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
