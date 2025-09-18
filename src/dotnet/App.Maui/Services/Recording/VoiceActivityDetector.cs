@@ -51,6 +51,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
 
     private InferenceSession? _session;
     private DenseTensor<float> _state = new (new float[2 * 1 * 128], new[] { 2, 1, 128 });
+    private readonly DenseTensor<long> _srTensor = new (new long[] { SampleRate }, new[] { 1 });
     private RunningUnitMedian? _whenTalkingProbMedian;
 
     public readonly HostInfo HostInfo = services.HostInfo();
@@ -149,7 +150,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         _sampleCount += monoPcm.Length;
         var currentEvent = LastActivityEvent;
 
-        var rawGain = ApproximateGain(monoPcm);
+        var rawGain = AudioExt.ApproximateGain(monoPcm);
         _gainEma.AppendSample(rawGain);
         var gain = _gainEma.Value;
         if (gain < MinRecordingGain && currentEvent.Kind == VoiceActivityKind.End)
@@ -278,15 +279,13 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         // Create tensors
         var inputTensor = new DenseTensor<float>(_buffer, new[] { 1, InputSamples });
         var stateTensor = _state;
-        var srTensor = new DenseTensor<long>(new long[] { SampleRate }, new[] { 1 });
 
         // Run inference
-        var inputs = new[] {
+        using var results = session.Run(new[] {
             NamedOnnxValue.CreateFromTensor("input", inputTensor),
             NamedOnnxValue.CreateFromTensor("state", stateTensor),
-            NamedOnnxValue.CreateFromTensor("sr", srTensor),
-        };
-        using var results = session.Run(inputs);
+            NamedOnnxValue.CreateFromTensor("sr", _srTensor),
+        });
 
         // Retrieve outputs
         var output = results.First(v => v.Name == "output").AsTensor<float>();
@@ -296,8 +295,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         _state = ToDense(stateN);
         monoPcm.Slice(monoPcm.Length - ContextSamples, ContextSamples).CopyTo(_context);
 
-        var arr = output.ToArray();
-        var prob = arr.Length == 0 ? 0f : arr[0];
+        var prob = output.Length == 0 ? 0f : output[0];
         return prob;
     }
 
@@ -329,21 +327,5 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(VoiceActivityDetector));
-    }
-
-    // Helpers and small utility types below
-
-    private static double ApproximateGain(ReadOnlySpan<float> monoPcm, int stride = 5)
-    {
-        double sum = 0;
-        var count = 0;
-        for (var i = 0; i < monoPcm.Length; i += stride) {
-            var e = monoPcm[i];
-            sum += e * e;
-            count++;
-        }
-        if (count <= 0) return 0;
-
-        return Math.Sqrt(sum / count);
     }
 }

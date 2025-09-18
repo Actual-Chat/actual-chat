@@ -14,7 +14,6 @@ internal sealed class AudioStreamer
 
     private readonly HubConnection _connection;
 
-    public HubConnection Connection => _connection;
     public bool IsConnected => _connection.State == HubConnectionState.Connected;
 
     public AudioStreamer(string baseUri)
@@ -137,7 +136,7 @@ internal sealed class AudioStreamer
                     while (batch.Count < MaxPackFrames && _audioPacketQueue.TryDequeue(out var audioPacket))
                         batch.Add(audioPacket);
 
-                    if (batch.Count == 0)
+                    if (batch.Count <= MinPackFrames)
                         continue;
 
                     // Send packet

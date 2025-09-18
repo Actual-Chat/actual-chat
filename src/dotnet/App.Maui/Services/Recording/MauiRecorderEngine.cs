@@ -519,9 +519,15 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         private async IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
         {
-            while (!_encodeSendCts!.Token.IsCancellationRequested) {
-                if (!_encodingBuffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
-                    await _encodingBuffer.WhenPushed.ConfigureAwait(false);
+            var cts = _encodeSendCts;
+            if (cts == null)
+                yield break;
+
+            var cancellationToken = _encodeSendCts!.Token;
+            var buffer = _encodingBuffer;
+            while (!cancellationToken.IsCancellationRequested) {
+                if (!buffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
+                    await buffer.WhenPushed.ConfigureAwait(false);
                     continue;
                 }
                 yield return frame; // ownership transferred to encoder
