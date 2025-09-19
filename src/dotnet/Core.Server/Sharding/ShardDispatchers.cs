@@ -21,6 +21,8 @@ public sealed class ShardDispatchers(IServiceProvider services)
     public MeshNode ThisNode => field ??= MeshWatcher.ThisNode;
     [field: AllowNull, MaybeNull]
     public StateFactory StateFactory => field ??= Services.StateFactory();
+    [field: AllowNull, MaybeNull]
+    public MomentClock Clock => field ??= ShardLocks.Clock;
 
     // Internal properties
 

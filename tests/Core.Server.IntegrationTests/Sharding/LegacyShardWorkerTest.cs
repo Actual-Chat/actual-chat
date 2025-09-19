@@ -14,23 +14,23 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
         await using var w1a = new TestChannelShardWorker(h1.Services, Out, "w1a");
         w1a.Start();
         // w1a should use all shards
-        await ToShardIndexSets(w1a.UsedShardIndexes).AnyAsync(x => x.Count == shardScheme.ShardCount);
+        await ToShardIndexSets("w1a", w1a.UsedShardIndexes).AnyAsync(x => x.Count == shardScheme.ShardCount);
 
         await using var w1b = new TestChannelShardWorker(h1.Services, Out, "w1b");
         w1b.Start();
         // w1b should use all shards as well
-        await ToShardIndexSets(w1b.UsedShardIndexes).AnyAsync(x => x.Count == shardScheme.ShardCount);
+        await ToShardIndexSets("w1b", w1b.UsedShardIndexes).AnyAsync(x => x.Count == shardScheme.ShardCount);
 
         using var h2 = await NewAppHost();
         await using var w2 = new TestChannelShardWorker(h2.Services, Out, "w2");
         w2.Start();
         // w2 workers should use half of the shards
-        var w2Shards = await ToShardIndexSets(w2.UsedShardIndexes).FirstAsync(x => x.Count == shardScheme.ShardCount / 2);
+        var w2Shards = await ToShardIndexSets("w2", w2.UsedShardIndexes).FirstAsync(x => x.Count == shardScheme.ShardCount / 2);
 
         // w1c workers should use half of the shards
         await using var w1 = new TestChannelShardWorker(h1.Services, Out, "w1");
         w1.Start();
-        var w1Shards = await ToShardIndexSets(w1.UsedShardIndexes).FirstAsync(x => x.Count == shardScheme.ShardCount / 2);
+        var w1Shards = await ToShardIndexSets("w1", w1.UsedShardIndexes).FirstAsync(x => x.Count == shardScheme.ShardCount / 2);
         w1Shards.Intersect(w2Shards).Should().BeEmpty();
     }
 
@@ -44,6 +44,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
     }
 
     private IAsyncEnumerable<ImmutableHashSet<int>> ToShardIndexSets(
+        string name,
         ChannelReader<int> usedShardIndexes,
         CancellationToken cancellationToken = default)
     {
@@ -51,7 +52,11 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
         return usedShardIndexes
             .ReadAllAsync(cancellationToken)
             .Where(x => !shardIndexes.Contains(x))
-            .Select(x => shardIndexes = shardIndexes.Add(x));
+            .Select(x => {
+                shardIndexes = shardIndexes.Add(x);
+                Out.WriteLine($"{name}: {shardIndexes.ToDelimitedString()}");
+                return shardIndexes;
+            });
     }
 
     // Nested types
@@ -103,8 +108,13 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
                 shardOwners.Add(this);
             }
             try {
-                if (RandomShared.NextDouble() < 0.25) {
+                var rnd = RandomShared.NextDouble();
+                if (rnd < 0.15) {
                     Out.WriteLine($"<- OnRun({shardIndex} @ {this}) - fake failure");
+                    throw new InvalidOperationException("Something is off");
+                }
+                if (rnd < 0.3) {
+                    Out.WriteLine($"<- OnRun({shardIndex} @ {this}) - fake early termination");
                     return;
                 }
 

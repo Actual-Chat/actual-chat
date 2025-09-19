@@ -18,13 +18,9 @@ public abstract class LegacyShardWorker(IServiceProvider services, ShardScheme s
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var shardRunnable = CreateShardRunnable();
-        await using var _ = ShardDispatcher.Use(shardRunnable).ConfigureAwait(false);
+        await using var _ = ShardDispatcher.Use(GetType().Name, OnRun).ConfigureAwait(false);
         await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
     }
-
-    protected virtual ShardRunnable CreateShardRunnable()
-        => new(GetType().GetName(), OnRun);
 
     protected abstract Task OnRun(int shardIndex, CancellationToken cancellationToken);
 }

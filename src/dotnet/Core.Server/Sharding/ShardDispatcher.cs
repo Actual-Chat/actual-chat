@@ -17,6 +17,7 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
     private MeshWatcher MeshWatcher => Host.MeshWatcher;
     private MeshNode ThisNode => Host.ThisNode;
     private StateFactory StateFactory => Host.StateFactory;
+    private MomentClock Clock => Host.Clock;
     private RunnableDispatcher RunnableDispatcher { get; } = new();
 
     public ShardDispatchers Host { get; }
@@ -49,9 +50,13 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
     }
 
     public IAsyncDisposable Use(string name, Func<LockState, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
-        => RunnableDispatcher.Use(new ShardRunnable(name, func) { RetryPolicy = retryPolicy });
+        => RunnableDispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
     public IAsyncDisposable Use(string name, Func<LockState, CancellationToken, Task> func)
-        => RunnableDispatcher.Use(new ShardRunnable(name, func));
+        => RunnableDispatcher.Use(new ShardRunnable(name, func, Clock));
+    public IAsyncDisposable Use(string name, Func<int, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
+        => RunnableDispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
+    public IAsyncDisposable Use(string name, Func<int, CancellationToken, Task> func)
+        => RunnableDispatcher.Use(new ShardRunnable(name, func, Clock));
     public IAsyncDisposable Use(ShardRunnable shardRunnable)
         => RunnableDispatcher.Use(shardRunnable);
 
