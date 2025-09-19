@@ -50,6 +50,9 @@ internal sealed class WindowsAudioPlaybackEngine(
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
 
     [field: AllowNull, MaybeNull]
+    private MomentClockSet Clocks => field ??= services.GetRequiredService<MomentClockSet>();
+
+    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor<WindowsAudioPlaybackEngine>();
 
     public async Task Play(CancellationToken cancellationToken)
@@ -128,6 +131,13 @@ internal sealed class WindowsAudioPlaybackEngine(
 
     public Task End(bool abort, CancellationToken cancellationToken)
     {
+        if (!abort) {
+            // Normal end: indicate no more input packets; let decode/playback drain and finish naturally
+            _packetChannel.Writer.TryComplete();
+            return Task.CompletedTask;
+        }
+
+        // Abort: stop everything immediately
         _packetChannel.Writer.TryComplete();
         _decodedSamples.Clear();
         _decodeCts.CancelAndDisposeSilently();
@@ -187,6 +197,10 @@ internal sealed class WindowsAudioPlaybackEngine(
             if (minSamples > 0)
                 while (_decodedSamples.Count < minSamples && !cancellationToken.IsCancellationRequested)
                     try {
+                        if (_decodedSamples.WhenPushed.IsCompleted) {
+                            var remaining = minSamples - _decodedSamples.Count;
+                            await Clocks.CoarseSystemClock.Delay(remaining * 1000 / Constants.Audio.PlaybackSampleRate, cancellationToken);
+                        }
                         await _decodedSamples.WhenPushed.WaitAsync(cancellationToken);
                     }
                     catch (OperationCanceledException) {
@@ -242,9 +256,6 @@ internal sealed class WindowsAudioPlaybackEngine(
                 if (_remainingPreSkip < 0)
                     _remainingPreSkip = 0;
             }
-
-            // Source completed – report ended
-            TryReportEnded(null);
         }
         catch (OperationCanceledException) {
             /* ignore */
@@ -258,30 +269,44 @@ internal sealed class WindowsAudioPlaybackEngine(
     private void OnQuantumStarted(AudioFrameInputNode sender, FrameInputNodeQuantumStartedEventArgs args)
     {
         var playSamples = args.RequiredSamples;
+        if (!_decodedSamples.TryPull(playSamples, out var pcmOwner)) {
+            var isCompleted = _packetChannel.Reader.Completion.IsCompleted;
+            if (isCompleted) {
+                End(true, CancellationToken.None);
+                return;
+            }
+        }
+
+        var hasData = pcmOwner != null;
         var bytes = playSamples * sizeof(float);
+        // using var __ = pcmOwner;
         using var audioFrame = new AudioFrame((uint)bytes);
-        using var buffer = audioFrame.LockBuffer(AudioBufferAccessMode.Write);
-        using var reference = buffer.CreateReference();
         unsafe {
+            // Lock should be located within scope of the using block to allow AddFrame call to succeed
+            using var buffer = audioFrame.LockBuffer(AudioBufferAccessMode.Write);
+            using var reference = buffer.CreateReference();
             WindowsRuntimeMarshal.TryGetDataUnsafe(reference, out IntPtr dataPtr, out var capacity);
             if (dataPtr == IntPtr.Zero || capacity < bytes)
                 return;
 
-            if (!_decodedSamples.TryPull(playSamples, out var pcmOwner)) {
+            if (pcmOwner == null) {
                 // Starving - report playing state
                 _ = ReportPlaying();
                 // Set frame to silence
                 var silence = new Span<float>((void*)dataPtr, playSamples);
                 silence.Fill(0);
-                _frameInput?.AddFrame(audioFrame);
-                return;
             }
-
-            var src = pcmOwner.Memory.Span;
-            var dst = new Span<float>((void*)dataPtr, playSamples);
-            src.CopyTo(dst);
+            else {
+                var src = pcmOwner.Memory.Span;
+                var dst = new Span<float>((void*)dataPtr, playSamples);
+                src.CopyTo(dst);
+            }
         }
         _frameInput?.AddFrame(audioFrame);
+        if (!hasData)
+            return;
+
+        // Update played samples and periodically report playing state only when data is available
         _playedSamples += playSamples;
         var now = DateTime.UtcNow;
         if ((now - _lastReportAt).TotalMilliseconds >= 200) {

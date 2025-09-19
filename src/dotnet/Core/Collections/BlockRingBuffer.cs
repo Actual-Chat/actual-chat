@@ -9,10 +9,8 @@ public class BlockRingBuffer<T>: IDisposable
     private int _writeIndex; // Producer's write position
     private int _readIndex;  // Consumer's read position
     private int _pendingReadIndex; // Tracks pending consumption
-    private TaskCompletionSource? _whenPulledTcs;
-    private TaskCompletionSource? _whenPushedTcs;
-    private Task _whenPulled;
-    private Task _whenPushed;
+    private TaskCompletionSource _whenPulledTcs;
+    private TaskCompletionSource _whenPushedTcs;
 
     public int Capacity => _mask;
 
@@ -29,8 +27,8 @@ public class BlockRingBuffer<T>: IDisposable
     public int RemainingCapacity => Math.Max(0, Capacity - Count);
     public bool HasRemainingCapacity => !IsFull;
 
-    public Task WhenPulled => _whenPulled;
-    public Task WhenPushed => _whenPushed;
+    public Task WhenPulled => _whenPulledTcs.Task;
+    public Task WhenPushed => _whenPushedTcs.Task;
 
     public BlockRingBuffer(int minCapacity)
         : this(MemoryPool<T>.Shared.Rent((int)Bits.GreaterOrEqualPowerOf2((ulong)Math.Max(2, minCapacity + 1))))
@@ -50,14 +48,15 @@ public class BlockRingBuffer<T>: IDisposable
         _writeIndex = 0;
         _readIndex = 0;
         _pendingReadIndex = 0;
-        _whenPushed = Task.CompletedTask;
-        _whenPulled = Task.CompletedTask;
+        _whenPushedTcs = new TaskCompletionSource();
+        _whenPulledTcs = new TaskCompletionSource();
+        _whenPulledTcs.TrySetResult();
     }
     public void Dispose()
     {
+        _whenPulledTcs.TrySetCanceled();
+        _whenPushedTcs.TrySetCanceled();
         _bufferOwner.Dispose();
-        _whenPulled.DisposeSilently();
-        _whenPushed.DisposeSilently();
     }
 
     public bool TryPush(ReadOnlySpan<T> data)
@@ -74,7 +73,6 @@ public class BlockRingBuffer<T>: IDisposable
         var used = (currentWrite - currentRead) & _mask;
         if (used + length > Capacity) {
             _whenPulledTcs = new TaskCompletionSource();
-            _whenPulled = _whenPulledTcs.Task;
             return false; // Not enough space
         }
 
@@ -106,48 +104,39 @@ public class BlockRingBuffer<T>: IDisposable
         }
 
         // Check if there's already a pending consumption
-        var currentPending = Volatile.Read(ref _pendingReadIndex);
-        var currentRead = Volatile.Read(ref _readIndex);
-
-        // If there's pending consumption, we can't provide a new block
-        if (currentPending != currentRead) {
-            block = null;
-            return false;
-        }
-
+        var currentRead = Volatile.Read(ref _pendingReadIndex);
         var currentWrite = Volatile.Read(ref _writeIndex);
         var available = (currentWrite - currentRead) & _mask;
 
         if (available < length) {
             block = null;
             _whenPushedTcs = new TaskCompletionSource();
-            _whenPushed = _whenPushedTcs.Task;
             return false;
         }
 
         // Reserve this consumption by updating pending read index
         if (Interlocked.CompareExchange(ref _pendingReadIndex, currentRead + length, currentRead) != currentRead) {
             // Another thread updated pending read index, fail
+            // We should not get here as we use a single consumer, just in case
             block = null;
             _whenPushedTcs = new TaskCompletionSource();
-            _whenPushed = _whenPushedTcs.Task;
             return false;
         }
 
-        var readPos = currentRead & _mask;
+        var readPosition = currentRead & _mask;
         var buffer = _bufferOwner.Memory;
-        if (readPos + length <= buffer.Length) {
+        if (readPosition + length <= buffer.Length) {
             // No wraparound, can use zero-copy
-            block = new ConsumableBlock(buffer.Slice(readPos, length), buffer: this);
+            block = new ConsumableBlock(buffer.Slice(readPosition, length), buffer: this);
             return true;
         }
 
         // Wraparound required, need to copy to contiguous memory
         var owner = MemoryPool<T>.Shared.Rent(length);
         try {
-            var firstPart = buffer.Length - readPos;
+            var firstPart = buffer.Length - readPosition;
             var span = owner.Memory.Span;
-            buffer.Span.Slice(readPos, firstPart).CopyTo(span[..firstPart]);
+            buffer.Span.Slice(readPosition, firstPart).CopyTo(span[..firstPart]);
             buffer.Span[..(length - firstPart)].CopyTo(span.Slice(firstPart, length - firstPart));
             block = new ConsumableBlock(owner.Memory[..length], owner, this);
             return true;
@@ -170,10 +159,9 @@ public class BlockRingBuffer<T>: IDisposable
         _readIndex = 0;
         _writeIndex = 0;
         _pendingReadIndex = 0;
-        _whenPulledTcs?.TrySetResult();
-        _whenPushedTcs?.TrySetResult();
-        _whenPushed = Task.CompletedTask;
-        _whenPulled = Task.CompletedTask;
+        _whenPulledTcs.TrySetResult();
+        // there is no need to reset _whenPushedTcs as we are trying to push into an empty buffer
+        // _whenPushedTcs.TrySetResult();
     }
 
 
@@ -209,7 +197,6 @@ public class BlockRingBuffer<T>: IDisposable
             throw StandardError.Internal("Cannot commit more than available data");
 
         Volatile.Write(ref _readIndex, currentRead + length);
-        Volatile.Write(ref _pendingReadIndex, currentRead + length);
         _whenPulledTcs?.TrySetResult();
     }
 

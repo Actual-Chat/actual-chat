@@ -5,9 +5,9 @@ public class BlockRingBufferTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void Deterministic_Wraparound_On_Push_And_Consume()
     {
-        // Buffer length will be next power of two >= minCapacity+1. For 7 -> length = 8, capacity = 7
-        var rb = new BlockRingBuffer<int>(7);
-        rb.Capacity.Should().Be(7);
+        // Buffer length will be next power of two >= minCapacity+1. For 15 -> length = 16, capacity = 15
+        var rb = new BlockRingBuffer<int>(15);
+        rb.Capacity.Should().Be(15);
         rb.Count.Should().Be(0);
         rb.IsEmpty.Should().BeTrue();
 
@@ -23,29 +23,29 @@ public class BlockRingBufferTest(ITestOutputHelper @out) : TestBase(@out)
         rb.Count.Should().Be(2);
 
         // Now push 5 more -> must wrap on Push (writePos=5, length=8, 5+5>8)
-        rb.TryPush([6, 7, 8, 9, 10]).Should().BeTrue();
-        rb.Count.Should().Be(7); // full
+        rb.TryPush([6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]).Should().BeTrue();
+        rb.Count.Should().Be(15); // full
         rb.IsFull.Should().BeTrue();
 
         // Now pull 6 -> must wrap on Consume (readPos=3, 3+6>8)
         using (var block = rb.Pull(6))
             block.Memory.ToArray()
                 .Should()
-                .Equal(4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9);
-        rb.Count.Should().Be(1);
+                .Equal(4, 5, 6, 7, 8, 9);
+        rb.Count.Should().Be(9);
         rb.IsEmpty.Should().BeFalse();
-        rb.GetAvailableContinuousData().ToArray().Should().Equal(10);
+        rb.GetAvailableContinuousData().ToArray().Should().Equal([10, 11, 12, 13, 14, 15, 16]);
 
         // Finally, pull the last item
         using (var block = rb.Pull(1))
             block.Memory.Span[0].Should().Be(10);
-        rb.Count.Should().Be(0);
+        rb.Count.Should().Be(8);
+        using (var block = rb.Pull(8))
+            block.Memory.Span.ToArray().Should().Equal([11, 12, 13, 14, 15, 16, 17, 18]);
         rb.IsEmpty.Should().BeTrue();
+
+        rb.TryPull(1, out var emptyBlock).Should().BeFalse();
+        emptyBlock.Should().BeNull();
     }
 
     [Fact]
@@ -104,6 +104,65 @@ public class BlockRingBufferTest(ITestOutputHelper @out) : TestBase(@out)
         consumed.Should().Be(total, "consumer must receive all items");
         received.Count.Should().Be(total);
         received.Should().Equal(Enumerable.Range(0, total));
+
+        rb.IsEmpty.Should().BeTrue();
+        rb.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public void Multiple_Pulls_With_Delayed_Dispose_Should_Delay_Commit()
+    {
+        // Use a small requested capacity; actual capacity may be larger due to MemoryPool rounding
+        var rb = new BlockRingBuffer<int>(7);
+        rb.Count.Should().Be(0);
+        rb.IsEmpty.Should().BeTrue();
+
+        var cap = rb.Capacity;
+
+        // Choose k >= 1 so that (cap - k) + (k + 1) > cap, guaranteeing initial push of (k+1) fails
+        var k = Math.Max(1, cap / 4); // keep some headroom
+        var initialFill = Math.Max(2, cap - k);
+
+        // Prepare initial data 1..initialFill
+        var initialData = Enumerable.Range(1, initialFill).ToArray();
+        rb.TryPush(initialData).Should().BeTrue();
+        rb.Count.Should().Be(initialFill);
+
+        // Pull twice without disposing immediately -> commits must be delayed
+        var p1 = Math.Max(1, Math.Min(2, initialFill - 1)); // at least 1
+        var p2 = 1;
+        var b1 = rb.Pull(p1);
+        var b2 = rb.Pull(p2);
+
+        // Count hasn't changed yet because commits happen on Dispose
+        rb.Count.Should().Be(initialFill);
+
+        var pushLen = k + 1; // exceeds capacity when nothing is committed
+        var pushData = Enumerable.Range(initialFill + 1, pushLen).ToArray();
+
+        // Not enough committed space for pushing yet
+        rb.TryPush(pushData).Should().BeFalse();
+
+        // Dispose first block -> commit p1 items
+        b1.Dispose();
+        rb.Count.Should().Be(initialFill - p1);
+
+        // Now there is enough space for pushLen, push succeeds
+        rb.TryPush(pushData).Should().BeTrue();
+        rb.Count.Should().Be(initialFill - p1 + pushLen);
+
+        // Disposing second block commits p2 more
+        b2.Dispose();
+        rb.Count.Should().Be(initialFill - (p1 + p2) + pushLen);
+
+        // Pull the remaining items and verify ordering
+        var remaining = rb.Count;
+        using (var b3 = rb.Pull(remaining)) {
+            var expected = Enumerable.Range(p1 + p2 + 1, initialFill - (p1 + p2))
+                .Concat(Enumerable.Range(initialFill + 1, pushLen))
+                .ToArray();
+            b3.Memory.ToArray().Should().Equal(expected);
+        }
 
         rb.IsEmpty.Should().BeTrue();
         rb.Count.Should().Be(0);
