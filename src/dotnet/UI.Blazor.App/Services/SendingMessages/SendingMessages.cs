@@ -248,7 +248,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             }
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
-                if (request.AttachmentUploads is not null)
+                if (chatEntry1.HasAttachmentUploads && request.AttachmentUploads is not null)
                     await CreateAttachments(chatEntry1, request.AttachmentUploads, default).ConfigureAwait(false);
                 resultSource.SetResult(chatEntry1);
             }
@@ -298,9 +298,13 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     private async Task<ChatEntry> ProcessCommand(PostMessageQueueItem command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId, request.Text, request.RepliedEntryLid) {
-            HasAttachmentUploads = request.AttachmentUploads is not null,
-        };
+        var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId, request.Text, request.RepliedEntryLid);
+        if (request.AttachmentUploads is not null) {
+            if (!request.AttachmentUploads.WhenUploaded.IsCompletedSuccessfully)
+                cmd = cmd with { HasAttachmentUploads = true };
+            else
+                cmd = cmd with { EntryAttachments = CreateTextEntryAttachments(request.AttachmentUploads) };
+        }
         // Simulate long sending
         await Task.Delay(8000, cancellationToken).ConfigureAwait(false);
         var postResult = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
@@ -314,18 +318,13 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         return chatEntry;
     }
 
-    private async Task CreateAttachments(ChatEntry chatEntry, AttachmentUploads mediaUploads, CancellationToken cancellationToken = default)
+    private async Task CreateAttachments(ChatEntry chatEntry, AttachmentUploads attachmentUploads, CancellationToken cancellationToken = default)
     {
         // An attachment should have several states: loading, loading error, canceled (removed), loaded.
         // When an attachment has entered the `loading error` state, you can repeat the loading or cancel it entirely.
-        await mediaUploads.WhenUploaded.ConfigureAwait(false);
+        await attachmentUploads.WhenUploaded.ConfigureAwait(false);
         // When all attachments are loaded, we can continue execution.
-        var entryAttachments = mediaUploads.Attachments.Items
-            .Where(x => x.Uploaded)
-            .Select(x => new TextEntryAttachment {
-                MediaId = x.MediaId!,
-                ThumbnailMediaId = x.ThumbnailMediaId,
-            }).ToArray();
+        var entryAttachments = CreateTextEntryAttachments(attachmentUploads);
         if (entryAttachments.Length == 0 && chatEntry.Content.IsNullOrEmpty()) {
             // If there are no loaded attachments and the ChatEntry Content is empty,
             // then we delete this ChatEntry altogether.
@@ -342,7 +341,18 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             };
             await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         }
-        await mediaUploads.Attachments.DisposeSilentlyAsync().ConfigureAwait(false);
+        await attachmentUploads.Attachments.DisposeSilentlyAsync().ConfigureAwait(false);
+    }
+
+    private static TextEntryAttachment[] CreateTextEntryAttachments(AttachmentUploads attachmentUploads)
+    {
+        var entryAttachments = attachmentUploads.Attachments.Items
+            .Where(x => x.Uploaded)
+            .Select(x => new TextEntryAttachment {
+                MediaId = x.MediaId!,
+                ThumbnailMediaId = x.ThumbnailMediaId,
+            }).ToArray();
+        return entryAttachments;
     }
 
     private ChatSendingMessages GetChatSendingMessages(ChatId chatId)
