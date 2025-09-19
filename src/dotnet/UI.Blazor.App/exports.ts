@@ -15,7 +15,6 @@ export * from './Components/ChatAudioPanel/active-recording-svg.lit';
 export * from './Components/ChatAudioPanel/narrow-recording-svg.lit';
 export * from './Components/ChatList/chat-activity-svg.lit';
 export * from './Components/ChatMessageEditor/attachment-web-file-picker';
-export * from './Components/ChatMessageEditor/web-file-attachment';
 export * from './Components/ChatMessageEditor/chat-message-editor';
 export * from './Components/ChatNotFound/chat-not-found-svg.lit';
 export * from './Components/ChatView/EmptyChatContent/empty-chat-svg.lit';

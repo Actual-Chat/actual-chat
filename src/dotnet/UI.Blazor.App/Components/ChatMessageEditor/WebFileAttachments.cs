@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
-    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileAttachments.create";
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
 
     private UploadSessions UploadSessions => Hub.UploadSessions;
 
@@ -17,10 +17,10 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             return false;
         }
         WebFileProviderInternal? webFileProviderInternal;
-        string previewUrl = "";
+        string previewUrl;
         try {
             var webFileAttachment = await JS
-                .InvokeAsync<CreateWebFileAttachmentResult>(JSCreateMethod, fileInfo.Id)
+                .InvokeAsync<CreateWebFileProviderResult>(JSCreateMethod, fileInfo.Id)
                 .ConfigureAwait(true); // Continue on Blazor context.
             previewUrl = webFileAttachment.PreviewUrl;
             webFileProviderInternal = new WebFileProviderInternal(
@@ -36,6 +36,7 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             FileName = fileInfo.FileName,
             WebFileProviderInternal = webFileProviderInternal,
         };
+        webFileProvider.Initialize(Hub.Services);
         if (previewUrl.IsNullOrEmpty())
             previewUrl = await webFileProvider.GetPreviewUrl();
         var attachment = new Attachment(Guid.NewGuid().ToString(),
@@ -72,9 +73,8 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         return false;
     }
 
-    public struct CreateWebFileAttachmentResult
+    public struct CreateWebFileProviderResult
     {
-        public string Id { get; init; }
         public string PreviewUrl { get; init; }
         public IJSObjectReference FileProvider { get; init; }
     }

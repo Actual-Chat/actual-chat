@@ -6,6 +6,7 @@ import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-ini
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
+import { AttachmentWebFilePickerStorage } from '../../Components/ChatMessageEditor/attachment-web-file-picker';
 
 const { errorLog } = Log.get('WebFileProvider');
 
@@ -18,8 +19,39 @@ interface MediaContent {
 
 type ProgressReporter = (progressPercent: number) => void;
 
+interface CreateWebFileProviderResult {
+    previewUrl: string;
+    fileProvider : any;
+}
+
 export class WebFileProviders
 {
+    public static createFromFileId(fileId : number) : CreateWebFileProviderResult | null
+    {
+        const fileInfo = AttachmentWebFilePickerStorage.Get(fileId);
+        if (!fileInfo)
+            return null;
+
+        const file = fileInfo.file;
+        let previewUrl = "";
+        try {
+            const provider = new WebFileProvider('', fileInfo.fileHandle, file, file.name);
+            previewUrl = provider.createPreviewUrl();
+            // @ts-ignore
+            const jsObjectReference = DotNet.createJSObjectReference(provider);
+            return {
+                previewUrl: previewUrl,
+                fileProvider: jsObjectReference,
+            };
+        }
+        catch (e) {
+            errorLog?.log('Failed to create a web file attachment', e);
+            if (previewUrl)
+                URL.revokeObjectURL(previewUrl);
+            return null;
+        }
+    }
+
     public static async tryCreateFromFileHandleDbKey(fileHandleDbKey : string) : Promise<NullableJSObjectReference> {
         const fileHandle = await getFileHandle(fileHandleDbKey);
         if (fileHandle == null) {
