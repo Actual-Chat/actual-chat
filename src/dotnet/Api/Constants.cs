@@ -286,6 +286,7 @@ public static partial class Constants
         public static readonly TimeSpan MaxRealtimeStreamDrift = TimeSpan.FromSeconds(3);
         public static readonly TimeSpan MaxStreamDuration = TimeSpan.FromMinutes(2);
         public static readonly TimeSpan LowPlaybackBufferDuration = TimeSpan.FromSeconds(10);
+        public static readonly TimeSpan StartPlaybackWhenBufferedDuration = TimeSpan.FromSeconds(0.1);
     }
 
     public static class Media

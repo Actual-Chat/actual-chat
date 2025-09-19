@@ -27,7 +27,9 @@ internal sealed class WindowsAudioPlaybackEngine(
     });
 
     private readonly BlockRingBuffer<float> _decodedSamples = new(Constants.Audio.PlaybackSampleRate * 20); // 20-seconds buffer
-    private readonly CancellationTokenSource _cts = new();
+    private readonly CancellationTokenSource _decodeCts = new();
+
+    private CancellationTokenSource? _pauseCts;
 
     // According to Opus spec, the decoder output must skip the first PreSkip samples at 48 kHz
     // We track how many samples remain to be skipped and drop them in the decode loop.
@@ -36,7 +38,7 @@ internal sealed class WindowsAudioPlaybackEngine(
     private AudioDeviceOutputNode? _deviceOutput;
     private AudioFrameInputNode? _frameInput;
     private Task? _decodeTask;
-    private volatile bool _started;
+    private Task? _delayedPlayTask; // Reference to the delayed Start task to prevent GC
 
     // Playback reporting state
     private long _playedSamples;
@@ -52,7 +54,7 @@ internal sealed class WindowsAudioPlaybackEngine(
 
     public async Task Play(CancellationToken cancellationToken)
     {
-        if (_started)
+        if (Volatile.Read(ref _decodeTask) is not null)
             return;
 
         var audioSource = (AudioSource)source;
@@ -86,29 +88,28 @@ internal sealed class WindowsAudioPlaybackEngine(
         _frameInput.QuantumStarted += OnQuantumStarted;
 
         // Start background decode loop
-        var ct = _cts.Token;
+        var ct = _decodeCts.Token;
         _decodeTask = BackgroundTask.Run(() => DecodeAndFeed(ct), ct);
+        _isPaused = true;
+        // Initial report that we're ready to play
+        _ = ReportPlaying();
 
-        try {
-            _frameInput.Start();
-            _graph.Start();
-            _started = true;
-            _isPaused = false;
-            // Initial report that we're ready to play
-            _ = ReportPlaying();
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to start playback graph");
-            throw;
-        }
+        // Wait until we have enough decoded samples buffered before starting playback
+        _pauseCts = new CancellationTokenSource();
+        _delayedPlayTask = StartWhenBuffered(_pauseCts.Token);
     }
 
     public Task Pause(CancellationToken cancellationToken)
     {
         if (_frameInput == null)
             throw StandardError.StateTransition(GetType(), "Start command should be called first.");
+
         _frameInput.Stop();
         _isPaused = true;
+        _pauseCts.CancelAndDisposeSilently();
+        _pauseCts = null;
+        _delayedPlayTask.DisposeSilently();
+        _delayedPlayTask = null;
         _ = ReportPlaying();
         return Task.CompletedTask;
     }
@@ -117,20 +118,23 @@ internal sealed class WindowsAudioPlaybackEngine(
     {
         if (_frameInput == null)
             throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-        _frameInput.Start();
+
+        _pauseCts = new CancellationTokenSource();
+        _delayedPlayTask = StartWhenBuffered(_pauseCts.Token);
         _isPaused = false;
         _ = ReportPlaying();
         return Task.CompletedTask;
     }
 
-    public async Task End(bool abort, CancellationToken cancellationToken)
+    public Task End(bool abort, CancellationToken cancellationToken)
     {
         _packetChannel.Writer.TryComplete();
         _decodedSamples.Clear();
-        await _cts.CancelAsync();
+        _decodeCts.CancelAndDisposeSilently();
+        _pauseCts?.CancelAndDisposeSilently();
         try {
-            if (_decodeTask != null)
-                await _decodeTask.ConfigureAwait(false);
+            _decodeTask.DisposeSilently();
+            _delayedPlayTask.DisposeSilently();
         }
         catch (OperationCanceledException) { }
         catch (Exception e) {
@@ -150,10 +154,12 @@ internal sealed class WindowsAudioPlaybackEngine(
         _graph = null;
         _deviceOutput = null;
         _frameInput = null;
-        _started = false;
+        _decodeTask = null;
+        _delayedPlayTask = null;
         _isPaused = true;
         // Report end (no error message). If an error already reported, this will no-op.
         TryReportEnded(null);
+        return Task.CompletedTask;
     }
 
     public Task Frame(MediaFrame frame, CancellationToken cancellationToken)
@@ -169,6 +175,40 @@ internal sealed class WindowsAudioPlaybackEngine(
 
     public async ValueTask DisposeAsync()
         => await End(true, CancellationToken.None).ConfigureAwait(false);
+
+
+    // Private methods
+
+    private async Task StartWhenBuffered(CancellationToken cancellationToken)
+    {
+        try {
+            // Wait until we have enough decoded samples buffered before starting playback
+            var minSamples = (int)(Constants.Audio.StartPlaybackWhenBufferedDuration.TotalSeconds * Constants.Audio.PlaybackSampleRate);
+            if (minSamples > 0)
+                while (_decodedSamples.Count < minSamples && !cancellationToken.IsCancellationRequested)
+                    try {
+                        await _decodedSamples.WhenPushed.WaitAsync(cancellationToken);
+                    }
+                    catch (OperationCanceledException) {
+                        // Respect cancellation and skip Start
+                        return;
+                    }
+
+            var (frameInput, graph) = (_frameInput, _graph);
+            if (frameInput is null || graph is null)
+                return;
+
+            frameInput.Start();
+            graph.Start();
+            _isPaused = false;
+            // Initial report that we're ready to play
+            _ = ReportPlaying();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to start playback graph");
+            throw;
+        }
+    }
 
     private async Task DecodeAndFeed(CancellationToken cancellationToken)
     {
@@ -227,8 +267,15 @@ internal sealed class WindowsAudioPlaybackEngine(
             if (dataPtr == IntPtr.Zero || capacity < bytes)
                 return;
 
-            if (!_decodedSamples.TryPull(playSamples, out var pcmOwner))
+            if (!_decodedSamples.TryPull(playSamples, out var pcmOwner)) {
+                // Starving - report playing state
+                _ = ReportPlaying();
+                // Set frame to silence
+                var silence = new Span<float>((void*)dataPtr, playSamples);
+                silence.Fill(0);
+                _frameInput?.AddFrame(audioFrame);
                 return;
+            }
 
             var src = pcmOwner.Memory.Span;
             var dst = new Span<float>((void*)dataPtr, playSamples);
