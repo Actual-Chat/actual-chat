@@ -81,8 +81,8 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
         foreach (var processor in Processors.Values)
             processor.Start();
 
-        using var dTask = cancellationToken.ToTask();
-        await dTask.Resource.SilentAwait(false); // Await for cancellation
+        // Waiting for the stop signal
+        await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
 
         Log.LogInformation("Stopping queue processors...");
         var disposeTasks = Processors.Values.Select(p => p.DisposeSilentlyAsync().AsTask()).ToArray();
