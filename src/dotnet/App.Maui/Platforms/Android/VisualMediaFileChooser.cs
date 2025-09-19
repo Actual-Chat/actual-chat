@@ -1,4 +1,3 @@
-using Android.Webkit;
 using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
@@ -11,28 +10,20 @@ public class VisualMediaFileChooser
         => _mainActivity = mainActivity;
 
     public bool OnShowFileChooser(
-        string[] acceptTypes,
-        IValueCallback? filePathCallback)
+        string acceptTypes,
+        Action<Uri[]> callback)
     {
-        if (filePathCallback is null || acceptTypes.Length == 0)
-            return false;
-
-        var acceptType = acceptTypes[0];
-        if (acceptType.OrdinalStartsWith("image")) {
-            PickVisualMedia(PickVisualMediaKind.Image, filePathCallback);
+        if (acceptTypes.OrdinalStartsWith("image")) {
+            PickVisualMedia(PickVisualMediaKind.Image, callback);
             return true;
         }
-        if (acceptType.OrdinalStartsWith("video")) {
-            PickVisualMedia(PickVisualMediaKind.Video, filePathCallback);
+        if (acceptTypes.OrdinalStartsWith("video")) {
+            PickVisualMedia(PickVisualMediaKind.Video, callback);
             return true;
         }
-
         return false;
     }
 
-    private void PickVisualMedia(PickVisualMediaKind kind, IValueCallback filePathCallback)
-        => _mainActivity.PickVisualMedia(kind,
-                uris => {
-                    filePathCallback.OnReceiveValue(uris);
-                });
+    private void PickVisualMedia(PickVisualMediaKind kind, Action<Uri[]> callback)
+        => _mainActivity.PickVisualMedia(kind, callback);
 }

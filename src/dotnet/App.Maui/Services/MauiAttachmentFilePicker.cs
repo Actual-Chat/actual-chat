@@ -7,6 +7,14 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
 {
     public async Task<AttachFileInfo[]> PickFiles(string acceptTypes)
     {
+#if ANDROID
+        if (!acceptTypes.IsNullOrEmpty()) {
+            var visualMediaFileInfos = await TryPickVisualMediaFiles(acceptTypes).ConfigureAwait(false);
+            if (visualMediaFileInfos is not null)
+                return visualMediaFileInfos;
+        }
+#endif
+
         var temp = await FilePicker.Default.PickMultipleAsync().ConfigureAwait(true);
         var filesResults = temp.ToArray();
         if (filesResults.Length == 0)
@@ -30,9 +38,44 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
                 FileName = fileResult.FileName,
                 FileRef = filePath,
             };
-            var fileInfo = new AttachFileInfo(fileResult.FileName, fileResult.ContentType, fileLength, fileProvider);
-            fileInfos.Add(fileInfo);
+            fileInfos.Add(new AttachFileInfo(fileResult.FileName, fileResult.ContentType, fileLength, fileProvider));
         }
         return fileInfos.ToArray();
     }
+
+#if ANDROID
+    [field: AllowNull, MaybeNull]
+    private VisualMediaFileChooser VisualMediaFileChooser => field ??= new VisualMediaFileChooser(MainActivity.Current);
+
+    [field: AllowNull, MaybeNull]
+    private AndroidContentDownloader Downloader => field ??= services.GetRequiredService<AndroidContentDownloader>();
+
+    private async Task<AttachFileInfo[]?> TryPickVisualMediaFiles(string acceptTypes)
+    {
+        var tcs = TaskCompletionSourceExt.New<Android.Net.Uri[]>();
+        if (!VisualMediaFileChooser.OnShowFileChooser(acceptTypes, c => tcs.TrySetResult(c)))
+            return null;
+
+        var uris = await tcs.Task.ConfigureAwait(false);
+        var fileInfos = new List<AttachFileInfo>();
+        foreach (var uri in uris) {
+            var sUri = uri.ToString()!;
+            var (stream, mimeType) = Downloader.OpenInputStream(sUri);
+            if (stream is null)
+                continue;
+
+            mimeType ??= "";
+            if (!Downloader.TryExtractFileName(sUri, out var fileName))
+                fileName = "unknown";
+            var fileLength = stream.Length;
+            var fileProvider = new MauiFileProvider {
+                FileType = mimeType,
+                FileName = fileName,
+                FileRef = sUri,
+            };
+            fileInfos.Add(new AttachFileInfo(fileName, mimeType, fileLength, fileProvider));
+        }
+        return fileInfos.ToArray();
+    }
+#endif
 }
