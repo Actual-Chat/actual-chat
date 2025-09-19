@@ -4,10 +4,10 @@ import { Log } from 'logging';
 import { OperationCancelledError, PromiseSource } from 'promises';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 
-const { debugLog, errorLog } = Log.get('WebFileProvider');
+const { errorLog } = Log.get('WebFileProvider');
 
 interface MediaContent {
     mediaId: string;
@@ -20,19 +20,19 @@ type ProgressReporter = (progressPercent: number) => void;
 
 export class WebFileProviders
 {
-    public static async tryCreateFromFileHandleDbKey(fileHandleDbKey : string, blazorRef: DotNet.DotNetObject) : Promise<NullableJSObjectReference> {
+    public static async tryCreateFromFileHandleDbKey(fileHandleDbKey : string) : Promise<NullableJSObjectReference> {
         const fileHandle = await getFileHandle(fileHandleDbKey);
         if (fileHandle == null) {
             await deleteFileHandle(fileHandleDbKey);
             return NullableJSObjectReference.create(null);
         }
 
-        const granted = await requestFileHandlePermission(fileHandle, "read");
+        const granted = await requestFileHandlePermission(fileHandle, 'read');
         if (!granted) {
             return NullableJSObjectReference.create(null);
         }
         const file = await fileHandle.getFile();
-        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, file, file.name, blazorRef);
+        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, file, file.name);
         return NullableJSObjectReference.create(provider);
     }
 
@@ -54,14 +54,13 @@ export class WebFileProviders
     {
         grantFileUploadPermissionsInvoker.hasCallbacksChanged.add(() => {
             const hasCallbacks = grantFileUploadPermissionsInvoker.hasCallbacks();
-            void blazorRef.invokeMethodAsync("OnPendingRequestsHaveChanged", hasCallbacks);
-        })
+            void blazorRef.invokeMethodAsync('OnPendingRequestsHaveChanged', hasCallbacks);
+        });
     }
 }
 
 
 export class WebFileProvider {
-    private readonly reporter: FileUploadProgressReporter;
     private previewUrl: string | null = null;
     private fileUpload: FileUpload | null;
 
@@ -70,10 +69,8 @@ export class WebFileProvider {
         private readonly fileHandle: FileSystemFileHandle | null,
         private readonly file: Blob,
         private readonly fileName: string,
-        blazorRef: DotNet.DotNetObject
     )
     {
-        this.reporter = new FileUploadProgressReporter(blazorRef);
     }
 
     public createPreviewUrl() : string
@@ -94,7 +91,7 @@ export class WebFileProvider {
     public async saveFileHandleToDb() : Promise<string>
     {
         if (!this.fileHandle)
-            return "";
+            return '';
 
         if (this.fileHandleDbKey.length > 0)
             return this.fileHandleDbKey;
@@ -111,22 +108,23 @@ export class WebFileProvider {
             return false;
 
         await deleteFileHandle(this.fileHandleDbKey);
-        this.fileHandleDbKey = "";
+        this.fileHandleDbKey = '';
         return true;
     }
 
-    public start(chatId: string)
+    public start(chatId: string, blazorRef: DotNet.DotNetObject)
     {
-        if (this.fileUpload)
+        if (this.fileUpload) {
             throw new Error('File upload already started');
-
-        this.fileUpload = new FileUpload(chatId, this.file, this.fileName, pct => this.reporter.reportProgress(pct))
+        }
+        const reporter = new FileUploadProgressReporter(blazorRef);
+        this.fileUpload = new FileUpload(chatId, this.file, this.fileName, pct => reporter.reportProgress(pct));
         this.fileUpload.whenCompleted.then(x => {
-            void this.reporter.reportUploadSucceed(x.mediaId, x.thumbnailMediaId);
+            void reporter.reportUploadSucceed(x.mediaId, x.thumbnailMediaId);
         }).catch(e => {
             if (!(e instanceof OperationCancelledError)) {
                 errorLog?.log('Failed to upload file', e);
-                void this.reporter.reportUploadFailed();
+                void reporter.reportUploadFailed();
             }
         });
         this.fileUpload.start();
@@ -171,7 +169,7 @@ class FileUpload {
         private readonly progressReporter: ProgressReporter) {
         this.xhr = new XMLHttpRequest();
         if (!this.fileName)
-            this.fileName = "upload";
+            this.fileName = 'upload';
     }
 
     public get whenCompleted(): Promise<MediaContent> {

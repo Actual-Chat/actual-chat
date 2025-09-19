@@ -40,22 +40,19 @@ public partial class WebFileProvider : IFileProvider
         if (FileHandleDbKey.IsNullOrEmpty())
             return new NoFileAccessWebFileProviderInternal(js, "");
 
-        var backend = new FileUploaderBackend();
         try {
             CancellationToken cancellationToken = default;
             var nullableRef = await js
                 .InvokeAsync<NullableJSObjectReference>(JSCreateMethod,
                     cancellationToken,
-                    FileHandleDbKey,
-                    backend.BlazorRef)
+                    FileHandleDbKey)
                 .ConfigureAwait(false);
             var jsRef = nullableRef.Value;
             if (jsRef is not null)
-                return new WebFileProviderInternal(jsRef, backend, false);
+                return new WebFileProviderInternal(jsRef, false);
         }
         catch (Exception ex) {
             Log.LogWarning(ex, "Failed to create WebFileProviderInternal");
-            backend.BlazorRef.DisposeSilently();
         }
         return new NoFileAccessWebFileProviderInternal(js, FileHandleDbKey);
     }
@@ -109,21 +106,19 @@ public interface IWebFileProviderInternal
     Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId);
 }
 
-public class WebFileProviderInternal : IWebFileProviderInternal
+public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposable
 {
     private readonly IJSObjectReference _jsRef;
+    private readonly List<IDisposable> _disposables = new ();
+    private bool _disposed;
 
-    public FileUploaderTracker Tracker => Backend.Tracker;
-    public FileUploaderBackend Backend { get; }
     public bool IsOriginal { get; }
 
     public WebFileProviderInternal(
         IJSObjectReference jsRef,
-        FileUploaderBackend backend,
         bool isOriginal)
     {
         _jsRef = jsRef;
-        Backend = backend;
         IsOriginal = isOriginal;
     }
 
@@ -141,24 +136,39 @@ public class WebFileProviderInternal : IWebFileProviderInternal
 
     public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
     {
+        var fileUploaderBackend = new FileUploaderBackend();
+        _disposables.Add(fileUploaderBackend.BlazorRef);
+        var tracker = fileUploaderBackend.Tracker;
         var uploadOperation = new FileUploadOperation(async ct => {
             ct.Register(() => {
-                Tracker.SetCanceled();
+                tracker.SetCanceled();
                 _ = Cancel();
             });
-            await Start(chatId).ConfigureAwait(false);
-            return await Tracker.Task.ConfigureAwait(false);
+            await Start(chatId, fileUploaderBackend.BlazorRef).ConfigureAwait(false);
+            return await tracker.Task.ConfigureAwait(false);
         }) {
-            Progress = Tracker.Progress,
+            Progress = tracker.Progress,
         };
         return Task.FromResult<IFileUploadOperation>(uploadOperation);
     }
 
-    private ValueTask Start(ChatId chatId)
-        => _jsRef.InvokeVoidAsync("start", chatId.Value);
+    private ValueTask Start(ChatId chatId, DotNetObjectReference<IFileUploaderBackend> blazorRef)
+        => _jsRef.InvokeVoidAsync("start", chatId.Value, blazorRef);
 
     private ValueTask Cancel()
         => _jsRef.InvokeVoidAsync("cancel");
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        await _jsRef.DisposeAsync().ConfigureAwait(false);
+        foreach (var disposable in _disposables)
+            disposable.Dispose();
+        _disposables.Clear();
+    }
 }
 
 public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fileHandleDbKey) : IWebFileProviderInternal

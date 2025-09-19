@@ -21,7 +21,7 @@ export class WebFileAttachments
 {
     private static attachments: Map<string, WebFileAttachment> = new Map<string, WebFileAttachment>();
 
-    public static create(fileId : number, blazorRef: DotNet.DotNetObject) : CreateWebFileAttachmentResult | null
+    public static create(fileId : number) : CreateWebFileAttachmentResult | null
     {
         const fileInfo = AttachmentWebFilePickerStorage.Get(fileId);
         if (!fileInfo)
@@ -30,7 +30,7 @@ export class WebFileAttachments
         const file = fileInfo.file;
         let previewUrl = "";
         try {
-            const provider = new WebFileProvider('', fileInfo.fileHandle, file, file.name, blazorRef);
+            const provider = new WebFileProvider('', fileInfo.fileHandle, file, file.name);
             previewUrl = provider.createPreviewUrl();
             const attachment: WebFileAttachment = {
                 id: uuidv4(),

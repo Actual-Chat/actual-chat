@@ -17,21 +17,18 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             return false;
         }
         WebFileProviderInternal? webFileProviderInternal;
-        var fileUploaderBackend = new FileUploaderBackend();
         string previewUrl = "";
         try {
             var webFileAttachment = await JS
-                .InvokeAsync<CreateWebFileAttachmentResult>(JSCreateMethod, fileInfo.Id, fileUploaderBackend.BlazorRef)
+                .InvokeAsync<CreateWebFileAttachmentResult>(JSCreateMethod, fileInfo.Id)
                 .ConfigureAwait(true); // Continue on Blazor context.
             previewUrl = webFileAttachment.PreviewUrl;
             webFileProviderInternal = new WebFileProviderInternal(
                 webFileAttachment.FileProvider,
-                fileUploaderBackend,
                 true);
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to create file provider");
-            fileUploaderBackend.Dispose();
             return false;
         }
 
@@ -69,7 +66,6 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to create/resume upload session");
-            fileUploaderBackend.Dispose();
         }
         if (!uploadSessionId.IsNullOrEmpty())
             await UploadSessions.CancelSession(uploadSessionId);
