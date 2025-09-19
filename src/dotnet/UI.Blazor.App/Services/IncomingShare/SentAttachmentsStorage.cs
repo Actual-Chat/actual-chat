@@ -2,21 +2,25 @@
 
 public class SentAttachmentsStorage
 {
+    private AttachFileInfo[] _fileInfos = [];
+
     public ChatId? ChatId { get; private set; }
-    public AttachFileInfo[] FileInfos { get; private set; } = [];
+    public bool HasFiles => _fileInfos.Length > 0;
 
     public event EventHandler<EventArgs>? AttachmentsStored;
 
-    public void Clear()
+    public AttachFileInfo[] Pop()
     {
+        var fileInfos = _fileInfos;
         ChatId = null;
-        FileInfos = [];
+        _fileInfos = [];
+        return fileInfos;
     }
 
-    public void Store(ChatId chatId, AttachFileInfo[] fileInfos)
+    public void Push(ChatId chatId, AttachFileInfo[] fileInfos)
     {
         ChatId = chatId;
-        FileInfos = fileInfos;
+        _fileInfos = fileInfos;
 
         AttachmentsStored?.Invoke(this, EventArgs.Empty);
     }

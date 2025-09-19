@@ -3,13 +3,13 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
+public class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
 
     private UploadSessions UploadSessions => Hub.UploadSessions;
 
-    public async Task<bool> TryAddWebFileAttachment(AttachmentListHolder holder, AttachmentWebFilePickerBackend.FileInfo fileInfo, ChatId chatId)
+    public async Task<bool> TryAddWebFileAttachment(AttachmentListHolder holder, AttachmentWebFilePickerBackend.FileInfo fileInfo)
     {
         var list = holder.Attachments;
         if (list.CheckCanAdd(fileInfo.Length) is { } e) {
@@ -37,13 +37,33 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             WebFileProviderInternal = webFileProviderInternal,
         };
         webFileProvider.Initialize(Hub.Services);
-        if (previewUrl.IsNullOrEmpty())
-            previewUrl = await webFileProvider.GetPreviewUrl();
-        var attachment = new Attachment(Guid.NewGuid().ToString(),
+
+        return await AddFileAttachment(list, webFileProvider, fileInfo.FileType, previewUrl);
+    }
+
+    public async Task<bool> TryAddFileAttachment(AttachmentListHolder holder, AttachFileInfo fileInfo)
+    {
+        var list = holder.Attachments;
+        if (list.CheckCanAdd(fileInfo.Length) is { } e) {
+            UICommander.ShowError(e);
+            return false;
+        }
+
+        var fileProvider = fileInfo.FileProvider;
+        fileProvider.Initialize(Hub.Services);
+        return await AddFileAttachment(list, fileProvider, fileInfo.FileType);
+    }
+
+    private async Task<bool> AddFileAttachment(AttachmentList list, IFileProvider fileProvider, string fileType,
+        string previewUrlHint = "")
+    {
+        var previewUrl = previewUrlHint.NullIfEmpty() ?? await fileProvider.GetPreviewUrl();
+        var attachment = new Attachment(
+            Guid.NewGuid().ToString(),
             previewUrl,
-            fileInfo.FileName,
-            fileInfo.FileType) {
-            FileProvider = webFileProvider
+            fileProvider.FileName,
+            fileType) {
+            FileProvider = fileProvider,
         };
         _ = Dispatcher.InvokeAsync(() => {
             list.Add(attachment);
@@ -52,9 +72,11 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         // TODO(DF): review these code correctness.
         string uploadSessionId = "";
         try {
-            var uploadSession = await UploadSessions.CreateSession(chatId, attachment.FileProvider);
+            var uploadSession = await UploadSessions.CreateSession(list.ChatId, attachment.FileProvider);
             uploadSessionId = uploadSession.SessionId;
-            list.UpdateAttachment(attachment.Id, a => a with { UploadSessionId = uploadSession.SessionId });
+            await Dispatcher.InvokeAsync(() => {
+                list.UpdateAttachment(attachment.Id, a => a with { UploadSessionId = uploadSession.SessionId });
+            });
             await UploadSessions.ResumeSession(uploadSession.SessionId);
             AttachmentExt.ObserveUploadProgress(
                 uploadSession.ProgressTracker,

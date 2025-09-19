@@ -103,8 +103,7 @@
     private SearchUI SearchUI => Hub.SearchUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private SendingMessages SendingMessages => Hub.SendingMessages;
-    private WebFileAttachments WebFileAttachments { get; set; } = null!;
-    private CustomFileAttachments CustomFileAttachments { get; set; } = null!;
+    private FileAttachments FileAttachments { get; set; } = null!;
     private IAttachmentFilePicker? AttachmentFilePicker { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -118,8 +117,7 @@
     protected override void OnInitialized() {
         _attachmentListHolder = new AttachmentListHolder(Hub, Chat.Id);
         _attachmentListHolder.Changed += OnAttachmentListChanged;
-        WebFileAttachments =  new WebFileAttachments(Hub);
-        CustomFileAttachments =  new CustomFileAttachments(Hub);
+        FileAttachments =  new FileAttachments(Hub);
         AttachmentFilePicker = Hub.Services.GetService<IAttachmentFilePicker>();
     }
 
@@ -166,7 +164,7 @@
                 return; // Dispose may happen during await above
 
             AttachmentsStorage = Hub.Services.GetRequiredService<SentAttachmentsStorage>();
-            if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.FileInfos.Length > 0)
+            if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.HasFiles)
                 await SetAttachments(AttachmentsStorage);
             AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
         }
@@ -287,7 +285,7 @@
 
     private void OnAttachmentsStored(object? sender, EventArgs e) {
         var attachmentsStorage = AttachmentsStorage;
-        if (attachmentsStorage != null && attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.FileInfos.Length > 0)
+        if (attachmentsStorage != null && attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.HasFiles)
             _ = Handle();
 
         async Task Handle() {
@@ -298,20 +296,19 @@
 
     private async Task SetAttachments(SentAttachmentsStorage attachmentsStorage)
     {
-        var fileInfos = attachmentsStorage.FileInfos;
-        attachmentsStorage.Clear();
+        var fileInfos = attachmentsStorage.Pop();
         foreach (var fileInfo in fileInfos) {
-            await CustomFileAttachments.TryAddCustomFileAttachment(_attachmentListHolder, fileInfo, Chat.Id);
+            await FileAttachments.TryAddFileAttachment(_attachmentListHolder, fileInfo);
         }
     }
 
     private Task<bool> OnFilePicked(AttachmentWebFilePickerBackend.FileInfo fileInfo) {
-        return WebFileAttachments.TryAddWebFileAttachment(_attachmentListHolder, fileInfo, Chat.Id);
+        return FileAttachments.TryAddWebFileAttachment(_attachmentListHolder, fileInfo);
     }
 
     private async Task OnAttachFilesPicked(AttachFileInfo[] files) {
         foreach (var fileInfo in files) {
-            await CustomFileAttachments.TryAddCustomFileAttachment(_attachmentListHolder, fileInfo, Chat.Id);
+            await FileAttachments.TryAddFileAttachment(_attachmentListHolder, fileInfo);
         }
     }
 

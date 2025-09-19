@@ -2,13 +2,14 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AttachmentList(UploadSessions uploadSessions) : IAttachmentList
+public class AttachmentList(ChatId chatId, UploadSessions uploadSessions) : IAttachmentList
 {
     public static Exception FileTooBigError()
         => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
 
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
 
+    public ChatId ChatId => chatId;
     public int Count => _attachments.Count;
     public IEnumerable<Attachment> Items => _attachments;
     public event EventHandler? Changed;

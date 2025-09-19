@@ -115,7 +115,7 @@
         if (showFilePreview) {
             var chatId = SelectedChatIds.First();
             Services.GetRequiredService<SentAttachmentsStorage>()
-                .Store(chatId, ModalModel.Files);
+                .Push(chatId, ModalModel.Files);
             Modal.Close(true);
             await Hub.History.NavigateTo(Links.Chat(chatId));
         } else {
