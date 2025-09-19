@@ -1,5 +1,4 @@
 import { Log } from 'logging';
-import { Tune, TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 import { WebFileProvider } from '../../Services/FileUploads/web-file-providers';
 import { AttachmentWebFilePickerStorage } from './attachment-web-file-picker';
 import { v4 as uuidv4 } from 'uuid';
@@ -22,7 +21,7 @@ export class WebFileAttachments
 {
     private static attachments: Map<string, WebFileAttachment> = new Map<string, WebFileAttachment>();
 
-    public static create(fileId : number, chatId: string, blazorRef: DotNet.DotNetObject) : CreateWebFileAttachmentResult | null
+    public static create(fileId : number, blazorRef: DotNet.DotNetObject) : CreateWebFileAttachmentResult | null
     {
         const fileInfo = AttachmentWebFilePickerStorage.Get(fileId);
         if (!fileInfo)
@@ -31,7 +30,7 @@ export class WebFileAttachments
         const file = fileInfo.file;
         let previewUrl = "";
         try {
-            const provider = new WebFileProvider('', fileInfo.fileHandle, file, file.name, chatId, blazorRef);
+            const provider = new WebFileProvider('', fileInfo.fileHandle, file, file.name, blazorRef);
             previewUrl = provider.createPreviewUrl();
             const attachment: WebFileAttachment = {
                 id: uuidv4(),

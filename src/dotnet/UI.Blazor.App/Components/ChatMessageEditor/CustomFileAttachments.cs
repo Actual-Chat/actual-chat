@@ -15,14 +15,6 @@ public class CustomFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         }
 
         var fileProvider = fileInfo.FileProvider;
-        if (fileProvider is MauiFileProvider mauiFileProvider) {
-            fileProvider = new MauiFileProvider {
-                FileRef = mauiFileProvider.FileRef,
-                FileType = mauiFileProvider.FileType,
-                FileName = mauiFileProvider.FileName,
-                ChatId = chatId,
-            };
-        }
         fileProvider.Initialize(Hub.Services);
         return await AddCustomFileAttachment(list, fileProvider, fileInfo.FileType, chatId);
     }

@@ -13,8 +13,7 @@ public partial class WebFileProvider : IFileProvider
     public string FileName { get; init; } = "";
     [DataMember, MemoryPackOrder(1)]
     public string FileHandleDbKey { get; set; } = "";
-    [DataMember, MemoryPackOrder(2)]
-    public ChatId ChatId { get; set; } = null!;
+
     [IgnoreDataMember, MemoryPackIgnore]
     public IWebFileProviderInternal? WebFileProviderInternal { get; set; }
     [IgnoreDataMember, MemoryPackIgnore]
@@ -48,7 +47,6 @@ public partial class WebFileProvider : IFileProvider
                 .InvokeAsync<NullableJSObjectReference>(JSCreateMethod,
                     cancellationToken,
                     FileHandleDbKey,
-                    ChatId,
                     backend.BlazorRef)
                 .ConfigureAwait(false);
             var jsRef = nullableRef.Value;
@@ -92,13 +90,13 @@ public partial class WebFileProvider : IFileProvider
         return @internal.CreatePreviewUrl().AsTask();
     }
 
-    public Task<IFileUploadOperation> CreateUploadOperation()
+    public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
     {
         var @internal = WebFileProviderInternal;
         if (@internal is null)
             throw new InvalidOperationException("Upload can't be created.");
 
-        return @internal.CreateUploadOperation();
+        return @internal.CreateUploadOperation(chatId);
     }
 }
 
@@ -108,7 +106,7 @@ public interface IWebFileProviderInternal
     ValueTask RevokePreviewUrl();
     ValueTask<string> SaveFileHandleToDb();
     ValueTask<bool> DeleteFileHandleFromDb();
-    Task<IFileUploadOperation> CreateUploadOperation();
+    Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId);
 }
 
 public class WebFileProviderInternal : IWebFileProviderInternal
@@ -141,14 +139,14 @@ public class WebFileProviderInternal : IWebFileProviderInternal
     public ValueTask<bool> DeleteFileHandleFromDb()
         => _jsRef.InvokeAsync<bool>("removeFileHandleFromDb");
 
-    public Task<IFileUploadOperation> CreateUploadOperation()
+    public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
     {
         var uploadOperation = new FileUploadOperation(async ct => {
             ct.Register(() => {
                 Tracker.SetCanceled();
                 _ = Cancel();
             });
-            await Start().ConfigureAwait(false);
+            await Start(chatId).ConfigureAwait(false);
             return await Tracker.Task.ConfigureAwait(false);
         }) {
             Progress = Tracker.Progress,
@@ -156,8 +154,8 @@ public class WebFileProviderInternal : IWebFileProviderInternal
         return Task.FromResult<IFileUploadOperation>(uploadOperation);
     }
 
-    private ValueTask Start()
-        => _jsRef.InvokeVoidAsync("start");
+    private ValueTask Start(ChatId chatId)
+        => _jsRef.InvokeVoidAsync("start", chatId.Value);
 
     private ValueTask Cancel()
         => _jsRef.InvokeVoidAsync("cancel");
@@ -166,7 +164,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal
 public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fileHandleDbKey) : IWebFileProviderInternal
 {
     public ValueTask<string> CreatePreviewUrl()
-        => throw new NotImplementedException();
+        => throw new NotSupportedException();
 
     public ValueTask RevokePreviewUrl()
         => throw new NotSupportedException();
@@ -177,7 +175,7 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
     public ValueTask<bool> DeleteFileHandleFromDb()
         => WebFileProviders.DeleteFileHandleFromDb(jsRuntime, fileHandleDbKey);
 
-    public Task<IFileUploadOperation> CreateUploadOperation()
+    public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
         => throw new NotSupportedException();
 }
 

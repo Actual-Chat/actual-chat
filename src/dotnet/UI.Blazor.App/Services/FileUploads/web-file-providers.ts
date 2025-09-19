@@ -20,7 +20,7 @@ type ProgressReporter = (progressPercent: number) => void;
 
 export class WebFileProviders
 {
-    public static async tryCreateFromFileHandleDbKey(fileHandleDbKey : string, chatId : string, blazorRef: DotNet.DotNetObject) : Promise<NullableJSObjectReference> {
+    public static async tryCreateFromFileHandleDbKey(fileHandleDbKey : string, blazorRef: DotNet.DotNetObject) : Promise<NullableJSObjectReference> {
         const fileHandle = await getFileHandle(fileHandleDbKey);
         if (fileHandle == null) {
             await deleteFileHandle(fileHandleDbKey);
@@ -32,7 +32,7 @@ export class WebFileProviders
             return NullableJSObjectReference.create(null);
         }
         const file = await fileHandle.getFile();
-        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, file, file.name, chatId, blazorRef);
+        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, file, file.name, blazorRef);
         return NullableJSObjectReference.create(provider);
     }
 
@@ -61,29 +61,19 @@ export class WebFileProviders
 
 
 export class WebFileProvider {
-    private readonly fileUpload: FileUpload;
     private readonly reporter: FileUploadProgressReporter;
     private previewUrl: string | null = null;
+    private fileUpload: FileUpload | null;
 
     constructor(
         private fileHandleDbKey: string,
         private readonly fileHandle: FileSystemFileHandle | null,
         private readonly file: Blob,
-        fileName: string,
-        chatId: string,
+        private readonly fileName: string,
         blazorRef: DotNet.DotNetObject
     )
     {
         this.reporter = new FileUploadProgressReporter(blazorRef);
-        this.fileUpload = new FileUpload(chatId, file, fileName, pct => this.reporter.reportProgress(pct))
-        this.fileUpload.whenCompleted.then(x => {
-            void this.reporter.reportUploadSucceed(x.mediaId, x.thumbnailMediaId);
-        }).catch(e => {
-            if (!(e instanceof OperationCancelledError)) {
-                errorLog?.log('Failed to upload file', e);
-                void this.reporter.reportUploadFailed();
-            }
-        });
     }
 
     public createPreviewUrl() : string
@@ -125,13 +115,28 @@ export class WebFileProvider {
         return true;
     }
 
-    public start()
+    public start(chatId: string)
     {
+        if (this.fileUpload)
+            throw new Error('File upload already started');
+
+        this.fileUpload = new FileUpload(chatId, this.file, this.fileName, pct => this.reporter.reportProgress(pct))
+        this.fileUpload.whenCompleted.then(x => {
+            void this.reporter.reportUploadSucceed(x.mediaId, x.thumbnailMediaId);
+        }).catch(e => {
+            if (!(e instanceof OperationCancelledError)) {
+                errorLog?.log('Failed to upload file', e);
+                void this.reporter.reportUploadFailed();
+            }
+        });
         this.fileUpload.start();
     }
 
     public cancel()
     {
+        if (!this.fileUpload)
+            return;
+
         this.fileUpload.cancel();
     }
 }

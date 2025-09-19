@@ -7,7 +7,7 @@ public partial interface IFileProvider
 {
     string FileName { get; }
     Task PrepareForSaving();
-    Task<IFileUploadOperation> CreateUploadOperation();
+    Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId);
     void Initialize(IServiceProvider services);
     Task<bool> CheckAccess();
     Task ClearBeforeRemoving();

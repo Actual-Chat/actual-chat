@@ -38,6 +38,7 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
                 FileName = fileResult.FileName,
                 FileRef = filePath,
             };
+            fileProvider.Initialize(services);
             fileInfos.Add(new AttachFileInfo(fileResult.FileName, fileResult.ContentType, fileLength, fileProvider));
         }
         return fileInfos.ToArray();

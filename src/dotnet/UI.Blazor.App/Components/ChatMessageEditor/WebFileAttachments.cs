@@ -21,7 +21,7 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         string previewUrl = "";
         try {
             var webFileAttachment = await JS
-                .InvokeAsync<CreateWebFileAttachmentResult>(JSCreateMethod, fileInfo.Id, chatId.Value, fileUploaderBackend.BlazorRef)
+                .InvokeAsync<CreateWebFileAttachmentResult>(JSCreateMethod, fileInfo.Id, fileUploaderBackend.BlazorRef)
                 .ConfigureAwait(true); // Continue on Blazor context.
             previewUrl = webFileAttachment.PreviewUrl;
             webFileProviderInternal = new WebFileProviderInternal(
@@ -37,7 +37,6 @@ public class WebFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 
         var webFileProvider = new WebFileProvider {
             FileName = fileInfo.FileName,
-            ChatId = chatId,
             WebFileProviderInternal = webFileProviderInternal,
         };
         if (previewUrl.IsNullOrEmpty())

@@ -74,6 +74,7 @@ public class FileUploaderService(IServiceProvider services) : IFileUploaderServi
                 Owner.Log.LogInformation("**** Started uploading file '{FileName}' for '{SessionId}'", Session.FileName, Session.SessionId);
             }
             catch (Exception ex) {
+                Owner.Log.LogError(ex, "**** Failed to resume uploading file '{FileName}' for '{SessionId}'", Session.FileName, Session.SessionId);
                 await (Owner.OnFailed?.Invoke(Session.SessionId, ex.Message) ?? Task.CompletedTask).ConfigureAwait(false);
                 return;
             }
@@ -95,7 +96,9 @@ public class FileUploaderService(IServiceProvider services) : IFileUploaderServi
 
         private async Task<IFileUploadOperation> CreateUploadOperation()
         {
-            var uploadOperation = await Session.FileProvider.CreateUploadOperation().ConfigureAwait(false);
+            var chatId = Session.ChatId;
+            var fileProvider = Session.FileProvider;
+            var uploadOperation = await fileProvider.CreateUploadOperation(chatId).ConfigureAwait(false);
             var progressTracker = Session.ProgressTracker;
             StartOperationProgressTracking(Session, uploadOperation, progressTracker, Owner);
             return uploadOperation;
