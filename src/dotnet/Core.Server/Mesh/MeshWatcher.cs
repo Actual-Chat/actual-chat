@@ -267,9 +267,8 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                     Log.LogInformation("[+] {MeshNode}", lockKey);
 
                     using var linkedTokenSource = cancellationToken.LinkWith(holderStopToken);
-                    using var dTask = linkedTokenSource.Token.ToTask();
-                    await dTask.Resource.ConfigureAwait(false); //
-                    // Can't reach this point: dTask can only complete with cancellation
+                    await TaskExt.NeverEnding(linkedTokenSource.Token).ConfigureAwait(false);
+                    // Can't reach this point: above await can only complete with cancellation
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     if (e is TimeoutException)

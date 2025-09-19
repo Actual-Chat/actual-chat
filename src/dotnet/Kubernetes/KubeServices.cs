@@ -117,7 +117,8 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
         {
             Log.LogInformation("UpdateState: started for {Service}", KubeService);
             if (Kube.IsEmulated) {
-                await UpdateEmulatedState(cancellationToken).ConfigureAwait(false);
+                UpdateEmulatedState();
+                await TaskExt.NeverEnding(cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -199,7 +200,7 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
             }
         }
 
-        private async Task UpdateEmulatedState(CancellationToken cancellationToken)
+        private void UpdateEmulatedState()
         {
             var urlMapper = Services.UrlMapper();
             var port = urlMapper.BaseUri.Port;
@@ -213,9 +214,6 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
 
             _state.Value = serviceEndpoints;
             Log.LogInformation("UpdateState: service endpoints updated: {Endpoints}", serviceEndpoints);
-
-            using var dTask = cancellationToken.ToTask();
-            await dTask.Resource.ConfigureAwait(false);
         }
     }
 }
