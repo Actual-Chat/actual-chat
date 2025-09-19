@@ -28,7 +28,7 @@ public sealed class FileUploader(UIHub hub) : UIServiceBase<UIHub>(hub)
     private async Task<MediaContent> UploadInternal(ChatId chatId, HttpContent httpContent, string? contentType, string? fileName, CancellationToken cancellationToken)
     {
         using var formData = new MultipartFormDataContent();
-        if (contentType != null)
+        if (!contentType.IsNullOrEmpty())
             httpContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
         formData.Add(httpContent, "file", fileName.NullIfEmpty() ?? "Upload");
 

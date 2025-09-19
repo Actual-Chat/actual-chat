@@ -11,20 +11,11 @@ public sealed class AndroidContentDownloader(IServiceProvider services) : IIncom
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
-#pragma warning disable CA1822 // Can be static
-    public bool CanHandlePath(string? relativeUrl)
-#pragma warning restore CA1822
+    public static bool CanHandleWebRequestUri(string? relativeUrl)
         => relativeUrl.OrdinalStartsWith(Prefix);
 
-    public static bool TryCreateAppHostRelativeUrl(string url, out string relativeUrl)
-    {
-        relativeUrl = "";
-        if (!url.OrdinalStartsWith(ContentSchemePrefix))
-            return false;
-
-        relativeUrl = Prefix + url[ContentSchemePrefix.Length..];
-        return true;
-    }
+    public static string CreateWebRequestUri(string url)
+        => Prefix + System.Uri.EscapeDataString(url);
 
     public bool TryExtractFileName(string url, out string fileName)
     {
@@ -46,14 +37,25 @@ public sealed class AndroidContentDownloader(IServiceProvider services) : IIncom
         }
     }
 
+    public (Stream?, string?) GetWebRequestStream(string requestUri)
+    {
+        if (!requestUri.OrdinalStartsWith(Prefix))
+            return (null, null);
+
+        var uri = System.Uri.UnescapeDataString(requestUri[Prefix.Length..]);
+        try {
+            return OpenInputStream(uri);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to open stream for uri: '{Url}'", uri);
+            return (null, null);
+        }
+    }
+
     public (Stream?, string?) OpenInputStream(string url)
     {
-        if (!url.OrdinalStartsWith(Prefix))
-            throw new ArgumentOutOfRangeException(nameof(url), "Invalid url");
-
-        var url2 = ContentSchemePrefix + url[Prefix.Length..];
         try {
-            var uri = Uri.Parse(url2);
+            var uri = Uri.Parse(url);
             if (uri == null) {
                 Log.LogWarning("Can not perform request for uri: '{Url}'. Failed to parse Uri", url);
                 return (null, null);

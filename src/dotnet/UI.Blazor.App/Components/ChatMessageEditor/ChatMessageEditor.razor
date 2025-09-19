@@ -166,7 +166,7 @@
                 return; // Dispose may happen during await above
 
             AttachmentsStorage = Hub.Services.GetRequiredService<SentAttachmentsStorage>();
-            if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.Urls.Length > 0)
+            if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.FileInfos.Length > 0)
                 await SetAttachments(AttachmentsStorage);
             AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
         }
@@ -287,7 +287,7 @@
 
     private void OnAttachmentsStored(object? sender, EventArgs e) {
         var attachmentsStorage = AttachmentsStorage;
-        if (attachmentsStorage != null && attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.Urls.Length > 0)
+        if (attachmentsStorage != null && attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.FileInfos.Length > 0)
             _ = Handle();
 
         async Task Handle() {
@@ -298,8 +298,11 @@
 
     private async Task SetAttachments(SentAttachmentsStorage attachmentsStorage)
     {
-        await _attachmentListHolder.SetSentAttachments(attachmentsStorage.Urls);
+        var fileInfos = attachmentsStorage.FileInfos;
         attachmentsStorage.Clear();
+        foreach (var fileInfo in fileInfos) {
+            await CustomFileAttachments.TryAddCustomFileAttachment(_attachmentListHolder, fileInfo, Chat.Id);
+        }
     }
 
     private Task<bool> OnFilePicked(AttachmentWebFilePickerBackend.FileInfo fileInfo) {

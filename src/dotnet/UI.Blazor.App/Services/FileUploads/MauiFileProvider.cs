@@ -3,37 +3,41 @@ using MemoryPack;
 namespace ActualChat.UI.Blazor.App.Services;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class LocalFileProvider : IFileProvider
+public partial class MauiFileProvider : IFileProvider
 {
     private IServiceProvider _services = null!;
 
     [DataMember, MemoryPackOrder(0)]
-    public string FilePath { get; init; } = "";
+    public string FileRef { get; init; } = "";
     [DataMember, MemoryPackOrder(1)]
     public string FileType { get; init; } = "";
     [DataMember, MemoryPackOrder(2)]
+    public string FileName { get; init; } = "";
+    [DataMember, MemoryPackOrder(3)]
     public ChatId ChatId { get; set; } = null!;
-    [field: AllowNull, MaybeNull]
-    private FileInfo FileInfo => field ??= new FileInfo(FilePath);
-
-    [IgnoreDataMember, MemoryPackIgnore]
-    public long FileSize => FileInfo.Length;
-    [IgnoreDataMember, MemoryPackIgnore]
-    public string FileName => FileInfo.Name;
 
     private FileUploader Uploader => _services.GetRequiredService<FileUploader>();
+    [field: AllowNull, MaybeNull]
+    private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().Create(FileRef);
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= _services.LogFor<MauiFileProvider>();
 
     public void Initialize(IServiceProvider services)
-        => this._services = services;
+        => _services = services;
+
+    public Task<string> GetPreviewUrl()
+        => Impl.GetPreviewUrl();
 
     public Task PrepareForSaving()
-        => Task.CompletedTask;
+        => Impl.PrepareForSaving();
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
     public async Task<IFileUploadOperation> CreateUploadOperation()
     {
         var progress = new Progress<double>();
-        var stream = await OpenReadAsync().ConfigureAwait(false);
+        var stream = await OpenRead().ConfigureAwait(false);
+        if (stream is null)
+            throw new InvalidOperationException("No file access.");
         var fileUploadOperation = Uploader.CreateUploadOperation(ChatId, stream, FileType, FileName, progress);
         _ = fileUploadOperation.Task.ContinueWith(async _ => {
             await fileUploadOperation.Task.SilentAwait(false);
@@ -46,26 +50,35 @@ public partial class LocalFileProvider : IFileProvider
     public async Task<bool> CheckAccess()
     {
         try {
-            var stream = await OpenReadAsync(0).ConfigureAwait(false);
+            var stream = await OpenRead().ConfigureAwait(false);
+            if (stream is null)
+                return false;
+
             await using (stream.ConfigureAwait(false)) { }
             return true;
         }
-        catch {
-            Console.WriteLine($"Файл для сессии {FileName} недоступен");
+        catch(Exception ex) {
+            Log.LogWarning(ex, "Failed to open file for read. File ref: '{FilePath}'", FileRef);
             return false;
         }
     }
 
     public Task ClearBeforeRemoving()
-        => Task.CompletedTask;
+        => Impl.ClearBeforeRemoving();
 
-    public Task<string> GetPreviewUrl()
-        => Task.FromResult(ContentResolver.GetFileUri(FilePath));
+    private Task<Stream?> OpenRead()
+        => Impl.OpenRead();
+}
 
-    private Task<Stream> OpenReadAsync(long offset = 0)
-    {
-        var stream = FileInfo.OpenRead();
-        stream.Seek(offset, SeekOrigin.Begin);
-        return Task.FromResult<Stream>(stream);
-    }
+public interface IMauiFileProviderImplFactory
+{
+    IMauiFileProviderImpl Create(string fileRef);
+}
+
+public interface IMauiFileProviderImpl
+{
+    Task<string> GetPreviewUrl();
+    Task PrepareForSaving();
+    Task ClearBeforeRemoving();
+    Task<Stream?> OpenRead();
 }

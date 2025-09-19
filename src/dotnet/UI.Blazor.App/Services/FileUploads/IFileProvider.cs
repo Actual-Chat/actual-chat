@@ -20,5 +20,5 @@ public partial interface IFileProvider
 [MemoryPackUnionFormatter(typeof(IFileProvider))]
 [MemoryPackUnion(0, typeof(WebFileProvider))]
 [MemoryPackUnion(1, typeof(IncomingShareFileProvider))]
-[MemoryPackUnion(2, typeof(LocalFileProvider))]
+[MemoryPackUnion(2, typeof(MauiFileProvider))]
 public partial class FileProviderUnionFormatter;

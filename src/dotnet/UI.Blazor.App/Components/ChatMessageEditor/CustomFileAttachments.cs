@@ -15,19 +15,27 @@ public class CustomFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         }
 
         var fileProvider = fileInfo.FileProvider;
-        if (fileProvider is LocalFileProvider localFileProvider) {
-            fileProvider = new LocalFileProvider {
-                FilePath = localFileProvider.FilePath,
-                FileType = localFileProvider.FileType,
+        if (fileProvider is MauiFileProvider mauiFileProvider) {
+            fileProvider = new MauiFileProvider {
+                FileRef = mauiFileProvider.FileRef,
+                FileType = mauiFileProvider.FileType,
+                FileName = mauiFileProvider.FileName,
                 ChatId = chatId,
             };
         }
         fileProvider.Initialize(Hub.Services);
+        return await AddCustomFileAttachment(list, fileProvider, fileInfo.FileType, chatId);
+    }
+
+    private async Task<bool> AddCustomFileAttachment(AttachmentList list, IFileProvider fileProvider, string fileType,
+        ChatId chatId)
+    {
         var previewUrl = await fileProvider.GetPreviewUrl();
-        var attachment = new Attachment(Guid.NewGuid().ToString(),
+        var attachment = new Attachment(
+            Guid.NewGuid().ToString(),
             previewUrl,
-            fileInfo.FileName,
-            fileInfo.FileType) {
+            fileProvider.FileName,
+            fileType) {
             FileProvider = fileProvider,
         };
         _ = Dispatcher.InvokeAsync(() => {
@@ -39,7 +47,9 @@ public class CustomFileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         try {
             var uploadSession = await UploadSessions.CreateSession(chatId, attachment.FileProvider);
             uploadSessionId = uploadSession.SessionId;
-            list.UpdateAttachment(attachment.Id, a => a with { UploadSessionId = uploadSession.SessionId });
+            await Dispatcher.InvokeAsync(() => {
+                list.UpdateAttachment(attachment.Id, a => a with { UploadSessionId = uploadSession.SessionId });
+            });
             await UploadSessions.ResumeSession(uploadSession.SessionId);
             AttachmentExt.ObserveUploadProgress(
                 uploadSession.ProgressTracker,

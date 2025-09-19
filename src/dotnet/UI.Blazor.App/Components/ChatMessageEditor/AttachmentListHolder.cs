@@ -66,18 +66,6 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
     private void RaiseChanged()
         => Changed?.Invoke(this, EventArgs.Empty);
 
-    public async Task SetSentAttachments(string[] urls) {
-        throw new NotImplementedException();
-        // var downloader = Hub.Services.GetRequiredService<IIncomingShareFileDownloader>();
-        // var fileNames = urls
-        //     .Select(c => {
-        //         downloader.TryExtractFileName(c, out var fileName);
-        //         return fileName;
-        //     })
-        //     .ToArray();
-        // await JSRef.InvokeAsync<int>("addBlobs", [urls, fileNames]).ConfigureAwait(false);
-    }
-
     // Nested types
 
     public sealed class ResetIntent : IAsyncDisposable {

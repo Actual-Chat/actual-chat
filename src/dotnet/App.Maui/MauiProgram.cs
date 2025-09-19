@@ -3,7 +3,6 @@ using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
 using ActualChat.Logging;
 using ActualChat.Security;
-using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
@@ -298,7 +297,6 @@ public static partial class MauiProgram
         // All other (module) services
         ClientStartup.ConfigureServices(services, Constants.HostInfo, c => [new Module.MauiAppModule(c)]);
 
-        services.AddScoped<IAttachmentFilePicker>(_ => new MauiAttachmentFilePicker());
         // Platform services
         services.ConfigureBlazorWebViewAppPlatformServices();
     }

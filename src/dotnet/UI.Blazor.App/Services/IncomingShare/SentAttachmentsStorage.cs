@@ -3,20 +3,20 @@
 public class SentAttachmentsStorage
 {
     public ChatId? ChatId { get; private set; }
-    public string[] Urls { get; private set; } = [];
+    public AttachFileInfo[] FileInfos { get; private set; } = [];
 
     public event EventHandler<EventArgs>? AttachmentsStored;
 
     public void Clear()
     {
         ChatId = null;
-        Urls = [];
+        FileInfos = [];
     }
 
-    public void Store(ChatId chatId, string[] urls)
+    public void Store(ChatId chatId, AttachFileInfo[] fileInfos)
     {
         ChatId = chatId;
-        Urls = urls;
+        FileInfos = fileInfos;
 
         AttachmentsStored?.Invoke(this, EventArgs.Empty);
     }

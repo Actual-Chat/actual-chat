@@ -112,23 +112,40 @@
         if (selectedChatIds.Count == 0)
             return;
 
+        var filesDownloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
         if (showFilePreview) {
             var chatId = SelectedChatIds.First();
+            var fileInfos = new List<AttachFileInfo>();
+            foreach (var file in ModalModel.Files) {
+                var (stream, mediaType) = filesDownloader.OpenInputStream(file.Url);
+                if (stream == null) {
+                    Log.LogWarning("Failed to open input stream for '{Url}'", file.Url);
+                    continue;
+                }
+                var length = stream.Length;
+                if (!filesDownloader.TryExtractFileName(file.Url, out var fileName))
+                    fileName = "unknown";
+                var fileProvider = new MauiFileProvider {
+                    FileName = fileName,
+                    FileRef = file.Url,
+                    FileType = mediaType ?? "",
+                    ChatId = chatId,
+                };
+                fileProvider.Initialize(Hub.Services);
+                fileInfos.Add(new AttachFileInfo(fileName, mediaType ?? "", length, fileProvider));
+            }
             Services.GetRequiredService<SentAttachmentsStorage>()
-                .Store(chatId, ModalModel.Files.Select(c => c.Url).ToArray());
-
+                .Store(chatId, fileInfos.ToArray());
             Modal.Close(true);
-            await Services.GetRequiredService<History>()
-                .NavigateTo(Links.Chat(chatId));
+            await Hub.History.NavigateTo(Links.Chat(chatId));
         } else {
             Modal.Close(true);
             try {
-                var fileDownloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
                 var postTasks = new List<Task<ChatEntry?>>();
                 foreach (var chatId in selectedChatIds) {
                     var comment = _comment;
                     foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                        var attachmentList = UploadFiles(fileDownloader, chatId, filesChunk);
+                        var attachmentList = UploadFiles(filesDownloader, chatId, filesChunk);
                         var postTask = PostMessage(chatId, comment, attachmentList);
                         comment = "";
                         postTasks.Add(postTask);

@@ -76,13 +76,7 @@ public static class IncomingShareHandler
         return DispatchToBlazor(scopedServices => {
             var incomingShareUI = scopedServices.GetRequiredService<IncomingShareUI>();
             var fileInfos = uris
-                .Select(c => {
-                    var url = c.ToString()!;
-                    if (AndroidContentDownloader.TryCreateAppHostRelativeUrl(url, out var relativeUrl))
-                        return new IncomingShareFile(relativeUrl);
-                    Log.LogWarning("Unsupported sent file url: '{Url}'", url);
-                    return null;
-                })
+                .Select(c => new IncomingShareFile(c.ToString()!))
                 .SkipNullItems()
                 .ToArray();
             incomingShareUI.ShareFiles(fileInfos);
