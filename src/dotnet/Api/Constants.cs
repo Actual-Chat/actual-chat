@@ -276,6 +276,7 @@ public static partial class Constants
         public const int VadFrameDurationMs = 32;
         public const int OpusFrameLength = RecordingSampleRate / 1000 * OpusFrameDurationMs;
         public const int VadFrameLength = RecordingSampleRate / 1000 * VadFrameDurationMs;
+        public const int PcmFrameLength = PlaybackSampleRate / 1000 * OpusFrameDurationMs;
         public const int Bitrate = 32000;
         public const int Channels = 1;
         public const int RecordingSampleRate = 16000;

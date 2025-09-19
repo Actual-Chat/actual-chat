@@ -107,19 +107,18 @@ public sealed class OpusAudioCodec : IAudioCodec
             AllowSynchronousContinuations = true,
         });
         _ = Task.Run(async () => {
-                const int frameLen = Constants.Audio.OpusFrameLength;
 #if WINDOWS || ANDROID
                 OpusSharp.Core.OpusDecoder? decoder = null;
                 try {
                     decoder = new OpusSharp.Core.OpusDecoder(
-                        Constants.Audio.RecordingSampleRate,
+                        Constants.Audio.PlaybackSampleRate,
                         Constants.Audio.Channels);
 
                     await foreach (var owner in opusPackets.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                         using var _ = owner;
                         var packetMem = owner.Memory;
 
-                        var pcmOwner = MemoryPool<float>.Shared.Rent(frameLen);
+                        var pcmOwner = MemoryPool<float>.Shared.Rent(Constants.Audio.PcmFrameLength);
                         int samples;
                         try {
                             var packetSpan = packetMem.Span;
@@ -127,7 +126,7 @@ public sealed class OpusAudioCodec : IAudioCodec
                             samples = decoder.Decode(packetSpan,
                                 packetSpan.Length,
                                 pcmSpan,
-                                frameLen,
+                                Constants.Audio.PcmFrameLength,
                                 false);
                         }
                         catch {
