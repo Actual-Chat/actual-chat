@@ -18,7 +18,7 @@ public static partial class Constants
         public static readonly bool WebKvasBackend = false;
         public static readonly bool MeshLocks = false;
         public static readonly bool ShardLocker = false;
-        public static readonly bool OldShardWorker = false;
+        public static readonly bool LegacyShardWorker = false;
         public static readonly bool QueueProcessor = false;
         public static readonly bool Flows = false;
 

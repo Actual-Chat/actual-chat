@@ -5,7 +5,7 @@ namespace ActualChat;
 public abstract class LegacyShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keyPrefix = null)
     : WorkerBase, IHasServices
 {
-    private static bool DebugMode => Constants.DebugMode.OldShardWorker;
+    private static bool DebugMode => Constants.DebugMode.LegacyShardWorker;
 
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
