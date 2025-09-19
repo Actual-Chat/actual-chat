@@ -598,7 +598,7 @@ public static class AsyncEnumerableExt
                         // Keep this block - it's not a duplicate of the similar one below - because we want to await the value task once
                         // The delay has completed, so we yield the current buffer.
                         yield return buffer;
-                        buffer = new List<TSource>();
+                        buffer = [];
                         delayTask = clock.Delay(bufferDuration, cancellationToken);
                     }
                     continue;
@@ -731,15 +731,10 @@ public static class AsyncEnumerableExt
 
     // Private members
 
-    private readonly struct AsyncEnumerableAdapter<T> : IAsyncEnumerable<T>
+    private readonly struct AsyncEnumerableAdapter<T>(IList<T> source) : IAsyncEnumerable<T>
     {
-        private readonly IList<T> _source;
-
-        public AsyncEnumerableAdapter(IList<T> source)
-            => _source = source;
-
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
-            => new AsyncEnumeratorAdapter<T>(_source);
+            => new AsyncEnumeratorAdapter<T>(source);
     }
 
     private sealed class AsyncEnumeratorAdapter<T>(IList<T> source) : IAsyncEnumerator<T>
@@ -754,8 +749,6 @@ public static class AsyncEnumerableExt
 
         public T Current => source[_index];
     }
-
-    private record struct MoveNextResult(Task<bool> MOveNextTask, int Index);
 
     /* This exists in ActualLab.Core, though the impl. is different, so temp. keeping it here:
 

@@ -272,6 +272,7 @@ public static partial class Constants
 
     public static class Audio
     {
+        public const int StreamingChannelCapacity = 1024;
         public const int OpusFrameDurationMs = 20;
         public const int VadFrameDurationMs = 32;
         public const int OpusFrameLength = RecordingSampleRate / 1000 * OpusFrameDurationMs;

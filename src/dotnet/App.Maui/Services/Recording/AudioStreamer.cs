@@ -1,4 +1,5 @@
 using System.Buffers;
+using ActualChat.UI.Blazor;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -7,18 +8,20 @@ namespace ActualChat.App.Maui.Services.Recording;
 internal sealed class AudioStreamer
 {
     // Constants mirrored from TS (workers/audio-streamer.ts) with reasonable defaults
+    private static readonly TimeSpan BufferDuration = TimeSpan.FromMilliseconds(FrameDurationMs * 10);
     private const int FrameDurationMs = 20; // Opus frame
-    private const int MaxBufferedFrames = 400; // safety cap
-    private const int MinPackFrames = 2;
     private const int MaxPackFrames = 20; // up to 400ms per send
 
     private readonly HubConnection _connection;
 
+    private UIHub Hub { get; }
     public bool IsConnected => _connection.State == HubConnectionState.Connected;
 
-    public AudioStreamer(string baseUri)
+    public AudioStreamer(UIHub hub)
     {
-        var hubUrl = new Uri(new Uri(baseUri, UriKind.Absolute), "/api/hub/streams").ToString();
+        Hub = hub;
+        var baseUrl = hub.HostInfo.BaseUrl;
+        var hubUrl = new Uri(new Uri(baseUrl, UriKind.Absolute), "/api/hub/streams").ToString();
         var builder = new HubConnectionBuilder()
             .WithUrl(hubUrl, HttpTransportType.WebSockets, options => {
                 options.SkipNegotiation = true;
@@ -57,118 +60,37 @@ internal sealed class AudioStreamer
         }
     }
 
-    public AudioStream CreateStream(string sessionToken, int preSkip, string chatId, string? repliedChatEntryId)
-        => new(this, sessionToken, preSkip, chatId, repliedChatEntryId);
-
-    private async Task SendAsync(string sessionToken, string chatId, string? repliedChatEntryId, int preSkip, ChannelReader<byte[][]> reader, CancellationToken cancellationToken)
+    public async Task Send(
+        string sessionToken,
+        ChatId chatId,
+        ChatEntryId? repliedChatEntryId,
+        int preSkip,
+        IAsyncEnumerable<IMemoryOwner<byte>> packetStream,
+        CancellationToken cancellationToken)
     {
         // clientStartOffset = seconds since epoch (double)
         double clientStartOffset = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
-        await _connection.SendAsync("ProcessAudioChunks", sessionToken, chatId, repliedChatEntryId, clientStartOffset, preSkip, reader, cancellationToken).ConfigureAwait(false);
-    }
-
-    // Nested types
-    internal sealed class AudioStream(
-        AudioStreamer owner,
-        string sessionToken,
-        int preSkip,
-        string chatId,
-        string? repliedChatEntryId)
-        : IAsyncDisposable
-    {
-        private string? _repliedChatEntryId = repliedChatEntryId;
-
-        private readonly ConcurrentQueue<byte[]> _audioPacketQueue = new();
-        private readonly SemaphoreSlim _dataAvailable = new(0);
-        private volatile bool _isCompleted;
-        private Task? _streamTask;
-        private readonly CancellationTokenSource _cts = new();
-
-        public void AddFrame(ReadOnlySpan<byte> frame)
-        {
-            if (_isCompleted || frame.IsEmpty)
-                return;
-
-            _audioPacketQueue.Enqueue(frame.ToArray());
-            // Cap buffer size
-            while (_audioPacketQueue.Count > MaxBufferedFrames && _audioPacketQueue.TryDequeue(out _)) {
-                // drop oldest frames on overflow
-            }
-            _dataAvailable.Release();
-        }
-
-        public void Complete()
-        {
-            _isCompleted = true;
-            _dataAvailable.Release();
-        }
-
-        public void StartStreaming()
-            => _streamTask ??= Task.Run(StreamLoopAsync);
-
-        private async Task StreamLoopAsync()
-        {
-            // Create channel of byte[][] packets
-            var channel = Channel.CreateUnbounded<byte[][]>(new UnboundedChannelOptions {
-                SingleReader = true,
-                SingleWriter = true
+        // Ensure connection prior to sending
+        await EnsureConnected(quickReconnect: false, cancellationToken).ConfigureAwait(false);
+        // Create batched async enumerable and stream to server
+        var batched = packetStream
+            .Buffer(BufferDuration, Hub.Clocks.CpuClock, cancellationToken)
+            .SelectMany(list => {
+                // Split into chunks of max size
+                var batches = new List<byte[][]>();
+                for (var i = 0; i < list.Count; i += MaxPackFrames) {
+                    var count = Math.Min(MaxPackFrames, list.Count - i);
+                    var batch = new byte[count][];
+                    for (var j = 0; j < count; j++) {
+                        using var owner = list[i + j];
+                        batch[j] = owner.Memory.ToArray();
+                    }
+                    batches.Add(batch);
+                }
+                return batches.ToAsyncEnumerable();
             });
 
-            // Ensure connection prior to sending
-            await owner.EnsureConnected(quickReconnect: false, _cts.Token).ConfigureAwait(false);
-            // Fire-and-forget sending task; if it throws, we'll just stop streaming
-            var sendTask = owner.SendAsync(sessionToken, chatId, _repliedChatEntryId, preSkip, channel.Reader, _cts.Token);
-            _repliedChatEntryId = null; // avoid resending replied id on retries
-
-            try {
-                // batch frames
-                var batch = new List<byte[]>(MaxPackFrames);
-                while (!_cts.IsCancellationRequested) {
-                    // Wait for data if needed
-                    if (batch.Count == 0 && _audioPacketQueue.IsEmpty) {
-                        if (_isCompleted)
-                            break;
-
-                        await _dataAvailable.WaitAsync(TimeSpan.FromMilliseconds(100)).ConfigureAwait(false);
-                    }
-
-                    // Fill batch
-                    while (batch.Count < MaxPackFrames && _audioPacketQueue.TryDequeue(out var audioPacket))
-                        batch.Add(audioPacket);
-
-                    if (batch.Count <= MinPackFrames)
-                        continue;
-
-                    // Send packet
-                    var packetBatch = batch.ToArray();
-                    await channel.Writer.WriteAsync(packetBatch, _cts.Token).ConfigureAwait(false);
-                    batch.Clear();
-
-                    // Pacing to avoid overlaps similar to TS
-                    var delay = packetBatch.Length * FrameDurationMs / 2; // MAX_SPEED ~2
-                    if (delay > 0)
-                        await Task.Delay(delay, _cts.Token).ConfigureAwait(false);
-
-                    if (_isCompleted && _audioPacketQueue.IsEmpty)
-                        break;
-                }
-            }
-            catch { /* ignore */ }
-            finally {
-                channel.Writer.TryComplete();
-                try { await sendTask.ConfigureAwait(false); }
-                catch { /* ignore */ }
-            }
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            await _cts.CancelAsync();
-            if (_streamTask != null)
-                try { await _streamTask.ConfigureAwait(false); }
-                catch { /* ignore */ }
-            _cts.Dispose();
-        }
+        await _connection.SendAsync("ProcessAudioChunks", sessionToken, chatId.Value, repliedChatEntryId?.Value, clientStartOffset, preSkip, batched, cancellationToken).ConfigureAwait(false);
     }
 
     private sealed class MauiRetryPolicy : IRetryPolicy
