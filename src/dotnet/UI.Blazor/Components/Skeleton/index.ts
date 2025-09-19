@@ -8,3 +8,5 @@ export * from './string-skeleton.lit';
 export * from './tab-skeleton.lit';
 export * from './thin-left-panel-skeleton.lit';
 export * from './image-skeleton.lit';
+export * from './splash-page-skeleton.lit';
+export * from './voxt-skeleton.lit';

@@ -202,24 +202,21 @@
     <div id="web-splash" class="web-splash"></div>
     <script nonce="@webSplashNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
-        const overlay = document.getElementById('web-splash');
-        if (overlay) {
-          overlay.innerHTML = `
-            <div class="c-wrapper">
-                <div class="bg-wrapper">
-                    <img draggable="false" class="wide-image" src="/dist/images/voxt-galaxy-horizontal.svg" alt="voxt">
-                    <img draggable="false" class="narrow-image" src="/dist/images/voxt-galaxy-vertical.svg" alt="voxt">
-                </div>
-
-                <div class="c-content">
-                    <img draggable="false" src="/dist/images/splashscreen-voxt.svg" alt="Loading...">
-                    <div class="progress">
-                        <div class="progress-value"></div>
-                    </div>
-                </div>
-            </div>
-          `;
-        }
+        (async () => {
+            try {
+                const overlay = document.getElementById('web-splash');
+                if (overlay) {
+                    await window.App.whenBundleReady;
+                    const isVisibleData = await ui.localSettings.kvas.get('RightPanelUI.RightPanel.IsVisible');
+                    const isRightPanelVisible = isVisibleData === 'AAEBAQ==';
+                    overlay.innerHTML = `
+                        <splash-page-skeleton isRightPanelVisible="${isRightPanelVisible}"/>
+                    `;
+                }
+            } catch (err) {
+                console.error('Error splash script in RootServerPage.razor:', err);
+            }
+        })();
     </script>
 }
 

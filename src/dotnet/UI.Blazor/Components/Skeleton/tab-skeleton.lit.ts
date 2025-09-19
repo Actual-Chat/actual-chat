@@ -12,7 +12,7 @@ class TabSkeleton extends LitElement {
             flex-direction: row;
             align-items: center;
             column-gap: 1rem;
-            min-height: 2rem;
+            min-height: 2.5rem;
             margin: 0 0.5rem;
         }
         .c-line {

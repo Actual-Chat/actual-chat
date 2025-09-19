@@ -9,8 +9,8 @@
     <item name="android:windowTranslucentStatus">false</item>
     <item name="android:windowTranslucentNavigation">false</item>
     <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-    <item name="android:statusBarColor">@color/colorSplash</item>
-    <item name="android:navigationBarColor">@color/colorSplash</item>
+    <item name="android:statusBarColor">@color/colorPrimaryDark</item>
+    <item name="android:navigationBarColor">@color/colorPrimaryDark</item>
     <item name="android:gravity">center</item>
   </style>
 </resources>
