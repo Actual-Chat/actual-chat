@@ -54,7 +54,7 @@ public class AttachmentList(UploadSessions uploadSessions) : IAttachmentList
         OnChanged();
     }
 
-    public Exception? CheckCanAdd(int length)
+    public Exception? CheckCanAdd(long length)
     {
         if (length > Constants.Attachments.FileSizeLimit)
             return FileTooBigError();
@@ -66,7 +66,10 @@ public class AttachmentList(UploadSessions uploadSessions) : IAttachmentList
     }
 
     public void Add(Attachment attachment)
-        => _attachments = _attachments.Add(attachment);
+    {
+        _attachments = _attachments.Add(attachment);
+        OnChanged();
+    }
 
     public ValueTask DisposeAsync()
         => default;

@@ -21,7 +21,7 @@ public sealed class AttachmentWebFilePickerBackend : IAttachmentWebFilePickerBac
     }
 
     [JSInvokable]
-    public Task<bool> OnFilePicked(int id, string? fileName, string? fileType, int length)
+    public Task<bool> OnFilePicked(int id, string? fileName, string? fileType, long length)
         => _onFilePicked(new FileInfo(id, fileName ?? "", fileType ?? "", length));
 
     public void Dispose()
@@ -34,5 +34,5 @@ public sealed class AttachmentWebFilePickerBackend : IAttachmentWebFilePickerBac
     }
 
     // Nested types
-    public record FileInfo(int Id, string FileName, string FileType, int Length);
+    public record FileInfo(int Id, string FileName, string FileType, long Length);
 }

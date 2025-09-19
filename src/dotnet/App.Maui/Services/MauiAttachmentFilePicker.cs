@@ -22,7 +22,7 @@ public class MauiAttachmentFilePicker : IAttachmentFilePicker
                 FilePath = fileResult.FullPath,
                 FileType = fileResult.ContentType,
             };
-            var fileInfo = new AttachFileInfo(fileResult.FileName, fileResult.ContentType, (int)fileLength, fileProvider);
+            var fileInfo = new AttachFileInfo(fileResult.FileName, fileResult.ContentType, fileLength, fileProvider);
             fileInfos.Add(fileInfo);
         }
         return fileInfos.ToArray();
