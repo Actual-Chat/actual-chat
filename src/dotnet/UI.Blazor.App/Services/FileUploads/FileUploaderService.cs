@@ -110,19 +110,20 @@ public class FileUploaderService(IServiceProvider services) : IFileUploaderServi
             };
             _ = uploadOperation.Task.ContinueWith(async t => {
                 if (t.IsCompletedSuccessfully) {
+                    owner.Log.LogInformation("**** Uploaded file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
                     var mediaContent = t.Result;
                     progressTracker.SetResult(mediaContent);
                     await (owner.OnCompleted?.Invoke(sessionId) ?? Task.CompletedTask).ConfigureAwait(false);
-                    owner.Log.LogInformation("**** Uploaded file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
                 }
                 else if (t.IsFaulted) {
+                    foreach (var ex in t.Exception.Flatten().InnerExceptions)
+                        owner.Log.LogError(ex, "**** Failed to upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
                     progressTracker.SetException(t.Exception);
                     await (owner.OnFailed?.Invoke(sessionId, t.Exception.Message) ?? Task.CompletedTask).ConfigureAwait(false);
-                    owner.Log.LogError(t.Exception, "**** Failed to upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
                 }
                 else if (t.IsCanceled) {
-                    progressTracker.SetCanceled();
                     owner.Log.LogInformation("**** Canceled upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
+                    progressTracker.SetCanceled();
                     // Owner.OnFailed?.Invoke(Session.SessionId, "Canceled");
                 }
             }, TaskScheduler.Default);

@@ -50,7 +50,8 @@ public sealed class FileUploader(UIHub hub) : UIServiceBase<UIHub>(hub)
                     .ConfigureAwait(false);
                 return result!;
             }
-            var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var error = $"HTTP {(int)response.StatusCode} ({response.ReasonPhrase.NullIfEmpty() ?? response.StatusCode.ToInvariantString()}). Body: {errorBody}";
             throw StandardError.External(error);
         } catch(Exception) when (cancellationToken.IsCancellationRequested) {
             throw new TaskCanceledException();
