@@ -20,15 +20,18 @@ internal sealed class WindowsAudioPlaybackEngine(
     IServiceProvider services)
     : IAudioPlaybackEngine
 {
-    // According to Opus spec, the decoder output must skip the first PreSkip samples at 48 kHz
-    // We track how many samples remain to be skipped and drop them in the decode loop.
-    private int _remainingPreSkip;
     private readonly Channel<IMemoryOwner<byte>> _packetChannel = Channel.CreateUnbounded<IMemoryOwner<byte>>(new UnboundedChannelOptions {
         SingleReader = true,
-        SingleWriter = false,
+        SingleWriter = true,
         AllowSynchronousContinuations = false,
     });
 
+    private readonly BlockRingBuffer<float> _decodedSamples = new(Constants.Audio.PlaybackSampleRate * 20); // 20-seconds buffer
+    private readonly CancellationTokenSource _cts = new();
+
+    // According to Opus spec, the decoder output must skip the first PreSkip samples at 48 kHz
+    // We track how many samples remain to be skipped and drop them in the decode loop.
+    private int _remainingPreSkip;
     private AudioGraph? _graph;
     private AudioDeviceOutputNode? _deviceOutput;
     private AudioFrameInputNode? _frameInput;
@@ -80,10 +83,11 @@ internal sealed class WindowsAudioPlaybackEngine(
         _deviceOutput = deviceOutputResult.DeviceOutputNode;
         _frameInput = _graph.CreateFrameInputNode(encoding);
         _frameInput.AddOutgoingConnection(_deviceOutput);
+        _frameInput.QuantumStarted += OnQuantumStarted;
 
         // Start background decode loop
-        var ct = cancellationToken;
-        _decodeTask = Task.Run(() => DecodeAndFeed(ct), CancellationToken.None);
+        var ct = _cts.Token;
+        _decodeTask = BackgroundTask.Run(() => DecodeAndFeed(ct), ct);
 
         try {
             _frameInput.Start();
@@ -121,23 +125,32 @@ internal sealed class WindowsAudioPlaybackEngine(
 
     public async Task End(bool abort, CancellationToken cancellationToken)
     {
-        try {
-            _packetChannel.Writer.TryComplete();
-        } catch { /* ignore */  }
+        _packetChannel.Writer.TryComplete();
+        _decodedSamples.Clear();
+        await _cts.CancelAsync();
         try {
             if (_decodeTask != null)
                 await _decodeTask.ConfigureAwait(false);
-        } catch { /* ignore */  }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to wait for decode loop to complete");
+             /* ignore */
+        }
 
         if (_graph != null) {
             try {
-                _frameInput?.Stop(); _graph.Stop();
+                _frameInput?.Stop();
+                _graph.Stop();
             } catch { /* ignore */ }
-            _frameInput?.Dispose();
-            _deviceOutput?.Dispose();
-            _graph.Dispose();
+            _frameInput.DisposeSilently();
+            _deviceOutput.DisposeSilently();
+            _graph.DisposeSilently();
         }
-        _graph = null; _deviceOutput = null; _frameInput = null; _started = false;
+        _graph = null;
+        _deviceOutput = null;
+        _frameInput = null;
+        _started = false;
         _isPaused = true;
         // Report end (no error message). If an error already reported, this will no-op.
         TryReportEnded(null);
@@ -149,10 +162,8 @@ internal sealed class WindowsAudioPlaybackEngine(
         var data = frame.Data;
         if (data.Length == 0)
             return Task.CompletedTask;
-        var owner = MemoryPool<byte>.Shared.Rent(data.Length);
-        data.AsSpan().CopyTo(owner.Memory.Span);
-        if (!_packetChannel.Writer.TryWrite(new PooledSliceOwner<byte>(owner, data.Length)))
-            owner.Dispose();
+
+        _packetChannel.Writer.TryWrite(new ByteArrayMemoryOwner(data));
         return Task.CompletedTask;
     }
 
@@ -164,46 +175,32 @@ internal sealed class WindowsAudioPlaybackEngine(
         try {
             var input = _packetChannel.Reader.ReadAllAsync(cancellationToken);
             await foreach (var pcmOwner in AudioCodec.Decode(input, cancellationToken).ConfigureAwait(false)) {
-                using var pcm = pcmOwner;
-                var samples = pcmOwner.Memory.Length;
+                using var _ = pcmOwner;
+                var pcm = pcmOwner.Memory;
+                var samples = pcm.Length;
                 if (samples <= 0)
                     continue;
 
                 // Apply Opus pre-skip: drop the first _remainingPreSkip samples from decoder output
-                if (_remainingPreSkip > 0) {
+                if (_remainingPreSkip > 0)
                     if (_remainingPreSkip >= samples) {
                         _remainingPreSkip -= samples;
                         // Entire buffer skipped
                         continue;
                     }
-                }
 
                 var skip = Math.Min(_remainingPreSkip, samples);
                 var playSamples = samples - skip;
-                var bytes = playSamples * sizeof(float);
-                using var audioFrame = new AudioFrame((uint)bytes);
-                using var buffer = audioFrame.LockBuffer(AudioBufferAccessMode.Write);
-                using var reference = buffer.CreateReference();
-                unsafe {
-                    WindowsRuntimeMarshal.TryGetDataUnsafe(reference, out IntPtr dataPtr, out var capacity);
-                    if (dataPtr == IntPtr.Zero || capacity < bytes)
-                        continue;
-
-                    var src = pcmOwner.Memory.Span.Slice(skip, playSamples);
-                    var dst = new Span<float>((void*)dataPtr, playSamples);
-                    src.CopyTo(dst);
+                while (!_decodedSamples.TryPush(pcm.Span.Slice(skip, playSamples))) {
+                    // Report buffer full
+                    await ReportPlaying();
+                    await _decodedSamples.WhenPulled.WaitAsync(cancellationToken);
                 }
-                _frameInput?.AddFrame(audioFrame);
 
                 // Update played samples and periodically report playing state
                 _remainingPreSkip -= skip;
-                if (_remainingPreSkip < 0) _remainingPreSkip = 0;
-                _playedSamples += playSamples;
-                var now = DateTime.UtcNow;
-                if ((now - _lastReportAt).TotalMilliseconds >= 200) {
-                    _lastReportAt = now;
-                    _ = ReportPlaying();
-                }
+                if (_remainingPreSkip < 0)
+                    _remainingPreSkip = 0;
             }
 
             // Source completed – report ended
@@ -218,13 +215,42 @@ internal sealed class WindowsAudioPlaybackEngine(
         }
     }
 
+    private void OnQuantumStarted(AudioFrameInputNode sender, FrameInputNodeQuantumStartedEventArgs args)
+    {
+        var playSamples = args.RequiredSamples;
+        var bytes = playSamples * sizeof(float);
+        using var audioFrame = new AudioFrame((uint)bytes);
+        using var buffer = audioFrame.LockBuffer(AudioBufferAccessMode.Write);
+        using var reference = buffer.CreateReference();
+        unsafe {
+            WindowsRuntimeMarshal.TryGetDataUnsafe(reference, out IntPtr dataPtr, out var capacity);
+            if (dataPtr == IntPtr.Zero || capacity < bytes)
+                return;
+
+            if (!_decodedSamples.TryPull(playSamples, out var pcmOwner))
+                return;
+
+            var src = pcmOwner.Memory.Span;
+            var dst = new Span<float>((void*)dataPtr, playSamples);
+            src.CopyTo(dst);
+        }
+        _frameInput?.AddFrame(audioFrame);
+        _playedSamples += playSamples;
+        var now = DateTime.UtcNow;
+        if ((now - _lastReportAt).TotalMilliseconds >= 200) {
+            _lastReportAt = now;
+            _ = ReportPlaying();
+        }
+    }
+
     private Task ReportPlaying()
     {
         // Compute offset in seconds from played samples
-        var seconds = (double)_playedSamples / Constants.Audio.PlaybackSampleRate;
-        var isBufferLow = !_isPaused; // allow feeding while playing; block when paused
+        var played = (double)_playedSamples / Constants.Audio.PlaybackSampleRate;
+        var buffered = TimeSpan.FromSeconds((double)_decodedSamples.Count / Constants.Audio.PlaybackSampleRate);
+        var isBufferLow = buffered < Constants.Audio.LowPlaybackBufferDuration;
         try {
-            return playerBackend.OnPlaying(seconds, _isPaused, isBufferLow);
+            return playerBackend.OnPlaying(played, _isPaused, isBufferLow);
         }
         catch {
             // Don't propagate reporting errors
@@ -236,6 +262,7 @@ internal sealed class WindowsAudioPlaybackEngine(
     {
         if (Interlocked.Exchange(ref _endedReported, 1) != 0)
             return;
+
         _ = SafeOnEnded(message);
     }
 
@@ -249,10 +276,12 @@ internal sealed class WindowsAudioPlaybackEngine(
         }
     }
 
-    private readonly struct PooledSliceOwner<T>(IMemoryOwner<T> rented, int length) : IMemoryOwner<T>
+    private readonly struct ByteArrayMemoryOwner(byte[] buffer) : IMemoryOwner<byte>
     {
-        public Memory<T> Memory => rented.Memory[..length];
-        public void Dispose() => rented.Dispose();
+        public Memory<byte> Memory { get; } = buffer;
+
+        public void Dispose()
+        { }
     }
 }
 #endif

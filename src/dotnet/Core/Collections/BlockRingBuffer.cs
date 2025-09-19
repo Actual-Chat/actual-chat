@@ -2,9 +2,9 @@ using System.Buffers;
 
 namespace ActualChat.Collections;
 
-public class BlockRingBuffer<T>
+public class BlockRingBuffer<T>: IDisposable
 {
-    private readonly T[] _buffer; // Fixed-size backing array
+    private readonly IMemoryOwner<T> _bufferOwner;
     private readonly int _mask;
     private int _writeIndex; // Producer's write position
     private int _readIndex;  // Consumer's read position
@@ -33,11 +33,12 @@ public class BlockRingBuffer<T>
     public Task WhenPushed => _whenPushed;
 
     public BlockRingBuffer(int minCapacity)
-        : this(new T[Bits.GreaterOrEqualPowerOf2((ulong)Math.Max(2, minCapacity + 1))])
+        : this(MemoryPool<T>.Shared.Rent((int)Bits.GreaterOrEqualPowerOf2((ulong)Math.Max(2, minCapacity + 1))))
     { }
 
-    public BlockRingBuffer(T[] buffer)
+    private BlockRingBuffer(IMemoryOwner<T> bufferOwner)
     {
+        var buffer = bufferOwner.Memory;
         if (!Bits.IsPowerOf2((ulong)buffer.Length))
             throw new ArgumentOutOfRangeException(nameof(buffer));
         if (buffer.Length < 2)
@@ -45,12 +46,18 @@ public class BlockRingBuffer<T>
 
         // Use one less than buffer length to distinguish empty from full
         _mask = buffer.Length - 1;
-        _buffer = buffer;
+        _bufferOwner = bufferOwner;
         _writeIndex = 0;
         _readIndex = 0;
         _pendingReadIndex = 0;
         _whenPushed = Task.CompletedTask;
         _whenPulled = Task.CompletedTask;
+    }
+    public void Dispose()
+    {
+        _bufferOwner.Dispose();
+        _whenPulled.DisposeSilently();
+        _whenPushed.DisposeSilently();
     }
 
     public bool TryPush(ReadOnlySpan<T> data)
@@ -72,15 +79,16 @@ public class BlockRingBuffer<T>
         }
 
         // Write data with wraparound support
+        var buffer = _bufferOwner.Memory;
         var writePos = currentWrite & _mask;
-        if (writePos + length <= _buffer.Length)
+        if (writePos + length <= buffer.Length)
             // No wraparound needed
-            data.CopyTo(_buffer.AsSpan(writePos, length));
+            data.CopyTo(buffer.Span.Slice(writePos, length));
         else {
             // Handle wraparound
-            var firstPart = _buffer.Length - writePos;
-            data[..firstPart].CopyTo(_buffer.AsSpan(writePos, firstPart));
-            data[firstPart..].CopyTo(_buffer.AsSpan(0, length - firstPart));
+            var firstPart = buffer.Length - writePos;
+            data[..firstPart].CopyTo(buffer.Span.Slice(writePos, firstPart));
+            data[firstPart..].CopyTo(buffer.Span[..(length - firstPart)]);
         }
 
         // Update write index (single producer, so this is safe)
@@ -127,20 +135,20 @@ public class BlockRingBuffer<T>
         }
 
         var readPos = currentRead & _mask;
-
-        if (readPos + length <= _buffer.Length) {
+        var buffer = _bufferOwner.Memory;
+        if (readPos + length <= buffer.Length) {
             // No wraparound, can use zero-copy
-            block = new ConsumableBlock(new Memory<T>(_buffer, readPos, length), buffer: this);
+            block = new ConsumableBlock(buffer.Slice(readPos, length), buffer: this);
             return true;
         }
 
         // Wraparound required, need to copy to contiguous memory
         var owner = MemoryPool<T>.Shared.Rent(length);
         try {
-            var firstPart = _buffer.Length - readPos;
+            var firstPart = buffer.Length - readPos;
             var span = owner.Memory.Span;
-            _buffer.AsSpan(readPos, firstPart).CopyTo(span[..firstPart]);
-            _buffer.AsSpan(0, length - firstPart).CopyTo(span.Slice(firstPart, length - firstPart));
+            buffer.Span.Slice(readPos, firstPart).CopyTo(span[..firstPart]);
+            buffer.Span[..(length - firstPart)].CopyTo(span.Slice(firstPart, length - firstPart));
             block = new ConsumableBlock(owner.Memory[..length], owner, this);
             return true;
         }
@@ -157,6 +165,17 @@ public class BlockRingBuffer<T>
             ? block
             : throw StandardError.Unavailable("Not enough data to pull");
 
+    public void Clear()
+    {
+        _readIndex = 0;
+        _writeIndex = 0;
+        _pendingReadIndex = 0;
+        _whenPulledTcs?.TrySetResult();
+        _whenPushedTcs?.TrySetResult();
+        _whenPushed = Task.CompletedTask;
+        _whenPulled = Task.CompletedTask;
+    }
+
 
     // Internal methods
 
@@ -169,9 +188,10 @@ public class BlockRingBuffer<T>
         if (available == 0)
             return ReadOnlySpan<T>.Empty;
 
+        var buffer = _bufferOwner.Memory;
         var readPos = readIndex & _mask;
-        var contiguous = Math.Min(available, _buffer.Length - readPos);
-        return _buffer.AsSpan(readPos, contiguous);
+        var contiguous = Math.Min(available, buffer.Length - readPos);
+        return buffer.Span.Slice(readPos, contiguous);
     }
 
     // Private methods
