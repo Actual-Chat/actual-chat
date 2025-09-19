@@ -138,34 +138,14 @@ internal sealed class WindowsAudioPlaybackEngine(
         }
 
         // Abort: stop everything immediately
+        try {
+            _frameInput?.Stop();
+            _graph?.Stop();
+        } catch { /* ignore */ }
         _packetChannel.Writer.TryComplete();
         _decodedSamples.Clear();
         _decodeCts.CancelAndDisposeSilently();
         _pauseCts?.CancelAndDisposeSilently();
-        try {
-            _decodeTask.DisposeSilently();
-            _delayedPlayTask.DisposeSilently();
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to wait for decode loop to complete");
-             /* ignore */
-        }
-
-        if (_graph != null) {
-            try {
-                _frameInput?.Stop();
-                _graph.Stop();
-            } catch { /* ignore */ }
-            _frameInput.DisposeSilently();
-            _deviceOutput.DisposeSilently();
-            _graph.DisposeSilently();
-        }
-        _graph = null;
-        _deviceOutput = null;
-        _frameInput = null;
-        _decodeTask = null;
-        _delayedPlayTask = null;
         _isPaused = true;
         // Report end (no error message). If an error already reported, this will no-op.
         TryReportEnded(null);
@@ -183,8 +163,30 @@ internal sealed class WindowsAudioPlaybackEngine(
         return Task.CompletedTask;
     }
 
-    public async ValueTask DisposeAsync()
-        => await End(true, CancellationToken.None).ConfigureAwait(false);
+    public ValueTask DisposeAsync()
+    {
+        try {
+            _decodeTask.DisposeSilently();
+            _delayedPlayTask.DisposeSilently();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to wait for decode loop to complete");
+            /* ignore */
+        }
+
+        if (_graph != null) {
+            _frameInput.DisposeSilently();
+            _deviceOutput.DisposeSilently();
+            _graph.DisposeSilently();
+        }
+        _graph = null;
+        _deviceOutput = null;
+        _frameInput = null;
+        _decodeTask = null;
+        _delayedPlayTask = null;
+        return ValueTask.CompletedTask;
+    }
 
 
     // Private methods
