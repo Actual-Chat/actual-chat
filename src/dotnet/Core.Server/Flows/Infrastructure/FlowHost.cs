@@ -1,10 +1,12 @@
-using ActualLab.Internal;
+using ActualLab.Rpc;
 
 namespace ActualChat.Flows.Infrastructure;
 
 public sealed class FlowHost : LegacyShardWorker, IHasServices
 {
     private static readonly Requester Requester = new(typeof(FlowHost));
+
+    private readonly FlowHostShard?[] _shards;
 
     public new IServiceProvider Services => base.Services;
     public FlowRegistry Registry { get; }
@@ -16,8 +18,6 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
 
     public TimeSpan HandleEventRetryDelay { get; init; } = TimeSpan.FromSeconds(0.5);
 
-    private FlowHostShard[] Shards { get; }
-
     // TODO(AK): Why do we have single shard scheme for Flows? I'm sure we have to use service' shard scheme!
     public FlowHost(IServiceProvider services)
         : base(services, ShardScheme.FlowsBackend)
@@ -25,51 +25,20 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
         Registry = services.GetRequiredService<FlowRegistry>();
         Commander = services.Commander();
         Clocks = services.Clocks();
-
-        using var cancelledCts = new CancellationTokenSource();
-        cancelledCts.Cancel();
-        var cancelledToken = cancelledCts.Token;
-        Shards = Enumerable.Range(0, ShardScheme.ShardCount)
-            .Select(i => new FlowHostShard(this, i, cancelledToken))
-            .ToArray();
-    }
-
-    public FlowWorklet this[FlowId flowId] {
-        get {
-            flowId.Require();
-            var shardKey = ShardKeyResolvers.Get<FlowId>(Requester).Invoke(flowId);
-            var shardIndex = ShardScheme.GetShardIndex(shardKey);
-
-            var shard = Shards[shardIndex];
-            if (shard.Worklets.TryGetValue(flowId, out var worklet))
-                return worklet;
-
-            lock (Shards) {
-                shard = Shards[shardIndex];
-                if (shard.Worklets.TryGetValue(flowId, out worklet))
-                    return worklet;
-
-                if (StopToken.IsCancellationRequested)
-                    throw Errors.AlreadyDisposed<FlowHost>();
-
-                worklet = shard.NewWorklet(flowId);
-                shard.Worklets[flowId] = worklet;
-                return worklet;
-            }
-        }
+        _shards = new FlowHostShard?[ShardScheme.ShardCount];
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
     public async Task<long> ProcessEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken)
     {
         while (true) {
-            var worklet = this[flowId];
+            var worklet = GetOrAddWorklet(flowId);
             try {
                 var version = await worklet
                     .EnqueueAndProcessEvent(evt, cancellationToken)
                     .WaitAsync(cancellationToken) // It's important to have it here, read below
                     .ConfigureAwait(false);
-                // .WaitAsync ensures that even if queue is clogged,
+                // .WaitAsync ensures that even if the queue is clogged,
                 // HandleEvent will instantly return on cancellationToken cancellation.
                 return version;
             }
@@ -90,13 +59,48 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
 
     // Protected methods
 
-    protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
+    protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
-        FlowHostShard shard;
-        lock (Shards) {
-            shard = new FlowHostShard(this, shardIndex, cancellationToken);
-            Shards[shardIndex] = shard;
+        var shard = new FlowHostShard(this, shardIndex, cancellationToken);
+
+        // Expose shard
+        lock (_shards)
+            _shards[shardIndex] = shard;
+
+        // Await for the stop signal
+        Log.LogInformation("+ FlowHost.OnRun({ShardIndex})", shardIndex);
+        await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
+        Log.LogInformation("- FlowHost.OnRun({ShardIndex})", shardIndex);
+
+        // Hide shard
+        lock (_shards)
+            _shards[shardIndex] = null;
+
+        // Dispose all worklets
+        while (true) {
+            // ReSharper disable once InconsistentlySynchronizedField
+            var disposeTasks = shard.Worklets
+                .Select(w => w.DisposeAsync().AsTask())
+                .ToList();
+            if (disposeTasks.Count == 0)
+                break;
+
+            await Task.WhenAll(disposeTasks).ConfigureAwait(false);
         }
-        return shard.OnRun(cancellationToken); // Delegate
+        Log.LogInformation("-- FlowHost.OnRun({ShardIndex})", shardIndex);
+    }
+
+    // Private methods
+
+    private FlowWorklet GetOrAddWorklet(FlowId flowId)
+    {
+        flowId.Require();
+        var shardKey = ShardKeyResolvers.Get<FlowId>(Requester).Invoke(flowId);
+        var shardIndex = ShardScheme.GetShardIndex(shardKey);
+        // ReSharper disable once InconsistentlySynchronizedField
+        var shard = _shards[shardIndex];
+        return shard is null
+            ? throw RpcRerouteException.MustReroute()
+            : shard.GetOrAddWorklet(flowId);
     }
 }

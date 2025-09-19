@@ -119,10 +119,10 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 
     protected override async Task OnStop()
     {
+        Shard.TryRemoveWorklet(this);
         WhenReadySource.TrySetCanceled(StopToken);
         await foreach (var entry in Queue.Reader.ReadAllAsync(CancellationToken.None).ConfigureAwait(false))
             entry.ResultSource.TrySetCanceled(StopToken);
-        Shard.Worklets.TryRemove(FlowId, this);
     }
 
     // Private methods
