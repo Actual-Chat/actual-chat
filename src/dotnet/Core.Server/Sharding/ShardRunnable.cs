@@ -2,9 +2,10 @@ using ActualLab.Resilience;
 
 namespace ActualChat;
 
-public sealed class ShardRunnable : IRunnable
+public sealed record ShardRunnable : IRunnable
 {
     public static readonly IRetryPolicy DefaultRetryPolicy = new RetryPolicy(RetryDelaySeq.Exp(0.1, 1));
+    public static readonly IRetryPolicy NoRetryPolicy = new RetryPolicy(1, RetryDelaySeq.Exp(0.1, 1));
 
     public string Name { get; }
     public Delegate Func { get; }
@@ -32,34 +33,43 @@ public sealed class ShardRunnable : IRunnable
             : Run(shardLockState, cancellationToken);
     }
 
+    // This record relies on referential equality
+    public bool Equals(ShardRunnable? other)
+        => ReferenceEquals(this, other);
+    public override int GetHashCode()
+        => RuntimeHelpers.GetHashCode(this);
+
     // Private methods
 
-    private Task Run(ShardDispatcher.LockState lockState, CancellationToken cancellationToken)
+    private async Task Run(ShardDispatcher.LockState lockState, CancellationToken cancellationToken)
     {
-        var log = lockState.Dispatcher.Log;
+        ILogger? log = null;
         try {
-            return InvokeFunc(lockState, cancellationToken).WithErrorLog(cancellationToken, log, "{Name} failed", Name);
+            await InvokeFunc(lockState, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            log ??= lockState.Dispatcher.Log;
             log.LogError(e, "{Name} failed", Name);
-            return Task.FromException(e);
+            throw;
         }
     }
 
     private async Task Run(IRetryPolicy retryPolicy, ShardDispatcher.LockState lockState, CancellationToken cancellationToken)
     {
-        var log = lockState.Dispatcher.Log;
+        ILogger? log = null;
         var tryIndex = 0;
         var retryLogger = (RetryLogger?)null;
         while (true) {
             try {
                 await InvokeFunc(lockState, cancellationToken).ConfigureAwait(false);
+                return;
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 if (!retryPolicy.MustRetry(e, ref tryIndex))
                     throw;
 
                 var delay = retryPolicy.Delays[tryIndex];
+                log ??= lockState.Dispatcher.Log;
                 retryLogger ??= new RetryLogger(log, Name);
                 retryLogger.LogRetry(e, tryIndex, retryPolicy.TryCount, delay);
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
@@ -71,6 +81,6 @@ public sealed class ShardRunnable : IRunnable
         => Func switch {
             Func<ShardDispatcher.LockState, CancellationToken, Task> f1 => f1.Invoke(lockState, cancellationToken),
             Func<int, CancellationToken, Task> f2 => f2.Invoke(lockState.ShardIndex, cancellationToken),
-            _ => throw StandardError.Internal($"Invalid Implementation type: {Func.GetType()}.")
+            _ => throw StandardError.Internal($"Invalid Implementation type: {Func.GetType()}."),
         };
 }
