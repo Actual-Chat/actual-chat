@@ -67,22 +67,22 @@ public static class IncomingShareHandler
                 streams[0]?.GetType().FullName ?? "<null>");
             return Task.CompletedTask;
         }
-        return HandleFilesSend(mimeType, (ICollection<Uri>)uris);
+        return HandleFilesSend(mimeType, uris);
     }
 
-    private static Task HandleFilesSend(string mimeType, ICollection<Uri> uris)
+    private static Task HandleFilesSend(string mimeType, Uri[] uris)
     {
-        Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Count, mimeType);
+        Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Length, mimeType);
         return DispatchToBlazor(scopedServices => {
-            var incomingShareUI = scopedServices.GetRequiredService<IncomingShareUI>();
-            var fileInfos = uris
-                .Select(c => new IncomingShareFile(c.ToString()!))
-                .SkipNullItems()
-                .ToArray();
-            incomingShareUI.ShareFiles(fileInfos);
-        }, "IncomingShareUI.ShareFiles(...)", true)
-        .WithErrorLog(Log, "Failed send files")
-        .SuppressExceptions();
+                    var downloader = scopedServices.GetRequiredService<AndroidContentDownloader>();
+                    var fileInfos = downloader.ConvertToAttachFileInfos(uris);
+                    var incomingShareUI = scopedServices.GetRequiredService<IncomingShareUI>();
+                    incomingShareUI.ShareFiles(fileInfos);
+                },
+                "IncomingShareUI.ShareFiles(...)",
+                true)
+            .WithErrorLog(Log, "Failed send files")
+            .SuppressExceptions();
     }
 
     private static IList? GetStreams(Intent intent, bool multipleStreams)

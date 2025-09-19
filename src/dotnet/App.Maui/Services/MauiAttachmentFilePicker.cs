@@ -57,25 +57,7 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
             return null;
 
         var uris = await tcs.Task.ConfigureAwait(false);
-        var fileInfos = new List<AttachFileInfo>();
-        foreach (var uri in uris) {
-            var sUri = uri.ToString()!;
-            var (stream, mimeType) = Downloader.OpenInputStream(sUri);
-            if (stream is null)
-                continue;
-
-            mimeType ??= "";
-            if (!Downloader.TryExtractFileName(sUri, out var fileName))
-                fileName = "unknown";
-            var fileLength = stream.Length;
-            var fileProvider = new MauiFileProvider {
-                FileType = mimeType,
-                FileName = fileName,
-                FileRef = sUri,
-            };
-            fileInfos.Add(new AttachFileInfo(fileName, mimeType, fileLength, fileProvider));
-        }
-        return fileInfos.ToArray();
+        return Downloader.ConvertToAttachFileInfos(uris);
     }
 #endif
 }

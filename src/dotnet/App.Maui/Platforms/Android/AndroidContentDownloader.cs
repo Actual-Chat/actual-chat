@@ -1,12 +1,12 @@
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
-public sealed class AndroidContentDownloader(IServiceProvider services) : IIncomingShareFileDownloader
+public sealed class AndroidContentDownloader(IServiceProvider services)
 {
     private const string Prefix = "/in/content/";
-    private const string ContentSchemePrefix = "content://";
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
@@ -16,6 +16,30 @@ public sealed class AndroidContentDownloader(IServiceProvider services) : IIncom
 
     public static string CreateWebRequestUri(string url)
         => Prefix + System.Uri.EscapeDataString(url);
+
+    public AttachFileInfo[] ConvertToAttachFileInfos(IEnumerable<Uri> uris)
+    {
+        var fileInfos = new List<AttachFileInfo>();
+        foreach (var uri in uris) {
+            var sUri = uri.ToString()!;
+            var (stream, mimeType) = OpenInputStream(sUri);
+            if (stream is null)
+                continue;
+
+            mimeType ??= "";
+            if (!TryExtractFileName(sUri, out var fileName))
+                fileName = "unknown";
+            var fileLength = stream.Length;
+            var fileProvider = new MauiFileProvider {
+                FileRef = sUri,
+                FileType = mimeType,
+                FileName = fileName,
+            };
+            fileProvider.Initialize(services);
+            fileInfos.Add(new AttachFileInfo(fileName, mimeType, fileLength, fileProvider));
+        }
+        return fileInfos.ToArray();
+    }
 
     public bool TryExtractFileName(string url, out string fileName)
     {

@@ -19,6 +19,5 @@ public partial interface IFileProvider
 // System.BadImageFormatException: Method has no body.
 [MemoryPackUnionFormatter(typeof(IFileProvider))]
 [MemoryPackUnion(0, typeof(WebFileProvider))]
-[MemoryPackUnion(1, typeof(IncomingShareFileProvider))]
-[MemoryPackUnion(2, typeof(MauiFileProvider))]
+[MemoryPackUnion(1, typeof(MauiFileProvider))]
 public partial class FileProviderUnionFormatter;

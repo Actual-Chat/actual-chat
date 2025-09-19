@@ -112,30 +112,10 @@
         if (selectedChatIds.Count == 0)
             return;
 
-        var filesDownloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
         if (showFilePreview) {
             var chatId = SelectedChatIds.First();
-            var fileInfos = new List<AttachFileInfo>();
-            foreach (var file in ModalModel.Files) {
-                var (stream, mediaType) = filesDownloader.OpenInputStream(file.Url);
-                if (stream == null) {
-                    Log.LogWarning("Failed to open input stream for '{Url}'", file.Url);
-                    continue;
-                }
-                var length = stream.Length;
-                if (!filesDownloader.TryExtractFileName(file.Url, out var fileName))
-                    fileName = "unknown";
-                var fileProvider = new MauiFileProvider {
-                    FileName = fileName,
-                    FileRef = file.Url,
-                    FileType = mediaType ?? "",
-                    ChatId = chatId,
-                };
-                fileProvider.Initialize(Hub.Services);
-                fileInfos.Add(new AttachFileInfo(fileName, mediaType ?? "", length, fileProvider));
-            }
             Services.GetRequiredService<SentAttachmentsStorage>()
-                .Store(chatId, fileInfos.ToArray());
+                .Store(chatId, ModalModel.Files);
             Modal.Close(true);
             await Hub.History.NavigateTo(Links.Chat(chatId));
         } else {
@@ -145,7 +125,7 @@
                 foreach (var chatId in selectedChatIds) {
                     var comment = _comment;
                     foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                        var attachmentList = UploadFiles(filesDownloader, chatId, filesChunk);
+                        var attachmentList = UploadFiles(filesChunk);
                         var postTask = PostMessage(chatId, comment, attachmentList);
                         comment = "";
                         postTasks.Add(postTask);
@@ -190,34 +170,20 @@
         }
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
-    private AttachmentList2 UploadFiles(IIncomingShareFileDownloader filesDownloader, ChatId chatId, IEnumerable<IncomingShareFile> files) {
+    private AttachmentList2 UploadFiles(IEnumerable<AttachFileInfo> fileInfos) {
         Exception? fileSizeLimitError = null;
         var attachments = new List<Attachment>();
-        foreach (var file in files) {
-            var (stream, mediaType) = filesDownloader.OpenInputStream(file.Url);
-            if (stream == null) {
-                Log.LogWarning("Failed to open input stream for '{Url}'", file.Url);
-                continue;
-            }
-            var streamLength = stream.Length;
-            if (streamLength > Constants.Attachments.FileSizeLimit) {
-                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", file.Url, streamLength);
+        foreach (var fileInfo in fileInfos) {
+            if (fileInfo.Length > Constants.Attachments.FileSizeLimit) {
+                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", fileInfo.FileName, fileInfo.Length);
                 fileSizeLimitError ??= AttachmentList.FileTooBigError();
-                stream.DisposeSilently();
                 continue;
             }
-            filesDownloader.TryExtractFileName(file.Url, out var fileName);
-            var fileProvider = new IncomingShareFileProvider {
-                FileName = fileName,
-                FileUrl = file.Url,
-                MediaType = mediaType,
-                ChatId = chatId,
-                Stream = stream,
-            };
-            fileProvider.Initialize(Hub.Services);
-            var attachment = new Attachment(new Guid().ToString(), file.Url, fileName, mediaType ?? "") {
-                FileProvider = fileProvider,
+            // Do not request preview url here, because we are not going to display attachment,
+            // but rather post a message immediately.
+            const string previewUrl = "";
+            var attachment = new Attachment(new Guid().ToString(), previewUrl, fileInfo.FileName, fileInfo.FileType) {
+                FileProvider = fileInfo.FileProvider,
             };
             attachments.Add(attachment);
         }
@@ -254,14 +220,14 @@
     // Nested types
 
     public sealed record Model {
-        public IncomingShareFile[] Files { get; } = [];
+        public AttachFileInfo[] Files { get; } = [];
         public string Text { get; } = "";
         public bool HasFiles => Files.Length > 0;
 
         public Model(string plainText)
             => Text = plainText;
 
-        public Model(IncomingShareFile[] files)
+        public Model(AttachFileInfo[] files)
             => Files = files;
     }
 }
