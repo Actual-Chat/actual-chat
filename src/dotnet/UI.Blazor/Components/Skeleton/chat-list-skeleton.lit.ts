@@ -16,6 +16,7 @@ class ChatListSkeleton extends LitElement {
             :host {
                 display: flex;
                 flex-direction: column;
+                row-gap: 0.125rem;
             }
 
             :host(.animated-skeleton) {
@@ -42,7 +43,6 @@ class ChatListSkeleton extends LitElement {
                 width: 2rem;
                 height: 2rem;
             }
-
             .avatar {
                 width: 2.5rem;
                 height: 2.5rem;
@@ -56,14 +56,16 @@ class ChatListSkeleton extends LitElement {
             .message-skeleton.thread-skeleton .c-container {
                 margin-top: 0.25rem;
             }
+            @media (min-width: 1280px) {
+                :host {
+                    padding: 0.125rem 0.25rem 0.25rem;
+                }
+            }
         `];
-
     @property()
     class = '';
-
     @property()
     messageCls = '';
-
     @property()
     count = 1;
 

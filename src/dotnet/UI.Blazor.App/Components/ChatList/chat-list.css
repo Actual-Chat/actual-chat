@@ -40,6 +40,7 @@
 .navbar-chats .c-all-chats > .tab-panel {
     @apply overflow-y-hidden;
     @apply flex-initial;
+    @apply max-h-10;
 }
 .navbar-chats .c-all-chats > .tab-panel > .tab {
     /* This item is, in fact, empty, so it shouldn't take space */

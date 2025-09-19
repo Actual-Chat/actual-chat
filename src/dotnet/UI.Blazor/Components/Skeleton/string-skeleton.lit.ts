@@ -11,9 +11,13 @@ class StringSkeletonLit extends LitElement {
     @property()
     secondWidth = 10;
     @property()
-    height = 3;
+    height : number = 3;
+    @property()
+    maxWidth: number = 0;
     @property({type: Boolean})
     system = false;
+    @property({type: Boolean})
+    rounded = false;
     @property()
     rootCls = "layout-body";
 
@@ -26,9 +30,21 @@ class StringSkeletonLit extends LitElement {
     `];
 
     render(): unknown {
+        let wrapperWidthStyle = '';
+        let messageWidthCls = '';
+        let messageWidthStyle = 'width: 100%;';
+        if (this.maxWidth === 0) {
+            messageWidthCls = `${this.getWidth(this.getNumber(), this.getNumber(false))}`;
+            messageWidthStyle = '';
+        } else {
+            wrapperWidthStyle = `max-width: ${this.maxWidth / 4}rem`;
+            messageWidthCls = 'w-full';
+        }
+        const roundedCls = this.rounded ? 'rounded' : '';
+
         return html`
-            <div class="string-skeleton-wrapper ${this.system ? "system-string" : ""}">
-                <div class="message string-skeleton ${this.getHeight(this.height)} ${this.getWidth(this.getNumber(), this.getNumber(false))}"></div>
+            <div class="string-skeleton-wrapper ${this.system ? "system-string" : ""}" style=${wrapperWidthStyle}>
+                <div class="message string-skeleton ${this.getHeight(this.height)} ${messageWidthCls} ${roundedCls}" style="${messageWidthStyle}"></div>
             </div>
         `;
     }
@@ -39,7 +55,7 @@ class StringSkeletonLit extends LitElement {
     }
 
     private getHeight(height: number) : string {
-        let num = (height < 1 || height > 6) ? 3 : height;
+        let num = (height < 1 || height > 10) ? 3 : height;
         return StringHeight[num];
     }
 
