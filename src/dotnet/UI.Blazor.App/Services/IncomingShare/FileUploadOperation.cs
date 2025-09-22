@@ -5,17 +5,23 @@ public sealed class FileUploadOperation : IFileUploadOperation, IDisposable
     private readonly Func<CancellationToken, Task<MediaContent>> _startFunc;
     private readonly CancellationTokenSource _cts;
     private readonly TaskCompletionSource<MediaContent> _tcs = new ();
+    private readonly Progress<double> _progress;
     private long _state;
 
     public Task<MediaContent> Task => _tcs.Task;
-    public Progress<double>? Progress { get; set; }
     public bool HasStarted => Interlocked.Read(ref _state) != 0;
     public CancellationToken CancellationToken { get; }
     Task<MediaContent> IFileUploadOperation.Task => Task;
 
-    public FileUploadOperation(Func<CancellationToken, Task<MediaContent>> startFunc)
+    public event EventHandler<double>? ProgressChanged {
+        add => _progress.ProgressChanged += value;
+        remove => _progress.ProgressChanged -= value;
+    }
+
+    public FileUploadOperation(Func<CancellationToken, Task<MediaContent>> startFunc, Progress<double> progress)
     {
         _startFunc = startFunc ?? throw new ArgumentNullException(nameof(startFunc));
+        _progress = progress;
         _cts = new ();
         CancellationToken = _cts.Token;
     }

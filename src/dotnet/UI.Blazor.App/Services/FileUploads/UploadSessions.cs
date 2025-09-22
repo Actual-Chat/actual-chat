@@ -5,21 +5,22 @@ using System.Collections.Concurrent;
 public class UploadSessions : UIServiceBase<AppUIHub>
 {
     private readonly IUploadSessionRepository _repository;
-    private readonly IFileUploaderService _fileUploader;
+    private readonly FileUploaderService _fileUploader;
     private readonly ILogger _log;
 
     private readonly ConcurrentDictionary<string, UploadSession> _sessions = new (StringComparer.Ordinal);
-    private Moment Now => Moment.Now;
+    private Moment Now => Clocks.SystemClock.Now;
 
     public UploadSessions(AppUIHub hub) :base(hub)
     {
         _repository = hub.Services.GetRequiredService<IUploadSessionRepository>();
-        _fileUploader = hub.Services.GetRequiredService<IFileUploaderService>();
+        _fileUploader = hub.Services.GetRequiredService<FileUploaderService>();
         _log = hub.LogFor<UploadSessions>();
 
-        _fileUploader.OnProgress += HandleProgress;
-        _fileUploader.OnCompleted += HandleCompleted;
-        _fileUploader.OnFailed += HandleFailed;
+        _fileUploader.ProgressChanged += OnProgressChanged;
+        _fileUploader.Completed += OnCompleted;
+        _fileUploader.Failed += OnFailed;
+        _fileUploader.Canceled += OnCanceled;
     }
 
     #region Public API
@@ -60,7 +61,7 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         if (session.Status == UploadStatus.Completed)
             return;
 
-        if (session.Status == UploadStatus.Cancelled)
+        if (session.Status == UploadStatus.Canceled)
             throw new InvalidOperationException("Cannot resume a cancelled session");
 
         session.Status = UploadStatus.Uploading;
@@ -75,7 +76,7 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         var session = await GetSession(sessionId).ConfigureAwait(false);
         await _fileUploader.CancelUpload(sessionId).ConfigureAwait(false);
 
-        session.Status = UploadStatus.Cancelled;
+        session.Status = UploadStatus.Canceled;
         session.LastUpdatedAt = Now;
         await _repository.Save(session).ConfigureAwait(false);
     }
@@ -83,7 +84,7 @@ public class UploadSessions : UIServiceBase<AppUIHub>
     public async Task DeleteSession(string sessionId)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
-        if (session.Status is not UploadStatus.Cancelled and not UploadStatus.Completed and not UploadStatus.Failed)
+        if (session.Status is not UploadStatus.Canceled and not UploadStatus.Completed and not UploadStatus.Failed)
             throw new InvalidOperationException("Cannot delete a not canceled/completed/failed session");
 
         await session.FileProvider.ClearBeforeRemoving().ConfigureAwait(false);
@@ -97,32 +98,37 @@ public class UploadSessions : UIServiceBase<AppUIHub>
 
     #region Event Handlers
 
-    private async Task HandleProgress(string sessionId, int uploadedChunks, int totalChunks)
+    private async Task OnProgressChanged(string sessionId, double progress)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
-        session.LastUpdatedAt = DateTime.UtcNow;
-
-        var percent = (double)uploadedChunks / totalChunks * 100;
-        Console.WriteLine($"Progress {session.FileName}: {percent:0.0}%");
-
-        await _repository.Save(session).ConfigureAwait(false);
+        session.ProgressTracker.ReportProgress(progress);
     }
 
-    private async Task HandleCompleted(string sessionId)
+    private async Task OnCompleted(string sessionId, MediaContent mediaContent)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
+        session.ProgressTracker.ReportProgress(100);
+        session.ProgressTracker.SetResult(mediaContent);
         session.Status = UploadStatus.Completed;
-        //session.UploadedChunks = session.TotalChunks;
-        session.LastUpdatedAt = DateTime.UtcNow;
+        session.LastUpdatedAt = Now;
         await _repository.Save(session).ConfigureAwait(false);
     }
 
-    private async Task HandleFailed(string sessionId, string error)
+    private async Task OnFailed(string sessionId, Exception error)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
+        session.ProgressTracker.SetException(error);
         session.Status = UploadStatus.Failed;
-        session.LastUpdatedAt = DateTime.UtcNow;
-        Console.WriteLine($"Upload failed: {error}");
+        session.LastUpdatedAt = Now;
+        await _repository.Save(session).ConfigureAwait(false);
+    }
+
+    private async Task OnCanceled(string sessionId)
+    {
+        var session = await GetSession(sessionId).ConfigureAwait(false);
+        session.ProgressTracker.SetCanceled();
+        session.Status = UploadStatus.Canceled;
+        session.LastUpdatedAt = Now;
         await _repository.Save(session).ConfigureAwait(false);
     }
 

@@ -23,7 +23,7 @@ public class UploadApp(AppUIHub hub)
             foreach (var session1 in sessions) {
                 var session = await UploadSessions.GetSession(session1.SessionId).ConfigureAwait(false);
                 session.FileProvider.Initialize(services);
-                if (session1.Status is UploadStatus.Cancelled) {
+                if (session1.Status is UploadStatus.Canceled) {
                     var deleteTask = UploadSessions.DeleteSession(session1.SessionId);
                     deleteTasks.Add(deleteTask);
                     continue;

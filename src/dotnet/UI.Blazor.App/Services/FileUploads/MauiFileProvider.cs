@@ -32,11 +32,10 @@ public partial class MauiFileProvider : IFileProvider
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
     public async Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
     {
-        var progress = new Progress<double>();
         var stream = await OpenRead().ConfigureAwait(false);
         if (stream is null)
             throw new InvalidOperationException("No file access.");
-        var fileUploadOperation = Uploader.CreateUploadOperation(chatId, stream, FileType, FileName, progress);
+        var fileUploadOperation = Uploader.CreateUploadOperation(chatId, stream, FileType, FileName);
         _ = fileUploadOperation.Task.ContinueWith(async _ => {
             await fileUploadOperation.Task.SilentAwait(false);
             // NOTE: dispose stream when upload completed or canceled.

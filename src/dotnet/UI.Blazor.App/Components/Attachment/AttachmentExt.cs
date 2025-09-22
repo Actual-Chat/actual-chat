@@ -6,7 +6,7 @@ public static class AttachmentExt
 {
     public static void ObserveUploadProgress(UploadSessionProgressTracker progressTracker, Action<Func<Attachment, Attachment>> updateAttachment)
     {
-        progressTracker.Progress.ProgressChanged += (_, value) => {
+        progressTracker.ProgressChanged += (_, value) => {
             updateAttachment(x => x with { Progress = (int)value });
         };
         _ = progressTracker.Task.ContinueWith(t => {
