@@ -59,9 +59,9 @@ public partial class MauiWebView
         try {
             // using var deferral = args.GetDeferral();
             var content = File.OpenRead(filePath);
-            var contentType = LocalContentUtils.GetResponseContentTypeOrDefault(filePath);
-            var headers = LocalContentUtils.GetResponseHeaders(contentType);
-            var headersString = LocalContentUtils.GetHeaderString(headers);
+            var contentType = WebResourceUtils.GetResponseContentTypeOrDefault(filePath);
+            var headers = WebResourceUtils.GetResponseHeaders(contentType);
+            var headersString = WebResourceUtils.GetHeaderString(headers);
             // NOTE(DF): It seems that there are some issues with disposing the stream. Review later.
             // See https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/working-with-local-content?tabs=dotnetcsharp#example-of-handling-the-webresourcerequested-event
             // See https://github.com/MicrosoftEdge/WebView2Feedback/issues/2513
@@ -123,9 +123,11 @@ public partial class MauiWebView
     }
 
     // Nested types
-    private static class LocalContentUtils
+    private static class WebResourceUtils
     {
-        public static string GetResponseContentTypeOrDefault(string path)
+        private static readonly Func<string, string> GetResponseContentTypeOrDefaultFunc;
+
+        static WebResourceUtils()
         {
             var assembly = typeof(BlazorWebViewHandler).Assembly;
  #pragma warning disable IL2026
@@ -134,9 +136,11 @@ public partial class MauiWebView
  #pragma warning disable IL2075
             var methodInfo = type.GetMethod("GetResponseContentTypeOrDefault", BindingFlags.Static | BindingFlags.NonPublic)!;
  #pragma warning restore IL2075
-            var obj = methodInfo.Invoke(null, [path]);
-            return (string)obj!;
+            GetResponseContentTypeOrDefaultFunc = (Func<string, string>)methodInfo.CreateDelegate(typeof(Func<string, string>));
         }
+
+        public static string GetResponseContentTypeOrDefault(string path)
+            => GetResponseContentTypeOrDefaultFunc.Invoke(path);
 
         public static IDictionary<string, string> GetResponseHeaders(string contentType)
             => new Dictionary<string, string>(StringComparer.Ordinal) {
