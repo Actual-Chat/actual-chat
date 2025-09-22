@@ -136,7 +136,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
 
     public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
     {
-        var fileUploaderBackend = new FileUploaderBackend();
+        var fileUploaderBackend = new WebFileUploaderBackend();
         _disposables.Add(fileUploaderBackend.BlazorRef);
         var tracker = fileUploaderBackend.Tracker;
         var uploadOperation = new FileUploadOperation(async ct => {
@@ -150,7 +150,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
         return Task.FromResult<IFileUploadOperation>(uploadOperation);
     }
 
-    private ValueTask Start(ChatId chatId, DotNetObjectReference<IFileUploaderBackend> blazorRef)
+    private ValueTask Start(ChatId chatId, DotNetObjectReference<IWebFileUploaderBackend> blazorRef)
         => _jsRef.InvokeVoidAsync("start", chatId.Value, blazorRef);
 
     private ValueTask Cancel()

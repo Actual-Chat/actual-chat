@@ -1,21 +1,21 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public interface IFileUploaderBackend
+public interface IWebFileUploaderBackend
 {
     void OnUploadProgress(int progress);
     void OnUploadSucceed(MediaId mediaId, MediaId thumbnailMediaId);
     void OnUploadFailed();
 }
 
-public sealed class FileUploaderBackend : IFileUploaderBackend, IDisposable
+public sealed class WebFileUploaderBackend : IWebFileUploaderBackend, IDisposable
 {
     private bool _isDisposed;
 
     public UploadProgressTracker Tracker { get; } = new ();
-    public DotNetObjectReference<IFileUploaderBackend> BlazorRef { get; }
+    public DotNetObjectReference<IWebFileUploaderBackend> BlazorRef { get; }
 
-    public FileUploaderBackend()
-        => BlazorRef = DotNetObjectReference.Create<IFileUploaderBackend>(this);
+    public WebFileUploaderBackend()
+        => BlazorRef = DotNetObjectReference.Create<IWebFileUploaderBackend>(this);
 
     [JSInvokable]
     public void OnUploadProgress(int progress)
