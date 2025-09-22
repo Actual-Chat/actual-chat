@@ -51,8 +51,8 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
         var channel = Channel.CreateUnbounded<IMemoryOwner<float>>(new UnboundedChannelOptions {
             SingleReader = true,
-            SingleWriter = false,
-            AllowSynchronousContinuations = false,
+            SingleWriter = true,
+            AllowSynchronousContinuations = true,
         });
 
         graph.QuantumStarted += QuantumEventHandler;
@@ -71,22 +71,13 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
-            await using var ctr = ct.Register(() => {
-                try {
-                    graph?.Stop();
-                }
-                catch {
-                    /* ignore */
-                }
-
-                channel.Writer.TryComplete();
-            });
-
             try {
                 await foreach (var block in channel.Reader.ReadAllAsync(ct).SuppressCancellation(ct).ConfigureAwait(false))
                     yield return block;
             }
             finally {
+                channel.Writer.TryComplete();
+
                 // Stop graph and detach event handler
                 graph.QuantumStarted -= QuantumEventHandler;
                 try {

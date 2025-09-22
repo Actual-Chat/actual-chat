@@ -55,14 +55,11 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
             AllowSynchronousContinuations = true,
         });
 
-        // Producer task
-        var produceCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var produceToken = produceCts.Token;
 
-        _ = BackgroundTask.Run(Producer, produceToken);
+        _ = BackgroundTask.Run(Producer, cancellationToken);
 
         // Return enumerator
-        return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(Enumerate(produceToken));
+        return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(Enumerate(cancellationToken));
 
         async Task Producer()
         {
@@ -70,13 +67,13 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
             try {
                 recorder!.StartRecording();
 
-                while (!produceToken.IsCancellationRequested) {
+                while (!cancellationToken.IsCancellationRequested) {
                     int readCount;
                     try {
                         // Use async read of float samples; cancel via WaitAsync
                         // readMode: 0 = blocking, 1 = non-blocking (constants per Android API)
                         var readTask = recorder.ReadAsync(floatReadBuffer.Buffer, 0, frameSamples, 0);
-                        readCount = await readTask.WaitAsync(produceToken).ConfigureAwait(false);
+                        readCount = await readTask.WaitAsync(cancellationToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) {
                         break;
@@ -109,6 +106,8 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 Log.LogError(ex, "Error while capturing audio on Android");
             }
             finally {
+                channel.Writer.TryComplete();
+
                 floatReadBuffer.Release();
                 try {
                     if (recorder.RecordingState == RecordState.Recording)
@@ -122,16 +121,11 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 catch {
                      /* ignore */
                 }
-                channel.Writer.TryComplete();
             }
         }
 
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
-            await using var ctr = ct.Register(() => {
-                try { produceCts.Cancel(); } catch { /* ignore */ }
-            });
-
             await foreach (var block in channel.Reader.ReadAllAsync(ct).SuppressCancellation(ct).ConfigureAwait(false))
                 yield return block;
         }
