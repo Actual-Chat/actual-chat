@@ -170,7 +170,7 @@
         }
     }
 
-    private AttachmentList2 UploadFiles(IEnumerable<AttachFileInfo> fileInfos) {
+    private ReadonlyAttachmentList UploadFiles(IEnumerable<AttachFileInfo> fileInfos) {
         Exception? fileSizeLimitError = null;
         var attachments = new List<Attachment>();
         foreach (var fileInfo in fileInfos) {
@@ -189,7 +189,7 @@
         }
         if (fileSizeLimitError != null)
             Services.UICommander().ShowError(fileSizeLimitError);
-        return new AttachmentList2(attachments);
+        return new ReadonlyAttachmentList(attachments);
     }
 
     private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IAttachmentList attachments)
