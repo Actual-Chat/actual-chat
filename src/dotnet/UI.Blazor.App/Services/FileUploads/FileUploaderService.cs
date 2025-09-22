@@ -123,12 +123,13 @@ public class FileUploaderService
             FileUploaderService owner)
         {
             var sessionId = session.SessionId;
-            uploadOperation.ProgressChanged += (_1, value) => {
+            var progressTracker = uploadOperation.ProgressTracker;
+            progressTracker.ProgressChanged += (_1, value) => {
                 // TODO: add debouncing
                 Log.LogInformation("**** Uploading file '{FileName}' for '{SessionId}' - '{Progress:P}'", session.FileName, sessionId, value / 100.0);
                 _ = owner.ProgressChanged?.Invoke(sessionId, value);
             };
-            _ = uploadOperation.Task.ContinueWith(async t => {
+            _ = progressTracker.Task.ContinueWith(async t => {
                 if (t.IsCompletedSuccessfully) {
                     Log.LogInformation("**** Uploaded file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
                     var mediaContent = t.Result;
@@ -167,8 +168,9 @@ public class FileUploaderService
 
         private void TrackOperation(IFileUploadOperation operation)
         {
-            _ = operation.Task.ContinueWith(_ => OnOperationCompleted(operation), TaskScheduler.Default);
-            if (operation.Task.IsCompleted)
+            var task = operation.ProgressTracker .Task;
+            _ = task.ContinueWith(_ => OnOperationCompleted(operation), TaskScheduler.Default);
+            if (task.IsCompleted)
                 OnOperationCompleted(operation);
         }
 

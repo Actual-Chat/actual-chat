@@ -36,8 +36,9 @@ public partial class MauiFileProvider : IFileProvider
         if (stream is null)
             throw new InvalidOperationException("No file access.");
         var fileUploadOperation = Uploader.CreateUploadOperation(chatId, stream, FileType, FileName);
-        _ = fileUploadOperation.Task.ContinueWith(async _ => {
-            await fileUploadOperation.Task.SilentAwait(false);
+        var task = fileUploadOperation.ProgressTracker.Task;
+        _ = task.ContinueWith(async _ => {
+            await task.SilentAwait(false);
             // NOTE: dispose stream when upload completed or canceled.
             await stream.DisposeSilentlyAsync().ConfigureAwait(false);
         }, TaskScheduler.Default);

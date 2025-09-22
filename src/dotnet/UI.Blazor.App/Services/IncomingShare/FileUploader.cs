@@ -12,7 +12,7 @@ public sealed class FileUploader(UIHub hub) : UIServiceBase<UIHub>(hub)
     [RequiresUnreferencedCode("Uses ReadFromJsonAsync")]
     public FileUploadOperation CreateUploadOperation(ChatId chatId, Stream file, string? contentType, string? fileName)
     {
-        var progress = new Progress<double>();
+        var progress = new UploadProgressTracker();
         return new FileUploadOperation(token => {
             HttpContent streamContent = new StreamContentWithProgress(file, progress, token); //new StreamContent(file);
             return UploadInternal(chatId,

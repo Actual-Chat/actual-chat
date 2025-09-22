@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public static class AttachmentExt
 {
-    public static void ObserveUploadProgress(UploadSessionProgressTracker progressTracker, Action<Func<Attachment, Attachment>> updateAttachment)
+    public static void ObserveUploadProgress(UploadProgressTracker progressTracker, Action<Func<Attachment, Attachment>> updateAttachment)
     {
         progressTracker.ProgressChanged += (_, value) => {
             updateAttachment(x => x with { Progress = (int)value });

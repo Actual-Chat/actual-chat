@@ -11,7 +11,7 @@ public sealed class FileUploaderBackend : IFileUploaderBackend, IDisposable
 {
     private bool _isDisposed;
 
-    public FileUploaderTracker Tracker { get; } = new ();
+    public UploadProgressTracker Tracker { get; } = new ();
     public DotNetObjectReference<IFileUploaderBackend> BlazorRef { get; }
 
     public FileUploaderBackend()

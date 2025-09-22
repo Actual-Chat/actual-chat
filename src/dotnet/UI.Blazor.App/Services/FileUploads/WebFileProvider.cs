@@ -146,7 +146,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
             });
             await Start(chatId, fileUploaderBackend.BlazorRef).ConfigureAwait(false);
             return await tracker.Task.ConfigureAwait(false);
-        }, tracker.Progress);
+        }, tracker);
         return Task.FromResult<IFileUploadOperation>(uploadOperation);
     }
 
