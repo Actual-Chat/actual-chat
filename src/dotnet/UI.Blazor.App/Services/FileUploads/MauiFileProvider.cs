@@ -56,7 +56,7 @@ public partial class MauiFileProvider : IFileProvider
             return true;
         }
         catch(Exception ex) {
-            Log.LogWarning(ex, "Failed to open file for read. File ref: '{FilePath}'", FileRef);
+            Log.LogWarning(ex, "Failed to open file for read. File ref: '{FileRef}'", FileRef);
             return false;
         }
     }
