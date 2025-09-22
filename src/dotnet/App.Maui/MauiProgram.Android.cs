@@ -1,7 +1,7 @@
-using ActualChat.App.Maui.Services;
+using ActualChat.App.Maui.Recording;
+using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App;
-using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
@@ -42,6 +42,7 @@ public static partial class MauiProgram
         services.AddSingleton(c => new NativeGoogleAuth(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMauiLogAccessor>(c => new AndroidLogAccessor(c.LogFor<AndroidLogAccessor>()));
+        services.AddScoped<IAudioCapture>(c => new AndroidAudioCapture(c.LogFor<AndroidAudioCapture>()));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
