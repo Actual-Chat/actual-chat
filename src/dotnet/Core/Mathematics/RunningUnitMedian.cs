@@ -39,7 +39,7 @@ public sealed class RunningUnitMedian(int bucketCount = 100, double defaultValue
 
     public void AppendSample(double value)
     {
-        value = MathExt.Clamp(value, 0, 1);
+        value = value.Clamp(0, 1);
         var idx = (int)Math.Floor(value * _buckets.Length);
         if (idx < 0)
             idx = 0;

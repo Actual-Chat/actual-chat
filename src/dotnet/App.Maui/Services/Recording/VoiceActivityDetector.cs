@@ -50,8 +50,8 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     private long _sampleCount;
 
     private InferenceSession? _session;
-    private DenseTensor<float> _state = new (new float[2 * 1 * 128], new[] { 2, 1, 128 });
-    private readonly DenseTensor<long> _srTensor = new (new long[] { SampleRate }, new[] { 1 });
+    private DenseTensor<float> _state = new (new float[2 * 1 * 128], [2, 1, 128]);
+    private readonly DenseTensor<long> _srTensor = new (new long[] { SampleRate }, [1]);
     private RunningUnitMedian? _whenTalkingProbMedian;
 
     public readonly HostInfo HostInfo = services.HostInfo();
@@ -277,15 +277,15 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         monoPcm.CopyTo(_buffer.AsSpan(ContextSamples));
 
         // Create tensors
-        var inputTensor = new DenseTensor<float>(_buffer, new[] { 1, InputSamples });
+        var inputTensor = new DenseTensor<float>(_buffer, [1, InputSamples]);
         var stateTensor = _state;
 
         // Run inference
-        using var results = session.Run(new[] {
+        using var results = session.Run([
             NamedOnnxValue.CreateFromTensor("input", inputTensor),
             NamedOnnxValue.CreateFromTensor("state", stateTensor),
             NamedOnnxValue.CreateFromTensor("sr", _srTensor),
-        });
+        ]);
 
         // Retrieve outputs
         var output = results.First(v => v.Name == "output").AsTensor<float>();

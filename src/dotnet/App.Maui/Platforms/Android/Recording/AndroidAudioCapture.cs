@@ -27,7 +27,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         AudioRecord? recorder = null;
         try {
             recorder = new AudioRecord(
-                /* audioSource: */ Android.Media.AudioSource.VoiceCommunication,
+                /* audioSource: */ Android.Media.AudioSource.Mic,
                 /* sampleRateInHz: */ sampleRate,
                 /* channelConfig: */ channelConfig,
                 /* audioFormat: */ encoding,
