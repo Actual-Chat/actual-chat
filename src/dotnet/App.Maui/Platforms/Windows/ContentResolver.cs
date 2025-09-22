@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.App.Maui;
 
 public static class ContentResolver
 {
