@@ -20,7 +20,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
             return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
 
         // We'll read at least VAD frame size per push
-        var frameSamples = Constants.Audio.VadFrameLength; // 32 ms at 16 kHz = 512 samples
+        var frameSamples = Constants.Audio.OpusFrameLength; // 20 ms at 16 kHz = 320 samples
         var bytesPerSample = sizeof(float);
         var bufferBytes = Math.Max(minBufferBytes, frameSamples * bytesPerSample * 4); // some headroom
 
@@ -66,8 +66,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
 
         async Task Producer()
         {
-            var floatReadBuffer = new float[Math.Max(Constants.Audio.VadFrameLength * 4, 4096)];
-
+            var floatReadBuffer = ArrayBuffer<float>.Lease(false, frameSamples * 4);
             try {
                 recorder!.StartRecording();
 
@@ -76,7 +75,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                     try {
                         // Use async read of float samples; cancel via WaitAsync
                         // readMode: 0 = blocking, 1 = non-blocking (constants per Android API)
-                        var readTask = recorder.ReadAsync(floatReadBuffer, 0, floatReadBuffer.Length, 0);
+                        var readTask = recorder.ReadAsync(floatReadBuffer.Buffer, 0, frameSamples, 0);
                         readCount = await readTask.WaitAsync(produceToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) {
@@ -93,7 +92,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                     var owner = MemoryPool<float>.Shared.Rent(readCount);
                     try {
                         var dst = owner.Memory.Span[..readCount];
-                        floatReadBuffer.AsSpan(0, readCount).CopyTo(dst);
+                        floatReadBuffer.Buffer.AsSpan(0, readCount).CopyTo(dst);
                         if (channel.Writer.TryWrite(new BufferReference(owner.Memory[..readCount], owner)))
                             continue;
 
@@ -110,13 +109,19 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                 Log.LogError(ex, "Error while capturing audio on Android");
             }
             finally {
+                floatReadBuffer.Release();
                 try {
                     if (recorder.RecordingState == RecordState.Recording)
                         recorder.Stop();
                 }
                 catch { /* ignore */ }
 
-                try { recorder.Release(); } catch { /* ignore */ }
+                try {
+                    recorder.Release();
+                }
+                catch {
+                     /* ignore */
+                }
                 channel.Writer.TryComplete();
             }
         }
