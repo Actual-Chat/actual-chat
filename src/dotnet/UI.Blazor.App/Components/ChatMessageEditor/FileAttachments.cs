@@ -9,10 +9,10 @@ public class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 
     private UploadSessions UploadSessions => Hub.UploadSessions;
 
-    public async Task<bool> TryAddWebFileAttachment(AttachmentListHolder holder, int webFileId, string fileName, string fileType, long length)
+    public async Task<bool> TryAddWebFileAttachment(AttachmentListHolder holder, int id, string fileName, string fileType, long size)
     {
         var list = holder.Attachments;
-        if (list.CheckCanAdd(length) is { } e) {
+        if (list.CheckCanAdd(size) is { } e) {
             UICommander.ShowError(e);
             return false;
         }
@@ -20,7 +20,7 @@ public class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         string previewUrl;
         try {
             var webFileAttachment = await JS
-                .InvokeAsync<CreateWebFileProviderResult>(JSCreateMethod, webFileId)
+                .InvokeAsync<CreateWebFileProviderResult>(JSCreateMethod, id)
                 .ConfigureAwait(true); // Continue on Blazor context.
             previewUrl = webFileAttachment.PreviewUrl;
             webFileProviderInternal = new WebFileProviderInternal(

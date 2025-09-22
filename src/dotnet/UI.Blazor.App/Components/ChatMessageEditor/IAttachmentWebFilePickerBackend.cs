@@ -2,5 +2,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public interface IAttachmentWebFilePickerBackend
 {
-    Task<bool> OnFilePicked(int id, string? fileName, string? fileType, long length);
+    Task OnFilePicked(WebFileInfo[] fileInfos);
 }
+
+public record WebFileInfo(int Id, string FileName, string FileType, long Size);

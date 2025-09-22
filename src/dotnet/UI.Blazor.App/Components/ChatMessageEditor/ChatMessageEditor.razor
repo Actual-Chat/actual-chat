@@ -172,13 +172,16 @@
     }
 
     [JSInvokable]
-    public Task<bool> OnFilePicked(int id, string? fileName, string? fileType, long length)
-        => FileAttachments.TryAddWebFileAttachment(
-            _attachmentListHolder,
-            id,
-            fileName ?? "",
-            fileType ?? "",
-            length);
+    public async Task OnFilePicked(WebFileInfo[] fileInfos) {
+        foreach (var fileInfo in fileInfos) {
+            _ = await FileAttachments.TryAddWebFileAttachment(
+                _attachmentListHolder,
+                fileInfo.Id,
+                fileInfo.FileName,
+                fileInfo.FileType,
+                fileInfo.Size);
+        }
+    }
 
     // Private methods
 

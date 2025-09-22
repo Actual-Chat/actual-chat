@@ -2,7 +2,7 @@ import { Tune, TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 import { Log } from 'logging';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 
-const { debugLog, errorLog } = Log.get('Attachments');
+const { errorLog } = Log.get('Attachments');
 
 function hasShowOpenFilePicker(
     win: Window
@@ -10,30 +10,19 @@ function hasShowOpenFilePicker(
     return "showOpenFilePicker" in win;
 }
 
-interface FileInfo {
-    id: number;
-    file: File;
-    fileHandle: FileSystemFileHandle | null;
-}
-
-export class AttachmentWebFilePickerStorage
+export class AttachmentWebFilePickerRegistry
 {
-    private static filesMap: Map<number, FileInfo> = new Map<number, FileInfo>();
+    private static filesMap: Map<number, PickFileResult> = new Map<number, PickFileResult>();
     private static filesMapIdSeed: number = 0;
 
-    public static Add(file: File, fileHandle: FileSystemFileHandle | null) : FileInfo
+    public static Add(file: PickFileResult) : number
     {
-        const fileInfo : FileInfo = {
-            id: this.filesMapIdSeed,
-            file: file,
-            fileHandle: fileHandle,
-        }
-        this.filesMapIdSeed++;
-        this.filesMap.set(fileInfo.id, fileInfo);
-        return fileInfo;
+        const id = this.filesMapIdSeed++;
+        this.filesMap.set(id, file);
+        return id;
     }
 
-    public static Get(id : number) : FileInfo | undefined
+    public static Get(id : number) : PickFileResult | undefined
     {
         return this.filesMap.get(id);
     }
@@ -44,26 +33,47 @@ export class AttachmentWebFilePickerStorage
     }
 }
 
+interface PickFileResult {
+    file: File,
+    fileHandle: FileSystemFileHandle | null
+}
+
+interface WebFileInfo {
+    id: number,
+    fileName: string,
+    fileType: string,
+    size: number,
+}
+
 export class AttachmentWebFilePickerBackend {
     public constructor(private readonly blazorRef: DotNet.DotNetObject)
     {
     }
 
-    public async add(file: File, fileHandle: FileSystemFileHandle | null): Promise<boolean> {
-        const fileInfo = AttachmentWebFilePickerStorage.Add(file, fileHandle);
-        const isAdded = await this.invokeFilePicked(fileInfo);
-        if (!isAdded) {
-            AttachmentWebFilePickerStorage.Remove(fileInfo.id);
-            return false;
+    public async add(fileResults: PickFileResult[]): Promise<void> {
+        const webFileInfos : WebFileInfo[] = [];
+        for (const fileResult of fileResults) {
+            const id = AttachmentWebFilePickerRegistry.Add(fileResult);
+            const file = fileResult.file;
+            webFileInfos.push({
+                id: id,
+                fileName: file.name,
+                fileType: file.type,
+                size: file.size,
+            });
         }
-
-        return true;
+        try {
+            await this.invokeFilePicked(webFileInfos);
+        }
+        finally {
+            for (const fileInfo of webFileInfos) {
+                AttachmentWebFilePickerRegistry.Remove(fileInfo.id);
+            }
+        }
     }
 
-    private async invokeFilePicked(fileInfo: FileInfo) {
-        const file = fileInfo.file;
-        return this.blazorRef.invokeMethodAsync<boolean>(
-            'OnFilePicked', fileInfo.id, file.name, file.type, file.size);
+    private async invokeFilePicked(webFileInfos: WebFileInfo[]) {
+        return this.blazorRef.invokeMethodAsync('OnFilePicked', webFileInfos);
     }
 }
 
@@ -108,22 +118,31 @@ export class AttachmentWebFilePicker {
     };
 
     private onFilePickerChange = (async (event: Event & { target: Element; }) => {
+        const fileResults : PickFileResult[] = [];
         for (const file of this.filePickerElement.files ?? []) {
-            await this.add(file, null);
+            fileResults.push({
+                file: file,
+                fileHandle: null,
+            })
         }
+        await this.add(fileResults);
         this.filePickerElement.value = '';
     });
 
     private async onFilesPicked(fileHandles : FileSystemFileHandle[])
     {
-        console.log(fileHandles);
+        const fileResults : PickFileResult[] = [];
         for (const fileHandle of fileHandles) {
             const file = await fileHandle.getFile();
-            await this.add(file, fileHandle);
+            fileResults.push({
+                file: file,
+                fileHandle: fileHandle,
+            })
         }
+        await this.add(fileResults);
     }
 
-    private async add(file: File, fileHandle: FileSystemFileHandle | null): Promise<void> {
-        await this.backend.add(file, fileHandle);
+    private async add(fileResults: PickFileResult[]): Promise<void> {
+        await this.backend.add(fileResults);
     }
 }
