@@ -58,15 +58,17 @@ public partial class MauiWebView
 
         try {
             // using var deferral = args.GetDeferral();
-            var content = File.OpenRead(filePath);
+            Stream content = File.OpenRead(filePath);
             var contentType = WebResourceUtils.GetResponseContentTypeOrDefault(filePath);
             var headers = WebResourceUtils.GetResponseHeaders(contentType);
             var headersString = WebResourceUtils.GetHeaderString(headers);
-            // NOTE(DF): It seems that there are some issues with disposing the stream. Review later.
+            // NOTE(DF): we need to wrap a file stream into a stream that does close the underlying stream when the read is completed.
+            // It's necessary to work around an issue with disposing the stream.
             // See https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/working-with-local-content?tabs=dotnetcsharp#example-of-handling-the-webresourcerequested-event
             // See https://github.com/MicrosoftEdge/WebView2Feedback/issues/2513
             // See https://github.com/dotnet/maui/pull/9254
             // See https://github.com/dotnet/maui/pull/9645
+            content = new SelfClosingStreamWrapper(content);
             args.Response = sender.Environment.CreateWebResourceResponse(content.AsRandomAccessStream(), 200, "OK", headersString);
             // deferral.Complete();
         }
@@ -150,5 +152,50 @@ public partial class MauiWebView
 
         public static string GetHeaderString(IDictionary<string, string> headers) =>
             string.Join(Environment.NewLine, headers.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
+    }
+
+    private class SelfClosingStreamWrapper : Stream
+    {
+        private readonly Stream _inner;
+
+        public SelfClosingStreamWrapper(Stream stream)
+            => _inner = stream;
+
+        public override bool CanRead => _inner.CanRead;
+
+        public override bool CanSeek => _inner.CanSeek;
+
+        public override bool CanWrite => _inner.CanWrite;
+
+        public override long Length => _inner.Length;
+
+        public override long Position { get => _inner.Position; set => _inner.Position = value; }
+
+        public override void Flush()
+            => throw new NotSupportedException();
+
+        public override long Seek(long offset, SeekOrigin origin)
+            => _inner.Seek(offset, origin);
+
+        public override void SetLength(long value)
+            => throw new NotSupportedException();
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            int read;
+            try {
+                read = _inner.Read(buffer, offset, count);
+                if (read == 0)
+                    _inner.Dispose();
+            }
+            catch {
+                _inner.Dispose();
+                throw;
+            }
+            return read;
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+            => throw new NotSupportedException();
     }
 }
