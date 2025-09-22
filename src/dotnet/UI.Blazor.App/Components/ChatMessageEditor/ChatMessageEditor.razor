@@ -6,6 +6,7 @@
 @using ActualChat.Pooling
 @using System.Diagnostics.CodeAnalysis
 @inherits ComponentBase<AppUIHub>
+@implements IAttachmentWebFilePickerBackend
 @implements IAsyncDisposable
 @{
     var placeholder = ScreenSize.IsNarrow() ? "Message..." : "Write a message - or simply record one!";
@@ -86,11 +87,11 @@
     private static object MarkupEditorKey { get; } = new();
 
     private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
-    private readonly AttachmentWebFilePickerBackend _attachmentWebFilePickerBackend;
     private AttachmentListHolder _attachmentListHolder = null!;
     private bool _hasAttachments;
     private bool Autofocus => ScreenSize.IsWide() && !BrowserInfo.IsTouchCapable;
     private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<IAttachmentWebFilePickerBackend> BlazorRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private MarkupEditor MarkupEditorRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
@@ -110,9 +111,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatMessageEditor))]
-    public ChatMessageEditor() {
-        _attachmentWebFilePickerBackend = new AttachmentWebFilePickerBackend(OnFilePicked);
-    }
+    public ChatMessageEditor() { }
 
     protected override void OnInitialized() {
         _attachmentListHolder = new AttachmentListHolder(Hub, Chat.Id);
@@ -129,7 +128,8 @@
         JSRef = null!;
         ReadPositionStateLease.DisposeSilently();
         ReadPositionStateLease = null!;
-        _attachmentWebFilePickerBackend.Dispose();
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
     }
 
     protected override async Task OnParametersSetAsync() {
@@ -152,7 +152,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, _attachmentWebFilePickerBackend.BlazorRef);
+            BlazorRef = DotNetObjectReference.Create<IAttachmentWebFilePickerBackend>(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
             await MarkupEditorRef.WhenReady;
             if (JSRef == null! || MarkupEditorRef.JSRef == null!)
                 return; // Dispose may happen during await above
@@ -169,6 +170,15 @@
             AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
         }
     }
+
+    [JSInvokable]
+    public Task<bool> OnFilePicked(int id, string? fileName, string? fileType, long length)
+        => FileAttachments.TryAddWebFileAttachment(
+            _attachmentListHolder,
+            id,
+            fileName ?? "",
+            fileType ?? "",
+            length);
 
     // Private methods
 
@@ -300,10 +310,6 @@
         foreach (var fileInfo in fileInfos) {
             await FileAttachments.TryAddFileAttachment(_attachmentListHolder, fileInfo);
         }
-    }
-
-    private Task<bool> OnFilePicked(AttachmentWebFilePickerBackend.FileInfo fileInfo) {
-        return FileAttachments.TryAddWebFileAttachment(_attachmentListHolder, fileInfo);
     }
 
     private async Task OnAttachFilesPicked(AttachFileInfo[] files) {
