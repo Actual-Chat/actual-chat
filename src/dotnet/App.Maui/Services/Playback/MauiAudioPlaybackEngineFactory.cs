@@ -1,5 +1,3 @@
-#if WINDOWS
-using ActualChat.App.Maui.Playback;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
@@ -10,19 +8,22 @@ public sealed class MauiAudioPlaybackEngineFactory(IServiceProvider services) : 
 {
     public IAudioPlaybackEngine Create(string playerId, TrackInfo trackInfo, IMediaSource source, IAudioPlayerBackend backend)
     {
-        #if WINDOWS
-        return new WindowsAudioPlaybackEngine(playerId,
+#if WINDOWS
+        return new ActualChat.App.Maui.Playback.WindowsAudioPlaybackEngine(playerId,
             trackInfo,
             source,
             backend,
             services);
-        #else
+#elif ANDROID
+        return new ActualChat.App.Maui.Playback.AndroidAudioPlaybackEngine(playerId, trackInfo, source, backend, services);
+        // #elif IOS
+        //     return new iOSAudioPlaybackEngine(playerId, trackInfo, source, backend, services);
+#else
         return new WebAudioPlaybackEngine(playerId,
             trackInfo,
             source,
             backend,
             services);
-        #endif
+#endif
     }
 }
-#endif

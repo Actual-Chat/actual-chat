@@ -6,7 +6,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-internal sealed class WebAudioPlaybackEngine(
+public sealed class WebAudioPlaybackEngine(
     string id,
     TrackInfo info,
     IMediaSource source,

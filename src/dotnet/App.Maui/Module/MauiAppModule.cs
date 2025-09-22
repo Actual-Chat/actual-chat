@@ -53,15 +53,12 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Audio
         services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
+#if WINDOWS || ANDROID
         services.AddScoped<IAudioCodec, OpusAudioCodec>();
+#endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddSingleton<VoiceActivityDetector>(c => new VoiceActivityDetector(c));
-
-#if WINDOWS
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new ActualChat.App.Maui.Services.Playback.MauiAudioPlaybackEngineFactory(c));
-#else
-        services.AddScoped<IAudioPlaybackEngineFactory>(c => new WebAudioPlaybackEngineFactory(c));
-#endif
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));
