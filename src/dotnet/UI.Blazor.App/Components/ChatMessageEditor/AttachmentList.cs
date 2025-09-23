@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AttachmentList(ChatId chatId, UploadSessions uploadSessions) : IAttachmentList
+public class AttachmentList(ChatId chatId, UploadSessions uploadSessions, Dispatcher dispatcher) : IAttachmentList
 {
     public static Exception FileTooBigError()
         => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
@@ -22,12 +22,50 @@ public class AttachmentList(ChatId chatId, UploadSessions uploadSessions) : IAtt
         OnChanged();
     }
 
+    public async Task Restart(Attachment attachment)
+    {
+        if (!_attachments.Contains(attachment))
+            throw StandardError.Internal("Attachment not found.");
+        var uploadSession = await RestartAttachment(attachment);
+        if (uploadSession is null)
+            return;
+
+        AttachmentExt.ObserveUploadProgress(
+            uploadSession.ProgressTracker,
+            updater => {
+                _ = dispatcher.InvokeAsync(() => {
+                    UpdateAttachment(attachment.Id, updater);
+                });
+            });
+        OnChanged();
+    }
+
     public async Task Clear()
     {
         var clone = _attachments;
         _attachments = _attachments.Clear();
         await clone.Select(CancelAndDisposeAttachment).Collect();
         OnChanged();
+    }
+
+    private async Task<UploadSession?> RestartAttachment(Attachment a)
+    {
+        if (!a.Failed)
+            return null;
+        if (a.FileProvider is null)
+            return null;
+        if (a.UploadSessionId.IsNullOrEmpty())
+            return null;
+
+        var uploadSession = await uploadSessions.ResetSession(a.UploadSessionId).ConfigureAwait(true);
+        UpdateAttachment(a.Id, a1 => a1 with {
+            Failed = false,
+            Progress = 0,
+            MediaId = null,
+            ThumbnailMediaId = null,
+        });
+        await uploadSessions.ResumeSession(uploadSession.SessionId).ConfigureAwait(true);
+        return uploadSession;
     }
 
     private async Task CancelAndDisposeAttachment(Attachment a)

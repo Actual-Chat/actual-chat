@@ -45,6 +45,13 @@ public class FileUploaderService
         await job.Cancel().ConfigureAwait(false);
     }
 
+    private void RemoveJob(UploadJob uploadJob)
+    {
+        lock (_lock) {
+            _jobs.Remove(uploadJob.Session.SessionId, out _);
+        }
+    }
+
     private void EnqueueFileUploadOperation(IFileUploadOperation fileUploadOperation)
         => _operationQueue.Enqueue(fileUploadOperation);
 
@@ -144,6 +151,7 @@ public class FileUploaderService
                     Log.LogInformation("**** Canceled upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
                     await (owner.Canceled?.Invoke(sessionId) ?? Task.CompletedTask).ConfigureAwait(false);
                 }
+                owner.RemoveJob(this);
             }, TaskScheduler.Default);
         }
 

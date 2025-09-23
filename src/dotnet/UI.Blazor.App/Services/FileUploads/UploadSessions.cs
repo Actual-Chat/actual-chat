@@ -71,6 +71,22 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         await _fileUploader.StartOrResumeUpload(session).ConfigureAwait(false);
     }
 
+    public async Task<UploadSession> ResetSession(string sessionId)
+    {
+        var session = await GetSession(sessionId).ConfigureAwait(false);
+        if (session.Status == UploadStatus.Canceled)
+            throw new InvalidOperationException("Cannot restart a cancelled session");
+
+        if (session.Status is not (UploadStatus.Completed or UploadStatus.Failed))
+            throw new InvalidOperationException("We can only restart a completed or failed session");
+
+        session.Status = UploadStatus.Pending;
+        session.ProgressTracker = new UploadProgressTracker();
+        session.LastUpdatedAt = Now;
+        await _repository.Save(session).ConfigureAwait(false);
+        return session;
+    }
+
     public async Task CancelSession(string sessionId)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);

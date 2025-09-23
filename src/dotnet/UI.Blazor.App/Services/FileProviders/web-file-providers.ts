@@ -153,11 +153,13 @@ export class WebFileProvider {
         this.fileUpload = new FileUpload(chatId, this.file, this.fileName, pct => reporter.reportProgress(pct));
         this.fileUpload.whenCompleted.then(x => {
             void reporter.reportUploadSucceed(x.mediaId, x.thumbnailMediaId);
+            this.fileUpload = null;
         }).catch(e => {
             if (!(e instanceof OperationCancelledError)) {
                 errorLog?.log('Failed to upload file', e);
                 void reporter.reportUploadFailed();
             }
+            this.fileUpload = null;
         });
         this.fileUpload.start();
     }
@@ -168,6 +170,7 @@ export class WebFileProvider {
             return;
 
         this.fileUpload.cancel();
+        this.fileUpload = null;
     }
 }
 

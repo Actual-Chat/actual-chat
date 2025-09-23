@@ -31,7 +31,7 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
     }
 
     private AttachmentList CreateAttachmentList()
-        => new (_chatId, UploadSessions);
+        => new (_chatId, UploadSessions, Dispatcher);
 
     private ValueTask Release(AttachmentList attachments)
     {

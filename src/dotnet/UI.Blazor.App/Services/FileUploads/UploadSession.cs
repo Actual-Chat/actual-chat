@@ -24,5 +24,5 @@ public partial class UploadSession
     [DataMember, MemoryPackOrder(10)] public ChatId ChatId { get; set; } = null!;
 
     [IgnoreDataMember, MemoryPackIgnore] public string FileName => FileProvider.FileName;
-    [IgnoreDataMember, MemoryPackIgnore] public UploadProgressTracker ProgressTracker { get; } = new ();
+    [IgnoreDataMember, MemoryPackIgnore] public UploadProgressTracker ProgressTracker { get; set; } = new ();
 }

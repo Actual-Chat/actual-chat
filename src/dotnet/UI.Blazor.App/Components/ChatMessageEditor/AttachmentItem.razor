@@ -34,6 +34,10 @@
                 <span class="spinner-icon-wrapper">
                     @if (!attachment.Failed) {
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
+                    } else if (RestartClick.HasDelegate) {
+                        <ButtonRound Click="@RestartClick">
+                            <i class="icon-sync text-2xl"></i>
+                        </ButtonRound>
                     }
                 </span>
             }
@@ -52,4 +56,5 @@
 @code {
     [Parameter] public Attachment Attachment { get; set; } = null!;
     [Parameter] public EventCallback RemoveClick { get; set; }
+    [Parameter] public EventCallback RestartClick { get; set; }
 }
