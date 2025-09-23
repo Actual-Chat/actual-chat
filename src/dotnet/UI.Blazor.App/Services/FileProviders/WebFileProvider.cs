@@ -49,7 +49,7 @@ public partial class WebFileProvider : IFileProvider
                 .ConfigureAwait(false);
             var jsRef = nullableRef.Value;
             if (jsRef is not null)
-                return new WebFileProviderInternal(jsRef, false);
+                return new WebFileProviderInternal(jsRef, null, false);
         }
         catch (Exception ex) {
             Log.LogWarning(ex, "Failed to create WebFileProviderInternal");
@@ -111,22 +111,34 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
     private readonly IJSObjectReference _jsRef;
     private readonly List<IDisposable> _disposables = new ();
     private bool _disposed;
+    private string? _previewUrl;
 
     public bool IsOriginal { get; }
 
     public WebFileProviderInternal(
         IJSObjectReference jsRef,
+        string? previewUrl,
         bool isOriginal)
     {
         _jsRef = jsRef;
+        _previewUrl = previewUrl;
         IsOriginal = isOriginal;
     }
 
-    public ValueTask<string> CreatePreviewUrl()
-        => _jsRef.InvokeAsync<string>("createPreviewUrl");
+    public async ValueTask<string> CreatePreviewUrl()
+    {
+        _previewUrl ??= await _jsRef.InvokeAsync<string>("createPreviewUrl").ConfigureAwait(false);
+        return _previewUrl;
+    }
 
-    public ValueTask RevokePreviewUrl()
-        => _jsRef.InvokeVoidAsync("revokePreviewUrl");
+    public async ValueTask RevokePreviewUrl()
+    {
+        if (_previewUrl is null)
+            return;
+
+        await _jsRef.InvokeVoidAsync("revokePreviewUrl").ConfigureAwait(false);
+        _previewUrl = null;
+    }
 
     public ValueTask<string> SaveFileHandleToDb()
         => _jsRef.InvokeAsync<string>("saveFileHandleToDb");

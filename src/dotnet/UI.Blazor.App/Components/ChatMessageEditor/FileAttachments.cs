@@ -16,29 +16,12 @@ public class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             UICommander.ShowError(e);
             return false;
         }
-        WebFileProviderInternal? webFileProviderInternal;
-        string previewUrl;
-        try {
-            var webFileAttachment = await JS
-                .InvokeAsync<CreateWebFileProviderResult>(JSCreateMethod, id)
-                .ConfigureAwait(true); // Continue on Blazor context.
-            previewUrl = webFileAttachment.PreviewUrl;
-            webFileProviderInternal = new WebFileProviderInternal(
-                webFileAttachment.FileProvider,
-                true);
-        }
-        catch (Exception ex) {
-            Log.LogError(ex, "Failed to create file provider");
+        var webFileProvider = await CreateWebFileProvider(id, fileName);
+        if (webFileProvider is null)
             return false;
-        }
 
-        var webFileProvider = new WebFileProvider {
-            FileName = fileName,
-            WebFileProviderInternal = webFileProviderInternal,
-        };
         webFileProvider.Initialize(Hub.Services);
-
-        return await AddFileAttachment(list, webFileProvider, fileType, previewUrl);
+        return await AddFileAttachment(list, webFileProvider, fileType);
     }
 
     public async Task<bool> TryAddFileAttachment(AttachmentListHolder holder, AttachFileInfo fileInfo)
@@ -54,10 +37,9 @@ public class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         return await AddFileAttachment(list, fileProvider, fileInfo.FileType);
     }
 
-    private async Task<bool> AddFileAttachment(AttachmentList list, IFileProvider fileProvider, string fileType,
-        string previewUrlHint = "")
+    private async Task<bool> AddFileAttachment(AttachmentList list, IFileProvider fileProvider, string fileType)
     {
-        var previewUrl = previewUrlHint.NullIfEmpty() ?? await fileProvider.GetPreviewUrl();
+        var previewUrl = await fileProvider.GetPreviewUrl();
         var attachment = new Attachment(
             Guid.NewGuid().ToString(),
             previewUrl,
@@ -95,7 +77,31 @@ public class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         return false;
     }
 
-    public struct CreateWebFileProviderResult
+    private async Task<WebFileProvider?> CreateWebFileProvider(int id, string fileName)
+    {
+        WebFileProviderInternal? webFileProviderInternal;
+        try {
+            var webFileAttachment = await JS
+                .InvokeAsync<CreateWebFileProviderResult>(JSCreateMethod, id)
+                .ConfigureAwait(true); // Continue on Blazor context.
+            webFileProviderInternal = new WebFileProviderInternal(
+                webFileAttachment.FileProvider,
+                webFileAttachment.PreviewUrl,
+                true);
+        }
+        catch (Exception ex) {
+            Log.LogError(ex, "Failed to create file provider");
+            return null;
+        }
+
+        var webFileProvider = new WebFileProvider {
+            FileName = fileName,
+            WebFileProviderInternal = webFileProviderInternal,
+        };
+        return webFileProvider;
+    }
+
+    private struct CreateWebFileProviderResult
     {
         public string PreviewUrl { get; init; }
         public IJSObjectReference FileProvider { get; init; }
