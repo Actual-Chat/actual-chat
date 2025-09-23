@@ -2,12 +2,8 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class TuneUI : ITuneUIBackend, IDisposable
+public abstract class TuneUI(UIHub hub) : IDisposable
 {
-    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.init";
-    private static readonly string JSPlayMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.play";
-    private static readonly string JSPlayAndWaitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.playAndWait";
-
 #pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments ...
     protected static readonly Dictionary<Tune, TuneInfo> Tunes = new () {
         // General actions
@@ -44,63 +40,20 @@ public class TuneUI : ITuneUIBackend, IDisposable
     };
 #pragma warning restore CA1861
 
-    private DotNetObjectReference<ITuneUIBackend> _blazorRef = null!;
+    protected UIHub Hub { get; } = hub;
 
-    protected virtual bool UseJsVibration => true;
-
-    protected UIHub Hub { get; }
-    private IJSRuntime JS => Hub.JS;
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneUI))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneInfo))]
-    public TuneUI(UIHub hub)
-    {
-        Hub = hub;
-        _ = Initialize();
-    }
-
-    public async ValueTask Initialize()
-    {
-        try {
-            _blazorRef = DotNetObjectReference.Create<ITuneUIBackend>(this);
-            await JS.InvokeVoidAsync(JSInitMethod, _blazorRef, Tunes, UseJsVibration).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Initialize failed");
-        }
-    }
-
     public virtual void Dispose()
     {
-        _blazorRef.DisposeSilently();
-        _blazorRef = null!;
+        // no-op in base
     }
 
-    public virtual Task Play(Tune tune)
-        => ForegroundTask.Run(() => {
-            _ = VibrateNoJs(tune);
-            return JS.InvokeVoidAsync(JSPlayMethod, tune).AsTask();
-        });
+    public abstract Task Play(Tune tune, CancellationToken cancellationToken = default);
 
-    public virtual ValueTask PlayAndWait(Tune tune)
-        => TaskExt.WhenAll(VibrateNoJs(tune), JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune));
+    public abstract Task PlayAndWait(Tune tune, CancellationToken cancellationToken = default);
 
-    [JSInvokable]
-    public ValueTask OnVibrate(Tune tune)
-        => Vibrate(tune);
-
-    protected virtual ValueTask Vibrate(Tune tune)
-        => ValueTask.CompletedTask;
-
-    private ValueTask VibrateNoJs(Tune tune)
-        => !UseJsVibration ? Vibrate(tune) : ValueTask.CompletedTask;
-}
-
-internal interface ITuneUIBackend
-{
-    ValueTask OnVibrate(Tune tune);
 }
 
 // !!! keep in sync with tune-ui.ts

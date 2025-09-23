@@ -145,6 +145,7 @@
       An extra package to use SQLite on MAUI:
       https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
     <PackageReference Include="SQLitePCLRaw.bundle_green" />
+    <PackageReference Include="Plugin.Maui.Audio" />
   </ItemGroup>
 
   <!-- Platform-specific package references -->
@@ -459,10 +460,8 @@
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
 
-    <!-- UNUSED: Raw Assets (also remove the "Resources\Raw" prefix) -->
-    <!--
+    <!-- Raw Assets -->
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
-    -->
   </ItemGroup>
 
   <!-- Platform-specific files to compile -->
@@ -481,6 +480,9 @@
     <None Remove="android.etlx" />
   </ItemGroup>
   <!-- Android -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <BundleResource Include="wwwroot\dist\sounds\*.webm" Link="sounds\%(Filename)%(Extension)" />
+  </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
@@ -521,6 +523,10 @@
     <Compile Remove="**\MacCatalyst\**\*.cs" />
     <None Include="**\MacCatalyst\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
+  <!-- MacCatalyst -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
+    <BundleResource Include="wwwroot\dist\sounds\*.m4a" Link="sounds\%(Filename)%(Extension)" />
+  </ItemGroup>
 
   <!-- NOT Windows -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows')) != true">
@@ -530,7 +536,7 @@
     <None Include="**\Windows\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
   <!-- Windows -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-windows')) != true">
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <Content Include="Platforms\Windows\Assets\**\*.*" />
   </ItemGroup>
 
@@ -556,6 +562,14 @@
 
   <ItemGroup>
     <MauiAsset Include="wwwroot\loading_icon_voxt.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AndroidAsset Include="Resources\Raw\sounds\begin-recording.m4a" />
+    <AndroidAsset Include="Resources\Raw\sounds\end-recording.m4a" />
+    <AndroidAsset Include="Resources\Raw\sounds\new-audio-message-after-delay.m4a" />
+    <AndroidAsset Include="Resources\Raw\sounds\notify-on-new-message-in-app.m4a" />
+    <AndroidAsset Include="Resources\Raw\sounds\remind-of-recording.m4a" />
   </ItemGroup>
 
   <!-- Targets & overrides.

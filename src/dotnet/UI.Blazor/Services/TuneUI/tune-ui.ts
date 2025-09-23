@@ -70,17 +70,13 @@ const cooldownMap = new Map<Tune, number>([
 
 export class TuneUI {
     private static whenReady = new PromiseSource();
-    private static useJsVibration: boolean;
-    private static blazorRef: DotNet.DotNetObject;
     private static tunes: { [key in Tune]: TuneInfo };
     private static readonly soundPlayer = new SoundPlayer();
 
 
     /** Called by blazor */
-    public static async init(blazorRef: DotNet.DotNetObject, tunes: { [key in Tune]: TuneInfo }, useJsVibration: boolean): Promise<void>{
-        this.blazorRef = blazorRef;
+    public static async init(tunes: { [key in Tune]: TuneInfo }): Promise<void>{
         this.tunes = tunes;
-        this.useJsVibration = useJsVibration;
         this.whenReady.resolve(null);
     }
 
@@ -116,11 +112,6 @@ export class TuneUI {
         }
 
         debugLog?.log(`playVibration: '${tune}'`);
-        if (!this.useJsVibration) {
-            await this.blazorRef.invokeMethodAsync('OnVibrate', tune);
-            return;
-        }
-
         for (let i = 0; i < tuneInfo.vibration.length; i++) {
             const durationMs = tuneInfo.vibration[i];
             if (i % 2 == 0)

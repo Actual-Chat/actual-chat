@@ -4,7 +4,7 @@ using CoreHaptics;
 
 namespace ActualChat.App.Maui;
 
-public class IosTuneUI(UIHub hub) : TuneUI(hub)
+public class IosTuneUI(UIHub hub) : MauiTunes(hub)
 {
     private const float Intensity = 0.5f;
     private const float Sharpness = 0.5f;
@@ -14,8 +14,6 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
     private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
     [field: AllowNull, MaybeNull]
     private IosNativePlayer IosNativePlayer => field ??= Hub.Services.GetRequiredService<IosNativePlayer>();
-
-    protected override bool UseJsVibration => false;
 
     public override void Dispose()
     {
@@ -32,23 +30,23 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
             player.DisposeSilently();
     }
 
-    // TODO: uncomment when playback/recording is implemented via ios native api
-    // public override Task Play(Tune tune)
-    //     => ForegroundTask.Run(() => {
-    //         var (_, sound) = Tunes[tune];
-    //         _ = Vibrate(tune);
-    //         return IosNativePlayer.Play(sound);
-    //     });
-    //
-    // public override ValueTask PlayAndWait(Tune tune)
-    // {
-    //     var (_, sound) = Tunes[tune];
-    //     return TaskExt.WhenAll(Vibrate(tune), IosNativePlayer.Play(sound).ToValueTask());
-    // }
+    public override Task Play(Tune tune, CancellationToken cancellationToken = default)
+        => ForegroundTask.Run(() => {
+            var (_, sound) = Tunes[tune];
+            _ = Vibrate(tune);
+            return IosNativePlayer.Play(sound);
+        },
+        CancellationToken.None);
+
+    public override Task PlayAndWait(Tune tune, CancellationToken cancellationToken = default)
+    {
+        var (_, sound) = Tunes[tune];
+        return Task.WhenAll(Vibrate(tune), IosNativePlayer.Play(sound));
+    }
 
     // Protected methods
 
-    protected override async ValueTask Vibrate(Tune tune)
+    protected override async Task Vibrate(Tune tune)
     {
         await Task.Yield();
         try {
