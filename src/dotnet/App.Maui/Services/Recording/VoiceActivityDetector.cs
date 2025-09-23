@@ -92,6 +92,10 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         ms.Position = 0;
 
         var options = new SessionOptions();
+        options.IntraOpNumThreads = Math.Max(1, Environment.ProcessorCount - 1);
+        options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
+        options.EnableMemoryPattern = true;
+        options.EnableCpuMemArena = true;
         // Configure execution providers depending on platform. We always keep CPU as a fallback.
         try {
             switch (HostInfo.AppKind)
@@ -104,7 +108,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
             case AppKind.Ios or AppKind.MacOS:
                 // Prefer CoreML on iOS with CPU fallback.
                 options.AppendExecutionProvider_CPU();
-                options.AppendExecutionProvider_CoreML();
+                options.AppendExecutionProvider_CoreML(CoreMLFlags.COREML_FLAG_USE_CPU_AND_GPU);
                 break;
             case AppKind.Windows:
                 // Windows: prefer DirectML if available (GPU), then CPU.
@@ -120,6 +124,10 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         catch {
             // If any EP is not supported by the current runtime build, fall back to safe CPU-only.
             options = new SessionOptions();
+            options.IntraOpNumThreads = Math.Max(1, Environment.ProcessorCount - 1);
+            options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
+            options.EnableMemoryPattern = true;
+            options.EnableCpuMemArena = true;
             options.AppendExecutionProvider_CPU();
         }
 
