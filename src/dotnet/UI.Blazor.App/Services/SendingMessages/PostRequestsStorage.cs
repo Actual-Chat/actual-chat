@@ -21,6 +21,27 @@ public class PostRequestsStorage(AppUIHub hub)
         await LocalSettings.Set(EntryKey, entries, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task RemoveAttachRequest(string entryUuid, AttachFileRequestEntry fileRequestEntry, CancellationToken cancellationToken)
+    {
+        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        var entries = await LocalSettings.Get<PostMessageRequestEntry[]>(EntryKey, cancellationToken).ConfigureAwait(false);
+        entries ??= [];
+        var i = Array.FindIndex(entries, c => OrdinalEquals(c.Uuid, entryUuid));
+        if (i < 0)
+            throw new InvalidOperationException($"Can not find post request entry with given uuid '{entryUuid}'.");
+
+        var entry = entries[i];
+        var attachRequests = entry.AttachFileRequests.ToList();
+        var i1 = attachRequests.IndexOf(fileRequestEntry);
+        if (i1 < 0)
+            throw new InvalidOperationException("Can not find given attach request entry.");
+        attachRequests.RemoveAt(i1);
+        entries[i] = entry with {
+            AttachFileRequests = attachRequests.ToArray(),
+        };
+        await LocalSettings.Set(EntryKey, entries, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<PostMessageRequestEntry[]> GetStored(CancellationToken cancellationToken)
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);

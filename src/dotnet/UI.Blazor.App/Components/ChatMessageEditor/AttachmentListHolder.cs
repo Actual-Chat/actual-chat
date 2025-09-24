@@ -4,18 +4,14 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class AttachmentListHolder : UIServiceBase<AppUIHub>
 {
-    private readonly ChatId _chatId;
     private AttachmentList _attachments;
-
-    private UploadSessions UploadSessions => Hub.UploadSessions;
 
     public event EventHandler? Changed;
 
     public AttachmentList Attachments => _attachments;
 
-    public AttachmentListHolder(AppUIHub hub, ChatId chatId) : base(hub)
+    public AttachmentListHolder(AppUIHub hub) : base(hub)
     {
-        _chatId = chatId;
         _attachments = CreateAttachmentList();
         SubscribeToListEvents(_attachments);
     }
@@ -31,7 +27,7 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
     }
 
     private AttachmentList CreateAttachmentList()
-        => new (_chatId, UploadSessions, Dispatcher);
+        => new ();
 
     private ValueTask Release(AttachmentList attachments)
     {

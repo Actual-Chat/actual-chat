@@ -73,7 +73,6 @@
     private Task OnRemoveClick(Attachment attachment)
         => Attachments.Remove(attachment);
 
-    private Task OnRestartClick(Attachment attachment) {
-        return Attachments.Restart(attachment);
-    }
+    private Task OnRestartClick(Attachment attachment)
+        => Attachments.Restart(attachment);
 }

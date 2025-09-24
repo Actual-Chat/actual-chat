@@ -114,9 +114,9 @@
     public ChatMessageEditor() { }
 
     protected override void OnInitialized() {
-        _attachmentListHolder = new AttachmentListHolder(Hub, Chat.Id);
+        _attachmentListHolder = new AttachmentListHolder(Hub);
         _attachmentListHolder.Changed += OnAttachmentListChanged;
-        FileAttachments =  new FileAttachments(Hub);
+        FileAttachments =  new FileAttachments(Hub, Chat.Id);
         AttachmentFilePicker = Hub.Services.GetService<IAttachmentFilePicker>();
     }
 

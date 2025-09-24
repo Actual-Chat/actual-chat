@@ -206,5 +206,9 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new FileUploaderService(c));
         services.AddScoped<UploadSessions>(c => new UploadSessions(c.AppUIHub()));
         services.AddScoped(c => new UploadApp(c.AppUIHub()));
+        services.AddScoped(c => {
+            var hub = c.AppUIHub();
+            return new AttachmentsController(hub.UploadSessions, hub.Dispatcher, hub.LogFor<AttachmentsController>());
+        });
     }
 }

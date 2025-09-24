@@ -61,7 +61,7 @@ public partial class MauiFileProvider : IFileProvider
         }
     }
 
-    public Task ClearBeforeRemoving()
+    public Task ClearForRemoving()
         => Impl.ClearBeforeRemoving();
 
     private Task<Stream?> OpenRead()

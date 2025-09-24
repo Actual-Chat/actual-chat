@@ -10,7 +10,7 @@ public partial interface IFileProvider
     Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId);
     void Initialize(IServiceProvider services);
     Task<bool> CheckAccess();
-    Task ClearBeforeRemoving();
+    Task ClearForRemoving();
     Task<string> GetPreviewUrl();
 }
 

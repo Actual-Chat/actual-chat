@@ -23,6 +23,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     private UploadSessions UploadSessions => Hub.UploadSessions;
     private Moment Now => Hub.Clocks.SystemClock.Now;
 
+    public Task WhenReady => _whenReady;
+
     public SendingMessages(AppUIHub hub) : base(hub)
     {
         DebugLog?.LogInformation("SendingMessages constructor");
@@ -64,9 +66,11 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             foreach (var attachment in cmd.Attachments.Items) {
                 var uploadSessionId = attachment.UploadSessionId;
                 if (uploadSessionId.IsNullOrEmpty()) {
-                    if (attachment.FileProvider is null)
-                        throw new InvalidOperationException($"Can not arrange upload for attachment '{attachment.Id}' because no file provider specified");
-                    var uploadSession = await UploadSessions.CreateSession(cmd.ChatId, attachment.FileProvider).ConfigureAwait(false);
+                    if (attachment.Request is not AttachFileRequest attachFileRequest)
+                        throw new InvalidOperationException($"Can't initialize upload for attachment '{attachment.Id}' because it's non-file attachment");
+
+                    var fileProvider = attachFileRequest.FileProvider;
+                    var uploadSession = await UploadSessions.CreateSession(cmd.ChatId, fileProvider).ConfigureAwait(false);
                     uploadSessionId = uploadSession.SessionId;
                 }
                 var attachEntry = new AttachFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType);
@@ -90,7 +94,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
 
     private async Task<PostMessageRequestInternal> CreatePostMessageRequestInternal(PostMessageRequestEntry entry, IAttachmentList? attachments)
     {
-        var uploads = await CreateAttachmentUploads(entry.AttachFileRequests, attachments).ConfigureAwait(false);
+        var uploads = await CreateAttachmentUploads(entry, attachments).ConfigureAwait(false);
         return new PostMessageRequestInternal(entry.Uuid,
             entry.Now,
             entry.ChatId,
@@ -100,8 +104,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             uploads);
     }
 
-    private async Task<AttachmentUploads?> CreateAttachmentUploads(AttachFileRequestEntry[] attachEntries, IAttachmentList? sourceAttachments)
+    private async Task<AttachmentUploads?> CreateAttachmentUploads(PostMessageRequestEntry entry, IAttachmentList? sourceAttachments)
     {
+        var attachEntries = entry.AttachFileRequests;
         if (attachEntries.Length == 0)
             return null;
 
@@ -109,51 +114,58 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         if (sourceAttachmentsCopy is not null && sourceAttachmentsCopy.Length != attachEntries.Length)
             sourceAttachmentsCopy = null;
 
+        var attachmentsController = Services.GetRequiredService<AttachmentsController>();
         var attachments = new List<Attachment>();
         for (var i = 0; i < attachEntries.Length; i++) {
             var attachEntry = attachEntries[i];
             var sourceAttachment = sourceAttachmentsCopy?[i];
-            // TODO: Where to take url from when we app is restarted and we restore attachments?
             var previewUrl = sourceAttachment?.PreviewUrl ?? "";
-            var attachment = new Attachment(Guid.NewGuid().ToString(), previewUrl, attachEntry.FileName, attachEntry.FileType) {
-                UploadSessionId = attachEntry.UploadSessionId,
-            };
+            var uploadSessionId = attachEntry.UploadSessionId;
             // TODO: to think what to do with this. For now UploadApp is responsible for resuming stored sessions.
             var attachmentIsOk = false;
             try {
-                var session = await UploadSessions.GetSession(attachment.UploadSessionId).ConfigureAwait(false);
-                var fileProvider = session.FileProvider;
-                var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
-                if (canAccess) {
-                    if (attachment.PreviewUrl.IsNullOrEmpty()) {
-                        previewUrl = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
-                        if (!previewUrl.IsNullOrEmpty()) {
-                            attachment = attachment with {
-                                PreviewUrl = previewUrl,
-                            };
-                        }
+                var session = await UploadSessions.TryGetSession(uploadSessionId).ConfigureAwait(false);
+                if (session is not null) {
+                    var fileProvider = session.FileProvider;
+                    var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
+                    if (canAccess) {
+                        // NOTE(DF): may be better to do it on-demand in the AttachmentListView.
+                        // We don't need it until we need to show preview.
+                        if (previewUrl.IsNullOrEmpty())
+                            previewUrl = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
+                        attachmentIsOk = true;
                     }
-                    attachmentIsOk = true;
                 }
             }
             catch (Exception e) {
-                Log.LogError(e, "Failed to get upload session '{UploadSessionId}'", attachment.UploadSessionId);
+                Log.LogError(e, "Failed to get upload session '{UploadSessionId}'", uploadSessionId);
                 // Intended
             }
+
+            async Task CleanupRequest() {
+                await _requestsStorage.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
+            }
+
+            IAttachRequest attachRequest = new PersistedAttachFileRequest(attachEntry, CleanupRequest);
+            attachRequest = new UploadSessionAttachRequest(UploadSessions, uploadSessionId, attachRequest);
+            var attachment = new Attachment(previewUrl, attachEntry.FileName, attachEntry.FileType, attachRequest);
             if (!attachmentIsOk) {
                 attachment = attachment with {
-                    Failed = true
+                    Failed = true,
+                    NoAccess = true,
                 };
-            }
-            else {
-                await UploadSessions.ResumeSession(attachment.UploadSessionId).ConfigureAwait(false);
             }
             attachments.Add(attachment);
         }
         if (attachments.Count == 0)
             return null;
 
-        var attachmentList = await SendingMessageAttachmentList.Create(Dispatcher, UploadSessions, attachments.ToArray()).ConfigureAwait(false);
+        var attachmentList = new AttachmentList();
+        foreach (var attachment in attachments) {
+            await attachmentsController.AddAttachment(attachmentList, attachment).ConfigureAwait(false);
+            if (!attachment.Failed)
+                await attachmentsController.ResumeUpload(attachmentList, attachment.Id).ConfigureAwait(false);
+        }
         return new AttachmentUploads(attachmentList);
     }
 
@@ -168,8 +180,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 requestInternal = await CreatePostMessageRequestInternal(entry, null).ConfigureAwait(false);
             }
             catch (Exception e) {
-                Log.LogError(e, "Failed to recreated stored post request");
-                await DiscardStoredPostRequest(entry, cancellationToken).ConfigureAwait(false);
+                Log.LogError(e, "Failed to recreate stored post request");
+                await DiscardStoredPostRequest(entry.Uuid, entry.AttachFileRequests.Select(c => c.UploadSessionId).ToArray(), cancellationToken).ConfigureAwait(false);
                 continue;
             }
             var resultSource = TaskCompletionSourceExt.New<ChatEntry>();
@@ -185,20 +197,24 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         }
     }
 
-    private async Task DiscardStoredPostRequest(PostMessageRequestEntry entry, CancellationToken cancellationToken)
+    private async Task DiscardStoredPostRequest(string postRequestUuid, string[] uploadSessionIds, CancellationToken cancellationToken)
     {
-        // TODO: implement cleanup. Remove stored request. Remove correspondent uploading sessions.
-        foreach (var entryAttachFileRequest in entry.AttachFileRequests) {
+        foreach (var uploadSessionId in uploadSessionIds) {
             try {
-                await UploadSessions.CancelSession(entryAttachFileRequest.UploadSessionId).ConfigureAwait(false);
-                await UploadSessions.DeleteSession(entryAttachFileRequest.UploadSessionId).ConfigureAwait(false);
+                await UploadSessions.CancelSessionIfNotCompleted(uploadSessionId).ConfigureAwait(false);
+                await UploadSessions.DeleteSession(uploadSessionId).ConfigureAwait(false);
             }
             catch (Exception e) {
                 Log.LogError(e, "Failed to cancel+delete upload session '{UploadSessionId}' for post request '{Id}'",
-                    entryAttachFileRequest.UploadSessionId, entry.Uuid);
+                    uploadSessionId, postRequestUuid);
             }
         }
-        await _requestsStorage.Remove(entry.Uuid, cancellationToken).ConfigureAwait(false);
+        try {
+            await _requestsStorage.Remove(postRequestUuid, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to remove stored post request '{Id}'", postRequestUuid);
+        }
     }
 
     private async Task PostInternal(PostMessageRequestInternal request, TaskCompletionSource<ChatEntry> resultSource, CancellationToken cancellationToken)
@@ -246,6 +262,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                     request.Uuid,
                     request.Text);
             }
+
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
                 if (chatEntry1.HasAttachmentUploads && request.AttachmentUploads is not null)
@@ -267,6 +284,13 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 request.Uuid,
                 request.Text);
         }
+
+        var uploadSessionIds = new List<string>();
+        if (request.AttachmentUploads is not null)
+            foreach (var attachment in request.AttachmentUploads.Attachments.Items)
+                uploadSessionIds.Add(attachment.UploadSessionId);
+
+        await DiscardStoredPostRequest(request.Uuid, uploadSessionIds.ToArray(), cancellationToken).ConfigureAwait(false);
     }
 
     private static SendingMessage CreateSendingMessage(
@@ -432,4 +456,10 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             }
         }
     }
+}
+
+public record PersistedAttachFileRequest(AttachFileRequestEntry Entry, Func<Task> Cleanup) : IAttachRequest
+{
+    public Task CleanupForRemoving()
+        => Cleanup();
 }

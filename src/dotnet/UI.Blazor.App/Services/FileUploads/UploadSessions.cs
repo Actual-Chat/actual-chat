@@ -11,6 +11,8 @@ public class UploadSessions : UIServiceBase<AppUIHub>
     private readonly ConcurrentDictionary<string, UploadSession> _sessions = new (StringComparer.Ordinal);
     private Moment Now => Clocks.SystemClock.Now;
 
+    public Moment StartUp { get; }
+
     public UploadSessions(AppUIHub hub) :base(hub)
     {
         _repository = hub.Services.GetRequiredService<IUploadSessionRepository>();
@@ -21,6 +23,8 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         _fileUploader.Completed += OnCompleted;
         _fileUploader.Failed += OnFailed;
         _fileUploader.Canceled += OnCanceled;
+
+        StartUp = Now;
     }
 
     #region Public API
@@ -54,21 +58,22 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         return session;
     }
 
-    public async Task ResumeSession(string sessionId)
+    public async Task<UploadSession> ResumeSession(string sessionId)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
 
         if (session.Status == UploadStatus.Completed)
-            return;
+            return session;
 
-        if (session.Status == UploadStatus.Canceled)
-            throw new InvalidOperationException("Cannot resume a cancelled session");
+        if (session.Status is UploadStatus.Canceled)
+            throw new InvalidOperationException("Cannot resume a canceled session");
 
         session.Status = UploadStatus.Uploading;
         session.LastUpdatedAt = Now;
         await _repository.Save(session).ConfigureAwait(false);
 
         await _fileUploader.StartOrResumeUpload(session).ConfigureAwait(false);
+        return session;
     }
 
     public async Task<UploadSession> ResetSession(string sessionId)
@@ -87,13 +92,22 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         return session;
     }
 
-    public async Task CancelSession(string sessionId)
+    public Task CancelSession(string sessionId)
+        => CancelSessionIfNotCompleted(sessionId, true);
+
+    public Task CancelSessionIfNotCompleted(string sessionId)
+        => CancelSessionIfNotCompleted(sessionId, false);
+
+    private async Task CancelSessionIfNotCompleted(string sessionId, bool force)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
         await _fileUploader.CancelUpload(sessionId).ConfigureAwait(false);
-
-        session.Status = UploadStatus.Canceled;
-        session.LastUpdatedAt = Now;
+        if (session.Status is not UploadStatus.Canceled) {
+            if (force || session.Status is not (UploadStatus.Completed or UploadStatus.Failed)) {
+                session.LastUpdatedAt = Now;
+                session.Status = UploadStatus.Canceled;
+            }
+        }
         await _repository.Save(session).ConfigureAwait(false);
     }
 
@@ -103,7 +117,7 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         if (session.Status is not UploadStatus.Canceled and not UploadStatus.Completed and not UploadStatus.Failed)
             throw new InvalidOperationException("Cannot delete a not canceled/completed/failed session");
 
-        await session.FileProvider.ClearBeforeRemoving().ConfigureAwait(false);
+        await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repository.Delete(sessionId).ConfigureAwait(false);
         _log.LogInformation("Deleted session {SessionId}", sessionId);
     }
@@ -154,16 +168,31 @@ public class UploadSessions : UIServiceBase<AppUIHub>
 
     public async Task<UploadSession> GetSession(string sessionId)
     {
+        if (sessionId.IsNullOrEmpty())
+            throw new ArgumentException(nameof(sessionId));
+
+        var uploadSession = await TryGetSession(sessionId).ConfigureAwait(false);
+        if (uploadSession is null)
+            throw new InvalidOperationException($"Upload session {sessionId} not found");
+
+        return uploadSession;
+    }
+
+    public async Task<UploadSession?> TryGetSession(string sessionId)
+    {
+        if (sessionId.IsNullOrEmpty())
+            throw new ArgumentException(nameof(sessionId));
+
         if (_sessions.TryGetValue(sessionId, out var session))
             return session;
 
-        session = await _repository.Get(sessionId).ConfigureAwait(false)
-                  ?? throw new InvalidOperationException($"Upload session {sessionId} not found");
+        session = await _repository.Get(sessionId).ConfigureAwait(false);
+        if (session is null)
+            return null;
 
         session.FileProvider.Initialize(Hub.Services);
         _sessions[sessionId] = session;
         return session;
     }
-
     #endregion
 }

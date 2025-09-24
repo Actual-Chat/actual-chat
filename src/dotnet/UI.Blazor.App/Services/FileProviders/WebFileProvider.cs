@@ -68,7 +68,7 @@ public partial class WebFileProvider : IFileProvider
         FileHandleDbKey = await WebFileProviderInternal.SaveFileHandleToDb().ConfigureAwait(false);
     }
 
-    public async Task ClearBeforeRemoving()
+    public async Task ClearForRemoving()
     {
         if (WebFileProviderInternal is not null) {
             await WebFileProviderInternal.RevokePreviewUrl().ConfigureAwait(false);
@@ -187,7 +187,7 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
         => throw new NotSupportedException();
 
     public ValueTask RevokePreviewUrl()
-        => throw new NotSupportedException();
+        => ValueTask.CompletedTask;
 
     public ValueTask<string> SaveFileHandleToDb()
         => throw new NotSupportedException();

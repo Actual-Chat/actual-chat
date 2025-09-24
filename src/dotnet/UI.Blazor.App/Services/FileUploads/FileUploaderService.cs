@@ -35,14 +35,15 @@ public class FileUploaderService
         await job.StartOrResumeUpload().ConfigureAwait(false);
     }
 
-    public async Task CancelUpload(string sessionId)
+    public async Task<bool> CancelUpload(string sessionId)
     {
         UploadJob? job;
         lock (_lock) {
             if (!_jobs.TryGetValue(sessionId, out job))
-                return;
+                return false;
         }
         await job.Cancel().ConfigureAwait(false);
+        return true;
     }
 
     private void RemoveJob(UploadJob uploadJob)
