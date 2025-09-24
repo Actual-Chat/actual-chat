@@ -5,7 +5,7 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Playback;
 
-public class BufferPlayerNode(AVAudioPlayerNode node, AVAudioFormat format, AppUIHub hub)
+public class BufferPlayerNode(ThreadSafePlayerNode node, AVAudioFormat format, AppUIHub hub)
     : IDisposable
 {
     private readonly AudioBufferCapacity _capacity = new ();
@@ -14,49 +14,42 @@ public class BufferPlayerNode(AVAudioPlayerNode node, AVAudioFormat format, AppU
 
     private string Id { get; } = RandomStringGenerator.Default.Next(5);
 
-    [field: AllowNull, MaybeNull]
-    private AudioNodes Nodes => field ??= hub.Services.GetRequiredService<AudioNodes>();
     private ILogger<BufferPlayerNode> Log { get; } = hub.LogFor<BufferPlayerNode>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
 
     public IState<State> PlaybackState => _state;
 
     public void Dispose()
-        => Nodes.DisposeNode(node);
-
-    public bool IsPlaying()
-        => AudioDispatcher.Invoke(() => node.Playing);
+        => node.DisposeSilently();
 
     public void Play()
     {
         DebugLog?.LogInformation("#{Id}.Play", Id);
-        Nodes.EnsureNodePlaying(node);
+        node.Play();
         UpdateState();
     }
 
     public void Pause()
     {
         DebugLog?.LogInformation("#{Id}.Pause", Id);
-        AudioDispatcher.Invoke(node.Pause);
+        node.Pause();
         UpdateState();
     }
 
     public async ValueTask Feed(AVAudioPcmBuffer pcm, CancellationToken cancellationToken)
     {
         await _capacity.Acquire(cancellationToken).ConfigureAwait(false);
-        AudioDispatcher.Invoke(() => {
-            node.ScheduleBuffer(pcm,
-                AVAudioPlayerNodeCompletionCallbackType.PlayedBack,
-                _ => {
-                    _position += TimeSpan.FromSeconds(pcm.FrameLength / format.SampleRate);
-                    _capacity.Release();
-                    _state.Value = new State(_position, true, _capacity.IsBufferLow);
-                });
-        });
+        node.ScheduleBuffer(pcm,
+            _ => {
+                // IMPORTANT: better not to access node from the callback thread
+                _position += TimeSpan.FromSeconds(pcm.FrameLength / format.SampleRate);
+                _capacity.Release();
+                _state.Value = new State(_position, true, _capacity.IsBufferLow);
+            });
     }
 
     private void UpdateState()
-        => _state.Value = new State(_position, IsPlaying(), _capacity.IsBufferLow);
+        => _state.Value = new State(_position, node.IsPlaying, _capacity.IsBufferLow);
 
     public async Task Complete(CancellationToken cancellationToken)
     {
@@ -68,7 +61,7 @@ public class BufferPlayerNode(AVAudioPlayerNode node, AVAudioFormat format, AppU
     public void Stop()
     {
         DebugLog?.LogInformation("#{Id}.Stop", Id);
-        AudioDispatcher.Invoke(node.Stop);
+        node.Stop();
     }
 
     private async Task WhenDonePlaying(CancellationToken cancellationToken)
