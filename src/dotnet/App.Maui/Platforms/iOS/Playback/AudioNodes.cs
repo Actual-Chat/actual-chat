@@ -6,8 +6,10 @@ namespace ActualChat.App.Maui.Playback;
 
 public class AudioNodes(AppUIHub hub) : IDisposable
 {
-    private static readonly AVAudioFormat SoundFormat = new (AVAudioCommonFormat.PCMFloat32, 48000, 1, true);
-    private static readonly AVAudioFormat FeederFormat = new (AVAudioCommonFormat.PCMFloat32, 48000, 1, false);
+    public static readonly AVAudioFormat SoundFormat = new (AVAudioCommonFormat.PCMFloat32, 48000, 1, true);
+    public static readonly AVAudioFormat FeederFormat = new (AVAudioCommonFormat.PCMFloat32, 48000, 1, false);
+
+    private readonly Lock _lock = new();
     private AVAudioEngine _engine = null!;
     private bool _isInitialized;
     private bool _isDisposed;
@@ -22,7 +24,7 @@ public class AudioNodes(AppUIHub hub) : IDisposable
         if (!_isInitialized)
             return;
 
-        AudioDispatcher.Invoke(() => {
+        lock (_lock) {
             if (_isDisposed)
                 return;
 
@@ -42,11 +44,14 @@ public class AudioNodes(AppUIHub hub) : IDisposable
             catch {
                 // ignored
             }
-        });
+        }
     }
 
-    public void DisposeNode(AVAudioPlayerNode node)
-        => AudioDispatcher.Invoke(() => { DisposeNodeUnsafe(node); });
+    private void DisposeNode(AVAudioPlayerNode node)
+    {
+        lock (_lock)
+            DisposeNodeUnsafe(node);
+    }
 
     private void DisposeNodeUnsafe(AVAudioPlayerNode node)
     {
@@ -57,34 +62,39 @@ public class AudioNodes(AppUIHub hub) : IDisposable
         node.DisposeSilently();
     }
 
-    public SoundPlayerNode CreateSoundNode()
+    public ThreadSafePlayerNode CreatePlayerNode(AVAudioFormat format)
     {
         EnsureInitialized();
-        return AudioDispatcher.Invoke(() => new SoundPlayerNode(CreatePlayerNode(), SoundFormat, hub));
+        lock (_lock)
+            return CreatePlayerNodeUnsafe(format);
     }
 
+    // TODO: rename or extract
     public BufferPlayerNode CreateBufferNode()
     {
         EnsureInitialized();
-        return AudioDispatcher.Invoke(() => {
-            var node = CreatePlayerNode();
-            return new BufferPlayerNode(node, FeederFormat, hub);
-        });
+        lock (_lock)
+            return new BufferPlayerNode(CreatePlayerNodeUnsafe(FeederFormat), FeederFormat, hub);
     }
 
-    public void EnsureNodePlaying(AVAudioPlayerNode node)
-        => AudioDispatcher.Invoke(() => {
-            EnsureEngineRunningUnsafe();
-            if (!node.Playing)
-                node.Play();
-        });
+    private void EnsureEngineRunningUnsafe()
+    {
+        lock (_lock)
+            if (!_engine.Running) {
+                Log.LogInformation("Engine not running, starting");
+                _engine.Prepare();
+                _engine.StartAndReturnError(out var nsError);
+                nsError.Assert();
+            }
+    }
 
-    private AVAudioPlayerNode CreatePlayerNode()
+    private ThreadSafePlayerNode CreatePlayerNodeUnsafe(AVAudioFormat format)
     {
         var node = new AVAudioPlayerNode();
         _engine.AttachNode(node);
-        _engine.Connect(node, _engine.MainMixerNode, FeederFormat);
-        return node;
+        _engine.Connect(node, _engine.MainMixerNode, format);
+        EnsureEngineRunningUnsafe();
+        return new ThreadSafePlayerNode(node, DisposeNode);
     }
 
     private void EnsureInitialized()
@@ -94,7 +104,7 @@ public class AudioNodes(AppUIHub hub) : IDisposable
 
         ObjectDisposedException.ThrowIf(_isDisposed, this);
 
-        AudioDispatcher.Invoke(() => {
+        lock (_lock) {
             ObjectDisposedException.ThrowIf(_isDisposed, this);
             if (_isInitialized)
                 return;
@@ -105,16 +115,6 @@ public class AudioNodes(AppUIHub hub) : IDisposable
             Log.LogInformation("Initializing audio engine");
             _engine = new AVAudioEngine();
             _isInitialized = true;
-        });
-    }
-
-    private void EnsureEngineRunningUnsafe()
-    {
-        if (!_engine.Running) {
-            Log.LogInformation("Engine not running, starting");
-            _engine.Prepare();
-            _engine.StartAndReturnError(out var nsError);
-            nsError.Assert();
         }
     }
 }
