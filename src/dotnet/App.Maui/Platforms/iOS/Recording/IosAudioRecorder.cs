@@ -1,13 +1,9 @@
 
 // IosAudioRecorder.cs
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using ActualChat.Audio;
+using ActualChat.App.Maui.Playback;
 using ActualChat.UI.Blazor.App.Components;
 using AVFoundation;
 using Foundation;
-using AVAudioSettings = AVFoundation.AudioSettings;
 
 namespace ActualChat.App.Maui.Recording;
 
@@ -67,7 +63,7 @@ public class IosAudioRecorder
             var started = _audioEngine.StartAndReturnError(out NSError? startError);
             if (!started)
             {
-                System.Diagnostics.Debug.WriteLine($"iOS Audio Engine start error: {startError?.LocalizedDescription}");
+                Debug.WriteLine($"iOS Audio Engine start error: {startError?.LocalizedDescription}");
                 try { inputNode.RemoveTapOnBus(0); } catch { /* ignored */ }
                 _audioEngine.Dispose();
                 _audioEngine = null;
@@ -80,7 +76,7 @@ public class IosAudioRecorder
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"iOS Audio Start Error: {ex.Message}");
+            Debug.WriteLine($"iOS Audio Start Error: {ex.Message}");
             return false;
         }
     }
@@ -129,7 +125,7 @@ public class IosAudioRecorder
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"iOS Audio Stop Error: {ex.Message}");
+            Debug.WriteLine($"iOS Audio Stop Error: {ex.Message}");
             return false;
         }
     }

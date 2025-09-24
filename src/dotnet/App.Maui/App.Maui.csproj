@@ -180,6 +180,7 @@
     <PackageReference Include="AdamE.Firebase.iOS.Analytics" />
     <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
     <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
+    <PackageReference Include="ActualLab.Opus.MaciOS" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />

@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using CoreHaptics;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.App.Maui.Playback;
 
 public class IosTuneUI(UIHub hub) : MauiTunes(hub)
 {
@@ -13,7 +13,7 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
     [field: AllowNull, MaybeNull]
     private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
     [field: AllowNull, MaybeNull]
-    private IosNativePlayer IosNativePlayer => field ??= Hub.Services.GetRequiredService<IosNativePlayer>();
+    private AudioNodes AudioNodes => field ??= Hub.Services.GetRequiredService<AudioNodes>();
 
     public override void Dispose()
     {
@@ -34,14 +34,14 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
         => ForegroundTask.Run(() => {
             var (_, sound) = Tunes[tune];
             _ = Vibrate(tune);
-            return IosNativePlayer.Play(sound);
+            return PlaySound(sound);
         },
         CancellationToken.None);
 
     public override Task PlayAndWait(Tune tune, CancellationToken cancellationToken = default)
     {
         var (_, sound) = Tunes[tune];
-        return Task.WhenAll(Vibrate(tune), IosNativePlayer.Play(sound));
+        return Task.WhenAll(Vibrate(tune), PlaySound(sound));
     }
 
     // Protected methods
@@ -64,6 +64,20 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
     }
 
     // Private methods
+
+    private async Task PlaySound(string soundName)
+    {
+        if (soundName.IsNullOrEmpty())
+            return;
+
+        try {
+            using var playerNode = await AudioNodes.CreateSoundNode().ConfigureAwait(false);
+            await playerNode.PlayResourceFile(soundName).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to play sound {SoundName}", soundName);
+        }
+    }
 
     private CHHapticEngine CreateHapticEngine()
     {

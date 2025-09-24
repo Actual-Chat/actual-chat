@@ -1,29 +1,32 @@
+using ActualChat.App.Maui.Playback;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.App.Maui.Services.Playback;
 
-public sealed class MauiAudioPlaybackEngineFactory(IServiceProvider services) : IAudioPlaybackEngineFactory
+public sealed class MauiAudioPlaybackEngineFactory(AppUIHub hub) : IAudioPlaybackEngineFactory
 {
+    private IServiceProvider Services => hub.Services;
     public IAudioPlaybackEngine Create(string playerId, TrackInfo trackInfo, IMediaSource source, IAudioPlayerBackend backend)
     {
 #if WINDOWS
-        return new ActualChat.App.Maui.Playback.WindowsAudioPlaybackEngine(playerId,
+        return new WindowsAudioPlaybackEngine(playerId,
             trackInfo,
             source,
             backend,
-            services);
+            Services);
 #elif ANDROID
-        return new ActualChat.App.Maui.Playback.AndroidAudioPlaybackEngine(playerId, trackInfo, source, backend, services);
-        // #elif IOS
-        //     return new iOSAudioPlaybackEngine(playerId, trackInfo, source, backend, services);
+        return new AndroidAudioPlaybackEngine(playerId, trackInfo, source, backend, Services);
+#elif IOS || MACCATALYST
+        return new IosAudioPlaybackEngine(playerId, trackInfo, source, backend, hub);
 #else
         return new WebAudioPlaybackEngine(playerId,
             trackInfo,
             source,
             backend,
-            services);
+            Services);
 #endif
     }
 }

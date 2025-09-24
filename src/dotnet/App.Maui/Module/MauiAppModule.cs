@@ -1,6 +1,6 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.MediaPlayback;
@@ -8,14 +8,13 @@ using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
-using ActualChat.UI.Blazor.App.Components.AudioPlayer;
 using ActualChat.UI.Blazor.App.Pages.Test;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.IO;
-using Microsoft.Maui.Storage;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.App.Maui.Module;
 
@@ -44,7 +43,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IMauiHostSwitcher>(c => new MauiHostSwitcher(c.UIHub().UrlMapper, c.GetRequiredService<ReloadUI>()));
         services.AddScoped<IDeveloperTools>(_ => new MauiDeveloperTools());
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
-        services.AddScoped<IMediaMetadataUI>(_ => new MediaMetadataUI());
+        services.AddScoped<IMediaMetadataUI>(c => new MediaMetadataUI(c.AppUIHub()));
         services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
         // Permissions
@@ -59,7 +58,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddSingleton<VoiceActivityDetector>(c => new VoiceActivityDetector(c));
-        services.AddScoped<IAudioPlaybackEngineFactory>(c => new ActualChat.App.Maui.Services.Playback.MauiAudioPlaybackEngineFactory(c));
+        services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));

@@ -64,7 +64,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         switch (command) {
             case PlayCommand:
                 var trackInfo = (ChatAudioTrackInfo)TrackInfo;
-                MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming);
+                await MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming).ConfigureAwait(false);
                 _playbackEngine = Factory.Create(_id, TrackInfo, Source, this);
                 await _playbackEngine.Play(cancellationToken);
                 break;

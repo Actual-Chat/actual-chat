@@ -2,12 +2,12 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class WebMediaMetadataUI: IMediaMetadataUI
 {
-    public void SetPlayback(MediaMetadata metadata, bool isStreaming)
-    { }
+    public Task SetPlayback(MediaMetadata metadata, bool isStreaming)
+        => Task.CompletedTask;
 
-    public void SetRecording(MediaMetadata metadata)
-    { }
+    public Task SetRecording(MediaMetadata metadata)
+        => Task.CompletedTask;
 
-    public void Reset()
-    { }
+    public Task Reset()
+        => Task.CompletedTask;
 }
