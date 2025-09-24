@@ -9,6 +9,8 @@ using Plugin.Firebase.Analytics;
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.Core.Platforms.iOS;
 using Plugin.Firebase.Crashlytics;
+using ActualChat.App.Maui.Services.Recording;
+using ActualChat.App.Maui.Recording;
 
 namespace ActualChat.App.Maui;
 
@@ -31,6 +33,7 @@ public static partial class MauiProgram
         services.AddScoped<IMediaSaver>(c => new IosMediaSaver(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
         services.AddTransient<IAppIconBadge>(_ => new IosAppIconBadge());
+        services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.LogFor<IosAudioCapture>()));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
