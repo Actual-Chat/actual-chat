@@ -1,13 +1,11 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Diagnostics;
-using ActualLab.Locking;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Playback;
 
-public class AudioNodes(AppUIHub hub) : IAsyncDisposable
+public class AudioNodes(AppUIHub hub) : IDisposable
 {
-    private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
     private static readonly AVAudioFormat SoundFormat = new (AVAudioCommonFormat.PCMFloat32, 48000, 1, true);
     private static readonly AVAudioFormat FeederFormat = new (AVAudioCommonFormat.PCMFloat32, 48000, 1, false);
     private AVAudioEngine _engine = null!;
@@ -18,65 +16,105 @@ public class AudioNodes(AppUIHub hub) : IAsyncDisposable
     private ILogger Log => field ??= hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
 
-    public ValueTask DisposeAsync()
-        => MainThread.InvokeOnMainThreadAsync(() => {
-                _isDisposed = true;
-                if (!_isInitialized)
-                    return;
+    public void Dispose()
+    {
+        _isDisposed = true;
+        if (!_isInitialized)
+            return;
 
-                foreach (var node in _engine.AttachedNodes) {
-                    try {
-                        if (node is AVAudioPlayerNode playerNode)
-                            playerNode.Stop();
-                        _engine.DetachNode(node);
-                    }
-                    catch {
-                        // ignored
-                    }
-                }
+        AudioDispatcher.Invoke(() => {
+            if (_isDisposed)
+                return;
+
+            foreach (var node in _engine.AttachedNodes) {
                 try {
-                    _engine.Stop();
-                    _engine.DisposeSilently();
+                    if (node is AVAudioPlayerNode playerNode)
+                        DisposeNodeUnsafe(playerNode);
                 }
                 catch {
                     // ignored
                 }
-            })
-            .ToValueTask();
-
-    public async Task<SoundPlayerNode> CreateSoundNode()
-    {
-        await EnsureInitialized(CancellationToken.None).ConfigureAwait(false);
-        return await MainThread.InvokeOnMainThreadAsync(() => new SoundPlayerNode(_engine, SoundFormat)).ConfigureAwait(false);
+            }
+            try {
+                _engine.Stop();
+                _engine.DisposeSilently();
+            }
+            catch {
+                // ignored
+            }
+        });
     }
 
-    public async Task<BufferPlayerNode> CreateBufferNode()
+    public void DisposeNode(AVAudioPlayerNode node)
+        => AudioDispatcher.Invoke(() => { DisposeNodeUnsafe(node); });
+
+    private void DisposeNodeUnsafe(AVAudioPlayerNode node)
     {
-        await EnsureInitialized(CancellationToken.None).ConfigureAwait(false);
-        return await MainThread.InvokeOnMainThreadAsync(() => new BufferPlayerNode(_engine, FeederFormat, hub)).ConfigureAwait(false);
+        node.Stop();
+        _engine.DisconnectNodeInput(node);
+        _engine.DisconnectNodeOutput(node);
+        _engine.DetachNode(node);
+        node.DisposeSilently();
     }
 
-    private async Task EnsureInitialized(CancellationToken cancellationToken)
+    public SoundPlayerNode CreateSoundNode()
+    {
+        EnsureInitialized();
+        return AudioDispatcher.Invoke(() => new SoundPlayerNode(CreatePlayerNode(), SoundFormat, hub));
+    }
+
+    public BufferPlayerNode CreateBufferNode()
+    {
+        EnsureInitialized();
+        return AudioDispatcher.Invoke(() => {
+            var node = CreatePlayerNode();
+            return new BufferPlayerNode(node, FeederFormat, hub);
+        });
+    }
+
+    public void EnsureNodePlaying(AVAudioPlayerNode node)
+        => AudioDispatcher.Invoke(() => {
+            EnsureEngineRunningUnsafe();
+            if (!node.Playing)
+                node.Play();
+        });
+
+    private AVAudioPlayerNode CreatePlayerNode()
+    {
+        var node = new AVAudioPlayerNode();
+        _engine.AttachNode(node);
+        _engine.Connect(node, _engine.MainMixerNode, FeederFormat);
+        return node;
+    }
+
+    private void EnsureInitialized()
     {
         if (_isInitialized)
             return;
 
         ObjectDisposedException.ThrowIf(_isDisposed, this);
-        using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
-        ObjectDisposedException.ThrowIf(_isDisposed, this);
-        if (_isInitialized)
-            return;
 
-        Log.LogInformation("Activating audio session");
-        IosAudioSessionHelper.ActivateRecordingAndBackgroundAudio();
+        AudioDispatcher.Invoke(() => {
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
+            if (_isInitialized)
+                return;
 
-        Log.LogInformation("Initializing audio engine");
-        await MainThread.InvokeOnMainThreadAsync(() => {
-                ObjectDisposedException.ThrowIf(_isDisposed, this);
-                _engine = new AVAudioEngine();
-            })
-            .ConfigureAwait(false);
-        _isInitialized = true;
-        Log.LogInformation("Audio engine initialized");
+            Log.LogInformation("Activating audio session");
+            IosAudioSessionHelper.ActivateRecordingAndBackgroundAudio();
+
+            Log.LogInformation("Initializing audio engine");
+            _engine = new AVAudioEngine();
+            _isInitialized = true;
+        });
+    }
+
+    private void EnsureEngineRunningUnsafe()
+    {
+        if (!_engine.Running) {
+            Log.LogInformation("Engine not running, starting");
+            _engine.Prepare();
+            _engine.StartAndReturnError(out var nsError);
+            nsError.Assert();
+        }
     }
 }

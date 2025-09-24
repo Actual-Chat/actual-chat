@@ -5,99 +5,70 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Playback;
 
-public class BufferPlayerNode : IAsyncDisposable
+public class BufferPlayerNode(AVAudioPlayerNode node, AVAudioFormat format, AppUIHub hub)
+    : IDisposable
 {
     private readonly AudioBufferCapacity _capacity = new ();
-    private readonly MutableState<State> _state;
+    private readonly MutableState<State> _state = hub.StateFactory.NewMutable(new State(TimeSpan.Zero, false, false));
     private TimeSpan _position;
 
     private string Id { get; } = RandomStringGenerator.Default.Next(5);
-    private AVAudioEngine Engine { get; }
-    private AVAudioPlayerNode Node { get; }
-    private AVAudioFormat Format { get; }
-    private ILogger<BufferPlayerNode> Log { get; }
+
+    [field: AllowNull, MaybeNull]
+    private AudioNodes Nodes => field ??= hub.Services.GetRequiredService<AudioNodes>();
+    private ILogger<BufferPlayerNode> Log { get; } = hub.LogFor<BufferPlayerNode>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
 
     public IState<State> PlaybackState => _state;
-    public Task<bool> IsPlaying() => MainThread.InvokeOnMainThreadAsync(() => Node.Playing);
 
-    public BufferPlayerNode(AVAudioEngine engine, AVAudioFormat format, AppUIHub hub)
-    {
-        Format = format;
-        Log = hub.LogFor<BufferPlayerNode>();
-        Engine = engine;
-        Node = new AVAudioPlayerNode();
-        engine.AttachNode(Node);
-        engine.Connect(Node, engine.MainMixerNode, format);
-        _state = hub.StateFactory.NewMutable(new State(TimeSpan.Zero, false, false));
-    }
+    public void Dispose()
+        => Nodes.DisposeNode(node);
 
-    public async ValueTask DisposeAsync()
-        => await BackgroundTask.Run(() => MainThread.InvokeOnMainThreadAsync(() => {
-            Node.Stop();
-            Engine.DisconnectNodeInput(Node);
-            Engine.DisconnectNodeOutput(Node);
-            Engine.DetachNode(Node);
-            Node.DisposeSilently();
-        })).ConfigureAwait(false);
+    public bool IsPlaying()
+        => AudioDispatcher.Invoke(() => node.Playing);
 
-    public async Task Play()
+    public void Play()
     {
         DebugLog?.LogInformation("#{Id}.Play", Id);
-        if (!Engine.Running) {
-            DebugLog?.LogInformation("#{Id}.Play: Engine not running, preparing and starting", Id);
-            Engine.AutoShutdownEnabled = false;
-            Engine.Prepare();
-            Engine.StartAndReturnError(out var nsError);
-            nsError.Assert();
-        }
-
-        if (!Node.Playing) {
-            DebugLog?.LogInformation("#{Id}.Play: Node not playing, starting", Id);
-            Node.Volume = 1;
-            Node.Play();
-        }
-        await UpdateState().ConfigureAwait(false);
+        Nodes.EnsureNodePlaying(node);
+        UpdateState();
     }
 
-    public async Task Pause()
+    public void Pause()
     {
         DebugLog?.LogInformation("#{Id}.Pause", Id);
-        Node.Pause();
-        await UpdateState().ConfigureAwait(false);
+        AudioDispatcher.Invoke(node.Pause);
+        UpdateState();
     }
 
     public async ValueTask Feed(AVAudioPcmBuffer pcm, CancellationToken cancellationToken)
     {
         await _capacity.Acquire(cancellationToken).ConfigureAwait(false);
-        Node.ScheduleBuffer(pcm,
-            AVAudioPlayerNodeCompletionCallbackType.PlayedBack,
-            _ => {
-                _position += TimeSpan.FromSeconds(pcm.FrameLength / Format.SampleRate);
-                _capacity.Release();
-                 BackgroundTask.Run(UpdateState, CancellationToken.None);
-            });
+        AudioDispatcher.Invoke(() => {
+            node.ScheduleBuffer(pcm,
+                AVAudioPlayerNodeCompletionCallbackType.PlayedBack,
+                _ => {
+                    _position += TimeSpan.FromSeconds(pcm.FrameLength / format.SampleRate);
+                    _capacity.Release();
+                    _state.Value = new State(_position, true, _capacity.IsBufferLow);
+                });
+        });
     }
 
-    private async Task UpdateState()
-    {
-        var isPlaying = await IsPlaying().ConfigureAwait(false);
-        _state.Value = new State(_position, isPlaying, _capacity.IsBufferLow);
-    }
+    private void UpdateState()
+        => _state.Value = new State(_position, IsPlaying(), _capacity.IsBufferLow);
 
     public async Task Complete(CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{Id}.End", Id);
         await WhenDonePlaying(cancellationToken).ConfigureAwait(false);
-        await Stop().ConfigureAwait(false);
+        Stop();
     }
 
-    public async Task Stop()
+    public void Stop()
     {
         DebugLog?.LogInformation("#{Id}.Stop", Id);
-        Log.LogInformation("!!! #{Id}.Stop: stopping, {OperationId}", Id, RandomStringGenerator.Default.Next(3));
-        await MainThread.InvokeOnMainThreadAsync(Node.Stop).ConfigureAwait(false);
-        Log.LogInformation("!!! #{Id}.Stop: stopped", Id);
+        AudioDispatcher.Invoke(node.Stop);
     }
 
     private async Task WhenDonePlaying(CancellationToken cancellationToken)
