@@ -71,7 +71,7 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
             return;
 
         try {
-            using var playerNode = await AudioNodes.CreateSoundNode().ConfigureAwait(false);
+            using var playerNode = AudioNodes.CreateSoundNode();
             await playerNode.PlayResourceFile(soundName).ConfigureAwait(false);
         }
         catch (Exception e) {
