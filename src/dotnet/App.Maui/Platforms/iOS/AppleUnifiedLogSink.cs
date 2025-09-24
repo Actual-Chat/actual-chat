@@ -10,7 +10,7 @@ namespace ActualChat.App.Maui;
 public class AppleUnifiedLogSink(ITextFormatter textFormatter) : ILogEventSink, IDisposable
 {
     // probably scope could be category, but good for now
-    private readonly CoreFoundation.OSLog _osLog = new (NSBundle.MainBundle.BundleIdentifier, "general");
+    private readonly CoreFoundation.OSLog _osLog = new (NSBundle.MainBundle.BundleIdentifier, MauiDiagnostics.LogTag);
 
     private readonly ITextFormatter _textFormatter = textFormatter ?? throw new ArgumentNullException(nameof(textFormatter));
 
