@@ -84,8 +84,10 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         var attachment = new Attachment(
             previewUrl,
             fileProvider.FileName,
-            fileType,
-            new AttachFileRequest(fileProvider));
+            fileType) {
+            FileProvider = fileProvider,
+        };
+        attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
         await AttachmentsController.AddAttachment(list, attachment);
         await AttachmentsController.InitUpload(list, attachment.Id, ChatId);
         await AttachmentsController.ResumeUpload(list, attachment.Id);

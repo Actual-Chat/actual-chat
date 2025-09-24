@@ -1,8 +1,9 @@
 using ActualChat.Media;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public record Attachment(string PreviewUrl, string FileName, string FileType, IAttachRequest Request)
+public record Attachment(string PreviewUrl, string FileName, string FileType)
 {
     public string Id { get; init; } = Guid.NewGuid().ToString();
     public int Progress { get; init; }
@@ -13,7 +14,10 @@ public record Attachment(string PreviewUrl, string FileName, string FileType, IA
     public bool Failed { get; init; }
     public bool NoAccess { get; init; }
 
-    public string UploadSessionId => Request is UploadSessionAttachRequest request ? request.UploadSessionId : "";
+    public AttachmentCleanupCollection Cleanups { get; } = new ();
+
+    public IFileProvider? FileProvider { get; init; }
+    public string UploadSessionId { get; init; } = "";
 
     public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);

@@ -66,10 +66,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             foreach (var attachment in cmd.Attachments.Items) {
                 var uploadSessionId = attachment.UploadSessionId;
                 if (uploadSessionId.IsNullOrEmpty()) {
-                    if (attachment.Request is not AttachFileRequest attachFileRequest)
-                        throw new InvalidOperationException($"Can't initialize upload for attachment '{attachment.Id}' because it's non-file attachment");
+                    if (attachment.FileProvider is not { } fileProvider)
+                        throw new InvalidOperationException($"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
-                    var fileProvider = attachFileRequest.FileProvider;
                     var uploadSession = await UploadSessions.CreateSession(cmd.ChatId, fileProvider).ConfigureAwait(false);
                     uploadSessionId = uploadSession.SessionId;
                 }
@@ -81,7 +80,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         DebugLog?.LogInformation("About to store post request '{Text}'", cmd.Text);
         await _requestsStorage.Add(entry, cancellationToken).ConfigureAwait(false);
 
-        var requestInternal = await CreatePostMessageRequestInternal(entry, cmd.Attachments).ConfigureAwait(false);
+        var uploads = await CreateAttachmentUploads(entry, cmd.Attachments).ConfigureAwait(false);
+        var requestInternal = CreatePostMessageRequestInternal(entry, uploads);
         _ = BackgroundTask.Run(async () => {
             DebugLog?.LogInformation("About to post internal '{Text}'", cmd.Text);
             await PostInternal(requestInternal, resultSource, cancellationToken).ConfigureAwait(false);
@@ -92,17 +92,15 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     public void Cancel(SendingMessage sendingMessage)
         => sendingMessage.Cancel();
 
-    private async Task<PostMessageRequestInternal> CreatePostMessageRequestInternal(PostMessageRequestEntry entry, IAttachmentList? attachments)
-    {
-        var uploads = await CreateAttachmentUploads(entry, attachments).ConfigureAwait(false);
-        return new PostMessageRequestInternal(entry.Uuid,
+    private static PostMessageRequestInternal CreatePostMessageRequestInternal(PostMessageRequestEntry entry,
+        AttachmentUploads? uploads)
+        => new (entry.Uuid,
             entry.Now,
             entry.ChatId,
             entry.LocalId,
             entry.Text,
             entry.RepliedEntryLid,
             uploads);
-    }
 
     private async Task<AttachmentUploads?> CreateAttachmentUploads(PostMessageRequestEntry entry, IAttachmentList? sourceAttachments)
     {
@@ -146,9 +144,11 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 await _requestsStorage.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
             }
 
-            IAttachRequest attachRequest = new PersistedAttachFileRequest(attachEntry, CleanupRequest);
-            attachRequest = new UploadSessionAttachRequest(UploadSessions, uploadSessionId, attachRequest);
-            var attachment = new Attachment(previewUrl, attachEntry.FileName, attachEntry.FileType, attachRequest);
+            var attachment = new Attachment(previewUrl, attachEntry.FileName, attachEntry.FileType) {
+                UploadSessionId = uploadSessionId,
+            };
+            attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
+            attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
             if (!attachmentIsOk) {
                 attachment = attachment with {
                     Failed = true,
@@ -177,11 +177,16 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         foreach (var entry in entries) {
             PostMessageRequestInternal requestInternal;
             try {
-                requestInternal = await CreatePostMessageRequestInternal(entry, null).ConfigureAwait(false);
+                var uploads = await CreateAttachmentUploads(entry, null).ConfigureAwait(false);
+                requestInternal = CreatePostMessageRequestInternal(entry, uploads);
             }
             catch (Exception e) {
                 Log.LogError(e, "Failed to recreate stored post request");
-                await DiscardStoredPostRequest(entry.Uuid, entry.AttachFileRequests.Select(c => c.UploadSessionId).ToArray(), cancellationToken).ConfigureAwait(false);
+                // Failed to restart send message request.
+                // So forget about this request and cleanup attachment resources.
+                await DiscardStoredPostRequest(entry.Uuid, cancellationToken).ConfigureAwait(false);
+                var uploadSessionIds = entry.AttachFileRequests.Select(x => x.UploadSessionId).ToArray();
+                await CleanupUploadSessions(entry.Uuid, uploadSessionIds).ConfigureAwait(false);
                 continue;
             }
             var resultSource = TaskCompletionSourceExt.New<ChatEntry>();
@@ -197,18 +202,39 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         }
     }
 
-    private async Task DiscardStoredPostRequest(string postRequestUuid, string[] uploadSessionIds, CancellationToken cancellationToken)
+    private async Task CleanupAttachments(string postRequestUuid, IEnumerable<Attachment> attachments)
+    {
+        foreach (var attachment in attachments) {
+            try {
+                var cleanups = attachment.Cleanups.Items.ToList();
+                // NOTE(DF): we don't need to do individual cleanups per attachment for the persisted send message request.
+                // Because it is already executed for the entire send message request.
+                cleanups.RemoveAll(x => x.Kind == AttachmentCleanupKind.PersistedPostMessageRequest);
+                foreach (var cleanup in cleanups)
+                    await cleanup.Cleanup().ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to cleanup upload session '{UploadSessionId}' for post request '{Id}'",
+                    attachment.UploadSessionId, postRequestUuid);
+            }
+        }
+    }
+
+    private async Task CleanupUploadSessions(string postRequestUuid, string[] uploadSessionIds)
     {
         foreach (var uploadSessionId in uploadSessionIds) {
             try {
-                await UploadSessions.CancelSessionIfNotCompleted(uploadSessionId).ConfigureAwait(false);
-                await UploadSessions.DeleteSession(uploadSessionId).ConfigureAwait(false);
+                await AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId).Cleanup().ConfigureAwait(false);
             }
             catch (Exception e) {
-                Log.LogError(e, "Failed to cancel+delete upload session '{UploadSessionId}' for post request '{Id}'",
+                Log.LogError(e, "Failed to cleanup upload session '{UploadSessionId}' for post request '{Id}'",
                     uploadSessionId, postRequestUuid);
             }
         }
+    }
+
+    private async Task DiscardStoredPostRequest(string postRequestUuid, CancellationToken cancellationToken)
+    {
         try {
             await _requestsStorage.Remove(postRequestUuid, cancellationToken).ConfigureAwait(false);
         }
@@ -251,17 +277,10 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 Log.LogError(e, "Failed to sent message. UUID={Uuid}, Text='{Text}'", request.Uuid, request.Text);
                 result = Result.NewError<ChatEntry>(e);
             }
-            try {
-                // TODO: decide when we can cancel remove request.
-                CancellationToken cancellationToken2 = default;
-                await _requestsStorage.Remove(request.Uuid, cancellationToken2).SilentAwait(false);
-            }
-            catch (Exception e) {
-                Log.LogError(e,
-                    "Failed to remove stored request to sent message. UUID={Uuid}, Text='{Text}'",
-                    request.Uuid,
-                    request.Text);
-            }
+
+            // // TODO: decide when we can cancel remove request.
+            // // Should we remove it here or later after attachments are submitted?
+            // await DiscardStoredPostRequest(request.Uuid, CancellationToken.None).ConfigureAwait(false);
 
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
@@ -285,12 +304,10 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 request.Text);
         }
 
-        var uploadSessionIds = new List<string>();
+        // Everything is completed. We can forget about this request and cleanup attachment resources.
+        await DiscardStoredPostRequest(request.Uuid, cancellationToken).ConfigureAwait(false);
         if (request.AttachmentUploads is not null)
-            foreach (var attachment in request.AttachmentUploads.Attachments.Items)
-                uploadSessionIds.Add(attachment.UploadSessionId);
-
-        await DiscardStoredPostRequest(request.Uuid, uploadSessionIds.ToArray(), cancellationToken).ConfigureAwait(false);
+            await CleanupAttachments(request.Uuid, request.AttachmentUploads.Attachments.Items).ConfigureAwait(false);
     }
 
     private static SendingMessage CreateSendingMessage(
@@ -457,9 +474,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         }
     }
 }
-
-public record PersistedAttachFileRequest(AttachFileRequestEntry Entry, Func<Task> Cleanup) : IAttachRequest
-{
-    public Task CleanupForRemoving()
-        => Cleanup();
-}
+//
+// public record PersistedAttachFileRequest(AttachFileRequestEntry Entry, Func<Task> Cleanup) : IAttachRequest
+// {
+//     public Task CleanupForRemoving()
+//         => Cleanup();
+// }

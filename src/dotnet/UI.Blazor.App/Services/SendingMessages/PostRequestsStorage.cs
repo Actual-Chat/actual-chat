@@ -28,7 +28,7 @@ public class PostRequestsStorage(AppUIHub hub)
         entries ??= [];
         var i = Array.FindIndex(entries, c => OrdinalEquals(c.Uuid, entryUuid));
         if (i < 0)
-            throw new InvalidOperationException($"Can not find post request entry with given uuid '{entryUuid}'.");
+            return; // Nothing do. Everything is cleaned up.
 
         var entry = entries[i];
         var attachRequests = entry.AttachFileRequests.ToList();

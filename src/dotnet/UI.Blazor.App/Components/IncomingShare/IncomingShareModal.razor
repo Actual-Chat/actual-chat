@@ -182,8 +182,11 @@
             // Do not request preview url here, because we are not going to display attachment,
             // but rather post a message immediately.
             const string previewUrl = "";
-            var attachRequest = new AttachFileRequest(fileInfo.FileProvider);
-            var attachment = new Attachment(previewUrl, fileInfo.FileName, fileInfo.FileType, attachRequest);
+            var fileProvider = fileInfo.FileProvider;
+            var attachment = new Attachment(previewUrl, fileInfo.FileName, fileInfo.FileType) {
+                FileProvider = fileProvider
+            };
+            attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
             attachments.Add(attachment);
         }
         if (fileSizeLimitError != null)
