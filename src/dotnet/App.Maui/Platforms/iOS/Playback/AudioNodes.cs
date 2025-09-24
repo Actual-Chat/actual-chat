@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui.Playback;
 public class AudioNodes(AppUIHub hub) : IDisposable
 {
     public static readonly AVAudioFormat SoundFormat = new (AVAudioCommonFormat.PCMFloat32, 48000, 1, true);
-    public static readonly AVAudioFormat FeederFormat = new (AVAudioCommonFormat.PCMFloat32, 48000, 1, false);
+    public static readonly AVAudioFormat VoiceFormat = new (AVAudioCommonFormat.PCMFloat32, 48000, 1, false);
 
     private readonly Lock _lock = new();
     private AVAudioEngine _engine = null!;
@@ -47,6 +47,13 @@ public class AudioNodes(AppUIHub hub) : IDisposable
         }
     }
 
+    public ThreadSafePlayerNode CreatePlayerNode(AVAudioFormat format)
+    {
+        EnsureInitialized();
+        lock (_lock)
+            return CreatePlayerNodeUnsafe(format);
+    }
+
     private void DisposeNode(AVAudioPlayerNode node)
     {
         lock (_lock)
@@ -60,21 +67,6 @@ public class AudioNodes(AppUIHub hub) : IDisposable
         _engine.DisconnectNodeOutput(node);
         _engine.DetachNode(node);
         node.DisposeSilently();
-    }
-
-    public ThreadSafePlayerNode CreatePlayerNode(AVAudioFormat format)
-    {
-        EnsureInitialized();
-        lock (_lock)
-            return CreatePlayerNodeUnsafe(format);
-    }
-
-    // TODO: rename or extract
-    public BufferPlayerNode CreateBufferNode()
-    {
-        EnsureInitialized();
-        lock (_lock)
-            return new BufferPlayerNode(CreatePlayerNodeUnsafe(FeederFormat), FeederFormat, hub);
     }
 
     private void EnsureEngineRunningUnsafe()
@@ -94,7 +86,7 @@ public class AudioNodes(AppUIHub hub) : IDisposable
         _engine.AttachNode(node);
         _engine.Connect(node, _engine.MainMixerNode, format);
         EnsureEngineRunningUnsafe();
-        return new ThreadSafePlayerNode(node, DisposeNode);
+        return new ThreadSafePlayerNode(node, format, DisposeNode);
     }
 
     private void EnsureInitialized()

@@ -3,7 +3,7 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Playback;
 
-public static class PlayerNodeWrapperExt
+public static class AudioNodesExt
 {
     public static async Task PlayResourceFile(this AudioNodes nodes, string resourceFileName)
     {

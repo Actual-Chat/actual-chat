@@ -2,8 +2,9 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Playback;
 
-public class ThreadSafePlayerNode(AVAudioPlayerNode node, Action<AVAudioPlayerNode> disposer) : IDisposable
+public class ThreadSafePlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVAudioPlayerNode> disposer) : IDisposable
 {
+    public AVAudioFormat Format { get; } = format;
     private readonly Lock _lock = new();
 
     public bool IsPlaying {
