@@ -5,7 +5,8 @@
     @foreach (var attachment in Uploads.Items) {
         <AttachmentItem
             Attachment="@attachment"
-            RemoveClick="@(() => Uploads.Remove(attachment))"/>
+            RestartClick="@(() => OnRestartClick(attachment))"
+            RemoveClick="@(() => OnRemoveClick(attachment))"/>
     }
 </ul>
 
@@ -28,4 +29,10 @@
     private void OnChanged(object? sender, EventArgs e) {
         StateHasChanged();
     }
+
+    private Task OnRemoveClick(Attachment attachment)
+        => Uploads.Remove(attachment);
+
+    private Task OnRestartClick(Attachment attachment)
+        => Uploads.Restart(attachment);
 }

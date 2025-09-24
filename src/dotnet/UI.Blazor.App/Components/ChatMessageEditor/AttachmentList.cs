@@ -64,7 +64,4 @@ public class AttachmentList : IAttachmentList
 
     private void RaiseChanged()
         => Changed?.Invoke(this, EventArgs.Empty);
-
-    public ValueTask DisposeAsync()
-        => default;
 }

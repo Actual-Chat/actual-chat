@@ -382,7 +382,6 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             };
             await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         }
-        await attachmentUploads.Attachments.DisposeSilentlyAsync().ConfigureAwait(false);
     }
 
     private static TextEntryAttachment[] CreateTextEntryAttachments(AttachmentUploads attachmentUploads)

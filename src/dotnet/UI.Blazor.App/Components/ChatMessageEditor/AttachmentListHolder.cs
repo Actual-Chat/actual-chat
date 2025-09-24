@@ -29,13 +29,7 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
     private AttachmentList CreateAttachmentList()
         => new ();
 
-    private ValueTask Release(AttachmentList attachments)
-    {
-        Dispatcher.AssertAccess();
-        return attachments.DisposeSilentlyAsync();
-    }
-
-    private async ValueTask Rollback(AttachmentList attachments) {
+    private ValueTask Rollback(AttachmentList attachments) {
         Dispatcher.AssertAccess();
         AttachmentList? backup = null;
         if (_attachments.Count == 0) {
@@ -44,11 +38,14 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
         }
         if (backup != null) {
             UnsubscribeFromListEvents(backup);
-            await backup.DisposeSilentlyAsync();
             SubscribeToListEvents(attachments);
         }
         RaiseChanged();
+        return ValueTask.CompletedTask;
     }
+
+    private ValueTask Release(AttachmentList attachments)
+        => ValueTask.CompletedTask;
 
     private void SubscribeToListEvents(AttachmentList attachments)
         => attachments.Changed += OnAttachmentListChanged;

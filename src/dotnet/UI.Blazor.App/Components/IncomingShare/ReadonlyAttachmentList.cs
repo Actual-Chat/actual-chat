@@ -13,6 +13,6 @@ public sealed class ReadonlyAttachmentList : IAttachmentList
     public Task Remove(Attachment attachment)
         => throw new NotSupportedException();
 
-    public ValueTask DisposeAsync()
-        => default;
+    public Task Restart(Attachment attachment)
+        => throw new NotSupportedException();
 }
