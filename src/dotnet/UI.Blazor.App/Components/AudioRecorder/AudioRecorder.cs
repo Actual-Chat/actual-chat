@@ -80,7 +80,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         MarkStarting(chatId);
         try {
-            var isStarted = await _engine.StartAsync(chatId, repliedChatEntryId, sessionToken, cancellationToken).WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
+            var isStarted = await _engine.Start(chatId, repliedChatEntryId, sessionToken, cancellationToken).WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
             if (!isStarted) {
                 MicrophonePermission.ForgetCached();
                 Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);
@@ -196,7 +196,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         // This method should reliably stop the recording, so we don't use normal cancellation here
         try {
-            await _engine.StopAsync(CancellationToken.None).WaitAsync(StopRecordingTimeout).ConfigureAwait(false);
+            await _engine.Stop(CancellationToken.None).WaitAsync(StopRecordingTimeout).ConfigureAwait(false);
         }
         catch (JSDisconnectedException) { } // Circuit is disposed or disposing
         catch (ObjectDisposedException) { } // Circuit is disposed or disposing

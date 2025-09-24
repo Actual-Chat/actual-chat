@@ -8,7 +8,7 @@ public class WebRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.AudioRecorder.create";
     private IJSObjectReference _jsRef = null!;
 
-    public async Task<bool> StartAsync(ChatId chatId, ChatEntryId? repliedChatEntryId, string sessionToken, CancellationToken cancellationToken = default)
+    public async Task<bool> Start(ChatId chatId, ChatEntryId? repliedChatEntryId, string sessionToken, CancellationToken cancellationToken = default)
     {
         await EnsureInitialized(cancellationToken).ConfigureAwait(false);
 
@@ -22,7 +22,7 @@ public class WebRecorderEngine(AppUIHub hub) : IAudioRecorderEngine
             .ConfigureAwait(false);
     }
 
-    public async Task<bool> StopAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> Stop(CancellationToken cancellationToken = default)
     {
         await EnsureInitialized(cancellationToken).ConfigureAwait(false);
 

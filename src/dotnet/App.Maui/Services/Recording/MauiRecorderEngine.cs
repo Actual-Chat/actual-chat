@@ -56,14 +56,14 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             _ => SetSignalDetected(false).AsTask());
     }
 
-    public async Task<bool> StartAsync(
+    public async Task<bool> Start(
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         string sessionToken,
         CancellationToken cancellationToken)
     {
         // Stop any existing recording first
-        await StopAsync(cancellationToken).ConfigureAwait(false);
+        await Stop(cancellationToken).ConfigureAwait(false);
 
         // Initialize and connect AudioStreamer
         await _streamer.EnsureConnected(true, cancellationToken).ConfigureAwait(false);
@@ -91,7 +91,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         return true;
     }
 
-    public async Task<bool> StopAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> Stop(CancellationToken cancellationToken = default)
     {
         var recordingCts = Interlocked.Exchange(ref _recordingCts, null);
         recordingCts.CancelAndDisposeSilently();
@@ -279,7 +279,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 return;
 
             if (chatId is null) {
-                await StopAsync(cancellationToken).ConfigureAwait(false);
+                await Stop(cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -287,11 +287,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             if (backendRecording)
                 return;
 
-            await StopAsync(cancellationToken).ConfigureAwait(false);
+            await Stop(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to run recording heartbeat");
-            await StopAsync(cancellationToken).ConfigureAwait(false);
+            await Stop(cancellationToken).ConfigureAwait(false);
             throw;
         }
     }
