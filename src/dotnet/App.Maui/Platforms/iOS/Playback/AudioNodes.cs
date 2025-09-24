@@ -50,8 +50,13 @@ public class AudioNodes(AppUIHub hub) : IDisposable
     public ThreadSafePlayerNode CreatePlayerNode(AVAudioFormat format)
     {
         EnsureInitialized();
-        lock (_lock)
-            return CreatePlayerNodeUnsafe(format);
+        lock (_lock) {
+            var node = new AVAudioPlayerNode();
+            _engine.AttachNode(node);
+            _engine.Connect(node, _engine.MainMixerNode, format);
+            EnsureEngineRunningUnsafe();
+            return new ThreadSafePlayerNode(node, format, DisposeNode);
+        }
     }
 
     private void DisposeNode(AVAudioPlayerNode node)
@@ -78,15 +83,6 @@ public class AudioNodes(AppUIHub hub) : IDisposable
                 _engine.StartAndReturnError(out var nsError);
                 nsError.Assert();
             }
-    }
-
-    private ThreadSafePlayerNode CreatePlayerNodeUnsafe(AVAudioFormat format)
-    {
-        var node = new AVAudioPlayerNode();
-        _engine.AttachNode(node);
-        _engine.Connect(node, _engine.MainMixerNode, format);
-        EnsureEngineRunningUnsafe();
-        return new ThreadSafePlayerNode(node, format, DisposeNode);
     }
 
     private void EnsureInitialized()
