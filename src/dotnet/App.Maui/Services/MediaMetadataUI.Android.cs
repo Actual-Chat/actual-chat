@@ -5,12 +5,12 @@ namespace ActualChat.App.Maui.Services;
 
 public partial class MediaMetadataUI
 {
-    public partial void SetPlayback(MediaMetadata metadata, bool isStreaming)
-    { }
+    public partial Task SetPlayback(MediaMetadata metadata, bool isStreaming)
+        => Task.CompletedTask;
 
-    public partial void SetRecording(MediaMetadata metadata)
-    { }
+    public partial Task SetRecording(MediaMetadata metadata)
+        => Task.CompletedTask;
 
-    public partial void Reset()
-    { }
+    public partial Task Reset()
+        => Task.CompletedTask;
 }
