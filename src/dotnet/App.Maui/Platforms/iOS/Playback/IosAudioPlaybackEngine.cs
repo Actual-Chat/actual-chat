@@ -17,7 +17,7 @@ public class IosAudioPlaybackEngine(
 {
     private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
     private bool _isInitialized;
-    private BufferPlayerNode _node = null!;
+    private BufferedPlayer _bufferedPlayer = null!;
     private FuncWorker _processWorker = null!;
     private OpusDecoder _decoder = null!;
 
@@ -30,7 +30,7 @@ public class IosAudioPlaybackEngine(
     public async ValueTask DisposeAsync()
     {
         await _processWorker.DisposeSilentlyAsync().ConfigureAwait(false);
-        _node.DisposeSilently();
+        _bufferedPlayer.DisposeSilently();
         _decoder.DisposeSilently();
     }
 
@@ -40,26 +40,26 @@ public class IosAudioPlaybackEngine(
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
         if (!_isInitialized) {
             DebugLog?.LogInformation("#{PlayerId}.Play: initializing", playerId);
-            _node = Nodes.CreateBufferNode();
+            _bufferedPlayer = new BufferedPlayer(Nodes.CreatePlayerNode(AudioNodes.VoiceFormat), playerId, hub);
             _processWorker = FuncWorker.Start(ProcessFeeder);
             _decoder = Opus.CreateDecoder();
             _isInitialized = true;
             DebugLog?.LogInformation("#{PlayerId}.Play: initialized", playerId);
         }
         DebugLog?.LogInformation("#{PlayerId}.Play: node.play()", playerId);
-        _node.Play();
+        _bufferedPlayer.Play();
         DebugLog?.LogInformation("#{PlayerId}.Play: started", playerId);
     }
 
     public Task Pause(CancellationToken cancellationToken)
     {
-        _node.Pause();
+        _bufferedPlayer.Pause();
         return Task.CompletedTask;
     }
 
     public Task Resume(CancellationToken cancellationToken)
     {
-        _node.Play();
+        _bufferedPlayer.Play();
         return Task.CompletedTask;
     }
 
@@ -67,12 +67,12 @@ public class IosAudioPlaybackEngine(
     {
         DebugLog?.LogInformation("#{PlayerId}.End({abort})", playerId, abort);
         if (abort) {
-            _node.Stop();
+            _bufferedPlayer.Stop();
             await backend.OnEnded(null).ConfigureAwait(false);
         }
         else
             _ = BackgroundTask.Run(async () => {
-                    await _node.Complete(cancellationToken).ConfigureAwait(false);
+                    await _bufferedPlayer.Complete(cancellationToken).ConfigureAwait(false);
                     await backend.OnEnded(null).ConfigureAwait(false);
                 },
                 cancellationToken);
@@ -81,12 +81,12 @@ public class IosAudioPlaybackEngine(
     public Task Frame(MediaFrame frame, CancellationToken cancellationToken)
     {
         var data = _decoder.Decode(frame.Data);
-        return _node.Feed(data, cancellationToken).AsTask();
+        return _bufferedPlayer.Feed(data, cancellationToken).AsTask();
     }
 
     private async Task ProcessFeeder(CancellationToken cancellationToken)
     {
-        await foreach (var cPosition in _node.PlaybackState.Computed.Changes(cancellationToken)
+        await foreach (var cPosition in _bufferedPlayer.PlaybackState.Computed.Changes(cancellationToken)
                            .ConfigureAwait(false))
             await backend.OnPlaying(cPosition.Value.Position.TotalSeconds, cPosition.Value.IsPlaying, cPosition.Value.IsBufferLow);
     }
