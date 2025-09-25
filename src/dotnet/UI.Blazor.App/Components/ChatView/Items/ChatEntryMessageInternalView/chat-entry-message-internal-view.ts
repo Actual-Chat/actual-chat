@@ -189,12 +189,6 @@ export class ChatEntryMessageInternalView {
     }
 
     private getActualHeight(): number {
-        const sendingStatus = this.messageMarkup.querySelector('.chat-message-sending-status') as HTMLElement | null;
-        let style = sendingStatus ? getComputedStyle(sendingStatus) : null;
-        if (sendingStatus && style && style.position === 'absolute') {
-            sendingStatus.style.display = 'none';
-        }
-
         const range = document.createRange();
         range.selectNodeContents(this.messageMarkup);
         return Math.ceil(range.getBoundingClientRect().height);

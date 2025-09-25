@@ -209,14 +209,27 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     // [ComputeMethod]
     public virtual async Task<ThreadChatId[]> ListThreadIdsForPlace(
         UserId ownerId,
-        PlaceId parentPlaceId,
+        PlaceId? parentPlaceId,
         CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
-        var idPrefix = ownerId.Value + ' ' + PlaceChatId.Format(parentPlaceId, Symbol.Empty);
-        var sChatIds = await dbContext.ThreadContacts
-            .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+
+        IQueryable<DbThreadContact> dbThreadContacts;
+        if (parentPlaceId is not null) {
+            var idPrefix = ownerId.Value + ' ' + PlaceChatId.Format(parentPlaceId, Symbol.Empty);
+            dbThreadContacts = dbContext.ThreadContacts
+                .Where(a => a.Id.StartsWith(idPrefix)); // This is faster than index-based approach
+        }
+        else {
+            var idPrefix = ownerId.Value + ' ';
+            var excludeIdPrefix = idPrefix + PlaceChatId.IdPrefix;
+            dbThreadContacts = dbContext.ThreadContacts
+                .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+                .Where(a => !a.Id.StartsWith(excludeIdPrefix))
+                .Where(a => a.PlaceId == "");
+        }
+        var sChatIds = await dbThreadContacts
             .OrderByDescending(a => a.IsPinned)
             .ThenByDescending(a => a.TouchedAt)
             .Select(a => a.ThreadChatId)
@@ -670,17 +683,18 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         var (id, expectedVersion, change) = command;
         var ownerId = id.OwnerId;
-        var chatId = id.ChatId;
 
         if (Invalidation.IsActive) {
             _ = GetThreadContact(ownerId, id, default);
-            ThreadChatId? invChatId = chatId as ThreadChatId;
+            var threadChatId = (ThreadChatId)id.ChatId;
+            ThreadChatId? invChatId = threadChatId;
             while (invChatId is not null) {
                 _ = ListThreadIdsForChat(ownerId, invChatId.ParentChatId, default);
                 invChatId = invChatId.ParentChatId as ThreadChatId;
             }
-            if (chatId is PlaceChatId placeChatId)
-                _ = ListThreadIdsForPlace(ownerId, placeChatId.PlaceId, default);
+            var parentChat = threadChatId.GetOutermostParent();
+            var placeId = parentChat is PlaceChatId placeChatId ? placeChatId.PlaceId : null;
+            _ = ListThreadIdsForPlace(ownerId, placeId, default);
             return default!;
         }
 

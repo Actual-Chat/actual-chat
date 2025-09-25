@@ -19,6 +19,7 @@
     @apply transition-opacity ease-in duration-300;
     will-change: transform;
     background-color: #0C003D;
+    scrollbar-width: none;
 }
 .web-splash.removing {
     @apply transition-opacity ease-out duration-350 opacity-0;
@@ -82,3 +83,10 @@ body.wide .web-splash .wide-image {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(0); }
 }
+
+/* Skeletons */
+.web-splash .splash-page {
+    @apply flex-x;
+    @apply w-screen h-screen;
+}
+

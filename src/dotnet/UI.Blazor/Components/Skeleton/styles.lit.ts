@@ -99,6 +99,9 @@ export const messageStyles = css`
         border-radius: 0.5rem;
         animation: pulse 2s infinite;
     }
+    .string-skeleton.rounded {
+        border-radius: 9999px;
+    }
     .round-skeleton {
         flex: none;
         background-color: var(--skeleton);
@@ -173,6 +176,18 @@ export const messageStyles = css`
     }
     .message.h-6 {
         height: 1.5rem;
+    }
+    .message.h-7 {
+        height: 1.75rem;
+    }
+    .message.h-8 {
+        height: 2rem;
+    }
+    .message.h-9 {
+        height: 2.25rem;
+    }
+    .message.h-10 {
+        height: 2.5rem;
     }
 
     @keyframes pulse {

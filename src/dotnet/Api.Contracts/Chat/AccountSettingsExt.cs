@@ -10,6 +10,7 @@ public static class AccountSettingsExt
         ChatId chatId,
         CancellationToken cancellationToken = default)
     {
+        chatId = chatId.GetThreadOutermostParentOrSelf();
         var session = accountSettings.Session;
         var services = accountSettings.Services;
         var chats = services.GetRequiredService<IChats>();
@@ -34,6 +35,7 @@ public static class AccountSettingsExt
         VoiceMode voiceMode,
         CancellationToken cancellationToken = default)
     {
+        chatId = chatId.GetThreadOutermostParentOrSelf();
         var chatVoiceMode = await accountSettings
             .GetChatVoiceMode(chatId, cancellationToken)
             .ConfigureAwait(false);
@@ -44,4 +46,20 @@ public static class AccountSettingsExt
             .UpdateUserChatSettings(chatId, x => x with { VoiceMode = voiceMode }, default)
             .ConfigureAwait(false);
     }
+
+    public static async Task<ListeningMode> GetListeningMode(
+        this AccountSettings accountSettings,
+        ChatId chatId,
+        CancellationToken cancellationToken = default)
+    {
+        var userSettings = await accountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        return userSettings.ListeningMode;
+    }
+
+    public static Task SetListeningMode(
+        this AccountSettings accountSettings,
+        ChatId chatId,
+        ListeningMode listeningMode,
+        CancellationToken cancellationToken = default)
+        => accountSettings.UpdateUserChatSettings(chatId, x => x with { ListeningMode = listeningMode }, cancellationToken);
 }

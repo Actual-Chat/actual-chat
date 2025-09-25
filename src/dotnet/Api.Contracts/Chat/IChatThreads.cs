@@ -8,7 +8,7 @@ public interface IChatThreads : IComputeService
     Task<ThreadChatId[]> ListIdsForChat(Session session, ChatId parentChatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ThreadChatId[]> ListIdsForPlace(Session session, PlaceId parentPlaceId, CancellationToken cancellationToken);
+    Task<ThreadChatId[]> ListIdsForPlace(Session session, PlaceId? parentPlaceId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<bool> GetThreadFollowStatus(Session session, ThreadChatId threadChatId, CancellationToken cancellationToken);

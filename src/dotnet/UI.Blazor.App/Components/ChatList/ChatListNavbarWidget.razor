@@ -2,7 +2,7 @@
 @inherits FusionComponentBase<AppUIHub>
 @{
     var showFilters = PlaceId is null || PlaceId != Constants.Place.ChatRouletteId; // Chats and regular Places.
-    var supportThreads = PlaceId is not null && Constants.Place.SystemPlaceIds.All(c => PlaceId.Value != c.Value);
+    var supportThreads = PlaceId is null || Constants.Place.SystemPlaceIds.All(c => PlaceId.Value != c.Value);
 
     RenderFragment RenderChatListTab(double order, ChatListFilter filter)
         => RenderTab(order, filter.Id.Value, filter.Title, filter);

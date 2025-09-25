@@ -501,7 +501,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var isChatsSelected = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats);
         var isPlaceSelected = NavbarUI.IsPlaceSelected(out var navbarSelectedPlaceId);
         var isPeerChat = chatId.Kind == ChatKind.Peer;
-        var placeId = (chatId as PlaceChatId)?.PlaceId;
+        var placeId = (chatId.GetThreadOutermostParentOrSelf() as PlaceChatId)?.PlaceId;
         var isChatPlaceSelected = placeId is not null
             && isPlaceSelected
             && Equals(navbarSelectedPlaceId, placeId);
