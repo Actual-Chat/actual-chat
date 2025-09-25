@@ -134,7 +134,8 @@ public sealed class AppScopedServiceStarter
 
             await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
             Hub.Services.GetRequiredService<ContactSync>().Start();
-            _ = Hub.Services.GetRequiredService<UploadApp>().Start();
+            _ = Hub.SendingMessages; // Touch
+            _ = Hub.UploadSessions; // Touch
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(AfterFirstRender)} failed");

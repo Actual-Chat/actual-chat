@@ -2,32 +2,30 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 using System.Collections.Concurrent;
 
-public class UploadSessions : UIServiceBase<AppUIHub>
+public partial class UploadSessions : UIServiceBase<AppUIHub>
 {
     private readonly IUploadSessionRepository _repository;
     private readonly FileUploaderService _fileUploader;
-    private readonly ILogger _log;
+    // ReSharper disable once NotAccessedField.Local
+    private readonly Task _cleanupTask;
 
     private readonly ConcurrentDictionary<string, UploadSession> _sessions = new (StringComparer.Ordinal);
     private Moment Now => Clocks.SystemClock.Now;
-
-    public Moment StartUp { get; }
+    private string UsageId { get; }
 
     public UploadSessions(AppUIHub hub) :base(hub)
     {
         _repository = hub.Services.GetRequiredService<IUploadSessionRepository>();
         _fileUploader = hub.Services.GetRequiredService<FileUploaderService>();
-        _log = hub.LogFor<UploadSessions>();
+        UsageId = Ulid.NewUlid().ToString();
 
         _fileUploader.ProgressChanged += OnProgressChanged;
         _fileUploader.Completed += OnCompleted;
         _fileUploader.Failed += OnFailed;
         _fileUploader.Canceled += OnCanceled;
 
-        StartUp = Now;
+        _cleanupTask = BackgroundTask.Run(Cleanup);
     }
-
-    #region Public API
 
     public async Task<UploadSession> CreateSession(
         ChatId chatId,
@@ -41,6 +39,7 @@ public class UploadSessions : UIServiceBase<AppUIHub>
 
         var session = new UploadSession {
             SessionId = Guid.NewGuid().ToString(),
+            UsageId = UsageId,
             FileId = Guid.NewGuid().ToString(),
             FileProvider = fileProvider,
             Status = UploadStatus.Pending,
@@ -51,9 +50,8 @@ public class UploadSessions : UIServiceBase<AppUIHub>
 
         _sessions[session.SessionId] = session;
         await _repository.Save(session).ConfigureAwait(false);
-        // var copy = await _repository.Get(session.SessionId).ConfigureAwait(false);
 
-        _log.LogInformation("Created session {SessionId}", session.SessionId);
+        Log.LogInformation("Created session {SessionId}", session.SessionId);
 
         return session;
     }
@@ -119,14 +117,40 @@ public class UploadSessions : UIServiceBase<AppUIHub>
 
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repository.Delete(sessionId).ConfigureAwait(false);
-        _log.LogInformation("Deleted session {SessionId}", sessionId);
+        Log.LogInformation("Deleted session {SessionId}", sessionId);
     }
 
-    public async Task<IEnumerable<UploadSession>> GetActiveSessionsAsync()
-        => await _repository.GetAll().ConfigureAwait(false);
-    #endregion
+    public async Task<UploadSession> GetSession(string sessionId)
+    {
+        if (sessionId.IsNullOrEmpty())
+            throw new ArgumentException(nameof(sessionId));
 
-    #region Event Handlers
+        var uploadSession = await TryGetSession(sessionId).ConfigureAwait(false);
+        if (uploadSession is null)
+            throw new InvalidOperationException($"Upload session {sessionId} not found");
+
+        return uploadSession;
+    }
+
+    public async Task<UploadSession?> TryGetSession(string sessionId)
+    {
+        if (sessionId.IsNullOrEmpty())
+            throw new ArgumentException(nameof(sessionId));
+
+        if (_sessions.TryGetValue(sessionId, out var session))
+            return session;
+
+        session = await _repository.Get(sessionId).ConfigureAwait(false);
+        if (session is null)
+            return null;
+
+        session.UsageId = UsageId;
+        await _repository.Save(session, false).ConfigureAwait(false);
+
+        session.FileProvider.Initialize(Hub.Services);
+        _sessions[sessionId] = session;
+        return session;
+    }
 
     private async Task OnProgressChanged(string sessionId, double progress)
     {
@@ -161,38 +185,4 @@ public class UploadSessions : UIServiceBase<AppUIHub>
         session.LastUpdatedAt = Now;
         await _repository.Save(session).ConfigureAwait(false);
     }
-
-    #endregion
-
-    #region Helpers
-
-    public async Task<UploadSession> GetSession(string sessionId)
-    {
-        if (sessionId.IsNullOrEmpty())
-            throw new ArgumentException(nameof(sessionId));
-
-        var uploadSession = await TryGetSession(sessionId).ConfigureAwait(false);
-        if (uploadSession is null)
-            throw new InvalidOperationException($"Upload session {sessionId} not found");
-
-        return uploadSession;
-    }
-
-    public async Task<UploadSession?> TryGetSession(string sessionId)
-    {
-        if (sessionId.IsNullOrEmpty())
-            throw new ArgumentException(nameof(sessionId));
-
-        if (_sessions.TryGetValue(sessionId, out var session))
-            return session;
-
-        session = await _repository.Get(sessionId).ConfigureAwait(false);
-        if (session is null)
-            return null;
-
-        session.FileProvider.Initialize(Hub.Services);
-        _sessions[sessionId] = session;
-        return session;
-    }
-    #endregion
 }

@@ -20,6 +20,7 @@ public partial class UploadSession
     [DataMember, MemoryPackOrder(3)] public UploadStatus Status { get; set; } = UploadStatus.Pending;
     [DataMember, MemoryPackOrder(4)] public Moment CreatedAt { get; set; } = Moment.EpochStart;
     [DataMember, MemoryPackOrder(5)] public Moment LastUpdatedAt { get; set; } = Moment.EpochStart;
+    [DataMember, MemoryPackOrder(6)] public string UsageId { get; set; } = "";
 
     [DataMember, MemoryPackOrder(10)] public ChatId ChatId { get; set; } = null!;
 

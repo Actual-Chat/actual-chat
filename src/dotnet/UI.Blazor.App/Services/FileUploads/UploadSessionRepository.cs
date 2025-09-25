@@ -4,9 +4,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public interface IUploadSessionRepository
 {
-    Task Save(UploadSession session);
+    Task Save(UploadSession session, bool flush = true);
     Task<UploadSession?> Get(string sessionId);
-    Task<IEnumerable<UploadSession>> GetAll();
+    Task<IEnumerable<KeyValuePair<string, UploadSession>>> GetAll();
     Task Delete(string sessionId);
     Task Flush();
 }
@@ -24,18 +24,19 @@ public class UploadSessionRepository : IUploadSessionRepository
         _internal = new UploadSessionRepositoryInternal(options, services);
     }
 
-    public async Task Save(UploadSession session)
+    public async Task Save(UploadSession session, bool flush = true)
     {
         await _internal.Set(Key(session.SessionId), session).ConfigureAwait(false);
-        await _internal.Flush().ConfigureAwait(false);
+        if (flush)
+            await _internal.Flush().ConfigureAwait(false);
     }
 
     public Task<UploadSession?> Get(string sessionId)
         => _internal.Get<UploadSession>(Key(sessionId)).AsTask();
 
-    public async Task<IEnumerable<UploadSession>> GetAll()
+    public async Task<IEnumerable<KeyValuePair<string, UploadSession>>> GetAll()
         => (await _internal.GetAll<UploadSession>().ConfigureAwait(false))
-            .Select(c => c.Item2)
+            .Select(c => new KeyValuePair<string, UploadSession>(c.Item1, c.Item2))
             .ToArray();
 
     public Task Delete(string sessionId)
