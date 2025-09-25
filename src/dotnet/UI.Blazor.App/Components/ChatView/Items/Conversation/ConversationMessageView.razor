@@ -11,10 +11,6 @@
     var detailsCls = _isOpen ? "show" : "";
     var cls = $"conversation-message message-wrapper {openClass}";
     var attachments = conversation.Attachments;
-    var attachmentCount = conversation.AttachmentCount;
-    var maxShowCount = attachments?.Length ?? 0;
-    if (ScreenSize.IsNarrow() && maxShowCount > 5)
-        maxShowCount = 5;
 }
 <div class="@cls"
      data-menu="@(MenuRef.New<ConversationMenu>(conversation.Id.Value, false.ToString()))">
@@ -43,33 +39,14 @@
             </div>
         }
         @if (attachments?.Length > 0) {
-            var extra = Math.Max(0, attachmentCount - maxShowCount);
             var (mediaList, fileList) = GetOrderedAttachmentList(attachments);
-            var totalCount = maxShowCount;
-            <div class="conversation-attachments">
-                @if (mediaList.Length > 0) {
-                    @foreach (var media in mediaList) {
-                        if (totalCount == 0)
-                            break;
-
-                        <VisualMediaAttachment Attachment="@media" Attachments="@mediaList"/>
-                        totalCount--;
+            <div class="message-attachments">
+                <VisualMediaAttachmentList MediaList="@mediaList" IsConversation="true" IsNarrow="@ScreenSize.IsNarrow()"/>
+                <div class="message-file-attachments">
+                    @foreach (var attachment in fileList) {
+                        <FileAttachment Attachment="@attachment"/>
                     }
-                }
-                @if (totalCount > 0 && fileList.Length > 0) {
-                    @foreach (var file in fileList) {
-                        if (totalCount == 0)
-                            break;
-
-                        <FileAttachment Attachment="@file" IconOnly="true"/>
-                        totalCount--;
-                    }
-                }
-                @if (extra > 0) {
-                    <div class="c-extra">
-                        +@extra
-                    </div>
-                }
+                </div>
             </div>
         }
     </div>

@@ -2,9 +2,17 @@
 @{
     _rows = GetRows();
     var listCls = GetListClass();
+    var wide = IsConversation && !IsNarrow;
+    var attachmentsCls = wide ? "wide" : "";
+    var maxCount = 10;
+    if (IsConversation)
+        maxCount = 8;
+    if (IsConversation && IsNarrow)
+        maxCount = 6;
+    _mediaList = MediaList.Take(maxCount).ToArray();
 }
 
-<div class="message-image-attachments @listCls">
+<div class="message-image-attachments @listCls @attachmentsCls">
     @foreach (var row in _rows) {
         var cls = GetRowClass(row);
         <VisualMediaAttachmentLine
@@ -13,42 +21,89 @@
             MediaList="@MediaList"/>
     }
 </div>
+@if (_mediaList.Length < MediaList.Length) {
+    var extra = MediaList.Length - _mediaList.Length;
+    var attachment = MediaList[_mediaList.Length];
+    var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
+    <div class="extra-media-count"
+         @onclick="@(() => VisualMediaViewerUI.Show(url, MediaList))">
+        + @extra media
+    </div>
+}
 
 @code {
     private IEnumerable<ImageRow> _rows = null!;
+    private TextEntryAttachment[] _mediaList = [];
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private UrlMapper UrlMapper => Hub.UrlMapper;
+    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [Parameter, EditorRequired] public TextEntryAttachment[] MediaList { get; set; } = null!;
+    [Parameter] public bool IsConversation { get; set; }
+    [Parameter] public bool IsNarrow { get; set; }
 
     private IEnumerable<ImageRow> GetRows() {
         var line = new List<ImageTile>();
-        for (var index = 0; index < MediaList.Length; index++) {
-            var attachment = MediaList[index];
-            var tile = new ImageTile(attachment);
+        if (IsConversation && !IsNarrow) {
+            for (var index = 0; index < _mediaList.Length; index++) {
+                var attachment = _mediaList[index];
+                var tile = new ImageTile(attachment);
 
-            var isLast = index == MediaList.Length - 1;
-            var lineIsFull = line.Count >= 3;
-            var tileIsWide = tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide;
-            var lineHasManyWide = line.Count(imageTile => imageTile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 1;
+                var isLast = index == _mediaList.Length - 1;
+                var lineIsFull = line.Count >= 4;
+                var tileIsWide = tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide;
+                var lineHasManyWide = line.Count(imageTile => imageTile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 2;
 
-            if (MediaList.Length == 2
-                && index == 1
-                && line is [{ Proportions: ImageProportions.Wide or ImageProportions.ExtraWide }]
-                && tileIsWide) {
-                yield return new ImageRow(line);
-                line = [];
+                if (_mediaList.Length == 3
+                    && index == 1
+                    && line is [{ Proportions: ImageProportions.Wide or ImageProportions.ExtraWide }]
+                    && tileIsWide) {
+                    yield return new ImageRow(line);
+                    line = [];
+                }
+
+                if ((!isLast && lineIsFull)
+                    || (isLast && line.Count == 4 && tileIsWide && lineHasManyWide)) {
+                    yield return new ImageRow(line);
+                    line = [];
+                }
+
+                line.Add(tile);
             }
 
-            if ((!isLast && lineIsFull)
-                || (isLast && line.Count == 3 && tileIsWide && lineHasManyWide)) {
+            if (line.Count > 0)
                 yield return new ImageRow(line);
-                line = [];
+        } else {
+            for (var index = 0; index < _mediaList.Length; index++) {
+                var attachment = _mediaList[index];
+                var tile = new ImageTile(attachment);
+
+                var isLast = index == _mediaList.Length - 1;
+                var lineIsFull = line.Count >= 3;
+                var tileIsWide = tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide;
+                var lineHasManyWide = line.Count(imageTile => imageTile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 1;
+
+                if (_mediaList.Length == 2
+                    && index == 1
+                    && line is [{ Proportions: ImageProportions.Wide or ImageProportions.ExtraWide }]
+                    && tileIsWide) {
+                    yield return new ImageRow(line);
+                    line = [];
+                }
+
+                if ((!isLast && lineIsFull)
+                    || (isLast && line.Count == 3 && tileIsWide && lineHasManyWide)) {
+                    yield return new ImageRow(line);
+                    line = [];
+                }
+
+                line.Add(tile);
             }
 
-            line.Add(tile);
+            if (line.Count > 0)
+                yield return new ImageRow(line);
         }
-
-        if (line.Count > 0)
-            yield return new ImageRow(line);
     }
 
     private string GetRowClass(ImageRow row) {
