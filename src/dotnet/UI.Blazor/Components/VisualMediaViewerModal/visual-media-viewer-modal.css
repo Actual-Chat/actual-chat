@@ -281,7 +281,6 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
 }
 
 .media-preview-swiper .swiper-slide-visible {
-    /*max-width: 10%;*/
     cursor: pointer;
 }
 .media-preview-swiper swiper-slide {
