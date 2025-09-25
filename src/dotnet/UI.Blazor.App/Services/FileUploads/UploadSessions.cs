@@ -60,9 +60,20 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
 
-        if (session.Status == UploadStatus.Completed)
+        if (session.Status != UploadStatus.Completed)
+            return await ResumeInternal(session).ConfigureAwait(false);
+
+        if (session.ProgressTracker.Task.IsCompletedSuccessfully)
             return session;
 
+        // We have a completed session, but the progress tracker has no upload result.
+        // So we need to reset the session and start over.
+        await ResetSessionInternal(session).ConfigureAwait(false);
+        return await ResumeInternal(session).ConfigureAwait(false);
+    }
+
+    private async Task<UploadSession> ResumeInternal(UploadSession session)
+    {
         if (session.Status is UploadStatus.Canceled)
             throw new InvalidOperationException("Cannot resume a canceled session");
 
@@ -83,11 +94,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session.Status is not (UploadStatus.Completed or UploadStatus.Failed))
             throw new InvalidOperationException("We can only restart a completed or failed session");
 
-        session.Status = UploadStatus.Pending;
-        session.ProgressTracker = new UploadProgressTracker();
-        session.LastUpdatedAt = Now;
-        await _repository.Save(session).ConfigureAwait(false);
-        return session;
+        return await ResetSessionInternal(session).ConfigureAwait(false);
     }
 
     public Task CancelSession(string sessionId)
@@ -149,6 +156,15 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         session.FileProvider.Initialize(Hub.Services);
         _sessions[sessionId] = session;
+        return session;
+    }
+
+    private async Task<UploadSession> ResetSessionInternal(UploadSession session)
+    {
+        session.Status = UploadStatus.Pending;
+        session.ProgressTracker = new UploadProgressTracker();
+        session.LastUpdatedAt = Now;
+        await _repository.Save(session).ConfigureAwait(false);
         return session;
     }
 
