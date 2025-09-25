@@ -1912,9 +1912,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var delay = retryPolicy.GetDelay(tryIndex);
             await Clocks.CoarseCpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
         }
-        var isAnonymous = readAuthor?.IsAnonymous ?? author.IsAnonymous;
-        var authorId = isAnonymous ? null : author.Id;
-        var authorName = isAnonymous ? "Someone" : readAuthor?.Avatar.Name;
+        var authorId = readAuthor.IsAnonymous ? null : author.Id;
+        var authorName = readAuthor.IsAnonymous ? "Someone" : readAuthor.Avatar.Name;
         if (authorName.IsNullOrEmpty())
             authorName = MentionMarkup.NotAvailableName;
 
