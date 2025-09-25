@@ -7,6 +7,12 @@
     @apply h-full w-64 md:w-96;
     @apply overflow-hidden;
 }
+.wide .image-line {
+    @apply w-full;
+}
+body.narrow .conversation-message .image-line {
+    @apply w-full;
+}
 .message-image-attachments.one-row .image-line:not(.one-image) {
     @apply h-full;
 }
@@ -33,14 +39,26 @@ body.hoverable .image-line .image-item:hover {
 .line-height-sm {
     @apply h-12 md:h-16;
 }
+.wide .line-height-sm {
+    @apply h-20;
+}
 .line-height-md {
     @apply h-16 md:h-20;
+}
+.wide .line-height-md {
+    @apply h-26;
 }
 .line-height-lg {
     @apply h-28 md:h-32;
 }
+.wide .line-height-lg {
+    @apply h-40;
+}
 .line-height-xl {
     @apply h-40 md:h-48;
+}
+.wide .line-height-xl {
+    @apply h-60;
 }
 .image-line.sm-sm {
     @apply h-64 md:h-80;
