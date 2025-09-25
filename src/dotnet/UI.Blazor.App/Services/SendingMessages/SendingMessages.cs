@@ -54,6 +54,35 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         return new ChatSendingMessagesAccessor(chatSendingMessages);
     }
 
+    public AttachmentUploads? GetMediaUploads(ChatEntry entry)
+    {
+        lock (_chatSendingMessagesLock) {
+            if (entry.IsSending) {
+                var uploadsItem = _uploads.FirstOrDefault(c => Equals(c.Item1, entry.SendingTag));
+                return uploadsItem.Item2;
+            }
+            else {
+                var uploadsItem = _uploads.FirstOrDefault(c => Equals(c.Item1.PostedChatEntry?.Id, entry.Id));
+                return uploadsItem.Item2;
+            }
+        }
+    }
+
+    public void RegisterEntryByClientId(ChatEntry chatEntry)
+    {
+        lock (_clientEntries.SyncObject)
+            _clientEntries.AddOrUpdate(chatEntry.ClientUid, chatEntry);
+    }
+
+    public ChatEntry? TryGetChatEntryByClientId(string clientId)
+    {
+        lock (_clientEntries.SyncObject)
+            return _clientEntries.TryGetValue(clientId, out var chatEntry) ? chatEntry : null;
+    }
+
+    public void Cancel(SendingMessage sendingMessage)
+        => sendingMessage.Cancel();
+
     public async Task<Task<ChatEntry>> Post(PostMessageRequest cmd, CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("Post '{Text}'", cmd.Text);
@@ -89,8 +118,12 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         return resultSource.Task;
     }
 
-    public void Cancel(SendingMessage sendingMessage)
-        => sendingMessage.Cancel();
+    public async ValueTask DisposeAsync()
+    {
+        await _messageProcessor.Complete(CancellationToken.None).SilentAwait(false);
+        await _messageProcessor.DisposeAsync().ConfigureAwait(false);
+        _cancellationTokenSource.Dispose();
+    }
 
     private static PostMessageRequestInternal CreatePostMessageRequestInternal(PostMessageRequestEntry entry,
         AttachmentUploads? uploads)
@@ -112,7 +145,6 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         if (sourceAttachmentsCopy is not null && sourceAttachmentsCopy.Length != attachEntries.Length)
             sourceAttachmentsCopy = null;
 
-        var attachmentsController = Services.GetRequiredService<AttachmentsController>();
         var attachments = new List<Attachment>();
         for (var i = 0; i < attachEntries.Length; i++) {
             var attachEntry = attachEntries[i];
@@ -160,6 +192,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         if (attachments.Count == 0)
             return null;
 
+        var attachmentsController = Services.GetRequiredService<AttachmentsController>();
         var attachmentList = new AttachmentList();
         foreach (var attachment in attachments) {
             await attachmentsController.AddAttachment(attachmentList, attachment).ConfigureAwait(false);
@@ -224,7 +257,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     {
         foreach (var uploadSessionId in uploadSessionIds) {
             try {
-                await AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId).Cleanup().ConfigureAwait(false);
+                var cleanup = AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId);
+                await cleanup.Cleanup().ConfigureAwait(false);
             }
             catch (Exception e) {
                 Log.LogError(e, "Failed to cleanup upload session '{UploadSessionId}' for post request '{Id}'",
@@ -424,25 +458,6 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         return Task.CompletedTask;
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        await _messageProcessor.Complete(CancellationToken.None).SilentAwait(false);
-        await _messageProcessor.DisposeAsync().ConfigureAwait(false);
-        _cancellationTokenSource.Dispose();
-    }
-
-    public void RegisterEntryByClientId(ChatEntry chatEntry)
-    {
-        lock (_clientEntries.SyncObject)
-            _clientEntries.AddOrUpdate(chatEntry.ClientUid, chatEntry);
-    }
-
-    public ChatEntry? TryGetChatEntryByClientId(string clientId)
-    {
-        lock (_clientEntries.SyncObject)
-            return _clientEntries.TryGetValue(clientId, out var chatEntry) ? chatEntry : null;
-    }
-
     // Nested types
 
     public record PostMessageRequestInternal(string Uuid,
@@ -458,24 +473,4 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     }
 
     public record PostMessageQueueItem(PostMessageRequestInternal Request);
-
-    public AttachmentUploads? GetMediaUploads(ChatEntry entry)
-    {
-        lock (_chatSendingMessagesLock) {
-            if (entry.IsSending) {
-                var uploadsItem = _uploads.FirstOrDefault(c => Equals(c.Item1, entry.SendingTag));
-                return uploadsItem.Item2;
-            }
-            else {
-                var uploadsItem = _uploads.FirstOrDefault(c => Equals(c.Item1.PostedChatEntry?.Id, entry.Id));
-                return uploadsItem.Item2;
-            }
-        }
-    }
 }
-//
-// public record PersistedAttachFileRequest(AttachFileRequestEntry Entry, Func<Task> Cleanup) : IAttachRequest
-// {
-//     public Task CleanupForRemoving()
-//         => Cleanup();
-// }
