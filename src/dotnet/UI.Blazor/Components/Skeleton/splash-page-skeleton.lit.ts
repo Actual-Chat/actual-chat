@@ -70,11 +70,13 @@ class SplashPageSkeleton extends LitElement {
                 </div>
                 <div part="splash-m" class="chat-skeleton-panel">
                     <div part="splash-m-header" class="skeleton-chat-header">
-                        <div part="splash-m-header-icon" class="flex-none flex items-center justify-center h-14 px-2">
-                            <round-skeleton radius="10" />
-                        </div>
-                        <div part="splash-m-header-title" class="flex-1 flex items-center justify-start">
-                            <string-skeleton firstWidth="3" secondWidth="8"/>
+                        <div class="c-wrapper">
+                            <div part="splash-m-header-icon" class="c-icon">
+                                <round-skeleton radius="10" />
+                            </div>
+                            <div part="splash-m-header-title" class="c-title">
+                                <string-skeleton firstWidth="3" secondWidth="8"/>
+                            </div>
                         </div>
                     </div>
                     <div part="splash-m-content" class="skeleton-panel-body">
