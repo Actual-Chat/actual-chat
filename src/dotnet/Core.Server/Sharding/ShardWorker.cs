@@ -2,7 +2,7 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat;
 
-public abstract class LegacyShardWorker(IServiceProvider services, ShardScheme shardScheme)
+public abstract class ShardWorker(IServiceProvider services, ShardScheme shardScheme)
     : WorkerBase, IHasServices
 {
     [field: AllowNull, MaybeNull]
@@ -19,5 +19,5 @@ public abstract class LegacyShardWorker(IServiceProvider services, ShardScheme s
         await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
     }
 
-    protected abstract Task OnRun(int shardIndex, CancellationToken cancellationToken);
+    protected abstract Task OnRun(ShardRunner runner, CancellationToken cancellationToken);
 }

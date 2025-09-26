@@ -21,7 +21,7 @@ public sealed record ShardRunnable : IRunnable
         Clock = clock;
     }
 
-    public ShardRunnable(string name, Func<ShardDispatcher.LockState, CancellationToken, Task> func, MomentClock clock)
+    public ShardRunnable(string name, Func<ShardRunner, CancellationToken, Task> func, MomentClock clock)
         : this(name, (Delegate)func, clock)
     { }
 
@@ -31,14 +31,14 @@ public sealed record ShardRunnable : IRunnable
 
     public async Task Run(IRunnableRunner runner, CancellationToken cancellationToken)
     {
-        var lockState = (ShardDispatcher.LockState)runner;
+        var shardRunner = (ShardRunner)runner;
         ILogger? log = null;
         var tryIndex = 0;
         var retryLogger = (RetryLogger?)null;
         while (true) {
             try {
                 while (true) {
-                    await InvokeFunc(lockState, cancellationToken).ConfigureAwait(false);
+                    await InvokeFunc(shardRunner, cancellationToken).ConfigureAwait(false);
                     if (RepeatDelay is not { } repeatDelay)
                         return;
 
@@ -46,7 +46,7 @@ public sealed record ShardRunnable : IRunnable
                 }
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                log ??= lockState.Dispatcher.Log;
+                log ??= shardRunner.ShardBroker.Log;
                 if (RetryPolicy is not { } retryPolicy || !retryPolicy.MustRetry(e, ref tryIndex)) {
                     log.LogError(e, "{Name} failed", Name);
                     throw;
@@ -68,10 +68,10 @@ public sealed record ShardRunnable : IRunnable
 
     // Private methods
 
-    private Task InvokeFunc(ShardDispatcher.LockState lockState, CancellationToken cancellationToken)
+    private Task InvokeFunc(ShardRunner runner, CancellationToken cancellationToken)
         => Func switch {
-            Func<ShardDispatcher.LockState, CancellationToken, Task> f1 => f1.Invoke(lockState, cancellationToken),
-            Func<int, CancellationToken, Task> f2 => f2.Invoke(lockState.ShardIndex, cancellationToken),
+            Func<ShardRunner, CancellationToken, Task> f1 => f1.Invoke(runner, cancellationToken),
+            Func<int, CancellationToken, Task> f2 => f2.Invoke(runner.ShardIndex, cancellationToken),
             _ => throw StandardError.Internal($"Invalid Implementation type: {Func.GetType()}."),
         };
 }

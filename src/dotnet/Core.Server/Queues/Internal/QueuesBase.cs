@@ -73,7 +73,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var queueProcessors = Processors
-            .Select(p => p.Key.ShardScheme.Id.Value)
+            .Select(p => p.Key.ShardScheme.Name)
             .ToDelimitedString()
             .NullIfEmpty()
             ?? "(none)";

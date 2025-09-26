@@ -68,7 +68,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
 
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
-            var thisNode = ShardDispatcher.Host.ThisNode;
+            var thisNode = ShardBroker.Host.ThisNode;
             Out.WriteLine($"-> OnRun({shardIndex} @ {thisNode.Ref}-{name})");
             await TaskExt.NeverEnding(cancellationToken).SilentAwait();
             Out.WriteLine($"<- OnRun({shardIndex} @ {thisNode.Ref}-{name})");
@@ -93,7 +93,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
 
         public override string ToString()
         {
-            var thisNode = ShardDispatcher.Host.ThisNode;
+            var thisNode = ShardBroker.Host.ThisNode;
             return $"{thisNode.Ref}-{name}";
         }
 
@@ -102,7 +102,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
             Out.WriteLine($"-> OnRun({shardIndex} @ {this})");
             lock (ShardOwners) {
                 var shardOwners = ShardOwners[shardIndex];
-                if (shardOwners.Any(x => x.ShardDispatcher != ShardDispatcher))
+                if (shardOwners.Any(x => x.ShardBroker != ShardBroker))
                     UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
                         $"Shard {shardIndex} @ {this} is used by a worker from another host!"));
                 shardOwners.Add(this);

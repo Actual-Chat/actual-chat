@@ -220,8 +220,8 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Setup(x => x.GetService(typeof(MeshNode)))
             .Returns(() => new MeshNode(NodeRef.None, string.Empty, new ApiSet<HostRole>(), MeshNodeState.Online));
         moqServices
-            .Setup(x => x.GetService(typeof(ShardDispatchers)))
-            .Returns(() => new ShardDispatchers(moqServices.Object));
+            .Setup(x => x.GetService(typeof(ShardBrokers)))
+            .Returns(() => new ShardBrokers(moqServices.Object));
         return moqServices;
     }
 }

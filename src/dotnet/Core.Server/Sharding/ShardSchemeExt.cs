@@ -12,6 +12,9 @@ public static class ShardSchemeExt
         return shardScheme;
     }
 
+    public static bool HasFlags(this ShardScheme? shardScheme, ShardSchemeFlags flags)
+        => shardScheme != null && (shardScheme.Flags & flags) == flags;
+
     public static int? TryGetShardIndex(this ShardScheme? shardScheme, int shardKey)
         => shardScheme is { IsValid: true }
             ? shardKey.Mod(shardScheme.ShardCount)
@@ -19,7 +22,4 @@ public static class ShardSchemeExt
 
     public static int GetShardIndex(this ShardScheme? shardScheme, int shardKey)
         => shardKey.Mod(shardScheme.RequireValid().ShardCount);
-
-    public static bool HasFlags(this ShardScheme? shardScheme, ShardSchemeFlags flags)
-        => shardScheme != null && (shardScheme.Flags & flags) == flags;
 }

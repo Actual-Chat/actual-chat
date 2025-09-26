@@ -4,13 +4,12 @@ using ActualLab.Resilience;
 
 namespace ActualChat;
 
-public sealed class ShardDispatcher : WorkerBase, IHasServices
+public sealed class ShardBroker : WorkerBase, IHasServices
 {
-    private static bool DebugMode => Constants.DebugMode.ShardDispatcher;
+    private static bool DebugMode => Constants.DebugMode.ShardBroker;
 
     [field: AllowNull, MaybeNull]
-    internal ILogger Log => field ??= Services.LoggerFactory().CreateLogger(
-        GetType(), $"@{ShardDispatchers.ComposeFullKeyPrefix(ShardScheme, KeyPrefix)}");
+    internal ILogger Log => field ??= Services.LoggerFactory().CreateLogger(GetType(), $"@{ShardScheme.Name}");
     private ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     private IMeshLocks ShardLocks { get; }
@@ -18,20 +17,18 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
     private MeshNode ThisNode => Host.ThisNode;
     private StateFactory StateFactory => Host.StateFactory;
     private MomentClock Clock => Host.Clock;
-    private RunnableDispatcher RunnableDispatcher { get; } = new();
+    private RunnableDispatcher Dispatcher { get; } = new();
 
-    public ShardDispatchers Host { get; }
+    public ShardBrokers Host { get; }
     public IServiceProvider Services { get; }
     public ShardScheme ShardScheme { get; }
-    public string KeyPrefix { get; }
     public MeshLockOptions LockOptions { get; init; }
-    public MutableState<FullState> State { get; }
+    public MutableState<SchemaState> State { get; }
 
-    public ShardDispatcher(
-        ShardDispatchers host,
+    public ShardBroker(
+        ShardBrokers host,
         IMeshLocks shardLocks,
         ShardScheme shardScheme,
-        string keyPrefix,
         CancellationTokenSource stopTokenSource
         ) : base(stopTokenSource)
     {
@@ -40,25 +37,24 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
         ShardScheme = shardScheme;
         ShardLocks = shardLocks;
         LockOptions = shardLocks.LockOptions;
-        KeyPrefix = keyPrefix;
 
         var meshState = MeshWatcher.State.LastNonErrorValue;
         var shardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
         State = StateFactory.NewMutable(
-            initialValue: new FullState(this, meshState, shardStates),
+            initialValue: new SchemaState(this, meshState, shardStates),
             category: StateCategories.Get(GetType(), nameof(State)));
     }
 
-    public IAsyncDisposable Use(string name, Func<LockState, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
-        => RunnableDispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
-    public IAsyncDisposable Use(string name, Func<LockState, CancellationToken, Task> func)
-        => RunnableDispatcher.Use(new ShardRunnable(name, func, Clock));
+    public IAsyncDisposable Use(string name, Func<ShardRunner, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
+        => Dispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
+    public IAsyncDisposable Use(string name, Func<ShardRunner, CancellationToken, Task> func)
+        => Dispatcher.Use(new ShardRunnable(name, func, Clock));
     public IAsyncDisposable Use(string name, Func<int, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
-        => RunnableDispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
+        => Dispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
     public IAsyncDisposable Use(string name, Func<int, CancellationToken, Task> func)
-        => RunnableDispatcher.Use(new ShardRunnable(name, func, Clock));
+        => Dispatcher.Use(new ShardRunnable(name, func, Clock));
     public IAsyncDisposable Use(ShardRunnable shardRunnable)
-        => RunnableDispatcher.Use(shardRunnable);
+        => Dispatcher.Use(shardRunnable);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -101,7 +97,7 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
                     (mustLock ? addedShards : removedShards).Add(shardIndex);
                     lockedShards[shardIndex] = mustLock;
                 }
-                State.Value = new FullState(this, meshState, shardStates = nextShardStates);
+                State.Value = new SchemaState(this, meshState, shardStates = nextShardStates);
                 if (addedShards.Count > 0 || removedShards.Count > 0)
                     Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
                         ThisNode.Ref,
@@ -136,15 +132,15 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
 
             // Create the processor
             if (!lockToken.IsCancellationRequested) {
-                var lockState = new LockState(shardState, lockHolder);
-                shardState.LockState.Value = lockState;
-                RunnableDispatcher.Add(lockState);
+                var runner = new ShardRunner(shardState, lockHolder);
+                shardState.Runner.Value = runner;
+                Dispatcher.Add(runner);
                 try {
                     await TaskExt.NeverEnding(lockToken).SilentAwait(false);
                 }
                 finally {
-                    shardState.LockState.Value = null;
-                    await RunnableDispatcher.Remove(lockState).ConfigureAwait(false);
+                    shardState.Runner.Value = null;
+                    await Dispatcher.Remove(runner).ConfigureAwait(false);
                 }
             }
 
@@ -159,12 +155,12 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
 
     // Nested types
 
-    public sealed class FullState(
-        ShardDispatcher dispatcher,
+    public sealed class SchemaState(
+        ShardBroker shardBroker,
         MeshState meshState,
         IReadOnlyList<ShardState> shardStates)
     {
-        public ShardDispatcher Dispatcher { get; } = dispatcher;
+        public ShardBroker ShardBroker { get; } = shardBroker;
         public MeshState MeshState { get; } = meshState;
         public IReadOnlyList<ShardState> ShardStates { get; } = shardStates;
     }
@@ -174,21 +170,21 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
         private readonly Task? _lockTask;
         private readonly CancellationTokenSource _cancelLockTokenSource;
 
-        public ShardDispatcher Dispatcher { get; }
+        public ShardBroker ShardBroker { get; }
         public int ShardIndex { get; }
         // ReSharper disable once MemberHidesStaticFromOuterClass
-        public MutableState<LockState?> LockState { get; }
+        public MutableState<ShardRunner?> Runner { get; }
         public CancellationToken CancelLockToken { get; }
         public bool MustLock => _lockTask != null;
         public Task WhenDisposed { get; }
 
-        internal ShardState(ShardDispatcher dispatcher, int shardIndex)
+        internal ShardState(ShardBroker shardBroker, int shardIndex)
         {
-            Dispatcher = dispatcher;
+            ShardBroker = shardBroker;
             ShardIndex = shardIndex;
-            LockState = Dispatcher.Host.StateFactory.NewMutable<LockState?>(
-                category: StateCategories.Get(GetType(), nameof(LockState)));
-            _cancelLockTokenSource = Dispatcher.StopToken.CreateLinkedTokenSource();
+            Runner = ShardBroker.Host.StateFactory.NewMutable<ShardRunner?>(
+                category: StateCategories.Get(GetType(), nameof(Runner)));
+            _cancelLockTokenSource = ShardBroker.StopToken.CreateLinkedTokenSource();
             CancelLockToken = _cancelLockTokenSource.Token;
             WhenDisposed = Task.CompletedTask;
             _cancelLockTokenSource.CancelAndDisposeSilently();
@@ -197,13 +193,13 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
         internal ShardState(ShardState prevState, bool mustLock)
         {
             prevState._cancelLockTokenSource.CancelAndDisposeSilently();
-            Dispatcher = prevState.Dispatcher;
+            ShardBroker = prevState.ShardBroker;
             ShardIndex = prevState.ShardIndex;
-            LockState = prevState.LockState;
+            Runner = prevState.Runner;
             if (mustLock) {
-                _cancelLockTokenSource = Dispatcher.StopToken.CreateLinkedTokenSource();
+                _cancelLockTokenSource = ShardBroker.StopToken.CreateLinkedTokenSource();
                 CancelLockToken = _cancelLockTokenSource.Token;
-                WhenDisposed = _lockTask = Dispatcher.LockAndUseShard(this, prevState);
+                WhenDisposed = _lockTask = ShardBroker.LockAndUseShard(this, prevState);
             }
             else {
                 _cancelLockTokenSource = prevState._cancelLockTokenSource;
@@ -217,18 +213,5 @@ public sealed class ShardDispatcher : WorkerBase, IHasServices
             _cancelLockTokenSource.CancelAndDisposeSilently();
             return WhenDisposed.ToValueTask();
         }
-    }
-
-    public sealed class LockState(ShardState shardState, MeshLockHolder lockHolder) : RunnableRunner
-    {
-        public ShardState ShardState { get; } = shardState;
-        public MeshLockHolder LockHolder { get; } = lockHolder;
-
-        // Handy shortcuts
-        public ShardDispatcher Dispatcher { get; } = shardState.Dispatcher;
-        public int ShardIndex { get; } = shardState.ShardIndex;
-        public CancellationToken CancelLockToken { get; } = shardState.CancelLockToken;
-        public CancellationToken LockToken { get; } = lockHolder.StopToken;
-        public bool IsLockExpired => LockHolder.IsExpired;
     }
 }

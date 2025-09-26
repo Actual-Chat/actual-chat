@@ -33,13 +33,13 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
         var shardScheme = Scheme;
         return shardScheme.IsNone
             ? $"{nameof(ShardRef)}.{nameof(None)}"
-            : $"{shardScheme.Id.Value}[{Key.Format()} -> {TryGetShardIndex()?.Format() ?? "na"}/{shardScheme.ShardCount}]";
+            : $"{shardScheme.Name}[{Key.Format()} -> {TryGetShardIndex()?.Format() ?? "na"}/{shardScheme.ShardCount}]";
     }
 
     public string Format()
         => IsValid
-            ? string.Concat(Scheme.Id.Value, "-S", GetShardIndex().Format())
-            : Scheme.Id.Value;
+            ? string.Concat(Scheme.Name, "-S", GetShardIndex().Format())
+            : Scheme.Name;
 
     // Helpers
 

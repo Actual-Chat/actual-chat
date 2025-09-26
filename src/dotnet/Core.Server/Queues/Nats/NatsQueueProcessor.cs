@@ -39,7 +39,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     public NatsQueueProcessor(NatsQueues.Options settings, NatsQueues queues, QueueRef queueRef)
         : base(settings, queues, queueRef)
     {
-        ActionLocks = ShardDispatcher.Host.GetShardLocks(ShardScheme, nameof(ActionLocks));
+        ActionLocks = ShardBroker.Host.ShardLockRoot.WithKeyPrefix(ShardScheme.Name.DotPrepend(nameof(ActionLocks)));
         _instancePrefix = queues.NatsSettings.InstancePrefix;
     }
 
@@ -226,18 +226,18 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     private string GetStreamName(int shardIndex)
         => Settings.UseStreamPerShard
-            ? $"{_instancePrefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}"
-            : $"{_instancePrefix}{QueueRef.ShardScheme.Id}";
+            ? $"{_instancePrefix}{QueueRef.ShardScheme.Name}-S{shardIndex.Format()}"
+            : $"{_instancePrefix}{QueueRef.ShardScheme.Name}";
 
     private string GetSubjectName(int shardIndex, Symbol topic)
         => Settings.UseStreamPerShard
-            ? $"{_instancePrefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}"
-            : $"{_instancePrefix}{QueueRef.ShardScheme.Id}.S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}";
+            ? $"{_instancePrefix}{QueueRef.ShardScheme.Name}-S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}"
+            : $"{_instancePrefix}{QueueRef.ShardScheme.Name}.S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}";
 
     private string GetConsumerName(int shardIndex)
         => Settings.UseStreamPerShard
-            ? $"{_instancePrefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}"
-            : $"{_instancePrefix}{QueueRef.ShardScheme.Id}.S{shardIndex.Format()}";
+            ? $"{_instancePrefix}{QueueRef.ShardScheme.Name}-S{shardIndex.Format()}"
+            : $"{_instancePrefix}{QueueRef.ShardScheme.Name}.S{shardIndex.Format()}";
 
     private string GetConsumerFilter(int shardIndex)
         => $"{GetConsumerName(shardIndex)}.>";

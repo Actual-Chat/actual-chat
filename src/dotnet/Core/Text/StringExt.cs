@@ -89,6 +89,16 @@ public static partial class StringExt
     public static string Pluralize(this string source, int count)
         => count == 1 ? source : source + "s";
 
+    public static string DotPrepend(this string source, string? prefix, char separator = '.')
+        => prefix.IsNullOrEmpty()
+            ? source
+            : $"{prefix}{separator}{source}";
+
+    public static string DotAppend(this string source, string? suffix, char separator = '.')
+        => suffix.IsNullOrEmpty()
+            ? source
+            : $"{source}{separator}{suffix}";
+
     public static string EnsurePrefix(this string source, string prefix)
         => source.OrdinalStartsWith(prefix) ? source : prefix + source;
 

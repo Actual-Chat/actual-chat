@@ -38,8 +38,8 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         // RPC host
         services.AddRpcHost(HostInfo, Log);
 
-        // ShardDispatchers
-        services.AddSingleton(c => new ShardDispatchers(c));
+        // ShardBrokers
+        services.AddSingleton(c => new ShardBrokers(c));
 
         // Queues
         services.AddSingleton(c => new EventHandlerRegistry(c));

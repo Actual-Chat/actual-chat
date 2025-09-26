@@ -56,6 +56,7 @@ public sealed class ShardScheme(
     private string? _toString;
 
     public Symbol Id { get; } = id;
+    public string Name { get; } = id.Value; // A shortcut
     public int ShardCount { get; } = shardCount;
     public HostRole HostRole { get; } = hostRole;
     public ShardSchemeFlags Flags { get; } = flags;
@@ -68,7 +69,7 @@ public sealed class ShardScheme(
     public int? DegreeOfParallelism { get; init; } = null;
 
     public override string ToString()
-        => _toString ??= $"{nameof(ShardScheme)}.{Id.Value}(x{ShardCount} @ {HostRole})";
+        => _toString ??= $"{nameof(ShardScheme)}.{Name}(x{ShardCount} @ {HostRole})";
 
     public ShardScheme? NullIfUndefined()
         => IsUndefined ? null : this;

@@ -2,8 +2,8 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests;
 
-public class ShardWorkerTest(ITestOutputHelper @out)
-    : AppHostTestBase($"x-{nameof(ShardWorkerTest)}", TestAppHostOptions.None, @out)
+public class ShardBrokerTest(ITestOutputHelper @out)
+    : AppHostTestBase($"x-{nameof(ShardBrokerTest)}", TestAppHostOptions.None, @out)
 {
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
@@ -57,17 +57,18 @@ public class ShardWorkerTest(ITestOutputHelper @out)
 
     public class TestShardWorker(IServiceProvider services, ITestOutputHelper @out, string name) : WorkerBase
     {
+        public ShardBroker ShardBroker { get; } = services.ShardBroker(ShardScheme.TestBackend);
+
         protected override async Task OnRun(CancellationToken cancellationToken)
         {
-            var shardDispatcher = services.ShardDispatchers()[ShardScheme.TestBackend];
-            var thisNode = shardDispatcher.Host.ThisNode;
-            await using var _ = shardDispatcher.Use(GetType().GetName(), ShardRun, null).ConfigureAwait(false);
+            var thisNode = ShardBroker.Host.ThisNode;
+            await using var _ = ShardBroker.Use(nameof(TestShardWorker), ShardRun, null).ConfigureAwait(false);
             await TaskExt.NeverEnding(cancellationToken).SilentAwait();
             return;
 
-            async Task ShardRun(ShardDispatcher.LockState lockState, CancellationToken ct)
+            async Task ShardRun(ShardRunner runner, CancellationToken ct)
             {
-                var shardIndex = lockState.ShardIndex;
+                var shardIndex = runner.ShardIndex;
                 @out.WriteLine($"-> {nameof(ShardRun)}({shardIndex} @ {thisNode.Ref}-{name})");
                 await TaskExt.NeverEnding(ct).SilentAwait();
                 @out.WriteLine($"<- {nameof(ShardRun)}({shardIndex} @ {thisNode.Ref}-{name})");
@@ -87,7 +88,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
         private ITestOutputHelper Out { get; } = @out;
 
-        public ShardDispatcher ShardDispatcher { get; } = services.ShardDispatchers()[ShardScheme.TestBackend];
+        public ShardBroker ShardBroker { get; } = services.ShardBroker(ShardScheme.TestBackend);
         public Channel<int> UsedShardIndexes { get; } = ActualLab.Channels.ChannelExt.Create<int>(new UnboundedChannelOptions() {
             SingleReader = false,
             SingleWriter = false,
@@ -98,17 +99,17 @@ public class ShardWorkerTest(ITestOutputHelper @out)
 
         protected override async Task OnRun(CancellationToken cancellationToken)
         {
-            await using var _ = ShardDispatcher.Use(GetType().GetName(), ShardRun, null).ConfigureAwait(false);
+            await using var _ = ShardBroker.Use(nameof(TestChannelShardWorker), ShardRun, null).ConfigureAwait(false);
             await TaskExt.NeverEnding(cancellationToken).SilentAwait();
             return;
 
-            async Task ShardRun(ShardDispatcher.LockState lockState, CancellationToken ct)
+            async Task ShardRun(ShardRunner runner, CancellationToken ct)
             {
-                var shardIndex = lockState.ShardIndex;
+                var shardIndex = runner.ShardIndex;
                 Out.WriteLine($"-> {nameof(ShardRun)}({shardIndex} @ {this})");
                 lock (ShardOwners) {
                     var shardOwners = ShardOwners[shardIndex];
-                    if (shardOwners.Any(x => x.ShardDispatcher != ShardDispatcher))
+                    if (shardOwners.Any(x => x.ShardBroker != ShardBroker))
                         UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
                             $"Shard {shardIndex} @ {this} is used by a worker from another host!"));
                     shardOwners.Add(this);
