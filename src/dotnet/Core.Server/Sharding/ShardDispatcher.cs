@@ -6,7 +6,7 @@ namespace ActualChat;
 
 public sealed class ShardDispatcher : WorkerBase, IHasServices
 {
-    private static bool DebugMode => Constants.DebugMode.ShardLocker;
+    private static bool DebugMode => Constants.DebugMode.ShardDispatcher;
 
     [field: AllowNull, MaybeNull]
     internal ILogger Log => field ??= Services.LoggerFactory().CreateLogger(
