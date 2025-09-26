@@ -15,18 +15,18 @@ public interface IFlows : IComputeService, IBackendService
     [ComputeMethod]
     Task<FlowData> GetData(FlowId flowId, CancellationToken cancellationToken = default);
     [ComputeMethod]
-    Task<Flow?> Get(FlowId flowId, CancellationToken cancellationToken = default);
+    Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken = default);
     // Regular method!
-    Task<Flow> GetOrStart(FlowId flowId, CancellationToken cancellationToken = default);
+    Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken = default);
 
-    // The `long` any of methods below return is DbFlow/FlowData.Version
+    // The `long` result in any of the methods below return is DbFlow/FlowData.Version
     // Regular method!
     Task<long> OnEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken = default);
     [CommandHandler]
     Task<long> OnStore(Flows_Store command, CancellationToken cancellationToken = default);
 }
 
-// This is a special command that's always exercised locally (i.e. never goes to remote peers).
+// This is a special command always executed locally. It is never sent to remote peers.
 // Search for "MeshRefResolvers.Register<Flows_Store>" to see how it works.
 // ReSharper disable once InconsistentNaming
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

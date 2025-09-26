@@ -44,7 +44,7 @@ public static class ServiceCollectionExt
             logging.AddFilter("ActualLab.Fusion.Operations", LogLevel.Information);
             if (!Constants.DebugMode.MeshLocks)
                 logging.AddFilter("ActualChat.Redis", LogLevel.Information);
-            if (!Constants.DebugMode.ShardWorker)
+            if (!Constants.DebugMode.ShardDispatcher)
                 logging.AddFilter("ActualChat.Mesh", LogLevel.Information);
             // logging.AddFilter("ActualLab.Fusion.EntityFramework", LogLevel.Debug);
             // logging.AddFilter("ActualLab.Fusion.EntityFramework.Operations", LogLevel.Debug);

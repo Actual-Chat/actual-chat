@@ -173,7 +173,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, coordinator, logger);
 
         var cancellationTokenSource = new CancellationTokenSource();
-        // Emulate staring of an inactive shard
+        // Emulate the start of an inactive shard
         var onRunTask = initializer.OnRun(InactiveShardIndex1, cancellationTokenSource.Token);
         Assert.False(onRunTask.IsCompleted);
         Assert.False(onRunTask.IsCanceled);
@@ -219,6 +219,9 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         moqServices
             .Setup(x => x.GetService(typeof(MeshNode)))
             .Returns(() => new MeshNode(NodeRef.None, string.Empty, new ApiSet<HostRole>(), MeshNodeState.Online));
+        moqServices
+            .Setup(x => x.GetService(typeof(ShardDispatchers)))
+            .Returns(() => new ShardDispatchers(moqServices.Object));
         return moqServices;
     }
 }

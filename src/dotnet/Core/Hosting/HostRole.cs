@@ -22,7 +22,7 @@ public partial record struct HostRole(
 
     // Actual front-end roles
     public static readonly HostRole Api = nameof(Api); // + BlazorHost
-    public static readonly HostRole BlazorHost = nameof(BlazorHost); // Used on both sides (server & client)
+    public static readonly HostRole BlazorHost = nameof(BlazorHost); // Used on both sides (server and client)
 
     // Actual backend roles
     public static readonly HostRole EventQueue = nameof(EventQueue);

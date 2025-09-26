@@ -15,7 +15,7 @@ public class MasterFlowTest(ITestOutputHelper @out)
         var flows = h.Services.GetRequiredService<IFlows>();
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get<DigestFlow>("actual-admin", ct);
+            var flow = await flows.TryGet<DigestFlow>("actual-admin", ct);
             flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
     }
@@ -26,10 +26,10 @@ public class MasterFlowTest(ITestOutputHelper @out)
         using var h = await NewAppHost();
 
         var flows = h.Services.GetRequiredService<IFlows>();
-        await flows.GetOrStart<MasterFlow>("");
+        await flows.Get<MasterFlow>("");
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get<MasterFlow>("", ct);
+            var flow = await flows.TryGet<MasterFlow>("", ct);
             flow!.Step.Should().Be("OnReset");
             flow.HardResumeAt!.Value.ToDateTime().Year.Should().Be(2100);
         }, TimeSpan.FromSeconds(30));

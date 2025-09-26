@@ -16,8 +16,8 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     where TSettings : QueueSettings
     where TProcessor : IQueueProcessor
 {
-    protected readonly ConcurrentDictionary<QueueRef, TProcessor> ProcessorsAndSenders = new();
-    protected ILogger Log { get; }
+    private readonly ConcurrentDictionary<QueueRef, TProcessor> _processors = new();
+    private ILogger Log { get; }
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }
@@ -27,7 +27,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     public IReadOnlyDictionary<QueueRef, IQueueProcessor> Processors { get; protected init; } = null!;
 
     protected QueuesBase(TSettings settings, IServiceProvider services, bool initProcessors = true)
-        : base(services.HostLifetimeIfExist()?.ApplicationStopping.CreateLinkedTokenSource())
+        : base(services.HostLifetimeIfExist().CreateStopTokenSource())
     {
         Settings = settings;
         Services = services;
@@ -56,7 +56,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     protected abstract TProcessor CreateProcessor(QueueRef queueRef);
 
     protected TProcessor GetProcessor(QueueRef queueRef)
-        => ProcessorsAndSenders.GetOrAdd(queueRef, static (queueRef1, self) => self.CreateProcessor(queueRef1), this);
+        => _processors.GetOrAdd(queueRef, static (queueRef1, self) => self.CreateProcessor(queueRef1), this);
 
     protected virtual IReadOnlyDictionary<QueueRef, IQueueProcessor> CreateProcessors()
     {
@@ -81,8 +81,8 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
         foreach (var processor in Processors.Values)
             processor.Start();
 
-        using var dTask = cancellationToken.ToTask();
-        await dTask.Resource.SilentAwait(false); // Await for cancellation
+        // Waiting for the stop signal
+        await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
 
         Log.LogInformation("Stopping queue processors...");
         var disposeTasks = Processors.Values.Select(p => p.DisposeSilentlyAsync().AsTask()).ToArray();

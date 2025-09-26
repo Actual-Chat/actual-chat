@@ -43,7 +43,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         Task ScheduleRefreshIfRequired()
             => mustScheduleRefreshIfRequired && linkPreview != null && NeedsUpdate(linkPreview.ModifiedAt)
-                ? Flows.GetAndReset<LinkPreviewFlow>(LinkPreviewFlow.BuildArgs(linkPreview.Url),
+                ? Flows.Reset<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(linkPreview.Url),
                     Settings.LinkPreviewUpdatePeriod,
                     "Get link preview",
                     cancellationToken)
@@ -115,7 +115,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             var links = ExtractLinks(entry);
             var oldLinks = ExtractLinks(oldEntry);
             foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks, StringComparer.Ordinal))
-                await Flows.GetOrStart<LinkPreviewFlow>(LinkPreviewFlow.BuildArgs(link), cancellationToken).ConfigureAwait(false);
+                await Flows.Get<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(link), cancellationToken).ConfigureAwait(false);
         }
     }
 

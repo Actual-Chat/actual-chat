@@ -39,7 +39,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     public NatsQueueProcessor(NatsQueues.Options settings, NatsQueues queues, QueueRef queueRef)
         : base(settings, queues, queueRef)
     {
-        ActionLocks = GetMeshLocks(nameof(ActionLocks));
+        ActionLocks = ShardDispatcher.Host.GetShardLocks(ShardScheme, nameof(ActionLocks));
         _instancePrefix = queues.NatsSettings.InstancePrefix;
     }
 
@@ -385,12 +385,12 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         switch (version) {
         case 1: {
             var id = new Ulid(dataSpan[1..17]);
-            var command = TypeDecoratingSerializer.Read<ICommand>(dataMemory[17..]);
+            var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[17..], typeof(ICommand), out _)!;
             return QueuedCommand.NewUntyped(command, id.ToString(), message.Headers?.AsReadOnly());
         }
         case 2: {
-            var ulid = Serializer.Read<string>(dataMemory[1..], out var ulidLength);
-            var command = TypeDecoratingSerializer.Read<ICommand>(dataMemory[(1 + ulidLength)..]);
+            var ulid = (string)Serializer.Read(dataMemory[1..], typeof(string), out var ulidLength)!;
+            var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[(1 + ulidLength)..], typeof(ICommand), out _)!;
             return QueuedCommand.NewUntyped(command, ulid, message.Headers?.AsReadOnly());
         }
         default:
@@ -402,7 +402,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     {
         var command = queuedCommand.UntypedCommand;
         buffer.Write(VersionBytes);
-        Serializer.Write(buffer, queuedCommand.Uuid);
+        Serializer.Write(buffer, queuedCommand.Uuid, typeof(string));
         TypeDecoratingSerializer.Write(buffer, command, command.GetType()); // Command itself
     }
 }

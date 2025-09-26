@@ -5,168 +5,152 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat.Flows;
 
-public static class FlowsExt
+public static partial class FlowsExt
 {
-    public static async Task<TFlow?> Get<TFlow>(this IFlows flows,
+    // NewId
+
+    public static FlowId NewId<TFlow>(this IFlows flows, string arguments)
+        where TFlow : Flow
+    {
+        var flowRegistry = flows.GetServices().GetRequiredService<FlowRegistry>();
+        var flowId = flowRegistry.NewId(typeof(TFlow), arguments);
+        return flowId;
+    }
+
+    public static FlowId NewId(this IFlows flows, Type flowType, string arguments)
+    {
+        Flow.RequireCorrectType(flowType);
+        var flowRegistry = flows.GetServices().GetRequiredService<FlowRegistry>();
+        var flowId = flowRegistry.NewId(flowType, arguments);
+        return flowId;
+    }
+
+    // TryGet
+
+    // [ComputeMethod] - behaves exactly like a compute method
+    public static async ValueTask<TFlow?> TryGet<TFlow>(this IFlows flows,
         string arguments,
         CancellationToken cancellationToken = default)
         where TFlow : Flow
     {
-        var flowId = flows.GetFlowId(typeof(TFlow), arguments);
-        var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
+        var flowId = flows.NewId<TFlow>(arguments);
+        var flow = await flows.TryGet(flowId, cancellationToken).ConfigureAwait(false);
         return (TFlow?)flow;
     }
 
-    public static async Task<TFlow> GetOrStart<TFlow>(this IFlows flows,
+    // Get
+
+    // [ComputeMethod] - behaves exactly like a compute method
+    public static async ValueTask<TFlow> Get<TFlow>(this IFlows flows,
         string arguments,
         CancellationToken cancellationToken = default)
         where TFlow : Flow
     {
-        var flow = await flows.GetOrStart(typeof(TFlow), arguments, cancellationToken).ConfigureAwait(false);
+        var flowId = flows.NewId<TFlow>(arguments);
+        var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
         return (TFlow)flow;
     }
 
-    public static async Task<Flow> GetOrStart(this IFlows flows,
-        Type flowType,
-        string arguments,
+    // [ComputeMethod] - behaves exactly like a compute method
+    public static async ValueTask<Flow> Get(this IFlows flows,
+        FlowId flowId,
         CancellationToken cancellationToken = default)
     {
-        Flow.RequireCorrectType(flowType);
-        var flowId = flows.GetFlowId(flowType, arguments);
-        return await flows.GetOrStart(flowId, cancellationToken).ConfigureAwait(false);
-    }
-
-    public static async Task<TFlow?> GetAndResume<TFlow>(
-        this IFlows flows,
-        string arguments,
-        TimeSpan? maxLastRunIn = null,
-        string? tag = null,
-        TimeSpan? delay = null,
-        CancellationToken cancellationToken = default)
-        where TFlow : Flow
-        => (TFlow?)await flows.GetAndResume(typeof(TFlow),
-                arguments,
-                maxLastRunIn,
-                tag,
-                delay,
-                cancellationToken)
+        var cFlow = await Computed
+            .Capture(() => flows.TryGet(flowId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
+        if (cFlow.Value is not null)
+            goto exit;
 
-    public static Task<Flow?> GetAndResume(
-        this IFlows flows,
-        Type flowType,
-        string arguments,
-        TimeSpan? maxLastRunIn = null,
-        string? tag = null,
-        TimeSpan? delay = null,
-        CancellationToken cancellationToken = default)
-        => flows.GetAndSendEvent(flowType,
-            arguments,
-            (id, now) => new FlowResumeEvent(id,
-                false,
-                tag,
-                now + maxLastRunIn,
-                (now + delay) ?? default),
-            cancellationToken);
-
-    public static async Task<TFlow?> GetAndReset<TFlow>(
-        this IFlows flows,
-        string arguments,
-        TimeSpan? maxLastRunIn = null,
-        string? tag = null,
-        CancellationToken cancellationToken = default)
-        where TFlow : Flow
-        => (TFlow?)await flows.GetAndReset(typeof(TFlow),
-                arguments,
-                maxLastRunIn,
-                tag,
-                cancellationToken)
-            .ConfigureAwait(false);
-
-    public static Task<Flow?> GetAndReset(
-        this IFlows flows,
-        Type flowType,
-        string arguments,
-        TimeSpan? maxLastRunIn = null,
-        string? tag = null,
-        CancellationToken cancellationToken = default)
-        => flows.GetAndSendEvent(flowType,
-            arguments,
-            (id, now) => new FlowResetEvent(id,
-                tag,
-                now + maxLastRunIn),
-            cancellationToken);
-
-    private static async Task<Flow?> GetAndSendEvent(
-        this IFlows flows,
-        Type flowType,
-        string arguments,
-        Func<FlowId, Moment, IFlowEvent> eventFactory,
-        CancellationToken cancellationToken = default)
-    {
-        Flow.RequireCorrectType(flowType);
-        var services = flows.GetServices();
-        var queues = services.Queues();
-        var clocks = services.Clocks();
-        var log = services.LogFor<IFlows>();
-        var debugLog = log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
-
-        var flowId = flows.GetFlowId(flowType, arguments);
-        var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
-        if (flow is null) {
-            log.LogInformation("`{Id}`.GetAndSendEvent: skipped because the flow was not found", flowId);
-            return null;
+        using (Computed.BeginIsolation()) {
+            await flows.Start(flowId, cancellationToken).ConfigureAwait(false);
+            // Await for the new flow to be visible via TryGet in the current process
+            cFlow = await cFlow.When(x => x is not null, cancellationToken).ConfigureAwait(false);
         }
 
-        var now = clocks.SystemClock.Now;
-        var flowEvent = eventFactory(flowId, now);
-        await queues.Enqueue(flowEvent, cancellationToken).ConfigureAwait(false);
-        debugLog?.LogDebug(
-            "`{Id}`.GetAndSendEvent: sent {Event} with delayUntil='{Delay}' and maxLastRunAt='{MaxLastRunAt}'",
-            flowId,
-            flowEvent,
-            (flowEvent as IHasDelayUntil)?.DelayUntil,
-            (flowEvent as FlowResumeEvent)?.MaxLastRunAt);
-        return flow;
+        exit:
+        // Register a dependency
+        await cFlow.UseUntyped(allowInconsistent: true, cancellationToken).ConfigureAwait(false);
+        return cFlow.Value!;
     }
 
-    public static Task<Flow> StartOrReset<TFlow>(
-        this IFlows flows,
-        string arguments,
-        TimeSpan? maxLastRunIn = null,
-        string? tag = null,
-        CancellationToken cancellationToken = default)
-        => flows.StartOrReset(typeof(TFlow), arguments, maxLastRunIn, tag, cancellationToken);
+    // EnsureStarted - like Get, but w/o registering a dependency
 
-    public static async Task<Flow> StartOrReset(
-        this IFlows flows,
-        Type flowType,
+    public static async ValueTask<TFlow> EnsureStarted<TFlow>(this IFlows flows,
         string arguments,
-        TimeSpan? maxLastRunIn = null,
-        string? tag = null,
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+    {
+        var flowId = flows.NewId<TFlow>(arguments);
+        var flow = await flows.EnsureStarted(flowId, cancellationToken).ConfigureAwait(false);
+        return (TFlow)flow;
+    }
+
+    public static async ValueTask<Flow> EnsureStarted(this IFlows flows,
+        FlowId flowId,
         CancellationToken cancellationToken = default)
     {
-        Flow.RequireCorrectType(flowType);
+        var cFlow = await Computed
+            .Capture(() => flows.TryGet(flowId, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        if (cFlow.Value is { } flow)
+            return flow;
+
+        using (Computed.BeginIsolation()) {
+            await flows.Start(flowId, cancellationToken).ConfigureAwait(false);
+            // Await for the new flow to be visible via TryGet in the current process
+            cFlow = await cFlow.When(x => x is not null, cancellationToken).ConfigureAwait(false);
+            return cFlow.Value!;
+        }
+    }
+
+    // Notify
+
+    public static Task Notify<TFlow>(this IFlows flows,
+        string arguments,
+        IFlowEvent @event,
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+        => flows.Notify(flows.NewId<TFlow>(arguments), @event, ensureStarted: true, cancellationToken);
+
+    public static Task Notify<TFlow>(this IFlows flows,
+        string arguments,
+        IFlowEvent @event,
+        bool ensureStarted,
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+        => flows.Notify(flows.NewId<TFlow>(arguments), @event, ensureStarted, cancellationToken);
+
+    public static Task Notify(
+        this IFlows flows,
+        FlowId flowId,
+        IFlowEvent @event,
+        CancellationToken cancellationToken = default)
+        => flows.Notify(flowId, @event, ensureStarted: true, cancellationToken);
+
+    public static async Task Notify(this IFlows flows,
+        FlowId flowId,
+        IFlowEvent @event,
+        bool ensureStarted,
+        CancellationToken cancellationToken = default)
+    {
         var services = flows.GetServices();
         var queues = services.Queues();
-        var clocks = services.Clocks();
+        if (ensureStarted)
+            await flows.EnsureStarted(flowId, cancellationToken).ConfigureAwait(false);
+        await queues.Enqueue(@event, cancellationToken).ConfigureAwait(false);
 
-        var flowId = flows.GetFlowId(flowType, arguments);
-        var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
-        if (flow == null)
-            return await flows.GetOrStart(flowType, arguments, cancellationToken).ConfigureAwait(false);
-
-        var now = clocks.SystemClock.Now;
-        var resetEvent = new FlowResetEvent(flowId, tag, now + maxLastRunIn);
-        await queues.Enqueue(resetEvent, cancellationToken).ConfigureAwait(false);
-        return flow;
-    }
-
-    private static FlowId GetFlowId(this IFlows flows, Type flowType, string arguments)
-    {
-        var services = flows.GetServices();
-        var flowRegistry = services.GetRequiredService<FlowRegistry>();
-        var flowId = flowRegistry.NewId(flowType, arguments);
-        return flowId;
+        var log = services.LogFor<IFlows>();
+        var debugLog = log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
+        if (debugLog != null) {
+            var delayUntil = (@event as IHasDelayUntil)?.DelayUntil;
+            var maxLastRunAt = (@event as FlowResumeEvent)?.MaxLastRunAt;
+            debugLog.LogDebug(
+                "`{Id}`.Notify: sent {Event} with DelayUntil={DelayUntil} and MaxLastRunAt={MaxLastRunAt}",
+                flowId,
+                @event,
+                delayUntil,
+                maxLastRunAt);
+        }
     }
 }

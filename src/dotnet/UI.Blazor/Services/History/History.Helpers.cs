@@ -5,60 +5,27 @@ public partial class History
     public HistoryChangeTracker TrackChanges(Action<HistoryItem> onChange)
         => new HistoryChangeTracker(this, onChange).Start();
 
-    public async Task When(Func<HistoryItem, bool> predicate, CancellationToken cancellationToken = default)
+    public Task When(Func<HistoryItem, bool> predicate, CancellationToken cancellationToken = default)
     {
-        var tcs = TaskCompletionSourceExt.New<Unit>();
+        var tcs = AsyncTaskMethodBuilderExt.New();
         if (cancellationToken.IsCancellationRequested) {
             tcs.TrySetCanceled(cancellationToken);
-            await tcs.Task.ConfigureAwait(false);
-            return;
+            return tcs.Task;
         }
         if (predicate.Invoke(CurrentItem)) {
-            tcs.TrySetResult(default);
-            await tcs.Task.ConfigureAwait(false);
-            return;
+            tcs.TrySetResult();
+            return tcs.Task;
         }
 
-        var cts = cancellationToken.CreateLinkedTokenSource();
-        var tracker = new HistoryChangeTracker(this,
-            item => {
-                if (predicate.Invoke(item)) {
-                    tcs.TrySetResult(default);
-                    cts.CancelAndDisposeSilently();
-                }
-            });
-        var registration = cts.Token.Register(() => {
-            tcs.TrySetCanceled();
-            tracker.Dispose();
+        var tracker = TrackChanges(item => {
+            if (predicate.Invoke(item))
+                tcs.TrySetResult();
         });
-        tracker.Start();
-        try {
-            await tcs.Task.ConfigureAwait(false);
-        }
-        finally {
-            await registration.DisposeAsync().ConfigureAwait(false);
-        }
-    }
-
-    public void CancelWhen(CancellationTokenSource cancellationTokenSource, Func<HistoryItem, bool> predicate)
-    {
-        if (predicate.Invoke(CurrentItem)) {
-            cancellationTokenSource.Cancel();
-            return;
-        }
-
-        var tracker = new HistoryChangeTracker(this,
-            item => {
-                if (predicate.Invoke(item) && !cancellationTokenSource.IsCancellationRequested) {
-                    try {
-                        cancellationTokenSource.Cancel();
-                    }
-                    catch {
-                        // Intended
-                    }
-                }
-            });
-        cancellationTokenSource.Token.Register(() => tracker.Dispose());
-        tracker.Start();
+        var registration = cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken));
+        _ = tcs.Task.ContinueWith(_ => {
+            tracker.Dispose();
+            registration.Dispose();
+        }, TaskScheduler.Default);
+        return tcs.Task;
     }
 }

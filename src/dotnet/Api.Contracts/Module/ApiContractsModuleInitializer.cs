@@ -31,7 +31,7 @@ internal static class ApiContractsModuleInitializer
         var oldPreferTransient = TransiencyResolvers.PreferTransient;
         TransiencyResolvers.PreferTransient = e => {
             var transiency = oldPreferTransient.Invoke(e);
-            if (!transiency.IsTransient())
+            if (transiency is Transiency.Transient)
                 return transiency;
 
             return e switch {

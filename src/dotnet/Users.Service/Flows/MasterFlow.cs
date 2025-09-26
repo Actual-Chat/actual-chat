@@ -40,7 +40,7 @@ public partial class MasterFlow : Flow, IMasterFlow
             .ReadAsync(pageSize, x => x.Id, cancellationToken);
         await foreach (var accountId in accountIds.ConfigureAwait(false)) {
             var userId = UserId.Parse(accountId);
-            await Host.Flows.GetOrStart<DigestFlow>(userId.Id, cancellationToken).ConfigureAwait(false);
+            await Host.Flows.Get<DigestFlow>(userId.Id, cancellationToken).ConfigureAwait(false);
         }
     }
 }

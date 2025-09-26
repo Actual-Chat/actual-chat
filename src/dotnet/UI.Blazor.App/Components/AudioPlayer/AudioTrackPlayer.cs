@@ -13,30 +13,34 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private static bool DebugMode => Constants.DebugMode.AudioPlayback;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
-    private readonly string _id;
-    private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
-    private IJSObjectReference? _jsRef;
-    private Task? _whenPlayerCreated;
-    private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
+    private DotNetObjectReference<IAudioPlayerBackend> _blazorRef = null!;
+    private IJSObjectReference _jsRef = null!;
+    private IJSObjectReference _jsRefLogging = null!;
+    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    private volatile AsyncState<bool> _isBufferLowState = new(true);
 
     private IServiceProvider Services { get; }
-    private IJSRuntime JS { get; }
+    [field: AllowNull, MaybeNull]
+    private IJSRuntime JS => field ??= Services.JSRuntime();
     [field: AllowNull, MaybeNull]
     private Dispatcher Dispatcher => field ??= Services.GetRequiredService<Dispatcher>();
     [field: AllowNull, MaybeNull]
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioTrackPlayer))]
+    private string Id { get; }
+    private Task WhenReady => _whenReadySource.Task;
+
+    // ReSharper disable once ConvertToPrimaryConstructor
+    [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioTrackPlayer))]
     public AudioTrackPlayer(
         string id,
         TrackInfo trackInfo,
         IMediaSource source,
-        IServiceProvider services) : base(trackInfo, source, services.LogFor<AudioTrackPlayer>())
+        IServiceProvider services)
+        : base(trackInfo, source, services.LogFor<AudioTrackPlayer>())
     {
+        Id = id;
         Services = services;
-        _id = id;
-        JS = services.JSRuntime();
-        UpdateBufferState(true);
     }
 
     [JSInvokable]
@@ -44,8 +48,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     {
         DebugLog?.LogDebug(
             "[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayingAt: {Offset}, {IsPaused}, buffer: {IsBufferLow}",
-            _id, offset, isPaused ? "paused" : "playing", isBufferLow ? "low" : "ok");
-        UpdateBufferState(isBufferLow);
+            Id, offset, isPaused ? "paused" : "playing", isBufferLow ? "low" : "ok");
+        SetBufferLowState(isBufferLow);
         SetPlaybackState(TimeSpan.FromSeconds(offset), isPaused);
         return Task.CompletedTask;
     }
@@ -56,76 +60,57 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         Exception? error = null;
         if (errorMessage != null) {
             error = new TargetInvocationException(
-                $"[AudioTrackPlayer #{_id}] Playback stopped with an error, message = '{errorMessage}'.",
+                $"[AudioTrackPlayer #{Id}] Playback stopped with an error, message = '{errorMessage}'.",
                 null);
-            Log.LogError(error, "[AudioTrackPlayer #{AudioTrackPlayerId}] Playback stopped with an error", _id);
+            Log.LogError(error, "[AudioTrackPlayer #{AudioTrackPlayerId}] Playback stopped with an error", Id);
         }
-        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnEnded: {Message}", _id, errorMessage);
+        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnEnded: {Message}", Id, errorMessage);
         SetEndState(error);
         return Task.CompletedTask;
     }
 
     protected override async ValueTask ProcessCommand(IPlayerCommand command, CancellationToken cancellationToken)
-        => await InvokeAsync(
+        => await DispatchAsync(
             async () => {
+                if (command is not PlayCommand && !WhenReady.IsCompletedSuccessfully)
+                    await WhenReady;
+
                 switch (command) {
                 case PlayCommand:
-                    if (_jsRef != null)
-                        throw StandardError.StateTransition(GetType(), "Repeated PlayCommand.");
-                    _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+                    if (!ReferenceEquals(_blazorRef, null)) {
+                        Log.LogWarning("Repeated PlayCommand");
+                        return;
+                    }
 
+                    _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                     var trackInfo = (ChatAudioTrackInfo)TrackInfo;
                     var chat = trackInfo.Chat;
                     var author = trackInfo.Author;
                     var audioSource = (AudioSource)Source;
                     var preSkip = audioSource.Format.PreSkip;
-                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
+                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", Id);
                     MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming);
-                    var whenPlayerCreated = JS.InvokeAsync<IJSObjectReference>(JSCreateMethod,
-                        CancellationToken.None,
-                        _blazorRef, _id, preSkip, author.Avatar.Name, chat.Title);
-                    _whenPlayerCreated = whenPlayerCreated.AsTask();
-                    _jsRef = await whenPlayerCreated;
+                    _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+                        JSCreateMethod, CancellationToken.None,
+                        _blazorRef, Id, preSkip, author.Avatar.Name, chat.Title);
+                    _jsRefLogging = _jsRef.ToLogging("AudioPlayer", Log);
+                    _whenReadySource.TrySetResult();
                     break;
                 case PauseCommand:
-                    if (_jsRef == null && _whenPlayerCreated != null)
-                        await _whenPlayerCreated;
-                    if (_jsRef == null)
-                        throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Pause command to JS", _id);
-                    _ = _jsRef.InvokeVoidAsync("pause", CancellationToken.None)
-                        .Catch(Log, "Failed to invoke js player.pause()")
-                        .SuppressCancellationAwait();
+                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Pause command to JS", Id);
+                    _ = _jsRefLogging.InvokeVoidAsync("pause", CancellationToken.None);
                     break;
                 case ResumeCommand:
-                    if (_jsRef == null && _whenPlayerCreated != null)
-                        await _whenPlayerCreated;
-                    if (_jsRef == null)
-                        throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Resume command to JS", _id);
-                    _ = _jsRef.InvokeVoidAsync("resume", CancellationToken.None)
-                        .Catch(Log, "Failed to invoke js player.resume()")
-                        .SuppressCancellationAwait();
+                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Resume command to JS", Id);
+                    _ = _jsRefLogging.InvokeVoidAsync("resume", CancellationToken.None);
                     break;
                 case AbortCommand:
-                    if (_jsRef == null && _whenPlayerCreated != null)
-                        await _whenPlayerCreated;
-                    if (_jsRef == null)
-                        throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Abort command to JS", _id);
-                    _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, true)
-                        .Catch(Log, "Failed to invoke js player.end(true)")
-                        .SuppressCancellationAwait();
+                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Abort command to JS", Id);
+                    _ = _jsRefLogging.InvokeVoidAsync("end", CancellationToken.None, true);
                     break;
                 case EndCommand:
-                    if (_jsRef == null && _whenPlayerCreated != null)
-                        await _whenPlayerCreated;
-                    if (_jsRef == null)
-                        throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending End command to JS", _id);
-                    _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, false)
-                        .Catch(Log, "Failed to invoke js player.end(false)")
-                        .SuppressCancellationAwait();
+                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending End command to JS", Id);
+                    _ = _jsRefLogging.InvokeVoidAsync("end", CancellationToken.None, false);
                     break;
                 default:
                     throw StandardError.NotSupported(command.GetType(), "Unsupported command type.");
@@ -133,72 +118,75 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             }).ConfigureAwait(false);
 
     protected override async ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
-        => await InvokeAsync(
+        => await DispatchAsync(
             async () => {
-                if (_jsRef == null)
-                    throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
-
+                if (!WhenReady.IsCompletedSuccessfully)
+                    await WhenReady;
                 var chunk = frame.Data;
-                _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk)
-                    .Catch(Log, "Failed to invoke js player.frame()")
-                    .SuppressCancellationAwait(false);
-                try {
-                    await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
-                }
-                catch (TimeoutException) {
-                    Log.LogError(
-                        "[AudioTrackPlayer #{AudioTrackPlayerId}] ProcessMediaFrame: ready-to-buffer wait timed out, offset={FrameOffset}",
-                        _id,
-                        frame.Offset);
-                }
+                _ = _jsRefLogging.InvokeVoidAsync("frame", cancellationToken, chunk);
             }).ConfigureAwait(false);
 
     protected override Task PlayInternal(CancellationToken cancellationToken)
         => base.PlayInternal(cancellationToken)
-            .ContinueWith(_ => InvokeAsync(
+            .ContinueWith(_ => DispatchAsync(
                 async () => {
                     var (jsRef, blazorRef) = (_jsRef, _blazorRef);
-                    (_jsRef, _blazorRef) = (null, null);
+                    (_jsRef, _blazorRef) = (null!, null!);
                     try {
                         try {
-                            if (jsRef != null)
+                            if (!ReferenceEquals(jsRef, null))
                                 await jsRef.DisposeAsync();
                         }
                         finally {
-                            blazorRef?.Dispose();
+                            if (!ReferenceEquals(blazorRef, null))
+                                blazorRef.Dispose();
                         }
                     }
                     catch (Exception ex) {
-                        Log.LogWarning(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
+                        Log.LogWarning(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", Id);
                     }
                 }
             ), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
-    private Task InvokeAsync(Func<Task> workItem)
-        => InvokeAsync(async () => { await workItem().ConfigureAwait(false); return true; });
-
-#pragma warning disable RCS1229
-    private Task<TResult?> InvokeAsync<TResult>(Func<Task<TResult?>> workItem)
+    private Task DispatchAsync(Func<Task> workItem)
     {
         try {
             return Dispatcher.InvokeAsync(workItem);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, $"[AudioTrackPlayer #{{AudioTrackPlayerId}}] {nameof(InvokeAsync)} failed", _id);
+            Log.LogError(e, $"[AudioTrackPlayer #{{AudioTrackPlayerId}}] {nameof(DispatchAsync)} failed", Id);
             throw;
         }
     }
 
-    private void UpdateBufferState(bool isBufferLow)
+    private Task<TResult?> DispatchAsync<TResult>(Func<Task<TResult?>> workItem)
     {
-        if (isBufferLow) {
-            _whenBufferLowSource.TrySetResult();
+        try {
+            return Dispatcher.InvokeAsync(workItem);
         }
-        else {
-            if (!_whenBufferLowSource.Task.IsCompleted)
-                return;
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, $"[AudioTrackPlayer #{{AudioTrackPlayerId}}] {nameof(DispatchAsync)} failed", Id);
+            throw;
+        }
+    }
 
-            _whenBufferLowSource = TaskCompletionSourceExt.New();
+    private void SetBufferLowState(bool value)
+    {
+        var whenNextState = (Task?)null;
+        lock (Lock) {
+            if (_isBufferLowState.Value != value) {
+                _isBufferLowState = _isBufferLowState.SetNext(value);
+                if (!value)
+                    whenNextState = _isBufferLowState.WhenNext();
+            }
         }
+        _ = whenNextState
+            ?.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken.None)
+            .ContinueWith(_ => {
+                if (whenNextState.IsCompleted)
+                    return;
+
+                Log.LogError("[AudioTrackPlayer #{AudioTrackPlayerId}]: buffer is not low for 10+ seconds", Id);
+            }, TaskScheduler.Default);
     }
 }

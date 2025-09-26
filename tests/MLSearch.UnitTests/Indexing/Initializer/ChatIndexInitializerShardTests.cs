@@ -41,18 +41,16 @@ public partial class ChatIndexInitializerShardTests(ITestOutputHelper @out) : Te
         var delayCallCount = 0;
         var clock = new Mock<MomentClock>(MockBehavior.Loose);
         clock.Setup(x => x.Delay(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns<TimeSpan, CancellationToken>((ts, _) => {
-                if (ts == updateCursorInterval && delayCallCount++ == 0) {
-                    return Task.CompletedTask;
-                }
-                return ActualLab.Async.TaskExt.NewNeverEndingUnreferenced().WaitAsync(cancellationSource.Token);
-            });
+            .Returns<TimeSpan, CancellationToken>(
+                (ts, _) => ts == updateCursorInterval && delayCallCount++ == 0
+                    ? Task.CompletedTask
+                    : TaskExt.NeverEnding(cancellationSource.Token));
         clock.SetupGet(x => x.Now).Returns(now);
 
-        // Setup infinite chat sequence to provide single chat for the scheduling flow
+        // Set up infinite chat sequence to provide single chat for the scheduling flow
         async IAsyncEnumerable<(ChatId, long)> GetChatsAsync([EnumeratorCancellation] CancellationToken cancellationToken) {
             yield return (chatToIndexId, chatToIndexVersion);
-            await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced().WaitAsync(cancellationToken);
+            await TaskExt.NeverEnding(cancellationToken);
         }
         var infiniteChatSequence = new Mock<IInfiniteChatSequence>(MockBehavior.Loose);
         infiniteChatSequence

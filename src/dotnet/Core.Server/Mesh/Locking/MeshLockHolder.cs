@@ -17,6 +17,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     public TimeSpan MinExpiresIn { get; init; } = TimeSpan.FromSeconds(0.25);
     public Moment CreatedAt { get; }
     public Moment ExpiresAt { get; protected set; }
+    public bool IsExpired { get; protected set; }
 
     public MeshLockHolder(
         IMeshLocksBackend backend,
@@ -91,6 +92,8 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             await Clock.Delay(Options.RenewalPeriod, cancellationToken).ConfigureAwait(false);
             isRenewed = await TryRenew(cancellationToken).ConfigureAwait(false);
         }
+        lock (Lock)
+            IsExpired = true;
         Log.LogError("[+-] {Key}: reported as expired on renewal", FullKey);
         _ = DisposeAsync();
     }
@@ -110,7 +113,9 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             }
         }
         finally {
-            var result = await TryRelease().ConfigureAwait(false);
+            var result = IsExpired
+                ? MeshLockReleaseResult.MarkedAsExpiredEarlier
+                : await TryRelease().ConfigureAwait(false);
             DebugLog?.LogDebug("[-] {Key}: released -> {Result}", FullKey, result.ToString("G"));
         }
     }

@@ -13,7 +13,7 @@ public class SettingsRoundTripSerializationTest
         var bytes = await File.ReadAllBytesAsync($"Data/{GetFileName(expected, name)}");
 
         // act
-        var data = KvasSerializer.Default.Read(bytes, expected.GetType());
+        var data = KvasSerializer.Default.Read(bytes, expected.GetType(), out _);
 
         // assert
         data.Should().BeEquivalentTo(expected);
@@ -26,7 +26,7 @@ public class SettingsRoundTripSerializationTest
         // act
         using var buffer = KvasSerializer.Default.Write(expected, expected.GetType());
         var bytes = buffer.WrittenMemory.ToArray();
-        var deserialized = KvasSerializer.Default.Read(bytes, expected.GetType());
+        var deserialized = KvasSerializer.Default.Read(bytes, expected.GetType(), out _);
 
         // assert
         deserialized.Should().BeEquivalentTo(expected, "test case '{0}'", name);

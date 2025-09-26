@@ -11,7 +11,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
     private volatile Task? _whenPlaying;
     private volatile PlayerState _state = new();
     private readonly Lock _stateUpdateLock = new();
-    private readonly Channel<IPlayerCommand> _commandsQueue = Channel.CreateBounded<IPlayerCommand>(
+    private readonly Channel<IPlayerCommand> _commandQueue = Channel.CreateBounded<IPlayerCommand>(
         new BoundedChannelOptions(Constants.Queues.TrackPlayerCommandQueueSize) {
             FullMode = BoundedChannelFullMode.DropOldest,
             SingleReader = true,
@@ -91,29 +91,28 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
         var playTask = ProcessCommand(PlayCommand.Instance, cancellationToken);
         var isPlayCommandProcessed = false;
         try {
-            // We might send to JS side small tracks even like 20-40ms (or without frames at all),
-            // track might be less than JS threshold, so JS side should support this
+            // We might send 0-20-40ms tracks, so the JS side should support this
             var frames = Source.GetFramesUntyped(cancellationToken);
-            await foreach (var frame in frames.ConfigureAwait(false).WithCancellation(cancellationToken)) {
+            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 if (!isPlayCommandProcessed) {
                     await playTask.ConfigureAwait(false);
                     isPlayCommandProcessed = true;
                 }
-                while (_commandsQueue.Reader.TryRead(out var command))
+                while (_commandQueue.Reader.TryRead(out var command))
                     await ProcessCommand(command, cancellationToken).ConfigureAwait(false);
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
             }
 
             // Note that end command shouldn't be cancelled with cancellationToken
             // this prevents sending (end + stop) commands simultaneously, don't change this.
-            // change to get (end + stop) exists for example with a thread abort exception,
+            // change to get (end + stop) exists, for example, with a thread abort exception,
             // but it's a pretty rare situation
             await ProcessCommand(EndCommand.Instance, CancellationToken.None).ConfigureAwait(false);
 
             // Now we're waiting for a report when the client side has actually played all frames or Cancel()
             // At the same time we need to pump commands queue in case pause or resume command arrive.
             while (true) {
-                var readTask = _commandsQueue.Reader.ReadAsync(cancellationToken).AsTask();
+                var readTask = _commandQueue.Reader.ReadAsync(cancellationToken).AsTask();
                 var completedTask = await Task.WhenAny(readTask, WhenCompleted).ConfigureAwait(false);
                 await completedTask.ConfigureAwait(false);
                 if (completedTask == WhenCompleted)
@@ -127,8 +126,8 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
             throw;
         }
         finally {
-            // We should send stop command & await it even if thread is aborted,
-            // that's why the exception handling is in the finally block
+            // We should send a stop command & await it even if the thread is aborted,
+            // that's why the exception handling is in the "finally" block
             if (exception != null && !WhenCompleted.IsCompleted) {
                 var clock = MomentClockSet.Default.CpuClock;
                 var stopTime = clock.Now + StopTimeout;
@@ -158,10 +157,10 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
     protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
     public async Task Pause()
-        => await _commandsQueue.Writer.WriteAsync(PauseCommand.Instance, default).ConfigureAwait(false);
+        => await _commandQueue.Writer.WriteAsync(PauseCommand.Instance, default).ConfigureAwait(false);
 
     public async Task Resume()
-        => await _commandsQueue.Writer.WriteAsync(ResumeCommand.Instance, default).ConfigureAwait(false);
+        => await _commandQueue.Writer.WriteAsync(ResumeCommand.Instance, default).ConfigureAwait(false);
 
     protected void UpdateState<TArg>(Func<TArg, PlayerState, PlayerState> updater, TArg arg)
     {

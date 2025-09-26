@@ -29,7 +29,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         Context.Add(id, batches);
 
         // act
-        await Flows.GetOrStart<SimpleIndexingFlow>(id);
+        await Flows.Get<SimpleIndexingFlow>(id);
         var start = Clocks.SystemClock.Now;
 
         // assert
@@ -42,7 +42,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
             transitions[..^1].Should().AllBeEquivalentTo(("OnIndex", (TimeSpan?)null));
             transitions[^1].Step.Should().Be("OnIndex");
             transitions[^1].HardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
-            var flow = await Flows.Get<SimpleIndexingFlow>(id);
+            var flow = await Flows.TryGet<SimpleIndexingFlow>(id);
             (flow!.NextRecheckAt - start).Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
         }, TimeSpan.FromSeconds(10));
 
@@ -58,7 +58,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
                 .HaveCount(batchCount + 2);
             transitions[^1].Step.Should().Be("OnIndex");
             transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromHours(24), TimeSpan.FromMinutes(1));
-            var flow = await Flows.Get<SimpleIndexingFlow>(id);
+            var flow = await Flows.TryGet<SimpleIndexingFlow>(id);
             flow!.NextRecheckAt.Should().BeNull();
         }, TimeSpan.FromSeconds(10));
     }
@@ -75,7 +75,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         Context.Add(id, batches);
 
         // act
-        await Flows.GetOrStart<SimpleIndexingFlow>(id);
+        await Flows.Get<SimpleIndexingFlow>(id);
 
         // assert
         await TestExt.When(() => {
@@ -98,12 +98,12 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         Context.Add(id, batches);
 
         // act
-        await Flows.GetOrStart<SimpleIndexingFlow>(id);
+        await Flows.Get<SimpleIndexingFlow>(id);
         var start = Clocks.SystemClock.Now;
 
         // assert
         await TestExt.When(async () => {
-            var flow = await Flows.Get<SimpleIndexingFlow>(id).Require();
+            var flow = await Flows.TryGet<SimpleIndexingFlow>(id).Require();
             flow.FlowSetVersion.Should().Be(1);
             var transitions = Context.ListTransitions(id, start);
             transitions
@@ -115,7 +115,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         Context.SetCurrentFlowSetVersionOverride(id, 2);
-        await Flows.GetAndResume<SimpleIndexingFlow>(id);
+        await Flows.Resume<SimpleIndexingFlow>(id);
 
         // assert
         await TestExt.When(async () => {
@@ -123,7 +123,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
             transitions.Should().HaveCount(2);
             transitions[^1].Should().BeEquivalentTo(("", (TimeSpan?)null));
 
-            var flow = await Flows.Get<SimpleIndexingFlow>(id).Require();
+            var flow = await Flows.TryGet<SimpleIndexingFlow>(id).Require();
             flow.FlowSetVersion.Should().Be(1);
         }, TimeSpan.FromSeconds(10));
 
@@ -137,7 +137,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
             transitions[^1].Step.Should().Be("OnIndex");
             transitions[^1].HardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
 
-            var flow = await Flows.Get<SimpleIndexingFlow>(id).Require();
+            var flow = await Flows.TryGet<SimpleIndexingFlow>(id).Require();
             flow.FlowSetVersion.Should().Be(2);
         }, TimeSpan.FromSeconds(10));
     }

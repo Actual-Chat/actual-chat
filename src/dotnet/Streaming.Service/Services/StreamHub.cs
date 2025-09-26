@@ -62,7 +62,7 @@ public class StreamHub(IServiceProvider services) : Hub
         var httpContext = Context.GetHttpContext()!;
         var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSessionFromCookie();
 
-        using var stopCts = NewStopTokenSource(httpContext);
+        using var stopCts = CreateStopTokenSource(httpContext);
         if (stopCts.IsCancellationRequested)
             return;
 
@@ -90,10 +90,11 @@ public class StreamHub(IServiceProvider services) : Hub
             .SilentAwait(false);
     }
 
-    private CancellationTokenSource NewStopTokenSource(HttpContext httpContext)
+    private CancellationTokenSource CreateStopTokenSource(HttpContext httpContext)
     {
-        var stopCts = httpContext.RequestAborted.LinkWith(HostLifetime.ApplicationStopping);
-        if (stopCts.IsCancellationRequested && HostLifetime.ApplicationStopping.IsCancellationRequested)
+        var hostStopToken = HostLifetime.StopToken();
+        var stopCts = hostStopToken.LinkWith(httpContext.RequestAborted);
+        if (stopCts.IsCancellationRequested && hostStopToken.IsCancellationRequested)
             Context.Abort();
         return stopCts;
     }

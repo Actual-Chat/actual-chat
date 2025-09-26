@@ -10,7 +10,7 @@ public interface IUserPresences : IComputeService
     Task<ApiNullable8<Moment>> GetLastCheckIn(UserId userId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken);
+    Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

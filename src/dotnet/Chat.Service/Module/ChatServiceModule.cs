@@ -272,16 +272,15 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             coreSettings.GoogleProjectId = platform?.ProjectId ?? throw StandardError.NotSupported<ChatServiceModule>(
                 $"Requires GKE or explicit settings of {nameof(CoreServerSettings)}.{nameof(CoreServerSettings.GoogleProjectId)}");
         }
-        var lifetime = ModuleServices.GetRequiredService<IHostApplicationLifetime>();
-
         if (model.IsNullOrEmpty())
             model = "gemini-2.5-flash";
 
         // unlimited
         var unlimitedServiceKey = serviceKey + "_Unlimited";
+        var hostLifetime = ModuleServices.HostLifetime(); // TODO(AY): ModuleServices shouldn't contain IHostApplicationLifetime!
         services.AddKernel()
             .AddVertexAIGeminiChatCompletion(model,
-                () => GetBearerToken(lifetime.ApplicationStopping),
+                () => GetBearerToken(hostLifetime.StopToken()),
                 coreSettings.GoogleRegionId,
                 coreSettings.GoogleProjectId,
                 VertexAIVersion.V1_Beta,

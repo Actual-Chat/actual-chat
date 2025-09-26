@@ -31,8 +31,21 @@ public partial class AppHost : IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (disposing)
-            App.DisposeSilently();
+        if (!disposing)
+            return;
+
+        var disposeTask = BackgroundTask.Run(async () => {
+            try {
+                await App.StopAsync(CancellationToken.None).SilentAwait(false);
+            }
+            catch {
+                // Intended
+            }
+            await App.DisposeSilentlyAsync().SilentAwait(false);
+        }, CancellationToken.None);
+#pragma warning disable VSTHRD002
+        disposeTask.Wait();
+#pragma warning restore VSTHRD002
     }
 
     public virtual async Task InvokeInitializers(CancellationToken cancellationToken = default)
@@ -51,17 +64,17 @@ public partial class AppHost : IDisposable
         // since all of them are still initializing (and listening yet).
         // See e.g. UsersDbInitializer.EnsureAdminExists - apparently, it's going to resort to
         // an RPC call in Hybrid or Client mode, so the initialization will stuck right there.
-        var rpcBackendDelegates = Services.GetRequiredService<RpcBackendDelegates>();
-        rpcBackendDelegates.StartRouting();
+        var rpcBackendHelpers = Services.GetRequiredService<RpcBackendHelpers>();
+        rpcBackendHelpers.StartRouting();
     }
 
-    public virtual Task Run(CancellationToken cancellationToken = default)
+    public Task Run(CancellationToken cancellationToken = default)
         => App.RunAsync(cancellationToken);
 
-    public virtual Task Start(CancellationToken cancellationToken = default)
+    public Task Start(CancellationToken cancellationToken = default)
         => App.StartAsync(cancellationToken);
 
-    public virtual Task Stop(CancellationToken cancellationToken = default)
+    public Task Stop(CancellationToken cancellationToken = default)
         => App.StopAsync(cancellationToken);
 
     // Private methods

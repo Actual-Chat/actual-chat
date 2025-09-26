@@ -2,34 +2,34 @@
 
 namespace ActualChat.App.Maui.Services;
 
-public sealed class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObjectReference jsObjectReference)
+public sealed class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObjectReference source)
     : IJSObjectReference, IHasIsDisposed
 {
     private volatile int _isDisposed;
 
-    internal IJSObjectReference JSObjectReference => jsObjectReference;
-
+    public SafeJSRuntime SafeJSRuntime { get; } = safeJSRuntime;
+    public IJSObjectReference Source { get; } = source;
     public bool IsDisposed => _isDisposed != 0;
 
     public ValueTask DisposeAsync()
-        => Interlocked.CompareExchange(ref _isDisposed, 1, 0) != 0 || safeJSRuntime.IsDisconnected
+        => Interlocked.CompareExchange(ref _isDisposed, 1, 0) != 0 || SafeJSRuntime.IsDisconnected
             ? default
-            : jsObjectReference.DisposeSilentlyAsync();
+            : Source.DisposeSilentlyAsync();
 
     public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(SafeJSRuntime.JsonSerialized)] TValue>(
         string identifier, object?[]? args)
     {
         ThrowIfDisposed();
-        safeJSRuntime.RequireConnected();
-        return jsObjectReference.InvokeAsync<TValue>(identifier, SafeJSRuntime.ToUnsafe(args));
+        SafeJSRuntime.RequireConnected();
+        return Source.InvokeAsync<TValue>(identifier, SafeJSRuntime.ToUnsafe(args));
     }
 
     public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(SafeJSRuntime.JsonSerialized)] TValue>(
         string identifier, CancellationToken cancellationToken, object?[]? args)
     {
         ThrowIfDisposed();
-        safeJSRuntime.RequireConnected();
-        return jsObjectReference.InvokeAsync<TValue>(identifier, cancellationToken, SafeJSRuntime.ToUnsafe(args));
+        SafeJSRuntime.RequireConnected();
+        return Source.InvokeAsync<TValue>(identifier, cancellationToken, SafeJSRuntime.ToUnsafe(args));
     }
 
     // Protected methods

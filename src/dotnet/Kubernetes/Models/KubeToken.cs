@@ -35,12 +35,8 @@ public sealed class KubeToken : WorkerBase
         watcher.Changed += OnChanged;
         watcher.EnableRaisingEvents = true;
 
-        await WaitForCancellation().ConfigureAwait(false);
-
-        async Task WaitForCancellation() {
-            using var dTask = cancellationToken.ToTask();
-            await dTask.Resource.ConfigureAwait(false);
-        }
+        await TaskExt.NeverEnding(cancellationToken).ConfigureAwait(false);
+        return;
 
         void OnChanged(object sender, FileSystemEventArgs e) {
             _ = BackgroundTask.Run(async () => {

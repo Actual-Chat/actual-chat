@@ -7,6 +7,10 @@ namespace ActualChat;
 public static class ServiceProviderExt
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static BackendServiceDefs BackendServiceDefs(this IServiceProvider services)
+        => services.GetRequiredService<BackendServiceDefs>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IHostApplicationLifetime HostLifetime(this IServiceProvider services)
         => services.GetRequiredService<IHostApplicationLifetime>();
 
@@ -21,6 +25,10 @@ public static class ServiceProviderExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MeshWatcher MeshWatcher(this IServiceProvider services)
         => services.GetRequiredService<MeshWatcher>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ShardDispatchers ShardDispatchers(this IServiceProvider services)
+        => services.GetRequiredService<ShardDispatchers>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IBlobStorages BlobStorages(this IServiceProvider services)

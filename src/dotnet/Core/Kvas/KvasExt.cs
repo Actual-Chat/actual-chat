@@ -18,7 +18,7 @@ public static class KvasExt
         where T : class?
   {
         var data = await kvas.Get(key, cancellationToken).ConfigureAwait(false);
-        return data is null ? null : Serializer.Read<T>(data);
+        return data is null ? null : (T)Serializer.Read(data, typeof(T), out _)!;
   }
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
@@ -39,7 +39,7 @@ public static class KvasExt
             return kvas.Set(key, null, cancellationToken);
 
         using var buffer = new ArrayPoolBufferWriter<byte>();
-        Serializer.Write(buffer, value);
+        Serializer.Write(buffer, value, typeof(T));
         return kvas.Set(key, buffer.WrittenMemory.ToArray(), cancellationToken);
     }
 
@@ -69,8 +69,8 @@ public static class KvasExt
         (this IKvas kvas, Func<T, T> update, CancellationToken cancellationToken = default)
         where T : class, IHasKvasKey<T>, new()
     {
-        var value = await kvas.Get<T>(cancellationToken);
-        var newValue = update(value ?? new T());
+        var value = await kvas.Get<T>(cancellationToken).ConfigureAwait(false);
+        var newValue = update.Invoke(value ?? new T());
         await kvas.Set(newValue, cancellationToken).ConfigureAwait(false);
         return newValue;
     }

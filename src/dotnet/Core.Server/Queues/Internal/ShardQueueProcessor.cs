@@ -6,7 +6,7 @@ using OpenTelemetry.Context.Propagation;
 
 namespace ActualChat.Queues.Internal;
 
-public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardWorker, IQueueProcessor
+public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : LegacyShardWorker, IQueueProcessor
     where TSettings : QueueSettings
     where TQueues : IQueues
 {
@@ -17,7 +17,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
 
     protected ICommander Commander { get; }
     protected CommandHandlerResolver CommandHandlerResolver { get; }
-    protected new MomentClock Clock { get; }
+    protected MomentClock Clock { get; }
     protected new ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     protected TimeSpan ProcessTimeout
@@ -31,7 +31,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
     public QueueRef QueueRef { get; }
 
     protected ShardQueueProcessor(TSettings settings, TQueues queues, QueueRef queueRef)
-        : base(queues.Services, queueRef.ShardScheme, $"Queues.{queueRef.Format()}")
+        : base(queues.Services, queueRef.ShardScheme)
     {
         Settings = settings;
         Queues = queues;

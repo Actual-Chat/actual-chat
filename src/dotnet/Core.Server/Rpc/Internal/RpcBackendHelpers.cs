@@ -11,12 +11,12 @@ namespace ActualChat.Rpc.Internal;
 #pragma warning disable VSTHRD002, VSTHRD104
 #pragma warning disable CA1822 // Can be static
 
-public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceBase(services)
+public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBase(services)
 {
     private volatile TaskCompletionSource? _whenRoutingStarted = new();
 
     private MeshRpcPeerRefs PeerRefs { get; } = services.GetRequiredService<MeshRpcPeerRefs>();
-    private BackendServiceDefs BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
+    private BackendServiceDefs BackendServiceDefs { get; } = services.BackendServiceDefs();
 
     public void StartRouting()
     {
@@ -39,16 +39,12 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         if (!serviceDef.IsBackend)
             throw StandardError.Internal("Only backend service methods can be called by servers.");
 
-        var serverSideServiceDef = BackendServiceDefs[serviceDef.Type];
-        var serviceMode = serverSideServiceDef.ServiceMode;
-        if (serviceMode is not ServiceMode.Client and not ServiceMode.Distributed)
-            throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client or Distributed mode service.");
-
+        var backendServiceDef = BackendServiceDefs[serviceDef.Type].RequireClientOrDistributedServiceMode();
         if (_whenRoutingStarted is { Task.IsCompleted: false })
             return RpcPeerRef.Local;
 
         var callRouter = methodDef.GetCallRouter();
-        var meshRef = callRouter.Invoke(methodDef, arguments, serverSideServiceDef.ShardScheme);
+        var meshRef = callRouter.Invoke(methodDef, arguments, backendServiceDef.ShardScheme);
         var peerRef = PeerRefs.Get(meshRef).Require(meshRef);
         return peerRef;
     }

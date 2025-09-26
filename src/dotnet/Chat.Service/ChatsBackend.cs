@@ -11,6 +11,7 @@ using ActualChat.Media;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Resilience;
 using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.Chat;
@@ -1898,17 +1899,21 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         // Reading the current author; we may need to wait for its creation here, so...
-        AuthorFull? readAuthor = null;
-        var retrier = new Retrier(5, RetryDelaySeq.Exp(0.25, 1));
-        while (retrier.NextOrThrow()) {
-            await Clocks.CoarseCpuClock.Delay(retrier.Delay, cancellationToken).ConfigureAwait(false);
+        AuthorFull? readAuthor;
+        var retryPolicy = new RetryPolicy(5, RetryDelaySeq.Exp(0.25, 1));
+        var tryIndex = 0;
+        while (true) {
             readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             if (readAuthor?.Avatar != null)
                 break;
+            if (!retryPolicy.MustRetry(++tryIndex))
+                throw StandardError.NotFound<Avatar>();
+
+            var delay = retryPolicy.GetDelay(tryIndex);
+            await Clocks.CoarseCpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
         }
-        var isAnonymous = readAuthor?.IsAnonymous ?? author.IsAnonymous;
-        var authorId = isAnonymous ? null : author.Id;
-        var authorName = isAnonymous ? "Someone" : readAuthor?.Avatar.Name;
+        var authorId = readAuthor.IsAnonymous ? null : author.Id;
+        var authorName = readAuthor.IsAnonymous ? "Someone" : readAuthor.Avatar.Name;
         if (authorName.IsNullOrEmpty())
             authorName = MentionMarkup.NotAvailableName;
 
@@ -1971,7 +1976,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         if (NeedsSummarization())
-            await Flows.GetOrStart<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
+            await Flows.Get<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
         return;
 
         bool NeedsSummarization()
@@ -2005,14 +2010,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             var endsAt = entry.GetEndsAt();
             var timeSinceEnded = Clocks.SystemClock.Now - endsAt;
-            var splitFlow = await Flows.GetAndResume<ConversationSplitFlow>(chat.Id.Value,
+            await Flows
+                .Resume<ConversationSplitFlow>(chat.Id.Value,
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,
                     $"{nameof(OnTextEntryChangedEvent)} #{entry.Id}",
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (splitFlow == null) // Recreate flow if it was removed
-                await Flows.GetOrStart<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
         }
     }
 

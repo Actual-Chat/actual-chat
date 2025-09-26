@@ -6,6 +6,7 @@ using ActualChat.Mesh;
 using ActualChat.Streaming.Services;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Streaming;
 
@@ -43,6 +44,8 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private ICommander Commander => field ??= Services.Commander();
     [field: AllowNull, MaybeNull]
     private MomentClockSet Clocks => field ??= Services.Clocks();
+    [field: AllowNull, MaybeNull]
+    private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
 
     public StreamingBackend(IServiceProvider services)
     {
@@ -97,10 +100,10 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         }
 
         DebugLog?.LogDebug("GetTranscript: {StreamId} - Translate stream", streamId);
-        var applicationStopping = Services.HostLifetime().ApplicationStopping;
+
         var cmd = new TranslationsBackend_TranslateStream(originalStreamId, language);
         // Use ApplicationStopping as GetTranscript might be canceled, but we still want to wait for the translated stream to be created.
-        await Commander.Call(cmd, applicationStopping).ConfigureAwait(false);
+        await Commander.Call(cmd, HostLifetime.StopToken()).ConfigureAwait(false);
         stream = await _transcriptStreams.Get(streamId, true, cancellationToken).ConfigureAwait(false);
 
         DebugLog?.LogDebug("GetTranscript: {StreamId} - Return stream", streamId);
@@ -141,6 +144,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         var (headerDataTask, dataStream) = stream.SplitHead(cancellationToken);
         return dataStream
             .SkipWhile((_, i) => i < skipToFrameN)
-            .Prepend(headerDataTask);
+            .PrependOne(headerDataTask);
     }
 }
