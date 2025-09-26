@@ -383,6 +383,9 @@ body.hoverable .chat-message-quote:hover,
     @apply pr-2;
     @apply overflow-hidden;
 }
+.conversation-message .message-attachments {
+    @apply w-full;
+}
 .message-image-attachments {
     @apply relative;
     @apply flex-y flex-wrap gap-px;
@@ -390,6 +393,9 @@ body.hoverable .chat-message-quote:hover,
     @apply p-0.5;
     @apply rounded-xl;
     @apply overflow-hidden;
+}
+.message-image-attachments.wide {
+    @apply max-w-full;
 }
 .message-file-attachments {
     @apply flex-y gap-y-1;

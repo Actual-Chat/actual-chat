@@ -1,10 +1,10 @@
 @font-face {font-family: "icon";
-  src: url('icon.eot?t=1757429726545'); /* IE9*/
-  src: url('icon.eot?t=1757429726545#iefix') format('embedded-opentype'), /* IE6-IE8 */
-  url("icon.woff2?t=1757429726545") format("woff2"),
-  url("icon.woff?t=1757429726545") format("woff"),
-  url('icon.ttf?t=1757429726545') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
-  url('icon.svg?t=1757429726545#icon') format('svg'); /* iOS 4.1- */
+  src: url('icon.eot?t=1758278402502'); /* IE9*/
+  src: url('icon.eot?t=1758278402502#iefix') format('embedded-opentype'), /* IE6-IE8 */
+  url("icon.woff2?t=1758278402502") format("woff2"),
+  url("icon.woff?t=1758278402502") format("woff"),
+  url('icon.ttf?t=1758278402502') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
+  url('icon.svg?t=1758278402502#icon') format('svg'); /* iOS 4.1- */
 }
 
 [class^="icon-"], [class*=" icon-"] {
@@ -187,26 +187,27 @@
 .icon-text-message-2:before { content: "\eaaa"; }
 .icon-text-message:before { content: "\eaab"; }
 .icon-text:before { content: "\eaac"; }
-.icon-transcription:before { content: "\eaad"; }
-.icon-translate:before { content: "\eaae"; }
-.icon-translation:before { content: "\eaaf"; }
-.icon-trash-fill:before { content: "\eab0"; }
-.icon-trash02:before { content: "\eab1"; }
-.icon-trash03:before { content: "\eab2"; }
-.icon-unpin-from-navbar:before { content: "\eab3"; }
-.icon-unpin:before { content: "\eab4"; }
-.icon-unread:before { content: "\eab5"; }
-.icon-vector-left:before { content: "\eab6"; }
-.icon-vector-right:before { content: "\eab7"; }
-.icon-video:before { content: "\eab8"; }
-.icon-voice-01:before { content: "\eab9"; }
-.icon-voice-message:before { content: "\eaba"; }
-.icon-voice-to-text-message:before { content: "\eabb"; }
-.icon-volume-off-fill:before { content: "\eabc"; }
-.icon-volume-off:before { content: "\eabd"; }
-.icon-volume-settings:before { content: "\eabe"; }
-.icon-volume-up-fill:before { content: "\eabf"; }
-.icon-volume-up:before { content: "\eac0"; }
+.icon-tldr:before { content: "\eaad"; }
+.icon-transcription:before { content: "\eaae"; }
+.icon-translate:before { content: "\eaaf"; }
+.icon-translation:before { content: "\eab0"; }
+.icon-trash-fill:before { content: "\eab1"; }
+.icon-trash02:before { content: "\eab2"; }
+.icon-trash03:before { content: "\eab3"; }
+.icon-unpin-from-navbar:before { content: "\eab4"; }
+.icon-unpin:before { content: "\eab5"; }
+.icon-unread:before { content: "\eab6"; }
+.icon-vector-left:before { content: "\eab7"; }
+.icon-vector-right:before { content: "\eab8"; }
+.icon-video:before { content: "\eab9"; }
+.icon-voice-01:before { content: "\eaba"; }
+.icon-voice-message:before { content: "\eabb"; }
+.icon-voice-to-text-message:before { content: "\eabc"; }
+.icon-volume-off-fill:before { content: "\eabd"; }
+.icon-volume-off:before { content: "\eabe"; }
+.icon-volume-settings:before { content: "\eabf"; }
+.icon-volume-up-fill:before { content: "\eac0"; }
+.icon-volume-up:before { content: "\eac1"; }
 
 $icon-activity: "\ea01";
 $icon-add-reaction: "\ea02";
@@ -380,24 +381,25 @@ $icon-talking: "\eaa9";
 $icon-text-message-2: "\eaaa";
 $icon-text-message: "\eaab";
 $icon-text: "\eaac";
-$icon-transcription: "\eaad";
-$icon-translate: "\eaae";
-$icon-translation: "\eaaf";
-$icon-trash-fill: "\eab0";
-$icon-trash02: "\eab1";
-$icon-trash03: "\eab2";
-$icon-unpin-from-navbar: "\eab3";
-$icon-unpin: "\eab4";
-$icon-unread: "\eab5";
-$icon-vector-left: "\eab6";
-$icon-vector-right: "\eab7";
-$icon-video: "\eab8";
-$icon-voice-01: "\eab9";
-$icon-voice-message: "\eaba";
-$icon-voice-to-text-message: "\eabb";
-$icon-volume-off-fill: "\eabc";
-$icon-volume-off: "\eabd";
-$icon-volume-settings: "\eabe";
-$icon-volume-up-fill: "\eabf";
-$icon-volume-up: "\eac0";
+$icon-tldr: "\eaad";
+$icon-transcription: "\eaae";
+$icon-translate: "\eaaf";
+$icon-translation: "\eab0";
+$icon-trash-fill: "\eab1";
+$icon-trash02: "\eab2";
+$icon-trash03: "\eab3";
+$icon-unpin-from-navbar: "\eab4";
+$icon-unpin: "\eab5";
+$icon-unread: "\eab6";
+$icon-vector-left: "\eab7";
+$icon-vector-right: "\eab8";
+$icon-video: "\eab9";
+$icon-voice-01: "\eaba";
+$icon-voice-message: "\eabb";
+$icon-voice-to-text-message: "\eabc";
+$icon-volume-off-fill: "\eabd";
+$icon-volume-off: "\eabe";
+$icon-volume-settings: "\eabf";
+$icon-volume-up-fill: "\eac0";
+$icon-volume-up: "\eac1";
 

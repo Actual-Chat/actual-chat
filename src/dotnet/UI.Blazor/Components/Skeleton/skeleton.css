@@ -117,10 +117,21 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     @apply min-h-14;
 }
 .skeleton-chat-header {
-    @apply flex-x self-center gap-x-2;
-    @apply w-full lg:max-w-192 h-14;
+    @apply flex-x self-center justify-center gap-x-2;
+    @apply w-full;
     @apply px-2;
     @apply border-b border-separator;
+}
+.skeleton-chat-header > .c-wrapper {
+    @apply w-full lg:max-w-192 h-14;
+}
+.skeleton-chat-header > .c-wrapper .c-icon {
+    @apply flex-none flex items-center justify-center;
+    @apply h-14;
+    @apply px-2;
+}
+.skeleton-chat-header > .c-wrapper .c-title {
+    @apply flex-1 flex items-center justify-start;
 }
 .skeleton-panel-body {
     @apply flex-1 flex-y;
@@ -132,7 +143,8 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     @apply min-h-14 md:min-h-16;
 }
 .chat-skeleton-panel .skeleton-panel-footer {
-    @apply flex-x gap-x-2.5;
+    @apply flex-x self-center gap-x-2.5;
+    @apply w-full lg:max-w-192;
     @apply px-3;
     @apply bg-01;
 }
@@ -145,6 +157,8 @@ body.wide .thin-left-skeleton-panel .skeleton-panel-footer {
     @apply justify-end;
 }
 .chat-skeleton-panel .skeleton-panel-body {
+    @apply self-center;
+    @apply w-full min-h-full lg:max-w-192;
     @apply p-2 md:p-1.5;
     @apply overflow-y-auto;
     scrollbar-width: none;
