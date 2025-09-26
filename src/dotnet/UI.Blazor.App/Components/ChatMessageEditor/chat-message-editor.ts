@@ -11,7 +11,7 @@ import { MarkupEditor } from '../MarkupEditor/markup-editor';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settings';
 import { Log } from 'logging';
-import { AttachmentWebFilePicker, AttachmentWebFilePickerBackend } from './attachment-web-file-picker';
+import { AttachmentWebFilePicker, AttachmentWebFilePickerBackend, PickFileResult } from './attachment-web-file-picker';
 
 const { debugLog, infoLog, warnLog } = Log.get('MessageEditor');
 
@@ -242,7 +242,8 @@ export class ChatMessageEditor {
             return;
 
         let isAdding = false;
-            for (const item of clipboardData.items) {
+        const fileResults : PickFileResult[] = [];
+        for (const item of clipboardData.items) {
             if (item.kind === 'file') {
                 if (!isAdding)
                     preventDefaultForEvent(event); // We can do it only in the sync part of async handler
@@ -251,9 +252,10 @@ export class ChatMessageEditor {
                 if (!file)
                     continue; // Should not happen, but just in case
 
-                void this.filePickerBackend.add(file, null);
+                fileResults.push({ file: file, fileHandle: null });
             }
         }
+        void this.filePickerBackend.add(fileResults);
     };
 
     // Private methods

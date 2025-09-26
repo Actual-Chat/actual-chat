@@ -33,7 +33,7 @@ export class AttachmentWebFilePickerRegistry
     }
 }
 
-interface PickFileResult {
+export interface PickFileResult {
     file: File,
     fileHandle: FileSystemFileHandle | null
 }
@@ -51,6 +51,9 @@ export class AttachmentWebFilePickerBackend {
     }
 
     public async add(fileResults: PickFileResult[]): Promise<void> {
+        if (fileResults.length == 0)
+            return;
+
         const webFileInfos : WebFileInfo[] = [];
         for (const fileResult of fileResults) {
             const id = AttachmentWebFilePickerRegistry.Add(fileResult);
