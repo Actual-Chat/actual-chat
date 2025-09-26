@@ -173,7 +173,7 @@
 
     [JSInvokable]
     public Task OnFilePicked(WebFileInfo[] fileInfos)
-        => FileAttachments.TryAddWebFileAttachments(_attachmentListHolder, fileInfos);
+        => FileAttachments.TryAddWebFileAttachments(_attachmentListHolder.Attachments, fileInfos);
 
     // Private methods
 
@@ -303,11 +303,11 @@
     private async Task SetAttachments(SentAttachmentsStorage attachmentsStorage)
     {
         var fileInfos = attachmentsStorage.Pop();
-        await FileAttachments.TryAddFileAttachments(_attachmentListHolder, fileInfos);
+        await FileAttachments.TryAddFileAttachments(_attachmentListHolder.Attachments, fileInfos);
     }
 
     private Task OnAttachFilesPicked(AttachFileInfo[] fileInfos)
-        => FileAttachments.TryAddFileAttachments(_attachmentListHolder, fileInfos);
+        => FileAttachments.TryAddFileAttachments(_attachmentListHolder.Attachments, fileInfos);
 
     // UIEventHub event handlers
 

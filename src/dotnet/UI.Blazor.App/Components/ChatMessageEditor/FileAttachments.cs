@@ -17,13 +17,13 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         ChatId = chatId;
     }
 
-    public async Task<bool> TryAddWebFileAttachments(AttachmentListHolder holder, WebFileInfo[] fileInfos)
+    public async Task<bool> TryAddWebFileAttachments(AttachmentList list, WebFileInfo[] fileInfos)
     {
         var hasAdded = false;
         foreach (var fileInfo in fileInfos) {
             var prevHasAdded = hasAdded;
             hasAdded = await TryAddWebFileAttachment(
-                holder,
+                list,
                 fileInfo.Id,
                 fileInfo.FileName,
                 fileInfo.FileType,
@@ -34,21 +34,20 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return hasAdded;
     }
 
-    public async Task<bool> TryAddFileAttachments(AttachmentListHolder holder, AttachFileInfo[] fileInfos)
+    public async Task<bool> TryAddFileAttachments(AttachmentList list, AttachFileInfo[] fileInfos)
     {
         var hasAdded = false;
         foreach (var fileInfo in fileInfos) {
             var prevHasAdded = hasAdded;
-            hasAdded = await TryAddFileAttachment(holder, fileInfo);
+            hasAdded = await TryAddFileAttachment(list, fileInfo);
             if (!prevHasAdded && hasAdded)
                 _ = TuneUI.Play(Tune.ChangeAttachments);
         }
         return hasAdded;
     }
 
-    private async Task<bool> TryAddWebFileAttachment(AttachmentListHolder holder, int id, string fileName, string fileType, long size)
+    private async Task<bool> TryAddWebFileAttachment(AttachmentList list, int id, string fileName, string fileType, long size)
     {
-        var list = holder.Attachments;
         if (CheckCanAdd(list, size) is { } e) {
             UICommander.ShowError(e);
             return false;
@@ -61,9 +60,8 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return await AddFileAttachment(list, webFileProvider, fileType);
     }
 
-    public async Task<bool> TryAddFileAttachment(AttachmentListHolder holder, AttachFileInfo fileInfo)
+    private async Task<bool> TryAddFileAttachment(AttachmentList list, AttachFileInfo fileInfo)
     {
-        var list = holder.Attachments;
         if (CheckCanAdd(list, fileInfo.Length) is { } e) {
             UICommander.ShowError(e);
             return false;
