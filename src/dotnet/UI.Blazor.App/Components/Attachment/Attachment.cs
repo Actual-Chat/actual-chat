@@ -21,4 +21,5 @@ public record Attachment(string PreviewUrl, string FileName, string FileType)
 
     public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
+    public bool IsUploading => UploadSessionId != "" && !(Uploaded || Failed);
 }
