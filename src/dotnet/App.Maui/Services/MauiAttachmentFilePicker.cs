@@ -16,6 +16,10 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
 #endif
 
         var temp = await FilePicker.Default.PickMultipleAsync().ConfigureAwait(true);
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (temp is null)
+            return [];
+
         var filesResults = temp.ToArray();
         if (filesResults.Length == 0)
             return [];

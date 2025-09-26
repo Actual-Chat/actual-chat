@@ -21,13 +21,4 @@ public record Attachment(string PreviewUrl, string FileName, string FileType)
 
     public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
-
-    public event Func<AttachmentList, Attachment, Task>? RemovedFromList;
-    public event Func<AttachmentList, Attachment, Task>? RestartUploadRequested;
-
-    public Task RaiseRemovedFromList(AttachmentList list)
-        => RemovedFromList?.Invoke(list, this) ?? Task.CompletedTask;
-
-    public Task RaiseRestartUploadRequested(AttachmentList list)
-        => RestartUploadRequested?.Invoke(list, this) ?? Task.CompletedTask;
 }

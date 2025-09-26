@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
@@ -16,7 +17,36 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         ChatId = chatId;
     }
 
-    public async Task<bool> TryAddWebFileAttachment(AttachmentListHolder holder, int id, string fileName, string fileType, long size)
+    public async Task<bool> TryAddWebFileAttachments(AttachmentListHolder holder, WebFileInfo[] fileInfos)
+    {
+        var hasAdded = false;
+        foreach (var fileInfo in fileInfos) {
+            var prevHasAdded = hasAdded;
+            hasAdded = await TryAddWebFileAttachment(
+                holder,
+                fileInfo.Id,
+                fileInfo.FileName,
+                fileInfo.FileType,
+                fileInfo.Size);
+            if (!prevHasAdded && hasAdded)
+                _ = TuneUI.Play(Tune.ChangeAttachments);
+        }
+        return hasAdded;
+    }
+
+    public async Task<bool> TryAddFileAttachments(AttachmentListHolder holder, AttachFileInfo[] fileInfos)
+    {
+        var hasAdded = false;
+        foreach (var fileInfo in fileInfos) {
+            var prevHasAdded = hasAdded;
+            hasAdded = await TryAddFileAttachment(holder, fileInfo);
+            if (!prevHasAdded && hasAdded)
+                _ = TuneUI.Play(Tune.ChangeAttachments);
+        }
+        return hasAdded;
+    }
+
+    private async Task<bool> TryAddWebFileAttachment(AttachmentListHolder holder, int id, string fileName, string fileType, long size)
     {
         var list = holder.Attachments;
         if (CheckCanAdd(list, size) is { } e) {

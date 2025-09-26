@@ -1,18 +1,14 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AttachmentsController(
-    UploadSessions uploadSessions,
-    Dispatcher dispatcher,
-    ILogger<AttachmentsController> log)
+public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IAttachmentListEventsListener
 {
-    private Dispatcher Dispatcher => dispatcher;
-    private UploadSessions UploadSessions => uploadSessions;
-    private ILogger Log => log;
+    private UploadSessions UploadSessions => Hub.UploadSessions;
 
     public Task AddAttachment(AttachmentList list, Attachment attachment)
         => Dispatcher.InvokeAsync(() => {
-            attachment.RestartUploadRequested += OnRestartUploadRequested;
-            attachment.RemovedFromList += OnRemovedFromList;
+            list.Subscribe(this);
             list.Add(attachment);
         });
 
@@ -23,7 +19,8 @@ public class AttachmentsController(
             throw new InvalidOperationException("Upload session already assigned");
 
         if (attachment.FileProvider is not { } fileProvider)
-            throw new InvalidOperationException($"Can't initialize upload for attachment '{attachmentId}'. No file provider assigned.");
+            throw new InvalidOperationException(
+                $"Can't initialize upload for attachment '{attachmentId}'. No file provider assigned.");
 
         try {
             var uploadSession = await UploadSessions.CreateSession(chatId, fileProvider).ConfigureAwait(false);
@@ -35,7 +32,8 @@ public class AttachmentsController(
                             };
                             // UploadSession cleanup will handle file cleanup. So just replace it.
                             a1.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
-                            a1.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSession.SessionId));
+                            a1.Cleanups.Add(
+                                AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSession.SessionId));
                             return a1;
                         });
                 })
@@ -77,7 +75,7 @@ public class AttachmentsController(
 
     private async Task ResetUpload(AttachmentList list, Attachment attachment)
     {
-        await uploadSessions.ResetSession(attachment.UploadSessionId).ConfigureAwait(false);
+        await UploadSessions.ResetSession(attachment.UploadSessionId).ConfigureAwait(false);
         await Dispatcher.InvokeAsync(() => {
                 list.UpdateAttachment(attachment.Id,
                     a1 => a1 with {
@@ -96,26 +94,34 @@ public class AttachmentsController(
         return attachment ?? throw new InvalidOperationException("Attachment not found");
     }
 
-    private Task OnRestartUploadRequested(AttachmentList list, Attachment attachment)
-        => BackgroundTask.Run(async () => {
+    Task IAttachmentListEventsListener.AttachmentsRemoved(AttachmentList list, Attachment[] attachments)
+    {
+        _ = TuneUI.Play(Tune.ChangeAttachments);
+        return BackgroundTask.Run(async () => {
+                    foreach (var a in attachments)
+                        await CleanupAttachmentResources(a).ConfigureAwait(false);
+                },
+                Log,
+                "RemovedFromList")
+            .SuppressExceptions();
+    }
+
+    Task IAttachmentListEventsListener.RestartUploadRequested(
+        AttachmentList list,
+        Attachment attachment)
+    {
+        _ = TuneUI.Play(Tune.ChangeAttachments);
+        return BackgroundTask.Run(async () => {
                     await RestartUpload(list, attachment.Id).ConfigureAwait(false);
                 },
                 Log,
                 "RestartUpload")
             .SuppressExceptions();
-
-    private Task OnRemovedFromList(AttachmentList list, Attachment a)
-        => BackgroundTask.Run(async () => {
-                    await CleanupAttachmentResources(a).ConfigureAwait(false);
-                },
-                Log,
-                "RemovedFromList")
-            .SuppressExceptions();
+    }
 
     private async Task CleanupAttachmentResources(Attachment a)
     {
-        foreach (var cleanup in a.Cleanups.Items) {
+        foreach (var cleanup in a.Cleanups.Items)
             await cleanup.Cleanup().ConfigureAwait(false);
-        }
     }
 }

@@ -6,6 +6,7 @@ public class AttachmentList : IAttachmentList
         => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
 
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
+    private IAttachmentListEventsListener? _listener;
 
     public int Count => _attachments.Count;
     public IEnumerable<Attachment> Items => _attachments;
@@ -48,6 +49,13 @@ public class AttachmentList : IAttachmentList
         RaiseChanged();
     }
 
+    public void Subscribe(IAttachmentListEventsListener listener)
+    {
+        if (_listener != null && _listener != listener)
+            throw StandardError.Constraint("Already subscribed.");
+        _listener = listener;
+    }
+
     private void EnsureBelongsToList(Attachment attachment)
     {
         if (!_attachments.Contains(attachment))
@@ -55,12 +63,10 @@ public class AttachmentList : IAttachmentList
     }
 
     private Task RaiseAttachmentsRemoved(Attachment[] attachments)
-        => attachments
-            .Select(c => c.RaiseRemovedFromList(this))
-            .Collect();
+        => _listener?.AttachmentsRemoved(this, attachments) ?? Task.CompletedTask;
 
     private Task RaiseRestartUploadRequested(Attachment attachment)
-        => attachment.RaiseRestartUploadRequested(this);
+        => _listener?.RestartUploadRequested(this, attachment) ?? Task.CompletedTask;
 
     private void RaiseChanged()
         => Changed?.Invoke(this, EventArgs.Empty);

@@ -172,16 +172,8 @@
     }
 
     [JSInvokable]
-    public async Task OnFilePicked(WebFileInfo[] fileInfos) {
-        foreach (var fileInfo in fileInfos) {
-            _ = await FileAttachments.TryAddWebFileAttachment(
-                _attachmentListHolder,
-                fileInfo.Id,
-                fileInfo.FileName,
-                fileInfo.FileType,
-                fileInfo.Size);
-        }
-    }
+    public Task OnFilePicked(WebFileInfo[] fileInfos)
+        => FileAttachments.TryAddWebFileAttachments(_attachmentListHolder, fileInfos);
 
     // Private methods
 
@@ -267,6 +259,7 @@
 
     private async Task OnAttachClick(string acceptTypes) {
         if (AttachmentFilePicker is not null) {
+            _ = TuneUI.Play(Tune.ChangeAttachments);
             var files = await AttachmentFilePicker.PickFiles(acceptTypes);
             await OnAttachFilesPicked(files);
         } else {
@@ -310,16 +303,11 @@
     private async Task SetAttachments(SentAttachmentsStorage attachmentsStorage)
     {
         var fileInfos = attachmentsStorage.Pop();
-        foreach (var fileInfo in fileInfos) {
-            await FileAttachments.TryAddFileAttachment(_attachmentListHolder, fileInfo);
-        }
+        await FileAttachments.TryAddFileAttachments(_attachmentListHolder, fileInfos);
     }
 
-    private async Task OnAttachFilesPicked(AttachFileInfo[] files) {
-        foreach (var fileInfo in files) {
-            await FileAttachments.TryAddFileAttachment(_attachmentListHolder, fileInfo);
-        }
-    }
+    private Task OnAttachFilesPicked(AttachFileInfo[] fileInfos)
+        => FileAttachments.TryAddFileAttachments(_attachmentListHolder, fileInfos);
 
     // UIEventHub event handlers
 

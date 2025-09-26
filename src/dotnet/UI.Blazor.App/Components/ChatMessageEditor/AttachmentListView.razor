@@ -21,6 +21,7 @@
         <ul class="attachment-list custom-scrollbar-x">
             @foreach (var attachment in attachments.Items) {
                 <AttachmentItem
+                    @key="attachment.Id"
                     Attachment="@attachment"
                     RestartClick="@(() => OnRestartClick(attachment))"
                     RemoveClick="@(() => OnRemoveClick(attachment))"/>
