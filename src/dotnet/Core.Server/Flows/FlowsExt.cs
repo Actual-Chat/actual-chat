@@ -136,7 +136,8 @@ public static partial class FlowsExt
     {
         var services = flows.GetServices();
         var queues = services.Queues();
-        await flows.EnsureStarted(flowId, cancellationToken).ConfigureAwait(false);
+        if (ensureStarted)
+            await flows.EnsureStarted(flowId, cancellationToken).ConfigureAwait(false);
         await queues.Enqueue(@event, cancellationToken).ConfigureAwait(false);
 
         var log = services.LogFor<IFlows>();
