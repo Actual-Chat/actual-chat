@@ -20,10 +20,10 @@ public class CoreFlowTest(ITestOutputHelper @out)
         using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
 
-        var f0 = await flows.GetOrStart<TimerFlow>("f0,3");
+        var f0 = await flows.Get<TimerFlow>("f0,3");
         f0.Should().NotBeNull();
 
-        var f1 = await flows.GetOrStart<TimerFlow>("f1,2");
+        var f1 = await flows.Get<TimerFlow>("f1,2");
         f1.Should().NotBeNull();
 
         await Task.WhenAll(
@@ -38,7 +38,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
         var flows = h.Services.GetRequiredService<IFlows>();
         var queues = h.Services.GetRequiredService<IQueues>();
 
-        var f0 = await flows.GetOrStart<TimerFlow>("f0,5");
+        var f0 = await flows.Get<TimerFlow>("f0,5");
         f0.Should().NotBeNull();
 
         // Waiting for the RemainingCount to hit 3
@@ -67,7 +67,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
         var flows = h.Services.GetRequiredService<IFlows>();
         var queues = h.Services.GetRequiredService<IQueues>();
 
-        var f0 = await flows.GetOrStart<TimerFlow>("f0,5");
+        var f0 = await flows.Get<TimerFlow>("f0,5");
         f0.Should().NotBeNull();
 
         // Waiting for the RemainingCount to hit 3
@@ -90,7 +90,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
         IFlows flows, TFlow exampleFlow, CancellationToken cancellationToken = default)
         where TFlow : Flow
     {
-        var flow = (TFlow?)await flows.Get(exampleFlow.Id, cancellationToken);
+        var flow = (TFlow?)await flows.TryGet(exampleFlow.Id, cancellationToken);
         Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
         return flow;
     }
@@ -99,7 +99,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
         IFlows flows, FlowId flowId, CancellationToken cancellationToken = default)
         where TFlow : Flow
     {
-        var flow = (TFlow?)await flows.Get(flowId, cancellationToken);
+        var flow = (TFlow?)await flows.TryGet(flowId, cancellationToken);
         Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
         return flow;
     }

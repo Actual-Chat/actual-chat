@@ -71,7 +71,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
         while (true) {
             Flow? flow = null;
             try {
-                flow = await Host.Flows.GetOrStart(FlowId, cancellationToken).ConfigureAwait(false);
+                flow = await Host.Flows.Start(FlowId, cancellationToken).ConfigureAwait(false);
                 flow = flow.Clone();
                 failureDelays = flow.FailureDelays;
                 flow.Initialize(flow.Id, flow.Version, flow.Step, flow.HardResumeAt, this);

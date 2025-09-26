@@ -30,19 +30,18 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
     }
 
     // [ComputeMethod]
-    public virtual Task<Flow?> Get(FlowId flowId, CancellationToken cancellationToken = default)
+    public virtual Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken = default)
         => Read(flowId, cancellationToken);
 
     // Regular method!
-    public virtual Task<Flow> GetOrStart(FlowId flowId, CancellationToken cancellationToken = default)
+    public virtual Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken = default)
     {
         var flowType = Registry.TypeByName[flowId.Name];
-        Flow.RequireCorrectType(flowType);
-
-        var retryLogger = new RetryLogger(Log);
         return GetOrStartRetryPolicy.RunIsolated(async ct => {
-            var flow = await Get(flowId, ct).ConfigureAwait(false);
-            if (flow != null)
+            // RunIsolated also ensures the code below doesn't
+            // produce any dependencies for the caller, even though it calls TryGet.
+            var flow = await TryGet(flowId, ct).ConfigureAwait(false);
+            if (flow is not null)
                 return flow;
 
             flow = (Flow)flowType.CreateInstance();
@@ -51,7 +50,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             var version = await Commander.Call(storeCommand, true, ct).ConfigureAwait(false);
             flow.Initialize(flowId, version, FlowSteps.Starting);
             return flow;
-        }, retryLogger, cancellationToken);
+        }, new RetryLogger(Log), cancellationToken);
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
@@ -69,7 +68,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         var (flowId, expectedVersion) = command;
         if (Invalidation.IsActive) {
             _ = GetData(flowId, default);
-            _ = Get(flowId, default);
+            _ = TryGet(flowId, default);
             return default;
         }
 

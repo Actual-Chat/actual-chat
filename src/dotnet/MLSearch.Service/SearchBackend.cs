@@ -159,8 +159,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         await UpdateIndexedChatContacts().ConfigureAwait(false);
         return;
 
-        Task UpdateIndexedChatContacts()
-        {
+        Task UpdateIndexedChatContacts() {
             if (chat.Id.Kind == ChatKind.Peer || chat.Id is PlaceChatId { IsRoot: true })
                 return Task.CompletedTask;
 
@@ -174,7 +173,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         Task StartIndexingEntries()
             => changeKind != ChangeKind.Create || chat.Id is PlaceChatId { IsRoot: true }
                 ? Task.CompletedTask
-                : Flows.GetOrStart<EntryIndexingFlow>(chat.Id.Value, cancellationToken);
+                : Flows.Get<EntryIndexingFlow>(chat.Id.Value, cancellationToken).AsTask();
     }
 
     // [EventHandler]
@@ -494,11 +493,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         }
     }
 
-    private Task<TFlow?> ResumeIndexingFlow<TFlow>(
+    private Task ResumeIndexingFlow<TFlow>(
         string arguments,
         string? tag = null,
         CancellationToken cancellationToken = default) where TFlow : Flow
-        => Flows.GetAndResume<TFlow>(arguments,
+        => Flows.Resume<TFlow>(arguments,
             Settings.ChangedEntityIndexingDelay,
             tag,
             Settings.ChangedEntityIndexingDelay + Settings.IndexingFlowResumeDelay, // to avoid too many flow executions

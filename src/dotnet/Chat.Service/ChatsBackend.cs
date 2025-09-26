@@ -1976,7 +1976,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         if (NeedsSummarization())
-            await Flows.GetOrStart<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
+            await Flows.Get<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
         return;
 
         bool NeedsSummarization()
@@ -2010,14 +2010,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             var endsAt = entry.GetEndsAt();
             var timeSinceEnded = Clocks.SystemClock.Now - endsAt;
-            var splitFlow = await Flows.GetAndResume<ConversationSplitFlow>(chat.Id.Value,
+            await Flows
+                .Resume<ConversationSplitFlow>(chat.Id.Value,
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,
                     $"{nameof(OnTextEntryChangedEvent)} #{entry.Id}",
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (splitFlow == null) // Recreate flow if it was removed
-                await Flows.GetOrStart<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
         }
     }
 

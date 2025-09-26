@@ -29,7 +29,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         Context.Add(id, batches);
 
         // act
-        await Flows.GetOrStart<SimpleBatchedIndexingFlow>(id);
+        await Flows.Get<SimpleBatchedIndexingFlow>(id);
         var start = Clocks.SystemClock.Now;
 
         // assert
@@ -64,7 +64,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         Context.Add(id, batches);
 
         // act
-        await Flows.GetOrStart<SimpleBatchedIndexingFlow>(id);
+        await Flows.Get<SimpleBatchedIndexingFlow>(id);
         var start = Clocks.SystemClock.Now;
 
         // assert
@@ -79,7 +79,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
                 transitions[..^1].Should().AllBeEquivalentTo(("OnIndex", (TimeSpan?)null));
                 transitions[^1].Step.Should().Be("OnIndex");
                 transitions[^1].HardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
-                var flow = await Flows.Get<SimpleBatchedIndexingFlow>(id);
+                var flow = await Flows.TryGet<SimpleBatchedIndexingFlow>(id);
                 (flow!.NextRecheckAt - start).Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(3));
             },
             Debugger.IsAttached ? TimeSpan.FromMinutes(3) : TimeSpan.FromSeconds(10));
@@ -93,7 +93,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
                 .HaveCount(processedQuotaCount + 2);
             transitions[^1].Step.Should().Be("OnIndex");
             transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromHours(24), TimeSpan.FromMinutes(1));
-            var flow = await Flows.Get<SimpleBatchedIndexingFlow>(id);
+            var flow = await Flows.TryGet<SimpleBatchedIndexingFlow>(id);
             flow!.NextRecheckAt.Should().BeNull();
         }, TimeSpan.FromSeconds(10));
     }

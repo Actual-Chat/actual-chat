@@ -4,7 +4,7 @@ namespace ActualChat.Flows;
 
 internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(services, ShardScheme.FlowsBackend)
 {
-    private readonly ConcurrentDictionary<Type, FlowId> _flowsToStart = new();
+    private readonly ConcurrentDictionary<Type, Unit> _flowTypesToStart = new();
 
     [field: AllowNull, MaybeNull]
     private FlowRegistry FlowRegistry => field ??= Services.GetRequiredService<FlowRegistry>();
@@ -17,32 +17,35 @@ internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(
     protected override Task OnStart(CancellationToken cancellationToken)
     {
         var masterFlowTypes = FlowRegistry.NameByType.Keys.Where(x => x.IsAssignableTo(typeof(IMasterFlow)));
-        foreach (var masterFlowType in masterFlowTypes) {
-            var flowId = FlowRegistry.NewId(masterFlowType, "");
-            _flowsToStart[masterFlowType] = flowId;
-        }
+        foreach (var masterFlowType in masterFlowTypes)
+            _flowTypesToStart[masterFlowType] = default;
         return Task.CompletedTask;
     }
 
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
         var tasks = new List<Task>();
-        foreach (var (masterFlowType, flowId) in _flowsToStart) {
+        foreach (var flowType in _flowTypesToStart.Keys) {
+            var flowId = GetFlowId(flowType);
             var requiredShardIndex = FlowIdShardKeyResolver.Invoke(flowId);
             if (shardIndex != requiredShardIndex)
                 continue;
 
-            var task = StartMasterFlow(masterFlowType, flowId, cancellationToken);
+            var task = StartMasterFlow(flowType, cancellationToken);
             tasks.Add(task);
         }
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    private async Task StartMasterFlow(Type flowType, FlowId flowId, CancellationToken cancellationToken)
+    private async Task StartMasterFlow(Type flowType, CancellationToken cancellationToken)
     {
         await Flows
-            .StartOrReset(flowType, flowId.Arguments, null, nameof(MasterFlowStarter), cancellationToken)
+            .Reset(GetFlowId(flowType), null, nameof(MasterFlowStarter), cancellationToken)
             .ConfigureAwait(false);
-        _flowsToStart.TryRemove(flowType, out _);
+        _flowTypesToStart.TryRemove(flowType, out _);
     }
+
+    private FlowId GetFlowId(Type masterFlowType)
+        => FlowRegistry.NewId(masterFlowType, "");
+
 }

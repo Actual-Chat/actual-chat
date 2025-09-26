@@ -15,9 +15,9 @@ public interface IFlows : IComputeService, IBackendService
     [ComputeMethod]
     Task<FlowData> GetData(FlowId flowId, CancellationToken cancellationToken = default);
     [ComputeMethod]
-    Task<Flow?> Get(FlowId flowId, CancellationToken cancellationToken = default);
+    Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken = default);
     // Regular method!
-    Task<Flow> GetOrStart(FlowId flowId, CancellationToken cancellationToken = default);
+    Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken = default);
 
     // The `long` result in any of the methods below return is DbFlow/FlowData.Version
     // Regular method!

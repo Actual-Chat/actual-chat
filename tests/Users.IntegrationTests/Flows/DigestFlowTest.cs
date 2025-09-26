@@ -14,10 +14,10 @@ public class DigestFlowTest(ITestOutputHelper @out)
         using var h = await NewAppHost();
 
         var flows = h.Services.GetRequiredService<IFlows>();
-        var f0 = await flows.GetOrStart<DigestFlow>("actual-admin");
+        var f0 = await flows.Get<DigestFlow>("actual-admin");
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get<DigestFlow>(f0.Id.Arguments, ct);
+            var flow = await flows.TryGet<DigestFlow>(f0.Id.Arguments, ct);
             flow.Should().NotBeNull();
             flow.Step.Should().Be(FlowSteps.OnEnd);
         }, TimeSpan.FromSeconds(30));
@@ -44,7 +44,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get<DigestFlow>(userId.Value, ct);
+            var flow = await flows.TryGet<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
             flow.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
@@ -71,7 +71,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get<DigestFlow>(userId.Value, ct);
+            var flow = await flows.TryGet<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
             flow.Step.Should().Be("OnCheck");
         }, TimeSpan.FromSeconds(30));
@@ -113,7 +113,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.Get<DigestFlow>(userId.Value, ct);
+            var flow = await flows.TryGet<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
             flow.RunCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));
