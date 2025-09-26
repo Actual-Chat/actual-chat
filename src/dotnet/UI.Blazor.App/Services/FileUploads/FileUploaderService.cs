@@ -132,11 +132,13 @@ public class FileUploaderService
         {
             var sessionId = session.SessionId;
             var progressTracker = uploadOperation.ProgressTracker;
-            progressTracker.ProgressChanged += (_1, value) => {
-                // TODO: add debouncing
-                Log.LogInformation("**** Uploading file '{FileName}' for '{SessionId}' - '{Progress:P}'", session.FileName, sessionId, value / 100.0);
-                _ = owner.ProgressChanged?.Invoke(sessionId, value);
-            };
+            var progressChangedThrottler = Throttler.New<double>(
+                TimeSpan.FromMilliseconds(500),
+                value => {
+                    Log.LogInformation("**** Uploading file  '{FileName}' for '{SessionId}' - '{Progress:P}'", session.FileName, sessionId, value / 100.0);
+                    _ = owner.ProgressChanged?.Invoke(sessionId, value);
+                });
+            progressTracker.ProgressChanged += (_, value) => progressChangedThrottler.Throttle(value);
             _ = progressTracker.Task.ContinueWith(async t => {
                 if (t.IsCompletedSuccessfully) {
                     Log.LogInformation("**** Uploaded file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
