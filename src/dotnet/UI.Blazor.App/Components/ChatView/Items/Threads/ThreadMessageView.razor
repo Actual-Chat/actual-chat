@@ -19,19 +19,22 @@
                     : daysDelta < 8 // this week
                     ? DateTimeConverter.ToLocalTime(createdAt).ToString("dddd")
                         : DateTimeConverter.ToLocalTime(createdAt).ToString("MMM dd"); // this year
+    var attachments = m is null ? [] : m.Attachments;
 }
 
-<div class="thread-message">
+<div class="thread-message"
+     data-menu="@(MenuRef.New<ThreadMenu>(Message.Entry.Id.ToString() ,chat.Id.Value, title.Text))">
     <div class="c-title">
         <div class="c-left">
             <span class="c-text">
-                <span class="c-hash">#</span>
+                <span class="c-hash">
+                    <i class="icon-thread text-headline-6"></i>
+                </span>
                 @title.Text
                 @TranslationFragments.TranslationMark(title.State)
             </span>
         </div>
         <div class="c-right" @onclick="@OnGoToTheThread">
-            <i class="icon-message-stars"></i>
             @if (!isLoading) {
                 <span class="c-message-count">@m!.MessageCount</span>
             }
@@ -58,15 +61,65 @@
                             <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@chatEntry.BeginsAt"/>
                         </div>
                         <span class="c-message">
-                            <CascadingValue Value="@chatEntry" IsFixed="true">
-                                <MarkupView Markup="@markup"></MarkupView>
-                            </CascadingValue>
+                            @if (markup.ToReadableText().IsNullOrEmpty()) {
+                                var (mediaList, fileList) = GetOrderedAttachmentList(chatEntry.Attachments);
+                                var mediaCount = mediaList.Length;
+                                var fileCount = fileList.Length;
+                                if (fileCount == 0) {
+                                    if (mediaCount == 1) {
+                                        <span class="attachment-plug">
+                                            <i class="icon-image-2"></i>
+                                            <span>@mediaList[0].Media.FileName</span>
+                                        </span>
+                                    } else {
+                                        <span class="attachment-plug">
+                                            <i class="icon-image-2"></i>
+                                            <span>@($"{mediaList.Length} media attached")</span>
+                                        </span>
+                                    }
+                                } else {
+                                    if (mediaCount == 0) {
+                                        if (fileCount == 1) {
+                                            <span class="attachment-plug">
+                                                <i class="icon-attach-2"></i>
+                                                <span>@fileList[0].Media.FileName</span>
+                                            </span>
+                                        } else {
+                                            <span class="attachment-plug">
+                                                <i class="icon-attach-2"></i>
+                                                <span>@($"{fileList.Length} files attached")</span>
+                                            </span>
+                                        }
+                                    } else {
+                                        <span class="attachment-plug">
+                                            <i class="icon-attach-2"></i>
+                                            <span>@($"{fileList.Length + mediaList.Length} files and media attached")</span>
+                                        </span>
+                                    }
+                                }
+                            } else {
+                                <CascadingValue Value="@chatEntry" IsFixed="true">
+                                    <MarkupView Markup="@markup"></MarkupView>
+                                </CascadingValue>
+                            }
                         </span>
                     </div>
                 </div>
             }
         }
     </div>
+    @if (attachments.Length > 0) {
+        var (mediaList, fileList) = GetOrderedAttachmentList(attachments);
+        <div class="message-attachments">
+            <VisualMediaAttachmentList MediaList="@mediaList" IsConversation="true" IsNarrow="@ScreenSize.IsNarrow()"/>
+            <div class="message-file-attachments">
+                @foreach (var attachment in fileList) {
+                    <FileAttachment Attachment="@attachment"/>
+                }
+            </div>
+        </div>
+    }
+
     <div class="c-footer">
         <div class="c-author-list">
             @if (isLoading) {
@@ -110,6 +163,8 @@
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
     // ChatContext belongs to parent Chat, not to the thread chat.
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ThreadMessage Message { get; set; } = null!;
@@ -129,6 +184,7 @@
         var chatEntries = await ChatUI.GetThreadPreviewEntries(chatId, cancellationToken).ConfigureAwait(false);
         var markups = await chatEntries.Select(x => GetMarkup(x, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
         var threadStat = await ChatThreads.GetThreadStat(session, chatId, cancellationToken).ConfigureAwait(false);
+        var attachments = threadStat.Attachments;
 
         var title = TranslatedText.From(chat.Title);
         var description = TranslatedText.From(chat.Description);
@@ -143,7 +199,7 @@
             description = TranslatedText.From(chat.Description, descriptionTranslation);
         }
 
-        return new Model(title, description, chatEntries.Zip(markups).ToList(), threadStat.TopAuthorIds, threadStat.AuthorCount, threadStat.MessageCount, ownerName);
+        return new Model(title, description, chatEntries.Zip(markups).ToList(), threadStat.TopAuthorIds, attachments, threadStat.AuthorCount, threadStat.MessageCount, ownerName);
     }
 
     private async Task<Markup> GetMarkup(ChatEntry chatEntry, CancellationToken cancellationToken)
@@ -158,6 +214,10 @@
 
         return _chatMarkupHub.Parser.Parse(translation.Content);
     }
+
+    private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(TextEntryAttachment[] attachments)
+        => (attachments.Where(a => a.IsVisualMedia()).ToArray(),
+            attachments.Where(a => !a.IsVisualMedia()).ToArray());
 
     private void OnGoToTheThread()
         => _ = History.NavigateTo(Links.Chat(Message.Chat.Id));
@@ -185,6 +245,7 @@
         TranslatedText Description,
         IReadOnlyList<(ChatEntry, Markup)> Entries,
         AuthorId[] TopAuthorIds,
+        TextEntryAttachment[] Attachments,
         int AuthorCount,
         long MessageCount,
         string OwnerName);

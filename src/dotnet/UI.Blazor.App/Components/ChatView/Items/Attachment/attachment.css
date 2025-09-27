@@ -10,7 +10,8 @@
 .wide .image-line {
     @apply w-full;
 }
-body.narrow .conversation-message .image-line {
+body.narrow .conversation-message .image-line,
+body.narrow .thread-message .image-line {
     @apply w-full;
 }
 .message-image-attachments.one-row .image-line:not(.one-image) {

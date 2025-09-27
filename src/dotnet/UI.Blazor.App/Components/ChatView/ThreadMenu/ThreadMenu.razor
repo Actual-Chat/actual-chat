@@ -1,0 +1,148 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using StringBuilderExt = ActualLab.Text.StringBuilderExt
+@inherits ComputedMenuBase<AppUIHub, ThreadMenu.Model>
+@{
+    var m = State.Value;
+    if (State.Value == Model.None)
+        return;
+
+    var entry = m.Entry;
+    var messageLink = Links.Chat(entry.Id.ToTextEntryId()).ToAbsolute(UrlMapper);
+    var canCopyMessageLink = !entry.IsSystemEntry;
+}
+
+<div class="message-menu">
+    <MenuEntry
+        Icon="icon-thread"
+        Text="Go to thread"
+        Click="@(() => OnGoToTheThread())">
+    </MenuEntry>
+    @if (canCopyMessageLink) {
+        <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
+            <MenuEntry
+                Icon="icon-link-2"
+                Text="Copy message link">
+            </MenuEntry>
+        </CopyTrigger>
+    }
+    <MenuEntry
+        Icon="icon-copy"
+        Text="Copy thread"
+        Click="@OnCopyToClipboardRequested">
+    </MenuEntry>
+    @if (m.EnableIncompleteUI) {
+        <MenuEntry
+            Icon="icon-reply"
+            FocusOnEditor="true"
+            Text="Reply"
+            Click="@Reply">
+        </MenuEntry>
+        <MenuEntry
+            Icon="icon-share"
+            Text="Forward"
+            Click="@Forward">
+        </MenuEntry>
+        <MenuEntry
+            Class="warning-item"
+            Icon="icon-trash03"
+            Text="Delete"
+            Click="@Delete">
+        </MenuEntry>
+        <MenuEntrySeparator/>
+        <MenuEntry
+            Icon="icon-select"
+            Text="Select"
+            Click="@Select">
+        </MenuEntry>
+    }
+</div>
+
+@code {
+    private ChatId _chatId = null!;
+    private ChatEntryId _entryId = null!;
+    private string? _title;
+
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [var sEntryId, var sChatId, var title ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _chatId = ChatId.Parse(sChatId);
+        _entryId = ChatEntryId.Parse(sEntryId);
+        _title = title;
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = _chatId;
+        var entryId = _entryId;
+
+        if (!chatId.IsThread(out var threadChatId))
+            return Model.None;
+
+        var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        if (entry == null)
+            return Model.None;
+
+        var chat = await Chats.Get(Session, threadChatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return Model.None;
+
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        return new() {
+            Entry = entry,
+            Chat = chat,
+            EnableIncompleteUI = enableIncompleteUI,
+        };
+    }
+
+    private async Task OnGoToTheThread() {
+        await WhenClosed;
+        var m = State.Value;
+        _ = History.NavigateTo(Links.Chat(m.Chat.Id));
+    }
+
+    private async Task OnCopyToClipboardRequested() {
+        var text = GetText();
+        await ClipboardUI.WriteText(text).ConfigureAwait(false);
+    }
+
+    private string GetText() {
+        var m = State.Value;
+        var sb = StringBuilderExt.Acquire();
+        sb.Append("Thread \"");
+        sb.Append(_title ?? m.Chat.Title);
+        sb.Append("\" on");
+        sb.Append(CoreConstants.AppName);
+        sb.Append(": ");
+        sb.Append(UrlMapper.ToAbsolute(Links.Chat(m.Chat.Id)));
+        return sb.ToStringAndRelease();
+    }
+
+    private void Reply() {}
+
+    private void Forward() {}
+
+    private void Delete() {}
+
+    private void Select() {}
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public ChatEntry Entry { get; init; } = null!;
+        public Chat Chat { get; init; } = null!;
+        public bool EnableIncompleteUI { get; init; }
+    }
+}
