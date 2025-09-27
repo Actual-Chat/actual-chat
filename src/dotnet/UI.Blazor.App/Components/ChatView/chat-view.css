@@ -385,6 +385,11 @@ body.hoverable .chat-message-quote:hover,
 }
 .conversation-message .message-attachments {
     @apply w-full;
+    @apply px-4;
+}
+.message-attachments .extra-media-count {
+    @apply text-headline-1 text-cr-item-badge-selected-text;
+    @apply cursor-pointer;
 }
 .message-image-attachments {
     @apply relative;

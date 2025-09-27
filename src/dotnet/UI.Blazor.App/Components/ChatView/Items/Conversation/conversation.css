@@ -13,13 +13,6 @@
 .conversation-message .c-summary {
     @apply flex-y;
 }
-.conversation-message .message-attachments {
-    @apply px-4;
-}
-.conversation-message .extra-media-count {
-    @apply text-headline-1 text-cr-item-badge-selected-text;
-    @apply cursor-pointer;
-}
 
 .conversation-header {
     @apply mx-2 mb-2;
@@ -249,8 +242,4 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply rounded-full;
     @apply bg-cr-badge-selected;
     @apply text-cr-badge-selected-text;
-}
-
-.conversation-attachments .message-image-attachments {
-    @apply max-w-full;
 }
