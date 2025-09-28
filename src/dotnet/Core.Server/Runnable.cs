@@ -14,8 +14,8 @@ public static class Runnable
 
     private sealed class FuncRunnable(Func<IRunnableRunner, CancellationToken, Task> func) : IRunnable
     {
-        public Task Run(IRunnableRunner shard, CancellationToken cancellationToken)
-            => func.Invoke(shard, cancellationToken);
+        public Task Run(IRunnableRunner runner, CancellationToken cancellationToken)
+            => func.Invoke(runner, cancellationToken);
     }
 }
 

@@ -1,7 +1,6 @@
 using ActualChat.Hosting;
-using ActualChat.Mesh;
 
-namespace ActualChat.Core.Server.IntegrationTests;
+namespace ActualChat.Core.Server.IntegrationTests.Sharding;
 
 public class ShardMapTest(ITestOutputHelper @out) : TestBase(@out)
 {
@@ -12,6 +11,8 @@ public class ShardMapTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void LargeNodeCountTest()
         => Test(20);
+
+    // Private methods
 
     private void Test(int averageNodeCount)
     {

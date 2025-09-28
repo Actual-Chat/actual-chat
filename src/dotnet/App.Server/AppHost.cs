@@ -1,5 +1,4 @@
 using ActualChat.App.Server.Initializers;
-using ActualChat.Mesh;
 using ActualChat.Rpc.Internal;
 
 namespace ActualChat.App.Server;

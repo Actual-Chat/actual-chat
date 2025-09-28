@@ -2,7 +2,7 @@ using ActualChat.Attributes;
 using ActualChat.Hosting;
 using ActualLab.Internal;
 
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 #pragma warning disable CA1000
 

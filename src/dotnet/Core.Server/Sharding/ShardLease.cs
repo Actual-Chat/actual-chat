@@ -1,8 +1,6 @@
-using ActualChat.Mesh;
+namespace ActualChat.Sharding;
 
-namespace ActualChat;
-
-public sealed class ShardRunner(ShardBroker.ShardState shardState, MeshLockHolder lockHolder) : RunnableRunner
+public sealed class ShardLease(ShardBroker.ShardState shardState, MeshLockHolder lockHolder) : RunnableRunner
 {
     public ShardBroker.ShardState ShardState { get; } = shardState;
     public MeshLockHolder LockHolder { get; } = lockHolder;

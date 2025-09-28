@@ -1,6 +1,4 @@
-using ActualChat.Mesh;
-
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 public sealed class ShardBrokers : ProcessorBase, IHasServices
 {

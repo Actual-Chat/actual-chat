@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.Mesh;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.MLSearch.Module;

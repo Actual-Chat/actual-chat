@@ -1,4 +1,4 @@
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 [StructLayout(LayoutKind.Auto)]
 public readonly struct ShardRef(ShardScheme scheme, int key)

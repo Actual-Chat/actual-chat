@@ -1,8 +1,7 @@
-using ActualChat.Mesh;
 using ActualLab.Diagnostics;
 using ActualLab.Resilience;
 
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 public sealed class ShardBroker : WorkerBase, IHasServices
 {
@@ -23,7 +22,9 @@ public sealed class ShardBroker : WorkerBase, IHasServices
     public IServiceProvider Services { get; }
     public ShardScheme ShardScheme { get; }
     public MeshLockOptions LockOptions { get; init; }
-    public MutableState<SchemaState> State { get; }
+    public ShardLeaseTracker ShardLeaseTracker { get; init; }
+    public MutableState<BrokerState> State { get; }
+    public IReadOnlyList<ShardState> ShardStates => State.Value.ShardStates;
 
     public ShardBroker(
         ShardBrokers host,
@@ -37,17 +38,18 @@ public sealed class ShardBroker : WorkerBase, IHasServices
         ShardScheme = shardScheme;
         ShardLocks = shardLocks;
         LockOptions = shardLocks.LockOptions;
+        ShardLeaseTracker = new ShardLeaseTracker(this);
 
         var meshState = MeshWatcher.State.LastNonErrorValue;
         var shardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
         State = StateFactory.NewMutable(
-            initialValue: new SchemaState(this, meshState, shardStates),
+            initialValue: new BrokerState(this, meshState, shardStates),
             category: StateCategories.Get(GetType(), nameof(State)));
     }
 
-    public IAsyncDisposable Use(string name, Func<ShardRunner, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
+    public IAsyncDisposable Use(string name, Func<ShardLease, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
         => Dispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
-    public IAsyncDisposable Use(string name, Func<ShardRunner, CancellationToken, Task> func)
+    public IAsyncDisposable Use(string name, Func<ShardLease, CancellationToken, Task> func)
         => Dispatcher.Use(new ShardRunnable(name, func, Clock));
     public IAsyncDisposable Use(string name, Func<int, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
         => Dispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
@@ -55,6 +57,8 @@ public sealed class ShardBroker : WorkerBase, IHasServices
         => Dispatcher.Use(new ShardRunnable(name, func, Clock));
     public IAsyncDisposable Use(ShardRunnable shardRunnable)
         => Dispatcher.Use(shardRunnable);
+
+    // Protected methods
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -97,7 +101,7 @@ public sealed class ShardBroker : WorkerBase, IHasServices
                     (mustLock ? addedShards : removedShards).Add(shardIndex);
                     lockedShards[shardIndex] = mustLock;
                 }
-                State.Value = new SchemaState(this, meshState, shardStates = nextShardStates);
+                State.Value = new BrokerState(this, meshState, shardStates = nextShardStates);
                 if (addedShards.Count > 0 || removedShards.Count > 0)
                     Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
                         ThisNode.Ref,
@@ -132,15 +136,15 @@ public sealed class ShardBroker : WorkerBase, IHasServices
 
             // Create the processor
             if (!lockToken.IsCancellationRequested) {
-                var runner = new ShardRunner(shardState, lockHolder);
-                shardState.Runner.Value = runner;
-                Dispatcher.Add(runner);
+                var shardLease = new ShardLease(shardState, lockHolder);
+                shardState.LeaseState.Value = shardLease;
+                Dispatcher.Add(shardLease);
                 try {
                     await TaskExt.NeverEnding(lockToken).SilentAwait(false);
                 }
                 finally {
-                    shardState.Runner.Value = null;
-                    await Dispatcher.Remove(runner).ConfigureAwait(false);
+                    shardState.LeaseState.Value = null;
+                    await Dispatcher.Remove(shardLease).ConfigureAwait(false);
                 }
             }
 
@@ -155,7 +159,7 @@ public sealed class ShardBroker : WorkerBase, IHasServices
 
     // Nested types
 
-    public sealed class SchemaState(
+    public sealed class BrokerState(
         ShardBroker shardBroker,
         MeshState meshState,
         IReadOnlyList<ShardState> shardStates)
@@ -163,6 +167,8 @@ public sealed class ShardBroker : WorkerBase, IHasServices
         public ShardBroker ShardBroker { get; } = shardBroker;
         public MeshState MeshState { get; } = meshState;
         public IReadOnlyList<ShardState> ShardStates { get; } = shardStates;
+        public Moment CreatedAt { get; } = shardBroker.Host.Clock.Now;
+        public TimeSpan Age => ShardBroker.Host.Clock.Now - CreatedAt;
     }
 
     public sealed class ShardState : IAsyncDisposable
@@ -173,7 +179,7 @@ public sealed class ShardBroker : WorkerBase, IHasServices
         public ShardBroker ShardBroker { get; }
         public int ShardIndex { get; }
         // ReSharper disable once MemberHidesStaticFromOuterClass
-        public MutableState<ShardRunner?> Runner { get; }
+        public MutableState<ShardLease?> LeaseState { get; }
         public CancellationToken CancelLockToken { get; }
         public bool MustLock => _lockTask != null;
         public Task WhenDisposed { get; }
@@ -182,8 +188,8 @@ public sealed class ShardBroker : WorkerBase, IHasServices
         {
             ShardBroker = shardBroker;
             ShardIndex = shardIndex;
-            Runner = ShardBroker.Host.StateFactory.NewMutable<ShardRunner?>(
-                category: StateCategories.Get(GetType(), nameof(Runner)));
+            LeaseState = ShardBroker.Host.StateFactory.NewMutable<ShardLease?>(
+                category: StateCategories.Get(GetType(), nameof(LeaseState)));
             _cancelLockTokenSource = ShardBroker.StopToken.CreateLinkedTokenSource();
             CancelLockToken = _cancelLockTokenSource.Token;
             WhenDisposed = Task.CompletedTask;
@@ -195,7 +201,7 @@ public sealed class ShardBroker : WorkerBase, IHasServices
             prevState._cancelLockTokenSource.CancelAndDisposeSilently();
             ShardBroker = prevState.ShardBroker;
             ShardIndex = prevState.ShardIndex;
-            Runner = prevState.Runner;
+            LeaseState = prevState.LeaseState;
             if (mustLock) {
                 _cancelLockTokenSource = ShardBroker.StopToken.CreateLinkedTokenSource();
                 CancelLockToken = _cancelLockTokenSource.Token;

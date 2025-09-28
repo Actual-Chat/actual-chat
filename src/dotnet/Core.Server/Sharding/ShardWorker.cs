@@ -1,17 +1,17 @@
 using ActualLab.Diagnostics;
 
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 public abstract class ShardWorker(IServiceProvider services, ShardScheme shardScheme)
     : WorkerBase, IHasServices
 {
+    protected ShardBroker ShardBroker { get; } = services.ShardBroker(shardScheme);
+    protected ShardScheme ShardScheme => ShardBroker.ShardScheme;
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     public IServiceProvider Services { get; } = services;
-    public ShardBroker ShardBroker { get; } = services.ShardBroker(shardScheme);
-    public ShardScheme ShardScheme => ShardBroker.ShardScheme;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -19,5 +19,5 @@ public abstract class ShardWorker(IServiceProvider services, ShardScheme shardSc
         await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
     }
 
-    protected abstract Task OnRun(ShardRunner runner, CancellationToken cancellationToken);
+    protected abstract Task OnRun(ShardLease shardLease, CancellationToken cancellationToken);
 }

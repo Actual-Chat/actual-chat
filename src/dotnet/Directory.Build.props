@@ -41,7 +41,6 @@
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
-    <Using Include="ActualChat.Blobs" Condition="$(IsServerSideProject)"/>
     <Using Include="ActualChat.Collections" />
     <Using Include="ActualChat.DependencyInjection" />
     <!-- <Using Include="ActualChat.Diagnostics" /> -->
@@ -88,6 +87,12 @@
     <Using Include="Microsoft.Extensions.Logging" />
     <Using Include="Microsoft.Extensions.Logging.Abstractions" />
     <Using Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(IsServerSideProject)">
+    <Using Include="ActualChat.Blobs" />
+    <Using Include="ActualChat.Mesh" />
+    <Using Include="ActualChat.Sharding" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">

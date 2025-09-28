@@ -1,4 +1,4 @@
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 public static class ShardSchemeExt
 {

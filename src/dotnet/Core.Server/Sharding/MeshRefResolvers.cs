@@ -1,6 +1,4 @@
-using ActualChat.Sharding;
-
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 public delegate MeshRef MeshRefResolver<in T>(T source);
 

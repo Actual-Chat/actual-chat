@@ -1,7 +1,6 @@
 using ActualChat.App.Server;
 using ActualChat.App.Server.Initializers;
 using ActualChat.Chat.Module;
-using ActualChat.Mesh;
 using ActualChat.Testing.Internal;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;

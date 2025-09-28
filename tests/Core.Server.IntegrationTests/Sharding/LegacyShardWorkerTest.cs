@@ -1,7 +1,7 @@
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
-namespace ActualChat.Core.Server.IntegrationTests;
+namespace ActualChat.Core.Server.IntegrationTests.Sharding;
 
 public class LegacyShardWorkerTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(LegacyShardWorkerTest)}", TestAppHostOptions.None, @out)

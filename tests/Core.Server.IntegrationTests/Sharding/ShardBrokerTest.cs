@@ -1,6 +1,6 @@
 using ActualChat.Testing.Host;
 
-namespace ActualChat.Core.Server.IntegrationTests;
+namespace ActualChat.Core.Server.IntegrationTests.Sharding;
 
 public class ShardBrokerTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(ShardBrokerTest)}", TestAppHostOptions.None, @out)
@@ -66,9 +66,8 @@ public class ShardBrokerTest(ITestOutputHelper @out)
             await TaskExt.NeverEnding(cancellationToken).SilentAwait();
             return;
 
-            async Task ShardRun(ShardRunner runner, CancellationToken ct)
-            {
-                var shardIndex = runner.ShardIndex;
+            async Task ShardRun(ShardLease shardLease, CancellationToken ct) {
+                var shardIndex = shardLease.ShardIndex;
                 @out.WriteLine($"-> {nameof(ShardRun)}({shardIndex} @ {thisNode.Ref}-{name})");
                 await TaskExt.NeverEnding(ct).SilentAwait();
                 @out.WriteLine($"<- {nameof(ShardRun)}({shardIndex} @ {thisNode.Ref}-{name})");
@@ -103,9 +102,8 @@ public class ShardBrokerTest(ITestOutputHelper @out)
             await TaskExt.NeverEnding(cancellationToken).SilentAwait();
             return;
 
-            async Task ShardRun(ShardRunner runner, CancellationToken ct)
-            {
-                var shardIndex = runner.ShardIndex;
+            async Task ShardRun(ShardLease shardLease, CancellationToken ct) {
+                var shardIndex = shardLease.ShardIndex;
                 Out.WriteLine($"-> {nameof(ShardRun)}({shardIndex} @ {this})");
                 lock (ShardOwners) {
                     var shardOwners = ShardOwners[shardIndex];

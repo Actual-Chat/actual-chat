@@ -1,6 +1,6 @@
 using ActualLab.Diagnostics;
 
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 public abstract class LegacyShardWorker(IServiceProvider services, ShardScheme shardScheme)
     : WorkerBase, IHasServices
