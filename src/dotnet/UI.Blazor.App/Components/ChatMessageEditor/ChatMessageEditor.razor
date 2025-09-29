@@ -197,14 +197,14 @@
             var relatedChatEntryId = relatedChatEntry?.EntryId;
             await ChatEditorUI.HideRelatedEntry(false);
 
-            PostMessageRequest cmd;
+            SendMessageRequest cmd;
             if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
                 if (relatedChatEntryId is null)
                     throw new InternalError("Invalid ChatUI.RelatedChatEntry value.");
-                cmd = new PostMessageRequest(relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
+                cmd = new SendMessageRequest(relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
             } else {
                 var repliedEntryLid = relatedChatEntryId?.LocalId;
-                cmd = new PostMessageRequest(Chat.Id, null, text) {
+                cmd = new SendMessageRequest(Chat.Id, null, text) {
                     RepliedEntryLid = repliedEntryLid,
                     Attachments = attachmentListSnapshot.Attachments,
                 };

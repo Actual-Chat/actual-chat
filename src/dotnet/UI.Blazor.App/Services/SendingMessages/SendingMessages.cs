@@ -83,7 +83,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     public void Cancel(SendingMessage sendingMessage)
         => sendingMessage.Cancel();
 
-    public async Task<Task<ChatEntry>> Post(PostMessageRequest cmd, CancellationToken cancellationToken)
+    public async Task<Task<ChatEntry>> Post(SendMessageRequest cmd, CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("Post '{Text}'", cmd.Text);
         var now = Clocks.SystemClock.Now;

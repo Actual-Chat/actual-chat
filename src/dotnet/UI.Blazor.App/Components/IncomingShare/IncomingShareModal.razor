@@ -93,11 +93,11 @@
         CancellationToken cancellationToken = default;
         foreach (var chatId in selectedChatIds) {
             if (!comment.IsNullOrEmpty()) {
-                var cmd2 = new PostMessageRequest(chatId, null, comment);
+                var cmd2 = new SendMessageRequest(chatId, null, comment);
                 _ = SendingMessages.Post(cmd2, cancellationToken);
             }
 
-            var cmd = new PostMessageRequest(chatId, null, text);
+            var cmd = new SendMessageRequest(chatId, null, text);
             _ = SendingMessages.Post(cmd, cancellationToken);
         }
 
@@ -196,7 +196,7 @@
 
     private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IAttachmentList attachments)
     {
-        var cmd = new PostMessageRequest(chatId, null, comment) {
+        var cmd = new SendMessageRequest(chatId, null, comment) {
             RepliedEntryLid = null,
             Attachments = attachments,
         };
