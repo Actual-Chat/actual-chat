@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 
 public partial class UploadSessions : UIServiceBase<AppUIHub>
 {
-    private readonly IUploadSessionRepository _repository;
+    private readonly UploadSessionRepo _repo;
     private readonly FileUploaderService _fileUploader;
     // ReSharper disable once NotAccessedField.Local
     private readonly Task _cleanupTask;
@@ -14,7 +14,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     public UploadSessions(AppUIHub hub) :base(hub)
     {
-        _repository = hub.Services.GetRequiredService<IUploadSessionRepository>();
+        _repo = new UploadSessionRepo(hub.Services);
         _fileUploader = hub.Services.GetRequiredService<FileUploaderService>();
 
         _fileUploader.ProgressChanged += OnProgressChanged;
@@ -45,7 +45,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         };
 
         _sessions[session.SessionId] = session;
-        await _repository.Save(session).ConfigureAwait(false);
+        await _repo.Save(session).ConfigureAwait(false);
 
         Log.LogInformation("Created session {SessionId}", session.SessionId);
 
@@ -75,7 +75,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         session.Status = UploadStatus.Uploading;
         session.LastUpdatedAt = Now;
-        await _repository.Save(session).ConfigureAwait(false);
+        await _repo.Save(session).ConfigureAwait(false);
 
         await _fileUploader.StartOrResumeUpload(session).ConfigureAwait(false);
         return session;
@@ -109,7 +109,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
                 session.Status = UploadStatus.Canceled;
             }
         }
-        await _repository.Save(session).ConfigureAwait(false);
+        await _repo.Save(session).ConfigureAwait(false);
     }
 
     public async Task DeleteSession(string sessionId)
@@ -119,7 +119,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             throw new InvalidOperationException("Cannot delete a not canceled/completed/failed session");
 
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
-        await _repository.Delete(sessionId).ConfigureAwait(false);
+        await _repo.Delete(sessionId).ConfigureAwait(false);
         Log.LogInformation("Deleted session {SessionId}", sessionId);
     }
 
@@ -143,7 +143,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (_sessions.TryGetValue(sessionId, out var session))
             return session;
 
-        session = await _repository.Get(sessionId).ConfigureAwait(false);
+        session = await _repo.Get(sessionId).ConfigureAwait(false);
         if (session is null)
             return null;
 
@@ -160,7 +160,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.Status = UploadStatus.Pending;
         session.ProgressTracker = new UploadProgressTracker();
         session.LastUpdatedAt = Now;
-        await _repository.Save(session).ConfigureAwait(false);
+        await _repo.Save(session).ConfigureAwait(false);
         return session;
     }
 
@@ -177,7 +177,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.ProgressTracker.SetResult(mediaContent);
         session.Status = UploadStatus.Completed;
         session.LastUpdatedAt = Now;
-        await _repository.Save(session).ConfigureAwait(false);
+        await _repo.Save(session).ConfigureAwait(false);
     }
 
     private async Task OnFailed(string sessionId, Exception error)
@@ -186,7 +186,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.ProgressTracker.SetException(error);
         session.Status = UploadStatus.Failed;
         session.LastUpdatedAt = Now;
-        await _repository.Save(session).ConfigureAwait(false);
+        await _repo.Save(session).ConfigureAwait(false);
     }
 
     private async Task OnCanceled(string sessionId)
@@ -195,6 +195,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.ProgressTracker.SetCanceled();
         session.Status = UploadStatus.Canceled;
         session.LastUpdatedAt = Now;
-        await _repository.Save(session).ConfigureAwait(false);
+        await _repo.Save(session).ConfigureAwait(false);
     }
 }

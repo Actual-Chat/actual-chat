@@ -11,9 +11,9 @@ partial class UploadSessions
         await Task.Delay(5000).ConfigureAwait(false);
         Log.LogDebug("About to cleanup upload sessions");
         try {
-            await _repository.Flush().ConfigureAwait(false);
+            await _repo.Flush().ConfigureAwait(false);
 
-            var items = await _repository.GetAll().ConfigureAwait(false);
+            var items = await _repo.GetAll().ConfigureAwait(false);
             var corruptedItemIds = new List<string>();
             var staleItems = new List<KeyValuePair<string, UploadSession>>();
             foreach (var item in items) {
@@ -34,8 +34,8 @@ partial class UploadSessions
 
             Log.LogDebug("About to delete {Count} corrupted upload sessions", corruptedItemIds.Count);
             foreach (var id in corruptedItemIds)
-                await _repository.Delete(id).ConfigureAwait(false);
-            await _repository.Flush().ConfigureAwait(false);
+                await _repo.Delete(id).ConfigureAwait(false);
+            await _repo.Flush().ConfigureAwait(false);
 
             Log.LogDebug("About to delete {Count} stale upload sessions", staleItems.Count);
             foreach (var item in staleItems) {
@@ -47,7 +47,7 @@ partial class UploadSessions
                     Log.LogError(ex, "Failed to cleanup upload session '{SessionId}'", item.Key);
                 }
             }
-            await _repository.Flush().ConfigureAwait(false);
+            await _repo.Flush().ConfigureAwait(false);
             Log.LogDebug("Completed upload sessions cleanup");
         }
         catch(Exception ex) {

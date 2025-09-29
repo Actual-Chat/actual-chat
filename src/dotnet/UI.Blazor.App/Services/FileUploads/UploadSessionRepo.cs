@@ -1,26 +1,21 @@
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public interface IUploadSessionRepository
-{
-    Task Save(UploadSession session, bool flush = true);
-    Task<UploadSession?> Get(string sessionId);
-    Task<IEnumerable<KeyValuePair<string, UploadSession>>> GetAll();
-    Task Delete(string sessionId);
-    Task Flush();
-}
-
-public class UploadSessionRepository : IUploadSessionRepository
+public class UploadSessionRepo
 {
     private readonly UploadSessionRepositoryInternal _internal;
 
     private const string Prefix = "";
     private static string Key(string sessionId) => $"{Prefix}{sessionId}";
 
-    public UploadSessionRepository(IServiceProvider services)
+    public UploadSessionRepo(IServiceProvider services)
     {
-        var options = services.GetRequiredService<UploadSessionRepositoryInternal.Options>();
+        var options = new UploadSessionRepositoryInternal.Options {
+            BackendFactory = c => new WebKvasBackend($"{BlazorUIAppModule.ImportName}.uploadSessions", c),
+        };
         _internal = new UploadSessionRepositoryInternal(options, services);
     }
 

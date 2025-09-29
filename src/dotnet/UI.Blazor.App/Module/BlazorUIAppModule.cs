@@ -199,10 +199,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         );
 
         // File uploads
-        services.AddSingleton(_ => new UploadSessionRepositoryInternal.Options {
-            BackendFactory = c => new WebKvasBackend($"{ImportName}.uploadSessions", c),
-        });
-        services.AddScoped<IUploadSessionRepository>(c => new UploadSessionRepository(c));
         services.AddScoped(c => new FileUploaderService(c));
         services.AddScoped<UploadSessions>(c => new UploadSessions(c.AppUIHub()));
         services.AddScoped(c => new AttachmentsController(c.AppUIHub()));
