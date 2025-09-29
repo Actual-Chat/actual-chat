@@ -46,11 +46,11 @@ public class SendMessageRequestsRepo
         await _internal.Flush(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<IEnumerable<KeyValuePair<string, SendMessageRequestEntry>>> GetStored(CancellationToken cancellationToken)
+    public async Task<IEnumerable<KeyValuePair<string, SendMessageRequestEntry?>>> GetStored(CancellationToken cancellationToken)
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         return (await _internal.GetAll<SendMessageRequestEntry>(cancellationToken).ConfigureAwait(false))
-            .Select(c => new KeyValuePair<string, SendMessageRequestEntry>(c.Item1, c.Item2))
+            .Select(c => new KeyValuePair<string, SendMessageRequestEntry?>(c.Item1, c.Item2))
             .ToArray();
     }
 

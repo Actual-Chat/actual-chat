@@ -207,7 +207,12 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         DebugLog?.LogInformation("StartStoredPostRequests");
         CancellationToken cancellationToken = CancellationToken.None;
         var entries = await _requestsRepo.GetStored(cancellationToken).ConfigureAwait(false);
-        foreach (var entry in entries.Select(c => c.Value)) {
+        foreach (var (uuid, entry) in entries) {
+            if (entry is null) {
+                // Failed to recreate a stored send request, let's forget about it.
+                await DiscardStoredPostRequest(uuid, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
             PostMessageRequestInternal requestInternal;
             try {
                 var uploads = await CreateAttachmentUploads(entry, null).ConfigureAwait(false);
