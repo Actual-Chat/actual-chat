@@ -56,7 +56,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new FileUploader(c.UIHub()));
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
-        services.AddScoped(c => new SendingMessages(c.AppUIHub()));
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c.AppUIHub()));
@@ -198,7 +197,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<RecordingTroubleshooterModal.Model, RecordingTroubleshooterModal>()
         );
 
-        // File uploads
+        // Sending messages & File uploads
+        services.AddScoped(c => new SendingMessages(c.AppUIHub()));
         services.AddScoped(c => new FileUploaderService(c));
         services.AddScoped<UploadSessions>(c => new UploadSessions(c.AppUIHub()));
         services.AddScoped(c => new AttachmentsController(c.AppUIHub()));
