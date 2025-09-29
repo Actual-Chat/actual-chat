@@ -1,4 +1,7 @@
+using System.IO;
+using System.Threading;
 using ActualChat.Hosting;
+using ActualChat.Mathematics;
 using Microsoft.Maui.Storage;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
@@ -51,7 +54,6 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
 
     private InferenceSession? _session;
     private DenseTensor<float> _state = new (new float[2 * 1 * 128], [2, 1, 128]);
-    private readonly DenseTensor<long> _srTensor = new (new long[] { SampleRate }, [1]);
     private RunningUnitMedian? _whenTalkingProbMedian;
 
     public readonly HostInfo HostInfo = services.HostInfo();
@@ -143,7 +145,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     {
         ThrowIfDisposed();
         Array.Clear(_context, 0, _context.Length);
-        _state = new DenseTensor<float>(new float[2 * 1 * 128], new[] { 2, 1, 128 });
+        _state = new DenseTensor<float>(new float[2 * 1 * 128], [2, 1, 128]);
         ResetProcessingState();
     }
 
@@ -292,7 +294,6 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         using var results = session.Run([
             NamedOnnxValue.CreateFromTensor("input", inputTensor),
             NamedOnnxValue.CreateFromTensor("state", stateTensor),
-            NamedOnnxValue.CreateFromTensor("sr", _srTensor),
         ]);
 
         // Retrieve outputs

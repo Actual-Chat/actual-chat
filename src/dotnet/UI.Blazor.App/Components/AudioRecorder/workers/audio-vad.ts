@@ -269,9 +269,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
         buffer.set(context);
         buffer.set(monoPcm, context.length);
         const tensor = new ort.Tensor(buffer, [1, buffer.length]);
-        const srArray = new BigInt64Array(1).fill(BigInt(16000));
-        const sr = new ort.Tensor(srArray);
-        const feeds = { input: tensor, state: state, sr: sr };
+        const feeds = { input: tensor, state: state };
         const result = await this.session.run(feeds);
         const { output, stateN } = result;
         this.state = stateN;
