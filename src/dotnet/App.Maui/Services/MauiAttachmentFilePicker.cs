@@ -5,6 +5,8 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFilePicker
 {
+    private static ILogger Log { get; } = StaticLog.For<MauiAttachmentFilePicker>();
+
     public async Task<AttachFileInfo[]> PickFiles(string acceptTypes)
     {
 #if ANDROID
@@ -25,6 +27,7 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
             return [];
 
         var fileInfos = new List<AttachFileInfo>();
+        var fileRefs = new List<string>();
         foreach (var fileResult in filesResults) {
             long fileLength;
             var stream = await fileResult.OpenReadAsync().ConfigureAwait(false);
@@ -44,7 +47,12 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
             };
             fileProvider.Initialize(services);
             fileInfos.Add(new AttachFileInfo(fileResult.FileName, fileResult.ContentType, fileLength, fileProvider));
+            fileRefs.Add(filePath);
         }
+        Log.LogDebug("Picked {Count} files. File refs:\n{FileRefs}",
+            fileInfos.Count,
+            string.Join(Environment.NewLine, fileRefs.Select(c => "'" + c + "'"))
+        );
         return fileInfos.ToArray();
     }
 
@@ -62,6 +70,10 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
             return null;
 
         var uris = await tcs.Task.ConfigureAwait(false);
+        Log.LogDebug("Picked {Count} visual media files. Uris:\n{Uris}",
+            uris.Length,
+            string.Join(Environment.NewLine, uris.Select(c => "'" + c + "'"))
+        );
         return Downloader.ConvertToAttachFileInfos(uris);
     }
 #endif

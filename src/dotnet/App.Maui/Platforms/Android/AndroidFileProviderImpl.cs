@@ -2,19 +2,37 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidFileProviderImpl(AndroidContentDownloader downloader, string uri) : IMauiFileProviderImpl
+public class AndroidFileProviderImpl : IMauiFileProviderImpl
 {
-    private AndroidContentDownloader Downloader { get; } = downloader;
-    private string Uri { get; } = uri;
+    public AndroidFileProviderImpl(AndroidContentDownloader downloader, string uri)
+    {
+        Downloader = downloader;
+        Uri = uri;
+        AndroidFilePermissionsKeeper.Register(uri, this);
+    }
+
+    private AndroidContentDownloader Downloader { get; }
+    private string Uri { get; }
 
     public Task<string> GetPreviewUrl()
         => Task.FromResult(AndroidContentDownloader.CreateWebRequestUri(Uri));
 
     public Task PrepareForSaving()
-        => Task.CompletedTask;
+    {
+        // NOTE: Files with the "file://" scheme selected with FilePicker gives SecurityException
+        // on an attempt to take persisted permission.
+        // However, we can open such files on the next app launch.
+        // So we can safely ignore this case.
+        if (!Uri.OrdinalStartsWith(System.Uri.UriSchemeFile))
+            AndroidFilePermissionsKeeper.TakeReadPermission(Uri, this);
+        return Task.CompletedTask;
+    }
 
     public Task ClearBeforeRemoving()
-        => Task.CompletedTask;
+    {
+        AndroidFilePermissionsKeeper.ReleaseReadPermission(Uri, this);
+        return Task.CompletedTask;
+    }
 
     public Task<Stream?> OpenRead()
     {
