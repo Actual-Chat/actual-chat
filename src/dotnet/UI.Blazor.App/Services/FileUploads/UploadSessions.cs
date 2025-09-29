@@ -11,13 +11,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     private readonly ConcurrentDictionary<string, UploadSession> _sessions = new (StringComparer.Ordinal);
     private Moment Now => Clocks.SystemClock.Now;
-    private string UsageId { get; }
 
     public UploadSessions(AppUIHub hub) :base(hub)
     {
         _repository = hub.Services.GetRequiredService<IUploadSessionRepository>();
         _fileUploader = hub.Services.GetRequiredService<FileUploaderService>();
-        UsageId = Ulid.NewUlid().ToString();
 
         _fileUploader.ProgressChanged += OnProgressChanged;
         _fileUploader.Completed += OnCompleted;
@@ -39,7 +37,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         var session = new UploadSession {
             SessionId = Guid.NewGuid().ToString(),
-            UsageId = UsageId,
             FileProvider = fileProvider,
             Status = UploadStatus.Pending,
             CreatedAt = Now,
@@ -150,13 +147,13 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session is null)
             return null;
 
-        session.UsageId = UsageId;
-        await _repository.Save(session, false).ConfigureAwait(false);
-
         session.FileProvider.Initialize(Hub.Services);
         _sessions[sessionId] = session;
         return session;
     }
+
+    private bool CheckIfTouched(string sessionId)
+        => _sessions.ContainsKey(sessionId);
 
     private async Task<UploadSession> ResetSessionInternal(UploadSession session)
     {

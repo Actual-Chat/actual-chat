@@ -23,7 +23,7 @@ partial class UploadSessions
                     continue;
                 }
 
-                if (!OrdinalEquals(UsageId, uploadSession.UsageId))
+                if (!CheckIfTouched(uploadSession.SessionId))
                     staleItems.Add(item);
             }
 
