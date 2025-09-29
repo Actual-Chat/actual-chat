@@ -40,7 +40,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         var session = new UploadSession {
             SessionId = Guid.NewGuid().ToString(),
             UsageId = UsageId,
-            FileId = Guid.NewGuid().ToString(),
             FileProvider = fileProvider,
             Status = UploadStatus.Pending,
             CreatedAt = Now,
