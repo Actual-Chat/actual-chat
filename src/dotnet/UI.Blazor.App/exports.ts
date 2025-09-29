@@ -36,6 +36,7 @@ export * from './Components/SearchPanel/search-panel';
 export * from './Components/Selection/selection-host';
 export * from './Components/TranslationSubHeader/translation-svg.lit';
 export * from './Services/LanguageUI/language-ui';
+export * from './Services/SendingMessages/send-message-requests';
 export * from './Services/FileUploads/upload-sessions';
 
 export * from './notification-ui';

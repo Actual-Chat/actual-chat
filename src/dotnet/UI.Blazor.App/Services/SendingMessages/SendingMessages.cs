@@ -12,7 +12,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     private readonly WeakValueTable<string, ChatEntry> _clientEntries = new ();
     private readonly List<(SendingMessage, AttachmentUploads)> _uploads = new ();
     private readonly Lock _chatSendingMessagesLock = new (); // This lock is used add/remove ChatSendingMessages and add/remove items inside.
-    private readonly PostRequestsStorage _requestsStorage;
+    private readonly SendMessageRequestsRepo _requestsRepo;
     private readonly Task _whenReady;
     private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly MessageProcessor<PostMessageQueueItem> _messageProcessor;
@@ -28,7 +28,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     public SendingMessages(AppUIHub hub) : base(hub)
     {
         DebugLog?.LogInformation("SendingMessages constructor");
-        _requestsStorage = new PostRequestsStorage(hub);
+        _requestsRepo = new SendMessageRequestsRepo(hub);
         _whenReady = BackgroundTask.Run(StartStoredPostRequests);
         var cancellationToken = hub.BlazorAppLifecycle.StopToken;
         _cancellationTokenSource = cancellationToken.CreateLinkedTokenSource();
@@ -105,9 +105,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 attachEntries.Add(attachEntry);
             }
         }
-        var entry = new PostMessageRequestEntry(uuid, now, cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid, attachEntries.ToArray());
+        var entry = new SendMessageRequestEntry(uuid, now, cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid, attachEntries.ToArray());
         DebugLog?.LogInformation("About to store post request '{Text}'", cmd.Text);
-        await _requestsStorage.Add(entry, cancellationToken).ConfigureAwait(false);
+        await _requestsRepo.Add(entry, cancellationToken).ConfigureAwait(false);
 
         var uploads = await CreateAttachmentUploads(entry, cmd.Attachments).ConfigureAwait(false);
         var requestInternal = CreatePostMessageRequestInternal(entry, uploads);
@@ -125,7 +125,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         _cancellationTokenSource.Dispose();
     }
 
-    private static PostMessageRequestInternal CreatePostMessageRequestInternal(PostMessageRequestEntry entry,
+    private static PostMessageRequestInternal CreatePostMessageRequestInternal(SendMessageRequestEntry entry,
         AttachmentUploads? uploads)
         => new (entry.Uuid,
             entry.Now,
@@ -135,7 +135,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             entry.RepliedEntryLid,
             uploads);
 
-    private async Task<AttachmentUploads?> CreateAttachmentUploads(PostMessageRequestEntry entry, IAttachmentList? sourceAttachments)
+    private async Task<AttachmentUploads?> CreateAttachmentUploads(SendMessageRequestEntry entry, IAttachmentList? sourceAttachments)
     {
         var attachEntries = entry.AttachFileRequests;
         if (attachEntries.Length == 0)
@@ -173,7 +173,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             }
 
             async Task CleanupRequest() {
-                await _requestsStorage.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
+                await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
             }
 
             var attachment = new Attachment(previewUrl, attachEntry.FileName, attachEntry.FileType) {
@@ -206,8 +206,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     {
         DebugLog?.LogInformation("StartStoredPostRequests");
         CancellationToken cancellationToken = CancellationToken.None;
-        var entries = await _requestsStorage.GetStored(cancellationToken).ConfigureAwait(false);
-        foreach (var entry in entries) {
+        var entries = await _requestsRepo.GetStored(cancellationToken).ConfigureAwait(false);
+        foreach (var entry in entries.Select(c => c.Value)) {
             PostMessageRequestInternal requestInternal;
             try {
                 var uploads = await CreateAttachmentUploads(entry, null).ConfigureAwait(false);
@@ -270,7 +270,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     private async Task DiscardStoredPostRequest(string postRequestUuid, CancellationToken cancellationToken)
     {
         try {
-            await _requestsStorage.Remove(postRequestUuid, cancellationToken).ConfigureAwait(false);
+            await _requestsRepo.Remove(postRequestUuid, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to remove stored post request '{Id}'", postRequestUuid);
