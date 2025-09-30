@@ -33,31 +33,39 @@ public sealed partial class ShardBroker
         shardIndex = shardIndex.PositiveModulo(ShardScheme.ShardCount);
         var cCurrent = Computed.Current;
         var cBrokerState = State.Computed;
-        var cLeaseState = cBrokerState.Value.ShardStates[shardIndex].LeaseState.Computed;
-        if (cLeaseState.Value is null)
-            return CompleteAsync();
+        var leaseState = cBrokerState.Value.ShardStates[shardIndex].LeaseState;
+        var cLeaseState = leaseState.Computed;
+
+        Task<bool> resultTask;
+        if (cLeaseState.Value is null) {
+            var waitTimeout = NewLeaseWaitTimeout.Next() - cBrokerState.Value.Age;
+            if (waitTimeout > TimeSpan.Zero)
+                return CompleteAsync(waitTimeout);
+
+            resultTask = ActualLab.Async.TaskExt.FalseTask;
+        }
+        else
+            resultTask = ActualLab.Async.TaskExt.TrueTask;
 
         if (cCurrent is not null)
             ComputedImpl.AddDependency(cCurrent, cLeaseState);
-        return ActualLab.Async.TaskExt.FalseTask;
+        return resultTask;
 
-        async Task<bool> CompleteAsync() {
-            var waitTimeout = NewLeaseWaitTimeout.Next() - cBrokerState.Value.Age;
-            if (waitTimeout <= TimeSpan.Zero)
-                return false;
-
+        async Task<bool> CompleteAsync(TimeSpan waitTimeout) {
             try {
-                cLeaseState = await cLeaseState
+                await cLeaseState
                     .When(x => x is not null, cancellationToken)
                     .WaitAsync(waitTimeout, cancellationToken)
                     .ConfigureAwait(false);
-                if (cCurrent is not null)
-                    ComputedImpl.AddDependency(cCurrent, cLeaseState);
-                return true;
             }
             catch (TimeoutException) {
-                return false;
+                // Intended
             }
+
+            cLeaseState = leaseState.Computed; // cLeaseState.Update, but faster
+            if (cCurrent is not null)
+                ComputedImpl.AddDependency(cCurrent, cLeaseState);
+            return cLeaseState.Value is not null;
         }
     }
 
@@ -75,31 +83,39 @@ public sealed partial class ShardBroker
         shardIndex = shardIndex.PositiveModulo(ShardScheme.ShardCount);
         var cCurrent = Computed.Current;
         var cBrokerState = State.Computed;
-        var cLeaseState = cBrokerState.Value.ShardStates[shardIndex].LeaseState.Computed;
-        if (cLeaseState.Value is null)
-            return CompleteAsync();
+        var leaseState = cBrokerState.Value.ShardStates[shardIndex].LeaseState;
+        var cLeaseState = leaseState.Computed;
+
+        Task<ShardLease> resultTask;
+        if (cLeaseState.Value is null) {
+            var waitTimeout = NewLeaseWaitTimeout.Next() - cBrokerState.Value.Age;
+            if (waitTimeout > TimeSpan.Zero)
+                return CompleteAsync(waitTimeout);
+
+            resultTask = Task.FromException<ShardLease>(RpcRerouteException.MustReroute());
+        }
+        else
+            resultTask = (Task<ShardLease>)cLeaseState.GetValuePromise();
 
         if (cCurrent is not null)
             ComputedImpl.AddDependency(cCurrent, cLeaseState);
-        return (Task<ShardLease>)cLeaseState.GetValuePromise();
+        return resultTask;
 
-        async Task<ShardLease> CompleteAsync() {
-            var waitTimeout = NewLeaseWaitTimeout.Next() - cBrokerState.Value.Age;
-            if (waitTimeout <= TimeSpan.Zero)
-                throw RpcRerouteException.MustReroute();
-
+        async Task<ShardLease> CompleteAsync(TimeSpan waitTimeout) {
             try {
-                cLeaseState = await cLeaseState
+                await cLeaseState
                     .When(x => x is not null, cancellationToken)
                     .WaitAsync(waitTimeout, cancellationToken)
                     .ConfigureAwait(false);
-                if (cCurrent is not null)
-                    ComputedImpl.AddDependency(cCurrent, cLeaseState);
-                return cLeaseState.Value!;
             }
             catch (TimeoutException) {
-                throw RpcRerouteException.MustReroute();
+                // Intended
             }
+
+            cLeaseState = leaseState.Computed; // cLeaseState.Update, but faster
+            if (cCurrent is not null)
+                ComputedImpl.AddDependency(cCurrent, cLeaseState);
+            return cLeaseState.Value ?? throw RpcRerouteException.MustReroute();
         }
     }
 }
