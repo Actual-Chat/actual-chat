@@ -84,7 +84,7 @@ public class TestShardComputeService(IServiceProvider services, ITestOutputHelpe
     [ComputeMethod]
     public virtual async Task<CpuTimestamp> GetTime(string key, CancellationToken cancellationToken = default)
     {
-        await ShardBroker.RequireLeaseOrReroute(key, cancellationToken);
+        await ShardBroker.RequireLeaseOrReroute(key, cancellationToken).ConfigureAwait(false);
         return CpuTimestamp.Now;
     }
 }
