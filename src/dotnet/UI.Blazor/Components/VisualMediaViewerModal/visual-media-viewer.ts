@@ -55,21 +55,23 @@ export class VisualMediaViewer {
             threshold: 10,
         };
         Object.assign(this.swiperEl, mainSwiperParams);
-
-        const footerSwiperParams = {
-            slidesPerView: 'auto',
-            watchSlidesProgress: true,
-            freeMode: true,
-        }
-        Object.assign(this.thumbsEl, footerSwiperParams);
-
         this.swiperEl.initialize();
-        this.thumbsEl.initialize();
-
         this.swiper = this.swiperEl.swiper as SwiperElement;
-        this.thumbs = this.thumbsEl.swiper as SwiperElement;
 
-        void this.initThumbs();
+
+        if (this.thumbsEl) {
+            const footerSwiperParams = {
+                slidesPerView: 'auto',
+                watchSlidesProgress: true,
+                freeMode: true,
+            }
+            Object.assign(this.thumbsEl, footerSwiperParams);
+            this.thumbsEl.initialize();
+            this.thumbs = this.thumbsEl.swiper as SwiperElement;
+            void this.initThumbs();
+        }
+
+
 
         this.swiper.on('init', () => this.safeCenterThumb());
 
@@ -108,9 +110,9 @@ export class VisualMediaViewer {
             this.addImageListeners(container);
         });
 
-         fromEvent(this.overlay, 'click')
-             .pipe(takeUntil(this.disposed$))
-             .subscribe((event: PointerEvent) => this.onClick(event));
+        fromEvent(this.overlay, 'click')
+         .pipe(takeUntil(this.disposed$))
+         .subscribe((event: PointerEvent) => this.onClick(event));
 
         fromEvent(this.overlay, 'dblclick')
             .pipe(takeUntil(this.disposed$))
@@ -279,34 +281,39 @@ export class VisualMediaViewer {
         const footer = this.footer;
         const header = this.header;
         const viewer = this.imageViewer;
-        if (!footer || !header || !viewer)
+        const canContinue = (!this.thumbsEl && header && viewer) || (this.thumbsEl && footer && header && viewer);
+        if (!canContinue)
             return;
 
         this.isHeaderAndFooterVisible = true;
 
-        footer.style.transition = 'none';
-        footer.style.opacity = '0';
-        footer.style.transform = 'translateY(3.5rem)';
-
         header.classList.remove('show-to-hide');
-        footer.classList.remove('show-to-hide');
         viewer.classList.remove('navigation-hidden');
         header.classList.add('hide-to-show');
-        footer.classList.add('hide-to-show');
         viewer.classList.add('navigation-visible');
 
-        await this.safeCenterThumb();
+        if (footer) {
+            footer.style.transition = 'none';
+            footer.style.opacity = '0';
+            footer.style.transform = 'translateY(3.5rem)';
+            footer.classList.remove('show-to-hide');
+            footer.classList.add('hide-to-show');
 
-        requestAnimationFrame(() => {
-            footer.style.transition = '';
-            footer.style.opacity = '1';
-            footer.style.transform = '';
-            this.fixVideoPosition();
-        });
+            await this.safeCenterThumb();
 
-        setTimeout(() => {
-            this.thumbs.update();
-        }, 50);
+            requestAnimationFrame(() => {
+                footer.style.transition = '';
+                footer.style.opacity = '1';
+                footer.style.transform = '';
+                this.fixVideoPosition();
+            });
+        }
+
+        if (this.thumbs) {
+            setTimeout(() => {
+                this.thumbs.update();
+            }, 50);
+        }
 
         this.setHideTimeout();
     }
@@ -318,32 +325,40 @@ export class VisualMediaViewer {
         const footer = this.footer;
         const header = this.header;
         const viewer = this.imageViewer;
-        if (!footer || !header || !viewer)
+        const canContinue = (!this.thumbsEl && header && viewer) || (this.thumbsEl && footer && header && viewer);
+        if (!canContinue)
             return;
 
         this.isHeaderAndFooterVisible = false;
 
-        footer.style.transition = 'none';
-        footer.style.transform = 'translateY(3.5rem)';
+
 
         header.classList.remove('hide-to-show');
-        footer.classList.remove('hide-to-show');
         viewer.classList.remove('navigation-visible');
         header.classList.add('show-to-hide');
-        footer.classList.add('show-to-hide');
         viewer.classList.add('navigation-hidden');
 
-        await this.safeCenterThumb();
+        if (footer) {
+            footer.style.transition = 'none';
+            footer.style.transform = 'translateY(3.5rem)';
+            footer.classList.remove('hide-to-show');
+            footer.classList.add('show-to-hide');
 
-        requestAnimationFrame(() => {
-            footer.style.transition = '';
-            footer.style.transform = '';
-            this.fixVideoPosition();
-        });
+            await this.safeCenterThumb();
 
-        setTimeout(() => {
-            this.thumbs.update();
-        }, 50);
+            requestAnimationFrame(() => {
+                footer.style.transition = '';
+                footer.style.transform = '';
+                this.fixVideoPosition();
+            });
+
+        }
+
+        if (this.thumbs) {
+            setTimeout(() => {
+                this.thumbs.update();
+            }, 50);
+        }
     }
 
     private toggleHeaderAndFooterVisibility() {
