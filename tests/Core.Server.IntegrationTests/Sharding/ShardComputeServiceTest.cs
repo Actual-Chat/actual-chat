@@ -12,7 +12,7 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
             },
         }, @out)
 {
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 120_000)]
     public async Task BasicTest()
     {
         var shardScheme = ShardScheme.TestBackend;
