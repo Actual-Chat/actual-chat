@@ -209,6 +209,7 @@
                     await window.App.whenBundleReady;
                     const isVisibleData = await ui.localSettings.kvas.get('RightPanelUI.RightPanel.IsVisible');
                     const isRightPanelVisible = isVisibleData === 'AAEBAQ==';
+                    document.body.dataset.rpVisible = isRightPanelVisible ? "true" : "false";
                     overlay.innerHTML = `
                         <splash-page-skeleton isRightPanelVisible="${isRightPanelVisible}"/>
                     `;
