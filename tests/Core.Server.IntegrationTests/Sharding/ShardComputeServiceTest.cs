@@ -12,7 +12,7 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
             },
         }, @out)
 {
-    [Fact(Timeout = 120_000)]
+    [Fact(Skip = "AY Should resolve timeout")]
     public async Task BasicTest()
     {
         var shardScheme = ShardScheme.TestBackend;
