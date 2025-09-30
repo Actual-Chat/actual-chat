@@ -3,8 +3,11 @@
 }
 .skeleton-left-panel {
     @apply flex-x;
-    @apply w-full md:w-96 lg:w-112 xl:w-128 2xl:w-144;
+    @apply w-full md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
     @apply bg-03;
+}
+body.wide.rp-closed .skeleton-left-panel {
+    @apply md:w-96 lg:w-112 xl:w-128 2xl:w-144;
 }
 .splash-page.rp-open .skeleton-left-panel {
     @apply w-full md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
@@ -59,29 +62,35 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     scrollbar-width: none;
 }
 .chat-skeleton-panel {
+    @apply absolute md:relative;
     @apply flex-1 hidden md:flex-y;
     @apply bg-01;
 }
 .splash-page.rp-open .chat-skeleton-panel {
     @apply hidden lg:flex;
 }
-.right-skeleton-panel {
+.rp-open .right-skeleton-panel {
+    @apply absolute lg:relative right-0;
     @apply flex-none flex-y;
     @apply bg-03;
-    @apply lg:w-96 xl:w-112 2xl:w-128 h-full;
+    @apply md:w-1/2 lg:w-96 xl:w-112 2xl:w-128 h-full;
+    @apply md:border-l md:border-[var(--separator)] lg:border-none;
 }
-body[data-rp-visible="false"] .right-skeleton-panel {
+.rp-closed .right-skeleton-panel {
     @apply hidden;
 }
 body.narrow .right-skeleton-panel {
     @apply hidden;
+}
+.right-skeleton-panel > .c-wrapper {
+    @apply relative;
+    @apply h-full;
 }
 .splash-page.rp-closed .right-skeleton-panel {
     @apply hidden;
 }
 .splash-page.rp-open .right-skeleton-panel {
     @apply md:w-1/2 lg:w-96 xl:w-112 2xl:w-128;
-    @apply md:border-l md:border-[var(--separator)] lg:border-none;
 }
 .right-skeleton-panel .skeleton-panel-header {
     @apply grid gap-y-2;
