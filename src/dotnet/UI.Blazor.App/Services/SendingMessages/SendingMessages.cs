@@ -254,7 +254,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             PostMessageRequestInternal requestInternal;
             try {
                 var uploads = await CreateAttachmentUploads(entry, null).ConfigureAwait(false);
-                var checkResend = chatIds.Add(entry.ChatId); // NOTE: check only for the first request per chat.
+                var checkResend = chatIds.Add(entry.ChatId) && !entry.ClientId.IsNullOrEmpty(); // NOTE: check only for the first request per chat.
                 requestInternal = CreatePostMessageRequestInternal(entry, uploads, checkResend);
             }
             catch (Exception e) {
