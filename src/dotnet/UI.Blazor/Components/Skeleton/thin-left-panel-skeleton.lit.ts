@@ -12,7 +12,6 @@ export class ThinLeftPanelSkeletonLit extends LitElement {
     :host {
         --button-margin-left: 0px;
         --button-margin-right: 0px;
-        --delimiter-width: 3rem;
 
         display: flex;
         flex-direction: column;
@@ -43,7 +42,7 @@ export class ThinLeftPanelSkeletonLit extends LitElement {
     }
     .c-delimiter {
         margin: 0 0.25rem 0.5rem 0.25rem;
-        width: var(--delimiter-width);
+        width: 2.5rem;
         border-top: 1px solid var(--nav-separator);
         @apply mx-1 w-10 md:w-12 border-t border-nav-separator;
     }
@@ -110,11 +109,9 @@ export class ThinLeftPanelSkeletonLit extends LitElement {
         if (ScreenSize.isNarrow()) {
             this.style.setProperty('--button-margin-left', '5px');
             this.style.setProperty('--button-margin-right', '5px');
-            this.style.setProperty('--delimiter-width', '2.5rem');
         } else {
             this.style.setProperty('--button-margin-left', '0');
             this.style.setProperty('--button-margin-right', '0');
-            this.style.setProperty('--delimiter-width', '3rem');
         }
     }
 }
