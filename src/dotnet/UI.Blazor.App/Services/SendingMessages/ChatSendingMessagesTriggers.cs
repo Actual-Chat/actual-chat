@@ -14,5 +14,13 @@ public class ChatSendingMessagesTriggers : IComputeService, IHasIsDisposed
     public virtual Task<bool> IsSending(SendingMessage sendingMessage)
         => Task.FromResult(!sendingMessage.IsCompleted);
 
+    [ComputeMethod]
+    public virtual Task<Unit> OnMediaUploadsChanged(SendingMessage sendingMessage)
+        => ActualLab.Async.TaskExt.UnitTask;
+
+    [ComputeMethod]
+    public virtual Task<Unit> OnMediaUploadsChanged(ChatEntryId chatEntryId)
+        => ActualLab.Async.TaskExt.UnitTask;
+
     public bool IsDisposed { get; set; }
 }

@@ -173,6 +173,10 @@
                 />
             </div>
             @if (entry.Attachments.Length > 0) {
+                if (_hasShownUploads) {
+                    Hub.SendingMessages.NotifyAttachmentsLoaded(entry.Id);
+                    _hasShownUploads = false;
+                }
                 var (mediaList, fileList) = GetOrderedAttachmentList(entry);
                 <div class="message-attachments">
                     <VisualMediaAttachmentList MediaList="@mediaList" />
@@ -194,6 +198,7 @@
                     var mediaUploads = Hub.SendingMessages.GetMediaUploads(entry);
                     if (mediaUploads is not null) {
                         <ChatEntryMessageAttachmentUploadsView Uploads="@mediaUploads.Attachments"/>
+                        _hasShownUploads = true;
                     }
                 } else {
                     // Display progress indicator or something else indicating that we expect addition content to be shown soon.
@@ -242,6 +247,7 @@
     private ChatEntryMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
     private bool _hasBeenRead;
+    private bool _hasShownUploads;
 
     // Shortcuts
     private ChatEntry Entry => Message.Entry;

@@ -46,6 +46,19 @@ public class SendMessageRequestsRepo
         await _internal.Flush(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task MarkMessageHasCreated(string requestUuid, long chatEntryLocalId, CancellationToken cancellationToken)
+    {
+        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        var entry = await _internal.Get<SendMessageRequestEntry>(requestUuid, cancellationToken).ConfigureAwait(false);
+        if (entry == null)
+            throw StandardError.Internal("Can not find given send message request entry.");
+        entry = entry with {
+            NewChatEntryLocalId = chatEntryLocalId,
+        };
+        await _internal.Set(entry.Uuid, entry, cancellationToken).ConfigureAwait(false);
+        await _internal.Flush(cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<IEnumerable<KeyValuePair<string, SendMessageRequestEntry?>>> GetStored(CancellationToken cancellationToken)
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
@@ -92,6 +105,8 @@ public partial record SendMessageRequestEntry(
     ) : IHasId<string>
 {
     string IHasId<string>.Id => Uuid;
+
+    [DataMember, MemoryPackOrder(7)] public long? NewChatEntryLocalId { get; init; }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
