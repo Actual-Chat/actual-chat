@@ -35,6 +35,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(_ => new AnalyticEvents());
         services.AddScoped(c => new NavbarUI(c));
         services.AddScoped(c => new PanelsUI(c.UIHub()));
+        services.AddScoped(c => new RightPanelStoredState(c.UIHub()));
         services.AddScoped(c => new AuthorUI(c.AppUIHub()));
         services.AddScoped(c => new EditMembersUI(c.AppUIHub()));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
