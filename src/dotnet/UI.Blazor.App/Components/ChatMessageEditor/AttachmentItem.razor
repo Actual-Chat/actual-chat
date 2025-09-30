@@ -34,7 +34,7 @@
                 <span class="spinner-icon-wrapper">
                     @if (attachment.IsUploading) {
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                    } else if (attachment.Failed && RestartClick.HasDelegate) {
+                    } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
                         <ButtonRound Click="@RestartClick">
                             <i class="icon-sync text-2xl"></i>
                         </ButtonRound>
