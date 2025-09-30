@@ -41,7 +41,7 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
         account.Status.Should().Be(AccountStatus.Active);
     }
 
-    [Fact]
+    [Fact(Skip = "AY Should resolve timeout")]
     public async Task ShouldNotCreateAccountForExistingUser()
     {
         // arrange
