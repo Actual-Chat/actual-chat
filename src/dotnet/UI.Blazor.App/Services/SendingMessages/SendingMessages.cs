@@ -22,7 +22,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
 
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private UploadSessions UploadSessions => Hub.UploadSessions;
-    private Moment Now => Hub.Clocks.SystemClock.Now;
+    private IChats Chats => Hub.Chats;
+    private Moment Now => Clocks.SystemClock.Now;
 
     public Task WhenReady => _whenReady;
 
@@ -137,12 +138,13 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 attachEntries.Add(attachEntry);
             }
         }
-        var entry = new SendMessageRequestEntry(uuid, now, cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid, attachEntries.ToArray());
+        var clientId = Guid.NewGuid().ToString();
+        var entry = new SendMessageRequestEntry(uuid, now, cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid, attachEntries.ToArray(), clientId);
         DebugLog?.LogInformation("About to store post request '{Text}'", cmd.Text);
         await _requestsRepo.Add(entry, cancellationToken).ConfigureAwait(false);
 
         var uploads = await CreateAttachmentUploads(entry, cmd.Attachments).ConfigureAwait(false);
-        var requestInternal = CreatePostMessageRequestInternal(entry, uploads);
+        var requestInternal = CreatePostMessageRequestInternal(entry, uploads, false);
         _ = BackgroundTask.Run(async () => {
             DebugLog?.LogInformation("About to post internal '{Text}'", cmd.Text);
             await PostInternal(requestInternal, resultSource, cancellationToken).ConfigureAwait(false);
@@ -158,7 +160,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     }
 
     private static PostMessageRequestInternal CreatePostMessageRequestInternal(SendMessageRequestEntry entry,
-        AttachmentUploads? uploads)
+        AttachmentUploads? uploads, bool checkResend)
         => new (entry.Uuid,
             entry.Now,
             entry.ChatId,
@@ -166,7 +168,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             entry.Text,
             entry.RepliedEntryLid,
             uploads,
-            entry.NewChatEntryLocalId);
+            entry.ClientId,
+            entry.NewChatEntryLocalId,
+            checkResend);
 
     private async Task<AttachmentUploads?> CreateAttachmentUploads(SendMessageRequestEntry entry, IAttachmentList? sourceAttachments)
     {
@@ -240,6 +244,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         DebugLog?.LogInformation("StartStoredPostRequests");
         CancellationToken cancellationToken = CancellationToken.None;
         var entries = await _requestsRepo.GetStored(cancellationToken).ConfigureAwait(false);
+        var chatIds = new HashSet<ChatId>();
         foreach (var (uuid, entry) in entries) {
             if (entry is null) {
                 // Failed to recreate a stored send request, let's forget about it.
@@ -249,7 +254,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             PostMessageRequestInternal requestInternal;
             try {
                 var uploads = await CreateAttachmentUploads(entry, null).ConfigureAwait(false);
-                requestInternal = CreatePostMessageRequestInternal(entry, uploads);
+                var checkResend = chatIds.Add(entry.ChatId); // NOTE: check only for the first request per chat.
+                requestInternal = CreatePostMessageRequestInternal(entry, uploads, checkResend);
             }
             catch (Exception e) {
                 Log.LogError(e, "Failed to recreate stored post request");
@@ -439,7 +445,14 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     private async Task<ChatEntry> ProcessCommand(PostMessageQueueItem command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId, request.Text, request.RepliedEntryLid);
+        if (request.CheckResend) {
+            var chatEntry1 = await TryFindPreviouslySendEntry(request.ChatId, request.ClientId, cancellationToken).ConfigureAwait(false);
+            if (chatEntry1 is not null)
+                return chatEntry1;
+        }
+        var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId, request.Text, request.RepliedEntryLid) {
+            ClientId = request.ClientId,
+        };
         if (request.AttachmentUploads is not null) {
             if (!request.AttachmentUploads.WhenUploaded.IsCompletedSuccessfully)
                 cmd = cmd with { HasAttachmentUploads = true };
@@ -457,6 +470,35 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 !cmd.Text.IsNullOrEmpty(),
                 cmd.EntryAttachments.Length);
         return chatEntry;
+    }
+
+    private async Task<ChatEntry?> TryFindPreviouslySendEntry(ChatId chatId, string clientId, CancellationToken cancellationToken)
+    {
+        var range = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        if (range.IsEmpty)
+            return null;
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return null;
+
+        var ownAuthor = chat.Rules.Author;
+        if (ownAuthor is null)
+            return null;
+
+        var ownAuthorId = ownAuthor.Id;
+        var entryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
+        var counter = 0;
+        const int maxCount = 200; // View the last 200 messages
+        await foreach (var chatEntry1 in entryReader.ReadReverse(range, cancellationToken).ConfigureAwait(false)) {
+            if (chatEntry1.AuthorId == ownAuthorId && OrdinalEquals(chatEntry1.ClientId, clientId))
+                return chatEntry1;
+
+            counter++;
+            if (counter >= maxCount)
+                break;
+        }
+        return null;
     }
 
     private async Task CreateAttachments(ChatEntry chatEntry, AttachmentUploads attachmentUploads, CancellationToken cancellationToken = default)
@@ -533,7 +575,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         string Text,
         Option<long?> RepliedEntryLid,
         AttachmentUploads? AttachmentUploads,
-        long? NewChatEntryLocalId
+        string ClientId,
+        long? NewChatEntryLocalId,
+        bool CheckResend
     ) : IHasId<string>
     {
         string IHasId<string>.Id => Uuid;

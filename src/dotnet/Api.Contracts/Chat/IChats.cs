@@ -148,6 +148,7 @@ public sealed partial record Chats_UpsertTextEntry(
     [DataMember, MemoryPackOrder(10)] public Moment? ForwardedChatEntryBeginsAt { get; set; }
     [DataMember, MemoryPackOrder(11)] public TextEntryAttachment[] EntryAttachments { get; set; } = [];
     [DataMember, MemoryPackOrder(12)] public bool HasAttachmentUploads { get; set; }
+    [DataMember, MemoryPackOrder(13)] public string ClientId { get; set; } = "";
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

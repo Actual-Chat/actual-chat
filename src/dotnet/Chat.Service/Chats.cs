@@ -364,6 +364,7 @@ public class Chats(IServiceProvider services) : IChats
                 Change.Update(new ChatEntryDiff {
                     Content = text,
                     RepliedEntryLid = repliedEntryLid,
+                    ClientId = command.ClientId,
                     HasAttachmentUploads = command.HasAttachmentUploads,
                     Attachments = command.EntryAttachments,
                 }));
@@ -385,6 +386,7 @@ public class Chats(IServiceProvider services) : IChats
                     ForwardedChatEntryId = command.ForwardedChatEntryId,
                     ForwardedChatEntryBeginsAt = command.ForwardedChatEntryBeginsAt,
                     Attachments = attachments.Length == 0 ? null : attachments,
+                    ClientId = command.ClientId,
                     HasAttachmentUploads = command.HasAttachmentUploads,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);

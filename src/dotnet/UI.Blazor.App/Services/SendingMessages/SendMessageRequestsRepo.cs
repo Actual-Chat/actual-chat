@@ -101,12 +101,13 @@ public partial record SendMessageRequestEntry(
     [property: DataMember, MemoryPackOrder(3)] long? LocalId,
     [property: DataMember, MemoryPackOrder(4)] string Text,
     [property: DataMember, MemoryPackOrder(5)] Option<long?> RepliedEntryLid,
-    [property: DataMember, MemoryPackOrder(6)] AttachFileRequestEntry[] AttachFileRequests
+    [property: DataMember, MemoryPackOrder(6)] AttachFileRequestEntry[] AttachFileRequests,
+    [property: DataMember, MemoryPackOrder(7)] string ClientId
     ) : IHasId<string>
 {
     string IHasId<string>.Id => Uuid;
 
-    [DataMember, MemoryPackOrder(7)] public long? NewChatEntryLocalId { get; init; }
+    [DataMember, MemoryPackOrder(8)] public long? NewChatEntryLocalId { get; init; }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
