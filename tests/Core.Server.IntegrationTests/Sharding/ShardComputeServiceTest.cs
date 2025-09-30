@@ -31,7 +31,7 @@ public class TestShardComputeService(IServiceProvider services, ITestOutputHelpe
     public virtual async Task<CpuTimestamp> GetTime(string key, CancellationToken cancellationToken)
     {
         Out.WriteLine($"-> GetTime({key})");
-        await ShardBroker.ShardLeaseTracker.WhileLeased(key, cancellationToken);
+        await ShardBroker.RequireLeaseOrReroute(key, cancellationToken);
         Out.WriteLine($"<- GetTime({key})");
         return CpuTimestamp.Now;
     }

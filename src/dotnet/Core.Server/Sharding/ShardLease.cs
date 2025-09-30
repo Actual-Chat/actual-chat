@@ -1,14 +1,26 @@
 namespace ActualChat.Sharding;
 
-public sealed class ShardLease(ShardBroker.ShardState shardState, MeshLockHolder lockHolder) : RunnableRunner
+public sealed class ShardLease : RunnableRunner
 {
-    public ShardBroker.ShardState ShardState { get; } = shardState;
-    public MeshLockHolder LockHolder { get; } = lockHolder;
+    public ShardBroker.ShardState ShardState { get; }
+    public MeshLockHolder LockHolder { get; }
 
     // Handy shortcuts
-    public ShardBroker ShardBroker { get; } = shardState.ShardBroker;
-    public int ShardIndex { get; } = shardState.ShardIndex;
-    public CancellationToken CancelLockToken { get; } = shardState.CancelLockToken;
-    public CancellationToken LockToken { get; } = lockHolder.StopToken;
+    public ShardBroker ShardBroker { get; }
+    public int ShardIndex { get; }
+    public CancellationToken CancelLockToken { get; }
+    public CancellationToken LockToken { get; }
     public bool IsLockExpired => LockHolder.IsExpired;
+    public Moment AcquiredAt { get; }
+
+    public ShardLease(ShardBroker.ShardState shardState, MeshLockHolder lockHolder)
+    {
+        ShardState = shardState;
+        LockHolder = lockHolder;
+        ShardBroker = shardState.ShardBroker;
+        ShardIndex = shardState.ShardIndex;
+        CancelLockToken = shardState.CancelLockToken;
+        LockToken = lockHolder.StopToken;
+        AcquiredAt = ShardBroker.Host.Clock.Now;
+    }
 }
