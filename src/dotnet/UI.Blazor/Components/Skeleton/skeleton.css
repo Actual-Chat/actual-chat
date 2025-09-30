@@ -66,9 +66,15 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
     @apply hidden lg:flex;
 }
 .right-skeleton-panel {
-    @apply hidden flex-none md:flex-y;
+    @apply flex-none flex-y;
     @apply bg-03;
-    @apply lg:w-96 xl:w-112 2xl:w-128;
+    @apply lg:w-96 xl:w-112 2xl:w-128 h-full;
+}
+body[data-rp-visible="false"] .right-skeleton-panel {
+    @apply hidden;
+}
+body.narrow .right-skeleton-panel {
+    @apply hidden;
 }
 .splash-page.rp-closed .right-skeleton-panel {
     @apply hidden;

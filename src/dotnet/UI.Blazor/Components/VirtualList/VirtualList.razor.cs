@@ -42,7 +42,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
     [Parameter] public RenderFragment<int>? Skeleton { get; set; }
     [Parameter] public RenderFragment<int>? SkeletonBatch { get; set; }
     [Parameter] public int SkeletonCount { get; set; } = 10;
-    [Parameter] public double SpacerSize { get; set; } = 200;
+    [Parameter] public double SpacerSize { get; set; } = 1000;
     [Parameter] public VirtualListEdge DefaultEdge { get; set; }
     [Parameter] public double ExpandMultiplier { get; set; } = 2;
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
