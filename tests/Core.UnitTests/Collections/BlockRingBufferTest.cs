@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace ActualChat.Core.UnitTests.Collections;
 
 public class BlockRingBufferTest(ITestOutputHelper @out) : TestBase(@out)
@@ -163,6 +165,84 @@ public class BlockRingBufferTest(ITestOutputHelper @out) : TestBase(@out)
                 .ToArray();
             b3.Memory.ToArray().Should().Equal(expected);
         }
+
+        rb.IsEmpty.Should().BeTrue();
+        rb.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public void NoSpaceAndNoDataShouldBeImpossibleWhenNoOutstandingBlocks()
+    {
+        // Use a modest capacity to exercise wraparounds frequently
+        var rb = new BlockRingBuffer<int>(15);
+        var rng = new Random(42);
+        var nextValue = 1;
+
+        // We'll occasionally hold onto blocks, but we assert the invariant only when none are held
+        var held = new List<IMemoryOwner<int>>();
+        var one = new int[1];
+
+        for (var i = 0; i < 20_000; i++)
+        {
+            // Randomly dispose some held blocks
+            if (held.Count > 0 && rng.NextDouble() < 0.3)
+            {
+                var idx = rng.Next(held.Count);
+                held[idx].Dispose();
+                held.RemoveAt(idx);
+            }
+
+            if (held.Count == 0)
+            {
+                one[0] = nextValue;
+                var canPush = rb.TryPush(one);
+                if (canPush) nextValue++;
+
+                var canPull = rb.TryPull(1, out var block);
+                if (canPull)
+                {
+                    // We don't assert ordering here; this test targets the impossible state invariant
+                    block!.Dispose();
+                }
+
+                // Invariant: when there are no outstanding blocks, it must be impossible
+                // that producer and consumer are both blocked simultaneously.
+                if (!canPush && !canPull)
+                {
+                    // Helpful diagnostics
+                    var count = rb.Count;
+                    var cap = rb.Capacity;
+                    var state = $"Iteration={i}, Count={count}, Capacity={cap}";
+                    throw new Xunit.Sdk.XunitException($"Invalid state: both TryPush and TryPull failed with no outstanding blocks. {state}");
+                }
+                continue;
+            }
+
+            // With some probability, try to pull and hold a small block
+            if (rng.NextDouble() < 0.5)
+            {
+                if (rb.TryPull(1, out var block))
+                {
+                    // Keep the block for a while to emulate delayed commit
+                    held.Add(block!);
+                }
+            }
+            else
+            {
+                // Try pushing a single item
+                one[0] = nextValue;
+                if (rb.TryPush(one))
+                    nextValue++;
+            }
+        }
+
+        // Clean up
+        foreach (var b in held)
+            b.Dispose();
+
+        // Drain the buffer to ensure consistency
+        while (rb.TryPull(Math.Min(4, rb.Count), out var block))
+            block!.Dispose();
 
         rb.IsEmpty.Should().BeTrue();
         rb.Count.Should().Be(0);

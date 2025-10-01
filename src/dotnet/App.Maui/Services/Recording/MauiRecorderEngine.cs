@@ -338,7 +338,12 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private void CompleteAudioStream()
     {
         var stream = Interlocked.Exchange(ref _currentStream, null);
-        stream?.Writer.TryComplete();
+        if (stream is null)
+            return;
+
+        stream.Writer.TryComplete();
+        while (stream.Reader.TryRead(out var frame))
+            frame.Dispose();
     }
 
     // Separate class to handle the complex audio processing logic
