@@ -76,7 +76,7 @@
                         <img draggable="false" src="/dist/images/voxt-black-horizontal.svg" alt="" class="dark-title">
                     </div>
                     <div class="c-btn-group">
-                        <div class="w-4"></div>
+                        <div class="w-16"></div>
                         @if (!HostInfo.HostKind.IsMauiApp()) {
                             <Button
                                 Click="@WhyUsClick"
@@ -87,10 +87,7 @@
                                 Class="btn-text btn-transparent unhovered">Why now
                             </Button>
                         }
-                        <Button
-                            Click="@(_ => History.NavigateTo(Links.Docs))"
-                            Class="btn-text btn-transparent unhovered">Docs
-                        </Button>
+                        <a href="@privacyUri" class="btn-text btn-transparent unhovered">Privacy policy</a>
                     </div>
                 </div>
             </div>
