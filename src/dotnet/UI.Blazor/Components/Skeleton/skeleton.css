@@ -6,8 +6,8 @@
     @apply w-full md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
     @apply bg-03;
 }
-body.wide.rp-closed .skeleton-left-panel {
-    @apply md:w-96 lg:w-112 xl:w-128 2xl:w-144;
+.splash-page.rp-closed .skeleton-left-panel {
+    @apply w-full md:w-96 lg:w-112 xl:w-128 2xl:w-144;
 }
 .splash-page.rp-open .skeleton-left-panel {
     @apply w-full md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
@@ -69,7 +69,7 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
 .splash-page.rp-open .chat-skeleton-panel {
     @apply hidden lg:flex;
 }
-.rp-open .right-skeleton-panel {
+.right-skeleton-panel {
     @apply absolute lg:relative right-0;
     @apply flex-none flex-y;
     @apply bg-03;

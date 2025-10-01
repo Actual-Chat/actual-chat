@@ -26,20 +26,21 @@ body.device-ios .side-nav {
 }
 
 /* Left SideNav */
-.side-nav.side-nav-left {
-    @apply flex-none flex-y;
+.page-with-header-and-footer.rp-closed > .side-nav.side-nav-left,
+.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .side-nav.side-nav-left {
     @apply md:w-96 lg:w-112 xl:w-128 2xl:w-144;
 }
-.page-with-header-and-footer.rp-open > .side-nav.side-nav-left {
+.page-with-header-and-footer.rp-open > .side-nav.side-nav-left,
+.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
-    @apply md:transition-width md:duration-200 md:ease-linear md:delay-0;
+    @apply md:transition-width md:duration-200 md:ease-linear md:delay-0 lg:transition-none;
 }
 .page-with-header-and-footer:has(.right-skeleton-panel) > .side-nav.side-nav-left {
-    @apply md:w-1/2 lg:w-110;
+    @apply md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
 }
-.page-with-header-and-footer.rp-closed > .side-nav.side-nav-left {
+.page-with-header-and-footer > .side-nav.side-nav-left {
+    @apply flex-none flex-y;
     @apply md:w-96 lg:w-112 xl:w-128 2xl:w-144;
-    @apply md:transition-width md:duration-200 md:ease-linear md:delay-0;
 }
 body.wide .side-nav.side-nav-left[data-side-nav="closed"] {
     @apply hidden;
