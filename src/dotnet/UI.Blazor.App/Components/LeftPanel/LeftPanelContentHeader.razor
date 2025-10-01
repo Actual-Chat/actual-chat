@@ -7,14 +7,15 @@
     var isChatRoulette = m.IsChatRoulette;
 }
 
-@if (place != null) {
-    <LeftPanelPlaceContentHeader Place="@place"/>
-    <LeftPlaceSearchOverlayPanel Place="@place"/>
-} else if (isChatRoulette) {
+@if (isChatRoulette) {
     <LeftPanelChatRouletteContentHeader />
 } else {
-    <LeftPanelChatContentHeader />
-    <LeftPlaceSearchOverlayPanel Place="@null"/>
+    @if (place != null) {
+        <LeftPanelPlaceContentHeader Place="@place"/>
+    } else {
+        <LeftPanelChatContentHeader />
+    }
+    <LeftPlaceSearchOverlayPanel Place="@place"/>
 }
 
 @code {
