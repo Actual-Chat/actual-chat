@@ -1,4 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@{
+    _attachmentsCls = IsConversation && !IsNarrow ? "wide" : "";
+    _listCls = _rows.Length == 1 ? "one-row" : "";
+}
 
 <div class="message-image-attachments @_listCls @_attachmentsCls">
     @foreach (var row in _rows) {
@@ -35,9 +39,6 @@
     [Parameter] public bool IsNarrow { get; set; }
 
     protected override void OnParametersSet() {
-        var wide = IsConversation && !IsNarrow;
-        _attachmentsCls = wide ? "wide" : "";
-
         var maxCount = 10;
         if (IsConversation)
             maxCount = 8;
@@ -46,8 +47,6 @@
 
         _mediaList = MediaList.Take(maxCount).ToArray();
         _rows = GetRows(_mediaList, IsConversation, IsNarrow);
-
-        _listCls = _rows.Length == 1 ? "one-row" : "";
     }
 
     private static ImageRow[] GetRows(TextEntryAttachment[] mediaList, bool isConversation, bool isNarrow) {
