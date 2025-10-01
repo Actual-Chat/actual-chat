@@ -35,8 +35,19 @@ public static class NotificationHelper
 
     private static Bitmap? DownloadImage(string imageUrl)
     {
-        var imageDownload = AndroidUtils.StartImageDownloadInBackground(imageUrl.ToUri());
-        var largeImage = AndroidUtils.WaitForAndApplyImageDownload(imageDownload);
+        var sw = Stopwatch.GetTimestamp();
+        Bitmap? largeImage = null;
+        try {
+            var imageDownload = AndroidUtils.StartImageDownloadInBackground(imageUrl.ToUri());
+            largeImage = AndroidUtils.WaitForAndApplyImageDownload(imageDownload);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to download image '{Url}'", imageUrl);
+        }
+        var elapsed = (int)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
+        Log.Log(elapsed > 5000 ? LogLevel.Warning : LogLevel.Information,
+            "Downloading image '{Url}' took {Elapsed} ms",
+            imageUrl, elapsed);
         return largeImage;
     }
 
