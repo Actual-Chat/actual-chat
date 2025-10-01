@@ -1,10 +1,10 @@
 /* Inherited from Blazored Modal */
 
 .modal-overlay {
-    @apply z-modal-overlay fixed;
+    @apply z-modal-overlay fixed top-0 left-0;
     @apply flex-1 flex-y justify-center;
-    @apply top-0 left-0 h-full w-full;
-    @apply overflow-x-hidden overflow-y-hidden;
+    @apply h-full w-full;
+    @apply overflow-hidden;
     @apply outline-0;
     backdrop-filter: blur(2px) opacity(0.8) brightness(0.8);
     background-color: rgba(0,0,0,0.5);
@@ -56,8 +56,9 @@ body.device-ios .modal-overlay {
 .modal {
     @apply flex-y;
     @apply h-full w-full md:h-auto md:w-auto;
+    @apply p-0 m-0;
     @apply border-0 rounded-none;
-    @apply p-0 m-0 bg-transparent;
+    @apply bg-transparent;
     box-shadow: none;
 }
 
@@ -69,12 +70,12 @@ body.device-ios .modal-overlay {
 
 body.narrow .modal-frame.modal-md {
     @apply absolute bottom-0 left-0 right-0;
-    @apply w-auto h-auto rounded-b-none;
+    @apply w-auto h-auto;
+    @apply rounded-b-none;
     height: 80vh;
 }
 body.narrow .modal-frame.modal-sm {
-    @apply absolute;
-    @apply left-4 right-4;
+    @apply absolute left-4 right-4;
     @apply min-h-fit h-auto;
     @apply rounded-xl;
     max-height: 80vh;
@@ -83,7 +84,8 @@ body.narrow .modal-frame.modal-sm {
 
 .narrow .narrow-view__modal__position-bottom {
     @apply absolute bottom-0 left-0 right-0;
-    @apply w-auto h-auto rounded-b-none;
+    @apply w-auto h-auto;
+    @apply rounded-b-none;
     height: 80vh;
 }
 
@@ -98,19 +100,22 @@ body.narrow .modal-frame.modal-sm {
 }
 
 .modal-chrome-wrapper {
-    @apply h-full w-full;
     @apply flex flex-col justify-center items-center;
+    @apply h-full w-full;
 }
 
 .modal-chrome-overlay {
-    @apply block fixed left-0 top-0 h-full w-full;
+    @apply fixed left-0 top-0;
+    @apply block;
+    @apply h-full w-full;
 }
 
 .modal-chrome {
     @apply z-10;
     @apply overflow-hidden;
-    @apply bg-modal text-03;
     @apply rounded-lg;
+    @apply bg-modal;
+    @apply text-03;
     @apply md:shadow-modal-wide;
 }
 body.device-ios .modal-chrome {
@@ -126,7 +131,7 @@ body.device-ios .modal-chrome {
     @apply md:shadow-modal-wide;
     @apply duration-200;
     transition-behavior: allow-discrete;
-    transition-property: filter, -webkit-filter, transform;
+    transition-property: opacity, transform;
 }
 .modal-frame.modal-sm {
     @apply md:w-88 xl:w-104 2xl:w-120 md:h-auto md:max-h-192;
@@ -137,28 +142,33 @@ body.device-ios .modal-chrome {
 body.device-ios .modal-frame {
     @apply ios-height;
 }
-.modal-overlay .modal-frame {
-    filter: opacity(1);
-    transform: translateY(0);
-    @starting-style {
-        filter: opacity(0);
-        transform: translateY(5rem);
-    }
-}
-.modal-overlay.hide .modal-frame {
-    filter: opacity(0);
-    transform: translateY(5rem);
-    @starting-style {
-        filter: opacity(1);
+@supports (transition-behavior: allow-discrete) {
+    .modal-overlay .modal-frame {
+        opacity: 1;
         transform: translateY(0);
+        @starting-style {
+            opacity: 0;
+            transform: translateY(5rem);
+        }
+    }
+
+    .modal-overlay.hide .modal-frame {
+        opacity: 0;
+        transform: translateY(5rem);
+        @starting-style {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 }
 
 .btn.btn-square.modal-close {
-    @apply h-fit -mr-1.5;
+    @apply h-fit;
+    @apply -mr-1.5;
 }
 body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
-    @apply bg-transparent opacity-90;
+    @apply opacity-90;
+    @apply bg-transparent;
 }
 
 .modal-header {
@@ -211,13 +221,15 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .dialog-footer {
+    @apply flex-y items-stretch;
     @apply px-4;
-    @apply flex-y items-stretch overflow-hidden;
+    @apply overflow-hidden;
 }
 
 .dialog-buttons {
-    @apply flex-none px-4;
-    @apply flex-x gap-x-4 overflow-hidden;
+    @apply flex-none flex-x gap-x-4;
+    @apply px-4;
+    @apply overflow-hidden;
 }
 .wide-dialog-buttons .dialog-buttons {
     @apply -flex-y gap-y-2;
