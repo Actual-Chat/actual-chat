@@ -2,7 +2,7 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Playback;
 
-public class ThreadSafePlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVAudioPlayerNode> disposer) : IDisposable
+public class PlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVAudioNode> disposer) : AudioNode(node, disposer), IDisposable
 {
     public AVAudioFormat Format { get; } = format;
     private readonly Lock _lock = new();
@@ -12,13 +12,6 @@ public class ThreadSafePlayerNode(AVAudioPlayerNode node, AVAudioFormat format, 
             lock (_lock)
                 return node.Playing;
         }
-    }
-
-
-    public void Dispose()
-    {
-        lock (_lock)
-            disposer(node);
     }
 
     public void Play()
@@ -42,7 +35,12 @@ public class ThreadSafePlayerNode(AVAudioPlayerNode node, AVAudioFormat format, 
     }
 
     public Task ScheduleFileAndWait(AVAudioFile audioFile)
-        => node.ScheduleFileAsync(audioFile, null, AVAudioPlayerNodeCompletionCallbackType.PlayedBack);
+    {
+        Task whenPlayed;
+        lock (_lock)
+            whenPlayed = node.ScheduleFileAsync(audioFile, null, AVAudioPlayerNodeCompletionCallbackType.PlayedBack);
+        return whenPlayed;
+    }
 
     public void Stop()
     {

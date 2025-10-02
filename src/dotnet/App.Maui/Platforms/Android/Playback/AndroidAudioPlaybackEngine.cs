@@ -3,6 +3,9 @@ using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
 using Android.Media;
+using AudioSource = ActualChat.Audio.AudioSource;
+using Encoding = Android.Media.Encoding;
+using Stream = Android.Media.Stream;
 
 namespace ActualChat.App.Maui.Playback;
 
@@ -53,13 +56,13 @@ internal sealed class AndroidAudioPlaybackEngine(
         if (Volatile.Read(ref _decodeTask) is not null)
             return;
 
-        var audioSource = (ActualChat.Audio.AudioSource)source;
+        var audioSource = (AudioSource)source;
         _remainingPreSkip = audioSource.Format.PreSkip;
 
         // Configure AudioTrack for float32 PCM mono at playback sample rate
         var sampleRate = Constants.Audio.PlaybackSampleRate;
         var channelOut = ChannelOut.Mono;
-        var encoding = Android.Media.Encoding.PcmFloat;
+        var encoding = Encoding.PcmFloat;
         var minBufferBytes = AudioTrack.GetMinBufferSize(sampleRate, channelOut, encoding);
         if (minBufferBytes <= 0)
             throw new InvalidOperationException($"AudioTrack min buffer size invalid: {minBufferBytes}");
@@ -67,7 +70,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         var bufferBytes = Math.Max(minBufferBytes, Constants.Audio.PcmFrameLength * sizeof(float) * 8); // some headroom
         try {
             _audioTrack = new AudioTrack(
-                /* streamType */ Android.Media.Stream.Music,
+                /* streamType */ Stream.Music,
                 /* sampleRateInHz */ sampleRate,
                 /* channelConfig */ channelOut,
                 /* audioFormat */ encoding,
@@ -140,14 +143,14 @@ internal sealed class AndroidAudioPlaybackEngine(
         return Task.CompletedTask;
     }
 
-    public Task Frame(MediaFrame frame, CancellationToken cancellationToken)
+    public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
     {
         var data = frame.Data;
         if (data.Length == 0)
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
 
         _packetChannel.Writer.TryWrite(new ByteArrayMemoryOwner(data));
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public ValueTask DisposeAsync()
@@ -349,11 +352,5 @@ internal sealed class AndroidAudioPlaybackEngine(
         catch {
              /* ignore */
         }
-    }
-
-    private readonly struct ByteArrayMemoryOwner(byte[] buffer) : IMemoryOwner<byte>
-    {
-        public Memory<byte> Memory { get; } = buffer;
-        public void Dispose() { }
     }
 }

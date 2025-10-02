@@ -78,7 +78,7 @@ public sealed class WebAudioPlaybackEngine(
             .SuppressCancellationAwait();
     }
 
-    public Task Frame(MediaFrame frame, CancellationToken cancellationToken)
+    public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
     {
         if (_jsRef == null)
             throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
@@ -88,7 +88,7 @@ public sealed class WebAudioPlaybackEngine(
             .Catch(Log, "Failed to invoke js player.frame()")
             .SuppressCancellationAwait(false);
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()

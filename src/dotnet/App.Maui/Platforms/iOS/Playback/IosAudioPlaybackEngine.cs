@@ -22,7 +22,7 @@ public class IosAudioPlaybackEngine(
     private OpusDecoder _decoder = null!;
 
     [field: AllowNull, MaybeNull]
-    private AudioNodes Nodes => field ??= hub.Services.GetRequiredService<AudioNodes>();
+    private AudioEngine Engine => field ??= hub.Services.GetRequiredService<AudioEngine>();
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
@@ -40,7 +40,7 @@ public class IosAudioPlaybackEngine(
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
         if (!_isInitialized) {
             DebugLog?.LogInformation("#{PlayerId}.Play: initializing", playerId);
-            _bufferedPlayer = new BufferedPlayer(Nodes.CreatePlayerNode(AudioNodes.VoiceFormat), playerId, hub);
+            _bufferedPlayer = new BufferedPlayer(Engine.NewPlayer(AudioEngine.VoicePlaybackFormat), playerId, hub);
             _processWorker = FuncWorker.Start(ProcessFeeder);
             _decoder = Opus.CreateDecoder();
             _isInitialized = true;
@@ -78,10 +78,10 @@ public class IosAudioPlaybackEngine(
                 cancellationToken);
     }
 
-    public Task Frame(MediaFrame frame, CancellationToken cancellationToken)
+    public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
     {
         var data = _decoder.Decode(frame.Data);
-        return _bufferedPlayer.Feed(data, cancellationToken).AsTask();
+        return _bufferedPlayer.Feed(data, cancellationToken);
     }
 
     private async Task ProcessFeeder(CancellationToken cancellationToken)

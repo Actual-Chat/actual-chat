@@ -1,8 +1,4 @@
-using System.IO;
-using System.Threading;
 using ActualChat.Hosting;
-using ActualChat.Mathematics;
-using Microsoft.Maui.Storage;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using MathExt = ActualChat.Mathematics.MathExt;
@@ -16,7 +12,7 @@ namespace ActualChat.App.Maui.Services.Recording;
 ///     - Context: 64 samples prepended to each window (total model input = 576 floats)
 ///     - Recurrent state: [2,1,128] float tensor persisted between calls
 /// </summary>
-public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable, IDisposable
+public class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable, IDisposable
 {
     // AUDIO_REC constants (subset)
     public const int SampleRate = Constants.Audio.RecordingSampleRate; // AUDIO_REC.SAMPLE_RATE
@@ -57,9 +53,9 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     private RunningUnitMedian? _whenTalkingProbMedian;
 
     public readonly HostInfo HostInfo = services.HostInfo();
-    public VoiceActivityChange LastActivityEvent { get; private set; } = VoiceActivityChange.NoVoiceActivity;
+    public VoiceActivityChange LastActivityEvent { get; protected set; } = VoiceActivityChange.NoVoiceActivity;
 
-    public bool IsInitialized => _session != null;
+    public virtual bool IsInitialized => _session != null;
 
     public ValueTask DisposeAsync()
     {
@@ -67,7 +63,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         return ValueTask.CompletedTask;
     }
 
-    public void Dispose()
+    public virtual void Dispose()
     {
         if (_disposed)
             return;
@@ -81,7 +77,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     ///     Initializes the VAD by loading the ONNX model from the app package.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
-    public async Task EnsureInitialized(CancellationToken cancellationToken = default)
+    public virtual async Task EnsureInitialized(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
         if (_session != null)
@@ -141,7 +137,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     /// <summary>
     ///     Resets recurrent state and context to the initial values.
     /// </summary>
-    public void Reset()
+    public virtual void Reset()
     {
         ThrowIfDisposed();
         Array.Clear(_context, 0, _context.Length);
@@ -154,7 +150,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
     ///     Returns either a VoiceActivityChange when state flips, or the current input gain when no change.
     ///     Mirrors the logic of VoiceActivityDetectorBase.appendChunk in TS.
     /// </summary>
-    public VadResult AppendChunk(ReadOnlySpan<float> monoPcm)
+    public virtual VadResult AppendChunk(ReadOnlySpan<float> monoPcm)
     {
         var currentOffset = _sampleCount;
         _sampleCount += monoPcm.Length;
@@ -260,7 +256,7 @@ public sealed class VoiceActivityDetector(IServiceProvider services) : IAsyncDis
         return VadResult.Event(currentEvent);
     }
 
-    public void ConversationSignal()
+    public virtual void ConversationSignal()
         => _lastConversationSignalAtSample = _sampleCount;
 
     /// <summary>

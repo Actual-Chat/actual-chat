@@ -4,13 +4,16 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Playback;
 
-public class BufferedPlayer(ThreadSafePlayerNode node, string id, AppUIHub hub)
+public class BufferedPlayer(PlayerNode node, string id, AppUIHub hub)
     : IDisposable
 {
+    // TODO(FC): remove this complication since there is low buffer management
     private readonly AudioBufferCapacity _capacity = new ();
     private readonly MutableState<State> _state = hub.StateFactory.NewMutable(new State(TimeSpan.Zero, false, false));
     private TimeSpan _position;
 
+    [field: AllowNull, MaybeNull]
+    private AudioEngine Engine => field ??= hub.Services.GetRequiredService<AudioEngine>();
     private ILogger<BufferedPlayer> Log { get; } = hub.LogFor<BufferedPlayer>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
 
@@ -22,6 +25,8 @@ public class BufferedPlayer(ThreadSafePlayerNode node, string id, AppUIHub hub)
     public void Play()
     {
         DebugLog?.LogInformation("#{Id}.Play", id);
+        Engine.Prepare();
+        Engine.EnsureRunning();
         node.Play();
         UpdateState();
     }

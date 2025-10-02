@@ -13,7 +13,7 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
     [field: AllowNull, MaybeNull]
     private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
     [field: AllowNull, MaybeNull]
-    private AudioNodes AudioNodes => field ??= Hub.Services.GetRequiredService<AudioNodes>();
+    private AudioEngine Engine => field ??= Hub.Services.GetRequiredService<AudioEngine>();
 
     public override void Dispose()
     {
@@ -49,18 +49,18 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
     protected override async Task Vibrate(Tune tune)
     {
         await Task.Yield();
-        try {
-            if (HapticEngine.IsMutedForHaptics)
-                return;
-
-            await HapticEngine.StartAsync().ConfigureAwait(true);
-            var player = GetPlayer(tune);
-            player.Start(0, out var error);
-            error.Assert();
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to vibrate '{Tune}'", tune);
-        }
+        // TODO(FC): uncomment and fix
+        // try {
+        //     if (HapticEngine.IsMutedForHaptics)
+        //         return;
+        //
+        //     var player = GetPlayer(tune);
+        //     player.Start(0, out var error);
+        //     error.Assert();
+        // }
+        // catch (Exception e) {
+        //     Log.LogError(e, "Failed to vibrate '{Tune}'", tune);
+        // }
     }
 
     // Private methods
@@ -71,7 +71,7 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
             return;
 
         try {
-            await AudioNodes.PlayResourceFile(soundName).ConfigureAwait(false);
+            await Engine.PlayResourceFile(soundName).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to play sound {SoundName}", soundName);
@@ -124,7 +124,7 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
     {
         var totalDuration = TimeSpan.FromMilliseconds(vibration.Sum());
         return new CHHapticEvent(CHHapticEventType.HapticContinuous,
-            new[] { new CHHapticEventParameter(CHHapticEventParameterId.HapticSharpness, Sharpness) },
+            [new CHHapticEventParameter(CHHapticEventParameterId.HapticSharpness, Sharpness)],
             0,
             totalDuration.TotalSeconds);
     }

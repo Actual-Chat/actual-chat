@@ -135,7 +135,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
                 try {
                     if (!isPlayCommandProcessed)
                         await playTask.AsTask()
-                            .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
+                            .WaitAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                             .ConfigureAwait(false);
                     var abortResult = await ProcessCommand(AbortCommand.Instance, CancellationToken.None).AsTask()
                         .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
@@ -143,7 +143,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
                     if (abortResult.HasError)
                         SetEndState(abortResult.Error);
                     await WhenCompleted
-                        .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
+                        .WaitAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
                 }
                 catch (Exception ex) {
