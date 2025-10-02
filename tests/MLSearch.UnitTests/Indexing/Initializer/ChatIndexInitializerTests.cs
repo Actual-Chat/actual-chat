@@ -178,8 +178,8 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         Assert.False(onRunTask.IsCanceled);
         Assert.False(onRunTask.IsFaulted);
         await cancellationTokenSource.CancelAsync();
-        Assert.True(onRunTask.IsCanceled);
         await Assert.ThrowsAsync<TaskCanceledException>(async () => await onRunTask);
+        Assert.True(onRunTask.IsCanceled);
     }
 
     private static Mock<IServiceProvider> MoqServiceProvider()
