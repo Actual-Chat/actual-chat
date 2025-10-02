@@ -14,7 +14,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact]
     public async Task TimerFlowTest()
     {
         using var h = await NewAppHost();
@@ -31,7 +31,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
             WhenEnded(flows, f1.Id));
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact]
     public async Task KillFlowTest()
     {
         using var h = await NewAppHost();
@@ -60,7 +60,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
         diedQuickly.Should().BeTrue();
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact]
     public async Task ResetFlowTest()
     {
         using var h = await NewAppHost();
