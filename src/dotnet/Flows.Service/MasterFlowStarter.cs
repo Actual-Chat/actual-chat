@@ -27,14 +27,17 @@ internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(
         var tasks = new List<Task>();
         foreach (var flowType in _flowTypesToStart.Keys) {
             var flowId = GetFlowId(flowType);
-            var requiredShardIndex = FlowIdShardKeyResolver.Invoke(flowId);
+            var requiredShardIndex = ShardScheme.GetShardIndex(FlowIdShardKeyResolver.Invoke(flowId));
             if (shardIndex != requiredShardIndex)
                 continue;
 
             var task = StartMasterFlow(flowType, cancellationToken);
             tasks.Add(task);
         }
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+        if (tasks.Count > 0)
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        else
+            await TaskExt.NeverEnding(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task StartMasterFlow(Type flowType, CancellationToken cancellationToken)
@@ -47,5 +50,4 @@ internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(
 
     private FlowId GetFlowId(Type masterFlowType)
         => FlowRegistry.NewId(masterFlowType, "");
-
 }
