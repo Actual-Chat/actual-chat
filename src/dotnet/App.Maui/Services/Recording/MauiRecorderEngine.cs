@@ -2,6 +2,7 @@ using System.Buffers;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui.Services.Recording;
 
@@ -87,7 +88,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         await InitializeRecordingState().ConfigureAwait(false);
 
         // Start processing in the background
-        _ = BackgroundTask.Run(() => ProcessAudioStream(microphoneStream, token), token);
+        _ = BackgroundTask.Run(() => ProcessAudioStream(microphoneStream, token),
+            Log,
+            "!!! Failed to process microphone stream",
+            token);
         return true;
     }
 

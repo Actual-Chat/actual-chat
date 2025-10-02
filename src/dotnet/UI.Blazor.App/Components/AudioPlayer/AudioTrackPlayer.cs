@@ -66,27 +66,27 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 var trackInfo = (ChatAudioTrackInfo)TrackInfo;
                 await MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming).ConfigureAwait(false);
                 _playbackEngine = Factory.Create(_id, TrackInfo, Source, this);
-                await _playbackEngine.Play(cancellationToken);
+                await _playbackEngine.Play(cancellationToken).ConfigureAwait(false);
                 break;
             case PauseCommand:
                 if (_playbackEngine == null)
                     throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-                await _playbackEngine.Pause(cancellationToken);
+                await _playbackEngine.Pause(cancellationToken).ConfigureAwait(false);
                 break;
             case ResumeCommand:
                 if (_playbackEngine == null)
                     throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-                await _playbackEngine.Resume(cancellationToken);
+                await _playbackEngine.Resume(cancellationToken).ConfigureAwait(false);
                 break;
             case AbortCommand:
                 if (_playbackEngine == null)
                     throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-                await _playbackEngine.End(true, cancellationToken);
+                await _playbackEngine.End(true, cancellationToken).ConfigureAwait(false);
                 break;
             case EndCommand:
                 if (_playbackEngine == null)
                     throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-                await _playbackEngine.End(false, cancellationToken);
+                await _playbackEngine.End(false, cancellationToken).ConfigureAwait(false);
                 break;
             default:
                 throw StandardError.NotSupported(command.GetType(), "Unsupported command type.");
@@ -98,8 +98,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         if (_playbackEngine == null)
             throw StandardError.StateTransition(GetType(), "Start command should be called first.");
 
-        _ = _playbackEngine.Frame(frame, cancellationToken);
         try {
+            await _playbackEngine.PushFrame(frame, cancellationToken).ConfigureAwait(false);
             await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         }
         catch (TimeoutException) {

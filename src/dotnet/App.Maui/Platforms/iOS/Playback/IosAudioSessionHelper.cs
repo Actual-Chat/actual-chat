@@ -8,7 +8,9 @@ public static class IosAudioSessionHelper
     public static void ActivateRecordingAndBackgroundAudio()
         => BackgroundTask.Run(() => MainThread.InvokeOnMainThreadAsync(() => {
                 var session = AVAudioSession.SharedInstance();
-
+                session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalMilliseconds,
+                    out var error);
+                error.Assert();
                 session.SetCategory(
                     AVAudioSessionCategory.PlayAndRecord,
                     AVAudioSessionMode.VoiceChat,

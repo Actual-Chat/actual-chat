@@ -481,6 +481,24 @@
     <None Remove="android.nettrace" />
     <None Remove="android.etlx" />
     <None Remove="android.etlx" />
+    <Compile Update="Platforms\iOS\Playback\Native\AudioEngine.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
+    <Compile Update="Platforms\iOS\Playback\Native\InputNode.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
+    <Compile Update="Platforms\iOS\Playback\Native\MixerNode.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
+    <Compile Update="Platforms\iOS\Playback\Native\AudioNode.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
+    <Compile Update="Platforms\iOS\Playback\Native\PlayerNode.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
+    <Compile Update="Platforms\iOS\Playback\Native\AudioEngineExt.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
   </ItemGroup>
   <!-- Android -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">

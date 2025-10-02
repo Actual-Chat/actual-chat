@@ -1,6 +1,9 @@
 using ActualChat.App.Maui.Playback;
+using ActualChat.App.Maui.Recording;
+using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
@@ -9,8 +12,6 @@ using Plugin.Firebase.Analytics;
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.Core.Platforms.iOS;
 using Plugin.Firebase.Crashlytics;
-using ActualChat.App.Maui.Services.Recording;
-using ActualChat.App.Maui.Recording;
 
 namespace ActualChat.App.Maui;
 
@@ -27,13 +28,16 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<IosPushNotifications>());
         services.AddScoped<IRecordingPermissionRequester>(_ => new IosRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
+        services.AddScoped<IAudioCodec, IosAudioCodec>();
+        services.AddScoped<ResamplerFactory>(c => new ResamplerFactory(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c.UIHub()));
-        services.AddScoped<AudioNodes>(c => new AudioNodes(c.AppUIHub()));
+        services.AddScoped<AudioEngine>(c => new AudioEngine(c.AppUIHub()));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMediaSaver>(c => new IosMediaSaver(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
         services.AddTransient<IAppIconBadge>(_ => new IosAppIconBadge());
-        services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.LogFor<IosAudioCapture>()));
+        services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.AppUIHub()));
+        services.AddScoped<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
