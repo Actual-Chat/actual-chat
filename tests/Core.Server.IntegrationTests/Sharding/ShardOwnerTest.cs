@@ -5,7 +5,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Sharding;
 public class ShardOwnerTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(ShardOwnerTest)}", TestAppHostOptions.None, @out)
 {
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
         var shardScheme = ShardScheme.TestBackend;

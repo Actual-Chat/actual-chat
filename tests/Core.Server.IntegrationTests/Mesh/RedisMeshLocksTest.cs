@@ -6,7 +6,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 public class RedisMeshLocksTest(ITestOutputHelper @out)
     : LocalAppHostTestBase($"x-{nameof(RedisMeshLocksTest)}", TestAppHostOptions.None, @out)
 {
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
         var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
@@ -36,7 +36,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         info.Should().BeNull();
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task LockIsGoneButReacquiredTest()
     {
         var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
@@ -69,7 +69,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         changeSet.Contains(key).Should().BeTrue();
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task ReleaseNotifyTest()
     {
         var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
@@ -99,7 +99,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         changeSet.Contains(key).Should().BeTrue();
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task ReacquireTest()
     {
         var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ReacquireTest));
