@@ -158,7 +158,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             Times.Once());
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact]
     public async Task OnRunOfInactiveShardReturnsNotCompletedButCancellableTask()
     {
         var services = MoqServiceProvider().Object;
