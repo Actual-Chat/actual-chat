@@ -13,7 +13,7 @@ public sealed partial class ShardOwner
     }
 
     // [ComputeMethod] - alike
-    public Task<bool> IsLeased<T>(T shardKey, CancellationToken cancellationToken)
+    public Task<bool> IsOwned<T>(T shardKey, CancellationToken cancellationToken)
     {
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cCurrent = Computed.Current;
@@ -55,7 +55,7 @@ public sealed partial class ShardOwner
     }
 
     // [ComputeMethod] - alike
-    public Task<ShardOwnership> RequireLeaseOrReroute<T>(T shardKey, CancellationToken cancellationToken)
+    public Task<ShardOwnership> RequireOwnedOrReroute<T>(T shardKey, CancellationToken cancellationToken)
     {
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cCurrent = Computed.Current;

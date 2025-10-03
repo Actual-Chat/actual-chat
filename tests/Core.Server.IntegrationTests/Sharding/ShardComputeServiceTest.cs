@@ -12,7 +12,7 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
             },
         }, @out)
 {
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact]
     public async Task BasicTest()
     {
         var shardScheme = ShardScheme.TestBackend;
@@ -36,16 +36,22 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
             st2.ShardStates.Count(x => x.LeaseState.Value is not null).Should().Be(shardScheme.ShardCount / 2);
         });
 
-        var isLeased1 = await sb1.IsLeased(key, CancellationToken.None);
-        var isLeased2 = await sb2.IsLeased(key, CancellationToken.None);
-        isLeased2.Should().NotBe(isLeased1);
+        var isOwner1 = await sb1.IsOwned(key, CancellationToken.None);
+        var isOwner2 = await sb2.IsOwned(key, CancellationToken.None);
+        isOwner2.Should().NotBe(isOwner1);
         var c2 = await Computed.Capture(() => s2.TryGetTime(key));
-        if (isLeased2)
-            (c1, c2) = (c2, c1); // Swap c1 and c2 to make c1 the one that is leased
+        if (isOwner2) {
+            // Since h2 owns the shard now, c1.Value should become null
+            await ComputedTest.When(async ct => {
+                var c1Value = await c1.Use(ct);
+                c1Value.HasValue.Should().BeFalse();
+            });
+            c1 = await c1.Update();
+            (c1, c2) = (c2, c1); // Swap c1 and c2, so that c1 is owned, c2 is not
+        }
 
-        // c1 should (still) be consistent
+        // c1 should still be consistent
         c1.IsConsistent().Should().BeTrue();
-
         // c2 should be null
         c2.Value.HasValue.Should().BeFalse();
 
@@ -53,13 +59,13 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         // so Computed.Capture shouldn't capture a computed that "stores" it
         await Assert.ThrowsAsync<RpcRerouteException>(
             async () => await Computed.Capture(() => {
-                var sNotLeased = isLeased1 ? s2 : s1;
-                return sNotLeased.GetTime(key); // GetTime throws, TryGetTime doesn't
+                var sNotOwned = isOwner1 ? s2 : s1;
+                return sNotOwned.GetTime(key); // GetTime throws, TryGetTime doesn't
             }));
 
-        // Dispose the host leasing key's shard
-        var hLeased = isLeased1 ? h1 : h2;
-        hLeased.Dispose();
+        // Dispose the host that "owns" key's shard
+        var hOwner = isOwner1 ? h1 : h2;
+        hOwner.Dispose();
 
         // c2 should auto-update
         await c2.WhenInvalidated();
@@ -77,14 +83,14 @@ public class TestShardComputeService(IServiceProvider services, ITestOutputHelpe
     [ComputeMethod]
     public virtual async Task<CpuTimestamp?> TryGetTime(string key, CancellationToken cancellationToken = default)
     {
-        var isLeased = await ShardOwner.IsLeased(key, cancellationToken).ConfigureAwait(false);
+        var isLeased = await ShardOwner.IsOwned(key, cancellationToken).ConfigureAwait(false);
         return isLeased ? CpuTimestamp.Now : null;
     }
 
     [ComputeMethod]
     public virtual async Task<CpuTimestamp> GetTime(string key, CancellationToken cancellationToken = default)
     {
-        await ShardOwner.RequireLeaseOrReroute(key, cancellationToken).ConfigureAwait(false);
+        await ShardOwner.RequireOwnedOrReroute(key, cancellationToken).ConfigureAwait(false);
         return CpuTimestamp.Now;
     }
 }
