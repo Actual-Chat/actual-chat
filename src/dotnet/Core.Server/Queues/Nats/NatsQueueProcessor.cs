@@ -137,8 +137,12 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 MaxDegreeOfParallelism = degreeOfParallelism,
                 CancellationToken = stopToken,
             };
-
             var handledCount = 0;
+
+            // NOTE(AY): Trying to address "Unable to cast object of type
+            // 'NATS.Client.JetStream.Internal.NatsJSFetch1[System.Buffers.IMemoryOwner1[System.Byte]]'
+            // to type 'ActualLab.Fusion.Computed'" via execution context flow suppression.
+            using var _ = ExecutionContextExt.TrySuppressFlow();
             await Parallel
                 .ForEachAsync(messages, parallelOptions, HandleMessage)
                 .SilentAwait(false); // We swallow all exceptions here
@@ -152,10 +156,6 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
             async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken cancellationToken1)
             {
-                // NOTE(AY): Trying to address "Unable to cast object of type
-                // 'NATS.Client.JetStream.Internal.NatsJSFetch1[System.Buffers.IMemoryOwner1[System.Byte]]'
-                // to type 'ActualLab.Fusion.Computed'" via execution context flow suppression.
-                var scope = ExecutionContextExt.TrySuppressFlow();
                 try {
                     await Process(shardIndex, message, cancellationToken1).ConfigureAwait(false);
                     Interlocked.Increment(ref handledCount);
@@ -174,7 +174,6 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 }
                 finally {
                     message.Data.DisposeSilently();
-                    scope.Dispose();
                 }
             }
         }
