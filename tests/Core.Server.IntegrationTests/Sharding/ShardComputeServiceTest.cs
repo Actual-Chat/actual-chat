@@ -31,9 +31,9 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         var s2 = h2.Services.GetRequiredService<TestShardComputeService>();
         await ComputedTest.When(async ct => {
             var st1 = await sb1.State.Use(ct).ConfigureAwait(false);
-            st1.ShardStates.Count(x => x.LeaseState.Value is not null).Should().Be(shardScheme.ShardCount / 2);
+            st1.ShardStates.Count(x => x.OwnershipState.Value is not null).Should().Be(shardScheme.ShardCount / 2);
             var st2 = await sb2.State.Use(ct).ConfigureAwait(false);
-            st2.ShardStates.Count(x => x.LeaseState.Value is not null).Should().Be(shardScheme.ShardCount / 2);
+            st2.ShardStates.Count(x => x.OwnershipState.Value is not null).Should().Be(shardScheme.ShardCount / 2);
         });
 
         var isOwner1 = await sb1.IsOwned(key, CancellationToken.None);

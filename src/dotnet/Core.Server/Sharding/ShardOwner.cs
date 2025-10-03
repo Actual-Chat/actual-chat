@@ -6,7 +6,7 @@ namespace ActualChat.Sharding;
 public sealed partial class ShardOwner : WorkerBase, IHasServices
 {
     private static bool DebugMode => Constants.DebugMode.ShardOwner;
-    private static readonly RandomTimeSpan NewLeaseWaitTimeout = TimeSpan.FromSeconds(1.5).ToRandom(0.2);
+    private static readonly RandomTimeSpan OwnershipWaitTimeout = TimeSpan.FromSeconds(1.5).ToRandom(0.2);
     private static readonly TimeSpan PostReleaseInvalidationPeriod = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan Century = TimeSpan.FromDays(36_524);
 
@@ -26,7 +26,6 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
     public ShardScheme ShardScheme { get; }
     public MeshLockOptions LockOptions { get; init; }
     public MutableState<OwnState> State { get; }
-    public IReadOnlyList<ShardState> ShardStates => State.Value.ShardStates;
 
     public ShardOwner(
         ShardOwners host,
@@ -142,7 +141,7 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
                 lock (shardState.MutableStateChangeLock) {
                     shardState.MutableInvalidateUntilState.Value = shardOwnership.AcquiredAt + Century; // We want it to change
                     cMustInvalidateUntil = shardState.InvalidateUntilState.Computed;
-                    shardState.MutableLeaseState.Value = shardOwnership;
+                    shardState.MutableOwnershipState.Value = shardOwnership;
                 }
                 Dispatcher.Add(shardOwnership);
                 try {
@@ -150,7 +149,7 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
                 }
                 finally {
                     lock (shardState.MutableStateChangeLock)
-                        shardState.MutableLeaseState.Value = null;
+                        shardState.MutableOwnershipState.Value = null;
                     await Dispatcher.Remove(shardOwnership).SilentAwait(false);
                     // Delay MutableInvalidateUntilState update by PostReleaseInvalidationPeriod,
                     // and make sure we don't overwrite the new value change it only if it wasn't changed.
@@ -195,13 +194,13 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
         private readonly CancellationTokenSource _cancelLockTokenSource;
 
         internal readonly Lock MutableStateChangeLock = new();
-        internal readonly MutableState<ShardOwnership?> MutableLeaseState;
+        internal readonly MutableState<ShardOwnership?> MutableOwnershipState;
         internal readonly MutableState<Moment> MutableInvalidateUntilState;
 
         public ShardOwner ShardOwner { get; }
         public int ShardIndex { get; }
         // ReSharper disable once MemberHidesStaticFromOuterClass
-        public IState<ShardOwnership?> LeaseState => MutableLeaseState;
+        public IState<ShardOwnership?> OwnershipState => MutableOwnershipState;
         public IState<Moment> InvalidateUntilState => MutableInvalidateUntilState;
         public CancellationToken CancelLockToken { get; }
         public bool MustLock => _lockTask != null;
@@ -212,8 +211,8 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
             ShardOwner = shardOwner;
             ShardIndex = shardIndex;
             var stateFactory = ShardOwner.Host.StateFactory;
-            MutableLeaseState = stateFactory.NewMutable<ShardOwnership?>(
-                category: StateCategories.Get(GetType(), nameof(LeaseState)));
+            MutableOwnershipState = stateFactory.NewMutable<ShardOwnership?>(
+                category: StateCategories.Get(GetType(), nameof(OwnershipState)));
             MutableInvalidateUntilState = stateFactory.NewMutable<Moment>(
                 category: StateCategories.Get(GetType(), nameof(InvalidateUntilState)));
             _cancelLockTokenSource = ShardOwner.StopToken.CreateLinkedTokenSource();
@@ -227,7 +226,7 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
             prevState._cancelLockTokenSource.CancelAndDisposeSilently();
             ShardOwner = prevState.ShardOwner;
             ShardIndex = prevState.ShardIndex;
-            MutableLeaseState = prevState.MutableLeaseState;
+            MutableOwnershipState = prevState.MutableOwnershipState;
             MutableInvalidateUntilState = prevState.MutableInvalidateUntilState;
             if (mustLock) {
                 _cancelLockTokenSource = ShardOwner.StopToken.CreateLinkedTokenSource();

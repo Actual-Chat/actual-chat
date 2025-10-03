@@ -8,7 +8,7 @@ public sealed partial class ShardOwner
     public bool MustInvalidate<T>(T shardKey)
     {
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
-        var invalidateUntil = ShardStates[shardIndex].InvalidateUntilState.Value;
+        var invalidateUntil = State.Value.ShardStates[shardIndex].InvalidateUntilState.Value;
         return invalidateUntil >= Clock.Now;
     }
 
@@ -16,14 +16,14 @@ public sealed partial class ShardOwner
     public Task<bool> IsOwned<T>(T shardKey, CancellationToken cancellationToken)
     {
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
+        var cState = State.Computed;
         var cCurrent = Computed.Current;
-        var cOwnerState = State.Computed;
-        var leaseState = cOwnerState.Value.ShardStates[shardIndex].LeaseState;
-        var cLeaseState = leaseState.Computed;
+        var ownershipState = cState.Value.ShardStates[shardIndex].OwnershipState;
+        var cOwnershipState = ownershipState.Computed;
 
         Task<bool> resultTask;
-        if (cLeaseState.Value is null) {
-            var waitTimeout = NewLeaseWaitTimeout.Next() - cOwnerState.Value.Age;
+        if (cOwnershipState.Value is null) {
+            var waitTimeout = OwnershipWaitTimeout.Next() - cState.Value.Age;
             if (waitTimeout > TimeSpan.Zero)
                 return CompleteAsync(waitTimeout);
 
@@ -33,12 +33,12 @@ public sealed partial class ShardOwner
             resultTask = ActualLab.Async.TaskExt.TrueTask;
 
         if (cCurrent is not null)
-            ComputedImpl.AddDependency(cCurrent, cLeaseState);
+            ComputedImpl.AddDependency(cCurrent, cOwnershipState);
         return resultTask;
 
         async Task<bool> CompleteAsync(TimeSpan waitTimeout) {
             try {
-                await cLeaseState
+                await cOwnershipState
                     .When(x => x is not null, cancellationToken)
                     .WaitAsync(waitTimeout, cancellationToken)
                     .ConfigureAwait(false);
@@ -47,10 +47,10 @@ public sealed partial class ShardOwner
                 // Intended
             }
 
-            cLeaseState = leaseState.Computed; // cLeaseState.Update, but faster
+            cOwnershipState = ownershipState.Computed; // cOwnershipState.Update, but faster
             if (cCurrent is not null)
-                ComputedImpl.AddDependency(cCurrent, cLeaseState);
-            return cLeaseState.Value is not null;
+                ComputedImpl.AddDependency(cCurrent, cOwnershipState);
+            return cOwnershipState.Value is not null;
         }
     }
 
@@ -58,29 +58,29 @@ public sealed partial class ShardOwner
     public Task<ShardOwnership> RequireOwnedOrReroute<T>(T shardKey, CancellationToken cancellationToken)
     {
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
+        var cState = State.Computed;
         var cCurrent = Computed.Current;
-        var cOwnerState = State.Computed;
-        var leaseState = cOwnerState.Value.ShardStates[shardIndex].LeaseState;
-        var cLeaseState = leaseState.Computed;
+        var ownershipState = cState.Value.ShardStates[shardIndex].OwnershipState;
+        var cOwnershipState = ownershipState.Computed;
 
         Task<ShardOwnership> resultTask;
-        if (cLeaseState.Value is null) {
-            var waitTimeout = NewLeaseWaitTimeout.Next() - cOwnerState.Value.Age;
+        if (cOwnershipState.Value is null) {
+            var waitTimeout = OwnershipWaitTimeout.Next() - cState.Value.Age;
             if (waitTimeout > TimeSpan.Zero)
                 return CompleteAsync(waitTimeout);
 
             resultTask = Task.FromException<ShardOwnership>(RpcRerouteException.MustReroute());
         }
         else
-            resultTask = (Task<ShardOwnership>)cLeaseState.GetValuePromise();
+            resultTask = (Task<ShardOwnership>)cOwnershipState.GetValuePromise();
 
         if (cCurrent is not null)
-            ComputedImpl.AddDependency(cCurrent, cLeaseState);
+            ComputedImpl.AddDependency(cCurrent, cOwnershipState);
         return resultTask;
 
         async Task<ShardOwnership> CompleteAsync(TimeSpan waitTimeout) {
             try {
-                await cLeaseState
+                await cOwnershipState
                     .When(x => x is not null, cancellationToken)
                     .WaitAsync(waitTimeout, cancellationToken)
                     .ConfigureAwait(false);
@@ -89,10 +89,10 @@ public sealed partial class ShardOwner
                 // Intended
             }
 
-            cLeaseState = leaseState.Computed; // cLeaseState.Update, but faster
+            cOwnershipState = ownershipState.Computed; // cOwnershipState.Update, but faster
             if (cCurrent is not null)
-                ComputedImpl.AddDependency(cCurrent, cLeaseState);
-            return cLeaseState.Value ?? throw RpcRerouteException.MustReroute();
+                ComputedImpl.AddDependency(cCurrent, cOwnershipState);
+            return cOwnershipState.Value ?? throw RpcRerouteException.MustReroute();
         }
     }
 }
