@@ -3,18 +3,11 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Sharding;
 
-public sealed partial class ShardBroker
+public sealed partial class ShardOwner
 {
-    public bool MustInvalidate<T>(T shardKey, CancellationToken cancellationToken)
+    public bool MustInvalidate<T>(T shardKey)
     {
-        var shardKeyResolver = ShardKeyResolvers.Get<T>(new Requester(this));
-        var shardIndex = shardKeyResolver.Invoke(shardKey);
-        return MustInvalidate(shardIndex, cancellationToken);
-    }
-
-    public bool MustInvalidate(int shardIndex, CancellationToken cancellationToken)
-    {
-        shardIndex = shardIndex.PositiveModulo(ShardScheme.ShardCount);
+        var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var invalidateUntil = ShardStates[shardIndex].InvalidateUntilState.Value;
         return invalidateUntil >= Clock.Now;
     }
@@ -22,23 +15,15 @@ public sealed partial class ShardBroker
     // [ComputeMethod] - alike
     public Task<bool> IsLeased<T>(T shardKey, CancellationToken cancellationToken)
     {
-        var shardKeyResolver = ShardKeyResolvers.Get<T>(new Requester(this));
-        var shardIndex = shardKeyResolver.Invoke(shardKey);
-        return IsLeased(shardIndex, cancellationToken);
-    }
-
-    // [ComputeMethod] - alike
-    public Task<bool> IsLeased(int shardIndex, CancellationToken cancellationToken)
-    {
-        shardIndex = shardIndex.PositiveModulo(ShardScheme.ShardCount);
+        var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cCurrent = Computed.Current;
-        var cBrokerState = State.Computed;
-        var leaseState = cBrokerState.Value.ShardStates[shardIndex].LeaseState;
+        var cOwnerState = State.Computed;
+        var leaseState = cOwnerState.Value.ShardStates[shardIndex].LeaseState;
         var cLeaseState = leaseState.Computed;
 
         Task<bool> resultTask;
         if (cLeaseState.Value is null) {
-            var waitTimeout = NewLeaseWaitTimeout.Next() - cBrokerState.Value.Age;
+            var waitTimeout = NewLeaseWaitTimeout.Next() - cOwnerState.Value.Age;
             if (waitTimeout > TimeSpan.Zero)
                 return CompleteAsync(waitTimeout);
 
@@ -70,38 +55,30 @@ public sealed partial class ShardBroker
     }
 
     // [ComputeMethod] - alike
-    public Task<ShardLease> RequireLeaseOrReroute<T>(T shardKey, CancellationToken cancellationToken)
+    public Task<ShardOwnership> RequireLeaseOrReroute<T>(T shardKey, CancellationToken cancellationToken)
     {
-        var shardKeyResolver = ShardKeyResolvers.Get<T>(new Requester(this));
-        var shardIndex = shardKeyResolver.Invoke(shardKey);
-        return RequireLeaseOrReroute(shardIndex, cancellationToken);
-    }
-
-    // [ComputeMethod] - alike
-    public Task<ShardLease> RequireLeaseOrReroute(int shardIndex, CancellationToken cancellationToken)
-    {
-        shardIndex = shardIndex.PositiveModulo(ShardScheme.ShardCount);
+        var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cCurrent = Computed.Current;
-        var cBrokerState = State.Computed;
-        var leaseState = cBrokerState.Value.ShardStates[shardIndex].LeaseState;
+        var cOwnerState = State.Computed;
+        var leaseState = cOwnerState.Value.ShardStates[shardIndex].LeaseState;
         var cLeaseState = leaseState.Computed;
 
-        Task<ShardLease> resultTask;
+        Task<ShardOwnership> resultTask;
         if (cLeaseState.Value is null) {
-            var waitTimeout = NewLeaseWaitTimeout.Next() - cBrokerState.Value.Age;
+            var waitTimeout = NewLeaseWaitTimeout.Next() - cOwnerState.Value.Age;
             if (waitTimeout > TimeSpan.Zero)
                 return CompleteAsync(waitTimeout);
 
-            resultTask = Task.FromException<ShardLease>(RpcRerouteException.MustReroute());
+            resultTask = Task.FromException<ShardOwnership>(RpcRerouteException.MustReroute());
         }
         else
-            resultTask = (Task<ShardLease>)cLeaseState.GetValuePromise();
+            resultTask = (Task<ShardOwnership>)cLeaseState.GetValuePromise();
 
         if (cCurrent is not null)
             ComputedImpl.AddDependency(cCurrent, cLeaseState);
         return resultTask;
 
-        async Task<ShardLease> CompleteAsync(TimeSpan waitTimeout) {
+        async Task<ShardOwnership> CompleteAsync(TimeSpan waitTimeout) {
             try {
                 await cLeaseState
                     .When(x => x is not null, cancellationToken)

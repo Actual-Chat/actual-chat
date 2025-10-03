@@ -3,9 +3,9 @@ using ActualLab.Resilience;
 
 namespace ActualChat.Sharding;
 
-public sealed partial class ShardBroker : WorkerBase, IHasServices
+public sealed partial class ShardOwner : WorkerBase, IHasServices
 {
-    private static bool DebugMode => Constants.DebugMode.ShardBroker;
+    private static bool DebugMode => Constants.DebugMode.ShardOwner;
     private static readonly RandomTimeSpan NewLeaseWaitTimeout = TimeSpan.FromSeconds(1.5).ToRandom(0.2);
     private static readonly TimeSpan PostReleaseInvalidationPeriod = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan Century = TimeSpan.FromDays(36_524);
@@ -14,43 +14,43 @@ public sealed partial class ShardBroker : WorkerBase, IHasServices
     internal ILogger Log => field ??= Services.LoggerFactory().CreateLogger(GetType(), $"@{ShardScheme.Name}");
     private ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
-    private IMeshLocks ShardLocks { get; }
+    private IMeshLocks OwnershipLocks { get; }
     private MeshWatcher MeshWatcher => Host.MeshWatcher;
     private MeshNode ThisNode => Host.ThisNode;
     private StateFactory StateFactory => Host.StateFactory;
     private MomentClock Clock => Host.Clock;
     private RunnableDispatcher Dispatcher { get; } = new();
 
-    public ShardBrokers Host { get; }
+    public ShardOwners Host { get; }
     public IServiceProvider Services { get; }
     public ShardScheme ShardScheme { get; }
     public MeshLockOptions LockOptions { get; init; }
-    public MutableState<BrokerState> State { get; }
+    public MutableState<OwnState> State { get; }
     public IReadOnlyList<ShardState> ShardStates => State.Value.ShardStates;
 
-    public ShardBroker(
-        ShardBrokers host,
-        IMeshLocks shardLocks,
+    public ShardOwner(
+        ShardOwners host,
+        IMeshLocks ownershipLocks,
         ShardScheme shardScheme,
-        CancellationTokenSource stopTokenSource
-        ) : base(stopTokenSource)
+        CancellationTokenSource stopTokenSource)
+        : base(stopTokenSource)
     {
         Host = host;
         Services = host.Services;
         ShardScheme = shardScheme;
-        ShardLocks = shardLocks;
-        LockOptions = shardLocks.LockOptions;
+        OwnershipLocks = ownershipLocks;
+        LockOptions = ownershipLocks.LockOptions;
 
         var meshState = MeshWatcher.State.LastNonErrorValue;
         var shardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
         State = StateFactory.NewMutable(
-            initialValue: new BrokerState(this, meshState, shardStates),
+            initialValue: new OwnState(this, meshState, shardStates),
             category: StateCategories.Get(GetType(), nameof(State)));
     }
 
-    public IAsyncDisposable Use(string name, Func<ShardLease, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
+    public IAsyncDisposable Use(string name, Func<ShardOwnership, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
         => Dispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
-    public IAsyncDisposable Use(string name, Func<ShardLease, CancellationToken, Task> func)
+    public IAsyncDisposable Use(string name, Func<ShardOwnership, CancellationToken, Task> func)
         => Dispatcher.Use(new ShardRunnable(name, func, Clock));
     public IAsyncDisposable Use(string name, Func<int, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
         => Dispatcher.Use(new ShardRunnable(name, func, Clock) { RetryPolicy = retryPolicy });
@@ -102,7 +102,7 @@ public sealed partial class ShardBroker : WorkerBase, IHasServices
                     (mustLock ? addedShards : removedShards).Add(shardIndex);
                     lockedShards[shardIndex] = mustLock;
                 }
-                State.Value = new BrokerState(this, meshState, shardStates = nextShardStates);
+                State.Value = new OwnState(this, meshState, shardStates = nextShardStates);
                 if (addedShards.Count > 0 || removedShards.Count > 0)
                     Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
                         ThisNode.Ref,
@@ -130,28 +130,28 @@ public sealed partial class ShardBroker : WorkerBase, IHasServices
         for (var index = 1; !cancelLockToken.IsCancellationRequested; index++) {
             // Acquire the lock
             DebugLog?.LogDebug("Shard #{ShardIndex}: ?++ {ThisNodeId} (#{Index})", shardIndex, ThisNode.Ref, index);
-            var lockHolder = await ShardLocks.Lock(shardIndex.Format(), "", cancelLockToken).ConfigureAwait(false);
+            var lockHolder = await OwnershipLocks.Lock(shardIndex.Format(), "", cancelLockToken).ConfigureAwait(false);
             await using var _1 = lockHolder.ConfigureAwait(false);
             var lockToken = lockHolder.StopToken;
             DebugLog?.LogDebug("Shard #{ShardIndex}: ++ {ThisNodeId} (#{Index})", shardIndex, ThisNode.Ref, index);
 
             // Create the processor
             if (!lockToken.IsCancellationRequested) {
-                var shardLease = new ShardLease(shardState, lockHolder);
+                var shardOwnership = new ShardOwnership(shardState, lockHolder);
                 Computed cMustInvalidateUntil;
                 lock (shardState.MutableStateChangeLock) {
-                    shardState.MutableInvalidateUntilState.Value = shardLease.AcquiredAt + Century; // We want it to change
+                    shardState.MutableInvalidateUntilState.Value = shardOwnership.AcquiredAt + Century; // We want it to change
                     cMustInvalidateUntil = shardState.InvalidateUntilState.Computed;
-                    shardState.MutableLeaseState.Value = shardLease;
+                    shardState.MutableLeaseState.Value = shardOwnership;
                 }
-                Dispatcher.Add(shardLease);
+                Dispatcher.Add(shardOwnership);
                 try {
                     await TaskExt.NeverEnding(lockToken).SilentAwait(false);
                 }
                 finally {
                     lock (shardState.MutableStateChangeLock)
                         shardState.MutableLeaseState.Value = null;
-                    await Dispatcher.Remove(shardLease).SilentAwait(false);
+                    await Dispatcher.Remove(shardOwnership).SilentAwait(false);
                     // Delay MutableInvalidateUntilState update by PostReleaseInvalidationPeriod,
                     // and make sure we don't overwrite the new value change it only if it wasn't changed.
                     _ = Task
@@ -177,16 +177,16 @@ public sealed partial class ShardBroker : WorkerBase, IHasServices
 
     // Nested types
 
-    public sealed class BrokerState(
-        ShardBroker shardBroker,
+    public sealed class OwnState(
+        ShardOwner shardOwner,
         MeshState meshState,
         IReadOnlyList<ShardState> shardStates)
     {
-        public ShardBroker ShardBroker { get; } = shardBroker;
+        public ShardOwner ShardOwner { get; } = shardOwner;
         public MeshState MeshState { get; } = meshState;
         public IReadOnlyList<ShardState> ShardStates { get; } = shardStates;
-        public Moment CreatedAt { get; } = shardBroker.Host.Clock.Now;
-        public TimeSpan Age => ShardBroker.Host.Clock.Now - CreatedAt;
+        public Moment CreatedAt { get; } = shardOwner.Host.Clock.Now;
+        public TimeSpan Age => ShardOwner.Host.Clock.Now - CreatedAt;
     }
 
     public sealed class ShardState : IAsyncDisposable
@@ -195,28 +195,28 @@ public sealed partial class ShardBroker : WorkerBase, IHasServices
         private readonly CancellationTokenSource _cancelLockTokenSource;
 
         internal readonly Lock MutableStateChangeLock = new();
-        internal readonly MutableState<ShardLease?> MutableLeaseState;
+        internal readonly MutableState<ShardOwnership?> MutableLeaseState;
         internal readonly MutableState<Moment> MutableInvalidateUntilState;
 
-        public ShardBroker ShardBroker { get; }
+        public ShardOwner ShardOwner { get; }
         public int ShardIndex { get; }
         // ReSharper disable once MemberHidesStaticFromOuterClass
-        public IState<ShardLease?> LeaseState => MutableLeaseState;
+        public IState<ShardOwnership?> LeaseState => MutableLeaseState;
         public IState<Moment> InvalidateUntilState => MutableInvalidateUntilState;
         public CancellationToken CancelLockToken { get; }
         public bool MustLock => _lockTask != null;
         public Task WhenDisposed { get; }
 
-        internal ShardState(ShardBroker shardBroker, int shardIndex)
+        internal ShardState(ShardOwner shardOwner, int shardIndex)
         {
-            ShardBroker = shardBroker;
+            ShardOwner = shardOwner;
             ShardIndex = shardIndex;
-            var stateFactory = ShardBroker.Host.StateFactory;
-            MutableLeaseState = stateFactory.NewMutable<ShardLease?>(
+            var stateFactory = ShardOwner.Host.StateFactory;
+            MutableLeaseState = stateFactory.NewMutable<ShardOwnership?>(
                 category: StateCategories.Get(GetType(), nameof(LeaseState)));
             MutableInvalidateUntilState = stateFactory.NewMutable<Moment>(
                 category: StateCategories.Get(GetType(), nameof(InvalidateUntilState)));
-            _cancelLockTokenSource = ShardBroker.StopToken.CreateLinkedTokenSource();
+            _cancelLockTokenSource = ShardOwner.StopToken.CreateLinkedTokenSource();
             CancelLockToken = _cancelLockTokenSource.Token;
             WhenDisposed = Task.CompletedTask;
             _cancelLockTokenSource.CancelAndDisposeSilently();
@@ -225,14 +225,14 @@ public sealed partial class ShardBroker : WorkerBase, IHasServices
         internal ShardState(ShardState prevState, bool mustLock)
         {
             prevState._cancelLockTokenSource.CancelAndDisposeSilently();
-            ShardBroker = prevState.ShardBroker;
+            ShardOwner = prevState.ShardOwner;
             ShardIndex = prevState.ShardIndex;
             MutableLeaseState = prevState.MutableLeaseState;
             MutableInvalidateUntilState = prevState.MutableInvalidateUntilState;
             if (mustLock) {
-                _cancelLockTokenSource = ShardBroker.StopToken.CreateLinkedTokenSource();
+                _cancelLockTokenSource = ShardOwner.StopToken.CreateLinkedTokenSource();
                 CancelLockToken = _cancelLockTokenSource.Token;
-                WhenDisposed = _lockTask = ShardBroker.LockAndUseShard(this, prevState);
+                WhenDisposed = _lockTask = ShardOwner.LockAndUseShard(this, prevState);
             }
             else {
                 _cancelLockTokenSource = prevState._cancelLockTokenSource;

@@ -20,14 +20,14 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         var maxRecentDelta = TimeSpan.FromSeconds(0.1);
 
         using var h1 = await NewAppHost();
-        var sb1 = h1.Services.ShardBroker(shardScheme);
+        var sb1 = h1.Services.ShardOwner(shardScheme);
         var s1 = h1.Services.GetRequiredService<TestShardComputeService>();
         (await s1.GetTime(key)).Elapsed.Should().BeLessThan(maxRecentDelta);
         var c1 = await Computed.Capture(() => s1.TryGetTime(key));
         c1.Value!.Value.Elapsed.Should().BeLessThan(maxRecentDelta);
 
         using var h2 = await NewAppHost();
-        var sb2 = h2.Services.ShardBroker(shardScheme);
+        var sb2 = h2.Services.ShardOwner(shardScheme);
         var s2 = h2.Services.GetRequiredService<TestShardComputeService>();
         await ComputedTest.When(async ct => {
             var st1 = await sb1.State.Use(ct).ConfigureAwait(false);
@@ -72,19 +72,19 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
 public class TestShardComputeService(IServiceProvider services, ITestOutputHelper output) : IComputeService
 {
     private ITestOutputHelper Out { get; } = output;
-    private ShardBroker ShardBroker { get; } = services.ShardBroker(ShardScheme.TestBackend);
+    private ShardOwner ShardOwner { get; } = services.ShardOwner(ShardScheme.TestBackend);
 
     [ComputeMethod]
     public virtual async Task<CpuTimestamp?> TryGetTime(string key, CancellationToken cancellationToken = default)
     {
-        var isLeased = await ShardBroker.IsLeased(key, cancellationToken).ConfigureAwait(false);
+        var isLeased = await ShardOwner.IsLeased(key, cancellationToken).ConfigureAwait(false);
         return isLeased ? CpuTimestamp.Now : null;
     }
 
     [ComputeMethod]
     public virtual async Task<CpuTimestamp> GetTime(string key, CancellationToken cancellationToken = default)
     {
-        await ShardBroker.RequireLeaseOrReroute(key, cancellationToken).ConfigureAwait(false);
+        await ShardOwner.RequireLeaseOrReroute(key, cancellationToken).ConfigureAwait(false);
         return CpuTimestamp.Now;
     }
 }

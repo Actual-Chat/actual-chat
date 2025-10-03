@@ -21,20 +21,6 @@ public static class NumberExt
     public static string Format(this Half source)
         => source.ToString(CultureInfo.InvariantCulture);
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int Mod(this int x, int divider)
-    {
-        var m = x % divider;
-        return m >= 0 ? m : m + divider;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static long Mod(this long x, long divider)
-    {
-        var m = x % divider;
-        return m >= 0 ? m : m + divider;
-    }
-
     // NOTE(AY): Doesn't handle long.MinValue!
     public static int ParseInt(ReadOnlySpan<char> span)
         => TryParseInt(span, out int n) ? n : throw StandardError.Format<int>(span.ToString());

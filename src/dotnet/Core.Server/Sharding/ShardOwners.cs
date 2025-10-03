@@ -1,10 +1,11 @@
 namespace ActualChat.Sharding;
 
-public sealed class ShardBrokers : ProcessorBase, IHasServices
+public sealed class ShardOwners : ProcessorBase, IHasServices
 {
-    private readonly ConcurrentDictionary<ShardScheme, LazySlim<ShardScheme, ShardBrokers, ShardBroker>> _brokers = new();
+    private readonly ConcurrentDictionary<ShardScheme, LazySlim<ShardScheme, ShardOwners, ShardOwner>> _owners = new();
 
-    internal IMeshLocks ShardLockRoot { get; }
+    // OwnershipLocks root, see how it's used
+    internal IMeshLocks OwnershipLocks { get; }
 
     public IServiceProvider Services { get; }
     [field: AllowNull, MaybeNull]
@@ -18,22 +19,22 @@ public sealed class ShardBrokers : ProcessorBase, IHasServices
     [field: AllowNull, MaybeNull]
     public MomentClock Clock { get; }
 
-    public ShardBrokers(IServiceProvider services) : base(services.HostLifetimeIfExist().CreateStopTokenSource())
+    public ShardOwners(IServiceProvider services) : base(services.HostLifetimeIfExist().CreateStopTokenSource())
     {
         Services = services;
-        ShardLockRoot = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ShardBrokers));
-        Clock = ShardLockRoot.Clock;
+        OwnershipLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ShardOwners));
+        Clock = OwnershipLocks.Clock;
     }
 
-    public ShardBroker this[Type backendServiceType]
+    public ShardOwner this[Type backendServiceType]
         => this[BackendServiceDefs[backendServiceType].ShardScheme];
-    public ShardBroker this[ShardScheme shardScheme]
-        => _brokers.GetOrAdd(
+    public ShardOwner this[ShardScheme shardScheme]
+        => _owners.GetOrAdd(
             shardScheme,
             static (shardScheme, self) => {
-                var shardLocks = self.ShardLockRoot.WithKeyPrefix(shardScheme.Name);
+                var ownershipLocks = self.OwnershipLocks.WithKeyPrefix(shardScheme.Name);
                 var stopTokenSource = self.StopToken.CreateLinkedTokenSource();
-                return new ShardBroker(self, shardLocks, shardScheme, stopTokenSource).Start();
+                return new ShardOwner(self, ownershipLocks, shardScheme, stopTokenSource).Start();
             },
             this);
 }

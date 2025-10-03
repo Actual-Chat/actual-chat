@@ -26,14 +26,14 @@ public static class ServiceProviderExt
         => services.GetRequiredService<MeshWatcher>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ShardBrokers ShardBrokers(this IServiceProvider services)
-        => services.GetRequiredService<ShardBrokers>();
-    public static ShardBroker ShardBroker<TBackend>(this IServiceProvider services)
-        => services.GetRequiredService<ShardBrokers>()[typeof(TBackend)];
-    public static ShardBroker ShardBroker(this IServiceProvider services, Type backendServiceType)
-        => services.GetRequiredService<ShardBrokers>()[backendServiceType];
-    public static ShardBroker ShardBroker(this IServiceProvider services, ShardScheme shardScheme)
-        => services.GetRequiredService<ShardBrokers>()[shardScheme];
+    public static ShardOwners ShardOwners(this IServiceProvider services)
+        => services.GetRequiredService<ShardOwners>();
+    public static ShardOwner ShardOwner<TBackend>(this IServiceProvider services)
+        => services.GetRequiredService<ShardOwners>()[typeof(TBackend)];
+    public static ShardOwner ShardOwner(this IServiceProvider services, Type backendServiceType)
+        => services.GetRequiredService<ShardOwners>()[backendServiceType];
+    public static ShardOwner ShardOwner(this IServiceProvider services, ShardScheme shardScheme)
+        => services.GetRequiredService<ShardOwners>()[shardScheme];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IBlobStorages BlobStorages(this IServiceProvider services)
