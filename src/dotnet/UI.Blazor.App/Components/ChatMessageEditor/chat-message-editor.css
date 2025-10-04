@@ -329,8 +329,10 @@ body.narrow .attachment-list-btn.btn {
 
 .attachment-wrapper {
     @apply relative;
+    @apply flex-none;
     @apply p-px;
     @apply rounded-lg;
+    @apply overflow-hidden;
     @apply bg-03;
 }
 body.narrow .attachment-wrapper {
@@ -388,7 +390,7 @@ body.narrow .narrow-panel .attachment-item > img,
 .remove-attachment-btn.btn {
     @apply absolute;
     @apply self-center;
-    @apply min-w-9 max-w-9 min-h-9 max-h-9;
+    @apply min-w-8 max-w-8 min-h-8 max-h-8;
     @apply top-0 right-0;
     @apply z-10;
     @apply opacity-60;
@@ -432,10 +434,13 @@ body.narrow .attachment-item > .c-file .c-extension {
     @apply justify-center;
 }
 .attachment-filename {
+    @apply absolute bottom-0 z-10;
     @apply w-full max-w-34;
     @apply self-center text-center;
     @apply truncate;
-    @apply px-2 md:px-0.5 py-0.5;
+    @apply px-2 md:px-0.5 pb-0.5 pt-1;
+    @apply rounded-t-sm;
+    @apply overflow-hidden;
     @apply cursor-default;
     @apply bg-01;
     @apply text-03 text-xs font-medium;
@@ -447,7 +452,8 @@ body.narrow .narrow-panel .attachment-filename {
     @apply hidden;
 }
 .attachment-upload-progress {
-    @apply h-[5px];
+    @apply absolute bottom-4.5 z-20;
+    @apply h-1;
     @apply bg-05;
     @apply rounded-full;
     @apply overflow-hidden;

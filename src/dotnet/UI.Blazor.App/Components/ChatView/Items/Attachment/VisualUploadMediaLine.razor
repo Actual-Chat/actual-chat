@@ -1,0 +1,30 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var tileCount = Row.Tiles.Count;
+    var cls = tileCount == 1 ? "one-image" : "";
+}
+
+<div class="image-line @Class @Row.LineHeightCls(Row) @cls">
+    @foreach (var tile in Row.Tiles) {
+        <div class="image-item" style="width: @Row.GetTileWidthInPercent(Row, tile)%">
+            <UploadAttachmentItem Attachment="@tile.Attachment"
+                RestartClick="@(() => OnRestartClick(tile.Attachment))"
+                RemoveClick="@(() => OnRemoveClick(tile.Attachment))"/>
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter, EditorRequired] public UploadMediaRow Row { get; set; } = null!;
+    [Parameter, EditorRequired] public IAttachmentList Uploads { get; set; } = null!;
+    [Parameter] public Attachment[]? MediaList { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+
+    private Task OnRemoveClick(Attachment attachment)
+        => Uploads.Remove(attachment);
+
+    private Task OnRestartClick(Attachment attachment)
+        => Uploads.Restart(attachment);
+}
