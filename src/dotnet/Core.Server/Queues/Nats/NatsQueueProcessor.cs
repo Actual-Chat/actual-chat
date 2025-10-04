@@ -142,7 +142,8 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             // NOTE(AY): Trying to address "Unable to cast object of type
             // 'NATS.Client.JetStream.Internal.NatsJSFetch1[System.Buffers.IMemoryOwner1[System.Byte]]'
             // to type 'ActualLab.Fusion.Computed'" via execution context flow suppression.
-            using var _ = ExecutionContextExt.TrySuppressFlow();
+            // NOTE(AY): Ended up commenting out the "fix": it slows down the tests somehow.
+            // using var _ = ExecutionContextExt.TrySuppressFlow();
             await Parallel
                 .ForEachAsync(messages, parallelOptions, HandleMessage)
                 .SilentAwait(false); // We swallow all exceptions here
