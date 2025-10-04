@@ -11,9 +11,9 @@ public static class StableHash
         .Or<uint>(x => unchecked((int)x))
         .Or<long>(x => unchecked((int)x))
         .Or<ulong>(x => unchecked((int)x))
-        .Or<string?>(Hash)
-        .Or<Symbol>(value => Hash(value.Value))
-        .Or<IStringIdentifier?>(value => value is null ? 0 : Hash(value.Value))
+        .Or<string?>(HashString)
+        .Or<Symbol>(value => HashString(value.Value))
+        .Or<IStringIdentifier?>(value => value is null ? 0 : HashString(value.Value))
         .Or(type => {
             if (!type.IsValueType)
                 return null;
@@ -26,10 +26,10 @@ public static class StableHash
                 .CreateDelegate(typeof(Hasher<>).MakeGenericType(type));
 #pragma warning restore IL2060
         })
-        .Or<IHasId<string>?>(value => value is null ? 0 : Hash(value.Id))
-        .Or<IHasId<Symbol>?>(value => value is null ? 0 : Hash(value.Id.Value))
-        .Or<Session?>(value => value is null ? 0 : Hash(value.Id))
-        .Or<ISessionCommand?>(value => value is null ? 0 : Hash(value.Session.Id))
+        .Or<IHasId<string>?>(value => value is null ? 0 : HashString(value.Id))
+        .Or<IHasId<Symbol>?>(value => value is null ? 0 : HashString(value.Id.Value))
+        .Or<Session?>(value => value is null ? 0 : HashString(value.Id))
+        .Or<ISessionCommand?>(value => value is null ? 0 : HashString(value.Session.Id))
         .Expanding()
         .Caching();
 
@@ -73,10 +73,10 @@ public static class StableHash
 
     // Private methods
 
-    private static int Hash(string? value)
+    private static int HashString(string? value)
         => value?.GetXxHash3() ?? 0;
 
     private static int HashSymbolIdentifier<T>(T value)
         where T : ISymbolIdentifier
-        => Hash(value.Value);
+        => HashString(value.Value);
 }

@@ -34,16 +34,6 @@ public sealed class ExpandingHasherResolver(
             if (gDef == typeof(ValueTuple<,,>) && h0 is not null && h1 is not null && h2 is not null)
                 return (Delegate?)Hashers.ForValueTuple3Method.MakeGenericMethod(gArgs[0], gArgs[1], gArgs[2]).Invoke(null, [h0, h1, h2])!;
         }
-
-        foreach (var baseType in type.GetAllBaseTypes(false, true)) {
-            hasher = self.Get(baseType);
-            if (hasher is not null)
-                return hasher;
-
-            if (baseType == typeof(IHashable))
-                return (Delegate?)Hashers.ForHashableMethod.MakeGenericMethod(type).Invoke(null, [self])!;
-        }
-
         return null;
     }
 }

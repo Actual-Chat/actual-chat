@@ -14,8 +14,6 @@ public static class Hashers
         .GetMethod(nameof(ForValueTuple2), BindingFlags.Static | BindingFlags.Public)!;
     public static readonly MethodInfo ForValueTuple3Method = typeof(Hashers)
         .GetMethod(nameof(ForValueTuple3), BindingFlags.Static | BindingFlags.Public)!;
-    public static readonly MethodInfo ForHashableMethod = typeof(Hashers)
-        .GetMethod(nameof(ForHashable), BindingFlags.Static | BindingFlags.Public)!;
 
     public static Hasher<T> Default<T>()
         => Cache<T>.Default;
@@ -32,10 +30,6 @@ public static class Hashers
         => value => StableHash.Combine(h1.Invoke(value.Item1), h2.Invoke(value.Item2));
     public static Hasher<ValueTuple<T1, T2, T3>> ForValueTuple3<T1, T2, T3>(Hasher<T1> h1, Hasher<T2> h2, Hasher<T3> h3)
         => value => StableHash.Combine(h1.Invoke(value.Item1), h2.Invoke(value.Item2), h3.Invoke(value.Item3));
-
-    public static Hasher<T?> ForHashable<T>(HasherResolver resolver)
-        where T : IHashable
-        => value => value?.GetHashCode(resolver) ?? 0;
 
     // Private methods
 
