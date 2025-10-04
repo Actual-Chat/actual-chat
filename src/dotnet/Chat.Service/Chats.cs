@@ -842,7 +842,7 @@ public class Chats(IServiceProvider services) : IChats
                     using (var _ = Computed.BeginIsolation()) {
                         // Do not capture dependency, we just need an author id
                         var author = await AuthorsBackend.GetByUserId(chatId,
-                                c.UserId,
+                                c.UserId!,
                                 RequestedAuthorKind.Full,
                                 cancellationToken)
                             .ConfigureAwait(false);

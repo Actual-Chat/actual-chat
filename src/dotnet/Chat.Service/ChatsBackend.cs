@@ -614,7 +614,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (dbReadPositionsStat == null)
             return null;
 
-        return new ReadPositionsStatBackend(chatId, dbReadPositionsStat.StartTrackingEntryLid, dbReadPositionsStat.GetTopReadPositions());
+        var topReadPositions = dbReadPositionsStat.GetTopReadPositions();
+        return new ReadPositionsStatBackend(chatId, dbReadPositionsStat.StartTrackingEntryLid, topReadPositions);
     }
 
     // [ComputeMethod]
@@ -1757,7 +1758,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
 
         var userId = command.UserId;
-        var positionId = command.PositionId;
+        var entryLid = command.EntryLid;
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -1768,53 +1769,41 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var hasChanges = false;
         if (dbReadPositionsStat != null) {
-            if (dbReadPositionsStat.StartTrackingEntryLid <= positionId) {
-                var items = dbReadPositionsStat.GetTopReadPositions().ToList();
-                if (items.Count == 0) {
-                    items.Add(new UserReadPosition(userId, positionId));
-                    hasChanges = true;
-                }
-                else {
-                    if (items.Count == 1 || items[^1].EntryLid < positionId) {
-                        var index = items.FindIndex(c => c.UserId == userId);
-                        if (index >= 0) {
-                            if (items[index].EntryLid < positionId) {
-                                items[index] = new UserReadPosition(userId, positionId);
-                                hasChanges = true;
-                            }
-                        }
-                        else {
-                            items.Add(new UserReadPosition(userId, positionId));
-                            hasChanges = true;
-                        }
+            if (dbReadPositionsStat.StartTrackingEntryLid <= entryLid) {
+                var readPositions = dbReadPositionsStat.GetTopReadPositions();
+                var sameUserIndex = Array.FindIndex(readPositions, c => c.UserId == userId);
+                if (sameUserIndex >= 0) { // There is a position of the same user
+                    if (readPositions[sameUserIndex].EntryLid < entryLid) { // And its EntryLid is lower
+                        readPositions[sameUserIndex] = new UserReadPosition(userId, entryLid);
+                        hasChanges = true;
                     }
                 }
+                else { // There is no position of the same user
+                    readPositions = readPositions.With(new UserReadPosition(userId, entryLid));
+                    hasChanges = true;
+                }
                 if (hasChanges) {
-                    items = items
-                        .OrderByDescending(c => c.EntryLid)
-                        .ThenBy(c => c.UserId)
-                        .Take(2)
-                        .ToList();
-                    var top1 = items[0];
-                    var top2 = items.Count > 1 ? items[1] : null;
+                    Array.Sort(readPositions, UserReadPosition.Comparer);
+                    var top1 = readPositions[0];
+                    var top2 = readPositions.Length > 1 ? readPositions[1] : default;
                     dbReadPositionsStat.Version = VersionGenerator.NextVersion(dbReadPositionsStat.Version);
-                    dbReadPositionsStat.Top1UserId = top1.UserId.Value;
+                    dbReadPositionsStat.Top1UserId = top1.UserId?.Value ?? "";
                     dbReadPositionsStat.Top1EntryLid = top1.EntryLid;
-                    dbReadPositionsStat.Top2UserId = top2?.UserId.Value ?? "";
-                    dbReadPositionsStat.Top2EntryLid = top2?.EntryLid ?? 0;
+                    dbReadPositionsStat.Top2UserId = top2.UserId?.Value ?? "";
+                    dbReadPositionsStat.Top2EntryLid = top2.EntryLid;
                 }
             }
         }
         else {
             var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
             var lastEntryId = idRange.End - 1; // Start tracking positions stat since this entry
-            var shouldTrackPosition = positionId >= lastEntryId;
+            var shouldTrackPosition = entryLid >= lastEntryId;
             dbContext.Add(new DbReadPositionsStat() {
                 ChatId = chatId.Value,
                 Version = VersionGenerator.NextVersion(),
                 StartTrackingEntryLid = lastEntryId,
                 Top1UserId = shouldTrackPosition ? userId.Value : "",
-                Top1EntryLid = shouldTrackPosition ? positionId : 0,
+                Top1EntryLid = shouldTrackPosition ? entryLid : 0,
             });
             hasChanges = true;
         }
