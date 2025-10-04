@@ -134,7 +134,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                     var uploadSession = await UploadSessions.CreateSession(cmd.ChatId, fileProvider).ConfigureAwait(false);
                     uploadSessionId = uploadSession.SessionId;
                 }
-                var attachEntry = new AttachFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType);
+                var attachEntry = new AttachFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Width, attachment.Height);
                 attachEntries.Add(attachEntry);
             }
         }
@@ -213,7 +213,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
             }
 
-            var attachment = new Attachment(previewUrl, attachEntry.FileName, attachEntry.FileType) {
+            var attachment = new Attachment(previewUrl, attachEntry.FileName, attachEntry.FileType, attachEntry.Width, attachEntry.Height) {
                 UploadSessionId = uploadSessionId,
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));

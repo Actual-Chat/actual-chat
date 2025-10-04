@@ -8,19 +8,19 @@ import { PROD_HOST } from '_constants';
 class ImageSkeleton extends LitElement {
     static styles = css`
       :host {
-        display: block;
+          display: block;
       }
 
       :host(.show-image-skeleton) {
-        animation: pulse 2s infinite;
-        background-color: var(--background-05);
+          animation: pulse 2s infinite;
+          background-color: var(--background-05);
       }
 
       :host(.show-image-skeleton) .image,
       :host(.show-image-thumbnail) .image,
       :host(.show-image-skeleton) .image-thumbnail,
       :host(.show-image-original) .image-thumbnail {
-        visibility: hidden;
+          visibility: hidden;
       }
 
       :host(.show-image-original) .image {

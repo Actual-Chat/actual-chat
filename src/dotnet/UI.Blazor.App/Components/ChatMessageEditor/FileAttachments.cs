@@ -7,6 +7,8 @@ namespace ActualChat.UI.Blazor.App.Components;
 public class FileAttachments : UIServiceBase<AppUIHub>
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
+    private static readonly string JSGetDimensions = $"{BlazorUIAppModule.ImportName}.MediaFileDimensions.getDimensions";
+
 
     private AttachmentsController AttachmentsController { get; }
     public ChatId ChatId { get; }
@@ -109,10 +111,17 @@ public class FileAttachments : UIServiceBase<AppUIHub>
     private async Task<bool> AddFileAttachment(AttachmentList list, IFileProvider fileProvider, string fileType)
     {
         var previewUrl = await fileProvider.GetPreviewUrl();
+
+        var dimensions = await GetFileDimensionsAsync(previewUrl, fileType);
+        var width = dimensions.width;
+        var height = dimensions.height;
+
         var attachment = new Attachment(
             previewUrl,
             fileProvider.FileName,
-            fileType) {
+            fileType,
+            width,
+            height) {
             FileProvider = fileProvider,
         };
         attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
@@ -121,6 +130,14 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         // await AttachmentsController.InitUpload(list, attachment.Id, ChatId);
         // await AttachmentsController.ResumeUpload(list, attachment.Id);
         return true;
+    }
+
+    private async Task<(int width, int height)> GetFileDimensionsAsync(string previewUrl, string mimeType) {
+        var dimensions = await JS.InvokeAsync<MediaDimensions?>(JSGetDimensions, previewUrl, mimeType).ConfigureAwait(false);
+        if (dimensions is null)
+            return (0, 0);
+
+        return (dimensions.Width, dimensions.Height);
     }
 
     private struct CreateWebFileProviderResult

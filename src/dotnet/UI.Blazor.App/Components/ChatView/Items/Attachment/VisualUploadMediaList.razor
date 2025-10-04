@@ -1,0 +1,91 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="media-attachment-uploads message-image-attachments @_listCls">
+    @foreach (var row in _rows) {
+        var cls = GetRowClass(row);
+        <VisualUploadMediaLine
+            Uploads="@Uploads"
+            Row="@row"
+            Class="@cls"
+            MediaList="@MediaList"/>
+    }
+</div>
+
+@code {
+    private UploadMediaRow[] _rows = [];
+    private string _listCls = "";
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter, EditorRequired] public IAttachmentList Uploads { get; set; } = null!;
+    [Parameter, EditorRequired] public Attachment[] MediaList { get; set; } = null!;
+
+    protected override void OnParametersSet() {
+        _rows = GetRows(MediaList);
+        _listCls = _rows.Length == 1 ? "one-row" : "";
+    }
+
+    private static UploadMediaRow[] GetRows(Attachment[] mediaList) {
+        var rows = new List<UploadMediaRow>();
+        var line = new List<UploadMediaTile>();
+
+        for (var index = 0; index < mediaList.Length; index++) {
+            var attachment = mediaList[index];
+            var tile = new UploadMediaTile(attachment);
+
+            var isLast = index == mediaList.Length - 1;
+            var lineIsFull = line.Count >= 3;
+            var tileIsWide = tile.Proportions is UploadMediaProportions.Wide or UploadMediaProportions.ExtraWide;
+            var lineHasManyWide = line.Count(t => t.Proportions is UploadMediaProportions.Wide or UploadMediaProportions.ExtraWide) > 1;
+
+            if (mediaList.Length == 2
+                && index == 1
+                && line is [{ Proportions: UploadMediaProportions.Wide or UploadMediaProportions.ExtraWide }]
+                && tileIsWide) {
+                rows.Add(new UploadMediaRow(line));
+                line = new List<UploadMediaTile>();
+            }
+
+            if ((!isLast && lineIsFull)
+                || (isLast && line.Count == 3 && tileIsWide && lineHasManyWide)) {
+                rows.Add(new UploadMediaRow(line));
+                line = new List<UploadMediaTile>();
+            }
+
+            line.Add(tile);
+        }
+
+        if (line.Count > 0)
+            rows.Add(new UploadMediaRow(line));
+
+        return rows.ToArray();
+    }
+
+    private static string GetRowClass(UploadMediaRow row) {
+        var tiles = row.Tiles;
+        if (tiles.Count > 2)
+            return "normal-line";
+        if (tiles.Count == 2) {
+            if (tiles.Count(t => t.Proportions is UploadMediaProportions.Square) == 2)
+                return "md-md";
+
+            if (tiles.Count(t => t.Proportions is UploadMediaProportions.Narrow) == 2)
+                return "sm-sm";
+
+            if (tiles.Count(t => t.Proportions is UploadMediaProportions.Narrow) == 1
+                && tiles.Count(t => t.Proportions is UploadMediaProportions.Square) == 1)
+                return "sm-md";
+        }
+        if (tiles.Count == 1) {
+            var tile = tiles[0];
+            return tile.Proportions switch {
+                UploadMediaProportions.Narrow => "sm-sm",
+                UploadMediaProportions.Square => "md-md",
+                UploadMediaProportions.Wide => "lg-lg",
+                UploadMediaProportions.ExtraWide => "xl-xl",
+                _ => "normal-line",
+            };
+        }
+        return "normal-line";
+    }
+}

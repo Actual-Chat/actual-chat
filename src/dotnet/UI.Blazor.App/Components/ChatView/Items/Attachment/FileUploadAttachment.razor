@@ -1,0 +1,48 @@
+@using ActualChat.Media
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    MediaMimeTypes.TryGetExtension(Attachment.FileType, out var extension);
+    var fileExtension = extension != null ? extension.Replace(".", "") : "";
+    var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
+    var iconOnlyCls = IconOnly ? "icon-only" : "";
+    var tooltipTitle = IconOnly ? GetTooltipTitle() : "";
+}
+
+<a class="file-attachment unfocusable @iconOnlyCls"
+   href="@Attachment.PreviewUrl"
+   target="_blank"
+   role="button"
+   data-tooltip="@tooltipTitle"
+   data-tooltip-position="@FloatingPosition.Top.ToPositionString()">
+    <div class="c-file-icon @fileCls">
+        @if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
+            <i class="icon-play-fill text-2xl"></i>
+        } else {
+            <i class="icon-file text-xl"></i>
+        }
+    </div>
+    @if (!IconOnly) {
+        <div class="c-file-info">
+            <FileAttachmentTitle Title="@Attachment.FileName"/>
+            <div class="c-bottom">
+                <div class="c-size">
+                    @* TODO: File size (Andrey Y) *@
+                    @* <span>@FileSizeFormatter.Format(fileSize)</span> *@
+                </div>
+            </div>
+        </div>
+    }
+</a>
+
+@code {
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+
+    [Parameter, EditorRequired]
+    public Attachment Attachment { get; set; } = null!;
+    [Parameter] public bool IconOnly { get; set; }
+
+    private string GetTooltipTitle() {
+        var name = Attachment.FileName;
+        return name.Length <= 24 ? name : $"{name[..10]}...{name[^10..]}";
+    }
+}

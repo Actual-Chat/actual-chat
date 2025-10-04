@@ -4,7 +4,7 @@
 }
 .image-line {
     @apply flex-x gap-x-px;
-    @apply h-full w-64 md:w-96;
+    @apply h-full w-full min-w-full;
     @apply overflow-hidden;
 }
 .wide .image-line {
@@ -17,16 +17,23 @@ body.narrow .thread-message .image-line {
 .message-image-attachments.one-row .image-line:not(.one-image) {
     @apply h-full;
 }
-.message-image-attachments .image-line:first-child {
-    @apply rounded-t-xl;
+.message-image-attachments .image-line:first-child .image-item:first-child {
+    @apply rounded-tl-xl;
 }
-.message-image-attachments .image-line:last-child {
-    @apply rounded-b-xl;
+.message-image-attachments .image-line:first-child .image-item:last-child {
+    @apply rounded-tr-xl;
+}
+.message-image-attachments .image-line:last-child .image-item:first-child {
+    @apply rounded-bl-xl;
+}
+.message-image-attachments .image-line:last-child .image-item:last-child {
+    @apply rounded-br-xl;
 }
 
 .image-line .image-item {
     @apply /*flex-1*/ flex-x;
     @apply w-full;
+    @apply overflow-hidden;
 }
 body.hoverable .image-line .image-item:hover {
     filter: brightness(1.1);
@@ -132,6 +139,7 @@ body.hoverable .image-line .image-item:hover {
 }
 .image-attachment {
     @apply relative;
+    @apply flex-none;
     @apply w-full;
 }
 .image-attachment > .c-content {
@@ -232,4 +240,35 @@ body.hoverable .file-attachment:hover,
 .file-attachment .c-file-icon.file-default {
     @apply bg-cancel;
     @apply text-primary;
+}
+
+.message-image-attachments.media-attachment-uploads {
+    @apply w-full;
+    @apply mb-1;
+}
+.message-image-attachments.media-attachment-uploads .attachment-wrapper {
+    @apply w-full;
+    @apply rounded-none;
+}
+.message-image-attachments.media-attachment-uploads .attachment-wrapper > .c-content {
+    @apply h-full;
+}
+.message-image-attachments.media-attachment-uploads .attachment-item {
+    @apply gap-x-0;
+    @apply h-full w-auto;
+    @apply m-0;
+    @apply rounded-none;
+}
+.message-image-attachments.media-attachment-uploads .attachment-filename {
+    @apply w-full max-w-none;
+}
+body.hoverable .message-image-attachments.media-attachment-uploads .remove-attachment-btn.btn {
+    @apply hidden;
+}
+body.hoverable .message-image-attachments.media-attachment-uploads .image-item:hover .remove-attachment-btn.btn {
+    @apply flex;
+}
+.message-image-attachments.media-attachment-uploads .attachment-item > img,
+.message-image-attachments.media-attachment-uploads .attachment-item > video {
+    @apply h-full;
 }

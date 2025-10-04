@@ -53,6 +53,7 @@ export * from './Services/audio-initializer';
 export * from './Services/web-rtc-aec';
 export * from './Services/audio-context-destination-fallback';
 export * from './Services/observe-directive-lit';
+export * from './Services/FileProviders/media-file-dimensions';
 export * from './Services/FileProviders/file-handle-storage';
 export * from './Services/FileProviders/file-handle-permissions';
 export * from './Services/FileProviders/web-file-providers';

@@ -1,14 +1,16 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @implements IDisposable;
+@{
+    var uploads = Uploads.Items.ToArray();
+    var (mediaList, fileList) = GetOrderedAttachmentList(uploads);
+}
 
-<ul>
-    @foreach (var attachment in Uploads.Items) {
-        <AttachmentItem
-            Attachment="@attachment"
-            RestartClick="@(() => OnRestartClick(attachment))"
-            RemoveClick="@(() => OnRemoveClick(attachment))"/>
+<VisualUploadMediaList Uploads="@Uploads" MediaList="@mediaList"/>
+<div class="message-file-attachments">
+    @foreach (var attachment in fileList) {
+        <FileUploadAttachment Attachment="@attachment"/>
     }
-</ul>
+</div>
 
 @code {
     private IAttachmentList? _lastUploads;
@@ -30,9 +32,7 @@
         StateHasChanged();
     }
 
-    private Task OnRemoveClick(Attachment attachment)
-        => Uploads.Remove(attachment);
-
-    private Task OnRestartClick(Attachment attachment)
-        => Uploads.Restart(attachment);
+    private (Attachment[], Attachment[]) GetOrderedAttachmentList(Attachment[] attachments)
+        => (attachments.Where(a => a.IsImage || a.IsVideo).ToArray(),
+            attachments.Where(a => a is { IsImage: false, IsVideo: false }).ToArray());
 }

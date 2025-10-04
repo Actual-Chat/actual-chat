@@ -183,7 +183,7 @@
             // but rather post a message immediately.
             const string previewUrl = "";
             var fileProvider = fileInfo.FileProvider;
-            var attachment = new Attachment(previewUrl, fileInfo.FileName, fileInfo.FileType) {
+            var attachment = new Attachment(previewUrl, fileInfo.FileName, fileInfo.FileType, null, null) {
                 FileProvider = fileProvider
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
