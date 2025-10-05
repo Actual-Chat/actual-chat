@@ -7,9 +7,19 @@ namespace ActualChat.Flows;
 
 public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
 {
+    [IgnoreDataMember, MemoryPackIgnore]
+    private bool IsReindexing { get; set; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected abstract int CurrentFlowSetVersion { get; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected virtual TimeSpan WatchdogInterval { get; } = TimeSpan.FromHours(24);
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected virtual TimeSpan RecheckInterval { get; } = TimeSpan.FromSeconds(10);
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected virtual TimeSpan TimerRescheduleThreshold { get; } = TimeSpan.FromSeconds(1);
+
     [DataMember(Order = 100), MemoryPackOrder(100)]
     public TCursor? Cursor { get; protected set; }
-
     [DataMember(Order = 102), MemoryPackOrder(102)]
     public Moment? NextWatchdogTimerAt { get; protected set; }
     [DataMember(Order = 105), MemoryPackOrder(105)]
@@ -18,17 +28,6 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
     public long FlowSetVersion { get; protected set; }
     [DataMember(Order = 104), MemoryPackOrder(104)]
     public Moment LastRunAt { get; protected set; }
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected abstract int CurrentFlowSetVersion { get; }
-    [IgnoreDataMember, MemoryPackIgnore]
-    private bool IsReindexing { get; set; }
-
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected virtual TimeSpan WatchdogInterval { get; } = TimeSpan.FromHours(24);
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected virtual TimeSpan RecheckInterval { get; } = TimeSpan.FromSeconds(10);
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected virtual TimeSpan TimerRescheduleThreshold { get; } = TimeSpan.FromSeconds(1);
 
     protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
     {
