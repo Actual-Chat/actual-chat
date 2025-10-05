@@ -92,7 +92,7 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
 
     // Private methods
 
-    private FlowWorklet GetOrAddWorklet(FlowId flowId)
+    private LegacyFlowWorklet GetOrAddWorklet(FlowId flowId)
     {
         flowId.Require();
         var shardKey = ShardKeyResolvers.Get<FlowId>(Requester).Invoke(flowId);

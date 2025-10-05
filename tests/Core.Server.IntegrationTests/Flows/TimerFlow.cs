@@ -7,14 +7,14 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class TimerFlow : Flow
+public partial class TimerFlow : LegacyFlow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public int RemainingCount { get; private set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public double Period { get; private set; }
 
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
     {
         var args = Id.SplitArguments("", "1", "1");
         RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
@@ -26,7 +26,7 @@ public partial class TimerFlow : Flow
         return WaitForTimer(nameof(OnTimer), TimeSpan.FromSeconds(Period));
     }
 
-    protected async Task<FlowTransition> OnTimer(CancellationToken cancellationToken)
+    protected async Task<LegacyFlowTransition> OnTimer(CancellationToken cancellationToken)
     {
         Event.Require<FlowTimerEvent>();
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
@@ -37,7 +37,7 @@ public partial class TimerFlow : Flow
     }
 
     protected override ValueTask ApplyTransition(
-        FlowTransition transition, IFlowEvent @event, CancellationToken cancellationToken)
+        LegacyFlowTransition transition, IFlowEvent @event, CancellationToken cancellationToken)
     {
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"`{Id}` transition @ '{Step}': {transition}");

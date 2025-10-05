@@ -1,0 +1,260 @@
+using ActualChat.Flows.Infrastructure;
+using ActualChat.Flows.Internal;
+using ActualLab.CommandR.Operations;
+using ActualLab.Versioning;
+using MemoryPack;
+
+namespace ActualChat.Flows;
+
+public abstract class LegacyFlow : Flow, ILegacyFlowImpl
+{
+    public static class Defaults
+    {
+        public static TimeSpan KeepAliveFor { get; } = TimeSpan.FromSeconds(10);
+        public static RetryDelaySeq FailureDelays { get; } = RetryDelaySeq.Exp(0.5, 3);
+    }
+
+    public static Moment InfiniteHardResumeAt { get; } = new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+    private LegacyFlowWorklet? _worklet;
+
+    // ILegacyFlowImpl
+
+    FlowHost ILegacyFlowImpl.Host => Worklet.Host;
+    LegacyFlowWorklet ILegacyFlowImpl.Worklet => Worklet;
+    LegacyFlowEventBin ILegacyFlowImpl.Event => Event;
+    protected FlowHost Host => Worklet.Host;
+    protected LegacyFlowWorklet Worklet => RequireWorklet();
+    protected LegacyFlowEventBin Event { get; private set; } = null!;
+
+    // Persisted to the DB directly
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Symbol Step { get; private set; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Moment? HardResumeAt { get; private set; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    public TimeSpan EventUuidQuantizationInterval { get; protected set; } = TimeSpan.FromMinutes(1);
+
+    // Used by FlowWorklet
+    [IgnoreDataMember, MemoryPackIgnore]
+    public TimeSpan KeepAliveFor { get; set; } = Defaults.KeepAliveFor;
+    [IgnoreDataMember, MemoryPackIgnore]
+    public RetryDelaySeq FailureDelays { get; set; } = Defaults.FailureDelays;
+
+    public void Initialize(FlowId id, long version, Symbol step, Moment? hardResumeAt = null, LegacyFlowWorklet? worklet = null)
+    {
+        base.Initialize(id, version, worklet?.Host.Services);
+        _worklet = worklet;
+        Step = step;
+        HardResumeAt = hardResumeAt;
+        if (worklet != null)
+            OnInitialized();
+    }
+
+    public override string ToString()
+        => $"{GetType().Name}('{Id.Value}' @ {Step}, v.{Version.FormatVersion()})";
+
+    public virtual async Task<LegacyFlowTransition> ProcessEvent(IFlowEvent evt, CancellationToken cancellationToken)
+    {
+        Event = new LegacyFlowEventBin(this, evt);
+        var step = Step;
+        LegacyFlowTransition transition;
+        try {
+            if (Event.Is<ILegacyFlowControlEvent>(out var flowControlEvent)) {
+                step = flowControlEvent.GetNextStep(this);
+                if (step.IsEmpty)
+                    return default;
+            }
+            transition = await InvokeStep(step, cancellationToken).ConfigureAwait(false);
+
+            if (!Event.IsHandled) {
+                var error = Errors.UnhandledEvent(GetType(), Step, evt.GetType());
+                Log.LogError(error,
+                    "`{Id}`.ProcessEvent @ '{Step}': unhandled event '{EventType}'",
+                    Id, Step, evt.GetType().GetName());
+                throw error;
+            }
+        }
+        catch (Exception ex) when (!ex.IsCancellationOf(cancellationToken)) {
+            Event.MarkHandled(false);
+            transition = await HandleError(ex, cancellationToken).ConfigureAwait(false);
+            if (!Event.IsHandled)
+                throw;
+        }
+        finally {
+            Event = null!;
+        }
+        await ApplyTransition(transition, evt, cancellationToken).ConfigureAwait(false);
+        return transition;
+    }
+
+    // Default steps
+
+    protected virtual void OnInitialized()
+    { }
+
+    protected abstract Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken);
+
+    protected virtual Task<LegacyFlowTransition> OnHardResume(CancellationToken cancellationToken)
+        => InvokeStep(Step, cancellationToken);
+
+    protected Task<LegacyFlowTransition> OnEnding(CancellationToken cancellationToken)
+    {
+        Event.MarkHandled();
+        Log.LogInformation("`{Id}`.OnEnding due to {Event}", Id, Event.Event);
+        return Task.FromResult(StoreAndResume(LegacyFlowSteps.OnEnd));
+    }
+
+    protected Task<LegacyFlowTransition> OnEnd(CancellationToken cancellationToken)
+    {
+        Event.MarkHandled();
+        if (Event.Event is not LegacyFlowResumeEvent)
+            Log.LogInformation("`{Id}`.OnEnd: ignoring {Event}", Id, Event.Event);
+
+        var transition = HardResumeAt != InfiniteHardResumeAt
+            ? WaitForEvent(LegacyFlowSteps.OnEnd, InfiniteHardResumeAt)
+            : default;
+        return Task.FromResult(transition);
+    }
+
+    protected virtual Task<LegacyFlowTransition> OnMissingStep(CancellationToken cancellationToken)
+        => throw Errors.NoStepImplementation(GetType(), Step);
+
+    protected virtual Task<LegacyFlowTransition> HandleError(Exception error, CancellationToken cancellationToken)
+        => Task.FromResult(LegacyFlowTransition.None);
+
+    // Transition helpers
+
+    protected LegacyFlowTransition WaitForEvent(Symbol nextStep, TimeSpan hardResumeDelay, string? tag = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(hardResumeDelay, TimeSpan.Zero);
+        Event.MarkHandled();
+
+        var hardResumeAt = Clocks.SystemClock.Now + hardResumeDelay;
+        return new(this, nextStep, tag, hardResumeAt) { MustStore = true };
+    }
+
+    protected LegacyFlowTransition WaitForEvent(Symbol nextStep, string? tag = null)
+        => WaitForEvent(nextStep, InfiniteHardResumeAt, tag);
+
+    protected LegacyFlowTransition WaitForEvent(Symbol nextStep, Moment hardResumeAt, string? tag = null)
+    {
+        Event.MarkHandled();
+        return new LegacyFlowTransition(this, nextStep, tag, hardResumeAt) { MustStore = true };
+    }
+
+    protected LegacyFlowTransition WaitForTimer(Symbol nextStep, TimeSpan delay, string? tag = null)
+    {
+        Event.MarkHandled();
+        if (delay <= TimeSpan.Zero)
+            return StoreAndResume(nextStep);
+
+        var resumeAt = Clocks.SystemClock.Now + delay;
+        var uuid = GetEventUuid(nameof(FlowTimerEvent), resumeAt);
+        var timerEvent = new OperationEvent(
+            uuid,
+            resumeAt,
+            new FlowTimerEvent(Id, tag),
+            KeyConflictStrategy.Skip);
+        return new(this, nextStep, tag, resumeAt, timerEvent);
+    }
+
+    protected LegacyFlowTransition WaitForTimer(Symbol nextStep, Moment resumeAt, string? tag = null)
+    {
+        Event.MarkHandled();
+        var now = Clocks.SystemClock.Now;
+        var delay = resumeAt - now;
+        if (delay <= TimeSpan.Zero)
+            return StoreAndResume(nextStep);
+
+        var uuid = GetEventUuid(nameof(FlowTimerEvent), resumeAt);
+        var timerEvent = new OperationEvent(
+            uuid,
+            resumeAt,
+            new FlowTimerEvent(Id, tag),
+            KeyConflictStrategy.Skip);
+        return new(this, nextStep, tag, resumeAt, timerEvent);
+    }
+
+    protected LegacyFlowTransition QueueResume(Symbol nextStep, string? tag = null)
+    {
+        Event.MarkHandled();
+        // NOTE: InfiniteHardResumeAt to avoid FlowWorklet to schedule extra FlowResumeEvent
+        var queueEvent = new OperationEvent(
+            GetEventUuid(nameof(LegacyFlowResumeEvent), InfiniteHardResumeAt),
+            InfiniteHardResumeAt,
+            new LegacyFlowResumeEvent(Id, false, tag),
+            KeyConflictStrategy.Skip);
+        return new LegacyFlowTransition(this, nextStep, tag, queueEvent);
+    }
+
+    protected LegacyFlowTransition StoreAndResume(Symbol nextStep, string? tag = null)
+    {
+        Event.MarkHandled();
+        return new LegacyFlowTransition(this, nextStep, tag) { MustStore = true };
+    }
+
+    protected LegacyFlowTransition Resume(Symbol nextStep, string? tag = null)
+    {
+        Event.MarkHandled();
+        return new LegacyFlowTransition(this, nextStep, tag);
+    }
+
+    protected LegacyFlowTransition End(string? tag = null)
+    {
+        var nextStep = Step == LegacyFlowSteps.OnEnd
+            ? LegacyFlowSteps.OnEnd
+            : LegacyFlowSteps.OnEnding;
+        return StoreAndResume(nextStep, tag);
+    }
+
+    // Other protected methods
+
+    protected Task<LegacyFlowTransition> InvokeStep(Symbol step, CancellationToken cancellationToken)
+    {
+        var stepFunc = LegacyFlowSteps.Get(GetType(), step, true)!;
+        var result = stepFunc.Invoke(this, cancellationToken);
+        return result as Task<LegacyFlowTransition>
+            ?? throw StandardError.Internal("Any flow step must return a Task<FlowTransition>.");
+    }
+
+    protected virtual async ValueTask ApplyTransition(
+        LegacyFlowTransition transition, IFlowEvent @event, CancellationToken cancellationToken)
+    {
+        DebugLog?.LogDebug(
+            "`{Id}`: '{Step}' + {EventType} -> {Transition}",
+            Id, Step, @event.GetType().GetName(), transition);
+        if (transition.IsNone)
+            return;
+
+        Step = transition.Step;
+        HardResumeAt = transition.HardResumeAt;
+        if (!transition.EffectiveMustStore)
+            return;
+
+        var storeCommand = new Flows_Store(Id, Version) {
+            Flow = Clone(),
+            AddEvents = transition.Events.IsEmpty ? null : transition.Events.ToArray(),
+        };
+        Version = await Host.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private LegacyFlowWorklet RequireWorklet()
+    {
+        if (_worklet == null)
+            throw ActualLab.Internal.Errors.NotInitialized(nameof(Worklet));
+
+        return _worklet;
+    }
+
+    // Calculates deterministic UUID for operation events: Flow.Id + event name + resumeAt quantized by minute
+    private string GetEventUuid(string eventName, Moment resumeAt)
+    {
+        var quantized = resumeAt.ToLastIntervalStart(EventUuidQuantizationInterval);
+        // Using ISO 8601 round-trip for stable string
+        var q = quantized.ToDateTimeOffset().UtcDateTime;
+        return $"{Id.Value}:{eventName}:{q:yyyy-MM-ddTHH:mm:ssZ}";
+    }
+}

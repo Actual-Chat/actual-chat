@@ -1,6 +1,6 @@
 namespace ActualChat.Flows.Infrastructure;
 
-public static class FlowSteps
+public static class LegacyFlowSteps
 {
     public static readonly Symbol OnReset = nameof(OnReset);
     public static readonly Symbol OnHardResume = nameof(OnHardResume);
@@ -13,7 +13,7 @@ public static class FlowSteps
     public static readonly Symbol Starting = nameof(Starting);
     public static readonly Symbol Removed = nameof(Removed); // Normally this Step shouldn't be used
 
-    private static readonly MethodInfo ToUntypedMethod = typeof(FlowSteps)
+    private static readonly MethodInfo ToUntypedMethod = typeof(LegacyFlowSteps)
         .GetMethod(nameof(ToUntyped), BindingFlags.Static | BindingFlags.NonPublic)!;
     private static readonly ConcurrentDictionary<(Type, Symbol), Func<Flow, CancellationToken, Task>?>
         Cache = new();

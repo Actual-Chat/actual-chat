@@ -18,7 +18,7 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleI
     [IgnoreDataMember, MemoryPackIgnore]
     private BatchedIndexingFlowTestContext<SimpleItem, ChatId> Context => Host.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
 
-    protected override async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
+    protected override async Task<LegacyFlowTransition> OnIndex(CancellationToken cancellationToken)
     {
         var transition = await base.OnIndex(cancellationToken);
         Context.OnTransition(Id.Arguments, transition);

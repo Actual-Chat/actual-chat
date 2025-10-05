@@ -44,12 +44,12 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
             if (flow is not null)
                 return flow;
 
-            flow = (Flow)flowType.CreateInstance();
-            flow.Initialize(flowId, 0, FlowSteps.Starting);
-            var storeCommand = new Flows_Store(flow.Id, 0) { Flow = flow };
+            var legacyFlow = (LegacyFlow)flowType.CreateInstance();
+            legacyFlow.Initialize(flowId, 0, LegacyFlowSteps.Starting);
+            var storeCommand = new Flows_Store(legacyFlow.Id, 0) { Flow = legacyFlow };
             var version = await Commander.Call(storeCommand, true, ct).ConfigureAwait(false);
-            flow.Initialize(flowId, version, FlowSteps.Starting);
-            return flow;
+            legacyFlow.Initialize(flowId, version, LegacyFlowSteps.Starting);
+            return legacyFlow;
         }, new RetryLogger(Log), cancellationToken);
     }
 
@@ -74,6 +74,7 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
 
         flowId.Require();
         var flow = command.Flow.Require();
+        var legacyFlow = flow as LegacyFlow;
         var context = CommandContext.GetCurrent();
 
         var shard = DbHub.ShardResolver.Resolve(flowId);
@@ -85,48 +86,36 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         var dbFlow = await dbContext.Set<DbFlow>().ForUpdate()
             .FirstOrDefaultAsync(x => Equals(x.Id, flowId.Value), cancellationToken)
             .ConfigureAwait(false);
-        var dbFlowExists = dbFlow != null;
-        var flowExists = flow.Step != FlowSteps.Removed;
-        if (dbFlowExists)
-            VersionChecker.RequireExpected(dbFlow?.Version ?? 0, expectedVersion);
 
-        long version = 0;
-        switch (dbFlowExists, flowExists) {
-        case (false, false): // Removed -> Removed
-            break;
-        case (false, true): // Create
-            if (flow.Step != FlowSteps.Starting)
-                throw StandardError.Internal("New Flow's Step should be 'Starting'.");
+        if (dbFlow is null) { // Create
+            if (legacyFlow is not null) {
+                if (legacyFlow.Step != LegacyFlowSteps.Starting)
+                    throw StandardError.Internal("LegacyFlow.Step should be 'Starting' for a new LegacyFlow.");
 
-            await dbContext.Set<DbFlow>().Lock(flowId, cancellationToken).ConfigureAwait(false);
-            version = VersionGenerator.NextVersion();
-            dbContext.Add(new DbFlow() {
+                context.Operation.AddEvent(new LegacyFlowStartEvent(flowId));
+            }
+            dbFlow = new DbFlow() {
                 Id = flowId,
-                Version = version,
-                HardResumeAt = flow.HardResumeAt,
-                Step = flow.Step,
+                Version = VersionGenerator.NextVersion(),
+                HardResumeAt = legacyFlow?.HardResumeAt,
+                Step = legacyFlow?.Step.Value ?? "",
                 Data = Serialize(flow),
-            });
-            if (flow.Step == FlowSteps.Starting)
-                context.Operation.AddEvent(new FlowStartEvent(flowId));
-            break;
-        case (true, false):  // Remove
-            version = 0;
-            dbContext.Remove(dbFlow!);
-            break;
-        case (true, true):  // Update
-            version = VersionGenerator.NextVersion(dbFlow!.Version);
-            dbFlow.Version = version;
-            dbFlow.HardResumeAt = flow.HardResumeAt;
-            dbFlow.Step = flow.Step;
+            };
+            dbContext.Add(dbFlow);
+        }
+        else { // Update
+            VersionChecker.RequireExpected(dbFlow.Version, expectedVersion);
+            dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
+            dbFlow.HardResumeAt = legacyFlow?.HardResumeAt;
+            dbFlow.Step = legacyFlow?.Step.Value ?? "";
             dbFlow.Data = Serialize(flow);
-            break;
         }
         foreach (var e in command.AddEvents ?? [])
             context.Operation.AddEvent(e);
 
+        await dbContext.Set<DbFlow>().Lock(flowId, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return version;
+        return dbFlow.Version;
     }
 
     // Protected methods
@@ -138,7 +127,8 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         if (flow == null)
             return null;
 
-        flow.Initialize(flowId, dbFlow!.Version, dbFlow.Step, dbFlow.HardResumeAt);
+        if (flow is LegacyFlow legacyFlow)
+            legacyFlow.Initialize(flowId, dbFlow!.Version, dbFlow.Step, dbFlow.HardResumeAt);
         return flow;
     }
 

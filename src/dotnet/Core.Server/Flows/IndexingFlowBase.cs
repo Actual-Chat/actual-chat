@@ -5,7 +5,7 @@ namespace ActualChat.Flows;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
-public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
+public abstract class IndexingFlowBase<TCursor> : LegacyFlow, IHasLastRunAt
 {
     [IgnoreDataMember, MemoryPackIgnore]
     private bool IsReindexing { get; set; }
@@ -29,10 +29,10 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
     [DataMember(Order = 104), MemoryPackOrder(104)]
     public Moment LastRunAt { get; protected set; }
 
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
     {
         if (!await OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false))
-            return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt);
+            return WaitForEvent(LegacyFlowSteps.OnReset, InfiniteHardResumeAt);
 
         return Resume(nameof(OnIndex));
     }
@@ -51,7 +51,7 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
 
     protected abstract Task<BatchIndexingResult<TCursor>> Process(TCursor? cursor, CancellationToken cancellationToken);
 
-    protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
+    protected virtual async Task<LegacyFlowTransition> OnIndex(CancellationToken cancellationToken)
     {
         if (NeedsReindex() && !IsReindexing) {
             Event.MarkHandled();
@@ -82,7 +82,7 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
             IndexingFlowTransitionKind.Resume => QueueResume(nameof(OnIndex), "Continue processing when possible"),
             IndexingFlowTransitionKind.Watchdog => WaitForWatchdog(),
             IndexingFlowTransitionKind.Recheck => WaitForRecheck(),
-            IndexingFlowTransitionKind.Suspend => WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt),
+            IndexingFlowTransitionKind.Suspend => WaitForEvent(LegacyFlowSteps.OnReset, InfiniteHardResumeAt),
             _ => throw new ArgumentOutOfRangeException(nameof(transitionKind), transitionKind, null),
         };
         Event.MarkHandled();
@@ -105,7 +105,7 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
         return Task.FromResult(transitionKind);
     }
 
-    private FlowTransition WaitForWatchdog()
+    private LegacyFlowTransition WaitForWatchdog()
     {
         if (GetNextWatchdogAt() is { } nextWatchdogAt) {
             NextWatchdogTimerAt = nextWatchdogAt;
@@ -117,7 +117,7 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
         return default;
     }
 
-    private FlowTransition WaitForRecheck()
+    private LegacyFlowTransition WaitForRecheck()
     {
         if (GetNextRecheckAt() is { } nextRecheckAt) {
             NextRecheckAt = nextRecheckAt;

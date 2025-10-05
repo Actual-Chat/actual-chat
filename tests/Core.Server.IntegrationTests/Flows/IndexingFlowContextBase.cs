@@ -8,7 +8,7 @@ public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
 {
     protected readonly Dictionary<string, Queue<TBatch>> Batches = new();
     private readonly Dictionary<string, List<TBatch>> _processedBatches = new();
-    private readonly Dictionary<string, List<(Moment, FlowTransition)>> _appliedTransitions = new();
+    private readonly Dictionary<string, List<(Moment, LegacyFlowTransition)>> _appliedTransitions = new();
     private readonly Dictionary<string, Queue<TailHandler>> _tailHandlers = new();
     private readonly Dictionary<string, int?> _currentFlowSetVersionOverrides = new();
 
@@ -26,7 +26,7 @@ public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
     public Queue<TBatch> ListRemaining(string id)
         => Batches[id];
 
-    public void OnTransition(string id, FlowTransition transition)
+    public void OnTransition(string id, LegacyFlowTransition transition)
         => _appliedTransitions.GetOrAdd(id).Add((Now, transition));
 
     public List<TransitionInfo> ListTransitions(string id)
@@ -37,7 +37,7 @@ public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
                     /* transitionAt, */
                     transition.Step.Value,
                     transition.HardResumeAt,
-                    transition.HardResumeAt == Flow.InfiniteHardResumeAt
+                    transition.HardResumeAt == LegacyFlow.InfiniteHardResumeAt
                         ? TimeSpan.MaxValue
                         : transition.HardResumeAt - transitionAt);
             })

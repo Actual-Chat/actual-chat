@@ -22,7 +22,7 @@ public partial class SimpleIndexingFlow : IndexingFlowBase<long>
         return batch;
     }
 
-    protected override async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
+    protected override async Task<LegacyFlowTransition> OnIndex(CancellationToken cancellationToken)
     {
         var transition = await base.OnIndex(cancellationToken);
         Context.OnTransition(Id.Arguments, transition);

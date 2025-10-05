@@ -47,7 +47,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
             flow!.RemainingCount.Should().Be(3);
         }, DefaultTimeout);
 
-        await queues.Enqueue(new FlowKillEvent(f0.Id, "Die, digital creature!"));
+        await queues.Enqueue(new LegacyFlowKillEvent(f0.Id, "Die, digital creature!"));
 
         // Waiting for the flow to end quickly
         var diedQuickly = true;
@@ -55,7 +55,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
             var flow = await GetFlow(flows, f0, ct);
             if (flow!.RemainingCount <= 2)
                 diedQuickly = false;
-            flow.Step.Should().Be(FlowSteps.OnEnd);
+            flow.Step.Should().Be(LegacyFlowSteps.OnEnd);
         }, DefaultTimeout);
         diedQuickly.Should().BeTrue();
     }
@@ -76,7 +76,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
             flow!.RemainingCount.Should().Be(3);
         }, DefaultTimeout);
 
-        await queues.Enqueue(new FlowResetEvent(f0.Id));
+        await queues.Enqueue(new LegacyFlowResetEvent(f0.Id));
 
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
@@ -106,7 +106,7 @@ public class CoreFlowTest(ITestOutputHelper @out)
 
     private Task WhenEnded(IFlows flows, FlowId flowId, double timeout = 15)
         => ComputedTest.When(async ct => {
-            var flow = await GetFlow<Flow>(flows, flowId, ct);
-            flow!.Step.Should().Be(FlowSteps.OnEnd);
+            var flow = (LegacyFlow)await GetFlow<Flow>(flows, flowId, ct).Require();
+            flow.Step.Should().Be(LegacyFlowSteps.OnEnd);
         }, TimeSpan.FromSeconds(timeout));
 }

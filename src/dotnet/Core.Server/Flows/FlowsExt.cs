@@ -19,9 +19,8 @@ public static partial class FlowsExt
 
     public static FlowId NewId(this IFlows flows, Type flowType, string arguments)
     {
-        Flow.RequireCorrectType(flowType);
         var flowRegistry = flows.GetServices().GetRequiredService<FlowRegistry>();
-        var flowId = flowRegistry.NewId(flowType, arguments);
+        var flowId = flowRegistry.NewId(flowType.RequireFlowType(), arguments);
         return flowId;
     }
 
@@ -144,7 +143,7 @@ public static partial class FlowsExt
         var debugLog = log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
         if (debugLog != null) {
             var delayUntil = (@event as IHasDelayUntil)?.DelayUntil;
-            var maxLastRunAt = (@event as FlowResumeEvent)?.MaxLastRunAt;
+            var maxLastRunAt = (@event as LegacyFlowResumeEvent)?.MaxLastRunAt;
             debugLog.LogDebug(
                 "`{Id}`.Notify: sent {Event} with DelayUntil={DelayUntil} and MaxLastRunAt={MaxLastRunAt}",
                 flowId,
@@ -153,4 +152,11 @@ public static partial class FlowsExt
                 maxLastRunAt);
         }
     }
+
+    // RequireFlowType
+
+    internal static Type RequireFlowType(this Type type)
+        => typeof(Flow).IsAssignableFrom(type)
+            ? type
+            : throw ActualLab.Internal.Errors.MustBeAssignableTo<Flow>(type);
 }

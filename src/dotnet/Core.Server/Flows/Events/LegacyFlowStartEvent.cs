@@ -5,15 +5,15 @@ namespace ActualChat.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-public sealed partial record FlowStartEvent(
+public sealed partial record LegacyFlowStartEvent(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] FlowId FlowId
-) : IFlowControlEvent
+) : ILegacyFlowControlEvent
 {
     public override string ToString()
-        => $"{nameof(FlowStartEvent)}(`{FlowId}`)";
+        => $"{nameof(LegacyFlowStartEvent)}(`{FlowId}`)";
 
-    public Symbol GetNextStep(Flow flow)
-        => flow.Step == FlowSteps.Starting
-            ? FlowSteps.OnReset
+    public Symbol GetNextStep(LegacyFlow flow)
+        => flow.Step == LegacyFlowSteps.Starting
+            ? LegacyFlowSteps.OnReset
             : default; // Skip the event
 }

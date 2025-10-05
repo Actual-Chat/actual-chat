@@ -2,7 +2,7 @@ using MemoryPack;
 
 namespace ActualChat.Flows;
 
-public abstract partial class PeriodicFlow : Flow
+public abstract partial class PeriodicFlow : LegacyFlow
 {
     [IgnoreDataMember, MemoryPackIgnore]
     protected TimeSpan MaxDelay { get; set; } = TimeSpan.FromDays(7);
@@ -20,14 +20,14 @@ public abstract partial class PeriodicFlow : Flow
     protected abstract Task<string?> Update(CancellationToken cancellationToken);
     protected abstract Task Run(CancellationToken cancellationToken);
 
-    protected override Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
     {
         LastRunAt = Clocks.SystemClock.Now;
         NextRunAt = null;
         return GetTransition(cancellationToken);
     }
 
-    protected async Task<FlowTransition> OnCheck(CancellationToken cancellationToken)
+    protected async Task<LegacyFlowTransition> OnCheck(CancellationToken cancellationToken)
     {
         Log.LogInformation("`{Id}`: OnCheck, Event: {Event}", Id, Event.Event);
         if (!Event.IsHandled)
@@ -45,7 +45,7 @@ public abstract partial class PeriodicFlow : Flow
         return await GetTransition(cancellationToken).ConfigureAwait(false);
     }
 
-    protected virtual async Task<FlowTransition> GetTransition(CancellationToken cancellationToken)
+    protected virtual async Task<LegacyFlowTransition> GetTransition(CancellationToken cancellationToken)
     {
         EndReason = await Update(cancellationToken).ConfigureAwait(false);
         if (!EndReason.IsNullOrEmpty()) {

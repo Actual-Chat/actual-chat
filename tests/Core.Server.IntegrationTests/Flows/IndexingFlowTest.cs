@@ -129,7 +129,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         }, TimeSpan.FromSeconds(10));
 
         // act
-        await Queues.Enqueue(new FlowResetEvent(FlowRegistry.NewId<SimpleIndexingFlow>(id)));
+        await Queues.Enqueue(new LegacyFlowResetEvent(FlowRegistry.NewId<SimpleIndexingFlow>(id)));
 
         // assert
         await TestExt.When(async () => {

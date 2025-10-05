@@ -2,7 +2,7 @@ using ActualLab.Fusion.Internal;
 
 namespace ActualChat.Flows.Infrastructure;
 
-public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
+public class LegacyFlowWorklet : WorkerBase, IGenericTimeoutHandler
 {
     protected readonly AsyncTaskMethodBuilder WhenReadySource = AsyncTaskMethodBuilderExt.New();
     protected Channel<QueueEntry> Queue { get; init; }
@@ -14,7 +14,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     public FlowId FlowId { get; }
     public ILogger Log { get; }
 
-    public FlowWorklet(FlowHostShard shard, FlowId flowId)
+    public LegacyFlowWorklet(FlowHostShard shard, FlowId flowId)
         : base(shard.StopToken.CreateLinkedTokenSource())
     {
         Shard = shard;
@@ -66,17 +66,17 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var clock = Timeouts.Generic.Clock;
-        var failureDelays = Flow.Defaults.FailureDelays;
+        var failureDelays = LegacyFlow.Defaults.FailureDelays;
         var failureCount = 0;
         while (true) {
-            Flow? flow = null;
+            LegacyFlow? flow = null;
             try {
-                flow = await Host.Flows.Start(FlowId, cancellationToken).ConfigureAwait(false);
-                flow = flow.Clone();
+                flow = (LegacyFlow)await Host.Flows.Start(FlowId, cancellationToken).ConfigureAwait(false);
+                flow = (LegacyFlow)flow.Clone();
                 failureDelays = flow.FailureDelays;
                 flow.Initialize(flow.Id, flow.Version, flow.Step, flow.HardResumeAt, this);
-                if (flow.Step == FlowSteps.Starting) {
-                    var entry = new QueueEntry(new FlowStartEvent(FlowId), cancellationToken);
+                if (flow.Step == LegacyFlowSteps.Starting) {
+                    var entry = new QueueEntry(new LegacyFlowStartEvent(FlowId), cancellationToken);
                     if (!Writer.TryWrite(entry))
                         return; // Already stopped
                 }
@@ -105,7 +105,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 
                     await ProcessEvent(flow, entry, cancellationToken).ConfigureAwait(false);
                     failureCount = 0;
-                } while (flow.Step != FlowSteps.Removed);
+                } while (flow.Step != LegacyFlowSteps.Removed);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 var delay = failureDelays[++failureCount];
@@ -127,7 +127,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
 
     // Private methods
 
-    private async Task ProcessEvent(Flow flow, QueueEntry entry, CancellationToken cancellationToken)
+    private async Task ProcessEvent(LegacyFlow flow, QueueEntry entry, CancellationToken cancellationToken)
     {
         // This method should never throw!
         if (entry.CancellationToken.IsCancellationRequested) {
@@ -145,7 +145,7 @@ public class FlowWorklet : WorkerBase, IGenericTimeoutHandler
             var transition = await flow.ProcessEvent(entry.Event, cancellationToken).ConfigureAwait(false);
             entry.ResultSource.TrySetResult(flow.Version);
             if (transition is { IsNone: false, HardResumeAt: null }) {
-                entry = new QueueEntry(new FlowResumeEvent(flow.Id, false, transition.Tag), CancellationToken.None);
+                entry = new QueueEntry(new LegacyFlowResumeEvent(flow.Id, false, transition.Tag), CancellationToken.None);
                 await Writer.WriteAsync(entry, cancellationToken).ConfigureAwait(false);
             }
         }

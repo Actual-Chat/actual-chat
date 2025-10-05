@@ -15,8 +15,7 @@ public class FlowRegistryBuilder
 
     public FlowRegistryBuilder Add(Type flowType, Symbol name = default)
     {
-        Flow.RequireCorrectType(flowType);
-        if (_flowNameByType.ContainsKey(flowType))
+        if (_flowNameByType.ContainsKey(flowType.RequireFlowType()))
             throw Errors.KeyAlreadyExists();
 
         if (name.IsEmpty)
