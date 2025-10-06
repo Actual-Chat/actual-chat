@@ -134,11 +134,11 @@ body.hoverable .image-line .image-item:hover {
 
 /* attachment */
 .image-attachment, .file-attachment {
+    @apply relative;
     @apply flex-x;
     @apply overflow-hidden;
 }
 .image-attachment {
-    @apply relative;
     @apply flex-none;
     @apply w-full;
 }
@@ -169,14 +169,17 @@ body.hoverable .image-line .image-item:hover {
     @apply rounded-full border border-separator;
     @apply bg-01;
 }
+.file-attachment.upload-file {
+    @apply pr-1;
+}
 .file-attachment.icon-only {
     @apply flex-none;
     @apply min-w-0 max-w-none;
     @apply p-0;
     @apply border-none;
 }
-body.hoverable .file-attachment:hover,
-.touch-capable .file-attachment:active {
+body.hoverable .file-attachment:not(.upload-file):hover,
+.touch-capable .file-attachment:not(.upload-file):active {
     filter: brightness(1.1);
 }
 .file-attachment .c-file-icon {
@@ -207,8 +210,13 @@ body.hoverable .file-attachment:hover,
 .file-attachment .c-normal-title .c-end {
     @apply flex-none;
 }
+.file-attachment.upload-file .remove-attachment-btn.btn {
+    @apply relative;
+    @apply min-w-10 max-w-10 min-h-10 max-h-10;
+}
 
 .file-attachment .c-bottom {
+    @apply relative;
     @apply flex-x justify-between;
 }
 .file-attachment .c-size {
