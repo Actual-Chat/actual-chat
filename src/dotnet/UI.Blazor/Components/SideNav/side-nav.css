@@ -16,7 +16,8 @@ body.device-ios .side-nav {
 }
 
 .side-nav.animated {
-    @apply transition-transform duration-250 ease-out;
+    @apply duration-250 ease-out;
+    transition-property: transform, -webkit-transform, width;
 }
 .side-nav.animated > *:first-child {
     @apply transition-opacity duration-200 ease-out;

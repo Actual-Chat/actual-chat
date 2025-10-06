@@ -1,6 +1,5 @@
 import { Subject } from 'rxjs';
 import { debounce, ResettableFunc } from 'promises';
-import { setTimeout } from 'timerQueue';
 
 export class ChatEntryMessageInternalView {
     private blazorRef: DotNet.DotNetObject;
@@ -101,7 +100,7 @@ export class ChatEntryMessageInternalView {
             if (mutation.type === 'characterData' &&
                 mutation.target.nodeType === Node.TEXT_NODE) {
                 const element = mutation.target.parentElement as HTMLElement;
-                if (['change-item', 'changed-item', 'changes', 'retained'].some(cls => element.classList.contains(cls))) {
+                if (['change-item', 'changed-item', 'changes', 'retained', 'playable-text-markup'].some(cls => element.classList.contains(cls))) {
                     this.changeSizeForText(true);
                 } else {
                     this.changeSizeForText();
@@ -124,7 +123,9 @@ export class ChatEntryMessageInternalView {
                 });
                 mutation.removedNodes.forEach((node) => {
                     if (node instanceof HTMLElement
-                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup'].some(cls => node.classList.contains(cls))) {
+                        && ['change-item', 'changed-item', 'changes', 'retained'].some(cls => node.classList.contains(cls))) {
+                        this.changeSizeForText(true);
+                    } else if (node instanceof HTMLElement && node.classList.contains('plain-text-markup')) {
                         this.changeSizeForText();
                     }
                 });
