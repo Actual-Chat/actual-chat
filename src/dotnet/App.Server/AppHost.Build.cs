@@ -210,6 +210,9 @@ public partial class AppHost
         // 5. Configure app
         /////
 
+        // Add COOP/COEP headers for main page early in the pipeline
+        // App.UseCoopHeaders();
+
         var moduleHost = ctx.ModuleHost;
         var appServerModule = moduleHost.GetModule<AppServerModule>();
         appServerModule.ConfigureApp(App); // This module must be the first one in ConfigureApp call sequence

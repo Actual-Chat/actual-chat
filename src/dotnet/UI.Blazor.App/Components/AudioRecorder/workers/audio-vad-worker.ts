@@ -15,7 +15,8 @@ import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
 import { NeuralVoiceActivityDetector, WebRtcVoiceActivityDetector } from './audio-vad';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { RecorderStateServer } from "../opus-media-recorder-contracts";
-import OnnxModel from './vad.onnx';
+// @ts-ignore
+import OnnxModel from './vad.ort';
 import { Log } from 'logging';
 import { ResamplerLoader } from './resampler-loader';
 

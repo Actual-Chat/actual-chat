@@ -36,9 +36,11 @@ const options = {
     ],
     bundle: true,
     platform: 'browser',
-    target: 'es2020',
     format: 'esm',
-    external: ['module', 'worker_threads'],
+    external: ['module', 'worker_threads'], // Don't try to bundle these
+    target: 'es2022',
+    // splitting: true,
+    treeShaking: true,
     minify: isProduction,
     metafile: mustAnalyze,
     sourcemap: true,
@@ -56,10 +58,30 @@ const options = {
         '.svg': 'file',
         '.wasm': 'file',
         '.wasm.map': 'file',
+        '.jsep.mjs': 'file',
         '.onnx': 'file',
+        '.ort': 'file',
     },
     plugins: [
         postcssPlugin(),
+        {
+            // Treat only this specific MJS as a file, keep all other .mjs as JS
+            name: 'ort-wasm-simd-mjs-as-file',
+            setup(build) {
+                const target = path.normalize(
+                    path.resolve(import.meta.dirname, '../dotnet/UI.Blazor.App/Components/AudioRecorder/workers/ort-wasm-simd.mjs')
+                );
+                build.onLoad({ filter: /\.mjs$/ }, async (args) => {
+                    // Only intercept the exact file; let others proceed
+                    if (path.normalize(args.path) !== target) return null;
+                    const contents = await fs.promises.readFile(args.path);
+                    return {
+                        contents,
+                        loader: 'file',
+                    };
+                });
+            },
+        },
     ],
 };
 

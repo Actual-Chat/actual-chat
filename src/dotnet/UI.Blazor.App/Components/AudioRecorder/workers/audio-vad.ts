@@ -2,8 +2,12 @@ import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
 import { ResolvedPromise } from 'promises';
 // @ts-ignore
+// import * as ort from 'onnxruntime-web';
 import * as ort from 'onnxruntime-web/wasm';
-import ortWasm from 'onnxruntime-web/dist/ort-wasm-simd.wasm'
+import ortMjs from './ort-wasm-simd.mjs'
+import ortWasm from './ort-wasm-simd.wasm'
+// import ortWasm from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm'
+// import ortMjs from 'onnxruntime-web/dist/ort-wasm-simd-threaded.mjs'
 import { WebRtcVad } from '@actual-chat/webrtc-vad';
 import { VoiceActivityChange, VoiceActivityDetector, NO_VOICE_ACTIVITY } from './audio-vad-contract';
 // import { Log } from 'logging';
@@ -220,7 +224,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
 
     private readonly context: Float32Array;
     private readonly buffer: Float32Array;
-    private session: ort.InferenceSession = null;
+    private session: ort.InferenceSession | null = null;
     private state: ort.Tensor;
 
     constructor(modelUri: URL, lastActivityEvent: VoiceActivityChange) {
@@ -236,9 +240,12 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
         // ort.env.wasm.numThreads = 4;
         const ortWasmSimdPath = Versioning.mapPath(ortWasm);
         ort.env.wasm.numThreads = 1;
+        ort.env.wasm.proxy = true;
         ort.env.wasm.simd = true;
+        // ort.env.wasm.numThreads = Math.min(4, (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4);
         ort.env.wasm.wasmPaths = {
-            'ort-wasm-simd.wasm': ortWasmSimdPath,
+            wasm: ortWasmSimdPath,
+            mjs: ortMjs,
         }
     }
 
@@ -247,8 +254,8 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
         if (session === null) {
             session = await ort.InferenceSession.create(this.modelUri.toString(), {
                 enableCpuMemArena: false,
-                executionMode: 'parallel',
-                graphOptimizationLevel: 'basic',
+                // executionMode: 'parallel',
+                // graphOptimizationLevel: 'basic',
                 executionProviders: ['wasm']
             });
         }
@@ -269,9 +276,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
         buffer.set(context);
         buffer.set(monoPcm, context.length);
         const tensor = new ort.Tensor(buffer, [1, buffer.length]);
-        const srArray = new BigInt64Array(1).fill(BigInt(16000));
-        const sr = new ort.Tensor(srArray);
-        const feeds = { input: tensor, state: state, sr: sr };
+        const feeds = { input: tensor, state: state };
         const result = await this.session.run(feeds);
         const { output, stateN } = result;
         this.state = stateN;

@@ -106,6 +106,7 @@ public static class MediaMimeTypes
             { ".bas", "text/plain" },
             { ".bcpio", "application/x-bcpio" },
             { ".onnx", "application/octet-stream" },
+            { ".ort", "application/octet-stream" },
             { ".bin", "application/octet-stream" },
             { ".bm", "image/bmp" },
             { ".bmp", "image/bmp" },
