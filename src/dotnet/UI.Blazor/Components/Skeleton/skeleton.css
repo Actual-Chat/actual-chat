@@ -39,7 +39,7 @@ body.narrow .wide-left-skeleton-panel:has(.inaccessible-place-request) {
 .wide-left-skeleton-panel .skeleton-panel-header {
     @apply flex-y gap-y-2;
     @apply h-14;
-    @apply py-2 px-3;
+    @apply py-2 px-2;
     @apply border-b border-[var(--separator)];
 }
 .wide-left-skeleton-panel .skeleton-panel-header .c-title {
@@ -133,8 +133,8 @@ body.narrow .right-skeleton-panel {
 }
 .skeleton-chat-header {
     @apply flex-x self-center justify-center gap-x-2;
-    @apply w-full;
-    @apply px-2;
+    @apply w-full h-14;
+    @apply px-2.5;
     @apply border-b border-separator;
 }
 .skeleton-chat-header > .c-wrapper {
@@ -143,7 +143,7 @@ body.narrow .right-skeleton-panel {
 .skeleton-chat-header > .c-wrapper .c-icon {
     @apply flex-none flex items-center justify-center;
     @apply h-14;
-    @apply px-2;
+    @apply pr-2;
 }
 .skeleton-chat-header > .c-wrapper .c-title {
     @apply flex-1 flex items-center justify-start;
@@ -160,12 +160,10 @@ body.narrow .right-skeleton-panel {
 .chat-skeleton-panel .skeleton-panel-footer {
     @apply flex-x self-center gap-x-2.5;
     @apply w-full lg:max-w-192;
-    @apply px-3;
     @apply bg-01;
 }
 body.narrow .chat-skeleton-panel .skeleton-panel-footer {
     @apply min-h-26;
-    @apply p-0;
     @apply bg-03;
 }
 body.wide .thin-left-skeleton-panel .skeleton-panel-footer {
@@ -174,7 +172,7 @@ body.wide .thin-left-skeleton-panel .skeleton-panel-footer {
 .chat-skeleton-panel .skeleton-panel-body {
     @apply self-center;
     @apply w-full min-h-full lg:max-w-192;
-    @apply p-2 md:p-1.5;
+    @apply p-2 md:py-1.5 md:px-0 ml-[2px];
     @apply overflow-y-auto;
     scrollbar-width: none;
 }
