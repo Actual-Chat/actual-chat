@@ -1,17 +1,24 @@
 @using ActualChat.Media
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    MediaMimeTypes.TryGetExtension(Attachment.FileType, out var extension);
+    var attachment = Attachment;
+    var progress = attachment.Progress;
+    var uploadProgressClass = "attachment-upload-progress";
+    MediaMimeTypes.TryGetExtension(attachment.FileType, out var extension);
     var fileExtension = extension != null ? extension.Replace(".", "") : "";
     var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
     var iconOnlyCls = IconOnly ? "icon-only" : "";
     var tooltipTitle = IconOnly ? GetTooltipTitle() : "";
+    if (attachment.Failed) {
+        progress = Math.Max(progress, 30);
+        uploadProgressClass += " attachment-upload-failed";
+    } else if (attachment.Uploaded) {
+        uploadProgressClass += " attachment-upload-completed";
+    }
+    var uploadStyle = $"width: {progress}%;";
 }
 
-<a class="file-attachment unfocusable @iconOnlyCls"
-   href="@Attachment.PreviewUrl"
-   target="_blank"
-   role="button"
+<div class="file-attachment upload-file unfocusable @iconOnlyCls"
    data-tooltip="@tooltipTitle"
    data-tooltip-position="@FloatingPosition.Top.ToPositionString()">
     <div class="c-file-icon @fileCls">
@@ -23,23 +30,28 @@
     </div>
     @if (!IconOnly) {
         <div class="c-file-info">
-            <FileAttachmentTitle Title="@Attachment.FileName"/>
+            <FileAttachmentTitle Title="@attachment.FileName"/>
             <div class="c-bottom">
                 <div class="c-size">
                     @* TODO: File size (Andrey Y) *@
                     @* <span>@FileSizeFormatter.Format(fileSize)</span> *@
                 </div>
+                <div class="@uploadProgressClass" style="@uploadStyle"></div>
             </div>
         </div>
     }
-</a>
+    <ButtonRound Click="@RemoveClick" Class="remove-attachment-btn btn-danger">
+        <i class="icon-trash03 text-2xl font-thin"></i>
+    </ButtonRound>
+</div>
 
 @code {
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
-    [Parameter, EditorRequired]
-    public Attachment Attachment { get; set; } = null!;
+    [Parameter, EditorRequired] public Attachment Attachment { get; set; } = null!;
     [Parameter] public bool IconOnly { get; set; }
+    [Parameter] public EventCallback RemoveClick { get; set; }
+    [Parameter] public EventCallback RestartClick { get; set; }
 
     private string GetTooltipTitle() {
         var name = Attachment.FileName;

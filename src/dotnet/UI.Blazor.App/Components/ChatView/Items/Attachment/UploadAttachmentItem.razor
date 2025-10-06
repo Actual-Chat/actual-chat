@@ -26,8 +26,6 @@
                 <video preload="metadata" class="@plugClass">
                     <source src="@attachment.PreviewUrl#t=0.5"/>
                 </video>
-            } else {
-                <FileAttachmentView FileType="@attachment.FileType"/>
             }
             @if (!attachment.Uploaded) {
                 <span class="spinner-icon-wrapper">

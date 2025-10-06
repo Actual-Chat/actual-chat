@@ -463,6 +463,9 @@ body.narrow .narrow-panel .attachment-filename {
     @apply h-[2x];
     @apply mt-px;
 }
+.upload-file .attachment-upload-progress {
+    @apply bottom-0;
+}
 .attachment-upload-completed {
     @apply bg-success;
 }
