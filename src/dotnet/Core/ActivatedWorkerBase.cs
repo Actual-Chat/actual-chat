@@ -2,21 +2,22 @@ namespace ActualChat;
 
 public abstract class ActivatedWorkerBase(IServiceProvider services) : WorkerBase
 {
-    private TaskCompletionSource _whenResumeSource = new();
-    private ILogger? _log;
+    private TaskCompletionSource _whenResumeSource = TaskCompletionSourceExt.New();
 
     protected RandomTimeSpan PostActivationDelay { get; init; } = TimeSpan.FromSeconds(0.1).ToRandom(0.2);
     protected RandomTimeSpan UnconditionalActivationPeriod { get; init; } = TimeSpan.FromMinutes(5).ToRandom(0.1);
     protected RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.1, 10);
 
     protected IServiceProvider Services { get; } = services;
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
+
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Services.LogFor(GetType());
 
     public void Activate()
     {
         lock (Lock) {
             _whenResumeSource.TrySetResult();
-            _whenResumeSource = new();
+            _whenResumeSource = TaskCompletionSourceExt.New();
         }
     }
 
@@ -37,7 +38,7 @@ public abstract class ActivatedWorkerBase(IServiceProvider services) : WorkerBas
         while (true) {
             lock (Lock) {
                 if (_whenResumeSource.Task.IsCompleted)
-                    _whenResumeSource = new();
+                    _whenResumeSource = TaskCompletionSourceExt.New();
                 whenResume = _whenResumeSource.Task;
             }
             var isCompleted = await OnActivate(cancellationToken).ConfigureAwait(false);
