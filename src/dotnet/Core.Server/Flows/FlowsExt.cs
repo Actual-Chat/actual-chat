@@ -9,18 +9,21 @@ public static partial class FlowsExt
 {
     // NewId
 
+    public static FlowId NewId<TFlow>(this IFlows flows, params ReadOnlySpan<string> arguments)
+        where TFlow : Flow
+        => flows.NewId(typeof(TFlow), FlowId.CombineArguments(arguments));
+
     public static FlowId NewId<TFlow>(this IFlows flows, string arguments)
         where TFlow : Flow
-    {
-        var flowRegistry = flows.GetServices().GetRequiredService<FlowRegistry>();
-        var flowId = flowRegistry.NewId(typeof(TFlow), arguments);
-        return flowId;
-    }
+        => flows.NewId(typeof(TFlow), arguments);
+
+    public static FlowId NewId(this IFlows flows, Type flowType, params ReadOnlySpan<string> arguments)
+        => flows.NewId(flowType, FlowId.CombineArguments(arguments));
 
     public static FlowId NewId(this IFlows flows, Type flowType, string arguments)
     {
         var flowRegistry = flows.GetServices().GetRequiredService<FlowRegistry>();
-        var flowId = flowRegistry.NewId(flowType.RequireFlowType(), arguments);
+        var flowId = flowRegistry.NewId(flowType, arguments);
         return flowId;
     }
 
@@ -152,11 +155,4 @@ public static partial class FlowsExt
                 maxLastRunAt);
         }
     }
-
-    // RequireFlowType
-
-    internal static Type RequireFlowType(this Type type)
-        => typeof(Flow).IsAssignableFrom(type)
-            ? type
-            : throw ActualLab.Internal.Errors.MustBeAssignableTo<Flow>(type);
 }

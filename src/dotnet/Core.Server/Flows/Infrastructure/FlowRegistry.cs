@@ -21,13 +21,13 @@ public class FlowRegistry : IHasServices
         where TFlow : Flow
         => new(NameByType[typeof(TFlow)], arguments);
 
-    public FlowId NewId<TFlow>(params string[] arguments)
+    public FlowId NewId<TFlow>(params ReadOnlySpan<string> arguments)
         where TFlow : Flow
         => new(NameByType[typeof(TFlow)], FlowId.CombineArguments(arguments));
 
     public FlowId NewId(Type flowType, string arguments)
         => new(NameByType[flowType], arguments);
 
-    public FlowId NewId(Type flowType, params string[] arguments)
+    public FlowId NewId(Type flowType, params ReadOnlySpan<string> arguments)
         => new(NameByType[flowType], FlowId.CombineArguments(arguments));
 }

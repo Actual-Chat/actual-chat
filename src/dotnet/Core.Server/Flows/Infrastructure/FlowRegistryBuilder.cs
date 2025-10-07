@@ -15,7 +15,8 @@ public class FlowRegistryBuilder
 
     public FlowRegistryBuilder Add(Type flowType, Symbol name = default)
     {
-        if (_flowNameByType.ContainsKey(flowType.RequireFlowType()))
+        RequireFlowType(flowType);
+        if (_flowNameByType.ContainsKey(flowType))
             throw Errors.KeyAlreadyExists();
 
         if (name.IsEmpty)
@@ -23,5 +24,13 @@ public class FlowRegistryBuilder
         _flows.Add(name, flowType);
         _flowNameByType.Add(flowType, name);
         return this;
+    }
+
+    // RequireFlowType
+
+    private static void RequireFlowType(Type type)
+    {
+        if (!typeof(Flow).IsAssignableFrom(type))
+            throw Errors.MustBeAssignableTo<Flow>(type);
     }
 }
