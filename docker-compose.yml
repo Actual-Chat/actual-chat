@@ -105,4 +105,5 @@ services:
       - "5341:5341"
     environment:
       - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
 #    restart: unless-stopped
