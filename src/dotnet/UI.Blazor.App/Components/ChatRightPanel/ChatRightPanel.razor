@@ -3,21 +3,14 @@
 @inherits ComputedStateComponent<AppUIHub, bool>
 
 @{
-    var showSkeletonsOnly = Chat?.Id is null;
     var isOpen = State.LastNonErrorValue;
-    // Log.LogDebug("RightPanel IsOpen={IsOpen}", isOpen);
-}
-
-@if (showSkeletonsOnly) {
-    <SkeletonRightPanel />
-    return;
 }
 
 <SideNav
     Side="SideNavSide.Right"
     IsOpen="@isOpen"
     VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(b => PanelsUI.Right.SetIsVisible(b)))">
-    <ChatRightPanelContent Chat="@Chat" />
+    <ChatRightPanelContent Chat="@Chat"/>
 </SideNav>
 
 @code {
