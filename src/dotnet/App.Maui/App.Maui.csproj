@@ -431,14 +431,14 @@
     <MauiIcon Include="Resources\AppIcon\appicon.svg"/>
 
     <!-- Splash Screen -->
-    <MauiSplashScreen Include="Resources\Splash\splashscreen_voxt.svg">
+    <MauiSplashScreen Include="Resources\Splash\splashscreen_voxt.png">
       <Color>#0C003D</Color>
       <BaseSize>200,200</BaseSize>
     </MauiSplashScreen>
 
     <!-- Images: none -->
     <MauiImage Remove="Resources\Images\**" />
-    <MauiImage Include="Resources\Splash\splashscreen_voxt.svg" />
+    <MauiImage Include="Resources\Splash\splashscreen_voxt.png" />
     <MauiXaml Remove="Resources\Images\**" />
     <EmbeddedResource Remove="Resources\Images\**" />
 
