@@ -1,8 +1,7 @@
 using ActualChat.UI.Blazor.App.Services;
-using ActualLab.Internal;
 using AVFoundation;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 public class ResamplerFactory(AppUIHub hub)
 {
@@ -43,6 +42,6 @@ public class Resampler(AVAudioFormat sourceFormat, AVAudioFormat targetFormat, I
 
         return status is AVAudioConverterOutputStatus.HaveData or AVAudioConverterOutputStatus.InputRanDry
             ? output
-            : throw Errors.InternalError($"AVAudioConverter returned status {status}.");
+            : throw StandardError.Internal($"AVAudioConverter returned status {status}.");
     }
 }

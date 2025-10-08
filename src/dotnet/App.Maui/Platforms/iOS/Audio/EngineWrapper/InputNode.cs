@@ -1,7 +1,6 @@
-using ActualLab.Internal;
 using AVFoundation;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 public class InputNode(AVAudioNode node) : AudioNode(node, _ => {})
 {
@@ -9,7 +8,7 @@ public class InputNode(AVAudioNode node) : AudioNode(node, _ => {})
     public IDisposable Tap(AVAudioNodeTapBlock handleSamples)
     {
         if (Interlocked.CompareExchange(ref _isTapped, 1, 0) != 0)
-            throw Errors.Constraint("Already installed tap on this input node");
+            throw StandardError.Constraint("Already installed tap on this input node");
 
         var hwFormat = GetOutputFormat();
         var frameLength = (int)(hwFormat.SampleRate / 1000 * Constants.Audio.OpusFrameDurationMs);

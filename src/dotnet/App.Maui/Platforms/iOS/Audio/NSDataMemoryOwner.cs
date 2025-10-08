@@ -1,7 +1,7 @@
 using System.Buffers;
 using Foundation;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 internal readonly struct NSDataMemoryOwner(NSData data) : IMemoryOwner<byte>
 {

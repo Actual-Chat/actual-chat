@@ -1,6 +1,6 @@
 using AVFoundation;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 public class PlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVAudioNode> disposer) : AudioNode(node, disposer), IDisposable
 {
@@ -13,6 +13,9 @@ public class PlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVA
                 return node.Playing;
         }
     }
+
+    protected override void DisposeCore()
+        => Stop();
 
     public void Play()
     {
@@ -34,12 +37,15 @@ public class PlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVA
             node.ScheduleBuffer(pcm, AVAudioPlayerNodeCompletionCallbackType.PlayedBack, callback);
     }
 
-    public Task ScheduleFileAndWait(AVAudioFile audioFile)
+    public Task ScheduleFileAndWait(AVAudioFile audioFile, CancellationToken cancellationToken = default)
     {
-        Task whenPlayed;
+        var whenPlayed = AsyncTaskMethodBuilderExt.New();
         lock (_lock)
-            whenPlayed = node.ScheduleFileAsync(audioFile, null, AVAudioPlayerNodeCompletionCallbackType.PlayedBack);
-        return whenPlayed;
+            node.ScheduleFile(audioFile,
+                null,
+                AVAudioPlayerNodeCompletionCallbackType.PlayedBack,
+                _ => whenPlayed.TrySetResult());
+        return whenPlayed.Task.WaitAsync(cancellationToken);
     }
 
     public void Stop()

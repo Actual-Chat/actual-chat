@@ -1,6 +1,6 @@
 using ActualLab.Opus.MaciOS;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 public static class Opus
 {

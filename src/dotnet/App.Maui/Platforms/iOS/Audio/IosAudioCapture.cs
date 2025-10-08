@@ -1,5 +1,5 @@
 using System.Buffers;
-using ActualChat.App.Maui.Playback;
+using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor.App.Services;
 using AVFoundation;
@@ -13,7 +13,7 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
     private static readonly int MaxQueueLength = (int)(TimeSpan.FromSeconds(5) / Constants.Audio.OpusFrameDuration);
 
     [field: AllowNull, MaybeNull]
-    private AudioEngine Engine => field ??= hub.Services.GetRequiredService<AudioEngine>();
+    private AudioEngines AudioEngines => field ??= hub.Services.GetRequiredService<AudioEngines>();
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
 
@@ -22,26 +22,23 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
 
     private async IAsyncEnumerable<IMemoryOwner<float>> CaptureInternal([EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        using var engineLease = await AudioEngines.Rent(AudioMode.Recording).ConfigureAwait(false);
+        var engine = engineLease.Resource;
         var channel = Channel.CreateBounded<IMemoryOwner<float>>(new BoundedChannelOptions(MaxQueueLength) {
             FullMode = BoundedChannelFullMode.DropOldest,
             SingleWriter = true,
             SingleReader = true,
         });
-        using var engine = new AVAudioEngine();
-        var hwFormat = engine.InputNode.GetBusOutputFormat(0);
+        var hwFormat = engine.Input.GetOutputFormat();
         using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
-        var frameLength = (int)(hwFormat.SampleRate / 1000 * Constants.Audio.OpusFrameDurationMs);
-        engine.InputNode.InstallTapOnBus(0, (uint)frameLength, hwFormat, HandleSamples);
-        engine.StartAndReturnError(out var error);
-        error.Assert();
+        using var _2 = engine.Input.Tap(HandleSamples);
+        engine.EnsureRunning();
 
         try {
             await foreach (var memoryOwner in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 yield return memoryOwner;
         }
         finally {
-            engine.InputNode.RemoveTapOnBus(0);
-            engine.Stop();
             channel.Writer.TryComplete();
             DisposeRemaining();
         }

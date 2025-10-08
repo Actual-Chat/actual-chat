@@ -5,8 +5,9 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Diagnostics;
 using ActualLab.Locking;
 using ActualLab.Opus.MaciOS;
+using ActualLab.Pooling;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 public class IosAudioPlaybackEngine(
     string playerId,
@@ -20,9 +21,10 @@ public class IosAudioPlaybackEngine(
     private BufferedPlayer _bufferedPlayer = null!;
     private FuncWorker _processWorker = null!;
     private OpusDecoder _decoder = null!;
+    private IResourceLease<AudioEngine> _engineLease = null!;
 
     [field: AllowNull, MaybeNull]
-    private AudioEngine Engine => field ??= hub.Services.GetRequiredService<AudioEngine>();
+    private AudioEngines AudioEngines => field ??= hub.Services.GetRequiredService<AudioEngines>();
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
@@ -32,6 +34,7 @@ public class IosAudioPlaybackEngine(
         await _processWorker.DisposeSilentlyAsync().ConfigureAwait(false);
         _bufferedPlayer.DisposeSilently();
         _decoder.DisposeSilently();
+        _engineLease.DisposeSilently();
     }
 
     public async Task Play(CancellationToken cancellationToken)
@@ -40,12 +43,17 @@ public class IosAudioPlaybackEngine(
         using var _ = await _lock.Lock(cancellationToken).ConfigureAwait(false);
         if (!_isInitialized) {
             DebugLog?.LogInformation("#{PlayerId}.Play: initializing", playerId);
-            _bufferedPlayer = new BufferedPlayer(Engine.NewPlayer(AudioEngine.VoicePlaybackFormat), playerId, hub);
+            // TODO (FC): cleanup
+            _engineLease = await AudioEngines.Rent(AudioMode.Playback).ConfigureAwait(false);
+            var engine = _engineLease.Resource;
+            _bufferedPlayer = new BufferedPlayer(engine.NewPlayer(AudioEngine.VoicePlaybackFormat), playerId, hub);
             _processWorker = FuncWorker.Start(ProcessFeeder);
             _decoder = Opus.CreateDecoder();
             _isInitialized = true;
             DebugLog?.LogInformation("#{PlayerId}.Play: initialized", playerId);
         }
+        // await MainThread.InvokeOnMainThreadAsync(_engineLease.Resource.EnsureRunning).ConfigureAwait(false);
+        _engineLease.Resource.EnsureRunning();
         DebugLog?.LogInformation("#{PlayerId}.Play: node.play()", playerId);
         _bufferedPlayer.Play();
         DebugLog?.LogInformation("#{PlayerId}.Play: started", playerId);

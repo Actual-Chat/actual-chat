@@ -1,6 +1,6 @@
 using AVFoundation;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 public static class AVAudioPcmBufferExt
 {
