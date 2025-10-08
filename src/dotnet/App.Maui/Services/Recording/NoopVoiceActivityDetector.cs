@@ -21,15 +21,18 @@ public sealed class NoopVoiceActivityDetector(IServiceProvider services) : Voice
     {
         var gain = AudioExt.ApproximateGain(monoPcm);
 
-        if (!_started)
-        {
-            _started = true;
-            LastActivityEvent = VoiceActivityChange.Start(0, null, 1.0);
-            return VadResult.Event(LastActivityEvent);
-        }
+        if (_started)
+            return VadResult.GainOnly(gain);
 
-        return VadResult.GainOnly(gain);
+        _started = true;
+        LastActivityEvent = VoiceActivityChange.Start(0, null, 1.0);
+        return VadResult.Event(LastActivityEvent);
+
     }
+
+    protected override float? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
+        => null;
+
 
     public override void ConversationSignal()
     { }

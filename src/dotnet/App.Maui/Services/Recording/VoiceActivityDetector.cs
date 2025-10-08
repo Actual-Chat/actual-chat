@@ -1,6 +1,4 @@
 using ActualChat.Hosting;
-using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntime.Tensors;
 using MathExt = ActualChat.Mathematics.MathExt;
 
 namespace ActualChat.App.Maui.Services.Recording;
@@ -12,16 +10,16 @@ namespace ActualChat.App.Maui.Services.Recording;
 ///     - Context: 64 samples prepended to each window (total model input = 576 floats)
 ///     - Recurrent state: [2,1,128] float tensor persisted between calls
 /// </summary>
-public class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable, IDisposable
+public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable, IDisposable
 {
     // AUDIO_REC constants (subset)
     public const int SampleRate = Constants.Audio.RecordingSampleRate; // AUDIO_REC.SAMPLE_RATE
-    private const int WindowSamples = Constants.Audio.VadFrameLength; // 512
-    private const double MinRecordingGain = 0.0005; // AR.MIN_RECORDING_GAIN
+    protected const int WindowSamples = Constants.Audio.VadFrameLength; // 512
+    protected const double MinRecordingGain = 0.0005; // AR.MIN_RECORDING_GAIN
 
     // AUDIO_VAD constants (subset)
-    private const int ContextSamples = 64; // AUDIO_VAD.NN_VAD_CONTEXT_SAMPLES
-    private const int InputSamples = WindowSamples + ContextSamples; // 576
+    protected const int ContextSamples = 64; // AUDIO_VAD.NN_VAD_CONTEXT_SAMPLES
+    protected const int InputSamples = WindowSamples + ContextSamples; // 576
     private const double MinSpeechS = 0.5;
     private const double MaxSpeechS = 60 * 2;
     private const double MinSpeechToCancelPauseS = 0.15;
@@ -31,8 +29,8 @@ public class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable
     private const double ConvDurationS = 30;
     private const double PauseVariesFromS = 10;
     private static readonly double PauseVaryPower = Math.Sqrt(2);
-    private readonly float[] _buffer = new float[InputSamples];
-    private readonly float[] _context = new float[ContextSamples];
+    protected readonly float[] _buffer = new float[InputSamples];
+    protected readonly float[] _context = new float[ContextSamples];
     private readonly RunningEma _longProbEma = new (0.5f, 64);
     private readonly RunningEma _gainEma = new (0, 10);
 
@@ -48,14 +46,11 @@ public class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable
 
     private long _sampleCount;
 
-    private InferenceSession? _session;
-    private DenseTensor<float> _state = new (new float[2 * 1 * 128], [2, 1, 128]);
     private RunningUnitMedian? _whenTalkingProbMedian;
-
     public readonly HostInfo HostInfo = services.HostInfo();
     public VoiceActivityChange LastActivityEvent { get; protected set; } = VoiceActivityChange.NoVoiceActivity;
 
-    public virtual bool IsInitialized => _session != null;
+    public abstract bool IsInitialized { get; }
 
     public ValueTask DisposeAsync()
     {
@@ -69,70 +64,14 @@ public class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable
             return;
 
         _disposed = true;
-        _session?.Dispose();
-        _session = null;
     }
 
     /// <summary>
-    ///     Initializes the VAD by loading the ONNX model from the app package.
+    ///     Initializes the VAD by loading the NN model from the app package.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
-    public virtual async Task EnsureInitialized(CancellationToken cancellationToken = default)
-    {
-        ThrowIfDisposed();
-        if (_session != null)
-            return;
+    public abstract Task EnsureInitialized(CancellationToken cancellationToken = default);
 
-        // The model is shipped under wwwroot/dist/assets/onnx/vad.onnx (see web build assets)
-        await using var modelStream = await FileSystem.OpenAppPackageFileAsync(@"wwwroot\dist\assets\onnx\vad.onnx");
-        using var ms = new MemoryStream();
-        await modelStream.CopyToAsync(ms, cancellationToken);
-        ms.Position = 0;
-
-        var options = new SessionOptions();
-        options.IntraOpNumThreads = Math.Max(1, Environment.ProcessorCount - 1);
-        options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
-        options.EnableMemoryPattern = true;
-        options.EnableCpuMemArena = true;
-        // Configure execution providers depending on platform. We always keep CPU as a fallback.
-        try {
-            switch (HostInfo.AppKind)
-            {
-            case AppKind.Android:
-                // Prefer NNAPI if available. Note: calling order matters, last appended has highest priority.
-                options.AppendExecutionProvider_CPU();
-                options.AppendExecutionProvider_Nnapi();
-                break;
-            case AppKind.Ios or AppKind.MacOS:
-                // Prefer CoreML on iOS with CPU fallback.
-                options.AppendExecutionProvider_CPU();
-                options.AppendExecutionProvider_CoreML(CoreMLFlags.COREML_FLAG_USE_CPU_AND_GPU);
-                break;
-            case AppKind.Windows:
-                // Windows: prefer DirectML if available (GPU), then CPU.
-                options.AppendExecutionProvider_CPU();
-                options.AppendExecutionProvider_DML();
-                break;
-            default:
-                // Other platforms (including Wasm): CPU only.
-                options.AppendExecutionProvider_CPU();
-                break;
-            }
-        }
-        catch {
-            // If any EP is not supported by the current runtime build, fall back to safe CPU-only.
-            options = new SessionOptions();
-            options.IntraOpNumThreads = Math.Max(1, Environment.ProcessorCount - 1);
-            options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
-            options.EnableMemoryPattern = true;
-            options.EnableCpuMemArena = true;
-            options.AppendExecutionProvider_CPU();
-        }
-
-        _session = new InferenceSession(ms.ToArray(), options);
-
-        ResetProcessingState();
-    }
 
     /// <summary>
     ///     Resets recurrent state and context to the initial values.
@@ -141,7 +80,6 @@ public class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable
     {
         ThrowIfDisposed();
         Array.Clear(_context, 0, _context.Length);
-        _state = new DenseTensor<float>(new float[2 * 1 * 128], [2, 1, 128]);
         ResetProcessingState();
     }
 
@@ -256,6 +194,10 @@ public class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable
         return VadResult.Event(currentEvent);
     }
 
+    /// <summary>
+    /// Indates that an ongoing conversation is happening, which makes the VAD more aggressive in breaking pauses.
+    /// Called when new message from another user arrives.
+    /// </summary>
     public virtual void ConversationSignal()
         => _lastConversationSignalAtSample = _sampleCount;
 
@@ -264,47 +206,9 @@ public class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable
     ///     Returns null if EnsureInitialized has not completed yet.
     /// </summary>
     /// <param name="monoPcm">512-sample window of mono PCM at 16 kHz</param>
-    private float? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
-    {
-        ThrowIfDisposed();
-        var session = _session;
-        if (session == null)
-            return null; // Not initialized yet
+    protected abstract float? AppendChunkInternal(ReadOnlySpan<float> monoPcm);
 
-        if (monoPcm.Length != WindowSamples)
-            throw new ArgumentException($"AppendChunkInternal expects exactly {WindowSamples} samples.", nameof(monoPcm));
-
-        // Prepare input buffer: [context | current window]
-        Array.Copy(_context,
-            0,
-            _buffer,
-            0,
-            ContextSamples);
-        monoPcm.CopyTo(_buffer.AsSpan(ContextSamples));
-
-        // Create tensors
-        var inputTensor = new DenseTensor<float>(_buffer, [1, InputSamples]);
-        var stateTensor = _state;
-
-        // Run inference
-        using var results = session.Run([
-            NamedOnnxValue.CreateFromTensor("input", inputTensor),
-            NamedOnnxValue.CreateFromTensor("state", stateTensor),
-        ]);
-
-        // Retrieve outputs
-        var output = results.First(v => v.Name == "output").AsTensor<float>();
-        var stateN = results.First(v => v.Name == "stateN").AsTensor<float>();
-
-        // Update recurrent state and rolling context
-        _state = ToDense(stateN);
-        monoPcm.Slice(monoPcm.Length - ContextSamples, ContextSamples).CopyTo(_context);
-
-        var prob = output.Length == 0 ? 0f : output[0];
-        return prob;
-    }
-
-    private void ResetProcessingState()
+    protected void ResetProcessingState()
     {
         _probEma.Reset();
         _longProbEma.Reset();
@@ -319,16 +223,7 @@ public class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable
         LastActivityEvent = VoiceActivityChange.NoVoiceActivity;
     }
 
-    private static DenseTensor<float> ToDense(Tensor<float> tensor)
-    {
-        if (tensor is DenseTensor<float> dense)
-            return dense;
-
-        var arr = tensor.ToArray();
-        return new DenseTensor<float>(arr, tensor.Dimensions.ToArray());
-    }
-
-    private void ThrowIfDisposed()
+    protected void ThrowIfDisposed()
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(VoiceActivityDetector));
