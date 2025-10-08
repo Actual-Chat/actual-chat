@@ -124,15 +124,15 @@ class SplashPageSkeleton extends LitElement {
                         <div class="members-container">
                             <div class="c-members">
                                 <string-skeleton firstWidth="3" secondWidth="3" rootCls="right-skeleton-panel"></string-skeleton>
-                                <chat-list-skeleton count="2" rootCls="page-with-header-and-footer"></chat-list-skeleton>
+                                <chat-list-skeleton count="2"></chat-list-skeleton>
                             </div>
                             <div class="c-members">
                                 <string-skeleton firstWidth="3" secondWidth="3" rootCls="right-skeleton-panel"></string-skeleton>
-                                <chat-list-skeleton count="2" rootCls="page-with-header-and-footer"></chat-list-skeleton>
+                                <chat-list-skeleton count="2"></chat-list-skeleton>
                             </div>
                             <div class="c-members">
                                 <string-skeleton firstWidth="3" secondWidth="3" rootCls="right-skeleton-panel"></string-skeleton>
-                                <chat-list-skeleton count="2" rootCls="page-with-header-and-footer"></chat-list-skeleton>
+                                <chat-list-skeleton count="2"></chat-list-skeleton>
                             </div>
                         </div>
                     </div>
