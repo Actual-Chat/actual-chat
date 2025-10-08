@@ -169,6 +169,10 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply truncate;
     @apply text-caption-4 text-03;
 }
+.chat-list .navbar-item-content > .c-container > .c-description > .c-last-message .c-text i {
+    @apply text-caption-4;
+    vertical-align: -0.125rem;
+}
 .chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-chat-title > .c-skeleton,
 .chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-last-message > .c-skeleton {
     @apply rounded-md;
