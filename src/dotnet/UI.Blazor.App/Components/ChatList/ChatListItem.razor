@@ -55,7 +55,7 @@
                         }
                         else {
                             <span class="c-text">
-                                @m.LastTextEntryIcons @m.LastTextEntryText
+                                @((MarkupString)m.LastTextEntryIcons) @m.LastTextEntryText
                             </span>
                         }
                         <div class="c-incut"></div>
@@ -211,10 +211,10 @@
         var chatInfo = chatState.Info;
         var lastEntry = chatInfo.LastTextEntry;
         var isUnreadByOthers = false;
-        var lastTextEntryIconsHtml = "";
+        var lastTextEntryIcons = "";
         if (lastEntry != null) {
             isUnreadByOthers = ownAuthorId is not null && await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken);
-            lastTextEntryIconsHtml = GetIcons(lastEntry);
+            lastTextEntryIcons = GetIcons(lastEntry);
         }
 
          return new() {
@@ -227,7 +227,7 @@
             HasUnreadMentions = chatInfo.HasUnreadMentions,
             LastTextEntry = lastEntry,
             LastTextEntryText = chatInfo.LastTextEntryText,
-            LastTextEntryIconsHtml = lastTextEntryIconsHtml,
+            LastTextEntryIcons = lastTextEntryIcons,
             IsLastItemInBlock = isLastItemInBlock,
             IsFirstItem = isFirstItem,
             IsUnreadByOthers = isUnreadByOthers,
@@ -299,15 +299,15 @@
                 break;
         }
 
-        var icons = new StringBuilder();
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
         if (containsImage)
-            icons.Append("<i class=\"icon-image-2\"></i>");
+            sb.Append("<i class=\"icon-image-2\"></i>");
         if (containsVideo)
-            icons.Append("<i class=\"icon-video\"></i>");
+            sb.Append("<i class=\"icon-video\"></i>");
         if (containsFile)
-            icons.Append("<i class=\"icon-file\"></i>");
+            sb.Append("<i class=\"icon-file\"></i>");
 
-        return icons.ToString();
+        return sb.ToStringAndRelease();
     }
 
 
@@ -319,7 +319,7 @@
         public ChatListKind? ListKind { get; init; }
         public Chat? Chat { get; init; }
         public string LastTextEntryText { get; init; } = "";
-        public string LastTextEntryIconsHtml { get; init; } = "";
+        public string LastTextEntryIcons { get; init; } = "";
         public ChatEntry? LastTextEntry { get; init; }
         public ChatAudioState? AudioState { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
@@ -333,6 +333,5 @@
         public Author? LastThreadCreator { get; init; }
         public Moment LastBeginsAt => LastThread?.CreatedAt ?? LastTextEntry?.BeginsAt ?? Moment.EpochStart;
         public AuthorId? LastAuthorId => LastThreadCreator?.Id ?? LastTextEntry?.AuthorId;
-        public MarkupString LastTextEntryIcons => (MarkupString)LastTextEntryIconsHtml;
     }
 }

@@ -383,7 +383,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var textEntries = new List<TextEntry>();
         var attachments = new List<TextEntryAttachment>();
-        const int attachmentMaxCount = 7;
         var attachmentCount = 0;
         var chatEntries = tiles
             .SelectMany(tile => tile.Entries)
