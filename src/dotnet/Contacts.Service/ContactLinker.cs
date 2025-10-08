@@ -15,8 +15,6 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
     private ICommander Commander { get; } = services.Commander();
 
     [field: AllowNull, MaybeNull]
-    private IExternalContactsBackend ExternalContactsBackend => field ??= Services.GetRequiredService<IExternalContactsBackend>();
-    [field: AllowNull, MaybeNull]
     private Tracer Tracer => field ??= Services.TracerFor(GetType());
 
     protected override async Task<bool> OnActivate(CancellationToken cancellationToken)
@@ -26,7 +24,8 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         await using var _ = dbContext.ConfigureAwait(false);
         var dbExternalContactLinks = await dbContext.ExternalContactLinks.ForUpdate()
             .Where(x => !x.IsChecked)
-            .OrderBy(x => x.Value)
+            .OrderBy(x => x.DbExternalContactId)
+            .ThenBy(x => x.Value)
             .Take(BatchSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -35,48 +34,52 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
 
         using var _2 = Tracer.Region($"Checking {dbExternalContactLinks.Count} external contact link(s)");
         await dbExternalContactLinks
-            .Select(EnsureCreated)
+            .GroupBy(c => c.DbExternalContactId, StringComparer.Ordinal)
+            .Select(c => EnsureCreated(c.OrderBy(x => x.Value, StringComparer.Ordinal).ToArray()))
             .Collect(HardwareInfo.ProcessorCount * 2, cancellationToken)
             .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return false;
 
-        async Task EnsureCreated(DbExternalContactLink link)
+        async Task EnsureCreated(DbExternalContactLink[] links)
         {
-            try {
-                var userId = await FindUserId(link, cancellationToken).ConfigureAwait(false);
-                var externalContactId = ExternalContactId.Parse(link.DbExternalContactId);
-                var ownerId = externalContactId.UserDeviceId.OwnerId;
-                await EnsureContactExists(ownerId, userId, externalContactId, cancellationToken).ConfigureAwait(false);
-                link.IsChecked = true;
+            // Handle links belonging to the same external contact.
+            // The highly likely they should refer to the same user.
+            var externalContactId = ExternalContactId.Parse(links[0].DbExternalContactId);
+            var ownerId = externalContactId.UserDeviceId.OwnerId;
+            var linksPerUserId = new Dictionary<UserId, List<DbExternalContactLink>>();
+            foreach (var link in links) {
+                var userId = await ExternalContactExt.FindUser(AccountsBackend, link.Value, cancellationToken).ConfigureAwait(false);
+                if (userId is null || userId == ownerId) {
+                    link.IsChecked = true;
+                    continue;
+                }
+                if (!linksPerUserId.TryGetValue(userId, out var info)) {
+                    info = [];
+                    linksPerUserId.Add(userId, info);
+                }
+                info.Add(link);
             }
-            catch (Exception e) {
-                if (!e.IsCancellationOf(cancellationToken))
-                    Log.LogError(e, "Failed to link external contact #{ExternalContactId} via {ExternalContactLink}",
-                        link.DbExternalContactId, link.Value);
-                throw;
+            foreach (var (userId, links1) in linksPerUserId) {
+                try {
+                    await EnsureContactExists(ownerId, userId, cancellationToken).ConfigureAwait(false);
+                    // NOTE(DF): Should be mark link as checked even if it failed to create contact?
+                    foreach (var link in links1)
+                        link.IsChecked = true;
+                }
+                catch (Exception e) {
+                    if (!e.IsCancellationOf(cancellationToken))
+                        Log.LogError(e, "Failed to create contact for external contact with id '{ExternalContactId}' and links '{Links}'",
+                            externalContactId, LinksAsString(links1));
+                    throw;
+                }
             }
         }
-    }
-
-    private Task<UserId?> FindUserId(DbExternalContactLink link, CancellationToken cancellationToken)
-    {
-        var phoneHash = link.ToPhoneHash();
-        if (!phoneHash.IsNullOrEmpty())
-            return AccountsBackend.GetIdByPhoneHash(phoneHash, cancellationToken);
-
-        var emailHash = link.ToEmailHash();
-        if (!emailHash.IsNullOrEmpty())
-            return AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken);
-
-        Log.LogError("Unknown external contact link type: {ExternalContactLink}", link.Value);
-        return Task.FromResult((UserId?)null);
     }
 
     private async Task EnsureContactExists(
         UserId ownerId,
         UserId? userId,
-        ExternalContactId externalContactId,
         CancellationToken cancellationToken)
     {
         if (userId is null || ownerId == userId)
@@ -95,4 +98,7 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
         var reviewCommand = new ContactsBackend_ReviewExternalContactName(contactId);
         _ = Commander.Call(reviewCommand, true, CancellationToken.None).SuppressExceptions();
     }
+
+    private static string LinksAsString(IEnumerable<DbExternalContactLink> links)
+        => links.Select(c => c.Value).ToCommaPhrase();
 }
