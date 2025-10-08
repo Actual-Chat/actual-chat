@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Redis;
+using ActualLab.Resilience;
+using ActualLab.Versioning;
 
 namespace ActualChat.Contacts;
 
@@ -321,7 +323,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbContact = await dbContext.Contacts.ForUpdate()
+        await dbContext.Contacts.Lock(id, cancellationToken).ConfigureAwait(false);
+        var dbContact = await dbContext.Contacts
             .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
         var existing = dbContact?.ToModel();
@@ -670,9 +673,16 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (OrdinalEquals(contact.ExternalContactName, externalContactName))
             return;
 
-        var change = Change.Upsert(contact with { ExternalContactName = externalContactName });
-        var cmd = new ContactsBackend_Change(contactId, contact.Version, change);
-        await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        try {
+            var change = Change.Upsert(contact with { ExternalContactName = externalContactName });
+            var cmd = new ContactsBackend_Change(contactId, contact.Version, change);
+            await Commander.Call(cmd, false, cancellationToken).ConfigureAwait(false);
+        }
+        catch (VersionMismatchException) {
+            // NOTE: It would be better to reprocess the command right here without throwing TransientException.
+            // Because not it clutters the log.
+            throw new TransientException("Need to reprocess VersionMismatchException on ContactsBackend_Change");
+        }
     }
 
     // [CommandHandler]
@@ -886,18 +896,22 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (ownerUserId, hashLink) = eventCommand;
-        var peerUserId = (UserId?)null;
-        if (DbExternalContactLink.IsPhoneLink(hashLink, out var phoneHash))
-            peerUserId = await AccountsBackend.GetIdByPhoneHash(phoneHash, cancellationToken).ConfigureAwait(false);
-        else if (DbExternalContactLink.IsEmailLink(hashLink, out var emailHash))
-            peerUserId = await AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken).ConfigureAwait(false);
-        if (peerUserId is null || ownerUserId == peerUserId)
-            return;
+        var (ownerUserId, links) = eventCommand;
+        var peerUserIds = new List<UserId>();
+        foreach (var link in links.OrderBy(c => c, StringComparer.Ordinal)) {
+            var peerUserId = await ExternalContactExt.FindUser(AccountsBackend, link, cancellationToken).ConfigureAwait(false);
+            if (peerUserId is not null && !peerUserIds.Contains(peerUserId))
+                peerUserIds.Add(peerUserId);
+        }
 
-        var contactId = ContactId.NewUser(ownerUserId, peerUserId);
-        var cmd = new ContactsBackend_ReviewExternalContactName(contactId);
-        await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        foreach (var peerUserId in peerUserIds)  {
+            if (peerUserId == ownerUserId)
+                continue;
+
+            var contactId = ContactId.NewUser(ownerUserId, peerUserId);
+            var cmd = new ContactsBackend_ReviewExternalContactName(contactId);
+            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // [EventHandler]

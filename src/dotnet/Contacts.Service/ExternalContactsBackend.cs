@@ -166,7 +166,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         }
 
         var overallAffectedHashes = new HashSet<string>(StringComparer.Ordinal);
-        var updatedItemHashes = new HashSet<string>(StringComparer.Ordinal);
+        var updatedItemHashes = new List<IReadOnlyCollection<string>>();
         var result = new List<Result<ExternalContactFull?>>(command.Changes.Length);
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -179,8 +179,8 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                 var changeResult = await ChangeItem(dbContext, itemChange, cancellationToken).ConfigureAwait(false);
                 overallAffectedHashes.AddRange(changeResult.AffectedHashes);
                 result.Add(new (changeResult.ExternalContactFull));
-                if (itemChange.Change.Kind is ChangeKind.Remove or ChangeKind.Update)
-                    updatedItemHashes.AddRange(changeResult.AffectedHashes);
+                if (itemChange.Change.Kind is ChangeKind.Remove or ChangeKind.Update && changeResult.AffectedHashes.Count > 0)
+                    updatedItemHashes.Add(changeResult.AffectedHashes);
             }
             catch (Exception e) {
                 Log.LogError(e,
@@ -194,7 +194,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         if (updatedItemHashes.Count > 0) {
             var ownerId = command.Changes[0].Id.UserDeviceId.OwnerId;
             foreach (var itemHash in updatedItemHashes)
-                context.Operation.AddEvent(new ExternalContactNameMayHaveChangedEvent(ownerId, itemHash));
+                context.Operation.AddEvent(new ExternalContactNameMayHaveChangedEvent(ownerId, itemHash.ToImmutableArray()));
         }
 
         return result.ToArray();
