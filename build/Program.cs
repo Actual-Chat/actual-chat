@@ -59,6 +59,7 @@ internal static class Program
     /// <param name="cancellationToken">The terminate program cancellation</param>
     /// <param name="configuration">The configuration for building</param>
     /// <param name="isDevMaui">If false then app connects to voxt.ai, it true - to dev.voxt.ai</param>
+    /// <param name="dumps">Enable test running crash dumps</param>
     private static async Task<int> Main(
         string[] arguments,
         bool clear,
@@ -76,7 +77,8 @@ internal static class Program
         CancellationToken cancellationToken,
         // our options here
         string configuration = "Debug",
-        bool? isDevMaui = null
+        bool? isDevMaui = null,
+        bool dumps = false
         )
     {
         Console.OutputEncoding = Encoding.UTF8;
@@ -234,11 +236,11 @@ internal static class Program
 
         Target(Targets.GenerateCISolutionFilter, SolutionFilterGenerator.Generate);
 
-        Target(Targets.UnitTests, () => RunTests("FullyQualifiedName~UnitTests", 60));
+        Target(Targets.UnitTests, () => RunTests("FullyQualifiedName~UnitTests", 15 * 60));
 
-        Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow", 300));
+        Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow", 30 * 60));
 
-        Target(Targets.SlowTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow", 300));
+        Target(Targets.SlowTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow", 30 * 60));
 
         Target(Targets.CleanTests, () => {
             FileExt.Remove("artifacts/tests/output");
@@ -508,20 +510,31 @@ internal static class Program
         }
 
         Task<BufferedCommandResult> RunTests(string filter, int timeoutSec)
-            => Cli.Wrap(dotnet)
-                .WithArguments("test",
-                    "ActualChat.CI.slnf",
-                    "--nologo",
-                    $"--filter \"{filter}\"",
-                    "--no-restore",
+        {
+            var args = new List<string> {
+                "test",
+                "ActualChat.CI.slnf",
+                "--nologo",
+                $"--filter \"{filter}\"",
+                "--no-restore",
+                "--logger \"trx;LogFileName=Results.trx\"",
+                Utils.GithubLogger(),
+                $"-c {configuration}",
+            };
+            if (dumps)
+                args.AddRange([
                     "--blame-hang",
                     $"--blame-hang-timeout {timeoutSec}s",
-                    "--logger \"trx;LogFileName=Results.trx\"",
-                    Utils.GithubLogger(),
-                    $"-c {configuration}")
+                    "--blame-hang-dump-type full",
+                    "--blame-crash",
+                    "--blame-crash-dump-type full",
+                ]);
+            return Cli.Wrap(dotnet)
+                .WithArguments(args, false)
                 .ToConsole()
                 .ExecuteBufferedAsync(cancellationToken)
                 .Task;
+        }
     }
 }
 
