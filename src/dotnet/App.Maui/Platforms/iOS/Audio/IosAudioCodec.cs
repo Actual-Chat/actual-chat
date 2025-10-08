@@ -5,7 +5,7 @@ using ActualLab.Opus.MaciOS;
 using AVFoundation;
 using Foundation;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 public class IosAudioCodec(AppUIHub hub) : IAudioCodec
 {

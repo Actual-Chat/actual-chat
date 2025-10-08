@@ -1,4 +1,3 @@
-using ActualChat.App.Maui.Playback;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using CoreSpotlight;
@@ -26,7 +25,6 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     public override bool FinishedLaunching(UIApplication application, NSDictionary launchOptions)
     {
         RegisterBadgeNotifications();
-        IosAudioSessionHelper.ActivateRecordingAndBackgroundAudio(); // TODO configure audio session right before audio playing
         return base.FinishedLaunching(application, launchOptions);
     }
 

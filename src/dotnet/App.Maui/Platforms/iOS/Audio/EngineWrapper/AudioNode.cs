@@ -1,6 +1,6 @@
 using AVFoundation;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 public abstract class AudioNode(AVAudioNode node, Action<AVAudioNode> disposer)
 {

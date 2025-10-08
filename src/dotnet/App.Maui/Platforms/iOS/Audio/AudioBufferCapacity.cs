@@ -1,4 +1,4 @@
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 internal sealed class AudioBufferCapacity
 {

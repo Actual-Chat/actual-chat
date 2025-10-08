@@ -7,7 +7,7 @@ using AudioSource = ActualChat.Audio.AudioSource;
 using Encoding = Android.Media.Encoding;
 using Stream = Android.Media.Stream;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 internal sealed class AndroidAudioPlaybackEngine(
     string id,

@@ -2,7 +2,7 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using CoreHaptics;
 
-namespace ActualChat.App.Maui.Playback;
+namespace ActualChat.App.Maui.Audio;
 
 public class IosTuneUI(UIHub hub) : MauiTunes(hub)
 {
@@ -13,7 +13,7 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
     [field: AllowNull, MaybeNull]
     private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
     [field: AllowNull, MaybeNull]
-    private AudioEngine Engine => field ??= Hub.Services.GetRequiredService<AudioEngine>();
+    private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
 
     public override void Dispose()
     {
@@ -71,7 +71,8 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
             return;
 
         try {
-            await Engine.PlayResourceFile(soundName).ConfigureAwait(false);
+            using var engine = await AudioEngines.Rent(AudioMode.Tunes).ConfigureAwait(false);
+            await engine.Resource.PlayResourceFile(soundName).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to play sound {SoundName}", soundName);

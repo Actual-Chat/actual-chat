@@ -1,4 +1,4 @@
-using ActualChat.App.Maui.Playback;
+using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Recording;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor;
@@ -31,7 +31,8 @@ public static partial class MauiProgram
         services.AddScoped<IAudioCodec, IosAudioCodec>();
         services.AddScoped<ResamplerFactory>(c => new ResamplerFactory(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c.UIHub()));
-        services.AddScoped<AudioEngine>(c => new AudioEngine(c.AppUIHub()));
+        services.AddScoped<AudioEngines>(c => new AudioEngines(c.AppUIHub()));
+        services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMediaSaver>(c => new IosMediaSaver(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
