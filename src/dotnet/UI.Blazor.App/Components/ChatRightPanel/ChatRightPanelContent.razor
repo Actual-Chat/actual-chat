@@ -4,6 +4,11 @@
     var m = State.Value;
 }
 
+@if (m.ShowSkeletons) {
+    <SkeletonRightPanel />
+    return;
+}
+
 <div class="right-chat-panel">
     <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
         @if (m.ShowSearchPanel) {
@@ -51,18 +56,21 @@
     private IChats Chats => Hub.Chats;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.Loading,
+            t => new ComputedState<Model>.Options() {
+                InitialValue = Chat is not null ? Model.Loading : Model.Skeletons,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
+        if (chat is null)
+            return Model.Skeletons;
+
         var chatId = chat.Id;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -82,7 +90,9 @@
 
     public sealed record Model {
         public static Model Loading = new();
+        public static Model Skeletons = new() { ShowSkeletons = true };
 
+        public bool ShowSkeletons { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
         public bool ShowMembersTab { get; init; }
