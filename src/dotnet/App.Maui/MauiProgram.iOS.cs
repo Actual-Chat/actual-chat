@@ -38,7 +38,6 @@ public static partial class MauiProgram
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
         services.AddTransient<IAppIconBadge>(_ => new IosAppIconBadge());
         services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.AppUIHub()));
-        services.AddScoped<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
@@ -56,6 +57,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<TuneUI>(c => new MauiTunes(c.UIHub()));
         services.AddSingleton<VoiceActivityDetector>(c => new OnnxVoiceActivityDetector(c));
+#elif IOS || MACCATALYST
+        services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));

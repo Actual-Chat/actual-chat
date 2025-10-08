@@ -8,6 +8,8 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : Voice
 {
     private InferenceSession? _session;
     private DenseTensor<float> _state = new (new float[2 * 1 * 128], [2, 1, 128]);
+    private readonly float[] _buffer = new float[InputSamples];
+    private readonly float[] _context = new float[ContextSamples];
 
     public override bool IsInitialized => _session != null;
 
@@ -80,6 +82,7 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : Voice
     public override void Reset()
     {
         base.Reset();
+        Array.Clear(_context, 0, _context.Length);
         _state = new DenseTensor<float>(new float[2 * 1 * 128], [2, 1, 128]);
     }
 

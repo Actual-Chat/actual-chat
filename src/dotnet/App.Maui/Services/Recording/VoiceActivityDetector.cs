@@ -29,8 +29,6 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
     private const double ConvDurationS = 30;
     private const double PauseVariesFromS = 10;
     private static readonly double PauseVaryPower = Math.Sqrt(2);
-    protected readonly float[] _buffer = new float[InputSamples];
-    protected readonly float[] _context = new float[ContextSamples];
     private readonly RunningEma _longProbEma = new (0.5f, 64);
     private readonly RunningEma _gainEma = new (0, 10);
 
@@ -79,7 +77,6 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
     public virtual void Reset()
     {
         ThrowIfDisposed();
-        Array.Clear(_context, 0, _context.Length);
         ResetProcessingState();
     }
 
