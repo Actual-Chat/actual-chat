@@ -38,7 +38,8 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
         void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
         {
             try {
-                if (outBuffer.RemainingCapacity < Constants.Audio.OpusFrameLength) {
+                var frameLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
+                if (outBuffer.RemainingCapacity < frameLength) {
                     Log.LogWarning("Buffer full, dropping samples");
                     return;
                 }
