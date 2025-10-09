@@ -16,5 +16,6 @@ public static class BlockRingBufferExt
             }
             yield return frame; // ownership transferred to consumer
         }
+        cancellationToken.ThrowIfCancellationRequested();
     }
 }
