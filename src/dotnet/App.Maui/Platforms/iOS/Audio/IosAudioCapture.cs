@@ -24,45 +24,31 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
     {
         using var engineLease = await AudioEngines.Rent(AudioMode.Recording).ConfigureAwait(false);
         var engine = engineLease.Resource;
-        var channel = Channel.CreateBounded<IMemoryOwner<float>>(new BoundedChannelOptions(MaxQueueLength) {
-            FullMode = BoundedChannelFullMode.DropOldest,
-            SingleWriter = true,
-            SingleReader = true,
-        });
+        using var opusBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
         var hwFormat = engine.Input.GetOutputFormat();
         using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
         engine.Input.SetVoiceProcessingEnabled(true);
         using var _2 = engine.Input.Tap(HandleSamples);
         engine.EnsureRunning();
 
-        try {
-            await foreach (var memoryOwner in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-                yield return memoryOwner;
-        }
-        finally {
-            channel.Writer.TryComplete();
-            DisposeRemaining();
-        }
-
+        await foreach (var memoryOwner in opusBuffer.PullAll(Constants.Audio.OpusFrameLength, cancellationToken).ConfigureAwait(false))
+            yield return memoryOwner;
         yield break;
 
-        void HandleSamples(AVAudioPcmBuffer buffer, AVAudioTime when)
+        void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
         {
             // TODO: use ring buffer to offload resampling to the other thread
             try {
-                var resampled = resampler.Transform(buffer);
+                if (opusBuffer.RemainingCapacity < Constants.Audio.OpusFrameLength)
+                    return;
+
+                var resampled = resampler.Transform(pcmBuffer);
                 var resampledData = resampled.ToFloats();
-                channel.Writer.TryWrite(new FloatArrayMemoryOwner(resampledData));
+                opusBuffer.TryPush(resampledData);
             }
             catch (Exception e) {
-                Log.LogError(e, "Failed to resample buffer");
+                Log.LogError(e, "Failed to handle recorded samples");
             }
-        }
-
-        void DisposeRemaining()
-        {
-            while (channel.Reader.TryRead(out var frame))
-                frame.DisposeSilently();
         }
     }
 }
