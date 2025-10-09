@@ -2,7 +2,7 @@ using System.Buffers;
 using ActualChat.App.Maui.Services.Recording;
 using Android.Media;
 
-namespace ActualChat.App.Maui.Recording;
+namespace ActualChat.App.Maui.Audio;
 
 public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCapture
 {

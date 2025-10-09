@@ -1,4 +1,4 @@
-using ActualChat.App.Maui.Recording;
+using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.App;

@@ -10,7 +10,7 @@ using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Components;
 using AudioFrame = Windows.Media.AudioFrame;
 
-namespace  ActualChat.App.Maui.Playback;
+namespace  ActualChat.App.Maui.Audio;
 
 internal sealed class WindowsAudioPlaybackEngine(
     string id,
@@ -152,15 +152,15 @@ internal sealed class WindowsAudioPlaybackEngine(
         return Task.CompletedTask;
     }
 
-    public Task Frame(MediaFrame frame, CancellationToken cancellationToken)
+    public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
     {
         // Enqueue opus packet
         var data = frame.Data;
         if (data.Length == 0)
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
 
         _packetChannel.Writer.TryWrite(new ByteArrayMemoryOwner(data));
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     public ValueTask DisposeAsync()

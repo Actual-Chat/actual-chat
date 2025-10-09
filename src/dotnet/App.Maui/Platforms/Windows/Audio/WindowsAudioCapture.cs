@@ -7,7 +7,7 @@ using Windows.Media.MediaProperties;
 using Windows.Media.Render;
 using ActualChat.App.Maui.Services.Recording;
 
-namespace ActualChat.App.Maui.Recording;
+namespace ActualChat.App.Maui.Audio;
 
 public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCapture
 {
