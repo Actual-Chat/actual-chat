@@ -37,7 +37,6 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
 
         void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
         {
-            // TODO: use ring buffer to offload resampling to the other thread
             try {
                 if (opusBuffer.RemainingCapacity < Constants.Audio.OpusFrameLength) {
                     Log.LogWarning("Buffer full, dropping samples");

@@ -48,8 +48,8 @@ public class BlockRingBuffer<T>: IDisposable
         _writeIndex = 0;
         _readIndex = 0;
         _pendingReadIndex = 0;
-        _whenPushedTcs = new TaskCompletionSource();
-        _whenPulledTcs = new TaskCompletionSource();
+        _whenPushedTcs = TaskCompletionSourceExt.New();
+        _whenPulledTcs = TaskCompletionSourceExt.New();
         _whenPulledTcs.TrySetResult();
     }
     public void Dispose()
@@ -72,7 +72,7 @@ public class BlockRingBuffer<T>: IDisposable
         // Calculate available space
         var used = (currentWrite - currentRead) & _mask;
         if (used + length > Capacity) {
-            _whenPulledTcs = new TaskCompletionSource();
+            _whenPulledTcs = TaskCompletionSourceExt.New();
             return false; // Not enough space
         }
 
@@ -110,7 +110,7 @@ public class BlockRingBuffer<T>: IDisposable
 
         if (available < length) {
             block = null;
-            _whenPushedTcs = new TaskCompletionSource();
+            _whenPushedTcs = TaskCompletionSourceExt.New();
             return false;
         }
 
@@ -119,7 +119,7 @@ public class BlockRingBuffer<T>: IDisposable
             // Another thread updated pending read index, fail
             // We should not get here as we use a single consumer, just in case
             block = null;
-            _whenPushedTcs = new TaskCompletionSource();
+            _whenPushedTcs = TaskCompletionSourceExt.New();
             return false;
         }
 
