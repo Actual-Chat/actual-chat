@@ -482,7 +482,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         {
             var localCts = Interlocked.Exchange(ref _encodeSendCts, null);
             if (localCts != null) {
-                try { await localCts.CancelAsync(); }
+                try { await localCts.CancelAsync().ConfigureAwait(false); }
                 catch {
                     /* ignore */
                 }
