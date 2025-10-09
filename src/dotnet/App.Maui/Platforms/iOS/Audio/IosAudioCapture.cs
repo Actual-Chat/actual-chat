@@ -39,12 +39,13 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
         {
             // TODO: use ring buffer to offload resampling to the other thread
             try {
-                if (opusBuffer.RemainingCapacity < Constants.Audio.OpusFrameLength)
+                if (opusBuffer.RemainingCapacity < Constants.Audio.OpusFrameLength) {
+                    Log.LogWarning("Buffer full, dropping samples");
                     return;
+                }
 
                 var resampled = resampler.Transform(pcmBuffer);
-                var resampledData = resampled.ToFloats();
-                opusBuffer.TryPush(resampledData);
+                opusBuffer.TryPush(resampled.AsReadOnlySpan());
             }
             catch (Exception e) {
                 Log.LogError(e, "Failed to handle recorded samples");

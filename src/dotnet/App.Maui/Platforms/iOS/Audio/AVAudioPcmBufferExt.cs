@@ -10,4 +10,11 @@ public static class AVAudioPcmBufferExt
         Marshal.Copy(pcm.AudioBufferList[0].Data, data, 0, (int)pcm.FrameLength);
         return data;
     }
+
+    public static ReadOnlySpan<float> AsReadOnlySpan(this AVAudioPcmBuffer pcm)
+    {
+        unsafe {
+            return new ReadOnlySpan<float>(pcm.AudioBufferList[0].Data.ToPointer(), (int)pcm.FrameLength);
+        }
+    }
 }
