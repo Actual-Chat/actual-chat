@@ -6,7 +6,7 @@
 
 <div class="message-image-attachments @_listCls @_attachmentsCls">
     @foreach (var row in _rows) {
-        var cls = GetRowClass(row);
+        var cls = row.GetRowClass();
         <VisualMediaAttachmentLine
             Row="@row"
             Class="@cls"
@@ -24,7 +24,7 @@
 }
 
 @code {
-    private ImageRow[] _rows = [];
+    private MediaGalleryLine<TextEntryAttachment>[] _rows = [];
     private TextEntryAttachment[] _mediaList = [];
 
     private string _listCls = "";
@@ -39,108 +39,13 @@
     [Parameter] public bool IsNarrow { get; set; }
 
     protected override void OnParametersSet() {
-        var maxCount = 10;
-        if (IsConversation)
-            maxCount = 8;
-        if (IsConversation && IsNarrow)
-            maxCount = 6;
-
+        var maxCount = IsConversation ? IsNarrow ? 6 : 8 : 10;
         _mediaList = MediaList.Take(maxCount).ToArray();
         _rows = GetRows(_mediaList, IsConversation, IsNarrow);
     }
 
-    private static ImageRow[] GetRows(TextEntryAttachment[] mediaList, bool isConversation, bool isNarrow) {
-        var rows = new List<ImageRow>();
-        var line = new List<ImageTile>();
-
-        if (isConversation && !isNarrow) {
-            for (var index = 0; index < mediaList.Length; index++) {
-                var attachment = mediaList[index];
-                var tile = new ImageTile(attachment);
-
-                var isLast = index == mediaList.Length - 1;
-                var lineIsFull = line.Count >= 4;
-                var tileIsWide = tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide;
-                var lineHasManyWide = line.Count(t => t.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 2;
-
-                if (mediaList.Length == 3
-                    && index == 1
-                    && line is [{ Proportions: ImageProportions.Wide or ImageProportions.ExtraWide }]
-                    && tileIsWide) {
-                    rows.Add(new ImageRow(line));
-                    line = new List<ImageTile>();
-                }
-
-                if ((!isLast && lineIsFull)
-                    || (isLast && line.Count == 4 && tileIsWide && lineHasManyWide)) {
-                    rows.Add(new ImageRow(line));
-                    line = new List<ImageTile>();
-                }
-
-                line.Add(tile);
-            }
-
-            if (line.Count > 0)
-                rows.Add(new ImageRow(line));
-        } else {
-            for (var index = 0; index < mediaList.Length; index++) {
-                var attachment = mediaList[index];
-                var tile = new ImageTile(attachment);
-
-                var isLast = index == mediaList.Length - 1;
-                var lineIsFull = line.Count >= 3;
-                var tileIsWide = tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide;
-                var lineHasManyWide = line.Count(t => t.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 1;
-
-                if (mediaList.Length == 2
-                    && index == 1
-                    && line is [{ Proportions: ImageProportions.Wide or ImageProportions.ExtraWide }]
-                    && tileIsWide) {
-                    rows.Add(new ImageRow(line));
-                    line = new List<ImageTile>();
-                }
-
-                if ((!isLast && lineIsFull)
-                    || (isLast && line.Count == 3 && tileIsWide && lineHasManyWide)) {
-                    rows.Add(new ImageRow(line));
-                    line = new List<ImageTile>();
-                }
-
-                line.Add(tile);
-            }
-
-            if (line.Count > 0)
-                rows.Add(new ImageRow(line));
-        }
-
-        return rows.ToArray();
-    }
-
-    private static string GetRowClass(ImageRow row) {
-        var tiles = row.Tiles;
-        if (tiles.Count > 2)
-            return "normal-line";
-        if (tiles.Count == 2) {
-            if (tiles.Count(t => t.Proportions is ImageProportions.Square) == 2)
-                return "md-md";
-
-            if (tiles.Count(t => t.Proportions is ImageProportions.Narrow) == 2)
-                return "sm-sm";
-
-            if (tiles.Count(t => t.Proportions is ImageProportions.Narrow) == 1
-                && tiles.Count(t => t.Proportions is ImageProportions.Square) == 1)
-                return "sm-md";
-        }
-        if (tiles.Count == 1) {
-            var tile = tiles[0];
-            return tile.Proportions switch {
-                ImageProportions.Narrow => "sm-sm",
-                ImageProportions.Square => "md-md",
-                ImageProportions.Wide => "lg-lg",
-                ImageProportions.ExtraWide => "xl-xl",
-                _ => "normal-line",
-            };
-        }
-        return "normal-line";
+    private static MediaGalleryLine<TextEntryAttachment>[] GetRows(TextEntryAttachment[] mediaList, bool isConversation, bool isNarrow) {
+        var arranger = isConversation && !isNarrow ? MediaGalleryArranger.ConversationWideScreen : MediaGalleryArranger.Default;
+        return arranger.Arrange(mediaList, a => (a.Media.Width, a.Media.Height));
     }
 }
