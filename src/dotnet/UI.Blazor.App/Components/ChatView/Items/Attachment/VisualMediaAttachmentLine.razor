@@ -4,17 +4,17 @@
     var cls = tileCount == 1 ? "one-image" : "";
 }
 
-<div class="image-line @Class @Row.LineHeightCls(Row) @cls">
+<div class="image-line @Class @Row.LineHeightCls() @cls">
     @foreach (var tile in Row.Tiles) {
-        <div class="image-item" style="width: @Row.GetTileWidthInPercent(Row, tile)%">
-            <VisualMediaAttachment Attachment="@tile.Attachment" Attachments="@MediaList"/>
+        <div class="image-item" style="width: @Row.GetTileWidthInPercent(tile)%">
+            <VisualMediaAttachment Attachment="@tile.Item" Attachments="@MediaList"/>
         </div>
     }
 </div>
 
 @code {
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public ImageRow Row { get; set; } = null!;
+    [Parameter, EditorRequired] public MediaGalleryLine<TextEntryAttachment> Row { get; set; } = null!;
     [Parameter] public TextEntryAttachment[]? MediaList { get; set; }
     [Parameter] public string Class { get; set; } = "";
 }
