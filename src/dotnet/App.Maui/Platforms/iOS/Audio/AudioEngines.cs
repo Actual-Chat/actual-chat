@@ -99,7 +99,7 @@ public class AudioEngines : IAsyncDisposable
     }
 
     private void HandleConfigurationChange(object? sender, NSNotificationEventArgs e)
-        => Log.LogInformation("!!! Configuration change");
+        => Log.LogInformation("Audio engine configuration change");
 
     private void HandleInterruption(object? sender, AVAudioSessionInterruptionEventArgs e)
     {

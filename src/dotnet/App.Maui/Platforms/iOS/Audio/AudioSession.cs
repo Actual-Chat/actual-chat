@@ -3,7 +3,6 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-// TODO: interruptions
 public class AudioSession(AppUIHub hub) : IAsyncDisposable
 {
     [field: AllowNull, MaybeNull]

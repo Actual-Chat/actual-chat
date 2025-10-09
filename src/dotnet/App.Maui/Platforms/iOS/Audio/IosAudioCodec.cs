@@ -54,7 +54,7 @@ public class IosAudioCodec(AppUIHub hub) : IAudioCodec
         }
         catch (Exception e)
         {
-            Log.LogError(e, "!!! Failed to encode buffer {Buffer}({Format})", buffer, buffer.Format);
+            Log.LogError(e, "Failed to encode buffer {Buffer}({Format})", buffer, buffer.Format);
             // Log.LogError(e, "!!! Failed to encode buffer {Buffer}({Format}) {Data}", buffer, buffer.Format, Convert.ToHexString(buffer.ToBytes()));
             throw;
         }
