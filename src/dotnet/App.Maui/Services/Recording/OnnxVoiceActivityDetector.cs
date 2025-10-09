@@ -25,8 +25,10 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : Voice
     public override async Task EnsureInitialized(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        if (_session != null)
+        if (IsInitialized) {
+            Reset();
             return;
+        }
 
         // The model is shipped under wwwroot/dist/assets/onnx/vad.onnx (see web build assets)
         await using var modelStream = await FileSystem.OpenAppPackageFileAsync(@"wwwroot\dist\assets\onnx\vad.onnx");

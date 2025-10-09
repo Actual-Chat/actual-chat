@@ -20,6 +20,12 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
 
     public override Task EnsureInitialized(CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
+        if (IsInitialized) {
+            Reset();
+            return Task.CompletedTask;
+        }
+
         // Inputs:
         //   input: (1, 512) float32 - current audio chunk
         //   context: (1, 64) float32 - previous rolling context
@@ -30,14 +36,19 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
         //   contextN: (1, 64) float32 - updated context
         //   hn: (1, 1, 128) float32 - updated hidden state
         //   cn: (1, 1, 128) float32 - updated cell state
-        var modelUrl = NSBundle.MainBundle.GetUrlForResource("vad", "mlpackage");
+        var modelUrl = NSBundle.MainBundle.GetUrlForResource("vad", "mlmodelc");
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (modelUrl is null) {
             Log.LogError("CoreML VAD model not found in app bundle");
             throw StandardError.Configuration("CoreML VAD model not found in app bundle.");
         }
 
-        var model = MLModel.Create(modelUrl, out var error);
+        var config = new MLModelConfiguration {
+            ComputeUnits = MLComputeUnits.All,
+            // Allow low precision (float16) if supported by the device
+            AllowLowPrecisionAccumulationOnGpu = true,
+        };
+        var model = MLModel.Create(modelUrl, config, out var error);
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (model is null || error is not null) {
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
@@ -136,10 +147,10 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
         }
 
         // Extract outputs
-        var scoreVal = output.GetFeatureValue("score");
-        var contextNVal = output.GetFeatureValue("contextN");
-        var hnVal = output.GetFeatureValue("hn");
-        var cnVal = output.GetFeatureValue("cn");
+        var scoreVal = output.GetFeatureValue("score_1");
+        var contextNVal = output.GetFeatureValue("next_ctx_1");
+        var hnVal = output.GetFeatureValue("hn_1");
+        var cnVal = output.GetFeatureValue("cn_1");
 
         var scoreArr = scoreVal!.MultiArrayValue;
         var contextNArr = contextNVal!.MultiArrayValue;
