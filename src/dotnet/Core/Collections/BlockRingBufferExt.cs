@@ -11,7 +11,7 @@ public static class BlockRingBufferExt
     {
         while (!cancellationToken.IsCancellationRequested) {
             if (!buffer.TryPull(chunkSize, out var frame)) {
-                await buffer.WhenPushed.ConfigureAwait(false);
+                await buffer.WhenPushed.WaitAsync(cancellationToken).ConfigureAwait(false);
                 continue;
             }
             yield return frame; // ownership transferred to consumer
