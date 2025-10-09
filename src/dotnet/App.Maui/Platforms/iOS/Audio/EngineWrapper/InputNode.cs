@@ -5,6 +5,8 @@ namespace ActualChat.App.Maui.Audio;
 public class InputNode(AVAudioNode node) : AudioNode(node, _ => {})
 {
     private int _isTapped;
+    public new AVAudioInputNode Node => (AVAudioInputNode)base.Node;
+
     public IDisposable Tap(AVAudioNodeTapBlock handleSamples)
     {
         if (Interlocked.CompareExchange(ref _isTapped, 1, 0) != 0)
@@ -16,5 +18,13 @@ public class InputNode(AVAudioNode node) : AudioNode(node, _ => {})
             hwFormat,
             handleSamples,
             void () => Interlocked.Exchange(ref _isTapped, 0));
+    }
+
+    public void SetVoiceProcessingEnabled(bool value)
+    {
+        lock (Lock) {
+            Node.SetVoiceProcessingEnabled(value, out var error);
+            error.Assert();
+        }
     }
 }

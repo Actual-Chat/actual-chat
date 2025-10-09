@@ -31,6 +31,7 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
         });
         var hwFormat = engine.Input.GetOutputFormat();
         using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
+        engine.Input.SetVoiceProcessingEnabled(true);
         using var _2 = engine.Input.Tap(HandleSamples);
         engine.EnsureRunning();
 
