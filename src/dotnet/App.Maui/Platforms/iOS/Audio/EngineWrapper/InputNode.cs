@@ -27,4 +27,13 @@ public class InputNode(AVAudioNode node) : AudioNode(node, _ => {})
             error.Assert();
         }
     }
+
+    public void Reset()
+    {
+        lock (Lock) {
+            Node.RemoveTapOnBus(Bus);
+            Interlocked.Exchange(ref _isTapped, 0);
+            Node.Reset();
+        }
+    }
 }

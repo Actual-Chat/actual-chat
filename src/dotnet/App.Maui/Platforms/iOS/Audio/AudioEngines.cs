@@ -73,6 +73,10 @@ public class AudioEngines : IAsyncDisposable
     private async ValueTask ReleaseEngine(AudioMode mode, AudioEngine engine)
     {
         using var _1 = await _lock.Lock().ConfigureAwait(false);
+        if (mode is AudioMode.Recording) {
+            engine.Input.Reset();
+            engine.Stop();
+        }
         if (mode is not AudioMode.Tunes && _modes.Remove(mode) && _modes.Max() < mode)
         {
             Pause();

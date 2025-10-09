@@ -11,7 +11,7 @@ public class AudioEngine(AudioMode mode, AppUIHub hub) : IDisposable
 
     private readonly Lock _lock = new ();
     private readonly AVAudioEngine _engine = new ();
-    private bool _wasStartedOnce;
+    private bool _wasStarted;
 
     [field: AllowNull, MaybeNull]
     public InputNode Input {
@@ -36,11 +36,11 @@ public class AudioEngine(AudioMode mode, AppUIHub hub) : IDisposable
 
     public void Resume()
     {
-        if (!_wasStartedOnce)
+        if (!_wasStarted)
             return;
 
         lock (_lock) {
-            if (!_wasStartedOnce)
+            if (!_wasStarted)
                 return;
 
             EnsureEngineRunningUnsafe();
@@ -101,14 +101,22 @@ public class AudioEngine(AudioMode mode, AppUIHub hub) : IDisposable
 
     public void Pause()
     {
-        if (!_wasStartedOnce)
+        if (!_wasStarted)
             return;
 
         lock (_lock) {
-            if (!_wasStartedOnce)
+            if (!_wasStarted)
                 return;
 
             _engine.Pause();
+        }
+    }
+
+    public void Stop()
+    {
+        lock (_lock) {
+            _engine.Stop();
+            _wasStarted = false;
         }
     }
 
@@ -133,6 +141,6 @@ public class AudioEngine(AudioMode mode, AppUIHub hub) : IDisposable
             _engine.StartAndReturnError(out var nsError);
             nsError.Assert();
         }
-        _wasStartedOnce = true;
+        _wasStarted = true;
     }
 }

@@ -90,7 +90,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         // Start processing in the background
         _ = BackgroundTask.Run(() => ProcessAudioStream(microphoneStream, token),
             Log,
-            "!!! Failed to process microphone stream",
+            "Failed to process microphone stream",
             token);
         return true;
     }
