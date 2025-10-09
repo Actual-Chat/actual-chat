@@ -519,22 +519,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             }
         }
 
-        private async IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
-        {
-            var cts = _encodeSendCts;
-            if (cts == null)
-                yield break;
-
-            var cancellationToken = _encodeSendCts!.Token;
-            var buffer = _encodingBuffer;
-            while (!cancellationToken.IsCancellationRequested) {
-                if (!buffer.TryPull(Constants.Audio.OpusFrameLength, out var frame)) {
-                    await buffer.WhenPushed.ConfigureAwait(false);
-                    continue;
-                }
-                yield return frame; // ownership transferred to encoder
-            }
-        }
+        private IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
+            => _encodeSendCts?.Token is { } cancellationToken
+                ? _encodingBuffer.PullAll(Constants.Audio.OpusFrameLength, cancellationToken)
+                : AsyncEnumerable.Empty<IMemoryOwner<float>>();
     }
     #endregion
 }
