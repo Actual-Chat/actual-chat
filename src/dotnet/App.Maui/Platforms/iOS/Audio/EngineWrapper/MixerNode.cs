@@ -2,7 +2,8 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class MixerNode(AVAudioMixerNode node, Action<AVAudioNode> disposer) : AudioNode(node, disposer), IDisposable
+public class MixerNode(AVAudioMixerNode node, Action<AVAudioNode> disposer, ILogger<MixerNode> log)
+    : AudioNode(node, disposer, log), IDisposable
 {
     public float Volume {
         get {

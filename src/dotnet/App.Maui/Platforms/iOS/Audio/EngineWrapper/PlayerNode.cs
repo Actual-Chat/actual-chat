@@ -2,7 +2,8 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class PlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVAudioNode> disposer) : AudioNode(node, disposer), IDisposable
+public class PlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVAudioNode> disposer, ILogger<PlayerNode> log)
+    : AudioNode(node, disposer, log), IDisposable
 {
     public AVAudioFormat Format { get; } = format;
     private readonly Lock _lock = new();

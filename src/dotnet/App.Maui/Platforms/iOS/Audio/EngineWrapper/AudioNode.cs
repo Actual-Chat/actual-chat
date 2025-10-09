@@ -2,11 +2,12 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public abstract class AudioNode(AVAudioNode node, Action<AVAudioNode> disposer)
+public abstract class AudioNode(AVAudioNode node, Action<AVAudioNode> disposer, ILogger log)
 {
     public const int Bus = 0;
     protected readonly Lock Lock = new();
     protected internal AVAudioNode Node => node;
+    protected ILogger Log => log;
 
     public void Dispose()
     {

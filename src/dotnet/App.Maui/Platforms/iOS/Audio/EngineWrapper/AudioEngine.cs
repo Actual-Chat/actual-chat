@@ -17,7 +17,7 @@ public class AudioEngine(AudioMode mode, AppUIHub hub) : IDisposable
     public InputNode Input {
         get {
             lock (_lock)
-                return field ??= new InputNode(_engine.InputNode);
+                return field ??= new InputNode(_engine.InputNode, hub.LogFor<InputNode>());
         }
     }
 
@@ -81,12 +81,12 @@ public class AudioEngine(AudioMode mode, AppUIHub hub) : IDisposable
     {
         var node = new AVAudioMixerNode();
         AttachNode(node);
-        return new MixerNode(node, DisposeNode);
+        return new MixerNode(node, DisposeNode, hub.LogFor<MixerNode>());
     }
 
     public PlayerNode NewPlayer(AVAudioFormat format, bool connectToMainOutput = true)
     {
-        var node = new PlayerNode(new AVAudioPlayerNode(), format, DisposeNode);
+        var node = new PlayerNode(new AVAudioPlayerNode(), format, DisposeNode, hub.LogFor<PlayerNode>());
         AttachNode(node.Node);
         if (connectToMainOutput)
             ConnectToMainMixer(node, format);

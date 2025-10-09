@@ -2,7 +2,7 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class InputNode(AVAudioNode node) : AudioNode(node, _ => {})
+public class InputNode(AVAudioNode node, ILogger log) : AudioNode(node, _ => {}, log)
 {
     private int _isTapped;
     public new AVAudioInputNode Node => (AVAudioInputNode)base.Node;
