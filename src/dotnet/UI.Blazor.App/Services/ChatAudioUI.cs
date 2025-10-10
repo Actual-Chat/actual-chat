@@ -136,7 +136,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
                             Recency = now,
                         }).ToArray();
                         _ = RestoreListening(StopToken);
-                        _ = TuneUI.Play(Tune.EndRecording);
                     }
                     return activeChats;
                 }
@@ -166,7 +165,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
                         c => c.ChatId != chatId && c.IsRecording,
                         c => c with { IsRecording = false })
                         .ToArray();
-                _ = TuneUI.Play(Tune.BeginRecording);
                 return activeChats;
 
                 async Task RestoreListening(CancellationToken ct)
