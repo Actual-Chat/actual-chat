@@ -10,7 +10,7 @@ public partial class WebFileProvider : IFileProvider
     private IServiceProvider? _services;
 
     [DataMember, MemoryPackOrder(0)]
-    public string FileName { get; init; } = "";
+    public FileMetadata Metadata { get; init; } = new ();
     [DataMember, MemoryPackOrder(1)]
     public string FileHandleDbKey { get; set; } = "";
 

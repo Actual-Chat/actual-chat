@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 [MemoryPackable(GenerateType.NoGenerate)]
 public partial interface IFileProvider
 {
-    string FileName { get; }
+    FileMetadata Metadata { get; }
     Task PrepareForSaving();
     Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId);
     void Initialize(IServiceProvider services);

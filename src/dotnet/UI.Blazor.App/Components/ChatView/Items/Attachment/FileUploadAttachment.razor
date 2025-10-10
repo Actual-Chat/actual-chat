@@ -33,8 +33,7 @@
             <FileAttachmentTitle Title="@attachment.FileName"/>
             <div class="c-bottom">
                 <div class="c-size">
-                    @* TODO: File size (Andrey Y) *@
-                    @* <span>@FileSizeFormatter.Format(fileSize)</span> *@
+                    <span>@FileSizeFormatter.Format(Attachment.Length)</span>
                 </div>
                 <div class="@uploadProgressClass" style="@uploadStyle"></div>
             </div>
@@ -46,8 +45,6 @@
 </div>
 
 @code {
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-
     [Parameter, EditorRequired] public Attachment Attachment { get; set; } = null!;
     [Parameter] public bool IconOnly { get; set; }
     [Parameter] public EventCallback RemoveClick { get; set; }

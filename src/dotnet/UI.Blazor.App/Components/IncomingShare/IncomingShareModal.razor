@@ -174,8 +174,9 @@
         Exception? fileSizeLimitError = null;
         var attachments = new List<Attachment>();
         foreach (var fileInfo in fileInfos) {
-            if (fileInfo.Length > Constants.Attachments.FileSizeLimit) {
-                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", fileInfo.FileName, fileInfo.Length);
+            var fileMetadata = fileInfo.FileProvider.Metadata;
+            if (fileMetadata.Length > Constants.Attachments.FileSizeLimit) {
+                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", fileMetadata.FileName, fileMetadata.Length);
                 fileSizeLimitError ??= AttachmentList.FileTooBigError();
                 continue;
             }
@@ -183,8 +184,8 @@
             // but rather post a message immediately.
             const string previewUrl = "";
             var fileProvider = fileInfo.FileProvider;
-            var attachment = new Attachment(previewUrl, fileInfo.FileName, fileInfo.FileType, null, null) {
-                FileProvider = fileProvider
+            var attachment = new Attachment(previewUrl, fileMetadata.FileName, fileMetadata.FileType, fileMetadata.Length, null, null) {
+                FileProvider = fileProvider,
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
             attachments.Add(attachment);
