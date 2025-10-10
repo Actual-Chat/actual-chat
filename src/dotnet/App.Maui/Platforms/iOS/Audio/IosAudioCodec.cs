@@ -2,8 +2,6 @@ using System.Buffers;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Opus.MaciOS;
-using AVFoundation;
-using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
@@ -20,23 +18,17 @@ public class IosAudioCodec(AppUIHub hub) : IAudioCodec
         using var encoder = Opus.CreateEncoder();
         await foreach (var frame in lpcmFrames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             using var _1 = frame;
-            var data = EncodeFrame(frame, encoder);
-            yield return new NSDataMemoryOwner(data);
+            yield return EncodeFrame(frame, encoder);
         }
     }
 
-    private NSData EncodeFrame(IMemoryOwner<float> frame, OpusEncoder encoder)
+    private NSDataMemoryOwner EncodeFrame(IMemoryOwner<float> frame, OpusEncoder encoder)
     {
         try {
-            var buffer = new AVAudioPcmBuffer(AudioEngine.VoiceRecordingFormat, (uint)frame.Memory.Length);
-            unsafe {
-                var dstSpan = new Span<float>((void*)buffer.AudioBufferList[0].Data, frame.Memory.Length);
-                frame.Memory.Span.CopyTo(dstSpan);
-            }
-            buffer.FrameLength = (uint)frame.Memory.Length;
+            var buffer = frame.ToPcmBuffer(AudioEngine.VoiceRecordingFormat);
             var data = encoder.Encode(buffer, out var error);
             error.Assert();
-            return data!;
+            return new NSDataMemoryOwner(data!);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to encode frame: {Length}B", frame.Memory.Length);
