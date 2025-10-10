@@ -3,11 +3,14 @@
 <div class="media-attachment-uploads message-image-attachments @_listCls">
     @foreach (var row in _rows) {
         var cls = row.GetRowClass();
-        <VisualUploadMediaLine
-            Uploads="@Uploads"
-            Row="@row"
-            Class="@cls"
-            MediaList="@MediaList"/>
+        <VisualMediaAttachmentLine Row="@row" Class="@cls">
+            <ItemTemplate>
+                <UploadAttachmentItem
+                    Attachment="@context"
+                    RestartClick="@(() => OnRestartClick(context))"
+                    RemoveClick="@(() => OnRemoveClick(context))"/>
+            </ItemTemplate>
+        </VisualMediaAttachmentLine>
     }
 </div>
 
@@ -26,4 +29,10 @@
     private static VisualMediaGalleryLine<Attachment>[] GetRows(Attachment[] mediaList) {
         return VisualMediaGalleryArranger.Default.Arrange(mediaList, a => (a.Width, a.Height));
     }
+
+    private Task OnRemoveClick(Attachment attachment)
+        => Uploads.Remove(attachment);
+
+    private Task OnRestartClick(Attachment attachment)
+        => Uploads.Restart(attachment);
 }

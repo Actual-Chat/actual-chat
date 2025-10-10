@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@typeparam TItem
 @{
     var tileCount = Row.Tiles.Count;
     var cls = tileCount == 1 ? "one-image" : "";
@@ -7,14 +8,13 @@
 <div class="image-line @Class @Row.LineHeightCls() @cls">
     @foreach (var tile in Row.Tiles) {
         <div class="image-item" style="width: @Row.GetTileWidthInPercent(tile)%">
-            <VisualMediaAttachment Attachment="@tile.Item" Attachments="@MediaList"/>
+            @ItemTemplate(tile.Item)
         </div>
     }
 </div>
 
 @code {
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public VisualMediaGalleryLine<TextEntryAttachment> Row { get; set; } = null!;
-    [Parameter] public TextEntryAttachment[]? MediaList { get; set; }
+    [Parameter, EditorRequired] public VisualMediaGalleryLine<TItem> Row { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; } = null!;
 }
