@@ -407,8 +407,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             // Push frame to buffers
             var isVadPushed = _vadBuffer.TryPush(frame.Span);
             bool isEncodingPushed;
+            var isVoiceActive = _voiceActive;
 
-            if (_voiceActive)
+            if (isVoiceActive)
                 isEncodingPushed = _encodingBuffer.TryPush(frame.Span);
             else {
                 isEncodingPushed = _encodingBuffer.TryPush(frame.Span);
@@ -428,7 +429,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 }
             }
 
-            if (!isVadPushed || (_voiceActive && !isEncodingPushed))
+            if (!isVadPushed || (isVoiceActive && !isEncodingPushed))
                 await Task.WhenAll(_vadBuffer.WhenPulled, _encodingBuffer.WhenPulled)
                     .WaitAsync(cancellationToken)
                     .ConfigureAwait(false);

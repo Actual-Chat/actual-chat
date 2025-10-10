@@ -22,6 +22,7 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
 
     private async IAsyncEnumerable<IMemoryOwner<float>> CaptureInternal([EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        Log.LogInformation("CaptureInternal: starting");
         using var engineLease = await AudioEngines.Rent(AudioMode.Recording).ConfigureAwait(false);
         var engine = engineLease.Resource;
         using var outBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
@@ -31,8 +32,14 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
         using var _2 = engine.Input.Tap(HandleSamples);
         engine.EnsureRunning();
 
-        await foreach (var memoryOwner in outBuffer.PullAll(Constants.Audio.OpusFrameLength, cancellationToken).ConfigureAwait(false))
-            yield return memoryOwner;
+        try {
+            await foreach (var memoryOwner in outBuffer.PullAll(Constants.Audio.OpusFrameLength, cancellationToken)
+                               .ConfigureAwait(false))
+                yield return memoryOwner;
+        }
+        finally {
+            Log.LogInformation("CaptureInternal: stopped");
+        }
         yield break;
 
         void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
@@ -40,7 +47,7 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
             try {
                 var frameLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
                 if (outBuffer.RemainingCapacity < frameLength) {
-                    Log.LogWarning("Buffer full, dropping samples");
+                    // Log.LogWarning("!!! Buffer full, dropping samples");
                     return;
                 }
 
@@ -48,7 +55,7 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
                 outBuffer.TryPush(resampled.AsReadOnlySpan());
             }
             catch (Exception e) {
-                Log.LogError(e, "Failed to handle recorded samples");
+                Log.LogError(e, "!!! Failed to handle recorded samples");
             }
         }
     }
