@@ -257,9 +257,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     #endregion
 
     #region Audio Processing
-    private async Task ProcessAudioStream(
-        IAsyncEnumerable<IMemoryOwner<float>> frames,
-        CancellationToken cancellationToken)
+    private async Task ProcessAudioStream(IAsyncEnumerable<IMemoryOwner<float>> frames, CancellationToken cancellationToken)
     {
         try {
             var processor = new AudioStreamProcessor(this, Log);
@@ -304,7 +302,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     #region AudioStreamProcessor
 
-    private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(CancellationToken token)
+    private async Task<ChannelWriter<IMemoryOwner<byte>>?> CreateAudioStream(CancellationToken cancellationToken)
     {
         string? sessionToken;
         ChatId? chatId;
@@ -319,7 +317,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         if (sessionToken is null || chatId is null)
             return null;
 
-        await _streamer.EnsureConnected(true, token).ConfigureAwait(false);
+        await _streamer.EnsureConnected(true, cancellationToken).ConfigureAwait(false);
         await SetConnected(_streamer.IsConnected).ConfigureAwait(false);
 
         var stream = Channel.CreateBounded<IMemoryOwner<byte>>(
@@ -331,7 +329,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             });
 
         // TODO(AK): Specify PreSkip
-        _sendTask = _streamer.Send(sessionToken, chatId, repliedChatEntryId, 0, stream.Reader.ReadAllAsync(token).SuppressCancellation(token), token);
+        _sendTask = _streamer.Send(sessionToken, chatId, repliedChatEntryId, 0, stream.Reader.ReadAllAsync(cancellationToken).SuppressCancellation(cancellationToken), cancellationToken);
         lock (_sync) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once
@@ -480,7 +478,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private async Task EncodeAndSend(ChannelWriter<IMemoryOwner<byte>> stream, CancellationToken cancellationToken)
         {
             try {
-                await foreach (var packet in _audioCodec.Encode(ReadFrames(), cancellationToken).ConfigureAwait(false)) {
+                var frames = _encodingBuffer.PullAll(Constants.Audio.OpusFrameLength, cancellationToken);
+                await foreach (var packet in _audioCodec.Encode(frames, cancellationToken).ConfigureAwait(false)) {
                     if (packet.Memory.Length == 0)
                         continue;
 
@@ -498,12 +497,6 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 engine.CompleteAudioStream();
             }
         }
-
-        private IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
-            => _encodeSendWorker?.StopToken is { } cancellationToken
-                ? _encodingBuffer.PullAll(Constants.Audio.OpusFrameLength, cancellationToken)
-                : AsyncEnumerable.Empty<IMemoryOwner<float>>();
     }
     #endregion
 }
-
