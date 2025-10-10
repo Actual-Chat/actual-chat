@@ -41,12 +41,13 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
         }
         yield break;
 
+        [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
         void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
         {
             try {
                 var estimatedResampledLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
                 if (outBuffer.RemainingCapacity < estimatedResampledLength) {
-                    Log.LogWarning("!!! Buffer full, dropping samples");
+                    Log.LogWarning("Buffer full, dropping samples");
                     return;
                 }
 
