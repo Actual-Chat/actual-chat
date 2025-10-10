@@ -15,8 +15,6 @@
     private VisualMediaGalleryLine<Attachment>[] _rows = [];
     private string _listCls = "";
 
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
     [Parameter, EditorRequired] public IAttachmentList Uploads { get; set; } = null!;
     [Parameter, EditorRequired] public Attachment[] MediaList { get; set; } = null!;
 
@@ -26,6 +24,6 @@
     }
 
     private static VisualMediaGalleryLine<Attachment>[] GetRows(Attachment[] mediaList) {
-        return VisualMediaGalleryArranger.Default.Arrange(mediaList, a => (a.Width ?? 125, a.Height ?? 125));
+        return VisualMediaGalleryArranger.Default.Arrange(mediaList, a => (a.Width, a.Height));
     }
 }

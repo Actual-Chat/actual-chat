@@ -213,7 +213,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
             }
 
-            var attachment = new Attachment(previewUrl, attachEntry.FileName, attachEntry.FileType, attachEntry.FileLength, attachEntry.Width, attachEntry.Height) {
+            var attachment = new Attachment(attachEntry.FileName, attachEntry.FileType, attachEntry.FileLength, previewUrl, attachEntry.Width, attachEntry.Height) {
                 UploadSessionId = uploadSessionId,
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));

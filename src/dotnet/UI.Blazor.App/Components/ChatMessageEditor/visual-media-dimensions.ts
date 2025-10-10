@@ -1,4 +1,4 @@
-export class MediaFileDimensions {
+export class VisualMediaDimensions {
     public static async getDimensions(previewUrl: string, mimeType: string): Promise<{ width: number, height: number } | null> {
         return new Promise((resolve, reject) => {
             if (mimeType.startsWith("image/")) {
