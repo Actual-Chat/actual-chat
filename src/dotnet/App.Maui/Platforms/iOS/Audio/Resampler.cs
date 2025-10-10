@@ -1,47 +1,40 @@
-using ActualChat.UI.Blazor.App.Services;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class ResamplerFactory(AppUIHub hub)
-{
-    public Resampler Create(AVAudioFormat sourceFormat, AVAudioFormat targetFormat)
-        => new(sourceFormat, targetFormat, hub.LogFor<Resampler>());
-}
-
 public class Resampler(AVAudioFormat sourceFormat, AVAudioFormat targetFormat, ILogger<Resampler> log) : IDisposable
 {
     private readonly AVAudioConverter _converter = new(sourceFormat, targetFormat);
+    private readonly AVAudioPcmBuffer _resampledBuffer = new (targetFormat, (uint)sourceFormat.SampleRate); // up to 1 second
 
     public void Dispose()
         => _converter.Dispose();
 
-    public AVAudioPcmBuffer Transform(AVAudioPcmBuffer input)
+    public void Transform(AVAudioPcmBuffer input, BlockRingBuffer<float> output)
     {
         if (!input.Format.IsEqual(sourceFormat))
             throw new InvalidOperationException("Input buffer format does not match the resampler's target format.");
 
-        // TODO: reuse buffer
-        var estimatedFrames = (uint)Math.Ceiling(input.FrameLength * targetFormat.SampleRate / sourceFormat.SampleRate) + 16; // safety margin
-        var output = new AVAudioPcmBuffer(targetFormat, estimatedFrames);
         bool consumed = false;
-        var status = _converter.ConvertToBuffer(output, out var error, (_, out ioStatus) =>
+        var status = _converter.ConvertToBuffer(_resampledBuffer, out var error, HandleInput);
+
+        error.Assert();
+        if (status is not AVAudioConverterOutputStatus.HaveData and not AVAudioConverterOutputStatus.InputRanDry)
+            throw StandardError.Internal($"AVAudioConverter returned status {status}.");
+
+        output.TryPush(_resampledBuffer.AsReadOnlySpan());
+        return;
+
+        AVAudioBuffer HandleInput(uint numberOfPackets, out AVAudioConverterInputStatus outStatus)
         {
-            if (consumed)
-            {
-                ioStatus = AVAudioConverterInputStatus.NoDataNow;
+            if (consumed) {
+                outStatus = AVAudioConverterInputStatus.NoDataNow;
                 return null!;
             }
 
             consumed = true;
-            ioStatus = AVAudioConverterInputStatus.HaveData;
+            outStatus = AVAudioConverterInputStatus.HaveData;
             return input;
-        });
-
-        error.Assert();
-
-        return status is AVAudioConverterOutputStatus.HaveData or AVAudioConverterOutputStatus.InputRanDry
-            ? output
-            : throw StandardError.Internal($"AVAudioConverter returned status {status}.");
+        }
     }
 }

@@ -10,7 +10,6 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
 {
     [field: AllowNull, MaybeNull]
     public ResamplerFactory ResamplerFactory => field ??= hub.Services.GetRequiredService<ResamplerFactory>();
-    private static readonly int MaxQueueLength = (int)(TimeSpan.FromSeconds(5) / Constants.Audio.OpusFrameDuration);
 
     [field: AllowNull, MaybeNull]
     private AudioEngines AudioEngines => field ??= hub.Services.GetRequiredService<AudioEngines>();
@@ -45,17 +44,16 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
         void HandleSamples(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
         {
             try {
-                var frameLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
-                if (outBuffer.RemainingCapacity < frameLength) {
-                    // Log.LogWarning("!!! Buffer full, dropping samples");
+                var estimatedResampledLength = pcmBuffer.FrameLength / hwFormat.SampleRate * AudioEngine.VoiceRecordingFormat.SampleRate;
+                if (outBuffer.RemainingCapacity < estimatedResampledLength) {
+                    Log.LogWarning("!!! Buffer full, dropping samples");
                     return;
                 }
 
-                var resampled = resampler.Transform(pcmBuffer);
-                outBuffer.TryPush(resampled.AsReadOnlySpan());
+                resampler.Transform(pcmBuffer, outBuffer);
             }
             catch (Exception e) {
-                Log.LogError(e, "!!! Failed to handle recorded samples");
+                Log.LogError(e, "Failed to handle recorded samples");
             }
         }
     }
