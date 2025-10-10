@@ -45,7 +45,8 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
     private long _sampleCount;
 
     private RunningUnitMedian? _whenTalkingProbMedian;
-    public readonly HostInfo HostInfo = services.HostInfo();
+    protected readonly HostInfo HostInfo = services.HostInfo();
+    protected readonly ILogger Log = services.LogFor<VoiceActivityDetector>();
     public VoiceActivityChange LastActivityEvent { get; protected set; } = VoiceActivityChange.NoVoiceActivity;
 
     public abstract bool IsInitialized { get; }
@@ -100,6 +101,8 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
         var prob = AppendChunkInternal(monoPcm);
         if (prob is null)
             return VadResult.GainOnly(gain);
+
+        //Log.LogInformation("VAD: {Offset} {Kind} {Prob} {Gain}", currentOffset, currentEvent.Kind, prob.Value, gain);
 
         _probEma.AppendSample(prob.Value);
         _longProbEma.AppendSample(prob.Value);
