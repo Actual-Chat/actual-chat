@@ -1,6 +1,5 @@
 using ActualChat.Attributes;
 using ActualLab.CommandR.Operations;
-using ActualChat.Flows.Infrastructure;
 using ActualChat.Hosting;
 using ActualLab.Rpc;
 using MemoryPack;
@@ -12,8 +11,6 @@ namespace ActualChat.Flows;
 [BackendClient(nameof(HostRole.FlowsBackend))]
 public interface IFlows : IComputeService, IBackendService
 {
-    [ComputeMethod]
-    Task<FlowData> GetData(FlowId flowId, CancellationToken cancellationToken = default);
     [ComputeMethod]
     Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken = default);
     // Regular method!

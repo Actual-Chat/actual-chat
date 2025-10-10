@@ -16,7 +16,7 @@ public sealed class FlowsServiceModule(IServiceProvider moduleServices)
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IFlows>().IsClient();
 
         // Flows
-        rpcHost.AddBackend<IFlows, DbFlows>();
+        rpcHost.AddBackend<IFlows, FlowBackend>();
         services.AddSingleton(c => new FlowRegistry(c));
         services.AddSingleton(c => new FlowEventForwarder(c));
         rpcHost.Commander.AddHandlers<FlowEventForwarder>();

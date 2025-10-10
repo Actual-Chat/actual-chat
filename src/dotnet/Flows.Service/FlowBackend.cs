@@ -5,33 +5,29 @@ using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Interception;
 using ActualLab.IO;
+using ActualLab.Locking;
 using ActualLab.Resilience;
 using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Flows;
 
-public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(services), IFlows
+public class FlowBackend(IServiceProvider services) : ShardedDbServiceBase<FlowsDbContext>(services), IFlows
 {
-    protected FlowRegistry Registry { get; } = services.GetRequiredService<FlowRegistry>();
-    protected FlowHost Host { get; } = services.GetRequiredService<FlowHost>();
-    protected IDbEntityResolver<string, DbFlow> EntityResolver { get; } = services.DbEntityResolver<string, DbFlow>();
-    protected IByteSerializer Serializer { get; init; } = TypeDecoratingByteSerializer.Default;
-    protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
+    private readonly AsyncLockSet<FlowId> _resumeLocks = new();
+    private readonly ILruCache<FlowId, Flow?> _cache = new ConcurrentLruCache<FlowId, Flow?>(1024);
+
+    private FlowRegistry Registry { get; } = services.GetRequiredService<FlowRegistry>();
+    private FlowHost Host { get; } = services.GetRequiredService<FlowHost>();
+    private IDbEntityResolver<string, DbFlow> EntityResolver { get; } = services.DbEntityResolver<string, DbFlow>();
+    private IByteSerializer Serializer { get; } = TypeDecoratingByteSerializer.Default;
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     public IRetryPolicy GetOrStartRetryPolicy { get; init; } = new RetryPolicy(3, RetryDelaySeq.Exp(0.25, 1));
 
     // [ComputeMethod]
-    public virtual async Task<FlowData> GetData(FlowId flowId, CancellationToken cancellationToken = default)
-    {
-        var dbFlow = await EntityResolver.Get(flowId, cancellationToken).ConfigureAwait(false);
-        return dbFlow == null ? default
-            : new(dbFlow.Version, dbFlow.Step, dbFlow.Data);
-    }
-
-    // [ComputeMethod]
     public virtual Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken = default)
-        => Read(flowId, cancellationToken);
+        => TryGetImpl(flowId, cancellationToken);
 
     // Regular method!
     public virtual Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken = default)
@@ -67,7 +63,6 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
     {
         var (flowId, expectedVersion) = command;
         if (Invalidation.IsActive) {
-            _ = GetData(flowId, default);
             _ = TryGet(flowId, default);
             return default;
         }
@@ -118,32 +113,36 @@ public class DbFlows(IServiceProvider services) : DbServiceBase<FlowsDbContext>(
         return dbFlow.Version;
     }
 
-    // Protected methods
+    // Private methods methods
 
-    protected async Task<Flow?> Read(FlowId flowId, CancellationToken cancellationToken = default)
+    private async Task<Flow?> TryGetImpl(FlowId flowId, CancellationToken cancellationToken = default)
     {
-        var dbFlow = await EntityResolver.Get(flowId, cancellationToken).ConfigureAwait(false);
-        var flow = Deserialize(dbFlow?.Data);
-        if (flow == null)
-            return null;
+        await ShardOwner.RequireOwnedOrReroute(flowId, cancellationToken).ConfigureAwait(false);
+        // Check cache
+        if (_cache.TryGetValue(flowId, out var flow))
+            return flow;
 
+        // Read the ground truth
+        var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
+        var data = dbFlow?.Data;
+        if (data == null || data.Length == 0)
+            return _cache[flowId] = null!; // Update cache
+
+        flow = Deserialize(data);
         if (flow is LegacyFlow legacyFlow)
             legacyFlow.Initialize(flowId, dbFlow!.Version, dbFlow.Step, dbFlow.HardResumeAt);
-        return flow;
+        else
+            flow.Initialize(flowId, dbFlow!.Version);
+        return _cache[flowId] = flow;  // Update cache
     }
 
-    protected byte[]? Serialize(Flow? flow)
+    private byte[] Serialize(Flow flow)
     {
-        if (ReferenceEquals(flow, null))
-            return null;
-
         using var buffer = new ArrayPoolBuffer<byte>(256);
         Serializer.Write(buffer, flow, flow.GetType());
         return buffer.WrittenSpan.ToArray();
     }
 
-    protected Flow? Deserialize(byte[]? data)
-        => data == null || data.Length == 0
-            ? null
-            : (Flow?)Serializer.Read(data, typeof(Flow), out _);
+    private Flow Deserialize(byte[]? data)
+        => (Flow)Serializer.Read(data, typeof(Flow), out _)!;
 }
