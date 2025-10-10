@@ -359,8 +359,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private readonly BlockRingBuffer<float> _vadBuffer = new (Constants.Audio.RecordingSampleRate * 10); // 10s
         private readonly BlockRingBuffer<float> _encodingBuffer = new (Constants.Audio.RecordingSampleRate * 2); // 2s
 
-        private CancellationTokenSource? _encodeSendCts;
-        private Task? _encodeSendTask;
+        private FuncWorker? _encodeSendWorker;
         private bool _voiceActive;
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
 
@@ -459,13 +458,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 var stream = await engine.CreateAudioStream(cancellationToken).ConfigureAwait(false);
                 if (stream == null) return;
 
-                var localCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                var localTask = BackgroundTask.Run(
-                    () => EncodeAndSend(stream, localCts.Token),
-                    localCts.Token);
-
-                _encodeSendCts = localCts;
-                _encodeSendTask = localTask;
+                _encodeSendWorker = FuncWorker.Start(ct => EncodeAndSend(stream, ct), cancellationToken);
                 _voiceActive = true;
                 await engine.SetVoiceActive(true).ConfigureAwait(false);
             }
@@ -479,24 +472,10 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             }
         }
 
-        private async Task StopEncodeSendWorker()
-        {
-            var localCts = Interlocked.Exchange(ref _encodeSendCts, null);
-            if (localCts != null) {
-                try { await localCts.CancelAsync().ConfigureAwait(false); }
-                catch {
-                    /* ignore */
-                }
-                localCts.Dispose();
-            }
-
-            var localTask = Interlocked.Exchange(ref _encodeSendTask, null);
-            if (localTask != null)
-                try { await localTask.ConfigureAwait(false); }
-                catch (Exception e) {
-                    log.LogError(e, "Failed to stop encode/send worker");
-                }
-        }
+        private Task StopEncodeSendWorker()
+            => Interlocked.Exchange(ref _encodeSendWorker, null) is { } worker
+                ? BackgroundTask.Run(worker.Stop, log, "Failed to stop encode/send worker")
+                : Task.CompletedTask;
 
         private async Task EncodeAndSend(ChannelWriter<IMemoryOwner<byte>> stream, CancellationToken cancellationToken)
         {
@@ -521,7 +500,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         }
 
         private IAsyncEnumerable<IMemoryOwner<float>> ReadFrames()
-            => _encodeSendCts?.Token is { } cancellationToken
+            => _encodeSendWorker?.StopToken is { } cancellationToken
                 ? _encodingBuffer.PullAll(Constants.Audio.OpusFrameLength, cancellationToken)
                 : AsyncEnumerable.Empty<IMemoryOwner<float>>();
     }
