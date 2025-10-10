@@ -7,10 +7,11 @@
 <div class="message-image-attachments @_listCls @_attachmentsCls">
     @foreach (var row in _rows) {
         var cls = row.GetRowClass();
-        <VisualMediaAttachmentLine
-            Row="@row"
-            Class="@cls"
-            MediaList="@MediaList"/>
+        <VisualMediaAttachmentLine Row="@row" Class="@cls">
+            <ItemTemplate>
+                <VisualMediaAttachment Attachment="@context" Attachments="@MediaList"/>
+            </ItemTemplate>
+        </VisualMediaAttachmentLine>
     }
 </div>
 @if (_mediaList.Length < MediaList.Length) {
