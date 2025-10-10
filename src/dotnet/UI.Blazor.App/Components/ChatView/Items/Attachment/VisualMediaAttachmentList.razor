@@ -24,7 +24,7 @@
 }
 
 @code {
-    private MediaGalleryLine<TextEntryAttachment>[] _rows = [];
+    private VisualMediaGalleryLine<TextEntryAttachment>[] _rows = [];
     private TextEntryAttachment[] _mediaList = [];
 
     private string _listCls = "";
@@ -44,8 +44,10 @@
         _rows = GetRows(_mediaList, IsConversation, IsNarrow);
     }
 
-    private static MediaGalleryLine<TextEntryAttachment>[] GetRows(TextEntryAttachment[] mediaList, bool isConversation, bool isNarrow) {
-        var arranger = isConversation && !isNarrow ? MediaGalleryArranger.ConversationWideScreen : MediaGalleryArranger.Default;
+    private static VisualMediaGalleryLine<TextEntryAttachment>[] GetRows(TextEntryAttachment[] mediaList, bool isConversation, bool isNarrow) {
+        var arranger = isConversation && !isNarrow
+            ? VisualMediaGalleryArranger.ConversationWideScreen
+            : VisualMediaGalleryArranger.Default;
         return arranger.Arrange(mediaList, a => (a.Media.Width, a.Media.Height));
     }
 }

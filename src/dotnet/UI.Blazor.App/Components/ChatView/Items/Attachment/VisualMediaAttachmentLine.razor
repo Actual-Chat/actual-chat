@@ -14,7 +14,7 @@
 
 @code {
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public MediaGalleryLine<TextEntryAttachment> Row { get; set; } = null!;
+    [Parameter, EditorRequired] public VisualMediaGalleryLine<TextEntryAttachment> Row { get; set; } = null!;
     [Parameter] public TextEntryAttachment[]? MediaList { get; set; }
     [Parameter] public string Class { get; set; } = "";
 }
