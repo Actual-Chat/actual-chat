@@ -88,9 +88,18 @@ internal sealed class AudioStreamer
                     batches.Add(batch);
                 }
                 return batches.ToAsyncEnumerable();
-            });
+            })
+            .SuppressCancellation(cancellationToken);
 
-        await _connection.SendAsync("ProcessAudioChunks", sessionToken, chatId.Value, repliedChatEntryId?.Value, clientStartOffset, preSkip, batched, cancellationToken).ConfigureAwait(false);
+        await _connection.SendAsync("ProcessAudioChunks",
+                sessionToken,
+                chatId.Value,
+                repliedChatEntryId?.Value,
+                clientStartOffset,
+                preSkip,
+                batched,
+                CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     private sealed class MauiRetryPolicy : IRetryPolicy

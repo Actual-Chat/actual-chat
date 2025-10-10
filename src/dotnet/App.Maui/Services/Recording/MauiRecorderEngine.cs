@@ -329,7 +329,12 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             });
 
         // TODO(AK): Specify PreSkip
-        _sendTask = _streamer.Send(sessionToken, chatId, repliedChatEntryId, 0, stream.Reader.ReadAllAsync(cancellationToken).SuppressCancellation(cancellationToken), cancellationToken);
+        _sendTask = _streamer.Send(sessionToken,
+            chatId,
+            repliedChatEntryId,
+            0,
+            stream.Reader.ReadAllAsync(cancellationToken),
+            cancellationToken);
         lock (_sync) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once
