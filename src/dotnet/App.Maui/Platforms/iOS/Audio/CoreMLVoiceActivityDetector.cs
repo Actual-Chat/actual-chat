@@ -36,7 +36,7 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
         //   contextN: (1, 64) float32 - updated context
         //   hn: (1, 1, 128) float32 - updated hidden state
         //   cn: (1, 1, 128) float32 - updated cell state
-        var modelUrl = NSBundle.MainBundle.GetUrlForResource("vad", "mlmodelc");
+        var modelUrl = NSBundle.MainBundle.GetUrlForResource("vad_stateless", "mlmodelc");
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (modelUrl is null) {
             Log.LogError("CoreML VAD model not found in app bundle");
@@ -147,10 +147,10 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
         }
 
         // Extract outputs
-        var scoreVal = output.GetFeatureValue("score_1");
-        var contextNVal = output.GetFeatureValue("next_ctx_1");
-        var hnVal = output.GetFeatureValue("hn_1");
-        var cnVal = output.GetFeatureValue("cn_1");
+        var scoreVal = output.GetFeatureValue("score");
+        var contextNVal = output.GetFeatureValue("contextN");
+        var hnVal = output.GetFeatureValue("hn");
+        var cnVal = output.GetFeatureValue("cn");
 
         var scoreArr = scoreVal!.MultiArrayValue;
         var contextNArr = contextNVal!.MultiArrayValue;

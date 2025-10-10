@@ -513,9 +513,13 @@
     <Folder Include="Platforms\iOS\Resources\" />
     <BundleResource Include="wwwroot\dist\sounds\*.m4a" Link="sounds\%(Filename)%(Extension)" />
     <!-- Remove metadata.json from Content to prevent default SDK behavior -->
-    <Content Remove="Platforms\iOS\Resources\vad.mlmodelc\metadata.json" />
+    <Content Remove="Platforms\iOS\Resources\vad_stateless.mlmodelc\metadata.json" />
     <!-- Includes all files in the .mlmodelc recursively as BundleResources -->
-    <BundleResource Include="Platforms\iOS\Resources\vad.mlmodelc\**" />
+    <BundleResource Include="Platforms\iOS\Resources\vad_stateless.mlmodelc\**" />
+    <!-- Remove metadata.json from Content to prevent default SDK behavior -->
+    <Content Remove="Platforms\iOS\Resources\vad_stateless_fp16.mlmodelc\metadata.json" />
+    <!-- Includes all files in the .mlmodelc recursively as BundleResources -->
+    <BundleResource Include="Platforms\iOS\Resources\vad_stateless_fp16.mlmodelc\**" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
