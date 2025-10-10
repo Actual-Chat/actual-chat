@@ -19,7 +19,7 @@ public partial class TimerFlow : LegacyFlow
         var args = Id.SplitArguments("", "1", "1");
         RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
         Period = double.Parse(args[2], CultureInfo.InvariantCulture);
-        EventUuidQuantizationInterval = TimeSpan.FromSeconds(Period / 2);
+        TimerEventQuant = TimeSpan.FromSeconds(Period / 2);
 
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"`{Id}`.{nameof(OnReset)}: {RemainingCount}");
@@ -28,7 +28,7 @@ public partial class TimerFlow : LegacyFlow
 
     protected async Task<LegacyFlowTransition> OnTimer(CancellationToken cancellationToken)
     {
-        Event.Require<FlowTimerEvent>();
+        Event.Require<LegacyFlowTimerEvent>();
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"`{Id}`.{nameof(OnTimer)}: {RemainingCount--}");
         return RemainingCount > 0

@@ -31,7 +31,7 @@ public abstract partial class PeriodicFlow : LegacyFlow
     {
         Log.LogInformation("`{Id}`: OnCheck, Event: {Event}", Id, Event.Event);
         if (!Event.IsHandled)
-            Event.Require<FlowTimerEvent>();
+            Event.Require<LegacyFlowTimerEvent>();
 
         var transition = await GetTransition(cancellationToken).ConfigureAwait(false);
         if (transition.Step != nameof(OnCheck) || transition.HardResumeAt.HasValue)
