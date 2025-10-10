@@ -32,11 +32,14 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
             var fileLength = stream.Length;
             var fileProvider = new MauiFileProvider {
                 FileRef = sUri,
-                FileType = mimeType,
-                FileName = fileName,
+                Metadata = new() {
+                    FileName = fileName,
+                    FileType = mimeType,
+                    Length = fileLength,
+                },
             };
             fileProvider.Initialize(services);
-            fileInfos.Add(new AttachFileInfo(fileName, mimeType, fileLength, fileProvider));
+            fileInfos.Add(new AttachFileInfo(fileProvider));
         }
         return fileInfos.ToArray();
     }

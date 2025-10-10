@@ -54,24 +54,24 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             UICommander.ShowError(e);
             return false;
         }
-        var webFileProvider = await CreateWebFileProvider(id, fileName);
+        var webFileProvider = await CreateWebFileProvider(id, fileName, fileType, size);
         if (webFileProvider is null)
             return false;
 
         webFileProvider.Initialize(Hub.Services);
-        return await AddFileAttachment(list, webFileProvider, fileType);
+        return await AddFileAttachment(list, webFileProvider);
     }
 
     private async Task<bool> TryAddFileAttachment(AttachmentList list, AttachFileInfo fileInfo)
     {
-        if (CheckCanAdd(list, fileInfo.Length) is { } e) {
+        if (CheckCanAdd(list, fileInfo.FileProvider.Metadata.Length) is { } e) {
             UICommander.ShowError(e);
             return false;
         }
 
         var fileProvider = fileInfo.FileProvider;
         fileProvider.Initialize(Hub.Services);
-        return await AddFileAttachment(list, fileProvider, fileInfo.FileType);
+        return await AddFileAttachment(list, fileProvider);
     }
 
     private Exception? CheckCanAdd(AttachmentList list, long length)
@@ -85,7 +85,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return null;
     }
 
-    private async Task<WebFileProvider?> CreateWebFileProvider(int id, string fileName)
+    private async Task<WebFileProvider?> CreateWebFileProvider(int id, string fileName, string fileType, long length)
     {
         WebFileProviderInternal? webFileProviderInternal;
         try {
@@ -102,24 +102,30 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             return null;
         }
         var webFileProvider = new WebFileProvider {
-            FileName = fileName,
+            Metadata = new () {
+                FileName = fileName,
+                FileType = fileType,
+                Length = length,
+            },
             WebFileProviderInternal = webFileProviderInternal,
         };
         return webFileProvider;
     }
 
-    private async Task<bool> AddFileAttachment(AttachmentList list, IFileProvider fileProvider, string fileType)
+    private async Task<bool> AddFileAttachment(AttachmentList list, IFileProvider fileProvider)
     {
         var previewUrl = await fileProvider.GetPreviewUrl();
 
-        var dimensions = await GetFileDimensionsAsync(previewUrl, fileType);
+        var fileMetadata = fileProvider.Metadata;
+        var dimensions = await GetFileDimensionsAsync(previewUrl, fileMetadata.FileType);
         var width = dimensions.width;
         var height = dimensions.height;
 
         var attachment = new Attachment(
             previewUrl,
-            fileProvider.FileName,
-            fileType,
+            fileMetadata.FileName,
+            fileMetadata.FileType,
+            fileMetadata.Length,
             width,
             height) {
             FileProvider = fileProvider,

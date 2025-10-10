@@ -8,11 +8,9 @@ public partial class MauiFileProvider : IFileProvider
     private IServiceProvider _services = null!;
 
     [DataMember, MemoryPackOrder(0)]
-    public string FileRef { get; init; } = "";
+    public FileMetadata Metadata { get; init; } = new ();
     [DataMember, MemoryPackOrder(1)]
-    public string FileType { get; init; } = "";
-    [DataMember, MemoryPackOrder(2)]
-    public string FileName { get; init; } = "";
+    public string FileRef { get; init; } = "";
 
     private FileUploader Uploader => _services.GetRequiredService<FileUploader>();
     [field: AllowNull, MaybeNull]
@@ -35,7 +33,7 @@ public partial class MauiFileProvider : IFileProvider
         var stream = await OpenRead().ConfigureAwait(false);
         if (stream is null)
             throw new InvalidOperationException("No file access.");
-        var fileUploadOperation = Uploader.CreateUploadOperation(chatId, stream, FileType, FileName);
+        var fileUploadOperation = Uploader.CreateUploadOperation(chatId, stream, Metadata.FileType, Metadata.FileName);
         var task = fileUploadOperation.ProgressTracker.Task;
         _ = task.ContinueWith(async _ => {
             await task.SilentAwait(false);

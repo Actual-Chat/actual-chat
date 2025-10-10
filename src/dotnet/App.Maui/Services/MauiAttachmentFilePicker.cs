@@ -41,12 +41,15 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
             var filePath = fileResult.FullPath;
 #endif
             var fileProvider = new MauiFileProvider {
-                FileType = fileResult.ContentType,
-                FileName = fileResult.FileName,
+                Metadata = new () {
+                    FileName = fileResult.FileName,
+                    FileType = fileResult.ContentType,
+                    Length = fileLength,
+                },
                 FileRef = filePath,
             };
             fileProvider.Initialize(services);
-            fileInfos.Add(new AttachFileInfo(fileResult.FileName, fileResult.ContentType, fileLength, fileProvider));
+            fileInfos.Add(new AttachFileInfo(fileProvider));
             fileRefs.Add(filePath);
         }
         Log.LogDebug("Picked {Count} files. File refs:\n{FileRefs}",
