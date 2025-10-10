@@ -116,8 +116,8 @@ public partial record AttachFileRequestEntry(
     [property: DataMember, MemoryPackOrder(1)] string FileName,
     [property: DataMember, MemoryPackOrder(2)] string FileType,
     [property: DataMember, MemoryPackOrder(3)] long FileLength,
-    [property: DataMember, MemoryPackOrder(4)] int? Width,
-    [property: DataMember, MemoryPackOrder(5)] int? Height
+    [property: DataMember, MemoryPackOrder(4)] int Width,
+    [property: DataMember, MemoryPackOrder(5)] int Height
 ) : IHasId<string>
 {
     string IHasId<string>.Id => UploadSessionId;

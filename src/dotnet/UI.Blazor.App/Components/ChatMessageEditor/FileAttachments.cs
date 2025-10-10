@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
@@ -7,15 +8,15 @@ namespace ActualChat.UI.Blazor.App.Components;
 public class FileAttachments : UIServiceBase<AppUIHub>
 {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
-    private static readonly string JSGetDimensions = $"{BlazorUIAppModule.ImportName}.MediaFileDimensions.getDimensions";
-
 
     private AttachmentsController AttachmentsController { get; }
+    private VisualMediaDimensions VisualMediaDimensions { get; }
     public ChatId ChatId { get; }
 
     public FileAttachments(AppUIHub hub, ChatId chatId) : base(hub)
     {
         AttachmentsController = Hub.Services.GetRequiredService<AttachmentsController>();
+        VisualMediaDimensions = new VisualMediaDimensions(Hub.JS);
         ChatId = chatId;
     }
 
@@ -114,18 +115,21 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
     private async Task<bool> AddFileAttachment(AttachmentList list, IFileProvider fileProvider)
     {
-        var previewUrl = await fileProvider.GetPreviewUrl();
-
         var fileMetadata = fileProvider.Metadata;
-        var dimensions = await GetFileDimensionsAsync(previewUrl, fileMetadata.FileType);
-        var width = dimensions.width;
-        var height = dimensions.height;
-
+        var previewUrl = "";
+        var width = 0;
+        var height = 0;
+        if (MediaTypeExt.IsVisualMedia(fileMetadata.FileType)) {
+            previewUrl = await fileProvider.GetPreviewUrl();
+            var dimensions = await VisualMediaDimensions.GetVisualMediaDimensions(previewUrl, fileMetadata.FileType);
+            width = dimensions.width;
+            height = dimensions.height;
+        }
         var attachment = new Attachment(
-            previewUrl,
             fileMetadata.FileName,
             fileMetadata.FileType,
             fileMetadata.Length,
+            previewUrl,
             width,
             height) {
             FileProvider = fileProvider,
@@ -136,14 +140,6 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         // await AttachmentsController.InitUpload(list, attachment.Id, ChatId);
         // await AttachmentsController.ResumeUpload(list, attachment.Id);
         return true;
-    }
-
-    private async Task<(int width, int height)> GetFileDimensionsAsync(string previewUrl, string mimeType) {
-        var dimensions = await JS.InvokeAsync<MediaDimensions?>(JSGetDimensions, previewUrl, mimeType).ConfigureAwait(false);
-        if (dimensions is null)
-            return (0, 0);
-
-        return (dimensions.Width, dimensions.Height);
     }
 
     private struct CreateWebFileProviderResult

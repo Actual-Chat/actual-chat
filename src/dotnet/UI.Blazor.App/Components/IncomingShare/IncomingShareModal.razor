@@ -66,6 +66,8 @@
     private SendingMessages SendingMessages => Hub.SendingMessages;
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
+    [field: AllowNull, MaybeNull]
+    private VisualMediaDimensions VisualMediaDimensions => field ??= new VisualMediaDimensions(Hub.JS);
 
     private ImmutableHashSet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
@@ -125,7 +127,7 @@
                 foreach (var chatId in selectedChatIds) {
                     var comment = _comment;
                     foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                        var attachmentList = UploadFiles(filesChunk);
+                        var attachmentList = await UploadFiles(filesChunk);
                         var postTask = PostMessage(chatId, comment, attachmentList);
                         comment = "";
                         postTasks.Add(postTask);
@@ -170,21 +172,29 @@
         }
     }
 
-    private ReadonlyAttachmentList UploadFiles(IEnumerable<AttachFileInfo> fileInfos) {
+    private async Task<ReadonlyAttachmentList> UploadFiles(IEnumerable<AttachFileInfo> fileInfos) {
         Exception? fileSizeLimitError = null;
         var attachments = new List<Attachment>();
         foreach (var fileInfo in fileInfos) {
-            var fileMetadata = fileInfo.FileProvider.Metadata;
+            var fileProvider = fileInfo.FileProvider;
+            var fileMetadata = fileProvider.Metadata;
             if (fileMetadata.Length > Constants.Attachments.FileSizeLimit) {
                 Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", fileMetadata.FileName, fileMetadata.Length);
                 fileSizeLimitError ??= AttachmentList.FileTooBigError();
                 continue;
             }
-            // Do not request preview url here, because we are not going to display attachment,
+            // TODO: Do not request preview url here, because we are not going to display attachment,
             // but rather post a message immediately.
-            const string previewUrl = "";
-            var fileProvider = fileInfo.FileProvider;
-            var attachment = new Attachment(previewUrl, fileMetadata.FileName, fileMetadata.FileType, fileMetadata.Length, null, null) {
+            var previewUrl = "";
+            var width = 0;
+            var height = 0;
+            if (MediaTypeExt.IsVisualMedia(fileMetadata.FileType)) {
+                previewUrl = await fileProvider.GetPreviewUrl();
+                var dimensions = await VisualMediaDimensions.GetVisualMediaDimensions(previewUrl, fileMetadata.FileType);
+                width = dimensions.width;
+                height = dimensions.height;
+            }
+            var attachment = new Attachment(fileMetadata.FileName, fileMetadata.FileType, fileMetadata.Length, previewUrl, width, height) {
                 FileProvider = fileProvider,
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
