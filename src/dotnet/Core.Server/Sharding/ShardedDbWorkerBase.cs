@@ -3,13 +3,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Sharding;
 
-public abstract class ShardedDbServiceBase<TDbContext> : DbServiceBase<TDbContext>
+public abstract class ShardedDbWorkerBase<TDbContext> : DbWorkerBase<TDbContext>
     where TDbContext : DbContext
 {
     protected ShardOwner ShardOwner { get; }
     protected ShardScheme ShardScheme => ShardOwner.ShardScheme;
 
-    protected ShardedDbServiceBase(IServiceProvider services, ShardScheme? shardScheme = null)
+    protected ShardedDbWorkerBase(IServiceProvider services, ShardScheme? shardScheme = null)
         : base(services)
     {
         shardScheme ??= services.BackendServiceDefs()[GetType().NonProxyType()].ShardScheme;

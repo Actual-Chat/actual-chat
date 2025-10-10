@@ -12,18 +12,34 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Flows;
 
-public class FlowBackend(IServiceProvider services) : ShardedDbServiceBase<FlowsDbContext>(services), IFlows
+public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
 {
     private readonly AsyncLockSet<FlowId> _resumeLocks = new();
     private readonly ILruCache<FlowId, Flow?> _cache = new ConcurrentLruCache<FlowId, Flow?>(1024);
 
-    private FlowRegistry Registry { get; } = services.GetRequiredService<FlowRegistry>();
-    private FlowHost Host { get; } = services.GetRequiredService<FlowHost>();
-    private IDbEntityResolver<string, DbFlow> EntityResolver { get; } = services.DbEntityResolver<string, DbFlow>();
-    private IByteSerializer Serializer { get; } = TypeDecoratingByteSerializer.Default;
-    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
+    public FlowBackend(IServiceProvider services) : base(services)
+    {
+        Registry = services.GetRequiredService<FlowRegistry>();
+        Host = services.GetRequiredService<FlowHost>();
+        EntityResolver = services.DbEntityResolver<string, DbFlow>();
+        _ = ClearCacheRetryPolicy
+            .Apply(async ct => {
+                // TODO(AY): Split cache to per-shard caches and make them track their own changes
+                var shardOwnershipChanges = ShardOwner.State.Computed.ChangesUntyped(FixedDelayer.YieldUnsafe, ct);
+                await foreach (var _ in shardOwnershipChanges.ConfigureAwait(false))
+                    _cache.Clear();
+                // ReSharper disable once ExplicitCallerInfoArgument
+            }, new RetryLogger(Log, "ClearCache"), ShardOwner.StopToken)
+            .ConfigureAwait(false);
+    }
 
-    public IRetryPolicy GetOrStartRetryPolicy { get; init; } = new RetryPolicy(3, RetryDelaySeq.Exp(0.25, 1));
+    private FlowRegistry Registry { get; }
+    private FlowHost Host { get; }
+    private IDbEntityResolver<string, DbFlow> EntityResolver { get; }
+    private IByteSerializer Serializer { get; } = TypeDecoratingByteSerializer.Default;
+    private IRetryPolicy GetOrStartRetryPolicy { get; init; } = new RetryPolicy(3, RetryDelaySeq.Exp(0.25, 1));
+    private IRetryPolicy ClearCacheRetryPolicy { get; init; } = new RetryPolicy(RetryDelaySeq.Fixed(0.1));
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     // [ComputeMethod]
     public virtual Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken = default)
@@ -62,15 +78,19 @@ public class FlowBackend(IServiceProvider services) : ShardedDbServiceBase<Flows
     public virtual async Task<long> OnStore(Flows_Store command, CancellationToken cancellationToken = default)
     {
         var (flowId, expectedVersion) = command;
+        var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
+            // This code runs only on the local node, see context.Operation.MustCreate(false) below
+            var invDbFlow = context.Operation.Items.KeylessGet<DbFlow>();
+            var invFlow = Materialize(flowId, invDbFlow);
+            _cache[flowId] = invFlow; // Update cache to skip DB hit in TryGet
             _ = TryGet(flowId, default);
             return default;
         }
 
         flowId.Require();
-        var flow = command.Flow.Require();
+        var flow = command.Flow;
         var legacyFlow = flow as LegacyFlow;
-        var context = CommandContext.GetCurrent();
 
         var shard = DbHub.ShardResolver.Resolve(flowId);
         var dbContext = await DbHub.CreateOperationDbContext(shard, cancellationToken).ConfigureAwait(false);
@@ -82,35 +102,53 @@ public class FlowBackend(IServiceProvider services) : ShardedDbServiceBase<Flows
             .FirstOrDefaultAsync(x => Equals(x.Id, flowId.Value), cancellationToken)
             .ConfigureAwait(false);
 
-        if (dbFlow is null) { // Create
-            if (legacyFlow is not null) {
-                if (legacyFlow.Step != LegacyFlowSteps.Starting)
-                    throw StandardError.Internal("LegacyFlow.Step should be 'Starting' for a new LegacyFlow.");
+        if (flow is not null) {
+            if (dbFlow is null) { // Create
+                if (legacyFlow is not null) {
+                    if (legacyFlow.Step != LegacyFlowSteps.Starting)
+                        throw StandardError.Internal("LegacyFlow.Step should be 'Starting' for a new LegacyFlow.");
 
-                context.Operation.AddEvent(new LegacyFlowStartEvent(flowId));
+                    context.Operation.AddEvent(new LegacyFlowStartEvent(flowId));
+                }
+                dbFlow = new DbFlow() {
+                    Id = flowId,
+                    Version = VersionGenerator.NextVersion(),
+                    HardResumeAt = legacyFlow?.HardResumeAt,
+                    Step = legacyFlow?.Step.Value ?? "",
+                    Data = Serialize(flow),
+                };
+                dbContext.Add(dbFlow);
             }
-            dbFlow = new DbFlow() {
-                Id = flowId,
-                Version = VersionGenerator.NextVersion(),
-                HardResumeAt = legacyFlow?.HardResumeAt,
-                Step = legacyFlow?.Step.Value ?? "",
-                Data = Serialize(flow),
-            };
-            dbContext.Add(dbFlow);
+            else { // Update
+                VersionChecker.RequireExpected(dbFlow.Version, expectedVersion);
+                dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
+                dbFlow.HardResumeAt = legacyFlow?.HardResumeAt;
+                dbFlow.Step = legacyFlow?.Step.Value ?? "";
+                dbFlow.Data = Serialize(flow);
+            }
         }
-        else { // Update
-            VersionChecker.RequireExpected(dbFlow.Version, expectedVersion);
-            dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
-            dbFlow.HardResumeAt = legacyFlow?.HardResumeAt;
-            dbFlow.Step = legacyFlow?.Step.Value ?? "";
-            dbFlow.Data = Serialize(flow);
+        else {
+            // Remove
+            if (dbFlow is null) {
+                // Nothing to remove, but maybe a version check is needed?
+                VersionChecker.RequireExpected(0L, expectedVersion);
+            }
+            else {
+                VersionChecker.RequireExpected(dbFlow.Version, expectedVersion);
+                dbContext.Remove(dbFlow);
+                dbFlow = null;
+            }
         }
         foreach (var e in command.AddEvents ?? [])
             context.Operation.AddEvent(e);
 
+        // We don't store DbOperation entries for flow updates - we rely on sharding instead.
+        context.Operation.MustCreate(false);
+        context.Operation.Items.KeylessSet(dbFlow);
+
         await dbContext.Set<DbFlow>().Lock(flowId, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbFlow.Version;
+        return dbFlow?.Version ?? 0L;
     }
 
     // Private methods methods
@@ -124,16 +162,23 @@ public class FlowBackend(IServiceProvider services) : ShardedDbServiceBase<Flows
 
         // Read the ground truth
         var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
+        flow = Materialize(flowId, dbFlow);
+        return _cache[flowId] = flow;  // Update cache
+    }
+
+    [return: NotNullIfNotNull(nameof(dbFlow))]
+    private Flow? Materialize(FlowId flowId, DbFlow? dbFlow)
+    {
         var data = dbFlow?.Data;
         if (data == null || data.Length == 0)
-            return _cache[flowId] = null!; // Update cache
+            return null; // Update cache
 
-        flow = Deserialize(data);
+        var flow = Deserialize(data);
         if (flow is LegacyFlow legacyFlow)
             legacyFlow.Initialize(flowId, dbFlow!.Version, dbFlow.Step, dbFlow.HardResumeAt);
         else
             flow.Initialize(flowId, dbFlow!.Version);
-        return _cache[flowId] = flow;  // Update cache
+        return flow;
     }
 
     private byte[] Serialize(Flow flow)
