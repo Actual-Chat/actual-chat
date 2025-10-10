@@ -12,7 +12,7 @@
 </div>
 
 @code {
-    private MediaGalleryLine<Attachment>[] _rows = [];
+    private VisualMediaGalleryLine<Attachment>[] _rows = [];
     private string _listCls = "";
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -25,7 +25,7 @@
         _listCls = _rows.Length == 1 ? "one-row" : "";
     }
 
-    private static MediaGalleryLine<Attachment>[] GetRows(Attachment[] mediaList) {
-        return MediaGalleryArranger.Default.Arrange(mediaList, a => (a.Width ?? 125, a.Height ?? 125));
+    private static VisualMediaGalleryLine<Attachment>[] GetRows(Attachment[] mediaList) {
+        return VisualMediaGalleryArranger.Default.Arrange(mediaList, a => (a.Width ?? 125, a.Height ?? 125));
     }
 }
