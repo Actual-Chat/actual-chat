@@ -26,7 +26,6 @@ public partial class SimpleIndexingFlow : IndexingFlowBase<long>
     {
         var transition = await base.OnIndex(cancellationToken);
         Context.OnTransition(Id.Arguments, transition);
-
         return transition;
     }
 }

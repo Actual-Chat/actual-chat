@@ -5,6 +5,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public record TransitionInfo(/* Moment TransitionAt,*/ string Step, Moment? HardResumeAt, TimeSpan? HardResumeIn);
 
 public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
+    where TBatch : class
 {
     protected readonly Dictionary<string, Queue<TBatch>> Batches = new();
     private readonly Dictionary<string, List<TBatch>> _processedBatches = new();

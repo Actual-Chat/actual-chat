@@ -33,7 +33,9 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
     [IgnoreDataMember, MemoryPackIgnore]
     public Moment? HardResumeAt { get; private set; }
     [IgnoreDataMember, MemoryPackIgnore]
-    public TimeSpan TimerEventQuant { get; protected set; } = TimeSpan.FromMinutes(1);
+    public TimeSpan DefaultTimerDelayQuanta { get; protected set; } = TimeSpan.FromSeconds(1);
+    [IgnoreDataMember, MemoryPackIgnore]
+    public TimeSpan ResumeDelayQuanta { get; protected set; } = TimeSpan.FromSeconds(0.1);
 
     // Used by FlowWorklet
     [IgnoreDataMember, MemoryPackIgnore]
@@ -144,33 +146,35 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
     }
 
     protected LegacyFlowTransition WaitForTimer(Symbol nextStep, TimeSpan delay, string? tag = null)
+        => WaitForTimer(nextStep, delay, DefaultTimerDelayQuanta, tag);
+    protected LegacyFlowTransition WaitForTimer(Symbol nextStep, TimeSpan delay, TimeSpan delayQuanta, string? tag = null)
     {
         Event.MarkHandled();
         if (delay <= TimeSpan.Zero)
             return StoreAndResume(nextStep);
 
-        var timerEvent = CreateTimerOperationEvent(tag).SetDelayBy(delay, TimerEventQuant);
+        var timerEvent = CreateTimerOperationEvent(delay, delayQuanta, tag);
         return new(this, nextStep, tag, timerEvent.DelayUntil, timerEvent);
     }
 
-    protected LegacyFlowTransition WaitForTimer(Symbol nextStep, Moment resumeAt, string? tag = null)
+    protected LegacyFlowTransition WaitForTimer(Symbol nextStep, Moment delayUntil, string? tag = null)
+        => WaitForTimer(nextStep, delayUntil, DefaultTimerDelayQuanta, tag);
+    protected LegacyFlowTransition WaitForTimer(Symbol nextStep, Moment delayUntil, TimeSpan delayQuanta, string? tag = null)
     {
         Event.MarkHandled();
         var now = Clocks.SystemClock.Now;
-        var delay = resumeAt - now;
+        var delay = delayUntil - now;
         if (delay <= TimeSpan.Zero)
             return StoreAndResume(nextStep);
 
-        var timerEvent = CreateTimerOperationEvent(tag).SetDelayUntil(resumeAt, TimerEventQuant);
+        var timerEvent = CreateTimerOperationEvent(delay, delayQuanta, tag);
         return new(this, nextStep, tag, timerEvent.DelayUntil, timerEvent);
     }
 
     protected LegacyFlowTransition QueueResume(Symbol nextStep, string? tag = null)
     {
         Event.MarkHandled();
-        // NOTE: InfiniteHardResumeAt to avoid FlowWorklet to schedule extra FlowResumeEvent
-        var resumeEvent = CreateOperationEvent(new LegacyFlowResumeEvent(Id, false, tag), true)
-            .SetDelayUntil(InfiniteHardResumeAt, TimerEventQuant);
+        var resumeEvent = CreateOperationEvent(new LegacyFlowResumeEvent(Id, false, tag), skipIfAlreadyScheduled: true);
         return new LegacyFlowTransition(this, nextStep, tag, resumeEvent);
     }
 
@@ -235,18 +239,58 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
         return _worklet;
     }
 
-    private OperationEvent CreateTimerOperationEvent(string? tag = null)
-        => CreateOperationEvent(new LegacyFlowTimerEvent(Id, tag), true);
+    private OperationEvent CreateTimerOperationEvent(Moment delayUntil, TimeSpan delayQuanta, string? tag = null)
+        => CreateOperationEvent(new LegacyFlowTimerEvent(Id, tag), delayUntil, delayQuanta);
 
-    private OperationEvent CreateOperationEvent<TFlowEvent>(TFlowEvent flowEvent, bool useSkipConflictStrategy = false)
+    private OperationEvent CreateTimerOperationEvent(TimeSpan delayBy, TimeSpan delayQuanta, string? tag = null)
+        => CreateOperationEvent(new LegacyFlowTimerEvent(Id, tag), delayBy, delayQuanta);
+
+    private OperationEvent CreateOperationEvent<TFlowEvent>(TFlowEvent flowEvent, Moment delayUntil, TimeSpan delayQuanta)
         where TFlowEvent : IFlowEvent
     {
-        var uuid = useSkipConflictStrategy
+        var isDelayQuantized = delayQuanta > TimeSpan.Zero;
+        var uuid = isDelayQuantized
             ? $"{Id.Value}:{flowEvent.GetType().GetName()}"
             : OperationEvent.UuidGenerator.Next();
-        return new OperationEvent(uuid, flowEvent) {
+        var result = new OperationEvent(uuid, flowEvent) {
             LoggedAt = Clocks.SystemClock.Now,
-            UuidConflictStrategy = useSkipConflictStrategy ? KeyConflictStrategy.Skip : KeyConflictStrategy.Fail,
+            UuidConflictStrategy = isDelayQuantized ? KeyConflictStrategy.Skip : KeyConflictStrategy.Fail,
         };
+        if (isDelayQuantized)
+            result.SetDelayUntil(delayUntil, delayQuanta);
+        else
+            result.SetDelayUntil(delayUntil);
+        return result;
+    }
+
+    private OperationEvent CreateOperationEvent<TFlowEvent>(TFlowEvent flowEvent, TimeSpan delayBy, TimeSpan delayQuanta)
+        where TFlowEvent : IFlowEvent
+    {
+        var isDelayQuantized = delayQuanta > TimeSpan.Zero;
+        var uuid = isDelayQuantized
+            ? $"{Id.Value}:{flowEvent.GetType().GetName()}"
+            : OperationEvent.UuidGenerator.Next();
+        var result = new OperationEvent(uuid, flowEvent) {
+            LoggedAt = Clocks.SystemClock.Now,
+            UuidConflictStrategy = isDelayQuantized ? KeyConflictStrategy.Skip : KeyConflictStrategy.Fail,
+        };
+        if (isDelayQuantized)
+            result.SetDelayBy(delayBy, delayQuanta);
+        else
+            result.SetDelayBy(delayBy);
+        return result;
+    }
+
+    private OperationEvent CreateOperationEvent<TFlowEvent>(TFlowEvent flowEvent, bool skipIfAlreadyScheduled = false)
+        where TFlowEvent : IFlowEvent
+    {
+        var uuid = skipIfAlreadyScheduled
+            ? $"{Id.Value}:{flowEvent.GetType().GetName()}"
+            : OperationEvent.UuidGenerator.Next();
+        var result = new OperationEvent(uuid, flowEvent) {
+            LoggedAt = Clocks.SystemClock.Now,
+            UuidConflictStrategy = skipIfAlreadyScheduled ? KeyConflictStrategy.Skip : KeyConflictStrategy.Fail,
+        };
+        return result;
     }
 }

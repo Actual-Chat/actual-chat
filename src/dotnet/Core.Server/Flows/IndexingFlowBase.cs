@@ -108,9 +108,10 @@ public abstract class IndexingFlowBase<TCursor> : LegacyFlow, IHasLastRunAt
     private LegacyFlowTransition WaitForWatchdog()
     {
         if (GetNextWatchdogAt() is { } nextWatchdogAt) {
-            NextWatchdogTimerAt = nextWatchdogAt;
-            Log.LogInformation("`{Id}`.WaitForWatchdog: Waiting for watchdog timer at {NextTimerAt}", Id, nextWatchdogAt);
-            return WaitForTimer(nameof(OnIndex), nextWatchdogAt, "Waiting for watchdog timer");
+            var transition = WaitForTimer(nameof(OnIndex), nextWatchdogAt, "Waiting for watchdog timer");
+            NextWatchdogTimerAt = transition.Events.Single().DelayUntil;
+            Log.LogInformation("`{Id}`.WaitForWatchdog: Waiting for watchdog timer at {Moment}", Id, NextWatchdogTimerAt);
+            return transition;
         }
 
         Log.LogInformation("`{Id}`.WaitForWatchdog: watchdog was already set", Id);
@@ -120,9 +121,10 @@ public abstract class IndexingFlowBase<TCursor> : LegacyFlow, IHasLastRunAt
     private LegacyFlowTransition WaitForRecheck()
     {
         if (GetNextRecheckAt() is { } nextRecheckAt) {
-            NextRecheckAt = nextRecheckAt;
-            Log.LogInformation("`{Id}`.WaitForRecheck: Waiting for recheck at {NextTimerAt}", Id, nextRecheckAt);
-            return WaitForTimer(nameof(OnIndex), nextRecheckAt, "Waiting for recheck");
+            var transition = WaitForTimer(nameof(OnIndex), nextRecheckAt, "Waiting for recheck");
+            NextRecheckAt = transition.Events.Single().DelayUntil;
+            Log.LogInformation("`{Id}`.WaitForRecheck: Waiting for recheck at {Moment}", Id, NextRecheckAt);
+            return transition;
         }
 
         Log.LogInformation("`{Id}`.WaitForRecheck: recheck was already set", Id);

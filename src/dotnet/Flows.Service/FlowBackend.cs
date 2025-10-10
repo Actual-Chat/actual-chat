@@ -80,10 +80,10 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         var (flowId, expectedVersion) = command;
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            // This code runs only on the local node, see context.Operation.MustCreate(false) below
+            // This code runs only on the local node, see context.Operation.MustStore(false) below
             var invDbFlow = context.Operation.Items.KeylessGet<DbFlow>();
             var invFlow = Materialize(flowId, invDbFlow);
-            _cache[flowId] = invFlow; // Update cache to skip DB hit in TryGet
+            _cache[flowId] = invFlow; // Update cache to avoid the DB hit in TryGet
             _ = TryGet(flowId, default);
             return default;
         }
@@ -143,7 +143,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             context.Operation.AddEvent(e);
 
         // We don't store DbOperation entries for flow updates - we rely on sharding instead.
-        context.Operation.MustCreate(false);
+        context.Operation.MustStore(false);
         context.Operation.Items.KeylessSet(dbFlow);
 
         await dbContext.Set<DbFlow>().Lock(flowId, cancellationToken).ConfigureAwait(false);

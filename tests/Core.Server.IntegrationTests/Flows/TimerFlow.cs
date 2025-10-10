@@ -19,7 +19,7 @@ public partial class TimerFlow : LegacyFlow
         var args = Id.SplitArguments("", "1", "1");
         RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
         Period = double.Parse(args[2], CultureInfo.InvariantCulture);
-        TimerEventQuant = TimeSpan.FromSeconds(Period / 2);
+        DefaultTimerDelayQuanta = TimeSpan.FromSeconds(Period / 2);
 
         var output = Host.Services.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"`{Id}`.{nameof(OnReset)}: {RemainingCount}");
