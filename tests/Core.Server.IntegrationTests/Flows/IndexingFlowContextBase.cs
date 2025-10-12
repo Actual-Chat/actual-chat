@@ -31,6 +31,11 @@ public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
     public Queue<TBatch> ListRemaining(string id)
         => Batches[id];
 
+    public void ClearTransitions()
+        => _appliedTransitions.Clear();
+    public void ClearTransitions(string id)
+        => _appliedTransitions[id].Clear();
+
     public void OnTransition(string id, LegacyFlowTransition transition)
         => _appliedTransitions.GetOrAdd(id).Add((Now, transition));
 
