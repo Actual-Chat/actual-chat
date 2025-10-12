@@ -16,16 +16,20 @@ public partial class SimpleIndexingFlow : IndexingFlowBase<long>
 
     protected override async Task<BatchIndexingResult<long>> Process(long cursor, CancellationToken cancellationToken)
     {
-        await Task.Delay(1, cancellationToken);
+        await Task.Yield();
         var batch = Context.Next(Id.Arguments);
-        Context.OnProcessed(Id.Arguments, batch);
+        if (batch is null)
+            batch = new (false, true, cursor, false);
+        else
+            Context.OnProcessed(Id.Arguments, batch);
         return batch;
     }
 
     protected override async Task<LegacyFlowTransition> OnIndex(CancellationToken cancellationToken)
     {
         var transition = await base.OnIndex(cancellationToken);
-        Context.OnTransition(Id.Arguments, transition);
+        if (transition != default)
+            Context.OnTransition(Id.Arguments, transition);
         return transition;
     }
 }

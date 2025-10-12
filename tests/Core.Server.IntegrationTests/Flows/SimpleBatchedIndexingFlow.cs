@@ -16,13 +16,14 @@ public partial class SimpleBatchedIndexingFlow : BatchedIndexingFlowBase<SimpleI
     protected override TimeSpan TimerRescheduleThreshold => TimeSpan.FromSeconds(0.5);
 
     [IgnoreDataMember, MemoryPackIgnore]
-    private BatchedIndexingFlowTestContext<SimpleItem, ChatId> Context => Host.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
+    private BatchedIndexingFlowTestContext<SimpleItem, ChatId> Context
+        => Host.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
 
     protected override async Task<LegacyFlowTransition> OnIndex(CancellationToken cancellationToken)
     {
         var transition = await base.OnIndex(cancellationToken);
-        Context.OnTransition(Id.Arguments, transition);
-
+        if (transition != default)
+            Context.OnTransition(Id.Arguments, transition);
         return transition;
     }
 

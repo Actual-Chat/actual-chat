@@ -2,7 +2,11 @@ using ActualChat.Flows;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-public record TransitionInfo(/* Moment TransitionAt,*/ string Step, Moment? HardResumeAt, TimeSpan? HardResumeIn);
+public record TransitionInfo(
+    /* Moment TransitionAt,*/
+    string Step,
+    Moment? HardResumeAt,
+    TimeSpan? HardResumeIn);
 
 public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
     where TBatch : class
@@ -22,7 +26,7 @@ public abstract class IndexingFlowContextBase<TBatch>(MomentClockSet clocks)
             queue.Enqueue(result);
     }
 
-    public abstract TBatch Next(string id);
+    public abstract TBatch? Next(string id);
 
     public Queue<TBatch> ListRemaining(string id)
         => Batches[id];

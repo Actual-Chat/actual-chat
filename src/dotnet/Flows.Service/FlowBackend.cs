@@ -102,7 +102,8 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             .FirstOrDefaultAsync(x => Equals(x.Id, flowId.Value), cancellationToken)
             .ConfigureAwait(false);
 
-        if (flow is not null) {
+        var isLegacyRemoval = legacyFlow?.Step == LegacyFlowSteps.Removed;
+        if (flow is not null && !isLegacyRemoval) {
             if (dbFlow is null) { // Create
                 if (legacyFlow is not null) {
                     if (legacyFlow.Step != LegacyFlowSteps.Starting)

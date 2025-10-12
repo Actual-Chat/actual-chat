@@ -54,13 +54,15 @@ public abstract class IndexingFlowBase<TCursor> : LegacyFlow, IHasLastRunAt
     protected virtual async Task<LegacyFlowTransition> OnIndex(CancellationToken cancellationToken)
     {
         if (NeedsReindex() && !IsReindexing) {
+            Log.LogDebug("`{Id}`.OnIndex: awaiting for reindexing", Id);
             Event.MarkHandled();
             return default;
         }
 
         LastRunAt = Clocks.SystemClock.Now;
-        Log.LogDebug("`{Id}`.OnIndex: Started and updated LastRunAt = {LastRunAt}", Id, LastRunAt);
-        var (mustEnd, isTailReached, updatedCursor, hasProcessedAnyItems) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("`{Id}`.OnIndex: started and updated LastRunAt = {LastRunAt}", Id, LastRunAt);
+        var batchIndexingResult = await Process(Cursor, cancellationToken).ConfigureAwait(false);
+        var (mustEnd, isTailReached, updatedCursor, hasProcessedAnyItems) = batchIndexingResult;
         Cursor = updatedCursor;
         var transitionKind = IndexingFlowTransitionKind.Resume;
         DebugLog?.LogDebug(
