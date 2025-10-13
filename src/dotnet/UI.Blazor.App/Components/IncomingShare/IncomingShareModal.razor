@@ -65,7 +65,7 @@
 
     private SendingMessages SendingMessages => Hub.SendingMessages;
     [field: AllowNull, MaybeNull]
-    private ILogger Log => field ??= Services.LogFor(GetType());
+    private ILogger Log => field ??= Hub.LogFor(GetType());
     [field: AllowNull, MaybeNull]
     private VisualMediaDimensions VisualMediaDimensions => field ??= new VisualMediaDimensions(Hub.JS);
 
@@ -120,59 +120,41 @@
                 .Push(chatId, ModalModel.Files);
             Modal.Close(true);
             await Hub.History.NavigateTo(Links.Chat(chatId));
-        } else {
-            Modal.Close(true);
-            try {
-                var postTasks = new List<Task<ChatEntry?>>();
-                foreach (var chatId in selectedChatIds) {
-                    var comment = _comment;
-                    foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                        var attachmentList = await UploadFiles(filesChunk);
-                        var postTask = PostMessage(chatId, comment, attachmentList);
-                        comment = "";
-                        postTasks.Add(postTask);
-                    }
-                }
+            return;
+        }
 
-                try {
-                    await Task.WhenAll(postTasks);
-                }
-                catch (Exception e) {
-                    Log.LogError(e, "Failed to post message for sharing");
-                }
-                var expectedUploadedFilesNumber = ModalModel.Files.Length * selectedChatIds.Count;
-                var attachments = postTasks
-                    .Where(c => c.IsCompletedSuccessfully)
-                    .Select(c => c.Result)
-                    .SkipNullItems()
-                    .SelectMany(c => c.Attachments)
-                    .ToArray();
-                var toastUI = Services.GetRequiredService<ToastUI>();
-                if (attachments.Length == 0) {
-                    var info = $"Failed to share {expectedUploadedFilesNumber} files";
-                    toastUI.Show(info, "icon-alert-circle", ToastDismissDelay.Long);
-                } else {
-                    var info = expectedUploadedFilesNumber == attachments.Length
-                        ? attachments.Length.ToString()
-                        : $"{attachments.Length} of {expectedUploadedFilesNumber}";
-                    var isImage = attachments.All(c => c.IsSupportedImage());
-                    var isVideo = attachments.All(c => c.IsSupportedVideo());
-                    var fileText = isImage ? "image" : isVideo ? "video" : "file";
-                    if (expectedUploadedFilesNumber > 1)
-                        fileText += "s";
-                    info = info + " " + fileText + " shared";
-                    toastUI.Show(info, "icon-checkmark-circle", ToastDismissDelay.Short);
+        Modal.Close(true);
+        try {
+            var postTasks = new List<(Task, ChatId, int)>();
+            foreach (var chatId in selectedChatIds) {
+                var comment = _comment;
+                foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
+                    var attachmentList = await CreateAttachmentList(filesChunk);
+                    var postTask = PostMessage(chatId, comment, attachmentList);
+                    comment = "";
+                    postTasks.Add((postTask, chatId, filesChunk.Length));
                 }
             }
-            catch (Exception e) {
-                Log.LogError(e, "Failed to share files");
-                var toastUI = Services.GetRequiredService<ToastUI>();
-                toastUI.Show("Failed to share files", "icon-alert-circle", ToastDismissDelay.Long);
-            }
+
+            await Task.WhenAll(postTasks.Select(c => c.Item1));
+            var failedTasks = postTasks
+                .Where(c => !c.Item1.IsCompletedSuccessfully)
+                .ToArray();
+            if (failedTasks.Length == 0)
+                return;
+
+            var failedToUploadFilesNumber = failedTasks
+                .Sum(c => c.Item3); // Failed to arrange message sending.
+            var info = $"10 Failed to share {failedToUploadFilesNumber} files";
+            ToastUI.Show(info, "icon-alert-circle", ToastDismissDelay.Long);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to share files");
+            ToastUI.Show("11 Failed to share files", "icon-alert-circle", ToastDismissDelay.Long);
         }
     }
 
-    private async Task<ReadonlyAttachmentList> UploadFiles(IEnumerable<AttachFileInfo> fileInfos) {
+    private async Task<ReadonlyAttachmentList> CreateAttachmentList(IEnumerable<AttachFileInfo> fileInfos) {
         Exception? fileSizeLimitError = null;
         var attachments = new List<Attachment>();
         foreach (var fileInfo in fileInfos) {
@@ -205,29 +187,16 @@
         return new ReadonlyAttachmentList(attachments);
     }
 
-    private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IAttachmentList attachments)
+    private async Task PostMessage(ChatId chatId, string comment, IAttachmentList attachments)
     {
         var cmd = new SendMessageRequest(chatId, null, comment) {
             RepliedEntryLid = null,
             Attachments = attachments,
+            AfterSendMessageHandlerKey = SendingMessages.AfterSendMessageHandlerKeys.IncomingShare,
+            AfterSendMessageHandlerArgs = attachments.Count.ToInvariantString(),
         };
         var postTask = await SendingMessages.Post(cmd, default).ConfigureAwait(false);
-        var chatEntry = await postTask.ConfigureAwait(false);
-        var textEntryId = TextEntryId.New(chatEntry.ChatId, chatEntry.LocalId);
-        // Add pseudo attachments to evaluate file type later
-        chatEntry = chatEntry with {
-            Attachments = attachments.Items
-                .Where(c => c.Uploaded)
-                .Select(c => new TextEntryAttachment {
-                    EntryId = textEntryId,
-                    MediaId = c.MediaId!,
-                    ThumbnailMediaId = c.ThumbnailMediaId,
-                    Media = new Media(c.MediaId!) {
-                        ContentType = c.FileType,
-                    },
-                }).ToArray(),
-            };
-        return chatEntry;
+        await postTask.SilentAwait(); // IncomingShareAfterSendMessageHandler will handle a send result.
     }
 
     // Nested types

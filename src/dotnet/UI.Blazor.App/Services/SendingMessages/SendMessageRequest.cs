@@ -4,4 +4,6 @@ public sealed record SendMessageRequest(ChatId ChatId, long? LocalId, string Tex
 {
     public Option<long?> RepliedEntryLid { get; init; }
     public IAttachmentList? Attachments { get; init; }
+    public string AfterSendMessageHandlerKey { get; init; } = "";
+    public string AfterSendMessageHandlerArgs { get; init; } = "";
 }

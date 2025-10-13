@@ -6,6 +6,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncDisposable
 {
+    public static class AfterSendMessageHandlerKeys
+    {
+        public const string IncomingShare = "IncomingShare";
+    }
+
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
 
     private readonly Dictionary<ChatId, ChatSendingMessages> _chatSendingMessages = new ();
@@ -116,11 +121,11 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     public void Cancel(SendingMessage sendingMessage)
         => sendingMessage.Cancel();
 
-    public async Task<Task<ChatEntry>> Post(SendMessageRequest cmd, CancellationToken cancellationToken)
+    public async Task<Task<ChatEntry?>> Post(SendMessageRequest cmd, CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("Post '{Text}'", cmd.Text);
         var now = Clocks.SystemClock.Now;
-        var resultSource = TaskCompletionSourceExt.New<ChatEntry>();
+        var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
         await _whenReady.ConfigureAwait(false);
         var uuid = Ulid.NewUlid().ToString();
         var attachEntries = new List<AttachFileRequestEntry>();
@@ -139,7 +144,11 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             }
         }
         var clientId = Guid.NewGuid().ToString();
-        var entry = new SendMessageRequestEntry(uuid, now, cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid, attachEntries.ToArray(), clientId);
+        var entry = new SendMessageRequestEntry(
+            uuid, now,
+            cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid,
+            attachEntries.ToArray(), clientId,
+            cmd.AfterSendMessageHandlerKey, cmd.AfterSendMessageHandlerArgs);
         DebugLog?.LogInformation("About to store post request '{Text}'", cmd.Text);
         await _requestsRepo.Add(entry, cancellationToken).ConfigureAwait(false);
 
@@ -170,6 +179,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             uploads,
             entry.ClientId,
             entry.NewChatEntryLocalId,
+            entry.AfterSendMessageHandlerKey,
+            entry.AfterSendMessageHandlerArgs,
             checkResend);
 
     private async Task<AttachmentUploads?> CreateAttachmentUploads(SendMessageRequestEntry entry, IAttachmentList? sourceAttachments)
@@ -321,7 +332,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         }
     }
 
-    private async Task PostInternal(PostMessageRequestInternal request, TaskCompletionSource<ChatEntry> resultSource, CancellationToken cancellationToken)
+    private async Task PostInternal(PostMessageRequestInternal request, TaskCompletionSource<ChatEntry?> resultSource, CancellationToken cancellationToken)
     {
         try {
             var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -377,8 +388,10 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 if (chatEntry1.HasAttachmentUploads && request.AttachmentUploads is not null) {
                     if (!request.NewChatEntryLocalId.HasValue)
                         await _requestsRepo.MarkMessageHasCreated(request.Uuid, chatEntry1.LocalId, cancellationToken1).ConfigureAwait(false);
-                    await CreateAttachments(chatEntry1, request.AttachmentUploads, default).ConfigureAwait(false);
+                    var chatEntry2 = await CreateAttachments(chatEntry1, request.AttachmentUploads, default).ConfigureAwait(false);
                     // Delete upload info with delay to avoid flickering in the UI.
+                    var chatEntryId = chatEntry1.Id;
+                    chatEntry1 = chatEntry2;
                     _ = BackgroundTask.Run(async () => {
                         await Task.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
                         var deletedItems = 0;
@@ -387,10 +400,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                         if (deletedItems == 0)
                             return;
 
-                        _ = _triggers.OnMediaUploadsChanged(chatEntry1.Id);
+                        _ = _triggers.OnMediaUploadsChanged(chatEntryId);
                         _ = _triggers.OnMediaUploadsChanged(sendingMessage);
                     }, CancellationToken.None);
-
                 }
                 resultSource.SetResult(chatEntry1);
             }
@@ -408,12 +420,37 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 "Failed to sent message. UUID={Uuid}, Text='{Text}'",
                 request.Uuid,
                 request.Text);
+            resultSource.TrySetException(e);
         }
 
         // Everything is completed. We can forget about this request and cleanup attachment resources.
         await DiscardStoredPostRequest(request.Uuid, cancellationToken).ConfigureAwait(false);
         if (request.AttachmentUploads is not null)
             await CleanupAttachments(request.Uuid, request.AttachmentUploads.Attachments.Items).ConfigureAwait(false);
+
+        var task = resultSource.Task;
+        Result<ChatEntry?> result2 =
+            task.IsCompletedSuccessfully ? new Result<ChatEntry?>(task.Result)
+            : task.IsCanceled ? Result.NewError<ChatEntry?>(new OperationCanceledException())
+            : Result.NewError<ChatEntry?>(task.Exception!);
+
+        InvokeAfterSendMessageHandler(
+            request.AfterSendMessageHandlerKey,
+            request.AfterSendMessageHandlerArgs,
+            result2);
+    }
+
+    private void InvokeAfterSendMessageHandler(string afterSendMessageHandlerKey, string afterSendMessageHandlerArgs, Result<ChatEntry?> result)
+    {
+        if (afterSendMessageHandlerKey.IsNullOrEmpty())
+            return;
+
+        IAfterSendMessageHandler handler = afterSendMessageHandlerKey switch {
+            AfterSendMessageHandlerKeys.IncomingShare => Hub.Services.GetRequiredService<IncomingShareAfterSendMessageHandler>(),
+            _ => throw new InvalidOperationException($"Unknown after send message handler key '{afterSendMessageHandlerKey}'")
+        };
+
+        handler.Invoke(afterSendMessageHandlerArgs, result);
     }
 
     private static SendingMessage CreateSendingMessage(
@@ -501,7 +538,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         return null;
     }
 
-    private async Task CreateAttachments(ChatEntry chatEntry, AttachmentUploads attachmentUploads, CancellationToken cancellationToken = default)
+    private async Task<ChatEntry?> CreateAttachments(ChatEntry chatEntry, AttachmentUploads attachmentUploads, CancellationToken cancellationToken = default)
     {
         // An attachment should have several states: loading, loading error, canceled (removed), loaded.
         // When an attachment has entered the `loading error` state, you can repeat the loading or cancel it entirely.
@@ -511,19 +548,18 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         if (entryAttachments.Length == 0 && chatEntry.Content.IsNullOrEmpty()) {
             // If there are no loaded attachments and the ChatEntry Content is empty,
             // then we delete this ChatEntry altogether.
-            var cmd = new Chats_RemoveTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId);
-            await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
+            var cmd1 = new Chats_RemoveTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId);
+            await UICommander.Run(cmd1, cancellationToken).ConfigureAwait(false);
+            return null;
         }
-        else {
-            // If there are loaded attachments,
-            // then we add them to the ChatEntry and mark that there are no more loadings.
-            // NOTE(DF): may be better to introduce a new command for this.
-            var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId, chatEntry.Content) {
-                HasAttachmentUploads = false,
-                EntryAttachments = entryAttachments,
-            };
-            await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
-        }
+        // If there are loaded attachments,
+        // then we add them to the ChatEntry and mark that there are no more loadings.
+        // NOTE(DF): may be better to introduce a new command for this.
+        var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId, chatEntry.Content) {
+            HasAttachmentUploads = false,
+            EntryAttachments = entryAttachments,
+        };
+        return await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
     private static TextEntryAttachment[] CreateTextEntryAttachments(AttachmentUploads attachmentUploads)
@@ -577,6 +613,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         AttachmentUploads? AttachmentUploads,
         string ClientId,
         long? NewChatEntryLocalId,
+        string AfterSendMessageHandlerKey,
+        string AfterSendMessageHandlerArgs,
         bool CheckResend
     ) : IHasId<string>
     {
