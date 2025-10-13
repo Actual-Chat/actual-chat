@@ -430,8 +430,8 @@
     --tooltip-shadow: var(--black-10);
 
     /* Skeletons */
-    --skeleton-left-panel-header: var(--gray-70);
-    --skeleton-right-panel-header: var(--gray-80);
+    --left-panel-skeleton-header: var(--gray-70);
+    --right-panel-skeleton-header: var(--gray-80);
     --skeleton: var(--gray-90);
     --skeleton-border: var(--gray-95);
 
@@ -745,8 +745,8 @@
     --tooltip-shadow: var(--white-10);
 
     /* Skeletons */
-    --skeleton-left-panel-header: var(--ash-26);
-    --skeleton-right-panel-header: var(--ash-20);
+    --left-panel-skeleton-header: var(--ash-26);
+    --right-panel-skeleton-header: var(--ash-20);
     --skeleton: var(--ash-99-05);
     --skeleton-border: var(--ash-99-10);
 
@@ -1059,8 +1059,8 @@
     --tooltip-shadow: var(--black-10);
 
     /* Skeletons */
-    --skeleton-left-panel-header: var(--gray-70);
-    --skeleton-right-panel-header: var(--gray-80);
+    --left-panel-skeleton-header: var(--gray-70);
+    --right-panel-skeleton-header: var(--gray-80);
     --skeleton: var(--gray-90);
     --skeleton-border: var(--gray-95);
 

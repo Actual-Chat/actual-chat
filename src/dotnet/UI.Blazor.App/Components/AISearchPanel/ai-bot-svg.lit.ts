@@ -1,5 +1,5 @@
 import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
+import {html, LitElement} from "lit";
 
 @customElement('ai-bot-svg')
 class AiBotSvg extends LitElement {

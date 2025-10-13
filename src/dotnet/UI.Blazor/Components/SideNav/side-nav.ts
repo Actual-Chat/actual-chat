@@ -145,15 +145,6 @@ export class SideNav extends DisposableBag {
         const parent = this.pageWithHeaderAndFooter;
         if (this.isOpen) {
             document.body.classList.add(this.bodyClassWhenOpen);
-            if (parent) {
-                if (this === SideNav.left && !parent.classList.contains('lp-open')) {
-                    parent.classList.remove('lp-closed');
-                    parent.classList.add('lp-open');
-                } else if (this === SideNav.right && !parent.classList.contains('rp-open')) {
-                    parent.classList.remove('rp-closed');
-                    parent.classList.add('rp-open');
-                }
-            }
             if (ScreenSize.isNarrow() || (!ScreenSize.isNarrow()) && window.getComputedStyle(this.element).position === 'absolute') {
                 const selection = window.getSelection();
                 if (selection)
@@ -161,15 +152,6 @@ export class SideNav extends DisposableBag {
             }
         } else {
             document.body.classList.remove(this.bodyClassWhenOpen);
-            if (parent) {
-                if (this === SideNav.left && !parent.classList.contains('lp-closed')) {
-                    parent.classList.remove('lp-open');
-                    parent.classList.add('lp-closed');
-                } else if (this === SideNav.right && !parent.classList.contains('rp-closed')) {
-                    parent.classList.remove('rp-open');
-                    parent.classList.add('rp-closed');
-                }
-            }
         }
     }
 }

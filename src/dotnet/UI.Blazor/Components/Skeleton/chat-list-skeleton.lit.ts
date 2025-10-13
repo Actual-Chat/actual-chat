@@ -2,66 +2,18 @@
 import { guard } from 'lit/directives/guard.js';
 import { range } from 'lit/directives/range.js';
 import { map } from 'lit/directives/map.js';
-import { css, html, LitElement } from 'lit';
+import { html, LitElement } from 'lit';
 import { MessageWidth, randomIntFromInterval } from './helpers';
-import { messageStyles } from './styles.lit';
 import { fastRaf } from 'fast-raf';
 
 @customElement('chat-list-skeleton')
 class ChatListSkeleton extends LitElement {
+    protected createRenderRoot() {
+        return this;
+    }
+
     private observer: IntersectionObserver;
 
-    static styles = [
-        messageStyles, css`
-            :host {
-                display: flex;
-                flex-direction: column;
-                row-gap: 0.125rem;
-            }
-
-            :host(.animated-skeleton) {
-                animation: pulse 2s infinite;
-            }
-            .message-skeleton.thread-skeleton {
-                column-gap: 1rem;
-                height: 2.5rem;
-                align-items: flex-start;
-            }
-            .message-skeleton.thread-skeleton + .message-skeleton.thread-skeleton {
-                margin-top: 0.5rem;
-            }
-
-            .avatar-wrapper {
-                display: flex;
-                flex: none;
-                align-items: center;
-                justify-content: center;
-                width: 3rem;
-                height: 3rem;
-            }
-            .thread-skeleton .avatar-wrapper {
-                width: 2rem;
-                height: 2rem;
-            }
-            .avatar {
-                width: 2.5rem;
-                height: 2.5rem;
-                border-radius: 9999px;
-                background-color: var(--skeleton);
-            }
-            .thread-skeleton .avatar {
-                width: 2rem;
-                height: 2rem;
-            }
-            .message-skeleton.thread-skeleton .c-container {
-                margin-top: 0.25rem;
-            }
-            @media (min-width: 1280px) {
-                :host {
-                    padding: 0.125rem 0.25rem 0.25rem;
-                }
-            }
-        `];
     @property()
     class = '';
     @property()

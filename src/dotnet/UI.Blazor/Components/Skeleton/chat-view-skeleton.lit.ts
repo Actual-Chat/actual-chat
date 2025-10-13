@@ -1,6 +1,5 @@
 ﻿import { customElement, property } from 'lit/decorators.js';
-import { css, html, LitElement } from 'lit';
-import { messageStyles } from './styles.lit';
+import { html, LitElement } from 'lit';
 import { guard } from 'lit/directives/guard.js';
 import { map } from 'lit/directives/map.js';
 import { range } from 'lit/directives/range.js';
@@ -9,29 +8,10 @@ import { fastRaf } from 'fast-raf';
 
 @customElement('chat-view-skeleton')
 class ChatViewSkeleton extends LitElement {
-    static styles = [
-        messageStyles, css`
-            :host {
-                width: 100%;
-                scrollbar-width: none;
-                display: flex;
-                flex-direction: column;
-            }
+    protected createRenderRoot() {
+        return this;
+    }
 
-            :host::-webkit-scrollbar {
-                display: none;
-            }
-
-            :host(.animated-skeleton) {
-                animation: pulse 2s infinite;
-            }
-            @media (min-width: 1280px) {
-                :host(.chat-view-skeleton-list) {
-                    align-self: center;
-                    max-width: 48rem;
-                }
-            }
-        `];
     private observer: IntersectionObserver;
 
     @property()

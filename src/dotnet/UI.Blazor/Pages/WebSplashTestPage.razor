@@ -1,8 +1,22 @@
 @page "/test/web-splash"
+@using ActualChat.UI.Blazor.Services
 @layout BaseLayout
 
 <RequireAccount MustBeAdmin="true"/>
 
 <div class="web-splash">
-    <splash-page-skeleton/>
+    <splash-page-skeleton isRightPanelVisible="@_isRightPanelVisible"/>
 </div>
+
+@code {
+    private string _isRightPanelVisible = "";
+
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender) {
+            _isRightPanelVisible = PanelsUI.Right.IsVisible.Value ? "true" : "";
+            StateHasChanged();
+        }
+    }
+}

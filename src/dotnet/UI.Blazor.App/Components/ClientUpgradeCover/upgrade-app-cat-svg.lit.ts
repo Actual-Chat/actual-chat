@@ -1,14 +1,12 @@
 import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
-import { messageStyles } from '../../../UI.Blazor/Components/Skeleton';
+import {html, LitElement} from "lit";
 
 @customElement('upgrade-app-cat-svg')
 class UpgradeAppCatSvg extends LitElement {
-    static styles = [
-        messageStyles, css`
-            :host {
-            }
-        `];
+    protected createRenderRoot() {
+        return this;
+    }
+
     protected render(): unknown {
         return html`
             <svg width="166" height="198" viewBox="0 0 166 198" fill="none" xmlns="http://www.w3.org/2000/svg">
