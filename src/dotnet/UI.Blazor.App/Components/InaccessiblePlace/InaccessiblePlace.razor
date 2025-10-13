@@ -1,14 +1,14 @@
 @namespace ActualChat.UI.Blazor.App.Components
 
-<div class="chat-skeleton-panel">
-    <SkeletonPanelBody>
+<div class="chat-panel-skeleton">
+    <PanelBodySkeleton>
         <chat-view-skeleton count="14"></chat-view-skeleton>
-    </SkeletonPanelBody>
-    <SkeletonPanelFooter>
+    </PanelBodySkeleton>
+    <PanelFooterSkeleton>
         <chat-view-footer-skeleton />
-    </SkeletonPanelFooter>
+    </PanelFooterSkeleton>
 </div>
-<SkeletonRightPanel/>
+<RightPanelSkeleton/>
 
 @code {
     [Parameter] public bool ShowSignIn { get; set; }

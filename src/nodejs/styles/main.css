@@ -344,8 +344,8 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply overflow-hidden;
 }
 
-.page-with-header-and-footer:has(.chat-skeleton-panel) .layout-footer,
-.page-with-header-and-footer:has(.chat-skeleton-panel) .layout-subfooter {
+.page-with-header-and-footer:has(.chat-panel-skeleton) .layout-footer,
+.page-with-header-and-footer:has(.chat-panel-skeleton) .layout-subfooter {
     @apply hidden;
 }
 
@@ -360,21 +360,14 @@ body.narrow .layout-header > .c-content.selection-header {
 .page-with-header-and-footer .layout-body .test-page-btn-group > .btn {
     @apply min-w-full md:min-w-40;
 }
-.page-with-header-and-footer.rp-open > .list-view-layout {
-    @apply w-full;
-}
-.page-with-header-and-footer:has(.right-skeleton-panel) > .list-view-layout {
-    @apply w-full;
-}
-.page-with-header-and-footer.rp-closed > .list-view-layout {
-    @apply w-full;
-}
 @media (min-width: 820px) {
-    .page-with-header-and-footer.rp-open > .list-view-layout {
-        animation: animated-text-1 400ms alternate;
+    .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .list-view-layout {
+        @apply opacity-0;
+        animation: animated-text-1 400ms ease-in-out forwards;
     }
-    .page-with-header-and-footer.rp-closed > .list-view-layout {
-        animation: animated-text-2 400ms alternate;
+    .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .list-view-layout {
+        @apply opacity-100;
+        animation: animated-text-2 400ms ease-in-out forwards;
     }
 }
 @keyframes animated-text-1 {
@@ -386,11 +379,14 @@ body.narrow .layout-header > .c-content.selection-header {
     }
 }
 @keyframes animated-text-2 {
-    0%, 100% {
-        opacity: 1;
+    0% {
+        opacity: 0;
     }
-    10%, 90% {
+    80% {
         opacity: 0.05;
+    }
+    100% {
+        opacity: 1;
     }
 }
 

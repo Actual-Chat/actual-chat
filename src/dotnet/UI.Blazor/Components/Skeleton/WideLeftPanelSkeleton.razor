@@ -1,16 +1,16 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="wide-left-skeleton-panel">
-    <SkeletonPanelHeader>
+<div class="wide-left-panel-skeleton">
+    <PanelHeaderSkeleton>
         <div class="c-title">
             <string-skeleton firstWidth="3" secondWidth="7"/>
         </div>
         <div class="c-content"></div>
-    </SkeletonPanelHeader>
-    <SkeletonPanelBody>
+    </PanelHeaderSkeleton>
+    <PanelBodySkeleton>
         <tab-skeleton/>
         <chat-list-skeleton count="12"></chat-list-skeleton>
-    </SkeletonPanelBody>
+    </PanelBodySkeleton>
     @ChildContent
 </div>
 

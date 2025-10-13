@@ -1,45 +1,45 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
-    var cls = "right-skeleton-panel";
+    var cls = "right-panel-skeleton";
 }
 
 <div class="@cls">
     <div class="c-wrapper">
-        <SkeletonPanelHeader/>
-        <SkeletonPanelBody>
-            <SkeletonBlock Class="c-buttons">
+        <PanelHeaderSkeleton/>
+        <PanelBodySkeleton>
+            <PanelBodyItemSkeleton Class="c-buttons">
                 <round-skeleton radius="16" rootCls="@cls"/>
                 <div class="c-right">
                     <round-skeleton rootCls="@cls"/>
                     <round-skeleton rootCls="@cls"/>
                     <round-skeleton rootCls="@cls"/>
                 </div>
-            </SkeletonBlock>
+            </PanelBodyItemSkeleton>
 
-            <SkeletonBlock Class="c-description">
+            <PanelBodyItemSkeleton Class="c-description">
                 <string-skeleton firstWidth="4" secondWidth="4" rootCls="@cls"/>
                 <string-skeleton firstWidth="10" secondWidth="10" rootCls="@cls"/>
                 <string-skeleton firstWidth="10" secondWidth="10" rootCls="@cls"/>
                 <string-skeleton firstWidth="10" secondWidth="10" rootCls="@cls"/>
-            </SkeletonBlock>
+            </PanelBodyItemSkeleton>
 
-            <SkeletonBlock Class="c-notification">
+            <PanelBodyItemSkeleton Class="c-notification">
                 <string-skeleton firstWidth="4" secondWidth="4" rootCls="@cls"/>
-            </SkeletonBlock>
+            </PanelBodyItemSkeleton>
 
-            <SkeletonBlock Class="c-tab">
+            <PanelBodyItemSkeleton Class="c-tab">
                 <tab-skeleton/>
-            </SkeletonBlock>
+            </PanelBodyItemSkeleton>
 
             <div class="members-container">
                 @for (var i = 0; i < 3; i++) {
-                    <SkeletonBlock Class="c-members">
+                    <PanelBodyItemSkeleton Class="c-members">
                         <string-skeleton firstWidth="3" secondWidth="3" rootCls="@cls"/>
                         <chat-list-skeleton count="2" />
-                    </SkeletonBlock>
+                    </PanelBodyItemSkeleton>
                 }
             </div>
 
-        </SkeletonPanelBody>
+        </PanelBodySkeleton>
     </div>
 </div>

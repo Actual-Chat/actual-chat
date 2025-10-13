@@ -2,12 +2,12 @@ import {customElement} from "lit/decorators.js";
 import {html, LitElement} from "lit";
 import {HTMLTemplateResult} from "lit-html/development/lit-html";
 import {MessageWidth, randomIntFromInterval} from "./helpers";
-import {messageStyles} from "./styles.lit";
 
 @customElement('place-menu-button-skeleton')
 class PlaceMenuButtonSkeleton extends LitElement {
-    static styles = [messageStyles,
-    ];
+    protected createRenderRoot() {
+        return this;
+    }
 
     render(): HTMLTemplateResult {
         return html`

@@ -1,15 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, ChatRightPanelContent.Model>
+@inherits ComputedStateComponent<AppUIHub, RightPanelContent.Model>
 @{
     var m = State.Value;
 }
 
 @if (m.ShowSkeletons) {
-    <SkeletonRightPanel />
+    <RightPanelSkeleton />
     return;
 }
 
-<div class="right-chat-panel">
+<div class="right-panel">
     <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
         @if (m.ShowSearchPanel) {
             <AISearchPanel Chat="@Chat"/>

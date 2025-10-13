@@ -1,5 +1,5 @@
 import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
+import {html, LitElement} from "lit";
 
 @customElement('ai-talking-svg')
 class AiTalkingSvg extends LitElement {
