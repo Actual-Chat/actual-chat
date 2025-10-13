@@ -213,10 +213,13 @@
             _ = ForegroundTask.Run(async () => {
                 try {
                     var chatEntry = await postTask.ConfigureAwait(true);
-                    var readEntryLid = chatEntry.LocalId;
-                    var readPositionState = ReadPositionStateLease?.Resource;
-                    if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
-                        readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
+                    if (chatEntry is not null) {
+                        // Chat Entry might be null if the message has no text and attachments were canceled during upload.
+                        var readEntryLid = chatEntry.LocalId;
+                        var readPositionState = ReadPositionStateLease?.Resource;
+                        if (readPositionState != null && readPositionState.Value.EntryLid < readEntryLid)
+                            readPositionState.Value = new ReadPosition(Chat.Id, readEntryLid);
+                    }
                 }
                 catch (OperationCanceledException) {
                     // Ignore send message cancellation.
