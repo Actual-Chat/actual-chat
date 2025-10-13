@@ -6,6 +6,7 @@ using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Media.Render;
 using ActualChat.App.Maui.Services.Recording;
+using  ActualChat.App.Maui.Audio.APM;
 
 namespace ActualChat.App.Maui.Audio;
 
@@ -15,6 +16,11 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
     public async Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
     {
+        using var apm = new AudioProcessingModule(
+            new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels),
+            new StreamConfig(Constants.Audio.PlaybackSampleRate, Constants.Audio.Channels));
+
+
         // Desired input format: LPCM float32 mono
         var encoding = AudioEncodingProperties.CreatePcm(
             Constants.Audio.RecordingSampleRate,

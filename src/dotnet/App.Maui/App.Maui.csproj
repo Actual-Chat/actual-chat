@@ -481,6 +481,9 @@
     <None Remove="android.nettrace" />
     <None Remove="android.etlx" />
     <None Remove="android.etlx" />
+    <Compile Update="Platforms\Windows\Audio\APM\AudioProcessingModule.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
   </ItemGroup>
   <!-- Android -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
@@ -550,6 +553,11 @@
   <!-- Windows -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <Content Include="Platforms\Windows\Assets\**\*.*" />
+    <None Update="Platforms\Windows\runtimes\win-x64\native\webrtc-apm.dll">
+      <Link>webrtc-apm.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -582,6 +590,10 @@
     <AndroidAsset Include="Resources\Raw\sounds\new-audio-message-after-delay.m4a" />
     <AndroidAsset Include="Resources\Raw\sounds\notify-on-new-message-in-app.m4a" />
     <AndroidAsset Include="Resources\Raw\sounds\remind-of-recording.m4a" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Platforms\Windows\Resources\" />
   </ItemGroup>
 
   <!-- Targets & overrides.
