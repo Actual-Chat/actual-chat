@@ -1,11 +1,13 @@
 ﻿import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
-import {HTMLTemplateResult} from "lit-html/development/lit-html";
+import {html, LitElement} from "lit";
 import { MessageWidth, randomIntFromInterval, StringHeight } from './helpers';
-import {messageStyles} from "./styles.lit";
 
 @customElement('string-skeleton')
 class StringSkeletonLit extends LitElement {
+    protected createRenderRoot() {
+        return this;
+    }
+
     @property()
     firstWidth = 1;
     @property()
@@ -20,14 +22,6 @@ class StringSkeletonLit extends LitElement {
     rounded = false;
     @property()
     rootCls = "layout-body";
-
-    static styles = [messageStyles, css`
-        :host {
-            display: flex;
-            flex-direction: row;
-            flex: 1 1 0;
-        }
-    `];
 
     render(): unknown {
         let wrapperWidthStyle = '';

@@ -10,7 +10,7 @@
     Side="SideNavSide.Right"
     IsOpen="@isOpen"
     VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(b => PanelsUI.Right.SetIsVisible(b)))">
-    <ChatRightPanelContent Chat="@Chat"/>
+    <RightPanelContent Chat="@Chat"/>
 </SideNav>
 
 @code {

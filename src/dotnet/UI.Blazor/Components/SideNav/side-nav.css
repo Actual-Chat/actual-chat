@@ -26,31 +26,16 @@ body.device-ios .side-nav {
 }
 
 /* Left SideNav */
-.page-with-header-and-footer.rp-closed > .side-nav.side-nav-left,
-.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="closed"]) > .side-nav.side-nav-left {
+.side-nav.side-nav-left {
+    @apply flex-none flex-y;
     @apply md:w-96 lg:w-112 xl:w-128 2xl:w-144;
 }
-.page-with-header-and-footer.rp-open > .side-nav.side-nav-left,
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .side-nav.side-nav-left {
     @apply md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
     @apply md:transition-width md:duration-200 md:ease-linear md:delay-0 lg:transition-none;
 }
-.page-with-header-and-footer:has(.right-skeleton-panel) > .side-nav.side-nav-left {
-    @apply md:w-1/2 lg:w-112 xl:w-128 2xl:w-144;
-}
-.page-with-header-and-footer > .side-nav.side-nav-left {
-    @apply flex-none flex-y;
-    @apply md:w-96 lg:w-112 xl:w-128 2xl:w-144;
-}
-body.wide .side-nav.side-nav-left[data-side-nav="closed"] {
-    @apply hidden;
-}
 body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
     transform: translate3d(-100%, 0, 0);
-}
-
-body.narrow .side-nav.side-nav-left[data-side-nav="closed"]:has(.wide-left-skeleton-panel) {
-    transform: translate3d(0, 0, 0);
 }
 
 /* Right SideNav */
@@ -58,54 +43,41 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"]:has(.wide-left-skele
     @apply flex-none flex-y;
     @apply lg:w-96 xl:w-112 2xl:w-128;
 }
-.side-nav.side-nav-right[data-side-nav="open"] {
-    @apply lg:w-96 xl:w-112 2xl:w-128;
-}
 .side-nav.side-nav-right[data-side-nav="closed"] {
     @apply lg:-mr-96 xl:-mr-112 2xl:-mr-128;
-}
-@media (min-width: 1280px) {
-    .side-nav.side-nav-right {
-        transition: margin-right 200ms linear;
-    }
 }
 body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
     transform: translate3d(100%, 0, 0);
 }
-
 @media (min-width: 820px) and (max-width: 1279.98px) {
     .side-nav.side-nav-right {
         @apply absolute;
         @apply w-1/2;
         @apply left-1/2;
+        transform: translate3d(0, 0, 0);
         transition: transform 200ms linear;
     }
     .side-nav.side-nav-right[data-side-nav="open"] {
-        width: 50%;
-        transform: translate3d(0, 0, 0);
         box-shadow: -1px 0 0 var(--separator);
     }
     .side-nav.side-nav-right[data-side-nav="closed"] {
         transform: translate3d(100%, 0, 0);
     }
 }
-
 @keyframes show-side-nav-content {
-    from {
-        filter: opacity(0);
-    }
-    to {
-        filter: opacity(1);
-    }
+    from { filter: opacity(0); }
+    to { filter: opacity(1); }
 }
 @keyframes hide-side-nav-content {
-    from {
-        filter: opacity(1);
-    }
-    to {
-        filter: opacity(0);
+    from { filter: opacity(1); }
+    to { filter: opacity(0); }
+}
+@media (min-width: 1280px) {
+    .side-nav.side-nav-right {
+        transition: margin-right 200ms linear;
     }
 }
+
 
 /* removed rules that hides opposite side nav when one is open to prevent virtual list from jumping in narrow mode */
 
