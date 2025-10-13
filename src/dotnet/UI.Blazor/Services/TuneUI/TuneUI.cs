@@ -1,10 +1,7 @@
-using ActualChat.UI.Blazor.Module;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public abstract class TuneUI(UIHub hub) : IDisposable
 {
-#pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments ...
     protected static readonly Dictionary<Tune, TuneInfo> Tunes = new () {
         // General actions
         [Tune.CancelReply] = new ([20] /*, "cancel-reply"*/),
@@ -38,7 +35,6 @@ public abstract class TuneUI(UIHub hub) : IDisposable
         [Tune.ChangeLanguage] = new ([20, 20] /*, "change-language"*/),
         [Tune.ShowMenu] = new ([20] /*, "show-menu"*/),
     };
-#pragma warning restore CA1861
 
     protected UIHub Hub { get; } = hub;
 
@@ -53,7 +49,6 @@ public abstract class TuneUI(UIHub hub) : IDisposable
     public abstract Task Play(Tune tune, CancellationToken cancellationToken = default);
 
     public abstract Task PlayAndWait(Tune tune, CancellationToken cancellationToken = default);
-
 }
 
 // !!! keep in sync with tune-ui.ts

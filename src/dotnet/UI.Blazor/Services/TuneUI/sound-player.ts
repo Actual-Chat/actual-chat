@@ -101,6 +101,3 @@ export class SoundPlayer {
         return new AudioBuffer({ length: 0, sampleRate: AP.SAMPLE_RATE });
     }
 }
-
-
-export const soundPlayer = BrowserInfo.hostKind === 'MauiApp' ? null! : new SoundPlayer();

@@ -72,8 +72,7 @@ const cooldownMap = new Map<Tune, number>([
 export class TuneUI {
     private static whenReady = new PromiseSource();
     private static tunes: Record<Tune, TuneInfo>;
-    private static readonly soundPlayer = BrowserInfo.hostKind === 'MauiApp' ? null! : new SoundPlayer();
-
+    // private static readonly soundPlayer = BrowserInfo.hostKind === 'MauiApp' ? null : new SoundPlayer();
 
     /** Called by blazor */
     public static init(tunes: Record<Tune, TuneInfo>){
@@ -91,7 +90,6 @@ export class TuneUI {
         try {
             await this.whenReady;
             const tuneInfo = this.tunes[tune] ?? this.tunes[Tune[tune]];
-
             if (!tuneInfo)
             {
                 errorLog?.log(`${logScope}.playAndWait: unexpected tune ${tune}.`)
@@ -132,7 +130,7 @@ export class TuneUI {
         const ext = DeviceInfo.isWebKit ? '.m4a' : '.webm'; // TODO: allow webm for iOS >= 16.5
         const soundUrl = `dist/sounds/${tuneInfo.sound}${ext}`;
         const cooldown = cooldownMap.get(tune);
-        await TuneUI.soundPlayer.play(soundUrl, cooldown);
+        // await this.soundPlayer?.play(soundUrl, cooldown);
     }
 
     private static vibrate(durationMs: number = 20): void {

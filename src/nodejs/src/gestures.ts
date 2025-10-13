@@ -120,10 +120,10 @@ class DataHrefGesture extends Gesture {
         if (!element)
             return;
 
-        const tune = Tune[element.dataset.hrefTune as TuneName];
         FocusUI.blur();
-        if (tune)
-            TuneUI.play(tune);
+        const tuneName = element.dataset.hrefTune as TuneName | undefined;
+        if (tuneName)
+            TuneUI.play(Tune[tuneName]);
         if (href.startsWith('http://') || href.startsWith('https://'))
             location.href = href; // External URL
         else {
