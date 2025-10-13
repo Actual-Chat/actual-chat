@@ -102,6 +102,5 @@ export class SoundPlayer {
     }
 }
 
-export const soundPlayer = new SoundPlayer();
-if (BrowserInfo.hostKind === 'MauiApp')
-    void soundPlayer.play(SILENCE_URL);
+
+export const soundPlayer = BrowserInfo.hostKind === 'MauiApp' ? null! : new SoundPlayer();

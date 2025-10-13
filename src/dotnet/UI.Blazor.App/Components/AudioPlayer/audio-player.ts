@@ -15,6 +15,7 @@ import { Log } from 'logging';
 import { ObjectPool } from 'object-pool';
 import { Resettable } from 'resettable';
 import { AudioInitializer } from '../../Services/audio-initializer';
+import { BrowserInfo } from 'UI.Blazor/exports';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioPlayer');
 
@@ -340,4 +341,5 @@ export class AudioPlayer implements Resettable {
     }
 }
 
-void AudioPlayer.init();
+if (BrowserInfo.hostKind !== 'MauiApp')
+    void AudioPlayer.init();
