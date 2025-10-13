@@ -3,6 +3,7 @@ import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { SoundPlayer } from './sound-player';
 import { Interactive } from 'interactive';
+import { BrowserInfo } from '../BrowserInfo/browser-info';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('TuneUI');
 
@@ -40,42 +41,42 @@ export enum Tune
 
 export type TuneName = keyof typeof Tune;
 
-interface TuneInfo { vibration: Array<number>, sound?: string }
+interface TuneInfo { vibration: number[], sound?: string }
 
 const cooldownMap = new Map<Tune, number>([
-        [Tune.CancelReply, 1],
-        [Tune.OpenModal, 1],
-        [Tune.CloseModal, 1],
-        [Tune.SelectNavbarItem, 1],
-        [Tune.ShowInputError, 1],
-        [Tune.BeginRecording, 1],
-        [Tune.ConfirmRecording, 1],
-        [Tune.EndRecording, 1],
-        [Tune.RemindOfRecording, 1],
-        [Tune.StartRealtimePlayback, 1],
-        [Tune.StartHistoricalPlayback, 1],
-        [Tune.StopHistoricalPlayback, 1],
-        [Tune.StopRealtimePlayback, 1],
-        [Tune.NotifyOnNewMessageInApp, 5],
-        [Tune.NotifyOnNewAudioMessageAfterDelay, 5],
-        [Tune.SendMessage, 1],
-        [Tune.EditMessage, 1],
-        [Tune.ReplyMessage, 1],
-        [Tune.ChangeAttachments, 1],
-        [Tune.ChangeLanguage, 1],
-        [Tune.ShowMenu, 1],
-        [Tune.React, 1],
-        [Tune.DragStart, 1],
-    ]);
+    [Tune.CancelReply, 1],
+    [Tune.OpenModal, 1],
+    [Tune.CloseModal, 1],
+    [Tune.SelectNavbarItem, 1],
+    [Tune.ShowInputError, 1],
+    [Tune.BeginRecording, 1],
+    [Tune.ConfirmRecording, 1],
+    [Tune.EndRecording, 1],
+    [Tune.RemindOfRecording, 1],
+    [Tune.StartRealtimePlayback, 1],
+    [Tune.StartHistoricalPlayback, 1],
+    [Tune.StopHistoricalPlayback, 1],
+    [Tune.StopRealtimePlayback, 1],
+    [Tune.NotifyOnNewMessageInApp, 5],
+    [Tune.NotifyOnNewAudioMessageAfterDelay, 5],
+    [Tune.SendMessage, 1],
+    [Tune.EditMessage, 1],
+    [Tune.ReplyMessage, 1],
+    [Tune.ChangeAttachments, 1],
+    [Tune.ChangeLanguage, 1],
+    [Tune.ShowMenu, 1],
+    [Tune.React, 1],
+    [Tune.DragStart, 1],
+]);
 
 export class TuneUI {
     private static whenReady = new PromiseSource();
-    private static tunes: { [key in Tune]: TuneInfo };
-    private static readonly soundPlayer = new SoundPlayer();
+    private static tunes: Record<Tune, TuneInfo>;
+    private static readonly soundPlayer = BrowserInfo.hostKind === 'MauiApp' ? null! : new SoundPlayer();
 
 
     /** Called by blazor */
-    public static async init(tunes: { [key in Tune]: TuneInfo }): Promise<void>{
+    public static init(tunes: Record<Tune, TuneInfo>){
         this.tunes = tunes;
         this.whenReady.resolve(null);
     }
