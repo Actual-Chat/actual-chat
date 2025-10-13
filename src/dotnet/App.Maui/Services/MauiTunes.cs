@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Plugin.Maui.Audio;
@@ -50,13 +49,6 @@ public class MauiTunes(UIHub hub) : TuneUI(hub)
 #if ANDROID
                             AudioContentType = Android.Media.AudioContentType.Sonification,
                             AudioUsageKind = Android.Media.AudioUsageKind.Assistant,
-#endif
-#if IOS
-                        Category = AVFoundation.AVAudioSessionCategory.Ambient,
-                        CategoryOptions = AVFoundation.AVAudioSessionCategoryOptions.MixWithOthers
-                            | AVFoundation.AVAudioSessionCategoryOptions.AllowBluetooth
-                            | AVFoundation.AVAudioSessionCategoryOptions.AllowBluetoothA2DP
-                            | AVFoundation.AVAudioSessionCategoryOptions.DefaultToSpeaker
 #endif
                         });
                 });
