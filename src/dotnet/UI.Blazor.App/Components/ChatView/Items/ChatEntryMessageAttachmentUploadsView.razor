@@ -28,7 +28,8 @@
     }
 
     public void Dispose() {
-        _lastUploads?.Changed -= OnChanged;
+        if (_lastUploads is not null)
+            _lastUploads?.Changed -= OnChanged;
     }
 
     private void OnChanged(object? sender, EventArgs e) {
