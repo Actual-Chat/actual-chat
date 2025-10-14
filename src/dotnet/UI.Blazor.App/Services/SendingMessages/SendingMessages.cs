@@ -496,8 +496,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             else
                 cmd = cmd with { EntryAttachments = CreateTextEntryAttachments(request.AttachmentUploads) };
         }
-        // Simulate long sending
-        await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
+        // // Simulate long sending
+        // await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
         var postResult = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         var chatEntry = postResult.Result.Value;
         var isNewMessage = cmd.LocalId is null;

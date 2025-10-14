@@ -39,6 +39,9 @@
             if (!entry.HasAttachmentUploads)
                 status = ChatMessageSendingStatus.MessageStatus.Sending;
         }
+        else if (entry.HasAttachmentUploads) {
+            // Use default
+        }
         else if (IsUnreadByOthers) {
             if (entry.Attachments.Length == 0)
                 status = ChatMessageSendingStatus.MessageStatus.Unread;
