@@ -62,7 +62,8 @@
     }
 
     public void Dispose() {
-        _holder?.Changed -= OnAttachmentListChanged;
+        if (_holder is not null)
+            _holder.Changed -= OnAttachmentListChanged;
     }
 
     private void OnAttachmentListChanged(object? sender, EventArgs e)
