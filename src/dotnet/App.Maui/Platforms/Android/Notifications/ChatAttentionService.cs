@@ -168,8 +168,8 @@ public class ChatAttentionService
 
     private static void Notify(State? state, bool addSnooze = true, bool clear = true)
     {
-        var notificationManager = NotificationManagerCompat.From(Context);
-        var activeNotifications = notificationManager.ActiveNotifications;
+        var notificationManager = NotificationManagerCompat.From(Context)!;
+        var activeNotifications = notificationManager.ActiveNotifications!;
         var existentNotifications = activeNotifications
             .Where(c => OrdinalEquals(c.Tag, NotificationTag))
             .ToArray();
@@ -220,7 +220,7 @@ public class ChatAttentionService
                 builder.AddAction(0, "Snooze", snoozePendingIntent);
 
             builder.SetOnlyAlertOnce(true);
-            var notification = builder.Build();
+            var notification = builder.Build()!;
             notifications.Add((i + 1, notification));
         }
 
@@ -233,7 +233,7 @@ public class ChatAttentionService
                 null);
             summaryBuilder.SetGroupSummary(true);
             summaryBuilder.SetOnlyAlertOnce(true);
-            var summaryNotification = summaryBuilder.Build();
+            var summaryNotification = summaryBuilder.Build()!;
             notifications.Add((0, summaryNotification));
         }
 
@@ -257,15 +257,16 @@ public class ChatAttentionService
     private static NotificationCompat.Builder CreateNotification(DateTime when, string tile, string content, PendingIntent? contentIntent)
     {
         var builder = new NotificationCompat.Builder(Context, NotificationHelper.Constants.AttentionChannelId)
-            .SetSmallIcon(Microsoft.Maui.Resource.Drawable.notification_app_icon)
-            .SetColor(0x0036A3)
-            .SetContentTitle(tile)
-            .SetWhen((long)when.ToMoment().EpochOffset.TotalMilliseconds)
-            .SetShowWhen(true)
-            .SetContentText(content)
-            .SetOngoing(true)
-            .SetGroup(NotificationGroupKey)
-            .SetPriority((int)NotificationPriority.High)
+            // ReSharper disable once AccessToStaticMemberViaDerivedType
+            .SetSmallIcon(Microsoft.Maui.Resource.Drawable.notification_app_icon)!
+            .SetColor(0x0036A3)!
+            .SetContentTitle(tile)!
+            .SetWhen((long)when.ToMoment().EpochOffset.TotalMilliseconds)!
+            .SetShowWhen(true)!
+            .SetContentText(content)!
+            .SetOngoing(true)!
+            .SetGroup(NotificationGroupKey)!
+            .SetPriority((int)NotificationPriority.High)!
             .SetCategory(Android.App.Notification.CategoryReminder)!;
         // Intent that will be called for when tapping on the notification
         if (contentIntent != null)
