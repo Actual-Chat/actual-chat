@@ -198,7 +198,12 @@
                     // Check if we can display uploading medias.
                     var mediaUploads = Hub.SendingMessages.GetMediaUploads(entry);
                     if (mediaUploads is not null) {
-                        <ChatEntryMessageAttachmentUploadsView Uploads="@mediaUploads.Attachments"/>
+                        <div class="message-attachments">
+                            <ChatEntryMessageAttachmentUploadsView Uploads="@mediaUploads.Attachments"/>
+                            <ChatMessageSendingStatus
+                                Status="@ChatMessageSendingStatus.MessageStatus.Sending"
+                                IsDotOnly="@true"/>
+                        </div>
                         _hasShownUploads = true;
                     }
                 } else {
