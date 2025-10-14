@@ -6,9 +6,9 @@ using Microsoft.Win32.SafeHandles;
 
 public sealed class AudioProcessingModule : IDisposable
 {
-    private readonly AudioProcessingHandle _apm;
-    private readonly StreamConfigHandle _inputConfig;
-    private readonly StreamConfigHandle _outputConfig;
+    private readonly AudioProcessingHandle _apmHandle;
+    private readonly AudioProcessingModuleConfig _moduleConfig;
+    private readonly ProcessingConfig _streamConfig;
     private bool _disposed;
 
     public AudioProcessingModule(StreamConfig inputConfig, StreamConfig outputConfig)
@@ -17,30 +17,29 @@ public sealed class AudioProcessingModule : IDisposable
         if (ptr == IntPtr.Zero)
             throw StandardError.Configuration("webrtc_apm_create returned null");
 
-        _apm = new AudioProcessingHandle(ptr);
-        _inputConfig = inputConfig.ToNative();
-        _outputConfig = outputConfig.ToNative();
+        _apmHandle = new AudioProcessingHandle(ptr);
+        _moduleConfig = new AudioProcessingModuleConfig();
+        _streamConfig = new ProcessingConfig {
+            Input = inputConfig,
+            Output = inputConfig,
+            ReverseInput = outputConfig,
+            ReverseOutput = outputConfig,
+        };
     }
 
-    public void Configure(Action<AudioProcessingConfig> configure)
+    public void Configure(Action<AudioProcessingModuleConfig> configure)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(AudioProcessingModule));
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(AudioProcessingModule));
 
-        var cfgPtr = NativeMethods.webrtc_apm_config_create();
-        if (cfgPtr == IntPtr.Zero)
-            throw StandardError.Configuration("Failed to allocate config");
+        configure(_moduleConfig);
+        ThrowIfError(NativeMethods.webrtc_apm_apply_config(_apmHandle.DangerousGetHandle(), _moduleConfig.DangerousGetHandle()));
 
-        try
-        {
-            var config = new AudioProcessingConfig(cfgPtr);
-            configure(config);
-            ThrowIfError(NativeMethods.webrtc_apm_apply_config(_apm.DangerousGetHandle(), cfgPtr));
-            ThrowIfError(NativeMethods.webrtc_apm_initialize(_apm.DangerousGetHandle()));
-        }
-        finally
-        {
-            NativeMethods.webrtc_apm_config_destroy(cfgPtr);
-        }
+
+        // apm.Initialize(procCfg);
+        ThrowIfError(NativeMethods.webrtc_apm_initialize_with_config(
+            _apmHandle.DangerousGetHandle(),
+            _streamConfig.DangerousGetHandle()));
     }
 
     public void ProcessStream(ReadOnlySpan<float> capture, Span<float> output)
@@ -60,10 +59,10 @@ public sealed class AudioProcessingModule : IDisposable
                 fixed (float** srcPtr = src)
                 fixed (float** destPtr = dest)
                     ThrowIfError(NativeMethods.webrtc_apm_process_stream(
-                        _apm.DangerousGetHandle(),
+                        _apmHandle.DangerousGetHandle(),
                         (IntPtr)srcPtr,
-                        _inputConfig.DangerousGetHandle(),
-                        _inputConfig.DangerousGetHandle(),
+                        _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.Input),
+                        _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.Output),
                         (IntPtr)destPtr));
             }
         }
@@ -80,16 +79,16 @@ public sealed class AudioProcessingModule : IDisposable
             fixed (float* rPtr = render)
             fixed (float* oPtr = output)
             {
-                float*[] src = { rPtr };
-                float*[] dest = { oPtr };
+                float*[] src = [rPtr];
+                float*[] dest = [oPtr];
 
                 fixed (float** srcPtr = src)
                 fixed (float** destPtr = dest)
                     ThrowIfError(NativeMethods.webrtc_apm_process_reverse_stream(
-                        _apm.DangerousGetHandle(),
+                        _apmHandle.DangerousGetHandle(),
                         (IntPtr)srcPtr,
-                        _outputConfig.DangerousGetHandle(),
-                        _outputConfig.DangerousGetHandle(),
+                        _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.ReverseInput),
+                        _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.ReverseOutput),
                         (IntPtr)destPtr));
             }
         }
@@ -106,9 +105,9 @@ public sealed class AudioProcessingModule : IDisposable
                 float*[] src = [rPtr];
                 fixed (float** srcPtr = src)
                     ThrowIfError(NativeMethods.webrtc_apm_analyze_reverse_stream(
-                        _apm.DangerousGetHandle(),
+                        _apmHandle.DangerousGetHandle(),
                         (IntPtr)srcPtr,
-                        _outputConfig.DangerousGetHandle()));
+                        _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.ReverseInput)));
             }
         }
     }
@@ -118,7 +117,7 @@ public sealed class AudioProcessingModule : IDisposable
         if (_disposed)
             throw new ObjectDisposedException(nameof(AudioProcessingModule));
 
-        NativeMethods.webrtc_apm_set_stream_delay_ms(_apm.DangerousGetHandle(), milliseconds);
+        NativeMethods.webrtc_apm_set_stream_delay_ms(_apmHandle.DangerousGetHandle(), milliseconds);
     }
 
     public static int GetFrameSize(int sampleRateHz) =>
@@ -130,9 +129,9 @@ public sealed class AudioProcessingModule : IDisposable
             return;
 
         _disposed = true;
-        _apm.DisposeSilently();
-        _inputConfig.DisposeSilently();
-        _outputConfig.DisposeSilently();
+        _apmHandle.DisposeSilently();
+        _moduleConfig.DisposeSilently();
+        _streamConfig.DisposeSilently();
     }
 
 
@@ -143,6 +142,18 @@ public sealed class AudioProcessingModule : IDisposable
             return;
 
         throw StandardError.Configuration($"APM call failed with error {code}.");
+    }
+}
+
+internal sealed class ProcessingConfigHandle : SafeHandleZeroOrMinusOneIsInvalid
+{
+    internal ProcessingConfigHandle(IntPtr ptr) : base(true)
+        => SetHandle(ptr);
+
+    protected override bool ReleaseHandle()
+    {
+        NativeMethods.webrtc_apm_processing_config_destroy(handle);
+        return true;
     }
 }
 
@@ -160,13 +171,24 @@ internal sealed class StreamConfigHandle : SafeHandleZeroOrMinusOneIsInvalid
 
 internal sealed class AudioProcessingHandle : SafeHandleZeroOrMinusOneIsInvalid
 {
-    private AudioProcessingHandle() : base(true) { }
     internal AudioProcessingHandle(IntPtr handle) : base(true)
         => SetHandle(handle);
 
     protected override bool ReleaseHandle()
     {
         NativeMethods.webrtc_apm_destroy(handle);
+        return true;
+    }
+}
+
+internal sealed class AudioProcessingConfigHandle : SafeHandleZeroOrMinusOneIsInvalid
+{
+    internal AudioProcessingConfigHandle(IntPtr handle) : base(true)
+        => SetHandle(handle);
+
+    protected override bool ReleaseHandle()
+    {
+        NativeMethods.webrtc_apm_config_destroy(handle);
         return true;
     }
 }
@@ -195,6 +217,16 @@ internal static partial class NativeMethods
 
     [LibraryImport(DllName)]
     internal static partial void webrtc_apm_config_set_gain_controller2(IntPtr config, int enabled);
+
+    [LibraryImport(DllName)]
+    internal static partial void webrtc_apm_config_set_high_pass_filter(IntPtr config, int enabled);
+
+    [LibraryImport(DllName)]
+    internal static partial void webrtc_apm_config_set_pipeline(IntPtr config,
+        int maxInternalRate,
+        int multiChannelRender,
+        int multiChannelCapture,
+        DownmixMethod downmixMethod);
 
     [LibraryImport(DllName)]
     internal static partial int webrtc_apm_apply_config(IntPtr apm, IntPtr config);

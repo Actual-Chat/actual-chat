@@ -9,7 +9,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 {
-    public static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
+    public static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(30);
     public static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
     private static bool DebugMode => Constants.DebugMode.AudioRecording;
 

@@ -34,8 +34,9 @@ public static partial class Constants
         public static readonly bool AudioProcessor = true;
         public static readonly bool AudioPlayback = false;
         public static readonly bool NativeAudioPlayback = false;
-        public static bool AudioPlaybackPlayMyOwnAudio
-            => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
+
+        public static bool AudioPlaybackPlayMyOwnAudio = true;
+            // => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
         public static readonly bool AudioRecording = true;
         public static readonly bool AudioRecordingStream = false;
 
