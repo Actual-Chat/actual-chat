@@ -84,6 +84,7 @@ body.narrow .ac-menu {
 }
 .ac-menu-content {
     @apply flex-1 flex-x items-center gap-x-4;
+    @apply overflow-hidden;
 }
 .ac-menu-icon > i {
     @apply text-03 text-xl;
@@ -93,6 +94,7 @@ body.narrow .ac-menu-icon > i {
 }
 .ac-menu-text {
     @apply w-full text-02 text-base font-medium mr-2;
+    @apply overflow-hidden;
 }
 body.narrow .ac-menu-text {
     @apply text-headline-1;
