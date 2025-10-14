@@ -43,18 +43,18 @@ class ChatViewSkeleton extends LitElement {
         return html`
             ${guard([count], () => map(range(count), () => html`
                 <div class="message-skeleton">
-                    <div class="message-avatar-wrapper">
-                        <div class="message-avatar"></div>
+                    <div class="message-avatar-wrapper-skeleton">
+                        <div class="message-avatar-skeleton"></div>
                     </div>
                     <div class="c-container">
-                        <div class="title message ${this.getMessageWidth(2, 5)}"></div>
-                        <div class="message ${this.getMessageWidth(4, 9)}"></div>
+                        <div class="title message-content-skeleton ${this.getMessageWidth(2, 5)}"></div>
+                        <div class="message-content-skeleton ${this.getMessageWidth(4, 9)}"></div>
                     </div>
                 </div>
-                <div class="message-list">
+                <div class="message-list-skeleton">
                     ${map(range(randomIntFromInterval(0, 4)), () => html`
-                        <div class="message-wrapper">
-                            <div class="message ${this.getMessageWidth(4, 9)}"></div>
+                        <div class="message-wrapper-skeleton">
+                            <div class="message-content-skeleton ${this.getMessageWidth(4, 9)}"></div>
                         </div>
                     `)}
                 </div>

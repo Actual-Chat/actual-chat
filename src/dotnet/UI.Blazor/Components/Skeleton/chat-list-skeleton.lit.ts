@@ -26,12 +26,12 @@ class ChatListSkeleton extends LitElement {
         return html`
             ${guard([count], () => map(range(count), () => html`
                 <div class='message-skeleton ${this.messageCls}'>
-                    <div class='avatar-wrapper'>
-                        <div class='avatar'></div>
+                    <div class='message-avatar-wrapper-skeleton'>
+                        <div class='message-avatar-skeleton'></div>
                     </div>
                     <div class='c-container'>
-                        <div class='title message ${this.getMessageWidth(2, 5)}'></div>
-                        <div class='message ${this.getMessageWidth(4, 10)}'></div>
+                        <div class='title message-content-skeleton ${this.getMessageWidth(2, 5)}'></div>
+                        <div class='message-content-skeleton ${this.getMessageWidth(4, 10)}'></div>
                     </div>
                 </div>
             `))}
