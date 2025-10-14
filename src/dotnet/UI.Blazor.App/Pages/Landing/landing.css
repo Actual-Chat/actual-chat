@@ -1479,9 +1479,9 @@ body.narrow .premium-features-modal .c-block-note {
     @apply opacity-95;
 }
 body.narrow .cookie-settings {
-    transform: none;
-    @apply transform-none;
     @apply inset-x-4;
+    @apply transform-none;
+    transform: none;
 }
 .cookie-settings .c-top {
     @apply flex-x items-center gap-x-4;
@@ -1497,7 +1497,8 @@ body.narrow .cookie-settings {
     @apply text-headline-7 text-white;
 }
 .cookie-settings .c-content {
-    @apply text-text-1 text-white flex flex-col gap-4;
+    @apply flex-y gap-4;
+    @apply text-text-1 text-white;
 }
 .cookie-settings .c-content a {
     @apply text-05;
@@ -1531,4 +1532,23 @@ body.narrow .cookie-settings .c-bottom .c-buttons {
 }
 body.narrow .btn.cookie-btn {
     @apply min-w-0 w-full;
+}
+
+/* Menu */
+.manage-account-item {
+    @apply flex-x items-center;
+}
+.manage-account-item .c-content {
+    @apply flex-1 flex-y;
+    @apply overflow-hidden;
+}
+.manage-account-item .c-content .c-name {
+    @apply truncate;
+    @apply text-sm;
+}
+.manage-account-item .c-ending {
+    @apply flex-none;
+    @apply w-8;
+    @apply -mt-1;
+    @apply rotate-180;
 }

@@ -29,7 +29,7 @@ body.narrow .link-preview.compact {
     @apply p-1;
 }
 .link-preview .c-info {
-    @apply flex-1 flex-y justify-between gap-y-4;
+    @apply flex-1 flex-y justify-between;
     @apply h-full max-w-full;
     @apply p-2 md:py-4;
     @apply overflow-hidden;
