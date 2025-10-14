@@ -1,6 +1,8 @@
+using ActualChat.UI.Blazor.Module;
+
 namespace ActualChat.UI.Blazor.Services;
 
-public abstract class TuneUI(UIHub hub) : IDisposable
+public abstract class TuneUI : IDisposable
 {
     protected static readonly Dictionary<Tune, TuneInfo> Tunes = new () {
         // General actions
@@ -35,16 +37,33 @@ public abstract class TuneUI(UIHub hub) : IDisposable
         [Tune.ChangeLanguage] = new ([20, 20] /*, "change-language"*/),
         [Tune.ShowMenu] = new ([20] /*, "show-menu"*/),
     };
+    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.init";
+    private DotNetObjectReference<TuneUI>? _backendRef;
 
-    protected UIHub Hub { get; } = hub;
+    protected TuneUI(UIHub hub)
+    {
+        Hub = hub;
+        _ = Initialize();
+    }
+
+    protected UIHub Hub { get; }
 
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
-    public virtual void Dispose()
+    private async ValueTask Initialize()
     {
-        // no-op in base
+        try {
+            _backendRef ??= DotNetObjectReference.Create(this);
+            await Hub.JS.InvokeVoidAsync(JSInitMethod, _backendRef, Tunes).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Initialize failed");
+        }
     }
+
+    public virtual void Dispose()
+        => _backendRef.DisposeSilently();
 
     public abstract Task Play(Tune tune, CancellationToken cancellationToken = default);
 

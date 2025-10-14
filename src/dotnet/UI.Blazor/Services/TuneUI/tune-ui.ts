@@ -71,11 +71,12 @@ const cooldownMap = new Map<Tune, number>([
 
 export class TuneUI {
     private static whenReady = new PromiseSource();
+    private static blazorRef: DotNet.DotNetObject;
     private static tunes: Record<Tune, TuneInfo>;
-    // private static readonly soundPlayer = BrowserInfo.hostKind === 'MauiApp' ? null : new SoundPlayer();
 
     /** Called by blazor */
-    public static init(tunes: Record<Tune, TuneInfo>){
+    public static init(blazorRef: DotNet.DotNetObject, tunes: Record<Tune, TuneInfo>) {
+        this.blazorRef = blazorRef;
         this.tunes = tunes;
         this.whenReady.resolve(null);
     }
@@ -130,10 +131,13 @@ export class TuneUI {
         const ext = DeviceInfo.isWebKit ? '.m4a' : '.webm'; // TODO: allow webm for iOS >= 16.5
         const soundUrl = `dist/sounds/${tuneInfo.sound}${ext}`;
         const cooldown = cooldownMap.get(tune);
-        // await this.soundPlayer?.play(soundUrl, cooldown);
+        if (BrowserInfo.hostKind !== 'MauiApp')
+            await SoundPlayer.instance.play(soundUrl, cooldown);
+        else
+            await this.blazorRef.invokeMethodAsync('play', tune);
     }
 
-    private static vibrate(durationMs: number = 20): void {
+    private static vibrate(durationMs = 20): void {
         const canVibrate = ('vibrate' in navigator);
         if (!canVibrate) {
             debugLog?.log(`vibrate(${durationMs}ms): unsupported by browser`);

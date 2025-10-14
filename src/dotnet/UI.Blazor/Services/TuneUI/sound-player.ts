@@ -3,7 +3,6 @@ import { audioContextSource } from '../../../UI.Blazor.App/Services/audio-contex
 import { Log } from 'logging';
 import { AUDIO_PLAY as AP } from '_constants';
 import { AudioContextInUse, AudioContextRef } from '../../../UI.Blazor.App/Services/audio-context-ref';
-import { BrowserInfo } from '../BrowserInfo/browser-info';
 
 const { debugLog, warnLog } = Log.get('SoundsPlayer');
 const DEFAULT_COOLDOWN = 3; // 3s
@@ -14,12 +13,17 @@ export class SoundPlayer {
     private readonly offlineContext = new OfflineAudioContext(1, 5000 * AP.SAMPLES_PER_MS, AP.SAMPLE_RATE);
     private readonly recentlyPlayedMap = new Map<string, number>;
     private readonly contextRef: AudioContextRef;
+    private static _instance?: SoundPlayer;
 
     constructor() {
         this.contextRef = audioContextSource.getRef('play-tunes', {
             attach: () => { },
             detach: () => { },
         });
+    }
+
+    public static get instance(): SoundPlayer {
+        return this._instance ??= new SoundPlayer();
     }
 
     public async play(url: string, cooldown?: number): Promise<void> {
