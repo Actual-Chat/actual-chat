@@ -38,7 +38,7 @@ class StringSkeletonLit extends LitElement {
 
         return html`
             <div class="string-skeleton-wrapper ${this.system ? "system-string" : ""}" style=${wrapperWidthStyle}>
-                <div class="message string-skeleton ${this.getHeight(this.height)} ${messageWidthCls} ${roundedCls}" style="${messageWidthStyle}"></div>
+                <div class="message-content-skeleton string-skeleton ${this.getHeight(this.height)} ${messageWidthCls} ${roundedCls}" style="${messageWidthStyle}"></div>
             </div>
         `;
     }

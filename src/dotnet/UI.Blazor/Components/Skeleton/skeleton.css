@@ -55,7 +55,7 @@ thin-left-panel-skeleton .footer-button {
     @apply bg-03;
 }
 thin-left-panel-skeleton .c-delimiter {
-    @apply w-10 md:w-12;
+    @apply w-10;
     @apply mt-0 mb-2 mx-1;
     @apply border-t border-nav-separator;
 }
@@ -77,7 +77,7 @@ body.narrow .wide-left-panel-skeleton:has(.inaccessible-place-request) {
 .wide-left-panel-skeleton .panel-header-skeleton {
     @apply flex-y gap-y-2;
     @apply h-14;
-    @apply py-2 px-3;
+    @apply py-2 px-2;
     @apply border-b border-[var(--separator)];
 }
 .wide-left-panel-skeleton .panel-header-skeleton .c-title {
@@ -162,8 +162,8 @@ body.narrow .right-panel-skeleton {
 }
 .chat-header-skeleton {
     @apply flex-x self-center justify-center gap-x-2;
-    @apply w-full;
-    @apply px-2;
+    @apply w-full h-14;
+    @apply px-2.5;
     @apply border-b border-separator;
 }
 .chat-header-skeleton > .c-wrapper {
@@ -172,7 +172,7 @@ body.narrow .right-panel-skeleton {
 .chat-header-skeleton > .c-wrapper .c-icon {
     @apply flex-none flex items-center justify-center;
     @apply h-14;
-    @apply px-2;
+    @apply pr-2;
 }
 .chat-header-skeleton > .c-wrapper .c-title {
     @apply flex-1 flex items-center justify-start;
@@ -186,7 +186,7 @@ body.narrow .right-panel-skeleton {
 .chat-panel-skeleton .panel-body-skeleton {
     @apply self-center;
     @apply w-full min-h-full lg:max-w-192;
-    @apply p-2 md:p-1.5;
+    @apply p-2 md:py-1.5 md:px-0 ml-[2px];
     @apply overflow-y-auto;
     scrollbar-width: none;
 }
@@ -203,12 +203,10 @@ body.narrow .right-panel-skeleton {
 .chat-panel-skeleton .panel-footer-skeleton {
     @apply flex-x self-center gap-x-2.5;
     @apply w-full lg:max-w-192;
-    @apply px-3;
     @apply bg-01;
 }
 body.narrow .chat-panel-skeleton .panel-footer-skeleton {
     @apply min-h-26;
-    @apply p-0;
     @apply bg-03;
 }
 body.wide .thin-left-panel-skeleton .panel-footer-skeleton {
@@ -251,19 +249,20 @@ chat-list-skeleton .message-skeleton.thread-skeleton {
 chat-list-skeleton .message-skeleton.thread-skeleton + .message-skeleton.thread-skeleton {
     @apply mt-2;
 }
-chat-list-skeleton .avatar-wrapper {
+chat-list-skeleton .message-avatar-wrapper-skeleton {
     @apply flex-none flex items-center justify-center;
     @apply w-12 h-12;
+    @apply m-0;
 }
-chat-list-skeleton .thread-skeleton .avatar-wrapper {
+chat-list-skeleton .thread-skeleton .message-avatar-wrapper-skeleton {
     @apply w-8 h-8;
 }
-chat-list-skeleton .avatar {
+chat-list-skeleton .message-avatar-skeleton {
     @apply w-10 h-10;
     @apply rounded-full;
     @apply bg-skeleton;
 }
-chat-list-skeleton .thread-skeleton .avatar {
+chat-list-skeleton .thread-skeleton .message-avatar-skeleton {
     @apply w-8 h-8;
 }
 chat-list-skeleton .message-skeleton.thread-skeleton .c-container {
@@ -277,53 +276,53 @@ chat-list-skeleton .message-skeleton.thread-skeleton .c-container {
 .message-skeleton.place {
     @apply py-0.5 px-0;
 }
-.message-avatar-wrapper {
+.message-avatar-wrapper-skeleton {
     @apply flex-none flex items-center justify-center;
     @apply w-10 h-10;
     @apply m-2;
 }
-.message-avatar {
+.message-avatar-skeleton {
     @apply w-9 h-9;
     @apply rounded-full;
     @apply bg-skeleton;
 }
-.message-skeleton.header-skeleton .message-avatar {
+.message-skeleton.header-skeleton .message-avatar-skeleton {
     @apply w-10 h-10;
 }
 .message-skeleton .c-container {
     @apply flex-y items-start justify-center gap-y-1;
     @apply w-full;
 }
-.message-skeleton .title.message {
+.message-skeleton .title.message-content-skeleton {
     @apply h-3;
     @apply opacity-100;
     @apply rounded-md;
     @apply bg-skeleton;
 }
-.message-skeleton.place .title.message {
+.message-skeleton.place .title.message-content-skeleton {
     @apply h-5.5;
 }
 .message-skeleton .place-info-container {
     @apply flex-x items-center gap-y-1;
     @apply w-full;
 }
-.message-skeleton.header-skeleton .title.message {
+.message-skeleton.header-skeleton .title.message-content-skeleton {
     @apply w-80;
 }
-.message-skeleton .message {
+.message-skeleton .message-content-skeleton {
     @apply h-3;
     @apply rounded-md;
     @apply bg-skeleton;
 }
-.message-list {
+.message-list-skeleton {
     @apply flex-y gap-x-1;
     @apply mb-2;
 }
-.message-wrapper {
+.message-wrapper-skeleton {
     @apply flex-wrap flex-x items-start gap-y-2;
     @apply py-1 pr-13 pl-14;
 }
-.message {
+.message-content-skeleton {
     @apply flex;
     @apply h-3.5;
     @apply opacity-75;
@@ -351,71 +350,71 @@ chat-list-skeleton .message-skeleton.thread-skeleton .c-container {
     @apply rounded-full;
     @apply bg-skeleton;
 }
-.message.width-1 {
+.message-content-skeleton.width-1 {
     width: 10%;
 }
-.message.width-2 {
+.message-content-skeleton.width-2 {
     width: 20%;
 }
-.message.width-3 {
+.message-content-skeleton.width-3 {
     width: 30%;
 }
-.message.width-4 {
+.message-content-skeleton.width-4 {
     width: 40%;
 }
-.message.width-5 {
+.message-content-skeleton.width-5 {
     width: 50%;
 }
-.message.width-6 {
+.message-content-skeleton.width-6 {
     width: 60%;
 }
-.message.width-7 {
+.message-content-skeleton.width-7 {
     width: 70%;
 }
-.message.width-8 {
+.message-content-skeleton.width-8 {
     width: 80%;
 }
-.message.width-9 {
+.message-content-skeleton.width-9 {
     width: 90%;
 }
-.message.width-10 {
+.message-content-skeleton.width-10 {
     width: 100%;
 }
 
-.message.height-1 {
+.message-content-skeleton.height-1 {
     @apply h-1;
 }
-.message.height-2 {
+.message-content-skeleton.height-2 {
     @apply h-2;
 }
-.message.height-3 {
+.message-content-skeleton.height-3 {
     @apply h-3;
 }
-.message.height-4 {
+.message-content-skeleton.height-4 {
     @apply h-4;
 }
-.message.height-5 {
+.message-content-skeleton.height-5 {
     @apply h-5;
 }
-.message.height-6 {
+.message-content-skeleton.height-6 {
     @apply h-6;
 }
-.message.height-7 {
+.message-content-skeleton.height-7 {
     @apply h-7;
 }
-.message.height-8 {
+.message-content-skeleton.height-8 {
     @apply h-8;
 }
-.message.height-9 {
+.message-content-skeleton.height-9 {
     @apply h-9;
 }
-.message.height-10 {
+.message-content-skeleton.height-10 {
     @apply h-10;
 }
-.message.height-11 {
+.message-content-skeleton.height-11 {
     @apply h-11;
 }
-.message.height-12 {
+.message-content-skeleton.height-12 {
     @apply h-12;
 }
 
