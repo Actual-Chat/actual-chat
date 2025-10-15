@@ -145,12 +145,12 @@
 
             var failedToUploadFilesNumber = failedTasks
                 .Sum(c => c.Item3); // Failed to arrange message sending.
-            var info = $"10 Failed to share {failedToUploadFilesNumber} files";
+            var info = $"Failed to share {failedToUploadFilesNumber} files";
             ToastUI.Show(info, "icon-alert-circle", ToastDismissDelay.Long);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to share files");
-            ToastUI.Show("11 Failed to share files", "icon-alert-circle", ToastDismissDelay.Long);
+            ToastUI.Show("Failed to share files", "icon-alert-circle", ToastDismissDelay.Long);
         }
     }
 
