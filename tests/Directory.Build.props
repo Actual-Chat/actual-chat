@@ -105,7 +105,7 @@
     <Using Include="ActualChat.Sharding" />
 
     <!-- Testing-related global usings -->
-    <Using Include="FluentAssertions" />
+    <Using Include="AwesomeAssertions" />
     <Using Include="Moq" />
     <Using Include="ActualLab.Testing" />
     <Using Include="Xunit" />

@@ -1,4 +1,4 @@
-using FluentAssertions.Formatting;
+using AwesomeAssertions.Formatting;
 
 namespace ActualChat.Testing.Host.Assertion;
 

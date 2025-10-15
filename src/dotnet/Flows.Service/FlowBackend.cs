@@ -3,7 +3,6 @@ using ActualChat.Flows.Db;
 using ActualChat.Flows.Infrastructure;
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Interception;
 using ActualLab.IO;
 using ActualLab.Locking;
 using ActualLab.Resilience;
@@ -56,21 +55,46 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             if (flow is not null)
                 return flow;
 
-            var legacyFlow = (LegacyFlow)flowType.CreateInstance();
-            legacyFlow.Initialize(flowId, 0, LegacyFlowSteps.Starting);
-            var storeCommand = new Flows_Store(legacyFlow.Id, 0) { Flow = legacyFlow };
+            flow = (Flow)flowType.CreateInstance();
+            var legacyFlowImpl = flow as ILegacyFlowImpl;
+            var flowImpl = (IFlowImpl)flow;
+            if (legacyFlowImpl is not null)
+                legacyFlowImpl.Initialize(flowId, 0, LegacyFlowSteps.Starting);
+            else
+                flowImpl.Initialize(flowId, 0);
+
+            var storeCommand = new Flows_Store(flow.Id, 0) { Flow = flow };
             var version = await Commander.Call(storeCommand, true, ct).ConfigureAwait(false);
-            legacyFlow.Initialize(flowId, version, LegacyFlowSteps.Starting);
-            return legacyFlow;
+            if (legacyFlowImpl is not null)
+                legacyFlowImpl.Initialize(flowId, version, LegacyFlowSteps.Starting);
+            else
+                flowImpl.Initialize(flowId, version);
+            return flow;
         }, new RetryLogger(Log), cancellationToken);
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
-    [ProxyIgnore] // Regular method!
-    public virtual Task<long> OnEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken = default)
+    // [CommandHandler]
+    public virtual Task<long> OnEvent(IFlowEvent command, CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("OnEvent: `{FlowId}` <- {Event}", flowId, evt);
-        return Host.ProcessEvent(flowId, evt, cancellationToken);
+        var flowId = command.FlowId;
+        DebugLog?.LogDebug("OnEvent: `{FlowId}` <- {Event}", flowId, command);
+        var flowType = Registry.TypeByName[flowId.Name];
+        return flowType.IsAssignableTo(typeof(LegacyFlow))
+            ? Host.ProcessEvent(flowId, command, cancellationToken)
+            : ProcessEvent();
+
+        async Task<long> ProcessEvent() {
+            if (command is not FlowResumeEvent)
+                throw StandardError.Internal($"Unsupported event type: {command.GetType()}.");
+
+            await _resumeLocks.Lock(flowId, cancellationToken).ConfigureAwait(false);
+            var flow = await this.Get(flowId, cancellationToken).ConfigureAwait(false);
+            var flowImpl = (IFlowImpl)flow.Clone();
+            flowImpl.Services = Services;
+            await ((IFlowImpl)flow).Resume(cancellationToken).ConfigureAwait(false);
+            return 0; // TODO(AY): Store API, return version
+        }
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
@@ -105,12 +129,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         var isLegacyRemoval = legacyFlow?.Step == LegacyFlowSteps.Removed;
         if (flow is not null && !isLegacyRemoval) {
             if (dbFlow is null) { // Create
-                if (legacyFlow is not null) {
-                    if (legacyFlow.Step != LegacyFlowSteps.Starting)
-                        throw StandardError.Internal("LegacyFlow.Step should be 'Starting' for a new LegacyFlow.");
-
-                    context.Operation.AddEvent(new LegacyFlowStartEvent(flowId));
-                }
                 dbFlow = new DbFlow() {
                     Id = flowId,
                     Version = VersionGenerator.NextVersion(),
@@ -119,6 +137,16 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                     Data = Serialize(flow),
                 };
                 dbContext.Add(dbFlow);
+
+                // Any new flow requires a resume or start event
+                if (legacyFlow is not null) {
+                    if (legacyFlow.Step != LegacyFlowSteps.Starting)
+                        throw StandardError.Internal("LegacyFlow.Step should be 'Starting' for a new LegacyFlow.");
+
+                    context.Operation.AddEvent(new LegacyFlowStartEvent(flowId));
+                }
+                else
+                    context.Operation.AddEvent(new FlowResumeEvent(flowId));
             }
             else { // Update
                 VersionChecker.RequireExpected(dbFlow.Version, expectedVersion);
@@ -175,10 +203,12 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             return null; // Update cache
 
         var flow = Deserialize(data);
-        if (flow is LegacyFlow legacyFlow)
-            legacyFlow.Initialize(flowId, dbFlow!.Version, dbFlow.Step, dbFlow.HardResumeAt);
+        if (flow is ILegacyFlowImpl legacyFlowImpl)
+            legacyFlowImpl.Initialize(flowId, dbFlow!.Version, dbFlow.Step, dbFlow.HardResumeAt);
+        else if (flow is IFlowImpl flowImpl)
+            flowImpl.Initialize(flowId, dbFlow!.Version);
         else
-            flow.Initialize(flowId, dbFlow!.Version);
+            throw StandardError.Internal($"Invalid flow type: {flow.GetType()}");
         return flow;
     }
 

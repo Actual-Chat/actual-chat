@@ -43,15 +43,6 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
     [IgnoreDataMember, MemoryPackIgnore]
     public RetryDelaySeq FailureDelays { get; set; } = Defaults.FailureDelays;
 
-    public void Initialize(FlowId id, long version, Symbol step, Moment? hardResumeAt = null, LegacyFlowWorklet? worklet = null)
-    {
-        base.Initialize(id, version, worklet?.Host.Services);
-        _worklet = worklet;
-        Step = step;
-        HardResumeAt = hardResumeAt;
-        if (worklet != null)
-            OnInitialized();
-    }
 
     public override string ToString()
         => $"{GetType().Name}('{Id.Value}' @ {Step}, v.{Version.FormatVersion()})";
@@ -90,10 +81,22 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
         return transition;
     }
 
-    // Default steps
+    // Initialize
 
-    protected virtual void OnInitialized()
-    { }
+    void ILegacyFlowImpl.Initialize(FlowId id, long version, Symbol step, Moment? hardResumeAt, LegacyFlowWorklet? worklet)
+        => Initialize(id, version, step, hardResumeAt, worklet);
+    protected void Initialize(FlowId id, long version, Symbol step, Moment? hardResumeAt = null, LegacyFlowWorklet? worklet = null)
+    {
+        base.Initialize(id, version, worklet?.Host.Services);
+        _worklet = worklet;
+        Step = step;
+        HardResumeAt = hardResumeAt;
+    }
+
+    protected override Task Resume(CancellationToken cancellationToken)
+        => throw StandardError.Internal("Resume should never be called on a LegacyFlow.");
+
+    // Default steps
 
     protected abstract Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken);
 

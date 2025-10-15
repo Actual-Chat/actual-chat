@@ -1,5 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
-using FluentAssertions.Formatting;
+using AwesomeAssertions.Formatting;
 
 namespace ActualChat.Testing.Host.Assertion;
 

@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using FluentAssertions.Primitives;
+using AwesomeAssertions.Primitives;
 
 namespace ActualChat.Testing.Host.Assertion;
 

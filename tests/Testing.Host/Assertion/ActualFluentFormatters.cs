@@ -1,4 +1,4 @@
-using FluentAssertions.Formatting;
+using AwesomeAssertions.Formatting;
 
 // ReSharper disable InconsistentlySynchronizedField
 
@@ -48,12 +48,12 @@ public static class ActualFluentFormatters
     }
 
     private static void Add<T>() where T : IValueFormatter, new()
-        => FluentAssertions.Formatting.Formatter.AddFormatter(new T());
+        => AwesomeAssertions.Formatting.Formatter.AddFormatter(new T());
 
     private static void Remove<T>() where T : IValueFormatter
     {
-        var toRemove = FluentAssertions.Formatting.Formatter.Formatters.OfType<T>().ToList();
+        var toRemove = AwesomeAssertions.Formatting.Formatter.Formatters.OfType<T>().ToList();
         foreach (var formatter in toRemove)
-            FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
+            AwesomeAssertions.Formatting.Formatter.RemoveFormatter(formatter);
     }
 }

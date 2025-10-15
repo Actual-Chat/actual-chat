@@ -18,8 +18,6 @@ public sealed class FlowsServiceModule(IServiceProvider moduleServices)
         // Flows
         rpcHost.AddBackend<IFlows, FlowBackend>();
         services.AddSingleton(c => new FlowRegistry(c));
-        services.AddSingleton(c => new FlowEventForwarder(c));
-        rpcHost.Commander.AddHandlers<FlowEventForwarder>();
         services.AddFlows();
 
         if (isBackendClient)

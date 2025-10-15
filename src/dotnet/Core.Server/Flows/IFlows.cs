@@ -17,8 +17,8 @@ public interface IFlows : IComputeService, IBackendService
     Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken = default);
 
     // The `long` result in any of the methods below return is DbFlow/FlowData.Version
-    // Regular method!
-    Task<long> OnEvent(FlowId flowId, IFlowEvent evt, CancellationToken cancellationToken = default);
+    [CommandHandler]
+    Task<long> OnEvent(IFlowEvent command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<long> OnStore(Flows_Store command, CancellationToken cancellationToken = default);
 }
