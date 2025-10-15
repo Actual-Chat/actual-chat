@@ -85,13 +85,10 @@
                     if (_anonymousChat) {
                         <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
                             <i class="icon-question-mark-bubble text-xl"></i>
-                            <div class="btn-with-caption">
-                                <span class="c-title">New Anonymous chat</span>
-                                <span class="c-caption">
-                                    <span>with</span>
-                                    <span class="c-name">@authorName</span>
-                                </span>
-                            </div>
+                            <span class="c-title">
+                                <span>Chat with</span>
+                                <span class="c-name">@authorName</span>
+                            </span>
                         </Button>
                     } else {
                         <Button
@@ -108,21 +105,17 @@
                     if (m.EnableIncompleteUI) {
                         <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
                             <i class="icon-question-mark-bubble text-xl"></i>
-                            <div class="btn-with-caption">
-                                <span class="c-title">New Anonymous chat</span>
-                                <span class="c-caption">
-                                    <span>with</span>
-                                    <span class="c-name">@authorName</span>
-                                </span>
-                            </div>
+                            <span class="c-title">
+                                <span>Chat with</span>
+                                <span class="c-name">@authorName</span>
+                            </span>
                         </Button>
                     }
                 }
 
                 @if (m.EnableIncompleteUI) {
                     <div class="tile-wrapper">
-                        <div class="c-incut">
-                        @if (toggleValue) {
+                        <div class="c-incut @(toggleValue ? "show" : "")">
                             <div class="c-info">
                                 <i class="icon-alert-triangle text-lg text-warning"></i>
                                 <span>
@@ -130,7 +123,6 @@
                                     show real-time transcription. And you can reveal you real identity there at any moment.
                                 </span>
                             </div>
-                        }
                         </div>
 
                         <TileItem Click="@OnChatTypeChanged" Class="@tileCls">
@@ -143,7 +135,6 @@
                             <Right>
                                 <Toggle Class="mr-2"
                                         IsChecked="@toggleValue"
-                                        IsCheckedChanged="@OnChatTypeChanged"
                                         IsDisabled="@m.OnlyAnonymousChatAllowed"/>
                             </Right>
                         </TileItem>

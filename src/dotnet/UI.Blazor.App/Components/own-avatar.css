@@ -48,7 +48,7 @@ body.hoverable .default-avatar-btn:hover,
 }
 .avatar-btn > .c-content > .c-caption {
     @apply text-start;
-    @apply text-03 text-xs leading-3;
+    @apply text-03 text-xs font-normal leading-3;
 }
 .avatar-btn.delete-avatar-btn > .c-content > .c-text {
     @apply text-danger;
