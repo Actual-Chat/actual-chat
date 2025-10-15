@@ -178,6 +178,7 @@
     <PackageVersion Include="MimeKit" Version="4.5.0" />
     <PackageVersion Include="Mjml.Net" Version="4.8.0" />
     <PackageVersion Include="NATS.Net" Version="2.6.1" />
+    <PackageVersion Include="NAudio" Version="2.2.1" />
     <PackageVersion Include="Npgsql" Version="$(NpgsqlVersion)" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />

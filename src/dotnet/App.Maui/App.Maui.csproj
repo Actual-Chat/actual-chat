@@ -190,6 +190,7 @@
 <!--      <ExcludeAssets>runtime</ExcludeAssets>-->
 <!--    </PackageReference>-->
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
+    <PackageReference Include="NAudio" />
     <PackageReference Include="OpusSharp.Core" />
     <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
