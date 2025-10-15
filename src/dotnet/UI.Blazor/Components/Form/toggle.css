@@ -1,6 +1,7 @@
 .toggle {
     @apply flex-1 flex-x justify-end items-center gap-x-2;
     @apply overflow-hidden;
+    @apply cursor-pointer;
 }
 .toggle:hover {
     @apply opacity-90;
@@ -48,9 +49,6 @@
 }
 
 /* Hover */
-.toggle:not([data-input-disabled]) > .dash > .o {
-    @apply cursor-pointer;
-}
 
 /* Active/Focus - impossible, coz input is invisible */
 /*

@@ -30,12 +30,14 @@ body.hoverable .contact-selector-list-item:hover,
 }
 .contact-selector-badges {
     @apply flex-none flex-x flex-wrap gap-1;
-    @apply rounded-lg border-none;
-    @apply bg-square;
+    @apply p-1;
+    @apply border-t border-separator;
+    @apply bg-transparent;
     scrollbar-width: none;
 }
-.contact-selector-badges:has(.c-contact) {
-    @apply p-1;
+.contact-selector-badges:empty {
+    @apply p-0;
+    @apply border-none;
 }
 .contact-selector-badges > .c-contact {
     @apply relative;
@@ -44,7 +46,7 @@ body.hoverable .contact-selector-list-item:hover,
     @apply px-0.5;
     @apply rounded-lg border-none;
     @apply overflow-hidden;
-    @apply bg-toggle-circle;
+    @apply bg-[var(--highlighted)];
 }
 .contact-selector-badges > .c-contact,
 .contact-selector-badges > .c-contact * {
