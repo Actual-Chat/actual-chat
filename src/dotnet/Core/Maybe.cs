@@ -81,9 +81,19 @@ public partial class Maybe<T>(bool hasValue, T? valueOrDefault)
             : int.MinValue;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator ==(Maybe<T> left, Maybe<T> right) => left.Equals(right);
+    public static bool operator ==(Maybe<T>? left, Maybe<T>? right)
+    {
+        if (ReferenceEquals(left, right))
+            return true;
+
+        if (left is null || right is null)
+            return false;
+
+        return left.Equals(right);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator !=(Maybe<T> left, Maybe<T> right) => !left.Equals(right);
+    public static bool operator !=(Maybe<T>? left, Maybe<T>? right) => !(left == right);
 
     // Operators
 

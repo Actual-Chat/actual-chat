@@ -85,9 +85,19 @@ public partial class Choice<T, TAlt>(bool hasValue, T? valueOrDefault, TAlt? alt
             : AlternativeOrDefault?.GetHashCode() ?? 0;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator ==(Choice<T, TAlt> left, Choice<T, TAlt> right) => left.Equals(right);
+    public static bool operator ==(Choice<T, TAlt>? left, Choice<T, TAlt>? right)
+    {
+        if (ReferenceEquals(left, right))
+            return true;
+
+        if (left is null || right is null)
+            return false;
+
+        return left.Equals(right);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool operator !=(Choice<T, TAlt> left, Choice<T, TAlt> right) => !left.Equals(right);
+    public static bool operator !=(Choice<T, TAlt>? left, Choice<T, TAlt>? right) => !(left == right);
 
     // Operators
 
