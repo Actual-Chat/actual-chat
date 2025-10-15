@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
 
 <TileTopic Topic="Rendering Mode"/>
 <Tile Class="render-mode-tile">
@@ -7,6 +8,7 @@
 
         <FormBlock>
             <InputRadioGroup
+                TValue="@RenderModeKey"
                 Name="render-mode"
                 DisplayName="Rendering Mode"
                 @bind-Value="_formModel.ModeKey">
@@ -15,7 +17,7 @@
                     Class="@GetTileItemClass(RenderModeKey.Auto)"
                     Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Auto))">
                     <Icon>
-                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Auto"/>
+                        <FormRadio TValue="@RenderModeKey" Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Auto"/>
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.ServerModeFormId" Text="Auto" IsRequired="true"></Label>
@@ -30,7 +32,7 @@
                     Class="@GetTileItemClass(RenderModeKey.Server)"
                     Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Server))">
                     <Icon>
-                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Server"/>
+                        <FormRadio TValue="@RenderModeKey" Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Server"/>
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.ServerModeFormId" Text="Server-Side Rendering" IsRequired="true"></Label>
@@ -44,7 +46,7 @@
                     Class="@GetTileItemClass(RenderModeKey.Wasm)"
                     Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Wasm))">
                     <Icon>
-                        <FormRadio Id="@_formModel.WasmModeFormId" Value="@RenderModeKey.Wasm"/>
+                        <FormRadio TValue="@RenderModeKey" Id="@_formModel.WasmModeFormId" Value="@RenderModeKey.Wasm"/>
                     </Icon>
                     <Content>
                         <Label InputId="@_formModel.WasmModeFormId" Text="WebAssembly Client" IsRequired="true"></Label>

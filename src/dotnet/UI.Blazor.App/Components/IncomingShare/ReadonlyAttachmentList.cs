@@ -5,7 +5,7 @@ public sealed class ReadonlyAttachmentList : IAttachmentList
     private readonly List<Attachment> _attachments;
     public int Count => _attachments.Count;
     public IEnumerable<Attachment> Items => _attachments;
-    public event EventHandler? Changed;
+    public event EventHandler? Changed { add  {} remove { } }
 
     public ReadonlyAttachmentList(IReadOnlyCollection<Attachment> attachments)
         => _attachments = attachments.ToList();
