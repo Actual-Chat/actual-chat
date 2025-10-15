@@ -18,14 +18,14 @@ public class IncomingShareAfterSendMessageHandler(AppUIHub hub) : IAfterSendMess
             if (result.Error is OperationCanceledException)
                 return;
 
-            Log.LogError(result.Error, "1 Failed to post message for sharing");
+            Log.LogError(result.Error, "Failed to post message for sharing");
             attachments = null;
         }
         else
             attachments = result.Value?.Attachments;
 
         if (attachments is null || attachments.Length == 0) {
-            var info1 = $"2 Failed to share {expectedUploadedFilesNumber} files";
+            var info1 = $"Failed to share {expectedUploadedFilesNumber} files";
             ToastUI.Show(info1, "icon-alert-circle", ToastDismissDelay.Long);
             return;
         }
@@ -40,6 +40,6 @@ public class IncomingShareAfterSendMessageHandler(AppUIHub hub) : IAfterSendMess
         if (expectedUploadedFilesNumber > 1)
             fileText += "s";
         info = info + " " + fileText + " shared";
-        ToastUI.Show("3 " + info, "icon-checkmark-circle", ToastDismissDelay.Short);
+        ToastUI.Show(info, "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 }

@@ -179,7 +179,7 @@ public class FileUploaderService
 
         private void TrackOperation(IFileUploadOperation operation)
         {
-            var task = operation.ProgressTracker .Task;
+            var task = operation.ProgressTracker.Task;
             _ = task.ContinueWith(_ => OnOperationCompleted(operation), TaskScheduler.Default);
             if (task.IsCompleted)
                 OnOperationCompleted(operation);

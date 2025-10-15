@@ -58,8 +58,9 @@ public class WeakValueTable<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValu
 
     private void Cleanup(bool force)
     {
+        const int cleanupThreshold = 20;
         if (!force) {
-            if (_cleanupIndex < 20)
+            if (_cleanupIndex < cleanupThreshold)
                 return;
 
             _cleanupIndex++;

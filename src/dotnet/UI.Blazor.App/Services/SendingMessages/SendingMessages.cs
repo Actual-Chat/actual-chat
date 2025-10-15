@@ -526,13 +526,13 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         var ownAuthorId = ownAuthor.Id;
         var entryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
         var counter = 0;
-        const int maxCount = 200; // View the last 200 messages
+        const int maxResendScanCount = 200; // Scan the last 200 messages
         await foreach (var chatEntry1 in entryReader.ReadReverse(range, cancellationToken).ConfigureAwait(false)) {
             if (chatEntry1.AuthorId == ownAuthorId && OrdinalEquals(chatEntry1.ClientId, clientId))
                 return chatEntry1;
 
             counter++;
-            if (counter >= maxCount)
+            if (counter >= maxResendScanCount)
                 break;
         }
         return null;
