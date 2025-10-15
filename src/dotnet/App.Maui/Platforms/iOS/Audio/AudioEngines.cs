@@ -7,7 +7,7 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AudioEngines : IAsyncDisposable
+public class AudioEngines : ProcessorBase
 {
     private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
     private readonly SharedResourcePool<AudioMode, AudioEngine> _pool;
@@ -38,7 +38,7 @@ public class AudioEngines : IAsyncDisposable
                 NSNotificationCenter.DefaultCenter.RemoveObserver);
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async Task DisposeAsyncCore()
     {
         _interruptionSubscription.DisposeSilently();
         _configurationChangeSubscription.DisposeSilently();
@@ -46,6 +46,7 @@ public class AudioEngines : IAsyncDisposable
         _tunes.DisposeSilently();
         _playback.DisposeSilently();
         _recording.DisposeSilently();
+        await base.DisposeAsyncCore();
     }
 
     public async ValueTask<IResourceLease<AudioEngine>> Rent(AudioMode mode)
@@ -57,7 +58,7 @@ public class AudioEngines : IAsyncDisposable
         if (mode > _modes.Max())
         {
             Pause();
-            await AudioSession.Reconfigure(mode).ConfigureAwait(false);
+            await AudioSession.Reconfigure(mode).WaitAsync(cancellationToken).ConfigureAwait(false);
             Resume(mode);
         }
 
@@ -72,7 +73,7 @@ public class AudioEngines : IAsyncDisposable
 
     private async ValueTask ReleaseEngine(AudioMode mode, AudioEngine engine)
     {
-        using var _1 = await _lock.Lock().ConfigureAwait(false);
+        using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
         if (mode is AudioMode.Recording) {
             engine.Input.Reset();
             engine.Stop();
@@ -114,7 +115,7 @@ public class AudioEngines : IAsyncDisposable
                     e.Reason,
                     e.WasSuspended,
                     e.Option);
-                using var _ = await _lock.Lock().ConfigureAwait(false);
+                using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
                 switch (e.InterruptionType) {
                 case AVAudioSessionInterruptionType.Ended:
                     if (e.Option == AVAudioSessionInterruptionOptions.ShouldResume)
