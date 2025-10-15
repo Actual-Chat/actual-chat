@@ -67,7 +67,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         }
     }
 
-    public ValueTask<(string Key, byte[] Value)[]> GetAll(CancellationToken cancellationToken = default)
+    public ValueTask<(string Key, byte[] Value)[]> ListAllEntries(CancellationToken cancellationToken = default)
     {
         if (_connectionPool == null)
             return ValueTask.FromResult(Array.Empty<(string Key, byte[] Value)>());

@@ -62,7 +62,7 @@ public class SendMessageRequestsRepo
     public async Task<IEnumerable<KeyValuePair<string, SendMessageRequestEntry?>>> GetStored(CancellationToken cancellationToken)
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
-        return (await _internal.GetAll<SendMessageRequestEntry>(cancellationToken).ConfigureAwait(false))
+        return (await _internal.ListAllEntries<SendMessageRequestEntry>(cancellationToken).ConfigureAwait(false))
             .Select(c => new KeyValuePair<string, SendMessageRequestEntry?>(c.Item1, c.Item2))
             .ToArray();
     }
