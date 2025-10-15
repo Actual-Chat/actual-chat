@@ -5,7 +5,7 @@ import { Log } from 'logging';
 const { debugLog, errorLog } = Log.get('InteractiveUI');
 
 export class InteractiveUI {
-    private static backendRef: DotNet.DotNetObject = null;
+    private static backendRef: DotNet.DotNetObject = null!;
     private static _backendIsInteractive = false;
 
     public static init(backendRef: DotNet.DotNetObject) {

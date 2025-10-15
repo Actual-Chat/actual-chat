@@ -1,6 +1,7 @@
+@inherits ComputedStateComponent<UIHub, string>
+@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<UIHub, string>
 @implements IModalView<DemandUserInteractionModal.Model>
 @{
     var operations = State.Value;
@@ -36,6 +37,9 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
+            return;
+
+        if (HostInfo.HostKind is HostKind.MauiApp)
             return;
 
         await JS.InvokeVoidAsync(JSInitMethod);
