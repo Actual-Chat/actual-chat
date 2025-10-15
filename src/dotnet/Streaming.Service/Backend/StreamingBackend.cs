@@ -25,10 +25,9 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private IServiceProvider Services { get; }
+    private AudioSettings AudioSettings { get; }
     [field: AllowNull, MaybeNull]
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
-    [field: AllowNull, MaybeNull]
-    private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
     [field: AllowNull, MaybeNull]
     private AudioSegmentSaver AudioSegmentSaver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
     [field: AllowNull, MaybeNull]
@@ -49,6 +48,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     public StreamingBackend(IServiceProvider services)
     {
         Services = services;
+        AudioSettings = services.GetRequiredService<AudioSettings>();
 
         var typeFullName = GetType().FullName;
         _audioStreams = new StreamStore<byte[]> {
