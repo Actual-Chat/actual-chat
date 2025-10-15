@@ -30,7 +30,7 @@ public class UploadSessionRepo
         => _internal.Get<UploadSession>(Key(sessionId)).AsTask();
 
     public async Task<IEnumerable<KeyValuePair<string, UploadSession>>> GetAll()
-        => (await _internal.GetAll<UploadSession>().ConfigureAwait(false))
+        => (await _internal.ListAllEntries<UploadSession>().ConfigureAwait(false))
             .Select(c => new KeyValuePair<string, UploadSession>(c.Item1, c.Item2))
             .ToArray();
 

@@ -23,7 +23,7 @@ public class TestBatchingKvasBackend : IBatchingKvasBackend
         return ValueTask.FromResult(result);
     }
 
-    public ValueTask<(string Key, byte[] Value)[]> GetAll(CancellationToken cancellationToken = default)
+    public ValueTask<(string Key, byte[] Value)[]> ListAllEntries(CancellationToken cancellationToken = default)
         => ValueTask.FromResult(Storage.Select(c => new ValueTuple<string, byte[]>(c.Key.Value, c.Value)).ToArray());
 
     public Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)

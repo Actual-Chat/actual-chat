@@ -54,7 +54,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
         return result;
     }
 
-    public async ValueTask<(string Key, byte[] Value)[]> GetAll(CancellationToken cancellationToken = default)
+    public async ValueTask<(string Key, byte[] Value)[]> ListAllEntries(CancellationToken cancellationToken = default)
     {
         if (_isDisabled)
             return Array.Empty<(string Key, byte[] Value)>();
