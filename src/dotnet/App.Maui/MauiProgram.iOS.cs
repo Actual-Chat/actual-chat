@@ -32,6 +32,7 @@ public static partial class MauiProgram
         services.AddScoped<ResamplerFactory>(c => new ResamplerFactory(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c.UIHub()));
         services.AddScoped<AudioEngines>(c => new AudioEngines(c.AppUIHub()));
+        services.AddScoped<Haptics>(c => new Haptics(c.AppUIHub()));
         services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMediaSaver>(c => new IosMediaSaver(c.UIHub()));
