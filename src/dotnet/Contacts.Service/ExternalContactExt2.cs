@@ -3,7 +3,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Contacts;
 
-internal static class ExternalContactExt
+internal static class ExternalContactExt2
 {
     public static async Task<UserId?> FindUser(IAccountsBackend accountsBackend, string externalContactLinkHashValue, CancellationToken cancellationToken)
     {
