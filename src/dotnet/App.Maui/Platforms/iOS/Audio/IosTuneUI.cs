@@ -49,18 +49,17 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
     protected override async Task Vibrate(Tune tune)
     {
         await Task.Yield();
-        // TODO(FC): uncomment and fix
-        // try {
-        //     if (HapticEngine.IsMutedForHaptics)
-        //         return;
-        //
-        //     var player = GetPlayer(tune);
-        //     player.Start(0, out var error);
-        //     error.Assert();
-        // }
-        // catch (Exception e) {
-        //     Log.LogError(e, "Failed to vibrate '{Tune}'", tune);
-        // }
+        try {
+            if (HapticEngine.IsMutedForHaptics)
+                return;
+
+            var player = GetPlayer(tune);
+            player.Start(0, out var error);
+            error.Assert();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to vibrate '{Tune}'", tune);
+        }
     }
 
     // Private methods
