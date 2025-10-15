@@ -7,9 +7,9 @@
     if (!m.IsVisible)
         return;
 
-    var peerProfile = m.ChatRouletteInfo!.PeerProfile;
+    var peerProfile = m.ChatRouletteInfo.PeerProfile;
     var preferences = peerProfile.Preferences.Preferences;
-    var countryName = preferences.Country.Title.NullIfEmpty() ?? "---";
+    var countryName = preferences.Country?.Title.NullIfEmpty() ?? "---";
     var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
 }
 
@@ -95,7 +95,7 @@
             return new Model(false);
 
         var info = await Roulette.GetProfiles(Session, chat.Id, cancellationToken).ConfigureAwait(false);
-        if (info is null)
+        if (info is null || info.OwnProfile is null || info.PeerProfile is null)
             return new Model(false);
 
         return new Model(true, new ChatRouletteInfo(info.PeerProfile, info.OwnProfile));
@@ -114,7 +114,10 @@
 
     // Nested classes
 
-    public record Model(bool IsVisible, ChatRouletteInfo? ChatRouletteInfo = null);
+    public record Model(
+        [property:MemberNotNullWhen(true, nameof(Model.ChatRouletteInfo))]
+        bool IsVisible,
+        ChatRouletteInfo? ChatRouletteInfo = null);
 
-    public sealed record ChatRouletteInfo(Profile? PeerProfile, Profile? OwnProfile);
+    public sealed record ChatRouletteInfo(Profile PeerProfile, Profile OwnProfile);
 }

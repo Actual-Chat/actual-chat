@@ -3,35 +3,37 @@
 @{
     var m = State.Value;
 }
-
 @if (m.ShowSkeletons) {
     <RightPanelSkeleton />
     return;
+}
+@{
+    var chat = m.Chat;
 }
 
 <div class="right-panel">
     <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
         @if (m.ShowSearchPanel) {
-            <AISearchPanel Chat="@Chat"/>
+            <AISearchPanel Chat="@chat"/>
         }
-        <RightPanelHeader Chat="@Chat" />
+        <RightPanelHeader Chat="@chat" />
         <div class="c-panel-content">
-            <RightPanelChatInfo Chat="@Chat"/>
+            <RightPanelChatInfo Chat="@chat"/>
             <div class="c-panel-tabs">
                 @if (m.ShowTabs) {
                     <TabPanel
-                        @key="@Chat.Id.Value"
+                        @key="@chat.Id.Value"
                         TabsClass="left-panel-tabs wide-left-panel-tabs"
                         BottomHill="true">
 
                         @if (m.ShowMembersTab) {
                             <Tab @key="@("members")" Id="members" Title="Members" Order="0">
-                                <AuthorList ChatId="@Chat.Id"/>
+                                <AuthorList ChatId="@chat.Id"/>
                             </Tab>
                         }
                         @if (m.ShowThreads) {
                             <Tab @key="@("threads")" Id="threads" Title="Threads" Order="1">
-                                <ThreadList ChatId="@Chat.Id"/>
+                                <ThreadList ChatId="@chat.Id"/>
                             </Tab>
                         }
                         @if (m.EnableIncompleteUI) {
@@ -92,7 +94,9 @@
         public static Model Loading = new();
         public static Model Skeletons = new() { ShowSkeletons = true };
 
+        [MemberNotNullWhen(false, nameof(Chat))]
         public bool ShowSkeletons { get; init; }
+        public Chat? Chat { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
         public bool ShowMembersTab { get; init; }

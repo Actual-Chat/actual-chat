@@ -16,7 +16,7 @@
 
 @if (m.ChatRouletteInfo != null) {
     var preferences = m.ChatRouletteInfo.PeerProfile.Preferences.Preferences;
-    var countryName = preferences.Country.Title.NullIfEmpty() ?? "---";
+    var countryName = preferences.Country?.Title.NullIfEmpty() ?? "---";
     var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
     <div class="cr-item">
         <div class="c-center">

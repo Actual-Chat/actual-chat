@@ -29,7 +29,8 @@ public class RightPanel
             if (_storedState.WhenRead.IsCompletedSuccessfully)
                 isVisibleInitState = _storedState.IsVisible;
             else
-                Log.LogWarning("Right panel stored state was not preloaded");
+                // False warning CS8604 detection
+                Log!.LogWarning("Right panel stored state was not preloaded");
         }
         _isVisible = stateFactory.NewMutable(isVisibleInitState, StateCategories.Get(GetType(), nameof(IsVisible)));
         _isSearchMode = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchMode)));

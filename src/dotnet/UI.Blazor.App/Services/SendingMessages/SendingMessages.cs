@@ -277,7 +277,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 await CleanupUploadSessions(entry.Uuid, uploadSessionIds).ConfigureAwait(false);
                 continue;
             }
-            var resultSource = TaskCompletionSourceExt.New<ChatEntry>();
+            var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
             _ = PostInternal(requestInternal, resultSource, cancellationToken);
             _ = BackgroundTask.Run(async () => {
                 try {
