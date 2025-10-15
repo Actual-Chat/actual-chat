@@ -117,12 +117,12 @@ public class AudioEngines : ProcessorBase
                     e.Option);
                 using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
                 switch (e.InterruptionType) {
+                case AVAudioSessionInterruptionType.Began:
+                    Pause();
+                    break;
                 case AVAudioSessionInterruptionType.Ended:
                     if (e.Option == AVAudioSessionInterruptionOptions.ShouldResume)
                         Resume(_modes.Max());
-                    break;
-                case AVAudioSessionInterruptionType.Began:
-                    Pause();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
