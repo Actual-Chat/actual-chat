@@ -10,10 +10,10 @@ namespace ActualChat;
 #pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
-[JsonConverter(typeof(StringIdentifierJsonConverter<UserId>))]
-[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<UserId>))]
-[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<UserId>))]
-[TypeConverter(typeof(StringIdentifierTypeConverter<UserId>))]
+[JsonConverter(typeof(StringIdentifierJsonConverter<ExplicitNotificationId>))]
+[Newtonsoft.Json.JsonConverter(typeof(StringIdentifierNewtonsoftJsonConverter<ExplicitNotificationId>))]
+[MessagePackFormatter(typeof(StringIdentifierMessagePackFormatter<ExplicitNotificationId>))]
+[TypeConverter(typeof(StringIdentifierTypeConverter<ExplicitNotificationId>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public sealed partial class ExplicitNotificationId : StringIdentifier, IStringIdentifier<ExplicitNotificationId>
 {
