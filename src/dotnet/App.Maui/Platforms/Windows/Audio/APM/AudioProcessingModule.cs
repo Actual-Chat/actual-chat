@@ -216,6 +216,15 @@ internal static partial class NativeMethods
     internal static partial void webrtc_apm_config_set_noise_suppression(IntPtr config, int enabled, int level);
 
     [LibraryImport(DllName)]
+    internal static partial void webrtc_apm_config_set_gain_controller1(
+        IntPtr config,
+        int enabled,
+        GainControlMode gainControlMode,
+        int targetLevelDbfs,
+        int compressionGainDb,
+        int enableLimiter);
+
+    [LibraryImport(DllName)]
     internal static partial void webrtc_apm_config_set_gain_controller2(IntPtr config, int enabled);
 
     [LibraryImport(DllName)]

@@ -281,7 +281,6 @@ internal sealed class WindowsAudioPlaybackEngine(
 
         var hasData = pcmOwner != null;
         var bytes = playSamples * sizeof(float);
-        // using var __ = pcmOwner;
         using var audioFrame = new AudioFrame((uint)bytes);
         unsafe {
             // Lock should be located within scope of the using block to allow AddFrame call to succeed
@@ -299,6 +298,7 @@ internal sealed class WindowsAudioPlaybackEngine(
                 silence.Fill(0);
             }
             else {
+                using var __ = pcmOwner;
                 var src = pcmOwner.Memory.Span;
                 var dst = new Span<float>((void*)dataPtr, playSamples);
                 src.CopyTo(dst);

@@ -275,6 +275,7 @@ public static partial class Constants
         public const int StreamingChannelCapacity = 1024;
         public const int OpusFrameDurationMs = 20;
         public const int VadFrameDurationMs = 32;
+        public const int ApmFrameDurationMs = 10;
         public const int OpusFrameLength = RecordingSampleRate / 1000 * OpusFrameDurationMs;
         public const int VadFrameLength = RecordingSampleRate / 1000 * VadFrameDurationMs;
         public const int PcmFrameLength = PlaybackSampleRate / 1000 * OpusFrameDurationMs;
