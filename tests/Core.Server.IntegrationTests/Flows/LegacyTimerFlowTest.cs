@@ -8,7 +8,8 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public class LegacyTimerFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(LegacyTimerFlowTest)}", TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
-            services.AddFlows().Add<LegacyTimerFlow>();
+            var flows = services.AddFlows(useMasterFlows: false);
+            flows.Add<LegacyTimerFlow>();
         },
     }, @out)
 {

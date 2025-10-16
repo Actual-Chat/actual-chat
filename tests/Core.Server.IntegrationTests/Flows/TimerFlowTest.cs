@@ -5,7 +5,7 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 public class TimerFlowTest(ITestOutputHelper @out)
-    : AppHostTestBase($"x-{nameof(LegacyTimerFlowTest)}", TestAppHostOptions.Default with {
+    : AppHostTestBase($"x-{nameof(TimerFlowTest)}", TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
             var flows = services.AddFlows(useMasterFlows: false, useLegacyFlows: false);
             flows.Add<TimerFlow>();

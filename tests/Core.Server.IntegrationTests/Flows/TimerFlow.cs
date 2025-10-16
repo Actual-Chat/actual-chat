@@ -5,7 +5,6 @@ using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-#pragma warning disable CS1998
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class TimerFlow : Flow<Unit>
 {
