@@ -4,20 +4,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Contacts;
 
-public class ExternalContactHashesBackend(
-    IDbEntityResolver<string, DbExternalContactsHash> externalContactsHashResolver,
-    IServiceProvider services) : DbServiceBase<ContactsDbContext>(services), IExternalContactHashesBackend
+public class ExternalContactHashesBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services), IExternalContactHashesBackend
 {
+    private IDbEntityResolver<string, DbExternalContactsHash> DbDbExternalContactsHashResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbExternalContactsHash>>();
+
     // [ComputeMethod]
     public virtual async Task<ExternalContactsHash?> Get(UserDeviceId userDeviceId, CancellationToken cancellationToken)
     {
-        userDeviceId.Require();
-
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbExternalContactsHash = await externalContactsHashResolver.Get(userDeviceId.Value, cancellationToken).ConfigureAwait(false);
-        return dbExternalContactsHash?.ToModel();
+        var dbExternalContactsHash = await DbDbExternalContactsHashResolver.Get(userDeviceId.Value, cancellationToken).ConfigureAwait(false);
+        var externalContactsHash = dbExternalContactsHash?.ToModel();
+        // Keep logging for debugging VersionMismatchException
+        Log.LogInformation("<- Get: userDeviceId={UserDeviceId}, externalContactsHash={ExternalContactsHash}", userDeviceId, externalContactsHash);
+        return externalContactsHash;
     }
 
     // [CommandHandler]
@@ -31,6 +30,10 @@ public class ExternalContactHashesBackend(
             return null!;
         }
 
+        // Keep logging for debugging VersionMismatchException
+        Log.LogInformation("-> OnChange: userDeviceId={UserDeviceId}, expectedVersion={ExpectedVersion}, change={Change}",
+            userDeviceId, expectedVersion, change);
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -39,6 +42,8 @@ public class ExternalContactHashesBackend(
             .ConfigureAwait(false);
         var existing = dbHash?.ToModel();
         var now = Clocks.SystemClock.Now;
+        // Keep logging for debugging VersionMismatchException
+        Log.LogInformation("-> OnChange: existing={Existing}", existing);
 
         if (change.IsCreate(out var hash)) {
             if (existing != null)
@@ -60,7 +65,6 @@ public class ExternalContactHashesBackend(
                 ModifiedAt = now,
             };
             dbHash.UpdateFrom(hash);
-            dbContext.ExternalContactsHashes.Update(dbHash);
         }
         else {
             // Remove
