@@ -12,33 +12,35 @@ namespace ActualChat.Flows;
 public interface IFlows : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken = default);
+    Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken);
     // Regular method!
-    Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken = default);
+    Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken);
 
     // The `long` result in any of the methods below return is DbFlow/FlowData.Version
     [CommandHandler]
     Task<long> OnEvent(IFlowEvent command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<long> OnStore(Flows_Store command, CancellationToken cancellationToken = default);
+    Task<long> OnStore(Flows_Store command, CancellationToken cancellationToken);
 }
 
-// This is a special command always executed locally. It is never sent to remote peers.
-// Search for "MeshRefResolvers.Register<Flows_Store>" to see how it works.
+// This command:
+// - Is guaranteed to always run locally (see the `IHasNodeRef` implementation),
+//   that's why a part of fields there are non-serializable.
+// - Doesn't run invalidation block (it's an `IDelegatingCommand`).
 // ReSharper disable once InconsistentNaming
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
 public partial record Flows_Store(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] FlowId FlowId,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] long? ExpectedVersion = null
-) : ICommand<long>, IBackendCommand, IHasShardKey<FlowId>, INotLogged
+) : IDelegatingCommand<long>, IBackendCommand, IHasNodeRef, INotLogged
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Flow? Flow { get; init; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public OperationEvent[]? AddEvents { get; init; }
+    public OperationEvent[]? Events { get; init; }
 
-    // IHasShardKey<FlowId>
+    // IHasNodeRef implementation - always routes the command to the local node
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public FlowId ShardKey => FlowId;
+    NodeRef IHasNodeRef.NodeRef => NodeRef.ThisNodeAlias;
 }

@@ -112,10 +112,10 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
             shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
         try {
             if (command.HasDelay(Clock.Now, out var delay)) {
-                activity?.SetStatus(ActivityStatusCode.Ok, $"Postponed for {delay}");
+                activity?.SetStatus(ActivityStatusCode.Ok, $"Postponed for {delay.ToShortString()}");
                 activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
                 // ReSharper disable once PossiblyMistakenUseOfCancellationToken
-                await MarkPostponed(shardIndex, message, queuedCommand, delay.Value, cancellationToken).ConfigureAwait(false);
+                await MarkPostponed(shardIndex, message, queuedCommand, delay, cancellationToken).ConfigureAwait(false);
                 DebugLog?.LogDebug(
                     "Queued {Kind} #{Uuid} postponed: {Command} after {Time}",
                     kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);

@@ -1,4 +1,5 @@
 using ActualChat.Flows.Infrastructure;
+using ActualChat.Time;
 using ActualLab.CommandR.Operations;
 using MemoryPack;
 
@@ -15,7 +16,14 @@ public sealed partial record LegacyFlowResumeEvent(
 ) : ILegacyFlowControlEvent, IHasDelayUntil
 {
     public override string ToString()
-        => $"{nameof(LegacyFlowResumeEvent)}(`{FlowId}`{(IsHardResume ? $", {nameof(IsHardResume)} = true" : "")}{(Tag != null ? $", '{Tag}'" : "")}{(DelayUntil != default ? $", {nameof(DelayUntil)} = {DelayUntil}" : "")}{(MaxLastRunAt != null ? $", {nameof(MaxLastRunAt)} = {MaxLastRunAt}" : "")})";
+    {
+        var isHardResumePart = IsHardResume ? $", {nameof(IsHardResume)} = true" : "";
+        var tagPart = Tag != null ? $", '{Tag}'" : "";
+        var delayUntilPart = DelayUntil != default ? $", {nameof(DelayUntil)} = {DelayUntil}" : "";
+        var maxLastRunAtPart = MaxLastRunAt != null ? $", {nameof(MaxLastRunAt)} = {MaxLastRunAt}" : "";
+        return
+            $"{nameof(LegacyFlowResumeEvent)}(`{FlowId}`{isHardResumePart}{tagPart}{delayUntilPart}{maxLastRunAtPart})";
+    }
 
     public Symbol GetNextStep(LegacyFlow flow)
     {

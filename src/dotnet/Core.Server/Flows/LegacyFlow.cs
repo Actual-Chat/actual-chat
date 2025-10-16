@@ -1,6 +1,7 @@
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Flows.Internal;
 using ActualLab.CommandR.Operations;
+using ActualLab.Diagnostics;
 using ActualLab.Versioning;
 using MemoryPack;
 
@@ -19,13 +20,19 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
     private LegacyFlowWorklet? _worklet;
 
     // ILegacyFlowImpl
-
     FlowHost ILegacyFlowImpl.Host => Worklet.Host;
     LegacyFlowWorklet ILegacyFlowImpl.Worklet => Worklet;
     LegacyFlowEventBin ILegacyFlowImpl.Event => Event;
     protected FlowHost Host => Worklet.Host;
     protected LegacyFlowWorklet Worklet => RequireWorklet();
     protected LegacyFlowEventBin Event { get; private set; } = null!;
+
+    // Most useful service shortcuts
+    protected IServiceProvider Services => Host.Services;
+    protected MomentClockSet Clocks => Host.Clocks;
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Services.LogFor(GetType());
+    protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     // Persisted to the DB directly
     [IgnoreDataMember, MemoryPackIgnore]
@@ -42,7 +49,6 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
     public TimeSpan KeepAliveFor { get; set; } = Defaults.KeepAliveFor;
     [IgnoreDataMember, MemoryPackIgnore]
     public RetryDelaySeq FailureDelays { get; set; } = Defaults.FailureDelays;
-
 
     public override string ToString()
         => $"{GetType().Name}('{Id.Value}' @ {Step}, v.{Version.FormatVersion()})";
@@ -87,13 +93,13 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
         => Initialize(id, version, step, hardResumeAt, worklet);
     protected void Initialize(FlowId id, long version, Symbol step, Moment? hardResumeAt = null, LegacyFlowWorklet? worklet = null)
     {
-        base.Initialize(id, version, worklet?.Host.Services);
+        base.Initialize(id, version);
         _worklet = worklet;
         Step = step;
         HardResumeAt = hardResumeAt;
     }
 
-    protected override Task Resume(CancellationToken cancellationToken)
+    protected override Task Resume(FlowRuntime runtime, CancellationToken cancellationToken)
         => throw StandardError.Internal("Resume should never be called on a LegacyFlow.");
 
     // Default steps
@@ -225,9 +231,10 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
         if (!transition.EffectiveMustStore)
             return;
 
+        // Always runs locally
         var storeCommand = new Flows_Store(Id, Version) {
             Flow = Clone(),
-            AddEvents = transition.Events.IsEmpty ? null : transition.Events.ToArray(),
+            Events = transition.Events.IsEmpty ? null : transition.Events.ToArray(),
         };
         Version = await Host.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
     }
