@@ -61,6 +61,9 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
 
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
+        if (!Registry.UseLegacyFlows)
+            return;
+
         var shard = new FlowHostShard(this, shardIndex, cancellationToken);
 
         // Expose shard

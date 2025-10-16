@@ -53,7 +53,14 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
     public override string ToString()
         => $"{GetType().Name}('{Id.Value}' @ {Step}, v.{Version.FormatVersion()})";
 
-    public virtual async Task<LegacyFlowTransition> ProcessEvent(IFlowEvent evt, CancellationToken cancellationToken)
+    public override Flow Clone()
+    {
+        var clone = (LegacyFlow)base.Clone();
+        clone._worklet = null;
+        return clone;
+    }
+
+    public async Task<LegacyFlowTransition> ProcessEvent(IFlowEvent evt, CancellationToken cancellationToken)
     {
         Event = new LegacyFlowEventBin(this, evt);
         var step = Step;
@@ -89,18 +96,18 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
 
     // Initialize
 
-    void ILegacyFlowImpl.Initialize(FlowId id, long version, Symbol step, Moment? hardResumeAt, LegacyFlowWorklet? worklet)
-        => Initialize(id, version, step, hardResumeAt, worklet);
-    protected void Initialize(FlowId id, long version, Symbol step, Moment? hardResumeAt = null, LegacyFlowWorklet? worklet = null)
+    void ILegacyFlowImpl.SetProperties(FlowId id, long version, Symbol step, Moment? hardResumeAt, LegacyFlowWorklet? worklet)
+        => SetProperties(id, version, step, hardResumeAt, worklet);
+    protected void SetProperties(FlowId id, long version, Symbol step, Moment? hardResumeAt = null, LegacyFlowWorklet? worklet = null)
     {
-        base.Initialize(id, version);
+        base.SetProperties(id, version, null);
         _worklet = worklet;
         Step = step;
         HardResumeAt = hardResumeAt;
     }
 
     protected override Task Resume(FlowRuntime runtime, CancellationToken cancellationToken)
-        => throw StandardError.Internal("Resume should never be called on a LegacyFlow.");
+        => throw StandardError.Internal($"{nameof(Resume)} should never be called on a {nameof(LegacyFlow)}.");
 
     // Default steps
 
@@ -236,7 +243,8 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
             Flow = Clone(),
             Events = transition.Events.IsEmpty ? null : transition.Events.ToArray(),
         };
-        Version = await Host.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
+        var version = await Host.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
+        ((IFlowImpl)this).Version = version;
     }
 
     // Private methods

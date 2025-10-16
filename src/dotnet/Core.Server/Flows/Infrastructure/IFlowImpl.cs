@@ -2,6 +2,9 @@ namespace ActualChat.Flows.Infrastructure;
 
 public interface IFlowImpl : IHasId<FlowId>
 {
-    void Initialize(FlowId id, long version);
+    long Version { get; set; }
+    IResult? UntypedResult { get; set; }
+
+    void SetProperties(FlowId id, long version, IResult? untypedResult);
     Task Resume(FlowRuntime runtime, CancellationToken cancellationToken);
 }

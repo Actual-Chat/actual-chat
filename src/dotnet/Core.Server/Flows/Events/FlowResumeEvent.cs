@@ -7,10 +7,15 @@ namespace ActualChat.Flows;
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
 public sealed partial record FlowResumeEvent(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] FlowId FlowId,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] Moment DelayUntil = default,
-    [property: DataMember(Order = 2), MemoryPackOrder(2)] TimeSpan DelayQuanta = default
+    [property: DataMember(Order = 10), MemoryPackOrder(10)] Moment DelayUntil = default,
+    [property: DataMember(Order = 11), MemoryPackOrder(11)] TimeSpan DelayQuanta = default,
+    [property: DataMember(Order = 20), MemoryPackOrder(20)] bool MustReset = false
 ) : IFlowEvent, IHasDelayUntil
 {
     public override string ToString()
-        => $"{nameof(FlowResumeEvent)}(`{FlowId}`{(DelayUntil != default ? $", {nameof(DelayUntil)} = {DelayUntil}" : "")})";
+    {
+        var delayUntilPart = DelayUntil != default ? $", {nameof(DelayUntil)} = {DelayUntil}" : "";
+        var mustRestartPart = MustReset ? $", {nameof(MustReset)} = true" : "";
+        return $"{nameof(FlowResumeEvent)}(`{FlowId}`{delayUntilPart}{mustRestartPart})";
+    }
 }

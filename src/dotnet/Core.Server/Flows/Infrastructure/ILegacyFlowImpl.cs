@@ -5,8 +5,10 @@ public interface ILegacyFlowImpl : IFlowImpl
     FlowHost Host { get; }
     LegacyFlowWorklet Worklet { get; }
     LegacyFlowEventBin Event { get; }
+    Symbol Step { get; }
+    Moment? HardResumeAt { get; }
 
-    void Initialize(
+    void SetProperties(
         FlowId id,
         long version,
         Symbol step,

@@ -5,25 +5,25 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-public class CoreFlowTest(ITestOutputHelper @out)
-    : AppHostTestBase($"x-{nameof(CoreFlowTest)}", TestAppHostOptions.Default with {
+public class LegacyTimerFlowTest(ITestOutputHelper @out)
+    : AppHostTestBase($"x-{nameof(LegacyTimerFlowTest)}", TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
-            services.AddFlows().Add<TimerFlow>();
+            services.AddFlows().Add<LegacyTimerFlow>();
         },
     }, @out)
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task TimerFlowTest()
+    public async Task BasicTest()
     {
         using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
 
-        var f0 = await flows.Get<TimerFlow>("f0,3");
+        var f0 = await flows.Get<LegacyTimerFlow>("f0,3");
         f0.Should().NotBeNull();
 
-        var f1 = await flows.Get<TimerFlow>("f1,2");
+        var f1 = await flows.Get<LegacyTimerFlow>("f1,2");
         f1.Should().NotBeNull();
 
         await Task.WhenAll(
@@ -32,13 +32,13 @@ public class CoreFlowTest(ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task KillFlowTest()
+    public async Task KillTest()
     {
         using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
         var queues = h.Services.GetRequiredService<IQueues>();
 
-        var f0 = await flows.Get<TimerFlow>("f0,5");
+        var f0 = await flows.Get<LegacyTimerFlow>("f0,5");
         f0.Should().NotBeNull();
 
         // Waiting for the RemainingCount to hit 3
@@ -61,13 +61,13 @@ public class CoreFlowTest(ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task ResetFlowTest()
+    public async Task ResetTest()
     {
         using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
         var queues = h.Services.GetRequiredService<IQueues>();
 
-        var f0 = await flows.Get<TimerFlow>("f0,5");
+        var f0 = await flows.Get<LegacyTimerFlow>("f0,5");
         f0.Should().NotBeNull();
 
         // Waiting for the RemainingCount to hit 3
