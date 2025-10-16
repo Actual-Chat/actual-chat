@@ -344,6 +344,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "opensearch", "opensearch", 
 		services\opensearch\opensearch_dashboards.no-security.yaml = services\opensearch\opensearch_dashboards.no-security.yaml
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.Audio", "src\dotnet\Core.Audio\Core.Audio.csproj", "{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Audio.UnitTests", "tests\Core.Audio.UnitTests\Core.Audio.UnitTests.csproj", "{B07AEA67-A756-4A0C-85EA-3845ED19781D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -651,6 +655,12 @@ Global
 		{BEC452E4-0671-4C1C-AEDC-761BA136EFC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BEC452E4-0671-4C1C-AEDC-761BA136EFC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BEC452E4-0671-4C1C-AEDC-761BA136EFC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -758,6 +768,8 @@ Global
 		{E013D1EE-9214-45CA-B0B4-3EF9AE8EA6F9} = {C9531717-EDD1-4D1D-9144-FB5B4D369B48}
 		{BEC452E4-0671-4C1C-AEDC-761BA136EFC4} = {82FCC17A-E824-491C-99A3-24403C73434C}
 		{2D28997D-79AC-4F70-8F45-AF58D1F69307} = {12D2A258-F930-4112-BB21-75B8E2442876}
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

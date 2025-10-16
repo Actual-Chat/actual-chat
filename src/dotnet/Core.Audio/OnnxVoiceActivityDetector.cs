@@ -2,9 +2,9 @@ using ActualChat.Hosting;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 
-namespace ActualChat.App.Maui.Services.Recording;
+namespace ActualChat.Audio;
 
-public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : VoiceActivityDetector(services)
+public sealed class OnnxVoiceActivityDetector(IServiceProvider services, string modelFilePath) : VoiceActivityDetector(services)
 {
     private InferenceSession? _session;
     private DenseTensor<float> _state = new (new float[2 * 1 * 128], [2, 1, 128]);
@@ -17,11 +17,12 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : Voice
     {
         _session?.Dispose();
         _session = null;
+        base.Dispose();
     }
+
     /// <summary>
-    ///     Initializes the VAD by loading the ONNX model from the app package.
+    ///     Initializes the VAD by loading the ONNX model from the provided file path.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
     public override async Task EnsureInitialized(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
@@ -30,11 +31,14 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : Voice
             return;
         }
 
-        // The model is shipped under wwwroot/dist/assets/onnx/vad.onnx (see web build assets)
-        await using var modelStream = await FileSystem.OpenAppPackageFileAsync(@"wwwroot\dist\assets\onnx\vad.onnx");
-        using var ms = new MemoryStream();
-        await modelStream.CopyToAsync(ms, cancellationToken);
-        ms.Position = 0;
+        if (string.IsNullOrWhiteSpace(modelFilePath))
+            throw ActualChat.StandardError.Configuration("ONNX model file path is not set.");
+
+        if (!File.Exists(modelFilePath))
+            throw new FileNotFoundException("ONNX model file not found.", modelFilePath);
+
+        // Load model into memory buffer
+        var modelBytes = await File.ReadAllBytesAsync(modelFilePath, cancellationToken).ConfigureAwait(false);
 
         var options = new SessionOptions();
         options.IntraOpNumThreads = Math.Max(1, Environment.ProcessorCount - 1);
@@ -46,22 +50,18 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : Voice
             switch (HostInfo.AppKind)
             {
             case AppKind.Android:
-                // Prefer NNAPI if available. Note: calling order matters, last appended has highest priority.
                 options.AppendExecutionProvider_CPU();
                 options.AppendExecutionProvider_Nnapi();
                 break;
             case AppKind.Ios or AppKind.MacOS:
-                // Prefer CoreML on iOS with CPU fallback.
                 options.AppendExecutionProvider_CPU();
                 options.AppendExecutionProvider_CoreML(CoreMLFlags.COREML_FLAG_USE_CPU_AND_GPU);
                 break;
             case AppKind.Windows:
-                // Windows: prefer DirectML if available (GPU), then CPU.
                 options.AppendExecutionProvider_CPU();
                 options.AppendExecutionProvider_DML();
                 break;
             default:
-                // Other platforms (including Wasm): CPU only.
                 options.AppendExecutionProvider_CPU();
                 break;
             }
@@ -76,7 +76,7 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : Voice
             options.AppendExecutionProvider_CPU();
         }
 
-        _session = new InferenceSession(ms.ToArray(), options);
+        _session = new InferenceSession(modelBytes, options);
 
         ResetProcessingState();
     }
@@ -88,7 +88,7 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : Voice
         _state = new DenseTensor<float>(new float[2 * 1 * 128], [2, 1, 128]);
     }
 
-    protected override float? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
+    protected internal override float? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
     {
         ThrowIfDisposed();
         var session = _session;
@@ -99,11 +99,7 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services) : Voice
             throw new ArgumentException($"AppendChunkInternal expects exactly {WindowSamples} samples.", nameof(monoPcm));
 
         // Prepare input buffer: [context | current window]
-        Array.Copy(_context,
-            0,
-            _buffer,
-            0,
-            ContextSamples);
+        Array.Copy(_context, 0, _buffer, 0, ContextSamples);
         monoPcm.CopyTo(_buffer.AsSpan(ContextSamples));
 
         // Create tensors

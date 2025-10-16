@@ -1,4 +1,4 @@
-namespace ActualChat.App.Maui.Services.Recording;
+namespace ActualChat.Audio;
 
 public readonly record struct VoiceActivityChange(
     VoiceActivityKind Kind,

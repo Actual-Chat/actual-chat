@@ -2,6 +2,7 @@ using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
+using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.MediaPlayback;
@@ -16,6 +17,7 @@ using ActualChat.UI.Blazor.Services;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.IO;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.IO;
 
 namespace ActualChat.App.Maui.Module;
 
@@ -57,7 +59,10 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<TuneUI>(c => new MauiTunes(c.UIHub()));
         // services.AddSingleton<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
-        services.AddSingleton<VoiceActivityDetector>(c => new OnnxVoiceActivityDetector(c));
+        services.AddSingleton<VoiceActivityDetector>(c => {
+            var modelPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "dist", "assets", "onnx", "vad.onnx");
+            return new OnnxVoiceActivityDetector(c, modelPath);
+        });
 #elif IOS || MACCATALYST
         services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));
 #endif

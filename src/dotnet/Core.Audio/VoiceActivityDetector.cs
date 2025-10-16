@@ -1,7 +1,7 @@
 using ActualChat.Hosting;
 using MathExt = ActualChat.Mathematics.MathExt;
 
-namespace ActualChat.App.Maui.Services.Recording;
+namespace ActualChat.Audio;
 
 /// <summary>
 ///     Neural voice activity detector backed by the same ONNX model and logic used in the TypeScript implementation.
@@ -13,8 +13,8 @@ namespace ActualChat.App.Maui.Services.Recording;
 public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable, IDisposable
 {
     // AUDIO_REC constants (subset)
-    public const int SampleRate = Constants.Audio.RecordingSampleRate; // AUDIO_REC.SAMPLE_RATE
-    protected const int WindowSamples = Constants.Audio.VadFrameLength; // 512
+    public const int SampleRate = 16000; // AUDIO_REC.SAMPLE_RATE (Constants.Audio.RecordingSampleRate)
+    protected const int WindowSamples = 512; // 32 ms @ 16 kHz (Constants.Audio.VadFrameLength)
     protected const double MinRecordingGain = 0.0005; // AR.MIN_RECORDING_GAIN
 
     // AUDIO_VAD constants (subset)
@@ -66,7 +66,7 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
     }
 
     /// <summary>
-    ///     Initializes the VAD by loading the NN model from the app package.
+    ///     Initializes the VAD by loading the NN model.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     public abstract Task EnsureInitialized(CancellationToken cancellationToken = default);
@@ -206,7 +206,7 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
     ///     Returns null if EnsureInitialized has not completed yet.
     /// </summary>
     /// <param name="monoPcm">512-sample window of mono PCM at 16 kHz</param>
-    protected abstract float? AppendChunkInternal(ReadOnlySpan<float> monoPcm);
+    protected internal abstract float? AppendChunkInternal(ReadOnlySpan<float> monoPcm);
 
     protected void ResetProcessingState()
     {

@@ -1,4 +1,4 @@
-namespace ActualChat.App.Maui.Services.Recording;
+namespace ActualChat.Audio;
 
 public sealed class NoopVoiceActivityDetector(IServiceProvider services) : VoiceActivityDetector(services)
 {
@@ -13,6 +13,7 @@ public sealed class NoopVoiceActivityDetector(IServiceProvider services) : Voice
 
     public override void Reset()
     {
+        base.Reset();
         _started = false;
         LastActivityEvent = VoiceActivityChange.NoVoiceActivity;
     }
@@ -27,12 +28,10 @@ public sealed class NoopVoiceActivityDetector(IServiceProvider services) : Voice
         _started = true;
         LastActivityEvent = VoiceActivityChange.Start(0, null, 1.0);
         return VadResult.Event(LastActivityEvent);
-
     }
 
-    protected override float? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
+    protected internal override float? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
         => null;
-
 
     public override void ConversationSignal()
     { }

@@ -1,4 +1,6 @@
-namespace ActualChat.App.Maui.Services.Recording;
+using System.Diagnostics.CodeAnalysis;
+
+namespace ActualChat.Audio;
 
 public readonly record struct VadResult(VoiceActivityChange? Change, double Gain)
 {

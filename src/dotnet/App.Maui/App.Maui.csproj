@@ -91,6 +91,9 @@
   </PropertyGroup>
 
   <!-- Project references -->
+  <ItemGroup>
+    <ProjectReference Include="..\Core.Audio\Core.Audio.csproj" />
+  </ItemGroup>
   <!-- UseAppPack == false -->
   <ItemGroup Condition="!$(UseAppPack)">
     <ProjectReference Include="..\UI.Blazor.AppPack\UI.Blazor.AppPack.csproj" />
