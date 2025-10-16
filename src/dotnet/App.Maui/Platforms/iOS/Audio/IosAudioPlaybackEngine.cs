@@ -19,7 +19,7 @@ public class IosAudioPlaybackEngine(
     private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
     private bool _isInitialized;
     private BufferedPlayer _bufferedPlayer = null!;
-    private FuncWorker _processWorker = null!;
+    private FuncWorker _processFeederWorker = null!;
     private OpusDecoder _decoder = null!;
     private IResourceLease<AudioEngine> _engineLease = null!;
 
@@ -31,7 +31,7 @@ public class IosAudioPlaybackEngine(
 
     public async ValueTask DisposeAsync()
     {
-        await _processWorker.DisposeSilentlyAsync().ConfigureAwait(false);
+        await _processFeederWorker.DisposeSilentlyAsync().ConfigureAwait(false);
         _bufferedPlayer.DisposeSilently();
         _decoder.DisposeSilently();
         _engineLease.DisposeSilently();
@@ -45,14 +45,12 @@ public class IosAudioPlaybackEngine(
             DebugLog?.LogInformation("#{PlayerId}.Play: initializing", playerId);
             // TODO (FC): cleanup
             _engineLease = await AudioEngines.Rent(AudioMode.Playback).ConfigureAwait(false);
-            var engine = _engineLease.Resource;
-            _bufferedPlayer = new BufferedPlayer(engine.NewPlayer(AudioEngine.VoicePlaybackFormat), playerId, hub);
-            _processWorker = FuncWorker.Start(ProcessFeeder);
+            _bufferedPlayer = new BufferedPlayer(playerId, _engineLease.Resource, hub);
+            _processFeederWorker = FuncWorker.Start(MonitorPlayer);
             _decoder = Opus.CreateDecoder();
             _isInitialized = true;
             DebugLog?.LogInformation("#{PlayerId}.Play: initialized", playerId);
         }
-        // await MainThread.InvokeOnMainThreadAsync(_engineLease.Resource.EnsureRunning).ConfigureAwait(false);
         _engineLease.Resource.EnsureRunning();
         DebugLog?.LogInformation("#{PlayerId}.Play: node.play()", playerId);
         _bufferedPlayer.Play();
@@ -75,7 +73,7 @@ public class IosAudioPlaybackEngine(
     {
         DebugLog?.LogInformation("#{PlayerId}.End({abort})", playerId, abort);
         if (abort) {
-            _bufferedPlayer.Stop();
+            _bufferedPlayer.Abort();
             await backend.OnEnded(null).ConfigureAwait(false);
         }
         else
@@ -92,7 +90,7 @@ public class IosAudioPlaybackEngine(
         return _bufferedPlayer.Feed(data, cancellationToken);
     }
 
-    private async Task ProcessFeeder(CancellationToken cancellationToken)
+    private async Task MonitorPlayer(CancellationToken cancellationToken)
     {
         await foreach (var cPosition in _bufferedPlayer.PlaybackState.Computed.Changes(cancellationToken)
                            .ConfigureAwait(false))

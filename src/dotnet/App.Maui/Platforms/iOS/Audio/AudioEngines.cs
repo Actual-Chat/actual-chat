@@ -108,27 +108,36 @@ public class AudioEngines : ProcessorBase
 
     private void HandleInterruption(object? sender, AVAudioSessionInterruptionEventArgs e)
     {
-        _ = BackgroundTask.Run(async () => {
-                Log.LogInformation(
-                    "Interruption type={Type}, reason={Reason}, wasSuspended={WasSuspended}, option={Option}",
-                    e.InterruptionType,
-                    e.Reason,
-                    e.WasSuspended,
-                    e.Option);
-                using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
-                switch (e.InterruptionType) {
-                case AVAudioSessionInterruptionType.Began:
-                    Pause();
-                    break;
-                case AVAudioSessionInterruptionType.Ended:
-                    if (e.Option == AVAudioSessionInterruptionOptions.ShouldResume)
-                        Resume(_modes.Max());
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-                }
-            },
+        // IMPORTANT: event args must be captured by value otherwise they will change !!!!
+        var type = e.InterruptionType;
+        var reason = e.Reason;
+        var wasSuspended = e.WasSuspended;
+        var option = e.Option;
+        _ = BackgroundTask.Run(() => HandleInterruption(type, reason, wasSuspended, option),
             Log,
             "Failed to handle interruption");
+    }
+
+    private async Task HandleInterruption(AVAudioSessionInterruptionType type,
+        AVAudioSessionInterruptionReason reason, bool? wasSuspended, AVAudioSessionInterruptionOptions option)
+    {
+        Log.LogInformation(
+            "Interruption type={Type}, reason={Reason}, wasSuspended={WasSuspended}, option={Option}",
+            type,
+            reason,
+            wasSuspended,
+            option);
+        using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
+        switch (type) {
+        case AVAudioSessionInterruptionType.Began:
+            Pause();
+            break;
+        case AVAudioSessionInterruptionType.Ended:
+            if (option == AVAudioSessionInterruptionOptions.ShouldResume)
+                Resume(_modes.Max());
+            break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(type), type, "Invalid interruption type");
+        }
     }
 }
