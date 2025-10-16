@@ -322,7 +322,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
             return ContactSearchResultPage.Empty;
         return new ContactSearchResultPage {
-            Hits = searchResponse.Hits.Select(ToSearchResult).SkipNullItems().ToArray(),
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToArray(),
             Offset = query.Skip,
         };
 
@@ -338,14 +338,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                         : null)
                 .MustNot(qc => qc.HasChild<IndexedUserContact>(c => c.Query(q => q.MatchAll())));
 
-        ContactSearchResult? ToSearchResult(IHit<IndexedUser> hit)
-        {
-            var otherUserId = hit.Source.Id;
-            if (otherUserId == userId)
-                return null;
-            var contactId = ContactId.NewUser(userId, otherUserId);
-            return new ContactSearchResult(contactId, hit.GetSearchMatch());
-        }
+        ContactSearchResult ToSearchResult(IHit<IndexedUser> hit)
+            => new(ContactId.NewUser(userId, hit.Source.Id), hit.GetSearchMatch());
     }
 
     private async Task<ContactSearchResultPage> FindGroups(
