@@ -30,7 +30,7 @@
 
 <div class="link-buttons">
     <CopyTrigger Tooltip="@uri.ToString()" CopyText="@uri.ToString()">
-        <ButtonRound Class="btn-xs">
+        <ButtonRound Class="btn-xs btn-primary">
             <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
             <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
         </ButtonRound>
@@ -38,7 +38,7 @@
     @if (m.LocalLink is null) {
         <ButtonRound
             Tooltip="Forward"
-            Class="btn-xs"
+            Class="btn-xs btn-primary"
             Click="@(() => SelectionUI.Forward(m.Entry.Id))">
             <i class="icon-share"></i>
         </ButtonRound>

@@ -11,10 +11,15 @@
     @apply flex-x items-center gap-x-1 md:gap-x-2;
     @apply rounded-full;
     @apply bg-01;
-    outline: 0.25rem solid var(--background-01);
+    @apply outline-[0.125rem] md:outline-[0.25rem];
+    outline-color: var(--background-01);
+    outline-style: solid;
 }
 .selection-header .selection-header-buttons .btn.btn-round {
     @apply bg-transparent;
+}
+.selection-header .selection-header-buttons .btn.btn-round.start-thread-btn {
+    @apply text-primary;
 }
 .selection-header .btn-h.c-close-btn {
     @apply w-10;

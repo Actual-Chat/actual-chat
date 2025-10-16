@@ -18,7 +18,7 @@
         @Title
     </div>
     @if (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button) {
-        <HeaderButton Class="btn-submit" Type="SubmitButtonType" IsDisabled="@(!CanSubmit)" Click="SubmitClick">
+        <HeaderButton Class="btn-submit unhovered" Type="SubmitButtonType" IsDisabled="@(!CanSubmit)" Click="SubmitClick">
             <span>@SubmitButtonText</span>
         </HeaderButton>
     }
