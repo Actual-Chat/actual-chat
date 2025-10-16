@@ -5,7 +5,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
 
-public sealed class MauiBlazorApp : AppBase, IDisposable
+public sealed class MauiBlazorApp : AppBase
 {
     private MauiWebView? _mauiWebView;
     private MauiWebViewPageContextTracker? _pageContextTracker;
@@ -13,11 +13,12 @@ public sealed class MauiBlazorApp : AppBase, IDisposable
     static MauiBlazorApp()
         => OtherUIAssemblies = [typeof(WebApp).Assembly, typeof(MauiBlazorApp).Assembly];
 
-    public void Dispose()
+    protected override void OnDisposing()
     {
         Log.LogInformation("Dispose MauiBlazorApp");
         _pageContextTracker?.OnMauiBlazorAppDisposing();
         _mauiWebView?.ResetScopedServices(Services);
+        base.OnDisposing();
     }
 
     protected override async Task OnInitializedAsync()
