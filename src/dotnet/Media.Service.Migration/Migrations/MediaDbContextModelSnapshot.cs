@@ -17,7 +17,7 @@ namespace ActualChat.Media.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.4")
+                .HasAnnotation("ProductVersion", "9.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -171,8 +171,8 @@ namespace ActualChat.Media.Migrations
                     b.HasKey("Uuid")
                         .HasName("pk_events");
 
-                    b.HasIndex("DelayUntil")
-                        .HasDatabaseName("ix_events_delay_until");
+                    b.HasIndex("DelayUntil", "State")
+                        .HasDatabaseName("ix_events_delay_until_state");
 
                     b.HasIndex("State", "DelayUntil")
                         .HasDatabaseName("ix_events_state_delay_until");
