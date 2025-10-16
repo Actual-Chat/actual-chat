@@ -1,7 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
-using CoreGraphics;
 using Foundation;
-using MediaPlayer;
 using UIKit;
 
 namespace ActualChat.App.Maui.Services;
@@ -12,34 +10,38 @@ public partial class MediaMetadataUI
     private static UIImage DefaultUIImage => field ??= new ();
 
     public partial Task SetPlayback(MediaMetadata metadata, bool isStreaming)
-        => Invoke(() =>
-            MPNowPlayingInfoCenter.DefaultCenter.NowPlaying = new MPNowPlayingInfo {
-                Title = metadata.Title,
-                Artist = metadata.Artist,
-                Artwork = new MPMediaItemArtwork(boundsSize: new CGSize(320, 240),
-                    requestHandler: _ => GetImage(metadata.ImageUrl)),
-                IsLiveStream = isStreaming,
-            });
+        => Task.CompletedTask;
+    // TODO(FC): use live activities
+        // => Invoke(() =>
+        //     MPNowPlayingInfoCenter.DefaultCenter.NowPlaying = new MPNowPlayingInfo {
+        //         Title = metadata.Title,
+        //         Artist = metadata.Artist,
+        //         Artwork = new MPMediaItemArtwork(boundsSize: new CGSize(320, 240),
+        //             requestHandler: _ => GetImage(metadata.ImageUrl)),
+        //         IsLiveStream = isStreaming,
+        //     });
 
     public partial Task SetRecording(MediaMetadata metadata)
-        => Invoke(() =>
-            MPNowPlayingInfoCenter.DefaultCenter.NowPlaying = new MPNowPlayingInfo {
-                Title = metadata.Title,
-                Artist = metadata.Artist,
-                Artwork = new MPMediaItemArtwork(boundsSize: new CGSize(320, 240),
-                    requestHandler: _ => GetImage(metadata.ImageUrl)),
-                IsLiveStream = true,
-            });
+        => Task.CompletedTask;
+        // => Invoke(() =>
+        //     MPNowPlayingInfoCenter.DefaultCenter.NowPlaying = new MPNowPlayingInfo {
+        //         Title = metadata.Title,
+        //         Artist = metadata.Artist,
+        //         Artwork = new MPMediaItemArtwork(boundsSize: new CGSize(320, 240),
+        //             requestHandler: _ => GetImage(metadata.ImageUrl)),
+        //         IsLiveStream = true,
+        //     });
 
     public partial Task Reset()
-        => Invoke(() =>
-            MPNowPlayingInfoCenter.DefaultCenter.NowPlaying =
-                new MPNowPlayingInfo {
-                    Title = string.Empty,
-                    Artist = string.Empty,
-                    Artwork = new MPMediaItemArtwork(boundsSize: new CGSize(0, 0), requestHandler: _ => DefaultUIImage),
-                    IsLiveStream = false,
-                });
+        => Task.CompletedTask;
+        // => Invoke(() =>
+        //     MPNowPlayingInfoCenter.DefaultCenter.NowPlaying =
+        //         new MPNowPlayingInfo {
+        //             Title = string.Empty,
+        //             Artist = string.Empty,
+        //             Artwork = new MPMediaItemArtwork(boundsSize: new CGSize(0, 0), requestHandler: _ => DefaultUIImage),
+        //             IsLiveStream = false,
+        //         });
 
     private static UIImage GetImage(string imageUri)
     {
@@ -58,6 +60,6 @@ public partial class MediaMetadataUI
         return result!;
     }
 
-    private Task Invoke(Action action, [CallerMemberName] string name = "")
-        => MainThread.InvokeOnMainThreadAsync(action).Catch(Log, "Failed to invoke '{Name}'", name);
+    // private Task Invoke(Action action, [CallerMemberName] string name = "")
+    //     => MainThread.InvokeOnMainThreadAsync(action).Catch(Log, "Failed to invoke '{Name}'", name);
 }

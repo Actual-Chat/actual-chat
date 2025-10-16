@@ -102,8 +102,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             await _playbackEngine.PushFrame(frame, cancellationToken).ConfigureAwait(false);
             await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
         }
-        catch (TimeoutException) {
+        catch (TimeoutException e) {
             Log.LogError(
+                e,
                 "[AudioTrackPlayer #{AudioTrackPlayerId}] ProcessMediaFrame: ready-to-buffer wait timed out, offset={FrameOffset}",
                 _id,
                 frame.Offset);
