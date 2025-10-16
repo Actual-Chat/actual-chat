@@ -119,8 +119,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
 
                 IFlowImpl flowImpl;
                 if (resumeEvent.MustReset) {
+                    var originalFlow = flow;
                     flowImpl = flow = (Flow)flowType.CreateInstance();
-                    flowImpl.SetProperties(flowId, flow.Version, null);
+                    flowImpl.SetProperties(flowId, originalFlow.Version, null);
                 }
                 else
                     flowImpl = flow = flow.Clone();
