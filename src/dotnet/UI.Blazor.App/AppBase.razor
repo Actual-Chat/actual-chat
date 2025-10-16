@@ -131,7 +131,10 @@
             _whenFirstRendered.TrySetResult();
     }
 
-    public void Dispose() {
+    public void Dispose()
+        => OnDisposing();
+
+    protected virtual void OnDisposing() {
         _appLifecycle.OnRootDisposing();
     }
 }
