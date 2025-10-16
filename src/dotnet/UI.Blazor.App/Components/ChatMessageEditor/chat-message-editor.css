@@ -133,6 +133,10 @@ body.narrow .attach-btn.btn.btn-round {
     @apply bg-transparent;
     @apply outline-none;
 }
+body.narrow.touch-capable .attach-btn.btn.btn-round.btn-transparent:active {
+    @apply text-mobile-landscape-audio-panel-button-text;
+    filter: blur(0.04rem) brightness(1.25);
+}
 body.hoverable .attach-btn.btn.btn-round.btn-transparent:hover {
     @apply bg-input;
 }

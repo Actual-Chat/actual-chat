@@ -16,17 +16,9 @@ body.device-ios * {
 .touch-capable .button-touch-target {
     display: block;
 }
-.touch-capable .btn-h:active .button-touch-target {
+.touch-capable .btn-h:not(.unhovered):active .button-touch-target {
     @apply bg-hover;
     transform: scale(1.2);
-}
-
-/* Disable active and focus outline on touch devices */
-.touch-capable .btn:active::after,
-.touch-capable .btn:hover:active::after,
-.touch-capable .btn:focus:active::after,
-.touch-capable .btn:hover:focus:active::after {
-    @apply !bg-transparent;
 }
 
 /* Sizes */
@@ -267,7 +259,9 @@ body.hoverable .btn.btn-modal:hover::after {
 
 /* Button Square and Round Hover */
 body.hoverable .btn.btn-square:hover::after,
-body.hoverable .btn.btn-round:hover::after {
+.touch-capable .btn.btn-square:active::after,
+body.hoverable .btn.btn-round:hover::after,
+.touch-capable .btn.btn-round:active::after {
     @apply hover-after;
     @apply bg-hover-after-primary;
 }
@@ -285,25 +279,33 @@ body.hoverable .btn.btn-round.btn-transparent:hover,
     @apply text-02;
 }
 body.hoverable .btn.btn-square.btn-transparent:hover::after,
-body.hoverable .btn.btn-round.btn-transparent:hover::after {
+.touch-capable .btn.btn-square.btn-transparent:active::after,
+body.hoverable .btn.btn-round.btn-transparent:hover::after,
+.touch-capable .btn.btn-round.btn-transparent:active::after {
     @apply hover-after;
-    @apply bg-transparent;
+    @apply bg-hover-after-primary
 }
 
 /* Button Square and Round Primary */
 body.hoverable .btn.btn-square.btn-primary:hover,
-body.hoverable .btn.btn-round.btn-primary:hover {
+.touch-capable .btn.btn-square.btn-primary:active,
+body.hoverable .btn.btn-round.btn-primary:hover,
+.touch-capable .btn.btn-round.btn-primary:active {
     @apply text-primary;
 }
 
 /* Button Square and Round Danger */
 body.hoverable .btn.btn-square.btn-danger:hover::after,
-body.hoverable .btn.btn-round.btn-danger:hover::after {
+.touch-capable .btn.btn-square.btn-danger:active::after,
+body.hoverable .btn.btn-round.btn-danger:hover::after,
+.touch-capable .btn.btn-round.btn-danger:active::after {
     @apply hover-after;
     @apply bg-hover-after-danger;
 }
 body.hoverable .btn.btn-square.btn-danger:hover,
-body.hoverable .btn.btn-round.btn-danger:hover {
+.touch-capable .btn.btn-square.btn-danger:active,
+body.hoverable .btn.btn-round.btn-danger:hover,
+.touch-capable .btn.btn-round.btn-danger:active {
     @apply text-danger;
 }
 
@@ -403,8 +405,8 @@ body.hoverable .btn-h.unhovered:hover {
     @apply text-03;
     @apply cursor-default;
 }
-.btn-h:not(.unhovered):active {
-    filter: opacity(0.9) blur(0.5px) drop-shadow(0px 0px 2px var(--gray-20-20));
+.btn-h:not(:disabled):active {
+    filter: opacity(0.9) blur(0.04rem) drop-shadow(0px 0px 2px var(--gray-20-20));
 }
 .btn-h > .c-content {
     @apply relative;

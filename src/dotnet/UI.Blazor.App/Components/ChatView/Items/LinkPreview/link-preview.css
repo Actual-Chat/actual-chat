@@ -148,12 +148,8 @@ body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover .btn-con
     @apply bg-transparent;
 }
 .message-link-preview .link-buttons .btn.btn-round i {
-    @apply text-xl text-04;
+    @apply text-xl;
 }
-body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover i {
-    @apply text-primary;
-}
-
 body.narrow .link-preview.compact .incut {
     @apply flex-none;
     @apply w-15 h-12;
