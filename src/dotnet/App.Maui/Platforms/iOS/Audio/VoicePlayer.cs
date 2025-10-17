@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui.Audio;
 
 public class VoicePlayer : IDisposable
 {
-    private readonly AudioBufferCapacity _capacity = new ();
+    private readonly AudioBufferCapacity _capacity;
     private readonly ComputedState<State> _state;
     private TimeSpan _position;
     public string Id { get; }
@@ -23,8 +23,10 @@ public class VoicePlayer : IDisposable
         Id = id;
         EngineLease = engineLease;
         Node = engineLease.Resource.NewPlayer(AudioEngine.VoicePlaybackFormat);
-        _state = hub.StateFactory.NewComputed(GetState, StateCategories.Get(GetType(), nameof(PlaybackState)));
+        _capacity = new AudioBufferCapacity(hub);
         Log = hub.LogFor<VoicePlayer>();
+
+        _state = hub.StateFactory.NewComputed(GetState, StateCategories.Get(GetType(), nameof(PlaybackState)));
     }
 
     public static async Task<VoicePlayer> Create(string id, AppUIHub hub)
@@ -98,7 +100,8 @@ public class VoicePlayer : IDisposable
     private async Task<State> GetState(CancellationToken cancellationToken)
     {
         var isEngineRunning = await EngineLease.Resource.IsRunning.Computed.Use(cancellationToken).ConfigureAwait(false);
-        return new State(_position, Node.IsPlaying && isEngineRunning, _capacity.IsBufferLow);
+        var isBufferLow = await _capacity.IsBufferLow.Use(cancellationToken).ConfigureAwait(false);
+        return new State(_position, Node.IsPlaying && isEngineRunning, isBufferLow);
     }
 
     public sealed record State(TimeSpan Position, bool IsPlaying, bool IsBufferLow);
