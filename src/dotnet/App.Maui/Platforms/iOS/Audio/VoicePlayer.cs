@@ -8,7 +8,7 @@ namespace ActualChat.App.Maui.Audio;
 public class VoicePlayer : WorkerBase
 {
     private readonly AudioBufferCapacity _capacity = new ();
-    private readonly MutableState<State> _state;
+    private readonly ComputedState<State> _state;
     private TimeSpan _position;
     public string Id { get; }
     private IResourceLease<AudioEngine> EngineLease { get; }
@@ -22,8 +22,8 @@ public class VoicePlayer : WorkerBase
     {
         Id = id;
         EngineLease = engineLease;
-        _state = hub.StateFactory.NewMutable(new State(TimeSpan.Zero, false, false));
         Node = engineLease.Resource.NewPlayer(AudioEngine.VoicePlaybackFormat);
+        _state = hub.StateFactory.NewComputed(GetState, StateCategories.Get(GetType(), nameof(PlaybackState)));
         Log = hub.LogFor<VoicePlayer>();
         Run();
     }
@@ -38,6 +38,7 @@ public class VoicePlayer : WorkerBase
 
     protected override Task DisposeAsyncCore()
     {
+        _state.DisposeSilently();
         Node.DisposeSilently();
         EngineLease.DisposeSilently();
         return base.DisposeAsyncCore();
@@ -48,14 +49,14 @@ public class VoicePlayer : WorkerBase
         DebugLog?.LogInformation("#{Id}.Play", Id);
         EngineLease.Resource.EnsureRunning();
         Node.Play();
-        UpdateState();
+        _state.Invalidate();
     }
 
     public void Pause()
     {
         DebugLog?.LogInformation("#{Id}.Pause", Id);
         Node.Pause();
-        UpdateState();
+        _state.Invalidate();
     }
 
     public async ValueTask Feed(AVAudioPcmBuffer pcm, CancellationToken cancellationToken)
@@ -66,13 +67,10 @@ public class VoicePlayer : WorkerBase
                 // IMPORTANT: better not to access node from the callback thread
                 _position += TimeSpan.FromSeconds(pcm.FrameLength / Node.Format.SampleRate);
                 _capacity.Release();
-                _state.Value = new State(_position, true, _capacity.IsBufferLow);
+                _state.Invalidate();
             });
-        UpdateState();
+        _state.Invalidate();
     }
-
-    private void UpdateState()
-        => _state.Value = new State(_position, Node.IsPlaying && EngineLease.Resource.IsRunning.Value, _capacity.IsBufferLow);
 
     public async Task Complete(CancellationToken cancellationToken)
     {
@@ -103,7 +101,7 @@ public class VoicePlayer : WorkerBase
 
     private Task MonitorEngine(CancellationToken cancellationToken)
         => EngineLease.Resource.IsRunning.Computed.Changes(cancellationToken)
-            .ForEachAsync(_ => UpdateState(), cancellationToken);
+            .ForEachAsync(_ => _state.Invalidate(), cancellationToken);
 
     private async Task WhenDonePlaying(CancellationToken cancellationToken)
     {
@@ -116,6 +114,11 @@ public class VoicePlayer : WorkerBase
             DebugLog?.LogWarning("#{Id}.WhenDonePlaying: failed to wait for all frames to be played: {Exception}", Id, e);
         }
     }
+
+    private Task<State> GetState(CancellationToken cancellationToken)
+        => BackgroundTask.Run(() => Task.FromResult(new State(_position,
+            Node.IsPlaying && EngineLease.Resource.IsRunning.Value,
+            _capacity.IsBufferLow)), cancellationToken);
 
     public sealed record State(TimeSpan Position, bool IsPlaying, bool IsBufferLow);
 }
