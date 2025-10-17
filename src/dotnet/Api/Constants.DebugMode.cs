@@ -48,7 +48,7 @@ public static partial class Constants
         public static readonly bool TranslationBackend = false;
 
         // Search
-        public static readonly bool OpenSearchRequestResponse = true;
+        public static readonly bool OpenSearchRequestResponse = false;
 
         // Link previews
         public static readonly bool Crawler = false;
