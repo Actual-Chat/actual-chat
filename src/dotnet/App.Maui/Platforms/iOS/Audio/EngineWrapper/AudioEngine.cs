@@ -30,11 +30,14 @@ public class AudioEngine : IDisposable
     {
         Mode = mode;
         Hub = hub;
-        _isRunning = hub.StateFactory.NewComputed(GetIsRunning);
+        _isRunning = hub.StateFactory.NewComputed(GetIsRunning, StateCategories.Get(GetType(), nameof(IsRunning)));
     }
 
     public void Dispose()
-        => _engine.DisposeSilently();
+    {
+        _isRunning.DisposeSilently();
+        _engine.DisposeSilently();
+    }
 
     public void EnsureRunning()
     {

@@ -5,7 +5,7 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class VoicePlayer : WorkerBase
+public class VoicePlayer : IDisposable
 {
     private readonly AudioBufferCapacity _capacity = new ();
     private readonly ComputedState<State> _state;
@@ -25,7 +25,6 @@ public class VoicePlayer : WorkerBase
         Node = engineLease.Resource.NewPlayer(AudioEngine.VoicePlaybackFormat);
         _state = hub.StateFactory.NewComputed(GetState, StateCategories.Get(GetType(), nameof(PlaybackState)));
         Log = hub.LogFor<VoicePlayer>();
-        Run();
     }
 
     public static async Task<VoicePlayer> Create(string id, AppUIHub hub)
@@ -36,12 +35,11 @@ public class VoicePlayer : WorkerBase
         return new VoicePlayer(id, engineLease, hub);
     }
 
-    protected override Task DisposeAsyncCore()
+    public void Dispose()
     {
         _state.DisposeSilently();
         Node.DisposeSilently();
         EngineLease.DisposeSilently();
-        return base.DisposeAsyncCore();
     }
 
     public void Play()
@@ -85,24 +83,6 @@ public class VoicePlayer : WorkerBase
         Node.Stop();
     }
 
-    protected override Task OnRun(CancellationToken cancellationToken)
-    {
-        var baseChains = new[] {
-            AsyncChain.From(MonitorEngine),
-        };
-        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return (
-            from chain in baseChains
-            select chain
-                .Log(LogLevel.Debug, Log)
-                .RetryForever(retryDelays, Log)
-            ).RunIsolated(cancellationToken);
-    }
-
-    private Task MonitorEngine(CancellationToken cancellationToken)
-        => EngineLease.Resource.IsRunning.Computed.Changes(cancellationToken)
-            .ForEachAsync(_ => _state.Invalidate(), cancellationToken);
-
     private async Task WhenDonePlaying(CancellationToken cancellationToken)
     {
         try {
@@ -115,10 +95,11 @@ public class VoicePlayer : WorkerBase
         }
     }
 
-    private Task<State> GetState(CancellationToken cancellationToken)
-        => BackgroundTask.Run(() => Task.FromResult(new State(_position,
-            Node.IsPlaying && EngineLease.Resource.IsRunning.Value,
-            _capacity.IsBufferLow)), cancellationToken);
+    private async Task<State> GetState(CancellationToken cancellationToken)
+    {
+        var isEngineRunning = await EngineLease.Resource.IsRunning.Computed.Use(cancellationToken).ConfigureAwait(false);
+        return new State(_position, Node.IsPlaying && isEngineRunning, _capacity.IsBufferLow);
+    }
 
     public sealed record State(TimeSpan Position, bool IsPlaying, bool IsBufferLow);
 }
