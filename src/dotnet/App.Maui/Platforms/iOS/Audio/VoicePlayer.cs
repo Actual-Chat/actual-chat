@@ -1,41 +1,52 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Diagnostics;
+using ActualLab.Pooling;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class BufferedPlayer : WorkerBase
+public class VoicePlayer : WorkerBase
 {
     private readonly AudioBufferCapacity _capacity = new ();
     private readonly MutableState<State> _state;
     private TimeSpan _position;
     public string Id { get; }
-    private AudioEngine Engine { get; }
+    private IResourceLease<AudioEngine> EngineLease { get; }
 
     private PlayerNode Node { get; }
     public IState<State> PlaybackState => _state;
-    private ILogger<BufferedPlayer> Log { get; }
+    private ILogger<VoicePlayer> Log { get; }
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
 
-    public BufferedPlayer(string id, AudioEngine engine, AppUIHub hub)
+    private VoicePlayer(string id, IResourceLease<AudioEngine> engineLease, AppUIHub hub)
     {
         Id = id;
-        Engine = engine;
+        EngineLease = engineLease;
         _state = hub.StateFactory.NewMutable(new State(TimeSpan.Zero, false, false));
-        Node = engine.NewPlayer(AudioEngine.VoicePlaybackFormat);
-        Log = hub.LogFor<BufferedPlayer>();
+        Node = engineLease.Resource.NewPlayer(AudioEngine.VoicePlaybackFormat);
+        Log = hub.LogFor<VoicePlayer>();
         Run();
+    }
+
+    public static async Task<VoicePlayer> Create(string id, AppUIHub hub)
+    {
+        var engineLease = await hub.Services.GetRequiredService<AudioEngines>()
+            .Rent(AudioMode.Playback)
+            .ConfigureAwait(false);
+        return new VoicePlayer(id, engineLease, hub);
     }
 
     protected override Task DisposeAsyncCore()
     {
         Node.DisposeSilently();
+        EngineLease.DisposeSilently();
         return base.DisposeAsyncCore();
     }
 
     public void Play()
     {
         DebugLog?.LogInformation("#{Id}.Play", Id);
+        EngineLease.Resource.EnsureRunning();
         Node.Play();
         UpdateState();
     }
@@ -61,7 +72,7 @@ public class BufferedPlayer : WorkerBase
     }
 
     private void UpdateState()
-        => _state.Value = new State(_position, Node.IsPlaying && Engine.IsRunning.Value, _capacity.IsBufferLow);
+        => _state.Value = new State(_position, Node.IsPlaying && EngineLease.Resource.IsRunning.Value, _capacity.IsBufferLow);
 
     public async Task Complete(CancellationToken cancellationToken)
     {
@@ -90,11 +101,9 @@ public class BufferedPlayer : WorkerBase
             ).RunIsolated(cancellationToken);
     }
 
-    private async Task MonitorEngine(CancellationToken cancellationToken)
-    {
-        await foreach (var cIsRunning in Engine.IsRunning.Computed.Changes(cancellationToken).ConfigureAwait(false))
-            UpdateState();
-    }
+    private Task MonitorEngine(CancellationToken cancellationToken)
+        => EngineLease.Resource.IsRunning.Computed.Changes(cancellationToken)
+            .ForEachAsync(_ => UpdateState(), cancellationToken);
 
     private async Task WhenDonePlaying(CancellationToken cancellationToken)
     {
