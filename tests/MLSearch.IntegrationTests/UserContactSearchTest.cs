@@ -74,7 +74,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         var searchResults = await Find("User", own, null, 2);
 
         // assert
-        searchResults.Should().NotContain(x => x.ContactId.GetOtherUserId() == ownAccount.Id);
+        var expected = ownAccount.BuildSearchResults(accounts[1..]);
+        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
     [Fact]
