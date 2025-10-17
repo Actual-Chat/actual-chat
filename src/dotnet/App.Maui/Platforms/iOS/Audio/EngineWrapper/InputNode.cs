@@ -1,8 +1,9 @@
+using ActualChat.UI.Blazor.App.Services;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class InputNode(AVAudioNode node, ILogger log) : AudioNode(node, _ => {}, log)
+public class InputNode(AVAudioNode node, AppUIHub hub) : AudioNode(node, _ => {}, hub)
 {
     private int _isTapped;
     public new AVAudioInputNode Node => (AVAudioInputNode)base.Node;

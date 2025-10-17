@@ -49,14 +49,12 @@ public class VoicePlayer : IDisposable
         DebugLog?.LogInformation("#{Id}.Play", Id);
         EngineLease.Resource.EnsureRunning();
         Node.Play();
-        _state.Invalidate();
     }
 
     public void Pause()
     {
         DebugLog?.LogInformation("#{Id}.Pause", Id);
         Node.Pause();
-        _state.Invalidate();
     }
 
     public async ValueTask Feed(AVAudioPcmBuffer pcm, CancellationToken cancellationToken)
@@ -67,9 +65,7 @@ public class VoicePlayer : IDisposable
                 // IMPORTANT: better not to access node from the callback thread
                 _position += TimeSpan.FromSeconds(pcm.FrameLength / Node.Format.SampleRate);
                 _capacity.Release();
-                _state.Invalidate();
             });
-        _state.Invalidate();
     }
 
     public async Task Complete(CancellationToken cancellationToken)
@@ -99,9 +95,10 @@ public class VoicePlayer : IDisposable
 
     private async Task<State> GetState(CancellationToken cancellationToken)
     {
+        var isPlaying = await Node.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
         var isEngineRunning = await EngineLease.Resource.IsRunning.Computed.Use(cancellationToken).ConfigureAwait(false);
         var isBufferLow = await _capacity.IsBufferLow.Use(cancellationToken).ConfigureAwait(false);
-        return new State(_position, Node.IsPlaying && isEngineRunning, isBufferLow);
+        return new State(_position, isPlaying && isEngineRunning, isBufferLow);
     }
 
     public sealed record State(TimeSpan Position, bool IsPlaying, bool IsBufferLow);

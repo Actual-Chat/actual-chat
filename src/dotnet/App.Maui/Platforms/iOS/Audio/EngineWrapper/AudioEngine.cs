@@ -22,7 +22,7 @@ public class AudioEngine : IDisposable
     public InputNode Input {
         get {
             lock (_lock)
-                return field ??= new InputNode(_engine.InputNode, Hub.LogFor<InputNode>());
+                return field ??= new InputNode(_engine.InputNode, Hub);
         }
     }
 
@@ -117,12 +117,12 @@ public class AudioEngine : IDisposable
     {
         var node = new AVAudioMixerNode();
         AttachNode(node);
-        return new MixerNode(node, DisposeNode, Hub.LogFor<MixerNode>());
+        return new MixerNode(node, DisposeNode, Hub);
     }
 
     public PlayerNode NewPlayer(AVAudioFormat format, bool connectToMainOutput = true)
     {
-        var node = new PlayerNode(new AVAudioPlayerNode(), format, DisposeNode, Hub.LogFor<PlayerNode>());
+        var node = new PlayerNode(new AVAudioPlayerNode(), format, DisposeNode, Hub);
         AttachNode(node.Node);
         if (connectToMainOutput)
             ConnectToMainMixer(node, format);

@@ -1,48 +1,55 @@
+using ActualChat.UI.Blazor.App.Services;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class PlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVAudioNode> disposer, ILogger<PlayerNode> log)
-    : AudioNode(node, disposer, log), IDisposable
+public class PlayerNode : AudioNode, IDisposable
 {
-    public AVAudioFormat Format { get; } = format;
+    public AVAudioFormat Format { get; }
     private readonly Lock _lock = new();
+    private readonly ComputedState<bool> _isPlaying;
 
-    public bool IsPlaying {
-        get {
-            lock (_lock)
-                return node.Playing;
-        }
+    public IState<bool> IsPlaying => _isPlaying;
+    public new AVAudioPlayerNode Node => (AVAudioPlayerNode)base.Node;
+
+    public PlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVAudioNode> disposer, AppUIHub hub) : base(node, disposer, hub)
+    {
+        Format = format;
+
+        _isPlaying = hub.StateFactory.NewComputed(GetIsPlaying, StateCategories.Get(GetType(), nameof(IsPlaying)));
     }
 
     protected override void DisposeCore()
-        => Stop();
+    {
+        _isPlaying.DisposeSilently();
+        Stop();
+    }
 
     public void Play()
     {
         lock (_lock)
-            if (!node.Playing)
-                node.Play();
+            if (!Node.Playing)
+                Node.Play();
     }
 
     public void Pause()
     {
         lock (_lock)
-            if (node.Playing)
-                node.Pause();
+            if (Node.Playing)
+                Node.Pause();
     }
 
     public void ScheduleBuffer(AVAudioPcmBuffer pcm, Action<AVAudioPlayerNodeCompletionCallbackType> callback)
     {
         lock (_lock)
-            node.ScheduleBuffer(pcm, AVAudioPlayerNodeCompletionCallbackType.PlayedBack, callback);
+            Node.ScheduleBuffer(pcm, AVAudioPlayerNodeCompletionCallbackType.PlayedBack, callback);
     }
 
     public Task ScheduleFileAndWait(AVAudioFile audioFile, CancellationToken cancellationToken = default)
     {
         var whenPlayed = AsyncTaskMethodBuilderExt.New();
         lock (_lock)
-            node.ScheduleFile(audioFile,
+            Node.ScheduleFile(audioFile,
                 null,
                 AVAudioPlayerNodeCompletionCallbackType.PlayedBack,
                 _ => whenPlayed.TrySetResult());
@@ -52,6 +59,12 @@ public class PlayerNode(AVAudioPlayerNode node, AVAudioFormat format, Action<AVA
     public void Stop()
     {
         lock (_lock)
-            node.Stop();
+            Node.Stop();
+    }
+
+    private Task<bool> GetIsPlaying(CancellationToken cancellationToken)
+    {
+        lock (_lock)
+            return Task.FromResult(Node.Playing);
     }
 }

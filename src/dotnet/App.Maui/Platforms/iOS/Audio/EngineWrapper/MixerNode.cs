@@ -1,9 +1,10 @@
+using ActualChat.UI.Blazor.App.Services;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class MixerNode(AVAudioMixerNode node, Action<AVAudioNode> disposer, ILogger<MixerNode> log)
-    : AudioNode(node, disposer, log), IDisposable
+public class MixerNode(AVAudioMixerNode node, Action<AVAudioNode> disposer, AppUIHub hub)
+    : AudioNode(node, disposer, hub), IDisposable
 {
     public float Volume {
         get {

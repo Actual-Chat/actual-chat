@@ -1,13 +1,17 @@
+using ActualChat.UI.Blazor.App.Services;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public abstract class AudioNode(AVAudioNode node, Action<AVAudioNode> disposer, ILogger log)
+public abstract class AudioNode(AVAudioNode node, Action<AVAudioNode> disposer, AppUIHub hub)
 {
     public const int Bus = 0;
     protected readonly Lock Lock = new();
     protected internal AVAudioNode Node => node;
-    protected ILogger Log => log;
+    protected AppUIHub Hub => hub;
+
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public void Dispose()
     {
