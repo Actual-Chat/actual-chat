@@ -31,10 +31,10 @@ public class AudioEngines : ProcessorBase
         _playback = new AudioEngine(AudioMode.Playback, hub);
         _recording = new AudioEngine(AudioMode.Recording, hub);
         _pool = new SharedResourcePool<AudioMode, AudioEngine>(CreateAudioEngine, ReleaseEngine);
-        _interruptionSubscription = Disposable.New(AVAudioSession.Notifications.ObserveInterruption(HandleInterruption),
+        _interruptionSubscription = Disposable.New(AVAudioSession.Notifications.ObserveInterruption(OnInterruption),
             NSNotificationCenter.DefaultCenter.RemoveObserver);
         _configurationChangeSubscription =
-            Disposable.New(AVAudioEngine.Notifications.ObserveConfigurationChange(HandleConfigurationChange),
+            Disposable.New(AVAudioEngine.Notifications.ObserveConfigurationChange(OnConfigurationChange),
                 NSNotificationCenter.DefaultCenter.RemoveObserver);
     }
 
@@ -103,10 +103,10 @@ public class AudioEngines : ProcessorBase
             _recording.Resume();
     }
 
-    private void HandleConfigurationChange(object? sender, NSNotificationEventArgs e)
+    private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
         => Log.LogInformation("Audio engine configuration change");
 
-    private void HandleInterruption(object? sender, AVAudioSessionInterruptionEventArgs e)
+    private void OnInterruption(object? sender, AVAudioSessionInterruptionEventArgs e)
     {
         // IMPORTANT: event args must be captured by value otherwise they will change !!!!
         var type = e.InterruptionType;
