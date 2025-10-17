@@ -107,6 +107,59 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         // but we verify the pipeline runs end-to-end without exceptions.
     }
 
+    [Theory]
+    [InlineData("micIn.bin")]
+    [InlineData("outAEC.bin")]
+    [InlineData("outAEC_NC_AGC.bin")]
+    public async Task ComboTest(string fileName)
+    {
+        // Find repository root (folder containing ActualChat.sln)
+        var repoRoot = FindRepoRoot();
+        Assert.True(Directory.Exists(repoRoot));
+
+        // Resolve model and data paths
+        var modelPath = Path.Combine(repoRoot,
+            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.onnx");
+        var dataPath = Path.Combine(repoRoot,
+            "tests", "Core.Audio.UnitTests", "data", fileName);
+
+        Assert.True(File.Exists(modelPath), $"Model file not found: {modelPath}");
+        Assert.True(File.Exists(dataPath), $"Data file not found: {dataPath}");
+
+        // Build minimal service provider with HostInfo and logging
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddDebug().AddConsole());
+        services.AddSingleton(new HostInfo());
+        var sp = services.BuildServiceProvider();
+
+        // Create and initialize VAD
+        await using var vad1 = new OnnxVoiceActivityDetector(sp, modelPath);
+        await vad1.EnsureInitialized();
+
+        await using var vad2 = new OnnxVoiceActivityDetector(sp, modelPath);
+        await vad2.EnsureInitialized();
+
+        // Read float32 mono PCM @ 16kHz and feed by 512-sample chunks
+        var samples = ReadFloat32Le(dataPath);
+        Assert.True(samples.Length >= 512);
+
+        var chunkSize = 512; // 32ms window expected by detector
+        var processed = 0;
+        for (var i = 0; i + chunkSize <= samples.Length; i += chunkSize) {
+            var span = new ReadOnlySpan<float>(samples, i, chunkSize);
+            var internalResult = vad1.AppendChunkInternal(span);
+            var result = vad2.AppendChunk(span);
+            processed++;
+
+            var ms = i / 16000.0;
+            @out.WriteLine($"Chunk [{ms:F3}s]: {internalResult:F5} - {result}");
+        }
+
+        Assert.True(processed > 0);
+        // We don't assert a specific number of events since it depends on the sample content and model,
+        // but we verify the pipeline runs end-to-end without exceptions.
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(Environment.CurrentDirectory);

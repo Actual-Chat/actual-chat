@@ -34,12 +34,15 @@ public sealed class AudioProcessingModule : IDisposable
 
         configure(_moduleConfig);
         ThrowIfError(NativeMethods.webrtc_apm_apply_config(_apmHandle.DangerousGetHandle(), _moduleConfig.DangerousGetHandle()));
-
-
-        // apm.Initialize(procCfg);
         ThrowIfError(NativeMethods.webrtc_apm_initialize_with_config(
             _apmHandle.DangerousGetHandle(),
             _streamConfig.DangerousGetHandle()));
+
+        // var strPtr = NativeMethods.webrtc_apm_config_dump(_moduleConfig.DangerousGetHandle());
+        // string result = Marshal.PtrToStringAnsi(strPtr)!; // Convert IntPtr to C# string
+        // Console.WriteLine(result); // Output: Dynamic string from C!
+        // NativeMethods.webrtc_apm_string_free(strPtr); // Free the memory allocated in C
+
     }
 
     public void ProcessStream(ReadOnlySpan<float> capture, Span<float> output)
@@ -205,6 +208,12 @@ internal static partial class NativeMethods
 
     [LibraryImport(DllName)]
     internal static partial IntPtr webrtc_apm_config_create();
+
+    [LibraryImport(DllName)]
+    internal static partial IntPtr webrtc_apm_config_dump(IntPtr config);
+
+    [LibraryImport(DllName)]
+    internal static partial void webrtc_apm_string_free(IntPtr str);
 
     [LibraryImport(DllName)]
     internal static partial void webrtc_apm_config_destroy(IntPtr config);
