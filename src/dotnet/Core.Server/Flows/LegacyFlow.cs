@@ -39,16 +39,14 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
     public Symbol Step { get; private set; }
     [IgnoreDataMember, MemoryPackIgnore]
     public Moment? HardResumeAt { get; private set; }
-    [IgnoreDataMember, MemoryPackIgnore]
-    public TimeSpan DefaultTimerDelayQuanta { get; protected set; } = TimeSpan.FromSeconds(1);
-    [IgnoreDataMember, MemoryPackIgnore]
-    public TimeSpan ResumeDelayQuanta { get; protected set; } = TimeSpan.FromSeconds(0.1);
 
     // Used by FlowWorklet
     [IgnoreDataMember, MemoryPackIgnore]
+    public RetryDelaySeq FailureDelays { get; set; } = Defaults.FailureDelays;
+    [IgnoreDataMember, MemoryPackIgnore]
     public TimeSpan KeepAliveFor { get; set; } = Defaults.KeepAliveFor;
     [IgnoreDataMember, MemoryPackIgnore]
-    public RetryDelaySeq FailureDelays { get; set; } = Defaults.FailureDelays;
+    public TimeSpan DefaultTimerDelayQuanta { get; protected set; } = TimeSpan.FromSeconds(1);
 
     public override string ToString()
         => $"{GetType().Name}('{Id.Value}' @ {Step}, v.{Version.FormatVersion()})";
@@ -106,7 +104,7 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
         HardResumeAt = hardResumeAt;
     }
 
-    protected override Task Resume(FlowRuntime runtime, CancellationToken cancellationToken)
+    protected override ValueTask Resume(CancellationToken cancellationToken)
         => throw StandardError.Internal($"{nameof(Resume)} should never be called on a {nameof(LegacyFlow)}.");
 
     // Default steps

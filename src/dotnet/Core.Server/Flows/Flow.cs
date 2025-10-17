@@ -12,22 +12,20 @@ public abstract class Flow<TResult> : Flow
         protected set => ((IFlowImpl)this).UntypedResult = value;
     }
 
-    public bool IsCompleted(out Result<TResult> result)
-    {
-        result = Result.GetValueOrDefault();
-        return result.HasValue;
-    }
-
     // Protected methods
 
-    protected void Complete(TResult result)
+    protected void SetResult(TResult result)
         => Result = new Result<TResult>(result);
-    protected void Fail(Exception exception)
+    protected void SetError(Exception exception)
         => Result = new Result<TResult>(default!, exception);
 }
 
 public abstract class Flow : IFlowImpl
 {
+    // Used during HandleResume & Resume
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected FlowRuntime Runtime { get; set; } = null!;
+
     // Properties that are persisted to the DB directly
     [IgnoreDataMember, MemoryPackIgnore]
     public FlowId Id { get; private set; }
@@ -44,7 +42,15 @@ public abstract class Flow : IFlowImpl
         => $"{GetType().Name}('{Id.Value}', v.{Version.FormatVersion()})";
 
     public virtual Flow Clone()
-        => MemberwiseCloner.Invoke(this);
+    {
+        var clone = MemberwiseCloner.Invoke(this);
+        Runtime = null!;
+        return clone;
+    }
+
+    // Protected abstract methods
+
+    protected abstract ValueTask Resume(CancellationToken cancellationToken);
 
     // Protected methods
 
@@ -57,7 +63,22 @@ public abstract class Flow : IFlowImpl
         UntypedResult = untypedResult;
     }
 
-    Task IFlowImpl.Resume(FlowRuntime runtime, CancellationToken cancellationToken)
-        => Resume(runtime, cancellationToken);
-    protected abstract Task Resume(FlowRuntime runtime, CancellationToken cancellationToken);
+    Task IFlowImpl.OnResume(IServiceProvider services, CancellationToken cancellationToken)
+        => OnResume(services, cancellationToken);
+
+    protected virtual async Task OnResume(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        Runtime = CreateRuntime(services, cancellationToken);
+        try {
+            await Resume(cancellationToken).ConfigureAwait(false);
+            if (Runtime.AutoCommit)
+                await Runtime.Commit(cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            Runtime = null!;
+        }
+    }
+
+    protected virtual FlowRuntime CreateRuntime(IServiceProvider services, CancellationToken cancellationToken)
+        => new(this, services, cancellationToken);
 }

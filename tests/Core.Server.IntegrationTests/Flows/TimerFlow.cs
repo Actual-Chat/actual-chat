@@ -1,6 +1,5 @@
 using System.Globalization;
 using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
 using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
@@ -15,7 +14,7 @@ public partial class TimerFlow : Flow<Unit>
     [DataMember(Order = 2), MemoryPackOrder(2)]
     public TimeSpan Period { get; private set; }
 
-    protected override async Task Resume(FlowRuntime runtime, CancellationToken cancellationToken)
+    protected override ValueTask Resume(CancellationToken cancellationToken)
     {
         if (!IsInitialized) {
             var args = Id.SplitArguments("", "1", "1");
@@ -23,17 +22,17 @@ public partial class TimerFlow : Flow<Unit>
             Period = TimeSpan.FromSeconds(double.Parse(args[2], CultureInfo.InvariantCulture));
             IsInitialized = true;
         }
+        Runtime.DefaultResumeDelayQuanta = Period / 2;
 
-        var output = runtime.GetRequiredService<ITestOutputHelper>();
+        var output = Runtime.GetRequiredService<ITestOutputHelper>();
         output.WriteLine($"-> {this}.{nameof(Resume)}: {RemainingCount}");
-        var resumeEvent = RemainingCount > 0
-            ? runtime.NewResumeEvent(Period, Period / 2)
-            : null;
-        if (resumeEvent is null)
-            Complete(default);
-        else
+        if (RemainingCount > 0) {
             RemainingCount--;
-        await runtime.Store(resumeEvent, cancellationToken).ConfigureAwait(false);
+            Runtime.ScheduleResumeIn(Period);
+        }
+        else
+            SetResult(default);
         output.WriteLine($"<- {this}.{nameof(Resume)}: {RemainingCount}");
+        return default;
     }
 }

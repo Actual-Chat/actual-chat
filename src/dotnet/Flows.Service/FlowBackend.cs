@@ -39,6 +39,10 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         // RpcRerouteException is a special case: it's thrown when the shard is not owned by the current node
         RetryOn = (e, transiency) => e is not RpcRerouteException && transiency is not Transiency.Terminal,
     };
+    private IRetryPolicy ResumeRetryPolicy { get; init; } = new RetryPolicy(3, RetryDelaySeq.Exp(0.25, 1)) {
+        // RpcRerouteException is a special case: it's thrown when the shard is not owned by the current node
+        RetryOn = (e, transiency) => e is not RpcRerouteException && transiency is not Transiency.Terminal,
+    };
     private IRetryPolicy ClearCacheRetryPolicy { get; init; } = new RetryPolicy(RetryDelaySeq.Fixed(0.1));
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
@@ -47,20 +51,24 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         => TryGetImpl(flowId, cancellationToken);
 
     // Regular RPC method!
-    public virtual Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken)
+    public virtual async Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken)
     {
         var flowType = Registry.TypeByName[flowId.Name];
-        return StartRetryPolicy.RunIsolated(async ct => {
-            // RunIsolated also ensures the code below doesn't
-            // produce any dependencies for the caller, even though it calls TryGet.
-            var flow = await TryGet(flowId, ct).ConfigureAwait(false);
-            if (flow is not null)
-                return flow;
+        // RunIsolated also ensures the code below doesn't
+        // produce any dependencies for the caller, even though it calls TryGet.
+        var flow = await TryGet(flowId, cancellationToken).ConfigureAwait(false);
+        if (flow is not null)
+            return flow;
 
-            // Ensure the shard for this flow is owned by the current node
-            var shardOwnership = await ShardOwner.RequireOwnedOrReroute(flowId, ct).ConfigureAwait(false);
-            var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
-            var linkedToken = linkedCts.Token;
+        // Ensure the shard for this flow is owned by the current node
+        var shardOwnership = await ShardOwner.RequireOwnedOrReroute(flowId, cancellationToken).ConfigureAwait(false);
+        using var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
+        var linkedToken = linkedCts.Token;
+
+        // Ensure the resume logic below doesn't run concurrently for the same flow
+        using var _ = await _resumeLocks.Lock(flowId, linkedToken).ConfigureAwait(false);
+
+        return await StartRetryPolicy.Run(async _ => {
             try {
                 flow = (Flow)flowType.CreateInstance();
                 var legacyFlowImpl = flow as ILegacyFlowImpl;
@@ -80,13 +88,10 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                     throw StandardError.Internal("Something went wrong: Flow.Version is lower than expected.");
                 return flow;
             }
-            catch (Exception e) when (e.IsCancellationOf(linkedToken)) {
-                throw RpcRerouteException.MustReroute(); // StartRetryPolicy doesn't retry on this one
+            catch (Exception e) when (e.IsCancellationOf(shardOwnership.LockToken)) {
+                throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
             }
-            finally {
-                linkedCts.CancelAndDisposeSilently();
-            }
-        }, new RetryLogger(Log), cancellationToken);
+        }, new RetryLogger(Log), CancellationToken.None).ConfigureAwait(false);
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
@@ -101,42 +106,40 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             : ProcessEvent();
 
         async Task<long> ProcessEvent() {
-            if (command is not FlowResumeEvent resumeEvent)
+            if (command is not FlowResume flowResume)
                 throw StandardError.Internal($"Unsupported event type: {command.GetType()}.");
 
             // Ensure the shard for this flow is owned by the current node
             var shardOwnership = await ShardOwner.RequireOwnedOrReroute(flowId, cancellationToken).ConfigureAwait(false);
-            var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
+            using var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
             var linkedToken = linkedCts.Token;
-            try {
-                // Ensure the resume logic below doesn't run concurrently for the same flow
-                using var _ = await _resumeLocks.Lock(flowId, linkedToken).ConfigureAwait(false);
 
-                // Get the flow, clone it
-                var flow = await this.Get(flowId, linkedToken).ConfigureAwait(false);
-                if (flow.UntypedResult is not null)
-                    return flow.Version; // The flow has already completed, so we ignore all subsequent events
+            // Ensure the resume logic below doesn't run concurrently for the same flow
+            using var _ = await _resumeLocks.Lock(flowId, linkedToken).ConfigureAwait(false);
 
-                IFlowImpl flowImpl;
-                if (resumeEvent.MustReset) {
-                    var originalFlow = flow;
-                    flowImpl = flow = (Flow)flowType.CreateInstance();
-                    flowImpl.SetProperties(flowId, originalFlow.Version, null);
+            // Get the flow, clone it
+            var originalFlow = await this.Get(flowId, linkedToken).ConfigureAwait(false);
+            if (originalFlow.UntypedResult is not null)
+                return originalFlow.Version; // The flow has already completed, so all subsequent events are ignored
+
+            return await ResumeRetryPolicy.Run(async _ => {
+                try {
+                    IFlowImpl flow;
+                    if (flowResume.MustRestart) {
+                        flow = (Flow)flowType.CreateInstance();
+                        flow.SetProperties(flowId, originalFlow.Version, null);
+                    }
+                    else
+                        flow = originalFlow.Clone();
+
+                    // Run the HandleResume method
+                    await flow.OnResume(Services, linkedToken).ConfigureAwait(false);
+                    return flow.Version;
                 }
-                else
-                    flowImpl = flow = flow.Clone();
-
-                // Run the Resume method
-                var runtime = new FlowRuntime(flow, Services, linkedToken);
-                await flowImpl.Resume(runtime, linkedToken).ConfigureAwait(false);
-                return flow.Version;
-            }
-            catch (Exception e) when (e.IsCancellationOf(linkedToken)) {
-                throw RpcRerouteException.MustReroute(); // StartRetryPolicy doesn't retry on this one
-            }
-            finally {
-                linkedCts.CancelAndDisposeSilently();
-            }
+                catch (Exception e) when (e.IsCancellationOf(shardOwnership.LockToken)) {
+                    throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
+                }
+            }, new RetryLogger(Log), CancellationToken.None).ConfigureAwait(false);
         }
     }
 
@@ -180,7 +183,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                     context.Operation.AddEvent(new LegacyFlowStartEvent(flowId));
                 }
                 else
-                    context.Operation.AddEvent(new FlowResumeEvent(flowId));
+                    context.Operation.AddEvent(new FlowResume(flowId));
             }
             else { // Update
                 VersionChecker.RequireExpected(dbFlow.Version, expectedVersion);

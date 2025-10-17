@@ -6,5 +6,5 @@ public interface IFlowImpl : IHasId<FlowId>
     IResult? UntypedResult { get; set; }
 
     void SetProperties(FlowId id, long version, IResult? untypedResult);
-    Task Resume(FlowRuntime runtime, CancellationToken cancellationToken);
+    Task OnResume(IServiceProvider services, CancellationToken cancellationToken);
 }
