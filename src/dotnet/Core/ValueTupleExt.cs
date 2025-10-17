@@ -20,15 +20,15 @@ public static class ValueTupleExt
             : (eq2 ? i1 : throw new ArgumentOutOfRangeException(nameof(source)));
     }
 
-    public static T OtherThanOrDefault<T>(this (T, T) source, T value)
+    public static T? OtherThanOrDefault<T>(this (T, T) source, T value)
         where T : IEquatable<T>
     {
         var (i1, i2) = source;
         var eq1 = EqualityComparer<T>.Default.Equals(i1, value);
         var eq2 = EqualityComparer<T>.Default.Equals(i2, value);
         return eq1
-            ? (eq2 ? default! : i2)
-            : (eq2 ? i1 : default!);
+            ? (eq2 ? default : i2)
+            : (eq2 ? i1 : default);
     }
 
     // Sort
