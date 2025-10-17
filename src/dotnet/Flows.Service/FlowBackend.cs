@@ -16,6 +16,19 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
     private readonly AsyncLockSet<FlowId> _resumeLocks = new();
     private readonly ILruCache<FlowId, Flow?> _cache = new ConcurrentLruCache<FlowId, Flow?>(1024);
 
+    // Services
+    private FlowRegistry Registry { get; }
+    private FlowHost Host { get; }
+    private IDbEntityResolver<string, DbFlow> EntityResolver { get; }
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
+
+    // Properties
+    private IRetryPolicy ResumeRetryPolicy { get; init; } = new RetryPolicy(3, RetryDelaySeq.Exp(0.25, 1)) {
+        // RpcRerouteException is a special case: it's thrown when the shard is not owned by the current node
+        RetryOn = (e, transiency) => e is not RpcRerouteException && transiency is not Transiency.Terminal,
+    };
+    private IRetryPolicy ClearCacheRetryPolicy { get; init; } = new RetryPolicy(RetryDelaySeq.Fixed(0.1));
+
     public FlowBackend(IServiceProvider services) : base(services)
     {
         Registry = services.GetRequiredService<FlowRegistry>();
@@ -31,20 +44,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             }, new RetryLogger(Log, "ClearCache"), ShardOwner.StopToken)
             .ConfigureAwait(false);
     }
-
-    private FlowRegistry Registry { get; }
-    private FlowHost Host { get; }
-    private IDbEntityResolver<string, DbFlow> EntityResolver { get; }
-    private IRetryPolicy StartRetryPolicy { get; init; } = new RetryPolicy(3, RetryDelaySeq.Exp(0.25, 1)) {
-        // RpcRerouteException is a special case: it's thrown when the shard is not owned by the current node
-        RetryOn = (e, transiency) => e is not RpcRerouteException && transiency is not Transiency.Terminal,
-    };
-    private IRetryPolicy ResumeRetryPolicy { get; init; } = new RetryPolicy(3, RetryDelaySeq.Exp(0.25, 1)) {
-        // RpcRerouteException is a special case: it's thrown when the shard is not owned by the current node
-        RetryOn = (e, transiency) => e is not RpcRerouteException && transiency is not Transiency.Terminal,
-    };
-    private IRetryPolicy ClearCacheRetryPolicy { get; init; } = new RetryPolicy(RetryDelaySeq.Fixed(0.1));
-    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     // [ComputeMethod]
     public virtual Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken)
@@ -68,7 +67,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         // Ensure the resume logic below doesn't run concurrently for the same flow
         using var _ = await _resumeLocks.Lock(flowId, linkedToken).ConfigureAwait(false);
 
-        return await StartRetryPolicy.Run(async _ => {
+        return await ResumeRetryPolicy.Run(async _ => {
             try {
                 flow = (Flow)flowType.CreateInstance();
                 var legacyFlowImpl = flow as ILegacyFlowImpl;

@@ -65,7 +65,6 @@ public abstract class Flow : IFlowImpl
 
     Task IFlowImpl.OnResume(IServiceProvider services, CancellationToken cancellationToken)
         => OnResume(services, cancellationToken);
-
     protected virtual async Task OnResume(IServiceProvider services, CancellationToken cancellationToken)
     {
         Runtime = CreateRuntime(services, cancellationToken);

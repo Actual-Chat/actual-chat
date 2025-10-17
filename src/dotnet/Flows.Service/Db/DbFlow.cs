@@ -34,6 +34,7 @@ public sealed class DbFlow : IDbEntity<DbFlow, Flow>
     }
 
     public byte[]? Data { get; set; }
+    public string Log { get; set; } = "";
 
     public DbFlow()
     { }
