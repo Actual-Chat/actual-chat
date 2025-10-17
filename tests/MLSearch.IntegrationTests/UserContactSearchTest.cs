@@ -63,17 +63,18 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldNotFindSelf(bool own)
     {
         // arrange
-        var alice = await Tester.SignInAsUniqueAlice();
-        var accounts = await Tester.CreateAccounts(3, secondNameFactory: i => $"{i} {UniquePart}", nameFactory: _ => "Alice");
+        await Tester.SignInAsUniqueAlice();
+        var accounts = await CreateAccounts(3);
+        var ownAccount = await Tester.SignIn(accounts[0]);
         if (own)
-            foreach (var other in accounts)
-                await Tester.CreatePeerContact(alice, other);
+            foreach (var other in accounts[1..])
+                await Tester.CreatePeerContact(ownAccount, other);
 
         // act
-        var searchResults = await Find("Alice", own, null, 3);
+        var searchResults = await Find("User", own, null, 2);
 
         // assert
-        searchResults.Should().NotContain(x => x.ContactId.GetOtherUserId() == alice.Id);
+        searchResults.Should().NotContain(x => x.ContactId.GetOtherUserId() == ownAccount.Id);
     }
 
     [Fact]
