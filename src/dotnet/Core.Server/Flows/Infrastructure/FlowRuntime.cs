@@ -81,9 +81,9 @@ public class FlowRuntime(Flow flow, IServiceProvider services, CancellationToken
         Flow.Console.Commit();
 
         if (console.IsNullOrEmpty())
-            Log.LogInformation("`{FlowId}`.Commit() completed", Flow.Id.Value);
+            Log.LogInformation("`{FlowId}` committed", Flow.Id.Value);
         else
-            Log.LogInformation("`{FlowId}`.Commit() completed, console:\n{Console}", Flow.Id.Value, console);
+            Log.LogInformation("`{FlowId}` committed, console:\n{Console}", Flow.Id.Value, console);
     }
 
     // Private methods
