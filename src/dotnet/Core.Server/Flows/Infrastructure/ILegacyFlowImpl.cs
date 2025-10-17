@@ -3,7 +3,7 @@ namespace ActualChat.Flows.Infrastructure;
 public interface ILegacyFlowImpl : IFlowImpl
 {
     FlowHost Host { get; }
-    LegacyFlowWorklet Worklet { get; }
+    LegacyFlowWorklet Worklet { get; set; }
     LegacyFlowEventBin Event { get; }
     Symbol Step { get; }
     Moment? HardResumeAt { get; }
@@ -12,6 +12,7 @@ public interface ILegacyFlowImpl : IFlowImpl
         FlowId id,
         long version,
         Symbol step,
-        Moment? hardResumeAt = null,
-        LegacyFlowWorklet? worklet = null);
+        Moment? hardResumeAt,
+        FlowConsole flowConsole,
+        LegacyFlowWorklet? worklet);
 }

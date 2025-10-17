@@ -34,7 +34,7 @@ public sealed class DbFlow : IDbEntity<DbFlow, Flow>
     }
 
     public byte[]? Data { get; set; }
-    public string Log { get; set; } = "";
+    public string Console { get; set; } = "";
 
     public DbFlow()
     { }
@@ -50,6 +50,7 @@ public sealed class DbFlow : IDbEntity<DbFlow, Flow>
         using var buffer = new ArrayPoolBuffer<byte>(4096, false);
         Serializer.Write(buffer, flow, typeof(Flow));
         Data = buffer.WrittenSpan.ToArray();
+        Console = flow.Console.ToString();
 
         if (flow.UntypedResult is not null) {
             buffer.Reset();
@@ -76,13 +77,14 @@ public sealed class DbFlow : IDbEntity<DbFlow, Flow>
             return null;
 
         var flow = (Flow)Serializer.Read(Data, typeof(Flow), out _).Require();
+        var console = new FlowConsole(Console);
         if (flow is ILegacyFlowImpl legacyFlowImpl) // LegacyFlow properties - to be removed eventually
-            legacyFlowImpl.SetProperties(flowId, Version, Step, HardResumeAt);
+            legacyFlowImpl.SetProperties(flowId, Version, Step, HardResumeAt, console, null);
         else {
             var untypedResult = ResultData is { Length: > 0 }
                 ? (IResult?)Serializer.Read(ResultData, typeof(IResult), out _).Require()
                 : null;
-            ((IFlowImpl)flow).SetProperties(flowId, Version, untypedResult);
+            ((IFlowImpl)flow).SetProperties(flowId, Version, untypedResult, console);
         }
         return flow;
     }

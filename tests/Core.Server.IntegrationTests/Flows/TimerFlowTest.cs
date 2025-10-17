@@ -15,7 +15,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task VeryBasicTest()
+    public async Task BasicTest()
     {
         using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
@@ -25,7 +25,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task BasicTest()
+    public async Task TwoFlowsTest()
     {
         using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();

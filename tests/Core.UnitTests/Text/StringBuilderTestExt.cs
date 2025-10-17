@@ -206,4 +206,154 @@ public class StringBuilderExtTest
 
         return suffix;
     }
+
+    [Fact]
+    public void GetSuffix_WithSourcePrefix_ShouldHandlePartialPrefixMatch()
+    {
+        var sb = new StringBuilder();
+        sb.Append("ABC");
+        sb.Append("DEFGH");
+
+        // Prefix doesn't match - should return from full content
+        var result = sb.GetSuffix("XYZ", 5);
+        result.Should().Be("DEFGH");
+
+        // Partial prefix match at start
+        sb.Clear();
+        sb.Append("ABCDEFGH");
+        result = sb.GetSuffix("ABC", 5);
+        result.Should().Be("DEFGH");
+    }
+
+    [Fact]
+    public void GetSuffix_WithSourcePrefix_ShouldHandleEmptyPrefix()
+    {
+        var sb = new StringBuilder();
+        sb.Append("Content");
+
+        var result = sb.GetSuffix("", 5);
+        result.Should().Be("ntent");
+
+        result = sb.GetSuffix("", 100);
+        result.Should().Be("Content");
+    }
+
+    [Fact]
+    public void GetSuffix_WithSourcePrefix_ShouldHandlePrefixEqualsContent()
+    {
+        var sb = new StringBuilder();
+        var content = "SameContent";
+        sb.Append(content);
+
+        var result = sb.GetSuffix(content, content.Length);
+        result.Should().Be(content);
+        result = sb.GetSuffix(content, content.Length * 2);
+        result.Should().Be(content + content);
+        result = sb.GetSuffix(content, content.Length * 3);
+        result.Should().Be(content + content);
+    }
+
+    [Fact]
+    public void GetSuffix_WithSourcePrefix_ShouldBeConsistentWithMultipleCalls()
+    {
+        var sb = new StringBuilder();
+        var random = new Random(123);
+        var prefix = "SYSTEM_MESSAGE: ";
+
+        sb.Append(prefix);
+
+        // Build complex content
+        for (int i = 0; i < 100; i++) {
+            sb.Append(new string((char)('a' + random.Next(26)), random.Next(20, 50)));
+            if (random.Next(3) == 0)
+                sb.Append('\n');
+        }
+
+        var suffixLength = 500;
+
+        // Multiple calls should return same result
+        var result1 = sb.GetSuffix(prefix, suffixLength, splitOnNewLine: true);
+        var result2 = sb.GetSuffix(prefix, suffixLength, splitOnNewLine: true);
+        var result3 = sb.GetSuffix(prefix, suffixLength, splitOnNewLine: true);
+
+        result1.Should().Be(result2);
+        result2.Should().Be(result3);
+
+        // Same for splitOnNewLine = false
+        result1 = sb.GetSuffix(prefix, suffixLength, splitOnNewLine: false);
+        result2 = sb.GetSuffix(prefix, suffixLength, splitOnNewLine: false);
+        result3 = sb.GetSuffix(prefix, suffixLength, splitOnNewLine: false);
+
+        result1.Should().Be(result2);
+        result2.Should().Be(result3);
+    }
+
+    [Fact]
+    public void GetSuffix_WithSourcePrefix_ShouldMatchWithoutPrefix_WhenPrefixIsEmpty()
+    {
+        var random = new Random(456);
+        var sb = new StringBuilder();
+
+        // Build test content
+        for (int i = 0; i < 50; i++) {
+            sb.Append(new string((char)('a' + random.Next(26)), random.Next(20, 50)));
+            if (random.Next(3) == 0)
+                sb.Append('\n');
+        }
+
+        var suffixLength = 500;
+
+        // Results should match when sourcePrefix is empty
+        var resultWithEmptyPrefix = sb.GetSuffix("", suffixLength, splitOnNewLine: true);
+        var resultWithoutPrefix = sb.GetSuffix(suffixLength, splitOnNewLine: true);
+        resultWithEmptyPrefix.Should().Be(resultWithoutPrefix);
+
+        resultWithEmptyPrefix = sb.GetSuffix("", suffixLength, splitOnNewLine: false);
+        resultWithoutPrefix = sb.GetSuffix(suffixLength, splitOnNewLine: false);
+        resultWithEmptyPrefix.Should().Be(resultWithoutPrefix);
+    }
+
+    [Theory]
+    [InlineData("Short", 10)]
+    [InlineData("Medium length prefix here", 50)]
+    [InlineData("A very long prefix that contains multiple words and characters", 100)]
+    public void GetSuffix_WithSourcePrefix_ShouldExtractCorrectSuffix(string prefix, int suffixLength)
+    {
+        var sb = new StringBuilder();
+        var content = new string('X', suffixLength * 2);
+
+        sb.Append(prefix);
+        sb.Append(content);
+
+        var result = sb.GetSuffix(prefix, suffixLength);
+
+        result.Length.Should().Be(suffixLength);
+        result.Should().Be(content.Substring(content.Length - suffixLength));
+        result.Should().NotContain(prefix);
+    }
+
+    [Fact]
+    public void GetSuffix_WithSourcePrefix_ShouldHandleEdgeCases()
+    {
+        var sb = new StringBuilder();
+
+        // Empty StringBuilder with prefix
+        var result = sb.GetSuffix("prefix", 100);
+        result.Should().Be("prefix");
+
+        sb.Append("abc");
+        result = sb.GetSuffix("12345", 50);
+        result.Should().Be("12345abc");
+
+        result = sb.GetSuffix("12345", 0);
+        result.Should().Be("");
+        result = sb.GetSuffix("12345", 1);
+        result.Should().Be("c");
+        result = sb.GetSuffix("12345", 3);
+        result.Should().Be("abc");
+        result = sb.GetSuffix("12345", 4);
+        result.Should().Be("5abc");
+        result = sb.GetSuffix("12345", 6);
+        result.Should().Be("345abc");
+    }
 }

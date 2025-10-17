@@ -96,6 +96,62 @@ public static class StringBuilderExt
         if (buffer is null || buffer.Length < length)
             buffer = _threadStaticBuffer = new char[length];
         var bufferPos = 0;
+
+        foreach (var chunk in source.GetChunks()) {
+            var span = chunk.Span;
+            if (chunkStart + span.Length <= startIndex) {
+                chunkStart += chunk.Length;
+                continue; // Skip chunks entirely before startIndex
+            }
+
+            // chunkStart <= startIndex here
+            var chunkSlice = span[Math.Max(0, startIndex - chunkStart)..];
+            chunkSlice.CopyTo(buffer.AsSpan(bufferPos));
+            bufferPos += chunkSlice.Length;
+            chunkStart += chunk.Length;
+        }
+
+        // The buffer is shared, so it may contain some extra characters,
+        // and we need to take this into account.
+        if (splitOnNewLine) {
+            var bufferSpan = buffer[..bufferPos];
+            var newlineIndex = bufferSpan.IndexOf('\n');
+            if (newlineIndex >= 0)
+                return new string(bufferSpan[(newlineIndex + 1)..]);
+        }
+        return new string(buffer, 0, bufferPos);
+    }
+
+    public static string GetSuffix(this StringBuilder source, ReadOnlySpan<char> sourcePrefix, int length, bool splitOnNewLine = true)
+    {
+        // Produces a tail of StringBuilder of a desirable length,
+        // which may start after a newline character.
+        var hasSourcePrefix = sourcePrefix.Length != 0;
+        var totalLength = source.Length + sourcePrefix.Length;
+        if (totalLength <= length && !hasSourcePrefix)
+            return source.ToString();
+
+        var startIndex = totalLength - length;
+        var chunkStart = 0;
+        var buffer = _threadStaticBuffer;
+        if (buffer is null || buffer.Length < length)
+            buffer = _threadStaticBuffer = new char[length];
+        var bufferPos = 0;
+
+        if (hasSourcePrefix) {
+            if (sourcePrefix.Length <= startIndex) {
+                // Skip prefix chunk entirely if it's before startIndex
+                chunkStart += sourcePrefix.Length;
+            }
+            else {
+                // chunkStart <= startIndex here
+                var chunkSlice = sourcePrefix[Math.Max(0, startIndex)..];
+                chunkSlice.CopyTo(buffer.AsSpan(bufferPos));
+                bufferPos += chunkSlice.Length;
+                chunkStart += sourcePrefix.Length;
+            }
+        }
+
         foreach (var chunk in source.GetChunks()) {
             var span = chunk.Span;
             if (chunkStart + span.Length <= startIndex) {

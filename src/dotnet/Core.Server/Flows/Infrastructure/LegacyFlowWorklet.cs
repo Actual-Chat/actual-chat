@@ -73,8 +73,8 @@ public class LegacyFlowWorklet : WorkerBase, IGenericTimeoutHandler
             try {
                 flow = (LegacyFlow)await Host.Flows.Start(FlowId, cancellationToken).ConfigureAwait(false);
                 flow = (LegacyFlow)flow.Clone();
+                ((ILegacyFlowImpl)flow).Worklet = this;
                 failureDelays = flow.FailureDelays;
-                ((ILegacyFlowImpl)flow).SetProperties(flow.Id, flow.Version, flow.Step, flow.HardResumeAt, this);
                 if (flow.Step == LegacyFlowSteps.Starting) {
                     var entry = new QueueEntry(new LegacyFlowStartEvent(FlowId), cancellationToken);
                     if (!Writer.TryWrite(entry))

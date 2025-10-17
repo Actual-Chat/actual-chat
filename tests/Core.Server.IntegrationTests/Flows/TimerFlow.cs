@@ -17,22 +17,21 @@ public partial class TimerFlow : Flow<Unit>
     protected override ValueTask Resume(CancellationToken cancellationToken)
     {
         if (!IsInitialized) {
+            IsInitialized = true;
             var args = Id.SplitArguments("", "1", "1");
             RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
             Period = TimeSpan.FromSeconds(double.Parse(args[2], CultureInfo.InvariantCulture));
-            IsInitialized = true;
+            Console.Log($"Initialized: RemainingCount={RemainingCount}, Period={Period.ToShortString()}");
         }
         Runtime.DefaultResumeDelayQuanta = Period / 2;
 
-        var output = Runtime.GetRequiredService<ITestOutputHelper>();
-        output.WriteLine($"-> {this}.{nameof(Resume)}: {RemainingCount}");
         if (RemainingCount > 0) {
             RemainingCount--;
             Runtime.ScheduleResumeIn(Period);
+            Console.Log($"Will resume in {Period.ToShortString()}, RemainingCount={RemainingCount}");
         }
         else
             SetResult(default);
-        output.WriteLine($"<- {this}.{nameof(Resume)}: {RemainingCount}");
         return default;
     }
 }

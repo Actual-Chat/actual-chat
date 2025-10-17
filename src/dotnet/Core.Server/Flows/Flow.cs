@@ -9,15 +9,25 @@ public abstract class Flow<TResult> : Flow
     [IgnoreDataMember, MemoryPackIgnore]
     public Result<TResult>? Result {
         get => (Result<TResult>?)UntypedResult;
-        protected set => ((IFlowImpl)this).UntypedResult = value;
+        private set => ((IFlowImpl)this).UntypedResult = value;
     }
 
     // Protected methods
 
-    protected void SetResult(TResult result)
-        => Result = new Result<TResult>(result);
-    protected void SetError(Exception exception)
-        => Result = new Result<TResult>(default!, exception);
+    protected void SetResult(Result<TResult> result, bool mustLog = true)
+    {
+        Result = result;
+        if (!mustLog)
+            return;
+
+        if (result.Error is { } error)
+            Console.Log($"[!] {error.GetType().GetName()}, {JsonFormatter.Format(error.Message)}");
+        else
+            Console.Log($"[=] {result.ValueOrDefault}");
+    }
+
+    protected void SetError(Exception error, bool mustLog = true)
+        => SetResult(new Result<TResult>(default!, error), mustLog);
 }
 
 public abstract class Flow : IFlowImpl
@@ -33,10 +43,13 @@ public abstract class Flow : IFlowImpl
     public long Version { get; private set; }
     [IgnoreDataMember, MemoryPackIgnore]
     public IResult? UntypedResult { get; private set; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    public FlowConsole Console { get; private set; } = null!;
 
     // IFlowImpl properties
     long IFlowImpl.Version { get => Version; set => Version = value; }
     IResult? IFlowImpl.UntypedResult { get => UntypedResult; set => UntypedResult = value; }
+    FlowConsole IFlowImpl.Console { get => Console; set => Console = value; }
 
     public override string ToString()
         => $"{GetType().Name}('{Id.Value}', v.{Version.FormatVersion()})";
@@ -44,7 +57,8 @@ public abstract class Flow : IFlowImpl
     public virtual Flow Clone()
     {
         var clone = MemberwiseCloner.Invoke(this);
-        Runtime = null!;
+        clone.Console = new FlowConsole(Console.ToString()); // No string operations unless Console has non-empty Suffix
+        clone.Runtime = null!;
         return clone;
     }
 
@@ -54,13 +68,14 @@ public abstract class Flow : IFlowImpl
 
     // Protected methods
 
-    void IFlowImpl.SetProperties(FlowId id, long version, IResult? untypedResult)
-        => SetProperties(id, version, untypedResult);
-    protected void SetProperties(FlowId id, long version, IResult? untypedResult)
+    void IFlowImpl.SetProperties(FlowId id, long version, IResult? untypedResult, FlowConsole flowConsole)
+        => SetProperties(id, version, untypedResult, flowConsole);
+    protected void SetProperties(FlowId id, long version, IResult? untypedResult, FlowConsole flowConsole)
     {
         Id = id;
         Version = version;
         UntypedResult = untypedResult;
+        Console = flowConsole;
     }
 
     Task IFlowImpl.OnResume(IServiceProvider services, CancellationToken cancellationToken)

@@ -68,8 +68,22 @@ public class FlowRuntime(Flow flow, IServiceProvider services, CancellationToken
             Events = events,
         };
         var version = await Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
-        ((IFlowImpl)Flow).Version = version;
+
+        // Update own state
         StagedEvents.Clear();
+
+        // Update Flow state
+        ((IFlowImpl)Flow).Version = version;
+        var sb = Flow.Console.Suffix;
+        var console = sb.Length != 0 && sb[^1] == FlowConsole.NewLine
+            ? sb.ToString(0, sb.Length - 1) // Remove the last new line
+            : sb.ToString();
+        Flow.Console.Commit();
+
+        if (console.IsNullOrEmpty())
+            Log.LogInformation("`{FlowId}`.Commit() completed", Flow.Id.Value);
+        else
+            Log.LogInformation("`{FlowId}`.Commit() completed, console:\n{Console}", Flow.Id.Value, console);
     }
 
     // Private methods

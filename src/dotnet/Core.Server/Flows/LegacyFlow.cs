@@ -21,7 +21,7 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
 
     // ILegacyFlowImpl
     FlowHost ILegacyFlowImpl.Host => Worklet.Host;
-    LegacyFlowWorklet ILegacyFlowImpl.Worklet => Worklet;
+    LegacyFlowWorklet ILegacyFlowImpl.Worklet { get => RequireWorklet(); set => _worklet = value; }
     LegacyFlowEventBin ILegacyFlowImpl.Event => Event;
     protected FlowHost Host => Worklet.Host;
     protected LegacyFlowWorklet Worklet => RequireWorklet();
@@ -94,11 +94,11 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
 
     // Initialize
 
-    void ILegacyFlowImpl.SetProperties(FlowId id, long version, Symbol step, Moment? hardResumeAt, LegacyFlowWorklet? worklet)
-        => SetProperties(id, version, step, hardResumeAt, worklet);
-    protected void SetProperties(FlowId id, long version, Symbol step, Moment? hardResumeAt = null, LegacyFlowWorklet? worklet = null)
+    void ILegacyFlowImpl.SetProperties(FlowId id, long version, Symbol step, Moment? hardResumeAt, FlowConsole flowConsole, LegacyFlowWorklet? worklet)
+        => SetProperties(id, version, step, hardResumeAt, flowConsole, worklet);
+    protected void SetProperties(FlowId id, long version, Symbol step, Moment? hardResumeAt, FlowConsole flowConsole, LegacyFlowWorklet? worklet)
     {
-        base.SetProperties(id, version, null);
+        base.SetProperties(id, version, null, flowConsole);
         _worklet = worklet;
         Step = step;
         HardResumeAt = hardResumeAt;
@@ -238,7 +238,7 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
 
         // Always runs locally
         var storeCommand = new Flows_Store(Id, Version) {
-            Flow = Clone(),
+            Flow = this,
             Events = transition.Events.IsEmpty ? null : transition.Events.ToArray(),
         };
         var version = await Host.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);

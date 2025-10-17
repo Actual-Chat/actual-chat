@@ -72,10 +72,11 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                 flow = (Flow)flowType.CreateInstance();
                 var legacyFlowImpl = flow as ILegacyFlowImpl;
                 var flowImpl = (IFlowImpl)flow;
+                var console = new FlowConsole();
                 if (legacyFlowImpl is not null)
-                    legacyFlowImpl.SetProperties(flowId, 0, LegacyFlowSteps.Starting);
+                    legacyFlowImpl.SetProperties(flowId, 0, LegacyFlowSteps.Starting, null, console, null);
                 else
-                    flowImpl.SetProperties(flowId, 0, null);
+                    flowImpl.SetProperties(flowId, 0, null, console);
 
                 // Flow_Store is guaranteed to run locally
                 var storeCommand = new Flows_Store(flow.Id, 0) {
@@ -125,11 +126,15 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                 try {
                     IFlowImpl flow;
                     if (flowResume.MustRestart) {
+                        var console = new FlowConsole(originalFlow.Console.Prefix);
+                        console.Log("[0>]");
                         flow = (Flow)flowType.CreateInstance();
-                        flow.SetProperties(flowId, originalFlow.Version, null);
+                        flow.SetProperties(flowId, originalFlow.Version, null, console);
                     }
-                    else
+                    else {
                         flow = originalFlow.Clone();
+                        flow.Console.Log("[>]");
+                    }
 
                     // Run the HandleResume method
                     await flow.OnResume(Services, linkedToken).ConfigureAwait(false);
