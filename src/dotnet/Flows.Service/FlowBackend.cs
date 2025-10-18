@@ -127,13 +127,13 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                     IFlowImpl flow;
                     if (flowResume.MustRestart) {
                         var console = new FlowConsole(originalFlow.Console.Prefix);
-                        console.Log("[0>]");
+                        console.LogSection("[0>]");
                         flow = (Flow)flowType.CreateInstance();
                         flow.SetProperties(flowId, originalFlow.Version, null, console);
                     }
                     else {
                         flow = originalFlow.Clone();
-                        flow.Console.Log("[>]");
+                        flow.Console.LogSection("[>]");
                     }
 
                     // Run the HandleResume method

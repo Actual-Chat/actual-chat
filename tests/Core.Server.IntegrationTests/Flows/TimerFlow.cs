@@ -1,5 +1,6 @@
 using System.Globalization;
 using ActualChat.Flows;
+using ActualLab.Generators;
 using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
@@ -14,7 +15,7 @@ public partial class TimerFlow : Flow<Unit>
     [DataMember(Order = 2), MemoryPackOrder(2)]
     public TimeSpan Period { get; private set; }
 
-    protected override ValueTask Resume(CancellationToken cancellationToken)
+    protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         if (!IsInitialized) {
             IsInitialized = true;
@@ -29,9 +30,14 @@ public partial class TimerFlow : Flow<Unit>
             RemainingCount--;
             Runtime.ScheduleResumeIn(Period);
             Console.Log($"Will resume in {Period.ToShortString()}, RemainingCount={RemainingCount}");
+            if (RemainingCount == 1) {
+                await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                await Runtime.Commit(cancellationToken).ConfigureAwait(false);
+                await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                Console.Log("Post-commit message");
+            }
         }
         else
             SetResult(default);
-        return default;
     }
 }
