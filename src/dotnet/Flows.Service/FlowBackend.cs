@@ -83,7 +83,8 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                     Flow = flow,
                 };
                 var version = await Commander.Call(storeCommand, linkedToken).ConfigureAwait(false);
-                flow = await TryGet(flowId, linkedToken).ConfigureAwait(false);
+                using (Computed.BeginIsolation())
+                    flow = await TryGet(flowId, linkedToken).ConfigureAwait(false);
                 if (flow.Require().Version < version)
                     throw StandardError.Internal("Something went wrong: Flow.Version is lower than expected.");
                 return flow;
@@ -91,7 +92,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             catch (Exception e) when (e.IsCancellationOf(shardOwnership.LockToken)) {
                 throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
             }
-        }, new RetryLogger(Log), CancellationToken.None).ConfigureAwait(false);
+        }, new RetryLogger(Log), linkedToken).ConfigureAwait(false);
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
@@ -143,7 +144,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                 catch (Exception e) when (e.IsCancellationOf(shardOwnership.LockToken)) {
                     throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
                 }
-            }, new RetryLogger(Log), CancellationToken.None).ConfigureAwait(false);
+            }, new RetryLogger(Log), linkedToken).ConfigureAwait(false);
         }
     }
 
