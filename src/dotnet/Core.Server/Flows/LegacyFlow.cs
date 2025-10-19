@@ -238,7 +238,7 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
 
         // Always runs locally
         var storeCommand = new Flows_Store(Id, Version) {
-            Flow = this,
+            Flow = Clone(),
             Events = transition.Events.IsEmpty ? null : transition.Events.ToArray(),
         };
         var version = await Host.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
