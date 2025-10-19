@@ -2,17 +2,17 @@
 @inherits ComputedStateComponent<AppUIHub, RightPanelContent.Model>
 @{
     var m = State.Value;
-}
-@if (m.ShowSkeletons) {
-    <RightPanelSkeleton />
-    return;
-}
-@{
-    var chat = m.Chat;
+    if (m.ShowSkeletons) { // Chat is null
+        <RightPanelSkeleton />
+        return;
+    }
+
+    var chat = Chat;
 }
 
 <div class="right-panel">
     <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
+
         @if (m.ShowSearchPanel) {
             <AISearchPanel Chat="@chat"/>
         }
@@ -91,17 +91,16 @@
     // Nested types
 
     public sealed record Model {
-        public static Model Skeletons = new() { ShowSkeletons = true };
+        public static Model Skeletons = new();
         public static Model Loading(Chat chat) => new() { Chat = chat };
 
-        [MemberNotNullWhen(false, nameof(Chat))]
-        public bool ShowSkeletons { get; init; }
         public Chat? Chat { get; init; }
-        public bool EnableIncompleteUI { get; init; }
+        [MemberNotNullWhen(false, nameof(Chat))]
+        public bool ShowSkeletons => Chat is null;
+        public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place;
         public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
         public bool ShowMembersTab { get; init; }
         public bool ShowSearchPanel { get; init; }
-
-        public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place;
+        public bool EnableIncompleteUI { get; init; }
     }
 }
