@@ -25,10 +25,10 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             new StreamConfig(Constants.Audio.PlaybackSampleRate, Constants.Audio.Channels));
 
         try {
-            apm.SetDelay(50);
+            apm.SetDelay(40);
             apm.Configure(cfg => cfg
                 .EnableEchoCanceller(true)
-                .EnableNoiseSuppression(true, NoiseSuppressionLevel.Moderate)
+                .EnableNoiseSuppression(true, NoiseSuppressionLevel.Low)
                 .EnableAutomaticGainControl(true)
                 .EnableHighPassFilter(true)
                 .SetPipeline(false, false));
@@ -43,8 +43,8 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             Constants.Audio.Channels,
             32); // 32-bit for float
         micEncoding.Subtype = MediaEncodingSubtypes.Float;
-        var settings = new AudioGraphSettings(AudioRenderCategory.Communications) {
-            // Let AudioGraph choose optimal processing; we're only capturing
+        var settings = new AudioGraphSettings(AudioRenderCategory.Media) {
+            // Use a non-communications category to avoid OS voice processing (AEC/NS/AGC) on capture
             QuantumSizeSelectionMode = QuantumSizeSelectionMode.ClosestToDesired,
             DesiredSamplesPerQuantum = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.OpusFrameLength,
         };
@@ -73,7 +73,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         var graph = graphCreate.Graph;
 
         var inputCreate = await graph
-            .CreateDeviceInputNodeAsync(MediaCategory.Communications, micEncoding)
+            .CreateDeviceInputNodeAsync(MediaCategory.Other, micEncoding)
             .AsTask(cancellationToken);
         if (inputCreate.Status != AudioDeviceNodeCreationStatus.Success || inputCreate.DeviceInputNode is null) {
             // Unable to get microphone stream
@@ -83,6 +83,9 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         }
 
         var inputNode = inputCreate.DeviceInputNode;
+
+        // Ensure no built-in audio effects are applied on the capture path
+        try { inputNode.EffectDefinitions.Clear(); } catch { /* not critical */ }
 
         // Frame output for microphone
         var outputNode = graph.CreateFrameOutputNode(micEncoding);
