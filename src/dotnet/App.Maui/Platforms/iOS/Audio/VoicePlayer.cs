@@ -63,7 +63,7 @@ public class VoicePlayer : IDisposable
         Node.ScheduleBuffer(pcm,
             _ => {
                 // IMPORTANT: better not to access node from the callback thread
-                _position += TimeSpan.FromSeconds(pcm.FrameLength / Node.Format.SampleRate);
+                _position += TimeSpan.FromSeconds(pcm.FrameLength / pcm.Format.SampleRate);
                 _capacity.Release();
                 _state.Invalidate();
             });
