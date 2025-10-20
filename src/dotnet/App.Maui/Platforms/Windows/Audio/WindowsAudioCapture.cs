@@ -1,8 +1,15 @@
 using System.Buffers;
+using System.Runtime.InteropServices.WindowsRuntime;
+using Windows.Media;
+using Windows.Media.Audio;
+using Windows.Media.Capture;
+using Windows.Media.MediaProperties;
+using Windows.Media.Render;
 using ActualChat.App.Maui.Audio.APM;
 using ActualChat.App.Maui.Services.Recording;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using Role = NAudio.CoreAudioApi.Role;
 
 namespace ActualChat.App.Maui.Audio;
 
@@ -11,13 +18,14 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
     private const int NAudioCaptureBufferMs = 20;
     public ILogger<WindowsAudioCapture> Log { get; } = log;
 
-    public Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
+    public async Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
     {
         var apm = new AudioProcessingModule(
             new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels),
             new StreamConfig(Constants.Audio.PlaybackSampleRate, Constants.Audio.Channels));
 
         try {
+            apm.SetDelay(50);
             apm.Configure(cfg => cfg
                 .EnableEchoCanceller(true)
                 .EnableNoiseSuppression(true, NoiseSuppressionLevel.Moderate)
@@ -29,8 +37,19 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             Log.LogWarning(e, "Failed to configure AudioProcessingModule; proceeding without APM features");
         }
 
-        // Create NAudio captures for mic and loopback
-        WasapiCapture? micCapture = null;
+        // Desired input format: LPCM float32 mono for microphone
+        var micEncoding = AudioEncodingProperties.CreatePcm(
+            Constants.Audio.RecordingSampleRate,
+            Constants.Audio.Channels,
+            32); // 32-bit for float
+        micEncoding.Subtype = MediaEncodingSubtypes.Float;
+        var settings = new AudioGraphSettings(AudioRenderCategory.Communications) {
+            // Let AudioGraph choose optimal processing; we're only capturing
+            QuantumSizeSelectionMode = QuantumSizeSelectionMode.ClosestToDesired,
+            DesiredSamplesPerQuantum = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.OpusFrameLength,
+        };
+
+        // Create NAudio captures for loopback
         WasapiCapture? loopbackCapture = null;
 
         var channel = Channel.CreateUnbounded<IMemoryOwner<float>>(new UnboundedChannelOptions {
@@ -45,14 +64,35 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         var micApmFrameSize = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.ApmFrameDurationMs * Constants.Audio.Channels;
         var loopApmFrameSize = Constants.Audio.PlaybackSampleRate / 1000 * Constants.Audio.ApmFrameDurationMs * Constants.Audio.Channels;
 
+        var graphCreate = await AudioGraph.CreateAsync(settings).AsTask(cancellationToken);
+        if (graphCreate.Status != AudioGraphCreationStatus.Success || graphCreate.Graph is null) {
+            apm.DisposeSilently();
+            throw new InvalidOperationException($"AudioGraph creation failed: {graphCreate.Status}");
+        }
+
+        var graph = graphCreate.Graph;
+
+        var inputCreate = await graph
+            .CreateDeviceInputNodeAsync(MediaCategory.Communications, micEncoding)
+            .AsTask(cancellationToken);
+        if (inputCreate.Status != AudioDeviceNodeCreationStatus.Success || inputCreate.DeviceInputNode is null) {
+            // Unable to get microphone stream
+            graph.DisposeSilently();
+            apm.DisposeSilently();
+            return null;
+        }
+
+        var inputNode = inputCreate.DeviceInputNode;
+
+        // Frame output for microphone
+        var outputNode = graph.CreateFrameOutputNode(micEncoding);
+        inputNode.AddOutgoingConnection(outputNode);
+
+        graph.QuantumStarted += QuantumEventHandler;
+
         try {
             // Default communications microphone
             var devices = new MMDeviceEnumerator();
-            var micDevice = devices.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
-            micCapture = new WasapiCapture(micDevice, true, NAudioCaptureBufferMs);
-            micCapture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(Constants.Audio.RecordingSampleRate, 1);
-            micCapture.DataAvailable += OnMicCaptureOnDataAvailable;
-
             var loopbackDevice = devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
             loopbackCapture = new CustomWasapiLoopbackCapture(loopbackDevice, true, NAudioCaptureBufferMs);
             loopbackCapture.DataAvailable += OnLoopbackCaptureOnDataAvailable;
@@ -61,9 +101,10 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize NAudio capture devices");
             apm.DisposeSilently();
-            micCapture.DisposeSilently();
+            inputNode.DisposeSilently();
+            graph.DisposeSilently();
             loopbackCapture.DisposeSilently();
-            return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
+            return null;
         }
 
         // Processing loop to emit mic frames through APM
@@ -71,7 +112,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         var processingToken = processingCts.Token;
         var processingTask = BackgroundTask.Run(async () => {
             try {
-                using var emptyBuffer = MemoryPool<float>.Shared.Rent(micApmFrameSize);
+                using var emptyBuffer = MemoryPool<float>.Shared.Rent(loopApmFrameSize);
                 emptyBuffer.Memory.Span.Fill(0);
 
                 while (!processingToken.IsCancellationRequested) {
@@ -93,15 +134,12 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                     var outOwner = MemoryPool<float>.Shared.Rent(micApmFrameSize);
                     var outSpan = outOwner.Memory.Span[..micApmFrameSize];
                     try {
-                        if (loopBlock is not null) {
-                            var loopIn = loopBlock.Memory.Span[..loopApmFrameSize];
-                            apm.AnalyzeReverseStream(loopIn);
-                        }
-                        else {
-                            var emptyLoop = emptyBuffer.Memory.Span[..loopApmFrameSize];
-                            apm.AnalyzeReverseStream(emptyLoop);
-                        }
+                        var loopIn = loopBlock is not null
+                            ? loopBlock.Memory.Span[..loopApmFrameSize]
+                            : emptyBuffer.Memory.Span[..loopApmFrameSize];
+                        apm.AnalyzeReverseStream(loopIn);
                         apm.ProcessStream(micIn, outSpan);
+                        // Log.LogDebug("APM.ProcessStream gains for mic and loopback: {GainMic} {GainLoop}", AudioExt.ApproximateGain(micIn), AudioExt.ApproximateGain(loopIn));
                     }
                     catch (Exception apmEx) {
                         Log.LogDebug(apmEx,
@@ -121,20 +159,21 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         // Start recording
         try {
             loopbackCapture.StartRecording();
-            micCapture.StartRecording();
+            graph.Start();
+            inputNode.Start();
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to start NAudio recording");
-            processingCts.Cancel();
+            processingCts.CancelAndDisposeSilently();
             apm.DisposeSilently();
-            micCapture.DisposeSilently();
+            graph.DisposeSilently();
             loopbackCapture.DisposeSilently();
-            return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
+            return null;
         }
 
         // Return async iterator
         var enumerateToken = cancellationToken;
-        return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(Enumerate(enumerateToken));
+        return Enumerate(enumerateToken);
 
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
@@ -146,7 +185,9 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 channel.Writer.TryComplete();
                 // Stop and cleanup
                 try {
-                    micCapture?.StopRecording();
+                    inputNode?.Stop();
+                    outputNode?.Stop();
+                    graph?.Stop();
                     loopbackCapture?.StopRecording();
                 }
                 catch { /* ignore */ }
@@ -155,20 +196,44 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 try { await processingTask.ConfigureAwait(false); } catch { /* ignore */ }
 
                 apm.DisposeSilently();
-                micCapture?.Dispose();
+                inputNode?.DisposeSilently();
+                outputNode?.DisposeSilently();
+                graph?.DisposeSilently();
                 loopbackCapture?.Dispose();
             }
         }
 
-        void OnMicCaptureOnDataAvailable(object? _, WaveInEventArgs args)
+        void QuantumEventHandler(AudioGraph sender, object args)
         {
+            // Quantum callback: pull frames and push decoded float32 mono samples processed by APM (AEC+AGC)
             if (cancellationToken.IsCancellationRequested)
                 return;
 
-            if (args.BytesRecorded == 0)
-                return;
+            try {
+                // 2) Pull microphone frame and process through APM
+                using var frame = outputNode!.GetFrame();
+                if (frame is null)
+                    return;
 
-            PushToBuffer(args, micCapture.WaveFormat, microphoneRingBuffer);
+                using var buffer = frame.LockBuffer(AudioBufferAccessMode.Read);
+                using var reference = buffer.CreateReference();
+                if (reference is null)
+                    return;
+
+                unsafe {
+                    WindowsRuntimeMarshal.TryGetDataUnsafe(reference, out IntPtr dataPtr, out var capacity);
+                    if (dataPtr == IntPtr.Zero || capacity == 0)
+                        return;
+
+                    var floatCount = (int)capacity / sizeof(float);
+                    var inSpan = new ReadOnlySpan<float>((void*)dataPtr, floatCount);
+                    microphoneRingBuffer.TryPush(inSpan);
+                }
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to process audio frame");
+                // Best effort: ignore frame-level issues
+            }
         }
 
         void OnLoopbackCaptureOnDataAvailable(object? _, WaveInEventArgs args)
