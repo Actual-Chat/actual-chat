@@ -86,7 +86,7 @@
                 <MessageReactions Entry="@entry"/>
             }
         </div>
-        <MessageHoverMenuNew @ref="@_messageHoverMenuNew" Entry="@entry" IsSystem="@isSystem" />
+        <MessageHoverMenu @ref="@_messageHoverMenu" Entry="@entry" IsSystem="@true" />
     </div>
     return;
 }
@@ -235,7 +235,7 @@
             }
         </div>
     </div>
-    <MessageHoverMenuNew @ref="@_messageHoverMenuNew" Entry="@entry" IsSystem="@isSystem" MessageWithAuthor="@showAuthor"/>
+    <MessageHoverMenu @ref="@_messageHoverMenu" Entry="@entry" IsSystem="@false" MessageWithAuthor="@showAuthor"/>
 </div>
 
 
@@ -244,7 +244,7 @@
 }
 
 @code {
-    private MessageHoverMenuNew? _messageHoverMenuNew;
+    private MessageHoverMenu? _messageHoverMenu;
     private Model? _rendered;
     private ChatEntryMessage? _renderedMessage;
     private Markup? _renderedMarkup;
@@ -500,12 +500,12 @@
 
     private void ShowHoverMenu() {
         if (!BrowserInfo.IsTouchCapable)
-            _messageHoverMenuNew?.Show();
+            _messageHoverMenu?.Show();
     }
 
     private void HideHoverMenu() {
         if (!BrowserInfo.IsTouchCapable)
-            _messageHoverMenuNew?.Hide();
+            _messageHoverMenu?.Hide();
     }
 
     private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(ChatEntry entry)
