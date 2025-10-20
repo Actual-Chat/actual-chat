@@ -71,6 +71,9 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         var processingToken = processingCts.Token;
         var processingTask = BackgroundTask.Run(async () => {
             try {
+                using var emptyBuffer = MemoryPool<float>.Shared.Rent(micApmFrameSize);
+                emptyBuffer.Memory.Span.Fill(0);
+
                 while (!processingToken.IsCancellationRequested) {
                     if (!microphoneRingBuffer.TryPull(micApmFrameSize, out var micBlock)) {
                         await microphoneRingBuffer.WhenPushed.WaitAsync(processingToken).ConfigureAwait(false);
@@ -91,8 +94,12 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                     var outSpan = outOwner.Memory.Span[..micApmFrameSize];
                     try {
                         if (loopBlock is not null) {
-                            var loopIn = loopBlock.Memory.Span;
+                            var loopIn = loopBlock.Memory.Span[..loopApmFrameSize];
                             apm.AnalyzeReverseStream(loopIn);
+                        }
+                        else {
+                            var emptyLoop = emptyBuffer.Memory.Span[..loopApmFrameSize];
+                            apm.AnalyzeReverseStream(emptyLoop);
                         }
                         apm.ProcessStream(micIn, outSpan);
                     }

@@ -45,73 +45,64 @@ public sealed class AudioProcessingModule : IDisposable
 
     }
 
-    public void ProcessStream(ReadOnlySpan<float> capture, Span<float> output)
+    public unsafe void ProcessStream(ReadOnlySpan<float> capture, Span<float> output)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AudioProcessingModule));
         if (capture.Length != output.Length)
             throw new ArgumentException("Capture and output buffers must match");
 
-        unsafe
+        fixed (float* cPtr = capture)
+        fixed (float* oPtr = output)
         {
-            fixed (float* cPtr = capture)
-            fixed (float* oPtr = output)
-            {
-                float*[] src = [cPtr];
-                float*[] dest = [oPtr];
+            float** srcPtr = stackalloc float*[1];
+            float** destPtr = stackalloc float*[1];
+            srcPtr[0] = cPtr;
+            destPtr[0] = oPtr;
 
-                fixed (float** srcPtr = src)
-                fixed (float** destPtr = dest)
-                    ThrowIfError(NativeMethods.webrtc_apm_process_stream(
-                        _apmHandle.DangerousGetHandle(),
-                        (IntPtr)srcPtr,
-                        _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.Input),
-                        _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.Output),
-                        (IntPtr)destPtr));
-            }
+                ThrowIfError(NativeMethods.webrtc_apm_process_stream(
+                    _apmHandle.DangerousGetHandle(),
+                    (IntPtr)srcPtr,
+                    _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.Input),
+                    _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.Output),
+                    (IntPtr)destPtr));
         }
     }
 
-    public void ProcessReverseStream(ReadOnlySpan<float> render, Span<float> output)
+    public unsafe void ProcessReverseStream(ReadOnlySpan<float> render, Span<float> output)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AudioProcessingModule));
         if (render.Length != output.Length)
             throw new ArgumentException("Render and output buffers must match.");
 
-        unsafe
+        fixed (float* rPtr = render)
+        fixed (float* oPtr = output)
         {
-            fixed (float* rPtr = render)
-            fixed (float* oPtr = output)
-            {
-                float*[] src = [rPtr];
-                float*[] dest = [oPtr];
+            float** srcPtr = stackalloc float*[1];
+            float** destPtr = stackalloc float*[1];
+            srcPtr[0] = rPtr;
+            destPtr[0] = oPtr;
 
-                fixed (float** srcPtr = src)
-                fixed (float** destPtr = dest)
                     ThrowIfError(NativeMethods.webrtc_apm_process_reverse_stream(
                         _apmHandle.DangerousGetHandle(),
                         (IntPtr)srcPtr,
                         _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.ReverseInput),
                         _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.ReverseOutput),
                         (IntPtr)destPtr));
-            }
         }
     }
 
-    public void AnalyzeReverseStream(ReadOnlySpan<float> render)
+    public unsafe void AnalyzeReverseStream(ReadOnlySpan<float> render)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(AudioProcessingModule));
 
-        unsafe
+        fixed (float* rPtr = render)
         {
-            fixed (float* rPtr = render)
-            {
-                float*[] src = [rPtr];
-                fixed (float** srcPtr = src)
-                    ThrowIfError(NativeMethods.webrtc_apm_analyze_reverse_stream(
-                        _apmHandle.DangerousGetHandle(),
-                        (IntPtr)srcPtr,
-                        _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.ReverseInput)));
-            }
+            float** srcPtr = stackalloc float*[1];
+            srcPtr[0] = rPtr;
+                ThrowIfError(NativeMethods.webrtc_apm_analyze_reverse_stream(
+                    _apmHandle.DangerousGetHandle(),
+                    (IntPtr)srcPtr,
+                    _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.ReverseInput)));
         }
     }
 
