@@ -63,7 +63,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options() {
-                InitialValue = Chat is not null ? Model.Loading : Model.Skeletons,
+                InitialValue = Chat is null ? Model.Skeletons : Model.Loading(Chat),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -81,9 +81,9 @@
         var showSearchPanel = await PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
 
         return new () {
+            Chat = chat,
             EnableIncompleteUI = enableIncompleteUI,
             ShowMembersTab = showMemberTab,
-            ShowThreads = chatId.Kind is ChatKind.Group or ChatKind.Place,
             ShowSearchPanel = showSearchPanel && enableIncompleteUI,
         };
     }
@@ -91,8 +91,8 @@
     // Nested types
 
     public sealed record Model {
-        public static Model Loading = new();
         public static Model Skeletons = new() { ShowSkeletons = true };
+        public static Model Loading(Chat chat) => new() { Chat = chat };
 
         [MemberNotNullWhen(false, nameof(Chat))]
         public bool ShowSkeletons { get; init; }
@@ -100,7 +100,8 @@
         public bool EnableIncompleteUI { get; init; }
         public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
         public bool ShowMembersTab { get; init; }
-        public bool ShowThreads { get; init; }
         public bool ShowSearchPanel { get; init; }
+
+        public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place;
     }
 }
