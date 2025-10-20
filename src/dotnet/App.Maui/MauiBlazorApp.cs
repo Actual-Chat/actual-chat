@@ -13,12 +13,12 @@ public sealed class MauiBlazorApp : AppBase
     static MauiBlazorApp()
         => OtherUIAssemblies = [typeof(WebApp).Assembly, typeof(MauiBlazorApp).Assembly];
 
-    protected override void OnDisposing()
+    public override void Dispose()
     {
         Log.LogInformation("Dispose MauiBlazorApp");
         _pageContextTracker?.OnMauiBlazorAppDisposing();
         _mauiWebView?.ResetScopedServices(Services);
-        base.OnDisposing();
+        base.Dispose();
     }
 
     protected override async Task OnInitializedAsync()
