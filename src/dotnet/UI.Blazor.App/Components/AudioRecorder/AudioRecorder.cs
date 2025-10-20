@@ -19,6 +19,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private SessionTokens? _sessionTokens;
 
     private Activity? _recordingActivity;
+    private readonly AudioFocusConsumer _audioFocusConsumer;
+    private IAudioFocusActivation? _audioFocusActivation;
 
     private AppUIHub Hub { get; }
     private HostInfo HostInfo => Hub.HostInfo;
@@ -34,6 +36,9 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     [field: AllowNull, MaybeNull]
     public MicrophonePermissionHandler MicrophonePermission
         => field ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
+    [field: AllowNull, MaybeNull]
+    public AudioFocusService AudioFocusService
+        => field ??= Hub.Services.GetRequiredService<AudioFocusService>();
     public IState<AudioRecorderState> State => _state;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioRecorder))]
@@ -44,6 +49,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
         _engine = Hub.Services.GetRequiredService<IAudioRecorderEngine>();
+        _audioFocusConsumer = new AudioFocusConsumer(AudioFocusConsumerKind.Recording, LostFocusCallback);
     }
 
     protected override async Task DisposeAsyncCore()
@@ -80,6 +86,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         MarkStarting(chatId);
         try {
+            _audioFocusActivation = await AudioFocusService.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
+            if (_audioFocusActivation is null)
+                Log.LogWarning("Failed to gain audio focus for recording. Continue without it");
+
             var isStarted = await _engine.Start(chatId, repliedChatEntryId, sessionToken, cancellationToken).WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
             if (!isStarted) {
                 MicrophonePermission.ForgetCached();
@@ -257,8 +267,19 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
         _recordingActivity?.Dispose();
+        ReleaseAudioFocus();
         DebugLog?.LogDebug("Recording is stopped, {State}", State.Value);
     }
+
+    private void ReleaseAudioFocus()
+    {
+        _audioFocusActivation?.Release();
+        _audioFocusActivation = null;
+    }
+
+    private RestoreFocusHandler? LostFocusCallback(bool mayRecover)
+        // Do nothing even app lost the audio focus.
+        => null;
 
     public class AudioDiagnosticsState
     {

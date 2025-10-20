@@ -55,6 +55,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new FileUploader(c.UIHub()));
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
+        services.AddScoped(_ => new AudioFocusService());
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c.AppUIHub()));

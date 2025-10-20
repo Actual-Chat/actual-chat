@@ -111,6 +111,11 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));
 
+        // Audio Focus
+#if ANDROID
+        services.AddScoped<AudioFocusService>(c => new AndroidAudioFocusService(c));
+#endif
+
         // Test Page
 #if ANDROID
         services.RemoveAll<IWebViewCrasher>();

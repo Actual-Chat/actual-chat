@@ -7,28 +7,38 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
 {
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
-    private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
-        ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
+    private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayerController> _players =
+        ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayerController>.Empty;
 
     private readonly MutableState<PlaybackState?> _playbackState;
+    private readonly AudioFocusConsumer _audioFocusConsumer;
+    private IAudioFocusActivation? _audioFocusActivation;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
+    [field: AllowNull, MaybeNull]
+    protected AudioFocusService AudioFocusService => field ??= Hub.Services.GetRequiredService<AudioFocusService>();
+
     public ChatPlayers(AppUIHub hub) : base(hub)
-        => _playbackState = hub.StateFactory.NewMutable(
+    {
+        _playbackState = hub.StateFactory.NewMutable(
             (PlaybackState?)null,
             StateCategories.Get(GetType(), nameof(PlaybackState)));
+        _audioFocusConsumer = new AudioFocusConsumer(AudioFocusConsumerKind.Playback, OnLostFocus);
+    }
 
     void INotifyInitialized.Initialized()
         => this.Start();
 
     [ComputeMethod]
-    public virtual Task<ChatPlayer?> Get(ChatId chatId, ChatPlayerKind playerKind, CancellationToken cancellationToken)
+    public virtual Task<HistoricalChatPlayerController?> GetHistoricalChatPlayerController(ChatId chatId, CancellationToken cancellationToken)
     {
-        lock (Lock)
-            return Task.FromResult(_players.GetValueOrDefault((chatId, playerKind)));
+        lock (Lock) {
+            var controller = _players.GetValueOrDefault((chatId, ChatPlayerKind.Historical)) as HistoricalChatPlayerController;
+            return Task.FromResult(controller);
+        }
     }
 
     public void StartHistoricalPlayback(ChatId chatId, Moment startAt)
@@ -47,6 +57,23 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
     {
         if (PlaybackState.Value is RealtimePlaybackState)
             StopPlayback();
+    }
+
+    public void ReleaseAudioFocusDueToPause(HistoricalChatPlayerController controller)
+    {
+        Log.LogInformation("Releasing audio focus for historical chat player '{ChatId}'", controller.ChatId);
+
+        if (_playbackState.Value is HistoricalPlaybackState historicalPlaybackState
+            && historicalPlaybackState.ChatId == controller.ChatId) {
+            ReleaseAudioFocus();
+        }
+    }
+
+    public async Task<bool> TryGainAudioFocusForResume(HistoricalChatPlayerController controller)
+    {
+        Log.LogInformation("Trying to gain audio focus for historical chat player '{ChatId}'", controller.ChatId);
+        var audioFocusHandle = await TryGainAudioFocus($"Resuming historical chat player '{controller.ChatId}'").ConfigureAwait(false);
+        return audioFocusHandle is not null;
     }
 
     // Protected methods
@@ -102,6 +129,19 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         PlaybackState? playbackState,
         CancellationToken cancellationToken)
     {
+        if (playbackState == null) {
+            await ExitState(lastPlaybackState).ConfigureAwait(false);
+            ReleaseAudioFocus();
+            return;
+        }
+
+        var audioFocusActivation = await TryGainAudioFocus("Playback state change").ConfigureAwait(false);
+        if (audioFocusActivation is null) {
+            // Failed to get audio focus, stop playback. Show toast?
+            StopPlayback();
+            return;
+        }
+
         if (lastPlaybackState?.GetType() != playbackState?.GetType()) {
             // Mode type change
             await ExitState(lastPlaybackState).ConfigureAwait(false);
@@ -169,31 +209,36 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         lock (Lock) {
             var player = _players.GetValueOrDefault((chatId, playerKind));
             if (player != null)
-                return player;
+                return player.ChatPlayer;
             newPlayer = playerKind switch {
                 ChatPlayerKind.Realtime => new RealtimeChatPlayer(Hub, chatId),
                 ChatPlayerKind.Historical => new HistoricalChatPlayer(Hub, chatId),
                 _ => throw new ArgumentOutOfRangeException(nameof(playerKind), playerKind, null),
             };
-            _players = _players.Add((chatId, playerKind), newPlayer);
+            var controller = newPlayer is HistoricalChatPlayer historicalChatPlayer
+                ? new HistoricalChatPlayerController(historicalChatPlayer, this, Log)
+                : new ChatPlayerController(newPlayer, this);
+            _players = _players.Add((chatId, playerKind), controller);
         }
-        using (Invalidation.Begin())
-            _ = Get(chatId, playerKind, default);
+        if (playerKind is ChatPlayerKind.Historical)
+            using (Invalidation.Begin())
+                _ = GetHistoricalChatPlayerController(chatId, default);
         return newPlayer;
     }
 
     private async Task Close(ChatId chatId, ChatPlayerKind playerKind)
     {
-        ChatPlayer? player;
+        ChatPlayerController? controller;
         lock (Lock) {
-            player = _players.GetValueOrDefault((chatId, playerKind));
-            if (player == null)
+            controller = _players.GetValueOrDefault((chatId, playerKind));
+            if (controller == null)
                 return;
             _players = _players.Remove((chatId, playerKind));
         }
-        await player.DisposeAsync().ConfigureAwait(false);
-        using (Invalidation.Begin())
-            _ = Get(chatId, playerKind, default);
+        await controller.DisposeAsync().ConfigureAwait(false);
+        if (playerKind is ChatPlayerKind.Historical)
+            using (Invalidation.Begin())
+                _ = GetHistoricalChatPlayerController(chatId, default);
     }
 
     private Task<Task> ResumeRealtimePlayback(ChatId chatId, CancellationToken cancellationToken)
@@ -222,10 +267,10 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
 
     private Task StopPlayer(ChatId chatId, ChatPlayerKind playerKind)
     {
-        ChatPlayer? player;
+        ChatPlayerController? controller;
         lock (Lock)
-            player = _players.GetValueOrDefault((chatId, playerKind));
-        return player?.Stop() ?? Task.CompletedTask;
+            controller = _players.GetValueOrDefault((chatId, playerKind));
+        return controller?.ChatPlayer.Stop() ?? Task.CompletedTask;
     }
 
     private Task StopPlayers(IEnumerable<ChatId> chatIds, ChatPlayerKind playerKind)
@@ -238,4 +283,83 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         => _players
             .Select(kv => StopPlayer(kv.Key.ChatId, kv.Key.PlayerKind))
             .Collect(ApiConstants.Concurrency.Unlimited);
+
+    private async Task<IAudioFocusActivation?> TryGainAudioFocus(string? reason = "")
+    {
+        if (_audioFocusActivation is not null && !_audioFocusActivation.IsSuspended) {
+            Log.LogInformation("Already have audio focus Id={Id}. Request reason: '{Reason}'", _audioFocusActivation.Id, reason);
+            return _audioFocusActivation;
+        }
+        _audioFocusActivation = await AudioFocusService.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
+        return _audioFocusActivation;
+    }
+
+    private void ReleaseAudioFocus()
+    {
+        _audioFocusActivation?.Release();
+        _audioFocusActivation = null;
+    }
+
+    private RestoreFocusHandler? OnLostFocus(bool mayRecover)
+    {
+        Log.LogInformation("Audio focus lost event. May recover: {MayRecover}", mayRecover);
+        if (!mayRecover)
+            _audioFocusActivation = null;
+        var restoreFocusHandler = HandleLostAudioFocus(PlaybackState.Value, mayRecover);
+        return restoreFocusHandler;
+    }
+
+    private RestoreFocusHandler? HandleLostAudioFocus(PlaybackState? state, bool mayRecover)
+    {
+        Log.LogInformation("Lost audio focus. State: '{State}'", state);
+        if (state is null)
+            return null; // We should never get here.
+
+        if (state is HistoricalPlaybackState historicalPlaybackState) {
+            var paused = true;
+            lock (Lock) {
+                var activePlayers = _players.Values.Select(c => c.ChatPlayer).Where(c => c.Playback.IsPlaying.Value).ToList();
+                if (activePlayers.Count is 1
+                    && activePlayers[0] is HistoricalChatPlayer historicalChatPlayer
+                    && historicalPlaybackState.ChatId == historicalChatPlayer.ChatId) {
+                    historicalChatPlayer.Playback.Pause(CancellationToken.None);
+                    paused = true;
+                    Log.LogInformation("Lost audio focus, paused historical chat player");
+                }
+            }
+            if (!mayRecover)
+                return null;
+
+            if (paused)
+                return () => {
+                    Log.LogInformation("Restored audio focus. Will try resume historical playback. Original state: '{State}'", state);
+                    lock (Lock) {
+                        var historicalChatPlayer = _players.Values
+                            .Select(c => c.ChatPlayer)
+                            .OfType<HistoricalChatPlayer>()
+                            .FirstOrDefault(c => c.ChatId == historicalPlaybackState.ChatId);
+                        if (historicalChatPlayer != null &&
+                            historicalChatPlayer.Playback.IsPaused.Value &&
+                            !_players.Values.Any(c => c.ChatPlayer.Playback.IsPlaying.Value)
+                           ) {
+                            historicalChatPlayer.Playback.Resume(CancellationToken.None);
+                            Log.LogInformation("Resumed historical chat player");
+                        }
+                    }
+                };
+        }
+
+        StopPlayback();
+        Log.LogInformation("Lost audio focus, stopped playback");
+        if (!mayRecover)
+            return null;
+
+        if (state is RealtimePlaybackState)
+            return () => {
+                Log.LogInformation("Restored audio focus. Resuming realtime playback. Original state: '{State}'", state);
+                ResumeRealtimePlayback();
+            };
+
+        return null;
+    }
 }
