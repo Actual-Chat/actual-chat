@@ -65,6 +65,7 @@ public class VoicePlayer : IDisposable
                 // IMPORTANT: better not to access node from the callback thread
                 _position += TimeSpan.FromSeconds(pcm.FrameLength / Node.Format.SampleRate);
                 _capacity.Release();
+                _state.Invalidate();
             });
     }
 
