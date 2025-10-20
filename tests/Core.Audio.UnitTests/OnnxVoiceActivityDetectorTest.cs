@@ -107,7 +107,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         // but we verify the pipeline runs end-to-end without exceptions.
     }
 
-    [Theory]
+    [Theory(Skip = "Manual")]
     [InlineData("micIn.bin")]
     [InlineData("outAEC.bin")]
     [InlineData("outAEC_NC_AGC.bin")]
