@@ -13,7 +13,7 @@
     echo patching hosts file...
     set hostsFile=%WINDIR%\system32\drivers\etc\hosts
     echo determining ip address...
-    FOR /F "tokens=4 delims= " %%i in ('route print ^| find " 0.0.0.0"') do set localIp=%%i
+    FOR /F "tokens=4 delims= " %%i in ('route print ^| find " 0.0.0.0" | find " 192.168."') do set localIp=%%i
     set hosts=local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai
     set altHosts=local.actual.chat media.local.actual.chat cdn.local.actual.chat
     set hostsLine=%localIp%  %hosts%
