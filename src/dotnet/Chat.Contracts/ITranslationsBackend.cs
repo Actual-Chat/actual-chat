@@ -1,4 +1,5 @@
 using ActualChat.Sharding;
+using ActualLab.Resilience;
 using ActualLab.Rpc;
 using MemoryPack;
 

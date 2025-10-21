@@ -1,21 +1,31 @@
 using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-public class CoreFlowTest(ITestOutputHelper @out)
-    : AppHostTestBase($"x-{nameof(CoreFlowTest)}", TestAppHostOptions.Default with {
+public class TimerFlowTest(ITestOutputHelper @out)
+    : AppHostTestBase($"x-{nameof(TimerFlowTest)}", TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
-            services.AddFlows().Add<TimerFlow>();
+            var flows = services.AddFlows(useMasterFlows: false, useLegacyFlows: false);
+            flows.Add<TimerFlow>();
         },
     }, @out)
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task TimerFlowTest()
+    public async Task BasicTest()
+    {
+        using var h = await NewAppHost();
+        var flows = h.Services.GetRequiredService<IFlows>();
+
+        var f0 = await flows.Get<TimerFlow>("f0,2");
+        await WhenCompleted(flows, f0.Id);
+    }
+
+    [Fact]
+    public async Task TwoFlowsTest()
     {
         using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
@@ -27,12 +37,12 @@ public class CoreFlowTest(ITestOutputHelper @out)
         f1.Should().NotBeNull();
 
         await Task.WhenAll(
-            WhenEnded(flows, f0.Id),
-            WhenEnded(flows, f1.Id));
+            WhenCompleted(flows, f0.Id),
+            WhenCompleted(flows, f1.Id));
     }
 
     [Fact]
-    public async Task KillFlowTest()
+    public async Task ResetTest()
     {
         using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
@@ -47,41 +57,14 @@ public class CoreFlowTest(ITestOutputHelper @out)
             flow!.RemainingCount.Should().Be(3);
         }, DefaultTimeout);
 
-        await queues.Enqueue(new FlowKillEvent(f0.Id, "Die, digital creature!"));
-
-        // Waiting for the flow to end quickly
-        var diedQuickly = true;
-        await ComputedTest.When(async ct => {
-            var flow = await GetFlow(flows, f0, ct);
-            if (flow!.RemainingCount <= 2)
-                diedQuickly = false;
-            flow.Step.Should().Be(FlowSteps.OnEnd);
-        }, DefaultTimeout);
-        diedQuickly.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task ResetFlowTest()
-    {
-        using var h = await NewAppHost();
-        var flows = h.Services.GetRequiredService<IFlows>();
-        var queues = h.Services.GetRequiredService<IQueues>();
-
-        var f0 = await flows.Get<TimerFlow>("f0,5");
-        f0.Should().NotBeNull();
-
-        // Waiting for the RemainingCount to hit 3
-        await ComputedTest.When(async ct => {
-            var flow = await GetFlow(flows, f0, ct);
-            flow!.RemainingCount.Should().Be(3);
-        }, DefaultTimeout);
-
-        await queues.Enqueue(new FlowResetEvent(f0.Id));
+        await queues.Enqueue(new FlowResume(f0.Id) { MustRestart = true });
 
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
             flow!.RemainingCount.Should().BeGreaterThan(3);
         }, DefaultTimeout);
+
+        await WhenCompleted(flows, f0.Id);
     }
 
     // Private methods
@@ -104,9 +87,9 @@ public class CoreFlowTest(ITestOutputHelper @out)
         return flow;
     }
 
-    private Task WhenEnded(IFlows flows, FlowId flowId, double timeout = 15)
+    private Task WhenCompleted(IFlows flows, FlowId flowId, double timeout = 15)
         => ComputedTest.When(async ct => {
-            var flow = await GetFlow<Flow>(flows, flowId, ct);
-            flow!.Step.Should().Be(FlowSteps.OnEnd);
+            var flow = await GetFlow<Flow>(flows, flowId, ct).Require();
+            flow.UntypedResult.Should().NotBeNull();
         }, TimeSpan.FromSeconds(timeout));
 }

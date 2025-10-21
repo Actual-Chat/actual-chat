@@ -1,8 +1,11 @@
 namespace ActualChat.Flows.Infrastructure;
 
-public interface IFlowImpl
+public interface IFlowImpl : IHasId<FlowId>
 {
-    FlowHost Host { get; }
-    FlowWorklet Worklet { get; }
-    FlowEventBin Event { get; }
+    long Version { get; set; }
+    IResult? UntypedResult { get; set; }
+    FlowConsole Console { get; set; }
+
+    void SetProperties(FlowId id, long version, IResult? untypedResult, FlowConsole flowConsole);
+    Task OnResume(IServiceProvider services, CancellationToken cancellationToken);
 }

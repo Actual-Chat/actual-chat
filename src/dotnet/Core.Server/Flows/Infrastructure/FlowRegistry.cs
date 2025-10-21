@@ -7,6 +7,8 @@ public class FlowRegistry : IHasServices
     public IServiceProvider Services { get; }
     public IReadOnlyDictionary<Symbol, Type> TypeByName { get; }
     public IReadOnlyDictionary<Type, Symbol> NameByType { get; }
+    public bool UseMasterFlows { get; }
+    public bool UseLegacyFlows { get; }
 
     public FlowRegistry(IServiceProvider services)
     {
@@ -15,19 +17,21 @@ public class FlowRegistry : IHasServices
         var flows = flowRegistryBuilder.Flows;
         TypeByName = flows.ToFrozenDictionary();
         NameByType = flows.ToFrozenDictionary(kv => kv.Value, kv => kv.Key);
+        UseMasterFlows = flowRegistryBuilder.UseMasterFlows;
+        UseLegacyFlows = flowRegistryBuilder.UseLegacyFlows;
     }
 
     public FlowId NewId<TFlow>(string arguments)
         where TFlow : Flow
         => new(NameByType[typeof(TFlow)], arguments);
 
-    public FlowId NewId<TFlow>(params string[] arguments)
+    public FlowId NewId<TFlow>(params ReadOnlySpan<string> arguments)
         where TFlow : Flow
         => new(NameByType[typeof(TFlow)], FlowId.CombineArguments(arguments));
 
     public FlowId NewId(Type flowType, string arguments)
         => new(NameByType[flowType], arguments);
 
-    public FlowId NewId(Type flowType, params string[] arguments)
+    public FlowId NewId(Type flowType, params ReadOnlySpan<string> arguments)
         => new(NameByType[flowType], FlowId.CombineArguments(arguments));
 }

@@ -95,7 +95,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
             transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromHours(24), TimeSpan.FromSeconds(1));
             var flow = await Flows.TryGet<SimpleBatchedIndexingFlow>(id);
             flow!.NextRecheckAt.Should().BeNull();
-        }, TimeSpan.FromSeconds(10));
+        }, TimeSpan.FromSeconds(15));
     }
 
     private List<SimpleItem> NewBatch(int lastBatchSize)

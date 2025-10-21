@@ -1,9 +1,9 @@
 namespace ActualChat.Flows;
 
 [StructLayout(LayoutKind.Auto)]
-public sealed class FlowEventBin(Flow flow, IFlowEvent @event)
+public sealed class LegacyFlowEventBin(LegacyFlow flow, IFlowEvent @event)
 {
-    public Flow Flow { get; } = flow;
+    public LegacyFlow Flow { get; } = flow;
     public bool IsHandled { get; private set; }
     public IFlowEvent Event { get; } = @event;
 

@@ -1,14 +1,13 @@
 using ActualLab.CommandR.Operations;
-using ActualChat.Flows.Infrastructure;
 
 namespace ActualChat.Flows;
 
 [StructLayout(LayoutKind.Auto)]
-public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
+public readonly record struct LegacyFlowTransition : ICanBeNone<LegacyFlowTransition>
 {
-    public static FlowTransition None => default;
+    public static LegacyFlowTransition None => default;
 
-    public Flow Flow { get; init; }
+    public LegacyFlow Flow { get; init; }
     public Symbol Step { get; init; }
     public string? Tag { get; init; } = null;
     public bool MustStore { get; init; }
@@ -21,7 +20,7 @@ public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
         => MustStore || Events.Count != 0;
 
     // ReSharper disable once ConvertToPrimaryConstructor
-    public FlowTransition(Flow flow, Symbol step, string? tag)
+    public LegacyFlowTransition(LegacyFlow flow, Symbol step, string? tag)
     {
         Flow = flow;
         Step = step;
@@ -29,7 +28,7 @@ public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
     }
 
     // ReSharper disable once ConvertToPrimaryConstructor
-    public FlowTransition(Flow flow, Symbol step, string? tag, OperationEvent @event)
+    public LegacyFlowTransition(LegacyFlow flow, Symbol step, string? tag, OperationEvent @event)
     {
         Flow = flow;
         Step = step;
@@ -38,7 +37,7 @@ public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
     }
 
     // ReSharper disable once ConvertToPrimaryConstructor
-    public FlowTransition(Flow flow, Symbol step, string? tag, Moment hardResumeAt)
+    public LegacyFlowTransition(LegacyFlow flow, Symbol step, string? tag, Moment hardResumeAt)
     {
         Flow = flow;
         Step = step;
@@ -47,7 +46,7 @@ public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
     }
 
     // ReSharper disable once ConvertToPrimaryConstructor
-    public FlowTransition(Flow flow, Symbol step, string? tag, Moment hardResumeAt, OperationEvent @event)
+    public LegacyFlowTransition(LegacyFlow flow, Symbol step, string? tag, Moment hardResumeAt, OperationEvent @event)
     {
         Flow = flow;
         Step = step;
@@ -57,7 +56,7 @@ public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
     }
 
     // ReSharper disable once ConvertToPrimaryConstructor
-    public FlowTransition(Flow flow, Symbol step, string? tag, Moment hardResumeAt, OperationEvent[] events)
+    public LegacyFlowTransition(LegacyFlow flow, Symbol step, string? tag, Moment hardResumeAt, OperationEvent[] events)
     {
         Flow = flow;
         Step = step;
@@ -70,18 +69,18 @@ public readonly record struct FlowTransition : ICanBeNone<FlowTransition>
     public override string ToString()
     {
         if (IsNone)
-            return $"{nameof(FlowTransition)}.{nameof(None)}";
+            return $"{nameof(LegacyFlowTransition)}.{nameof(None)}";
 
         var sTag = Tag.IsNullOrEmpty() ? "" : $", '{Tag}'";
         var sMustStore = EffectiveMustStore ? ", store" : ", no-store";
         var sResumesIn = ", resumes now";
         if (HardResumeAt is { } hardResumeAt) {
-            sResumesIn = hardResumeAt >= Flow.InfiniteHardResumeAt
+            sResumesIn = hardResumeAt >= LegacyFlow.InfiniteHardResumeAt
                 ? ", never resumes"
                 : $", hard resumes in {(hardResumeAt - SystemClock.Instance.Now).ToShortString()}";
         }
         var hasEvents = Events.Count != 0;
         var sEvents = hasEvents ? $", {Events.Count} {"event".Pluralize(Events.Count)}" : "";
-        return $"{nameof(FlowTransition)}(->{Step}{sTag}{sMustStore}{sResumesIn}{sEvents})";
+        return $"{nameof(LegacyFlowTransition)}(->{Step}{sTag}{sMustStore}{sResumesIn}{sEvents})";
     }
 }

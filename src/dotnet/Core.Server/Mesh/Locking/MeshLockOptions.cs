@@ -4,11 +4,14 @@ namespace ActualChat.Mesh;
 
 public sealed record MeshLockOptions(
     TimeSpan ExpirationPeriod,
-    float RenewalPeriodRatio = 0.5f
+    float RenewalPeriodRatio = 0.4f
 ) {
-    public static readonly MeshLockOptions Default = new(10);
+    public static readonly MeshLockOptions Default = new(11) { ExpirationSafetyMargin = TimeSpan.FromSeconds(1) };
     public static readonly MeshLockOptions DebugFriendly = new(180);
-    public static readonly MeshLockOptions TestFriendly = new(10) { UnconditionalCheckPeriod = TimeSpan.FromSeconds(3) };
+    public static readonly MeshLockOptions TestFriendly = new(11) {
+        ExpirationSafetyMargin = TimeSpan.FromSeconds(1),
+        UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),
+    };
     public static readonly IReadOnlyDictionary<string, MeshLockOptions> Presets
         = new Dictionary<string, MeshLockOptions>(StringComparer.OrdinalIgnoreCase) {
             [nameof(Default)] = Default,
@@ -18,6 +21,7 @@ public sealed record MeshLockOptions(
             ["Test"] = TestFriendly,
         };
 
+    public TimeSpan ExpirationSafetyMargin { get; init; }
     public TimeSpan UnconditionalCheckPeriod { get; init; } = TimeSpan.FromSeconds(10);
     public TimeSpan WarningDelay { get; init; } = TimeSpan.FromSeconds(15); // Negative or zero = no warning
 

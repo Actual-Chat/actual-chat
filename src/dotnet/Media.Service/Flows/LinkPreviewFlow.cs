@@ -7,7 +7,7 @@ using MemoryPack;
 namespace ActualChat.Media.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class LinkPreviewFlow : Flow
+public sealed partial class LinkPreviewFlow : LegacyFlow
 {
     [field: AllowNull, MaybeNull]
     private MediaSettings Settings => field ??= Host.Services.GetRequiredService<MediaSettings>();
@@ -19,7 +19,7 @@ public sealed partial class LinkPreviewFlow : Flow
     public static string GetArguments(string url)
         => url.ToBase64();
 
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
     {
         await Run(cancellationToken).ConfigureAwait(false);
         return WaitForEvent(nameof(OnReset), Settings.LinkPreviewUpdatePeriod);

@@ -40,10 +40,9 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
         OwnershipLocks = ownershipLocks;
         LockOptions = ownershipLocks.LockOptions;
 
-        var meshState = MeshWatcher.State.LastNonErrorValue;
         var shardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
         State = StateFactory.NewMutable(
-            initialValue: new OwnState(this, meshState, shardStates),
+            initialValue: new OwnState(this, shardStates),
             category: StateCategories.Get(GetType(), nameof(State)));
     }
 
@@ -94,18 +93,17 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
                         continue;
                     }
 
-                    var nextShardState = new ShardState(lockState, mustLock);
-                    nextShardStates[shardIndex] = nextShardState;
-                    if (lockState != nextShardState)
-                        disposeTasks.Add(lockState.WhenDisposed);
+                    disposeTasks.Add(lockState.WhenDisposed);
+                    nextShardStates[shardIndex] = new ShardState(lockState, mustLock);
                     (mustLock ? addedShards : removedShards).Add(shardIndex);
                     lockedShards[shardIndex] = mustLock;
                 }
-                State.Value = new OwnState(this, meshState, shardStates = nextShardStates);
-                if (addedShards.Count > 0 || removedShards.Count > 0)
+                if (addedShards.Count > 0 || removedShards.Count > 0) {
+                    State.Value = new OwnState(this, shardStates = nextShardStates);
                     Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
                         ThisNode.Ref,
                         lockedShards.Format(), addedShards.ToDelimitedString(","), removedShards.ToDelimitedString(","));
+                }
 
                 await Task.WhenAll(disposeTasks).SilentAwait(false);
                 disposeTasks.Clear();
@@ -178,11 +176,9 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
 
     public sealed class OwnState(
         ShardOwner shardOwner,
-        MeshState meshState,
         IReadOnlyList<ShardState> shardStates)
     {
         public ShardOwner ShardOwner { get; } = shardOwner;
-        public MeshState MeshState { get; } = meshState;
         public IReadOnlyList<ShardState> ShardStates { get; } = shardStates;
         public Moment CreatedAt { get; } = shardOwner.Host.Clock.Now;
         public TimeSpan Age => ShardOwner.Host.Clock.Now - CreatedAt;

@@ -30,6 +30,11 @@ namespace ActualChat.Flows.Migrations
                         .HasColumnName("id")
                         .UseCollation("C");
 
+                    b.Property<string>("Console")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("console");
+
                     b.Property<byte[]>("Data")
                         .HasColumnType("bytea")
                         .HasColumnName("data");
@@ -37,6 +42,14 @@ namespace ActualChat.Flows.Migrations
                     b.Property<DateTime?>("HardResumeAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("hard_resume_at");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_completed");
+
+                    b.Property<byte[]>("ResultData")
+                        .HasColumnType("bytea")
+                        .HasColumnName("result_data");
 
                     b.Property<string>("Step")
                         .IsRequired()
@@ -56,8 +69,14 @@ namespace ActualChat.Flows.Migrations
                     b.HasIndex("HardResumeAt", "Step")
                         .HasDatabaseName("ix_flows_hard_resume_at_step");
 
+                    b.HasIndex("IsCompleted", "Version")
+                        .HasDatabaseName("ix_flows_is_completed_version");
+
                     b.HasIndex("Step", "HardResumeAt")
                         .HasDatabaseName("ix_flows_step_hard_resume_at");
+
+                    b.HasIndex("Version", "IsCompleted")
+                        .HasDatabaseName("ix_flows_version_is_completed");
 
                     b.ToTable("_flows");
                 });

@@ -1,7 +1,7 @@
 using ActualChat.Search;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Versioning;
-using FluentAssertions.Equivalency;
+using AwesomeAssertions.Equivalency;
 
 namespace ActualChat.Testing.Host.Assertion;
 
