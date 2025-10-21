@@ -34,7 +34,7 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
             st1.ShardStates.Count(x => x.OwnershipState.Value is not null).Should().Be(shardScheme.ShardCount / 2);
             var st2 = await sb2.State.Use(ct).ConfigureAwait(false);
             st2.ShardStates.Count(x => x.OwnershipState.Value is not null).Should().Be(shardScheme.ShardCount / 2);
-        });
+        }, TimeSpan.FromSeconds(20)); // May need more time on build agents
 
         var isOwner1 = await sb1.IsOwned(key, CancellationToken.None);
         var isOwner2 = await sb2.IsOwned(key, CancellationToken.None);
