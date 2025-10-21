@@ -53,11 +53,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
     public virtual async Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken)
     {
         var flowType = Registry.TypeByName[flowId.Name];
-        // RunIsolated also ensures the code below doesn't
-        // produce any dependencies for the caller, even though it calls TryGet.
-        var flow = await TryGet(flowId, cancellationToken).ConfigureAwait(false);
-        if (flow is not null)
-            return flow;
 
         // Ensure the shard for this flow is owned by the current node
         var shardOwnership = await ShardOwner.RequireOwnedOrReroute(flowId, cancellationToken).ConfigureAwait(false);
@@ -69,25 +64,36 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
 
         return await ResumeRetryPolicy.Run(async _ => {
             try {
-                flow = (Flow)flowType.CreateInstance();
-                var legacyFlowImpl = flow as ILegacyFlowImpl;
-                var flowImpl = (IFlowImpl)flow;
-                var console = new FlowConsole();
-                if (legacyFlowImpl is not null)
-                    legacyFlowImpl.SetProperties(flowId, 0, LegacyFlowSteps.Starting, null, console, null);
-                else
-                    flowImpl.SetProperties(flowId, 0, null, console);
+                var version = 0L;
+                while (true) {
+                    Flow? flow;
+                    using (Computed.BeginIsolation())
+                        flow = await TryGet(flowId, linkedToken).ConfigureAwait(false);
+                    if (flow is not null && flow.Version >= version)
+                        return flow;
 
-                // Flow_Store is guaranteed to run locally
-                var storeCommand = new Flows_Store(flow.Id, 0) {
-                    Flow = flow,
-                };
-                var version = await Commander.Call(storeCommand, linkedToken).ConfigureAwait(false);
-                using (Computed.BeginIsolation())
-                    flow = await TryGet(flowId, linkedToken).ConfigureAwait(false);
-                if (flow.Require().Version < version)
-                    throw StandardError.Internal("Something went wrong: Flow.Version is lower than expected.");
-                return flow;
+                    if (version > 0L) {
+                        // We already executed Flows_Store command and it succeeded
+                        await TickSource.Default.WhenNextTick().ConfigureAwait(false);
+                        linkedToken.ThrowIfCancellationRequested();
+                        continue;
+                    }
+
+                    flow = (Flow)flowType.CreateInstance();
+                    var legacyFlowImpl = flow as ILegacyFlowImpl;
+                    var flowImpl = (IFlowImpl)flow;
+                    var console = new FlowConsole();
+                    if (legacyFlowImpl is not null)
+                        legacyFlowImpl.SetProperties(flowId, 0, LegacyFlowSteps.Starting, null, console, null);
+                    else
+                        flowImpl.SetProperties(flowId, 0, null, console);
+
+                    // Flow_Store is guaranteed to run locally
+                    var storeCommand = new Flows_Store(flow.Id, 0) {
+                        Flow = flow,
+                    };
+                    version = await Commander.Call(storeCommand, linkedToken).ConfigureAwait(false);
+                }
             }
             catch (Exception e) when (e.IsCancellationOf(shardOwnership.LockToken)) {
                 throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
