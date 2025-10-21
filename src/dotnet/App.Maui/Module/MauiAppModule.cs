@@ -60,8 +60,16 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<TuneUI>(c => new MauiTunes(c.UIHub()));
         // services.AddSingleton<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
         services.AddSingleton<VoiceActivityDetector>(c => {
-            var modelPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "dist", "assets", "onnx", "vad.onnx");
-            return new OnnxVoiceActivityDetector(c, modelPath);
+            return new OnnxVoiceActivityDetector(c, ModelLoader);
+
+            async Task<byte[]> ModelLoader()
+            {
+                await using var modelStream = await FileSystem.OpenAppPackageFileAsync(@"wwwroot\dist\assets\onnx\vad.onnx");
+                using var ms = new MemoryStream();
+                await modelStream.CopyToAsync(ms, CancellationToken.None);
+                ms.Position = 0;
+                return ms.ToArray();
+            }
         });
 #elif IOS || MACCATALYST
         services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));

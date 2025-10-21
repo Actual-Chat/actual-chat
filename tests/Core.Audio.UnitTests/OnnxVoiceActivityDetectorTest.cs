@@ -1,8 +1,5 @@
-﻿using System.Runtime.InteropServices;
-using ActualChat.Audio;
+﻿using ActualChat.Audio;
 using ActualChat.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Core.Audio.UnitTests;
 
@@ -31,7 +28,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         var sp = services.BuildServiceProvider();
 
         // Create and initialize VAD
-        await using var vad = new OnnxVoiceActivityDetector(sp, modelPath);
+        await using var vad = new OnnxVoiceActivityDetector(sp, () => File.ReadAllBytesAsync(modelPath));
         await vad.EnsureInitialized();
         Assert.True(vad.IsInitialized);
 
@@ -82,7 +79,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         var sp = services.BuildServiceProvider();
 
         // Create and initialize VAD
-        await using var vad = new OnnxVoiceActivityDetector(sp, modelPath);
+        await using var vad = new OnnxVoiceActivityDetector(sp, () => File.ReadAllBytesAsync(modelPath));
         await vad.EnsureInitialized();
         Assert.True(vad.IsInitialized);
 
@@ -133,10 +130,10 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         var sp = services.BuildServiceProvider();
 
         // Create and initialize VAD
-        await using var vad1 = new OnnxVoiceActivityDetector(sp, modelPath);
+        await using var vad1 = new OnnxVoiceActivityDetector(sp, () => File.ReadAllBytesAsync(modelPath));
         await vad1.EnsureInitialized();
 
-        await using var vad2 = new OnnxVoiceActivityDetector(sp, modelPath);
+        await using var vad2 = new OnnxVoiceActivityDetector(sp, () => File.ReadAllBytesAsync(modelPath));
         await vad2.EnsureInitialized();
 
         // Read float32 mono PCM @ 16kHz and feed by 512-sample chunks

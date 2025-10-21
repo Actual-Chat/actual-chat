@@ -4,7 +4,7 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 
 namespace ActualChat.Audio;
 
-public sealed class OnnxVoiceActivityDetector(IServiceProvider services, string modelFilePath) : VoiceActivityDetector(services)
+public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Task<byte[]>> modelLoader) : VoiceActivityDetector(services)
 {
     private InferenceSession? _session;
     private DenseTensor<float> _state = new (new float[2 * 1 * 128], [2, 1, 128]);
@@ -31,15 +31,10 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, string 
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(modelFilePath))
-            throw ActualChat.StandardError.Configuration("ONNX model file path is not set.");
+        if (modelLoader is null)
+            throw StandardError.Configuration("ONNX model file loader is null.");
 
-        if (!File.Exists(modelFilePath))
-            throw new FileNotFoundException("ONNX model file not found.", modelFilePath);
-
-        // Load model into memory buffer
-        var modelBytes = await File.ReadAllBytesAsync(modelFilePath, cancellationToken).ConfigureAwait(false);
-
+        var model = await modelLoader().ConfigureAwait(false);
         var options = new SessionOptions();
         options.IntraOpNumThreads = Math.Max(1, Environment.ProcessorCount - 1);
         options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
@@ -76,7 +71,7 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, string 
             options.AppendExecutionProvider_CPU();
         }
 
-        _session = new InferenceSession(modelBytes, options);
+        _session = new InferenceSession(model, options);
 
         ResetProcessingState();
     }
