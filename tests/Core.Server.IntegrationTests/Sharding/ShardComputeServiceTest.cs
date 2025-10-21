@@ -17,7 +17,7 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
     {
         var shardScheme = ShardScheme.TestBackend;
         var key = "";
-        var maxRecentDelta = TimeSpan.FromSeconds(0.1);
+        var maxRecentDelta = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 0.25 : 0.1);
 
         using var h1 = await NewAppHost();
         var sb1 = h1.Services.ShardOwner(shardScheme);
