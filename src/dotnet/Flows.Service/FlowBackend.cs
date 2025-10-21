@@ -55,7 +55,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         var flowType = Registry.TypeByName[flowId.Name];
 
         // Ensure the shard for this flow is owned by the current node
-        var shardOwnership = await ShardOwner.RequireOwnedOrReroute(flowId, cancellationToken).ConfigureAwait(false);
+        var shardOwnership = await ShardOwner
+            .RequireOwnedOrReroute(flowId, addDependency: false, cancellationToken)
+            .ConfigureAwait(false);
         using var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
         var linkedToken = linkedCts.Token;
 
@@ -119,7 +121,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                 throw StandardError.Internal($"Unsupported event type: {command.GetType()}.");
 
             // Ensure the shard for this flow is owned by the current node
-            var shardOwnership = await ShardOwner.RequireOwnedOrReroute(flowId, cancellationToken).ConfigureAwait(false);
+            var shardOwnership = await ShardOwner
+                .RequireOwnedOrReroute(flowId, addDependency: false, cancellationToken)
+                .ConfigureAwait(false);
             using var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
             var linkedToken = linkedCts.Token;
 
@@ -127,7 +131,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             using var _ = await _resumeLocks.Lock(flowId, linkedToken).ConfigureAwait(false);
 
             // Get the flow, clone it
-            var originalFlow = await this.Get(flowId, linkedToken).ConfigureAwait(false);
+            Flow originalFlow;
+            using (Computed.BeginIsolation()) // Not needed inside a command handler, but let's be safe
+                originalFlow = await this.Get(flowId, linkedToken).ConfigureAwait(false);
             if (originalFlow.UntypedResult is not null)
                 return originalFlow.Version; // The flow has already completed, so all subsequent events are ignored
 

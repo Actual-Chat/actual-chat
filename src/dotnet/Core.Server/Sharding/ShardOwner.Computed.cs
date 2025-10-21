@@ -14,10 +14,12 @@ public sealed partial class ShardOwner
 
     // [ComputeMethod] - alike
     public Task<bool> IsOwned<T>(T shardKey, CancellationToken cancellationToken)
+        => IsOwned(shardKey, addDependency: true, cancellationToken);
+    public Task<bool> IsOwned<T>(T shardKey, bool addDependency, CancellationToken cancellationToken)
     {
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cState = State.Computed;
-        var cCurrent = Computed.Current;
+        var cCurrent = addDependency ? Computed.Current : null;
         var ownershipState = cState.Value.ShardStates[shardIndex].OwnershipState;
         var cOwnershipState = ownershipState.Computed;
 
@@ -56,10 +58,12 @@ public sealed partial class ShardOwner
 
     // [ComputeMethod] - alike
     public Task<ShardOwnership> RequireOwnedOrReroute<T>(T shardKey, CancellationToken cancellationToken)
+        => RequireOwnedOrReroute(shardKey, addDependency: true, cancellationToken);
+    public Task<ShardOwnership> RequireOwnedOrReroute<T>(T shardKey, bool addDependency, CancellationToken cancellationToken)
     {
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cState = State.Computed;
-        var cCurrent = Computed.Current;
+        var cCurrent = addDependency ? Computed.Current : null;
         var ownershipState = cState.Value.ShardStates[shardIndex].OwnershipState;
         var cOwnershipState = ownershipState.Computed;
 
