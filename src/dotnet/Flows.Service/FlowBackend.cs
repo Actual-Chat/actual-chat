@@ -96,7 +96,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                 }
             }
             catch (Exception e) when (e.IsCancellationOf(shardOwnership.LockToken)) {
-                throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
+                if (!cancellationToken.IsCancellationRequested)
+                    throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
+                throw;
             }
         }, new RetryLogger(Log), linkedToken).ConfigureAwait(false);
     }
@@ -148,7 +150,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                     return flow.Version;
                 }
                 catch (Exception e) when (e.IsCancellationOf(shardOwnership.LockToken)) {
-                    throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
+                    if (!cancellationToken.IsCancellationRequested)
+                        throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
+                    throw;
                 }
             }, new RetryLogger(Log), linkedToken).ConfigureAwait(false);
         }
