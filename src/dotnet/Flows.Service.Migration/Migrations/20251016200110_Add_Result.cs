@@ -10,9 +10,10 @@ namespace ActualChat.Flows.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "ix_events_delay_until",
-                table: "_events");
+            // Removed due to merge with the previous migration (MissingChanges)
+            // migrationBuilder.DropIndex(
+            //     name: "ix_events_delay_until",
+            //     table: "_events");
 
             migrationBuilder.AddColumn<bool>(
                 name: "is_completed",
@@ -37,10 +38,11 @@ namespace ActualChat.Flows.Migrations
                 table: "_flows",
                 columns: new[] { "version", "is_completed" });
 
-            migrationBuilder.CreateIndex(
-                name: "ix_events_delay_until_state",
-                table: "_events",
-                columns: new[] { "delay_until", "state" });
+            // Removed due to merge with the previous migration (MissingChanges)
+            // migrationBuilder.CreateIndex(
+            //     name: "ix_events_delay_until_state",
+            //     table: "_events",
+            //     columns: new[] { "delay_until", "state" });
         }
 
         /// <inheritdoc />
@@ -54,9 +56,10 @@ namespace ActualChat.Flows.Migrations
                 name: "ix_flows_version_is_completed",
                 table: "_flows");
 
-            migrationBuilder.DropIndex(
-                name: "ix_events_delay_until_state",
-                table: "_events");
+            // Removed due to merge with the previous migration (MissingChanges)
+            // migrationBuilder.DropIndex(
+            //     name: "ix_events_delay_until_state",
+            //     table: "_events");
 
             migrationBuilder.DropColumn(
                 name: "is_completed",
@@ -66,10 +69,11 @@ namespace ActualChat.Flows.Migrations
                 name: "result_data",
                 table: "_flows");
 
-            migrationBuilder.CreateIndex(
-                name: "ix_events_delay_until",
-                table: "_events",
-                column: "delay_until");
+            // Removed due to merge with the previous migration (MissingChanges)
+            // migrationBuilder.CreateIndex(
+            //     name: "ix_events_delay_until",
+            //     table: "_events",
+            //     column: "delay_until");
         }
     }
 }
