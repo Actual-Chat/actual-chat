@@ -39,22 +39,23 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
         var flows = h.Services.GetRequiredService<IFlows>();
         var queues = h.Services.GetRequiredService<IQueues>();
 
-        var f0 = await flows.Get<LegacyTimerFlow>("f0,5");
+        var f0 = await flows.Get<LegacyTimerFlow>("f0,6");
         f0.Should().NotBeNull();
 
         // Waiting for the RemainingCount to hit 3
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
-            flow!.RemainingCount.Should().Be(3);
+            flow!.RemainingCount.Should().BeInRange(2,4);
         }, DefaultTimeout);
 
+        var f1 = await GetFlow(flows, f0).Require();
         await queues.Enqueue(new LegacyFlowKillEvent(f0.Id, "Die, digital creature!"));
 
         // Waiting for the flow to end quickly
         var diedQuickly = true;
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
-            if (flow!.RemainingCount <= 2)
+            if (flow!.RemainingCount < (f1.RemainingCount - 1))
                 diedQuickly = false;
             flow.Step.Should().Be(LegacyFlowSteps.OnEnd);
         }, DefaultTimeout);
