@@ -2,12 +2,12 @@ using ActualChat.Chat;
 using ActualChat.Contacts.Db;
 using ActualChat.Db;
 using ActualChat.Users;
-using Microsoft.EntityFrameworkCore;
-using StackExchange.Redis;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Redis;
 using ActualLab.Resilience;
 using ActualLab.Versioning;
+using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace ActualChat.Contacts;
 
@@ -868,7 +868,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return; // It just spawns other commands, so nothing to do here
 
         var (entry, author, changeKind, _) = eventCommand;
-        if (changeKind == ChangeKind.Remove)
+        if (changeKind == ChangeKind.Remove || entry.IsSystemEntry)
             return;
 
         var userId = author.UserId;
