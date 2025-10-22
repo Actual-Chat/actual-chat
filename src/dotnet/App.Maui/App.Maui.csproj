@@ -492,7 +492,6 @@
   <!-- iOS -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <BundleResource Include="wwwroot\dist\sounds\*.m4a" Link="sounds\%(Filename)%(Extension)" />
-    <BundleResource Include="wwwroot\dist\sounds\get-attention-notification.caf" Link="%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
