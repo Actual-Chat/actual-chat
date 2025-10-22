@@ -196,6 +196,16 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply flex-x justify-center;
     @apply max-h-14;
 }
+.list-view-layout:has(.chat-activity-subheader.active-listening) .layout-header {
+    @apply bg-transparent;
+}
+.list-view-layout:has(.chat-activity-subheader.active-listening):after {
+    @apply content-empty;
+    @apply absolute z-minus inset-x-0 top-0;
+    @apply h-28;
+    @apply opacity-90;
+    background: linear-gradient(180deg, #E7C9FF 0%, #FFF 100%);
+}
 .list-view-layout > .layout-header > .c-content {
     @apply flex-1;
     @apply lg:max-w-192;

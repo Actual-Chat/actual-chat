@@ -2,7 +2,7 @@
     @apply relative;
     @apply flex-y;
     @apply min-h-6;
-    @apply border-l-2 border-bg-01 rounded-lg;
+    @apply border-l-2 border-transparent rounded-lg;
     @apply md:select-text;
     @apply translate-z-0;
 }

@@ -169,7 +169,7 @@ body.wide .post-panel .c-left-buttons {
     transition-property: display, opacity;
 }
 .default-mode .notify-call-btn {
-    @apply static right-auto;
+    @apply right-2;
     @apply flex;
     @apply opacity-100;
 }
@@ -602,7 +602,10 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply -top-8;
     @apply flex;
     @apply h-8 inset-x-0;
-    background: linear-gradient(to top, var(--background-01), 80%, transparent);
+    background: linear-gradient(to top, var(--background-01), 80%, transparent 100%);
+    backdrop-filter: blur(8px);
+    mask: linear-gradient(to top, var(--background-01) 50%, transparent 100%);
+    -webkit-mask: linear-gradient(to top, var(--background-01) 50%, transparent 100%);
 }
 .narrow-panel .rounded-sub-footer {
     @apply -top-8;
@@ -612,15 +615,24 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 }
 .rounded-sub-footer::before {
     content: '';
-    @apply absolute left-0;
+    @apply absolute left-0 bottom-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 60%)
 }
 .rounded-sub-footer::after {
     content: '';
-    @apply absolute right-0;
+    @apply absolute right-0 bottom-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%)
+}
+.list-view-layout:has(.chat-activity-subheader.active-listening) .rounded-sub-footer {
+    @apply -top-20;
+    @apply h-20 inset-x-0;
+    background: linear-gradient(to top, var(--violet-90), 80%, transparent 100%);
+}
+.list-view-layout:has(.chat-activity-subheader.active-listening) .narrow-panel .rounded-sub-footer {
+    @apply -top-12;
+    @apply h-12 inset-x-0;
 }
 
 .editor-separator {
@@ -642,4 +654,28 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     top: 0;
     opacity: 1;
     z-index: -999;
+}
+
+.bell-svg {
+    @apply inline-block;
+    @apply w-6 h-6;
+}
+.bell-svg {
+    @apply cursor-pointer;
+    transform-origin: 50% 10%;
+    transition: transform 0.2s;
+}
+body.hoverable .notify-call-btn:hover .bell-svg:not(.bell-svg-inactive),
+body.touch-capable .notify-call-btn:active .bell-svg:not(.bell-svg-inactive) {
+    animation: bell-shake 0.7s ease-in-out;
+}
+@keyframes bell-shake {
+    0%   { transform: rotate(0deg); }
+    10%  { transform: rotate(10deg); }
+    20%  { transform: rotate(-8deg); }
+    30%  { transform: rotate(6deg); }
+    40%  { transform: rotate(-4deg); }
+    50%  { transform: rotate(2deg); }
+    60%  { transform: rotate(0deg); }
+    100% { transform: rotate(0deg); }
 }

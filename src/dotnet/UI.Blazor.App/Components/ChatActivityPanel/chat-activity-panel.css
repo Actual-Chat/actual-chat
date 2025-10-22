@@ -1,11 +1,11 @@
 .chat-activity-panel {
-    @apply flex-none flex-x items-center gap-x-2 md:gap-x-1;
+    @apply flex-none flex-x items-center gap-x-1;
     @apply h-14 w-full md:w-64;
 }
 body.wide .chat-activity-panel {
-    @apply h-10;
+    @apply h-11;
     @apply px-1;
-    @apply rounded-2xl;
+    @apply rounded-full;
     @apply bg-03;
 }
 .chat-activity-panel .silence-text {
@@ -41,16 +41,76 @@ body.wide .chat-activity-panel {
 .activity-svg {
     @apply md:mt-1;
 }
-.btn.c-glow {
-    animation: glow-btn 1s steps(10, start) infinite;
-    animation-direction: alternate;
+.chat-activity-panel .btn.not-listening {
+    @apply md:pr-1;
+    @apply text-[var(--violet-60)] text-caption-3;
+}
+.chat-activity-panel .btn.listening {
+    @apply md:pr-1;
+    @apply text-[var(--magenta-60)] text-caption-3;
 }
 
-@keyframes glow-btn {
-    from {
-        filter: drop-shadow(0 0 0.125rem var(--primary));
-    }
-    to {
-        filter: drop-shadow(0 0 0.5rem var(--primary));
-    }
+.chat-activity-subheader:empty {
+    @apply hidden;
+}
+.layout-subheader > div.chat-activity-subheader {
+    @apply w-full;
+    @apply p-[1.5px];
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    background:
+        linear-gradient(-88deg, rgba(255, 202, 255, 0.80) 4.67%, rgba(130, 104, 255, 0.50) 87.89%) padding-box;
+}
+.chat-activity-subheader .c-wrapper {
+    @apply w-full;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    @apply bg-white;
+}
+.chat-activity-subheader .chat-activity-panel {
+    @apply h-12;
+    @apply px-2;
+    background: linear-gradient(-10deg, #ABABFF, #FFD4FB) border-box;
+}
+.chat-activity-subheader .chat-activity-panel.listening {
+    background: var(--background-01);
+}
+
+.equalizer .bar {
+    @apply opacity-50;
+    transform-origin: center;
+    animation: equalize 2s infinite linear;
+}
+.equalizer.active .bar {
+    @apply opacity-100;
+    transform-origin: center;
+    animation: equalize-active 2s infinite ease-in-out;
+}
+.equalizer.active .bar-1 {
+    animation-duration: 0.8s;
+    animation-delay: 0s;
+}
+.equalizer.active .bar-2 {
+    animation-duration: 0.9s;
+    animation-delay: 0.2s;
+}
+.equalizer.active .bar-3 {
+    animation-duration: 0.7s;
+    animation-delay: 0.4s
+}
+
+@keyframes equalize {
+    0%   { transform: scaleY(1); }
+    25%  { transform: scaleY(1.15); }
+    50%  { transform: scaleY(1); }
+    75%  { transform: scaleY(0.85); }
+    100%  { transform: scaleY(1); }
+}
+@keyframes equalize-active {
+    0%   { transform: scaleY(0.6); }
+    20%  { transform: scaleY(1.1); }
+    40%  { transform: scaleY(0.7); }
+    60%  { transform: scaleY(1.2); }
+    80%  { transform: scaleY(0.8); }
+    100% { transform: scaleY(0.6); }
 }
