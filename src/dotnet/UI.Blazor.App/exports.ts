@@ -8,15 +8,18 @@ export * from './Pages/Test/js-test-page';
 
 export * from './Components/AISearchPanel/ai-bot-svg.lit';
 export * from './Components/AISearchPanel/ai-talking-svg.lit';
+export * from './Components/ChatActivityPanel/chat-activity-panel-icon-svg.lit';
 export * from './Components/ChatAudioPanel/playback-toggle-svg.lit';
 export * from './Components/ChatAudioPanel/recorder-toggle';
 export * from './Components/ChatAudioPanel/playback-toggle';
 export * from './Components/ChatAudioPanel/active-recording-svg.lit';
 export * from './Components/ChatAudioPanel/narrow-recording-svg.lit';
+export * from './Components/ChatAudioPanel/take-phone-svg.lit';
 export * from './Components/ChatList/chat-activity-svg.lit';
 export * from './Components/ChatMessageEditor/attachment-web-file-picker';
 export * from './Components/ChatMessageEditor/visual-media-dimensions';
 export * from './Components/ChatMessageEditor/chat-message-editor';
+export * from './Components/ChatMessageEditor/bell-svg.lit';
 export * from './Components/ChatNotFound/chat-not-found-svg.lit';
 export * from './Components/ChatView/EmptyChatContent/empty-chat-svg.lit';
 export * from './Components/ChatView/EmptyChatContent/empty-search-chat-svg.lit';

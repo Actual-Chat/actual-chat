@@ -27,9 +27,15 @@
     _oldRecordingLanguage = language;
     var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
     var recBtnCls = "rec-btn ";
-    if (m.IsRecordingHere)
+    if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
+        recBtnCls += "take-phone-btn";
+        animatorClass += " take-phone";
+    } else if (IsListening && !m.IsRecordingHere) {
+        recBtnCls += "listen-only-btn";
+        animatorClass += " listen-only";
+    } else if (m.IsRecordingHere) {
         recBtnCls += "record-on-btn";
-    else
+    } else
         recBtnCls += "record-off-btn";
     var tooltip = m.IsRecordingHere ? "Stop recording" : "Start recording";
     var mustKeepAwake = !m.IsRecordingHere;
@@ -67,22 +73,26 @@
         data-context-menu-delay="200">
 
         @if (hasMicrophonePermission) {
-            @* Icon for OFF state *@
-            <div class="rec-icon off">
-                <i class="icon-recorder-left-half left"></i>
-                <i class="icon-recorder-right-half right"></i>
-            </div>
+            if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
+                <take-phone-svg/>
+            } else {
+                @* Icon for OFF state *@
+                <div class="rec-icon off">
+                    <i class="icon-recorder-left-half left"></i>
+                    <i class="icon-recorder-right-half right"></i>
+                </div>
 
-            @* Icon for narrow-panel and text-mode *@
-            <narrow-recording-svg
-                isRecording="@m.IsRecordingHere"
-                class="rec-icon on text-mode-on"/>
+                @* Icon for narrow-panel and text-mode *@
+                <narrow-recording-svg
+                    isRecording="@m.IsRecordingHere"
+                    class="rec-icon on text-mode-on" />
 
-            @* Icon for ON state *@
-            <active-recording-svg
-                size="@recordingIconSize"
-                isRecording="@m.IsRecordingHere"
-                class="rec-icon on text-mode-off"/>
+                @* Icon for ON state *@
+                <active-recording-svg
+                    size="@recordingIconSize"
+                    isRecording="@m.IsRecordingHere"
+                    class="rec-icon on text-mode-off"/>
+            }
         } else {
             <i class="icon-mic-off"></i>
         }
@@ -102,6 +112,10 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private SearchUI SearchUI => Hub.SearchUI;
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private IChats Chats => Hub.Chats;
+
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
 
     private ChatId? RecordingChatId {
         get {
@@ -112,6 +126,8 @@
     }
     private bool IsRecordingHere => ChatId is not null && RecordingChatId == ChatId;
     private bool IsPushToTalk { get; set; }
+    private bool IsUpdating => Chat?.Id is not null && State.Value?.Chat != null && State.Value?.Chat.Id != Chat.Id;
+    private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -136,6 +152,12 @@
         await JS.InvokeVoidAsync(JSInitMethod);
     }
 
+    protected override async Task OnParametersSetAsync() {
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
+        await base.OnParametersSetAsync();
+    }
+
     public override ValueTask DisposeAsync() {
         _animator.Dispose();
         return base.DisposeAsync();
@@ -152,6 +174,12 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
         // Locals captured, ConfigureAwait(false) below is fine
+        if (chatId is null)
+            return Model.Loading;
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return Model.Loading;
 
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
@@ -161,13 +189,24 @@
         var isTransitioning =
             recordingChatId == chatId // The recorder records in this chat
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
+        var isAnyoneTalking = false;
+        if (ChatRecordingActivity != null) {
+            var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+            isAnyoneTalking = authorIds.Length > 0;
+        }
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+
+
         return new (
+            chat,
             language,
             isRecordingHere,
             recorderState.IsRecording,
             recorderState.IsConnected,
             hasMicrophonePermission,
-            isTransitioning);
+            isTransitioning,
+            isAnyoneTalking,
+            audioState);
     }
 
     private void OnClick()
@@ -231,13 +270,16 @@
     // Nested types
 
     public sealed record Model(
+        Chat? Chat,
         Language? Language,
         bool IsRecordingHere = false,
         bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
         bool? HasMicrophonePermission = null,
-        bool IsTransitioning = false
+        bool IsTransitioning = false,
+        bool IsAnyoneTalking = false,
+        ChatAudioState? AudioState = null
     ) {
-        public static readonly Model Loading = new(null, default, false, true, false);
+        public static readonly Model Loading = new(null, null, default, false, true, false, false, false);
     }
 }

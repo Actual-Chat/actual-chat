@@ -8,19 +8,17 @@
 /* ChatAudioPanel Mobile */
 body.narrow .chat-audio-panel {
     @apply absolute bottom-3 z-10;
-    @apply self-stretch items-center gap-x-8;
+    @apply self-center items-center gap-x-8;
     @apply h-auto;
     @apply p-0;
     @apply rounded-b-4xl;
     @apply overflow-visible;
-    left: calc(50% - 2.75rem);
 }
 body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel,
 body.narrow .text-mode .chat-audio-panel,
 body.narrow .narrow-panel .chat-audio-panel {
     @apply bottom-2;
     @apply py-1;
-    left: calc(50% - 1rem);
 }
 body.narrow .to-thick:not(.text-mode) .chat-audio-panel {
     @apply z-button;
@@ -29,6 +27,18 @@ body.narrow .to-thick:not(.text-mode) .chat-audio-panel {
 }
 
 /* Buttons */
+.chat-audio-panel .take-phone-btn.btn,
+body.hoverable .chat-audio-panel .take-phone-btn.btn:hover {
+    @apply text-06;
+    background: linear-gradient(0deg, #7429FF 0.32%, #FF3BB1 133.76%);
+    transition-property: transform, opacity, filter;
+}
+.chat-audio-panel .listen-only-btn.btn,
+body.hoverable .chat-audio-panel .listen-only-btn.btn:hover {
+    @apply text-06;
+    background: linear-gradient(0deg, #FF3880 -48.07%, #B6B6CC 94.47%);
+    transition-property: transform, opacity, filter;
+}
 .chat-audio-panel .record-off-btn.btn,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover {
     @apply text-06;
@@ -190,7 +200,26 @@ body.narrow .text-mode .recorder-wrapper::before {
         1px 0 0 0 var(--recorder-off-middle),
         0 1px 0 0 var(--recorder-off-bottom);
 }
-
+.chat-audio-panel .recorder-wrapper.take-phone,
+.chat-audio-panel .recorder-wrapper.take-phone.record-off {
+    box-shadow:
+        -1px 0 0 0 var(--recorder-off-middle),
+        0 -1px 0 0 var(--recorder-off-bottom),
+        1px 0 0 0 var(--recorder-off-middle),
+        0 1px 0 0 var(--recorder-off-top);
+}
+.chat-audio-panel .recorder-wrapper.record-off.listen-only,
+.chat-audio-panel .recorder-wrapper.record-on-to-off.listen-only {
+    @apply items-center;
+    @apply rounded-full;
+    @apply bg-transparent;
+    @apply text-06;
+    box-shadow:
+        -1px 0 0 0 var(--ash-80),
+        0 -1px 0 0 var(--ash-80),
+        1px 0 0 0 var(--ash-80),
+        0 1px 0 0 var(--ash-80);
+}
 .chat-audio-panel .recorder-wrapper .btn {
     @apply absolute z-button;
     @apply self-center;
@@ -677,6 +706,11 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .rec-icon.text-m
 }
 body.narrow .audio-panel-wrapper {
     @apply items-end gap-x-1;
+    @apply pl-9;
+}
+body.narrow .narrow-panel .audio-panel-wrapper {
+    @apply items-end gap-x-1;
+    @apply pl-10;
 }
 body.narrow .chat-message-editor:has(.related-chat-entry-panel) .audio-panel-wrapper,
 body.narrow .chat-message-editor.text-mode .audio-panel-wrapper,
@@ -693,18 +727,9 @@ body.narrow .audio-panel-wrapper .recorder-wrapper {
 /* Volume Settings Button */
 .chat-audio-panel .volume-settings-btn {
     @apply md:hidden;
+    @apply w-8;
     @apply duration-150 ease-in-out;
     transition-property: background-color, opacity;
-}
-.volume-settings-btn.btn-round {
-    @apply pt-1.5;
-}
-body.narrow .volume-settings-btn.btn.btn-round > .btn-content {
-    @apply relative;
-    @apply h-8 w-8;
-}
-body.narrow .volume-settings-btn.btn.btn-round > .btn-content i {
-    @apply text-2xl text-mobile-landscape-audio-panel-button-text;
 }
 body.narrow .chat-audio-panel:has(.record-on) .volume-settings-btn.btn.btn-round > .btn-content i {
     background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
@@ -768,5 +793,36 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
     }
     50% {
         opacity: .5;
+    }
+}
+
+.audio-panel-header {
+    @apply absolute -top-4;
+    @apply flex-x justify-center gap-x-28;
+    @apply w-full;
+    @apply px-4;
+    animation: showAudioHeader 0.3s ease-in-out forwards;
+}
+.narrow-panel .audio-panel-header {
+    @apply hidden;
+}
+.chat-message-editor.text-mode .audio-panel-header {
+    @apply hidden;
+}
+.audio-panel-header .c-left,
+.audio-panel-header .c-right {
+    @apply flex-x items-center gap-x-2;
+}
+.audio-panel-header .btn-round {
+    @apply bg-[var(--round-right-panel)];
+}
+@keyframes showAudioHeader {
+    from {
+        opacity: 0;
+        transform: translateY(30%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }

@@ -14,14 +14,13 @@
     var chatId = chat?.Id;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
     var isActive = m.IsAnyoneTalking;
-    var iconColor = IsListening ? "primary" : "text-03";
-    var btnCls = m is { IsAnyoneTalking: true, AudioState.IsListening: true } ? "c-glow" : "";
     var tooltip = IsListening ? "Listening..." : "Listen";
+    var cls = IsListening ? " listening" : "";
 }
 
-<div class="chat-activity-panel" @onclick:preventDefault="true" @onclick:stopPropagation="true">
+<div class="chat-activity-panel @cls" @onclick:preventDefault="true" @onclick:stopPropagation="true">
     <div class="c-icon">
-        <chat-activity-svg size="@iconSize" isActive="@isActive" activeColor="@iconColor" inactiveColor="text-03"/>
+        <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive"/>
     </div>
     @if (m.IsAnyoneTalking && chatId is not null) {
         <ChatActivities
@@ -33,17 +32,29 @@
         <div class="silence-text">You are listening...</div>
     }
     <div class="c-buttons">
-        <HeaderButton
-            Class="@btnCls"
-            StopPropagation="true"
-            PreventDefault="true"
-            Click="@OnListenClick"
-            Tooltip="@tooltip"
-            TooltipPosition="FloatingPosition.Bottom"
-            MustKeepAwake="@(!IsListening)">
-            <playback-toggle-svg isAnimated="@m.IsAnimated" isOn="@IsListening" isActivityPanel="true" class="activity-svg"/>
-            <div class="c-glow"></div>
-        </HeaderButton>
+        @if (!IsListening) {
+            <Button
+                Class="btn-xs btn-transparent unhovered not-listening"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnListenClick"
+                Tooltip="@tooltip"
+                TooltipPosition="FloatingPosition.Bottom"
+                MustKeepAwake="@(!IsListening)">
+                Join muted
+            </Button>
+        } else {
+            <Button
+                Class="btn-xs btn-transparent unhovered listening"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnListenClick"
+                Tooltip="@tooltip"
+                TooltipPosition="FloatingPosition.Bottom"
+                MustKeepAwake="@(!IsListening)">
+                Leave
+            </Button>
+        }
     </div>
 </div>
 
@@ -51,7 +62,6 @@
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
-    private ChatUI ChatUI => Hub.ChatUI;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
     private ChatId? RecordingChatId {
@@ -80,7 +90,6 @@
         if (ChatRecordingActivity == null)
             return null;
 
-        var isAnimated = false;
         var chat = Chat;
         var chatId = chat?.Id;
         if (chat is null || chatId is null)
@@ -88,14 +97,7 @@
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
-        if (!audioState.IsListening) {
-            var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chatInfo?.LastTextEntry is { IsStreaming: true, HasAudioEntry: true } lastTextEntry) {
-                var ownAuthor = chatInfo.Chat.Rules.Author;
-                isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
-            }
-        }
-        return new (chat, audioState, authorIds.Length > 0, isAnimated);
+        return new (chat, audioState, authorIds.Length > 0);
     }
 
     private void OnListenClick() {
@@ -110,6 +112,5 @@
     public sealed record Model(
         Chat Chat,
         ChatAudioState AudioState,
-        bool IsAnyoneTalking,
-        bool IsAnimated);
+        bool IsAnyoneTalking);
 }

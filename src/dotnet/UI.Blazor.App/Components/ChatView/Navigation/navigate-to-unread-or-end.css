@@ -33,6 +33,9 @@ body.hoverable .navigate-to-end > .c-content {
     @apply right-0;
     @apply p-3 pl-8;
 }
+body.narrow:has(.audio-panel-header) .navigate-to-end > .c-content {
+    @apply bottom-18;
+}
 .navigate-to-end .unread-counter {
     @apply z-10;
     @apply -mb-2;

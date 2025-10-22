@@ -17,7 +17,7 @@
     Tooltip="@tooltip"
     TooltipPosition="FloatingPosition.Top"
     Click="@(() => OnNotifyAllClick(m))">
-    <i class="icon-notify-phone text-1.5xl"></i>
+    <bell-svg isActive="@m.IsActive"/>
 </ButtonRound>
 
 @code {
