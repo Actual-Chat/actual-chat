@@ -93,6 +93,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
         try {
             // We might send to JS side small tracks even like 20-40ms (or without frames at all),
             // track might be less than JS threshold, so JS side should support this
+            var frameCount = 0;
             var frames = Source.GetFramesUntyped(cancellationToken);
             await foreach (var frame in frames.ConfigureAwait(false).WithCancellation(cancellationToken)) {
                 if (!isPlayCommandProcessed) {
@@ -102,7 +103,9 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
                 while (_commandsQueue.Reader.TryRead(out var command))
                     await ProcessCommand(command, cancellationToken).ConfigureAwait(false);
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
+                frameCount++;
             }
+            Log.LogDebug("Processed {FrameCount} frames for track {Id}", frameCount, trackInfo.TrackId);
 
             // Note that end command shouldn't be cancelled with cancellationToken
             // this prevents sending (end + stop) commands simultaneously, don't change this.
@@ -181,8 +184,10 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
             catch (Exception ex) {
                 Log.LogError(ex, "Error on StateChanged handler(state) invocation");
             }
-            if (state.IsEnded)
+            if (state.IsEnded) {
+                Log.LogDebug("TrackPlayer for track {Id} ended", trackInfo.TrackId);
                 _whenCompletedSource.TrySetResult();
+            }
         }
     }
 

@@ -6,7 +6,9 @@
   <!-- <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0-android;net9.0-ios;</TargetFrameworks>
+    <!-- Build Android by default; add iOS only on macOS to avoid iOS build issues on Windows CI -->
+    <TargetFrameworks>net9.0-android;</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net9.0-ios</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>

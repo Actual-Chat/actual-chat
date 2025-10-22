@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31717.71
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11116.177 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BEC9AC19-13D3-4573-85CF-DCF5BA27377C}"
 EndProject
@@ -106,12 +106,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.IntegrationTests", "t
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nodejs", "nodejs", "{609C47B5-30E6-4B2A-A8DB-1B1FD644948F}"
 	ProjectSection(SolutionItems) = preProject
+		src\nodejs\build.mjs = src\nodejs\build.mjs
 		src\nodejs\index.ts = src\nodejs\index.ts
 		src\nodejs\package.json = src\nodejs\package.json
+		src\nodejs\postcss.config.mjs = src\nodejs\postcss.config.mjs
 		src\nodejs\tailwind.config.js = src\nodejs\tailwind.config.js
 		src\nodejs\tsconfig.json = src\nodejs\tsconfig.json
-		src\nodejs\build.mjs = src\nodejs\build.mjs
-		src\nodejs\postcss.config.mjs = src\nodejs\postcss.config.mjs
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C53-98F6-45B2-8717-15B35A59AFDC}"
@@ -233,8 +233,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Media.Service.Migration", "
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nginx", "nginx", "{A1F100F7-92DF-4B51-BF55-A90700BD9423}"
 	ProjectSection(SolutionItems) = preProject
-		.config\local.voxt.ai\nginx\nginx.conf = .config\local.voxt.ai\nginx\nginx.conf
 		.config\local.voxt.ai\ssl\create-certificate.cmd = .config\local.voxt.ai\ssl\create-certificate.cmd
+		.config\local.voxt.ai\nginx\nginx.conf = .config\local.voxt.ai\nginx\nginx.conf
 		.config\local.voxt.ai\nginx\nginx.proxy-headers.conf = .config\local.voxt.ai\nginx\nginx.proxy-headers.conf
 		.config\local.voxt.ai\nginx\snippets\ssl-params.conf = .config\local.voxt.ai\nginx\snippets\ssl-params.conf
 	EndProjectSection
@@ -491,10 +491,10 @@ Global
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -657,6 +657,8 @@ Global
 		{BEC452E4-0671-4C1C-AEDC-761BA136EFC4}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Release|Any CPU.ActiveCfg = Release|Any CPU
