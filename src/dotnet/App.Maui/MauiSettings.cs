@@ -18,8 +18,7 @@ public static class MauiSettings
 #endif
 #endif
     // public const string DefaultHost = Constants.Hosts.LocalVoxt;
-    public const string DefaultHost = IsDevApp ? Constants.Hosts.LocalVoxt : Constants.Hosts.Voxt; // TODO: !!! remove before PR
-    // public const string DefaultHost = IsDevApp ? Constants.Hosts.DevVoxt : Constants.Hosts.Voxt; // TODO: !!! Uncomment before PR
+    public const string DefaultHost = IsDevApp ? Constants.Hosts.DevVoxt : Constants.Hosts.Voxt;
     public static readonly string Host;
     public static bool IsHostOverriden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
     public static readonly Uri BaseUri;
