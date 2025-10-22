@@ -102,8 +102,8 @@ internal sealed class AndroidAudioPlaybackEngine(
         // Initial report that we're ready to play
         _ = ReportPlaying(0);
 
-        // Wait until we have enough decoded samples buffered before starting playback
-        _pauseCts = new CancellationTokenSource();
+        // Ensure not paused initially
+        _pauseCts = null;
     }
 
     public Task Pause(CancellationToken cancellationToken)
@@ -112,8 +112,9 @@ internal sealed class AndroidAudioPlaybackEngine(
             throw StandardError.StateTransition(GetType(), "Start command should be called first.");
 
         _audioTrack.Pause();
-        _pauseCts.CancelAndDisposeSilently();
-        _pauseCts = null;
+        // Enter paused state: create a gate CTS that will be canceled on Resume()
+        _pauseCts?.CancelAndDisposeSilently();
+        _pauseCts = new CancellationTokenSource();
         _ = ReportPlaying(_audioTrack.PlaybackHeadPosition);
         return Task.CompletedTask;
     }
@@ -123,7 +124,9 @@ internal sealed class AndroidAudioPlaybackEngine(
         if (_audioTrack == null)
             throw StandardError.StateTransition(GetType(), "Start command should be called first.");
 
-        _pauseCts = new CancellationTokenSource();
+        // Exit paused state: cancel and dispose pause gate, then resume playback
+        _pauseCts?.CancelAndDisposeSilently();
+        _pauseCts = null;
         _audioTrack.Play();
         _ = ReportPlaying(_audioTrack.PlaybackHeadPosition);
         return Task.CompletedTask;
@@ -224,6 +227,9 @@ internal sealed class AndroidAudioPlaybackEngine(
                         break;
                     }
 
+                    // If playback is paused, wait until it is resumed before feeding more data
+                    await WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
+
                     pcm.Span.CopyTo(audioData.AsSpan(0, pcm.Length));
                     var written = await track.WriteAsync(audioData, skip, playSamples, WriteMode.Blocking).ConfigureAwait(false);
                     if (written > 0)
@@ -236,7 +242,7 @@ internal sealed class AndroidAudioPlaybackEngine(
             }
             if (_audioTrack is { } currentTrack && _listener is { } listener) {
                 currentTrack.SetNotificationMarkerPosition(_feedSamples);
-                await listener.WhenCompleted;
+                await listener.WhenCompleted.WaitAsync(cancellationToken).ConfigureAwait(false);
                 await End(true, CancellationToken.None).ConfigureAwait(false);
             }
         }
@@ -259,6 +265,21 @@ internal sealed class AndroidAudioPlaybackEngine(
         catch {
             return Task.CompletedTask;
         }
+    }
+
+    private async Task WaitIfPausedAsync(CancellationToken cancellationToken)
+    {
+        var gate = Volatile.Read(ref _pauseCts);
+        if (gate is null)
+            return;
+
+        try {
+            await Task.Delay(-1, gate.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            // resumed
+        }
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     private void TryReportEnded(string? message)
