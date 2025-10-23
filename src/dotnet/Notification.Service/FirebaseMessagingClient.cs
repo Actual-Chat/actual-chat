@@ -88,7 +88,7 @@ public class FirebaseMessagingClient(
                     },
                     Sound = notification.GetAttentionNotification is not null ? "get-attention-notification.caf" : "default",
                     MutableContent = true,
-                    ThreadId = "topics",
+                    ThreadId = tag,
                 },
             },
             Webpush = new WebpushConfig {
