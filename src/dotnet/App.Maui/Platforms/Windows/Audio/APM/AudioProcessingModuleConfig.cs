@@ -28,7 +28,13 @@ public sealed class AudioProcessingModuleConfig : IDisposable
     public AudioProcessingModuleConfig EnableAutomaticGainControl(bool enabled)
     {
         var handle = _handle.DangerousGetHandle();
-        NativeMethods.webrtc_apm_config_set_gain_controller2(handle, enabled ? 1 : 0);
+        NativeMethods.webrtc_apm_config_set_gain_controller2(handle,
+            enabled ? 1 : 0,
+            enableLimiter: 1,
+            enableInputVolumeController: 1,
+            targetLevelDbfs: 2,
+            maxGainChangeDbPerSecond: 12.0f,
+            headroomDb: 10.0f);
         return this;
     }
 

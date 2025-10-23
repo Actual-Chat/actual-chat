@@ -225,7 +225,14 @@ internal static partial class NativeMethods
         int enableLimiter);
 
     [LibraryImport(DllName)]
-    internal static partial void webrtc_apm_config_set_gain_controller2(IntPtr config, int enabled);
+    internal static partial void webrtc_apm_config_set_gain_controller2(
+        IntPtr config,
+        int enabled,
+        int enableLimiter,
+        int enableInputVolumeController,
+        int targetLevelDbfs,
+        float maxGainChangeDbPerSecond,
+        float headroomDb);
 
     [LibraryImport(DllName)]
     internal static partial void webrtc_apm_config_set_high_pass_filter(IntPtr config, int enabled);
