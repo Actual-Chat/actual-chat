@@ -6,8 +6,9 @@
   <!-- <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0-android;net9.0-ios;</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>
+    <TargetFrameworks>net9.0-android;</TargetFrameworks>
+<!--    <TargetFrameworks>net9.0-android;net9.0-ios;</TargetFrameworks>-->
+<!--    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>-->
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
@@ -467,6 +468,9 @@
     <None Remove="android.etlx" />
   </ItemGroup>
   <!-- Android -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) == true">
+    <AndroidResource Include="..\..\..\resources\sounds\attention_ringtone.mp3" Link="Resources\Raw\attention_ringtone.mp3" />
+  </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
