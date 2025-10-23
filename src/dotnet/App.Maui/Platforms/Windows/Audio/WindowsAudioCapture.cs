@@ -15,14 +15,14 @@ namespace ActualChat.App.Maui.Audio;
 
 public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCapture
 {
-    private const int NAudioCaptureBufferMs = 20;
+    private const int NAudioCaptureBufferMs = 10;
     public ILogger<WindowsAudioCapture> Log { get; } = log;
 
     public async Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
     {
         var apm = new AudioProcessingModule(
             new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels),
-            new StreamConfig(Constants.Audio.PlaybackSampleRate, Constants.Audio.Channels));
+            new StreamConfig(Constants.Audio.RecordingSampleRate, Constants.Audio.Channels));
 
         try {
             // apm.SetDelay(40);
@@ -59,10 +59,10 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         });
 
         var microphoneRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
-        var loopbackRingBuffer = new BlockRingBuffer<float>(Constants.Audio.PlaybackSampleRate * 10);
+        var loopbackRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
 
         var micApmFrameSize = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.ApmFrameDurationMs * Constants.Audio.Channels;
-        var loopApmFrameSize = Constants.Audio.PlaybackSampleRate / 1000 * Constants.Audio.ApmFrameDurationMs * Constants.Audio.Channels;
+        var loopApmFrameSize = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.ApmFrameDurationMs * Constants.Audio.Channels;
 
         var graphCreate = await AudioGraph.CreateAsync(settings).AsTask(cancellationToken);
         if (graphCreate.Status != AudioGraphCreationStatus.Success || graphCreate.Graph is null) {
@@ -99,7 +99,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             var loopbackDevice = devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
             loopbackCapture = new CustomWasapiLoopbackCapture(loopbackDevice, true, NAudioCaptureBufferMs);
             loopbackCapture.DataAvailable += OnLoopbackCaptureOnDataAvailable;
-            loopbackCapture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(Constants.Audio.PlaybackSampleRate, 1);
+            loopbackCapture.WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(Constants.Audio.RecordingSampleRate, 1);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize NAudio capture devices");
@@ -136,19 +136,13 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                     var micIn = micBlock.Memory.Span;
                     var outOwner = MemoryPool<float>.Shared.Rent(micApmFrameSize);
                     var outSpan = outOwner.Memory.Span[..micApmFrameSize];
-                    try {
-                        var loopIn = loopBlock is not null
-                            ? loopBlock.Memory.Span[..loopApmFrameSize]
-                            : emptyBuffer.Memory.Span[..loopApmFrameSize];
-                        apm.AnalyzeReverseStream(loopIn);
-                        apm.ProcessStream(micIn, outSpan);
-                        // Log.LogDebug("APM.ProcessStream gains for mic and loopback: {GainMic} {GainLoop}", AudioExt.ApproximateGain(micIn), AudioExt.ApproximateGain(loopIn));
-                    }
-                    catch (Exception apmEx) {
-                        Log.LogDebug(apmEx,
-                            "APM.ProcessStream failed; passing through raw audio for this frame");
-                        micIn.CopyTo(outSpan);
-                    }
+                    var loopIn = loopBlock is not null
+                        ? loopBlock.Memory.Span[..loopApmFrameSize]
+                        : emptyBuffer.Memory.Span[..loopApmFrameSize];
+                    apm.AnalyzeReverseStream(loopIn);
+                    apm.ProcessStream(micIn, outSpan);
+                    // Log.LogDebug("APM.ProcessStream gains for mic and loopback: {GainMic} {GainLoop}", AudioExt.ApproximateGain(micIn), AudioExt.ApproximateGain(loopIn));
+
                     if (!channel.Writer.TryWrite(new BufferReference(outOwner.Memory[..micApmFrameSize], outOwner)))
                         outOwner.Dispose();
                 }
