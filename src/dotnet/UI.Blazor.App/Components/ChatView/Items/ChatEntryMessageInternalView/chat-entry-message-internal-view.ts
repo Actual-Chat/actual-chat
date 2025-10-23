@@ -100,7 +100,15 @@ export class ChatEntryMessageInternalView {
             if (mutation.type === 'characterData' &&
                 mutation.target.nodeType === Node.TEXT_NODE) {
                 const element = mutation.target.parentElement as HTMLElement;
-                if (['change-item', 'changed-item', 'changes', 'retained', 'playable-text-markup'].some(cls => element.classList.contains(cls))) {
+                if (element.classList.contains('change-item')) {
+                    this.changeSizeForText(true);
+                } else if (element.classList.contains('changed-item')) {
+                    this.changeSizeForText(true);
+                } else if (element.classList.contains('changes')) {
+                    this.changeSizeForText(true);
+                } else if (element.classList.contains('retained')) {
+                    this.changeSizeForText(true);
+                } else if (element.classList.contains('playable-text-markup')) {
                     this.changeSizeForText(true);
                 } else {
                     this.changeSizeForText();
@@ -112,8 +120,7 @@ export class ChatEntryMessageInternalView {
                         this.playableText = node as HTMLElement;
                         this.onTranscriptionFinalizedResize();
                     }
-                    if (node instanceof HTMLElement
-                        && ['change-item', 'changed-item', 'changes', 'retained', 'plain-text-markup'].some(cls => node.classList.contains(cls))) {
+                    if (node instanceof HTMLElement && node.classList.contains('plain-text-markup')) {
                         if (this.messageMarkup.classList.contains('empty')) {
                             this.messageMarkup.classList.remove('empty');
                         } else {
@@ -122,8 +129,13 @@ export class ChatEntryMessageInternalView {
                     }
                 });
                 mutation.removedNodes.forEach((node) => {
-                    if (node instanceof HTMLElement
-                        && ['change-item', 'changed-item', 'changes', 'retained'].some(cls => node.classList.contains(cls))) {
+                    if (node instanceof HTMLElement && node.classList.contains('change-item')) {
+                        this.changeSizeForText(true);
+                    } else if (node instanceof HTMLElement && node.classList.contains('changed-item')) {
+                        this.changeSizeForText(true);
+                    } else if (node instanceof HTMLElement && node.classList.contains('changes')) {
+                        this.changeSizeForText(true);
+                    } else if (node instanceof HTMLElement && node.classList.contains('retained')) {
                         this.changeSizeForText(true);
                     } else if (node instanceof HTMLElement && node.classList.contains('plain-text-markup')) {
                         this.changeSizeForText();
