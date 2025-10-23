@@ -86,7 +86,7 @@ public class FirebaseMessagingClient(
                         Title = title,
                         Body = content,
                     },
-                    Sound = notification.GetAttentionNotification is not null ? "get-attention-notification.caf" : "default",
+                    Sound = notification.GetAttentionNotification is not null ? "attention_ringtone.caf" : "default",
                     MutableContent = true,
                     ThreadId = tag,
                 },

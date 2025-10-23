@@ -6,9 +6,8 @@
   <!-- <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0-android;</TargetFrameworks>
-<!--    <TargetFrameworks>net9.0-android;net9.0-ios;</TargetFrameworks>-->
-<!--    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>-->
+    <TargetFrameworks>net9.0-android;net9.0-ios;</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
@@ -496,7 +495,7 @@
   <!-- iOS -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <BundleResource Include="wwwroot\dist\sounds\*.m4a" Link="sounds\%(Filename)%(Extension)" />
-    <BundleResource Include="wwwroot\dist\sounds\get-attention-notification.caf" Link="%(Filename)%(Extension)" />
+    <BundleResource Include="wwwroot\dist\sounds\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
