@@ -52,12 +52,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         // Create NAudio captures for loopback
         WasapiCapture? loopbackCapture = null;
 
-        var channel = Channel.CreateUnbounded<IMemoryOwner<float>>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-            AllowSynchronousContinuations = true,
-        });
-
+        var outputRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
         var microphoneRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
         var loopbackRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
 
@@ -143,8 +138,10 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                     apm.ProcessStream(micIn, outSpan);
                     // Log.LogDebug("APM.ProcessStream gains for mic and loopback: {GainMic} {GainLoop}", AudioExt.ApproximateGain(micIn), AudioExt.ApproximateGain(loopIn));
 
-                    if (!channel.Writer.TryWrite(new BufferReference(outOwner.Memory[..micApmFrameSize], outOwner)))
-                        outOwner.Dispose();
+                    var outMem = outOwner.Memory;
+                    while (!outputRingBuffer.TryPush(outMem.Span[..micApmFrameSize]))
+                        await outputRingBuffer.WhenPulled.WaitAsync(processingToken).ConfigureAwait(false);
+                    outOwner.Dispose();
                 }
             }
             catch (OperationCanceledException) { /* expected */ }
@@ -175,11 +172,15 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
             try {
-                await foreach (var block in channel.Reader.ReadAllAsync(ct).SuppressCancellation(ct).ConfigureAwait(false))
+                while (!ct.IsCancellationRequested) {
+                    if (!outputRingBuffer.TryPull(Constants.Audio.OpusFrameLength, out var block)) {
+                        await outputRingBuffer.WhenPushed.WaitAsync(ct).ConfigureAwait(false);
+                        continue;
+                    }
                     yield return block;
+                }
             }
             finally {
-                channel.Writer.TryComplete();
                 // Stop and cleanup
                 try {
                     inputNode?.Stop();
