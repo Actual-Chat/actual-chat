@@ -25,10 +25,10 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             new StreamConfig(Constants.Audio.PlaybackSampleRate, Constants.Audio.Channels));
 
         try {
-            apm.SetDelay(40);
+            // apm.SetDelay(40);
             apm.Configure(cfg => cfg
                 .EnableEchoCanceller(true)
-                .EnableNoiseSuppression(true, NoiseSuppressionLevel.Low)
+                .EnableNoiseSuppression(true, NoiseSuppressionLevel.Moderate)
                 .EnableAutomaticGainControl(true)
                 .EnableHighPassFilter(true)
                 .SetPipeline(false, false));
@@ -43,7 +43,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             Constants.Audio.Channels,
             32); // 32-bit for float
         micEncoding.Subtype = MediaEncodingSubtypes.Float;
-        var settings = new AudioGraphSettings(AudioRenderCategory.Media) {
+        var settings = new AudioGraphSettings(AudioRenderCategory.Other) {
             // Use a non-communications category to avoid OS voice processing (AEC/NS/AGC) on capture
             QuantumSizeSelectionMode = QuantumSizeSelectionMode.ClosestToDesired,
             DesiredSamplesPerQuantum = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.OpusFrameLength,
