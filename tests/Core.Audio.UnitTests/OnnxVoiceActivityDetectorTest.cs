@@ -149,7 +149,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
             processed++;
 
             var ms = i / 16000.0;
-            @out.WriteLine($"Chunk [{ms:F3}s]: {internalResult:F5} - {result}");
+            @out.WriteLine($"Chunk [{ms:F3}s]: {internalResult:F5} - {result.Gain:F5} change={result.Change?.Kind}");
         }
 
         Assert.True(processed > 0);
