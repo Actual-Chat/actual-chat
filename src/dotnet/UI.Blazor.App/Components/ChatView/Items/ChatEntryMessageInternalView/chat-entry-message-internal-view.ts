@@ -116,11 +116,14 @@ export class ChatEntryMessageInternalView {
             }
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach((node) => {
-                    if (node instanceof HTMLElement && node.classList.contains('playable-text-markup')) {
+                    if (!(node instanceof HTMLElement))
+                        return;
+
+                    if (node.classList.contains('playable-text-markup')) {
                         this.playableText = node as HTMLElement;
                         this.onTranscriptionFinalizedResize();
                     }
-                    if (node instanceof HTMLElement && node.classList.contains('plain-text-markup')) {
+                    if (node.classList.contains('plain-text-markup')) {
                         if (this.messageMarkup.classList.contains('empty')) {
                             this.messageMarkup.classList.remove('empty');
                         } else {
@@ -129,15 +132,18 @@ export class ChatEntryMessageInternalView {
                     }
                 });
                 mutation.removedNodes.forEach((node) => {
-                    if (node instanceof HTMLElement && node.classList.contains('change-item')) {
+                    if (!(node instanceof HTMLElement))
+                        return;
+
+                    if (node.classList.contains('change-item')) {
                         this.changeSizeForText(true);
-                    } else if (node instanceof HTMLElement && node.classList.contains('changed-item')) {
+                    } else if (node.classList.contains('changed-item')) {
                         this.changeSizeForText(true);
-                    } else if (node instanceof HTMLElement && node.classList.contains('changes')) {
+                    } else if (node.classList.contains('changes')) {
                         this.changeSizeForText(true);
-                    } else if (node instanceof HTMLElement && node.classList.contains('retained')) {
+                    } else if (node.classList.contains('retained')) {
                         this.changeSizeForText(true);
-                    } else if (node instanceof HTMLElement && node.classList.contains('plain-text-markup')) {
+                    } else if (node.classList.contains('plain-text-markup')) {
                         this.changeSizeForText();
                     }
                 });
