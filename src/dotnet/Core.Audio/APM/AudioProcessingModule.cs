@@ -1,4 +1,4 @@
-namespace ActualChat.App.Maui.Audio.APM;
+namespace ActualChat.Audio.APM;
 
 using System;
 using System.Runtime.InteropServices;
@@ -105,6 +105,19 @@ public sealed class AudioProcessingModule : IDisposable
                     _streamConfig.GetStreamConfigHandle(ProcessingConfig.StreamIndex.ReverseInput)));
         }
     }
+
+    public void SetAnalogLevel(int level)
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(AudioProcessingModule));
+
+        NativeMethods.webrtc_apm_set_stream_analog_level(_apmHandle.DangerousGetHandle(), level);
+    }
+
+    public int GetRecommendedAnalogLevel()
+        => _disposed
+            ? throw new ObjectDisposedException(nameof(AudioProcessingModule))
+            : NativeMethods.webrtc_apm_recommended_stream_analog_level(_apmHandle.DangerousGetHandle());
 
     public void SetDelay(int milliseconds)
     {

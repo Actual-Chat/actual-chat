@@ -1,4 +1,4 @@
-namespace ActualChat.App.Maui.Audio.APM;
+namespace ActualChat.Audio.APM;
 
 public enum DownmixMethod
 {

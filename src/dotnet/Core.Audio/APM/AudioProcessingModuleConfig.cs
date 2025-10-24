@@ -1,4 +1,4 @@
-namespace ActualChat.App.Maui.Audio.APM;
+namespace ActualChat.Audio.APM;
 
 public sealed class AudioProcessingModuleConfig : IDisposable
 {
@@ -32,8 +32,8 @@ public sealed class AudioProcessingModuleConfig : IDisposable
             enabled ? 1 : 0,
             enableLimiter: 1,
             enableInputVolumeController: 1,
-            targetLevelDbfs: 2,
-            maxGainChangeDbPerSecond: 12.0f,
+            targetLevelDbfs: 3,
+            maxGainChangeDbPerSecond: 10.0f,
             headroomDb: 10.0f);
         return this;
     }

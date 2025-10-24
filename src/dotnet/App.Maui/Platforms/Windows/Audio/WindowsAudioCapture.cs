@@ -5,8 +5,8 @@ using Windows.Media.Audio;
 using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Media.Render;
-using ActualChat.App.Maui.Audio.APM;
 using ActualChat.App.Maui.Services.Recording;
+using ActualChat.Audio.APM;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using Role = NAudio.CoreAudioApi.Role;
@@ -16,6 +16,7 @@ namespace ActualChat.App.Maui.Audio;
 public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCapture
 {
     private const int CaptureBufferMs = Constants.Audio.ApmFrameDurationMs;
+    private const int MicDelaySamples = Constants.Audio.RecordingSampleRate * 40 / 1000; // 40ms delay
     public ILogger<WindowsAudioCapture> Log { get; } = log;
 
     public async Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
@@ -32,6 +33,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 .EnableAutomaticGainControl(true)
                 .EnableHighPassFilter(true)
                 .SetPipeline(false, false));
+            apm.SetDelay(MicDelaySamples);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to configure AudioProcessingModule; proceeding without APM features");
@@ -51,6 +53,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
         // Create NAudio captures for loopback
         WasapiCapture? loopbackCapture = null;
+        MMDevice? micDevice = null;
 
         var outputRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
         var microphoneRingBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
@@ -91,8 +94,9 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         graph.QuantumStarted += QuantumEventHandler;
 
         try {
-            // Default communications microphone
+            // Default communications microphone and loopback render device
             var devices = new MMDeviceEnumerator();
+            micDevice = devices.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
             var loopbackDevice = devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
             loopbackCapture = new CustomWasapiLoopbackCapture(loopbackDevice, true, CaptureBufferMs);
             loopbackCapture.DataAvailable += OnLoopbackCaptureOnDataAvailable;
@@ -104,6 +108,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             inputNode.DisposeSilently();
             graph.DisposeSilently();
             loopbackCapture.DisposeSilently();
+            micDevice?.DisposeSilently();
             return null;
         }
 
@@ -116,30 +121,57 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 emptyBuffer.Memory.Span.Fill(0);
 
                 while (!processingToken.IsCancellationRequested) {
-                    if (!microphoneRingBuffer.TryPull(apmFrameSize, out var micBlock)) {
+                    // Check if we have enough microphone samples to enforce the delay
+                    if (microphoneRingBuffer.Count < apmFrameSize + MicDelaySamples) {
                         await microphoneRingBuffer.WhenPushed.WaitAsync(processingToken).ConfigureAwait(false);
-                        var expectedLoopbackFrames = 2 * apmFrameSize;
-                        if (loopbackRingBuffer.Count > expectedLoopbackFrames) {
-                            // Skip loopback frames that are too old
-                            var framesToSkip = loopbackRingBuffer.Count - expectedLoopbackFrames;
-                            if (loopbackRingBuffer.TryPull(framesToSkip, out var block))
-                                block.Dispose();
-                        }
                         continue;
                     }
-                    loopbackRingBuffer.TryPull(apmFrameSize, out var loopBlock);
+
+                    // Pull delayed microphone data
+                    if (!microphoneRingBuffer.TryPull(apmFrameSize, out var micBlock)) {
+                        await microphoneRingBuffer.WhenPushed.WaitAsync(processingToken).ConfigureAwait(false);
+                        continue;
+                    }
+
                     using var _ = micBlock;
-                    using var __ = loopBlock;
                     var micIn = micBlock.Memory.Span;
                     var outOwner = MemoryPool<float>.Shared.Rent(apmFrameSize);
                     var outSpan = outOwner.Memory.Span[..apmFrameSize];
+
+                    // Pull loopback data (use the most recent or zeros)
+                    loopbackRingBuffer.TryPull(apmFrameSize, out var loopBlock);
+                    using var __ = loopBlock;
                     var loopIn = loopBlock is not null
                         ? loopBlock.Memory.Span[..apmFrameSize]
                         : emptyBuffer.Memory.Span[..apmFrameSize];
+
+                    // Feed loopback data to APM
                     apm.AnalyzeReverseStream(loopIn);
+
+                    // Inform APM about current analog microphone level (mapped from system scalar 0..1 to 0..255)
+                    if (micDevice is not null) {
+                        var scalar = micDevice.AudioEndpointVolume?.MasterVolumeLevelScalar ?? 0.5f;
+                        scalar = Math.Clamp(scalar, 0f, 1f);
+                        var analog = (int)MathF.Round(scalar * 255f);
+                        apm.SetAnalogLevel(Math.Clamp(analog, 0, 255));
+                    }
+
+                    // Process delayed microphone input
                     apm.ProcessStream(micIn, outSpan);
+
+                    // After processing, get APM recommended analog level and apply back to system microphone volume
+                    if (micDevice is not null) {
+                        var recommended = apm.GetRecommendedAnalogLevel();
+                        recommended = Math.Clamp(recommended, 0, 255);
+                        var desiredScalar = recommended / 255f;
+                        var currentScalar = micDevice.AudioEndpointVolume?.MasterVolumeLevelScalar ?? desiredScalar;
+                        if (Math.Abs(currentScalar - desiredScalar) > 0.02f)
+                            micDevice.AudioEndpointVolume!.MasterVolumeLevelScalar = Math.Clamp(desiredScalar, 0f, 1f);
+                    }
+
                     // Log.LogDebug("APM.ProcessStream gains for mic and loopback: {GainMic} {GainLoop}", AudioExt.ApproximateGain(micIn), AudioExt.ApproximateGain(loopIn));
 
+                    // Push processed output
                     var outMem = outOwner.Memory;
                     while (!outputRingBuffer.TryPush(outMem.Span[..apmFrameSize]))
                         await outputRingBuffer.WhenPulled.WaitAsync(processingToken).ConfigureAwait(false);
@@ -163,6 +195,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             apm.DisposeSilently();
             graph.DisposeSilently();
             loopbackCapture.DisposeSilently();
+            micDevice?.DisposeSilently();
             return null;
         }
 
@@ -203,6 +236,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 inputNode?.DisposeSilently();
                 outputNode?.DisposeSilently();
                 graph?.DisposeSilently();
+                micDevice?.DisposeSilently();
                 loopbackCapture?.Dispose();
             }
         }
