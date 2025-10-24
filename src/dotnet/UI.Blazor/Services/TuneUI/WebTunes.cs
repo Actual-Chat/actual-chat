@@ -17,4 +17,3 @@ public class WebTunes(UIHub hub) : TuneUI(hub)
     public override Task PlayAndWait(Tune tune, CancellationToken cancellationToken = default)
         => JS.InvokeVoidAsync(JSPlayAndWaitMethod, cancellationToken, tune).AsTask();
 }
-

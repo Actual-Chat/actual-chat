@@ -21,38 +21,13 @@ public class AudioFocusHelper
     }
 
     public bool RequestFocusForCall()
-    {
-        var attrs = new AudioAttributes.Builder()
-            .SetUsage(AudioUsageKind.VoiceCommunication)!
-            .SetContentType(AudioContentType.Speech)!
-            .Build()!;
-
-        _focusRequest = new AudioFocusRequestClass.Builder(AudioFocus.GainTransientExclusive)
-            .SetAudioAttributes(attrs)
-            .SetOnAudioFocusChangeListener(_audioFocusChangeListener)
-            .Build()!;
-
-        var result = _audioManager.RequestAudioFocus(_focusRequest);
-        _hasFocus = result == AudioFocusRequest.Granted;
-        return _hasFocus;
-    }
+        => RequestFocus(AudioFocus.GainTransientExclusive, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
 
     public bool RequestFocusForPlayback()
-    {
-        var attrs = new AudioAttributes.Builder()
-            .SetUsage(AudioUsageKind.Media)!
-            .SetContentType(AudioContentType.Speech)!
-            .Build()!;
+        => RequestFocus(AudioFocus.Gain, AudioUsageKind.Media, AudioContentType.Speech);
 
-        _focusRequest = new AudioFocusRequestClass.Builder(AudioFocus.Gain)
-            .SetAudioAttributes(attrs)
-            .SetOnAudioFocusChangeListener(_audioFocusChangeListener)
-            .Build()!;
-
-        var result = _audioManager.RequestAudioFocus(_focusRequest);
-        _hasFocus = result == AudioFocusRequest.Granted;
-        return _hasFocus;
-    }
+    public bool RequestFocusForNotification()
+        => RequestFocus(AudioFocus.GainTransientMayDuck, AudioUsageKind.AssistanceSonification, AudioContentType.Sonification);
 
     public void AbandonFocus()
     {
@@ -62,6 +37,24 @@ public class AudioFocusHelper
         _log.LogInformation("Abandon audio focus");
         _audioManager.AbandonAudioFocusRequest(_focusRequest);
         _hasFocus = false;
+    }
+
+    private bool RequestFocus(AudioFocus audioFocus, AudioUsageKind audioUsageKind, AudioContentType audioContentType)
+    {
+        var attrs = new AudioAttributes.Builder()
+            .SetUsage(audioUsageKind)!
+            .SetContentType(audioContentType)!
+            .Build()!;
+
+        _focusRequest = new AudioFocusRequestClass.Builder(audioFocus)
+            .SetAudioAttributes(attrs)
+            .SetOnAudioFocusChangeListener(_audioFocusChangeListener)
+            .Build()!;
+
+        var result = _audioManager.RequestAudioFocus(_focusRequest);
+        _hasFocus = result == AudioFocusRequest.Granted;
+        _log.LogInformation("Requested audio focus for '{Usage}', granted = {Result}", audioUsageKind, _hasFocus);
+        return _hasFocus;
     }
 
     private void OnAudioFocusChange(AudioFocus focusChange)

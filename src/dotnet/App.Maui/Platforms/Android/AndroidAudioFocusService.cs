@@ -19,18 +19,16 @@ public class AndroidAudioFocusService : MauiAudioFocusService
 
     protected override Task<AudioFocusHandle?> RequestAudioFocus(AudioFocusConsumerKind mode)
     {
-        Log.LogInformation("-> RequestAudioFocus, mode: {Mode}", mode);
-        if (_handle != null) {
-            Log.LogInformation("About to abandon active audio focus. Active focus handle id: {Id}", _handle.Id);
-            _focusHelper.AbandonFocus();
-            _handle = null;
-        }
+        Log.LogInformation("-> RequestAudioFocus, requested mode: '{Mode}', active focus handle id: '{Id}'", mode, _handle?.Id);
 
         var success = mode == AudioFocusConsumerKind.Recording
             ? _focusHelper.RequestFocusForCall()
-            : _focusHelper.RequestFocusForPlayback();
+            : mode == AudioFocusConsumerKind.Tunes
+                ? _focusHelper.RequestFocusForNotification()
+                : _focusHelper.RequestFocusForPlayback();
         if (!success) {
             Log.LogInformation("Failed to get audio focus");
+            _handle = null;
             return Task.FromResult<AudioFocusHandle?>(null);
         }
 
