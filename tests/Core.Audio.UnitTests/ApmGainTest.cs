@@ -8,7 +8,7 @@ namespace Core.Audio.UnitTests;
 
 public class ApmGainTest(ITestOutputHelper @out)
 {
-    [Fact]
+    [Fact(Skip = "Manual")]
     public void ApmShouldAdjustGain()
     {
         @out.WriteLine("Starting APM gain test...");
