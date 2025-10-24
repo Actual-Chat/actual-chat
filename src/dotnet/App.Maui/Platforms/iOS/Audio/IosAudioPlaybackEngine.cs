@@ -32,7 +32,7 @@ public class IosAudioPlaybackEngine(
     public async Task Play(CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{PlayerId}.Play", playerId);
-        _voicePlayer = await VoicePlayer.Create(playerId, hub);
+        _voicePlayer = await VoicePlayer.Create(playerId, hub).ConfigureAwait(false);
         _processFeederWorker = FuncWorker.Start(MonitorPlayer);
         _decoder = Opus.CreateDecoder();
         _voicePlayer.Play();
