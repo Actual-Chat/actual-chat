@@ -1,8 +1,8 @@
 import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { scan,  Subscription, filter } from 'rxjs';
-import { OpusMediaRecorder } from '../AudioRecorder/opus-media-recorder';
 import { clamp, RunningMax, translate } from 'math';
+import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 200; // 200 * 30ms = 6s
 
@@ -58,7 +58,7 @@ class NarrowRecordingSvg extends LitElement {
 
         const minOpacity = 60;
         const maxOpacity = 100;
-        const signalPower$ = OpusMediaRecorder.audioPowerChanged$
+        const signalPower$ = RecorderStateHub.audioPowerChanged$
             .pipe(filter((p, i) => i % 2 === 0))
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
                 const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
@@ -66,7 +66,7 @@ class NarrowRecordingSvg extends LitElement {
                 return { runningMax, p, i };
             }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)));
 
-        this.recorderStateChangedSubscription = OpusMediaRecorder.recorderStateChanged$.subscribe(s => {
+        this.recorderStateChangedSubscription = RecorderStateHub.recorderStateChanged$.subscribe(s => {
             this.isRecording = s.isRecording;
         });
         this.signalPowerSubscription = signalPower$.subscribe(({ runningMax, p }) => {

@@ -5,7 +5,7 @@ namespace ActualChat.Core.UnitTests;
 
 public class DebouncerTest
 {
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task DebounceTest()
     {
         var results = new List<int>();
@@ -61,7 +61,7 @@ public class DebouncerTest
         results[1].Should().Be(4);
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task ThrottleTest()
     {
         var results = new List<int>();

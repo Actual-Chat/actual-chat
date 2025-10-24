@@ -1,9 +1,13 @@
+using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
 public class WebMicrophonePermissionHandler : MicrophonePermissionHandler
 {
+    private static readonly string JSCheckPermission = $"{BlazorUIAppModule.ImportName}.{nameof(WebMicrophonePermissionHandler)}.checkPermission";
+    private static readonly string JSRequestPermission = $"{BlazorUIAppModule.ImportName}.{nameof(WebMicrophonePermissionHandler)}.requestPermission";
+
     [field: AllowNull, MaybeNull]
     protected AudioRecorder AudioRecorder => field ??= Hub.Services.GetRequiredService<AudioRecorder>();
 
@@ -15,11 +19,20 @@ public class WebMicrophonePermissionHandler : MicrophonePermissionHandler
             this.Start();
     }
 
-    protected override Task<bool?> Get(CancellationToken cancellationToken)
-        => AudioRecorder.CheckPermission(cancellationToken);
+    protected override async Task<bool?> Get(CancellationToken cancellationToken)
+    {
+        var js = Hub.JS;
+        var permission = await js.InvokeAsync<string?>(JSCheckPermission, cancellationToken).ConfigureAwait(false);
+        return permission switch {
+            "prompt" => null,
+            "denied" => false,
+            "granted" => true,
+            _ => null,
+        };
+    }
 
     protected override async Task<bool> Request(CancellationToken cancellationToken)
-        => await AudioRecorder.RequestPermission(cancellationToken);
+        => await Hub.JS.InvokeAsync<bool>(JSRequestPermission, cancellationToken).ConfigureAwait(false);
 
     protected override async Task Troubleshoot(CancellationToken cancellationToken)
     {

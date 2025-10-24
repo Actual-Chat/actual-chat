@@ -877,14 +877,16 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
 
 // Init
 
-export const audioContextSource: AudioContextSource = BrowserInfo.hostKind === "MauiApp"
-    ? new MauiAudioContextSource('playback')
+export const audioContextSource: AudioContextSource = BrowserInfo.hostKind === 'MauiApp'
+    ? null!
     : new WebAudioContextSource('playback');
-globalThis['audioContextSource'] = audioContextSource;
+globalThis.audioContextSource = audioContextSource;
 
-export const recordingAudioContextSource: AudioContextSource = BrowserInfo.hostKind === "MauiApp"
-    ? new MauiAudioContextSource('recording')
+export const recordingAudioContextSource: AudioContextSource = BrowserInfo.hostKind === 'MauiApp'
+    ? null!
     : new WebAudioContextSource('recording');
-globalThis['recordingAudioContextSource'] = recordingAudioContextSource;
+globalThis.recordingAudioContextSource = recordingAudioContextSource;
 
-resetMediaSessionMetadata();
+if (BrowserInfo.hostKind !== 'MauiApp')
+    resetMediaSessionMetadata();
+

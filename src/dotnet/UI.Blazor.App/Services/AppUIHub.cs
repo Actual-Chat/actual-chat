@@ -87,7 +87,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public AudioDownloader AudioDownloader => field ??= Services.GetRequiredService<AudioDownloader>();
     [field: AllowNull, MaybeNull]
-    public AudioInitializer AudioInitializer => field ??= Services.GetRequiredService<AudioInitializer>();
+    public IAudioInitializer AudioInitializer => field ??= Services.GetRequiredService<IAudioInitializer>();
     [field: AllowNull, MaybeNull]
     public IPlaybackFactory PlaybackFactory => field ??= Services.GetRequiredService<IPlaybackFactory>();
     [field: AllowNull, MaybeNull]

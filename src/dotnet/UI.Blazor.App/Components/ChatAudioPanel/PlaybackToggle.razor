@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, PlaybackToggle.Model>
 @{
@@ -48,6 +49,9 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
+            return;
+
+        if (HostInfo.HostKind is HostKind.MauiApp)
             return;
 
         await JS.InvokeVoidAsync(JSInitMethod);

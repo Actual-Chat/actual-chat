@@ -1,0 +1,143 @@
+using ActualChat.Pooling;
+using ActualChat.UI.Blazor.App.Services;
+using ActualLab.Locking;
+using ActualLab.Pooling;
+using AVFoundation;
+using Foundation;
+
+namespace ActualChat.App.Maui.Audio;
+
+public class AudioEngines : ProcessorBase
+{
+    private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
+    private readonly SharedResourcePool<AudioMode, AudioEngine> _pool;
+    private readonly AudioEngine _tunes;
+    private readonly AudioEngine _playback;
+    private readonly AudioEngine _recording;
+    private readonly HashSet<AudioMode> _modes = [AudioMode.Tunes];
+    private readonly Disposable<NSObject> _interruptionSubscription;
+    private readonly Disposable<NSObject> _configurationChangeSubscription;
+
+    private AppUIHub Hub { get; }
+    [field: AllowNull, MaybeNull]
+    private AudioSession AudioSession => field ??= Hub.Services.GetRequiredService<AudioSession>();
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
+
+    public AudioEngines(AppUIHub hub)
+    {
+        Hub = hub;
+        _tunes = new AudioEngine(AudioMode.Tunes, hub);
+        _playback = new AudioEngine(AudioMode.Playback, hub);
+        _recording = new AudioEngine(AudioMode.Recording, hub);
+        _pool = new SharedResourcePool<AudioMode, AudioEngine>(CreateAudioEngine, ReleaseEngine);
+        _interruptionSubscription = Disposable.New(AVAudioSession.Notifications.ObserveInterruption(OnInterruption),
+            NSNotificationCenter.DefaultCenter.RemoveObserver);
+        _configurationChangeSubscription =
+            Disposable.New(AVAudioEngine.Notifications.ObserveConfigurationChange(OnConfigurationChange),
+                NSNotificationCenter.DefaultCenter.RemoveObserver);
+    }
+
+    protected override async Task DisposeAsyncCore()
+    {
+        _interruptionSubscription.DisposeSilently();
+        _configurationChangeSubscription.DisposeSilently();
+        await _pool.DisposeSilentlyAsync();
+        _tunes.DisposeSilently();
+        _playback.DisposeSilently();
+        _recording.DisposeSilently();
+        await base.DisposeAsyncCore();
+    }
+
+    public async ValueTask<IResourceLease<AudioEngine>> Rent(AudioMode mode)
+        => await _pool.Rent(mode).ConfigureAwait(false);
+
+    private async Task<AudioEngine> CreateAudioEngine(AudioMode mode, CancellationToken cancellationToken)
+    {
+        using var _1 = await _lock.Lock(cancellationToken).ConfigureAwait(false);
+        if (mode > _modes.Max())
+        {
+            Pause();
+            await AudioSession.Reconfigure(mode).WaitAsync(cancellationToken).ConfigureAwait(false);
+            Resume(mode);
+        }
+
+        _modes.Add(mode);
+        return mode switch {
+            AudioMode.Tunes => _tunes,
+            AudioMode.Playback => _playback,
+            AudioMode.Recording => _recording,
+            _ => throw new ArgumentOutOfRangeException(nameof(mode))
+        };
+    }
+
+    private async ValueTask ReleaseEngine(AudioMode mode, AudioEngine engine)
+    {
+        using var _1 = await _lock.Lock(StopToken).ConfigureAwait(false);
+        if (mode is AudioMode.Recording) {
+            engine.Input.Reset();
+            engine.Stop();
+        }
+        if (mode is not AudioMode.Tunes && _modes.Remove(mode) && _modes.Max() < mode)
+        {
+            Pause();
+            await AudioSession.Reconfigure(_modes.Max()).ConfigureAwait(false);
+            Resume(mode);
+        }
+    }
+
+    private void Pause()
+    {
+        _tunes.Pause();
+        _playback.Pause();
+        _recording.Pause();
+    }
+
+    private void Resume(AudioMode mode)
+    {
+        if (mode >= AudioMode.Tunes)
+            _tunes.Resume();
+        if (mode >= AudioMode.Playback)
+            _playback.Resume();
+        if (mode >= AudioMode.Recording)
+            _recording.Resume();
+    }
+
+    private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
+        => Log.LogInformation("Audio engine configuration change");
+
+    private void OnInterruption(object? sender, AVAudioSessionInterruptionEventArgs e)
+    {
+        // IMPORTANT: event args must be captured by value otherwise they will change !!!!
+        var type = e.InterruptionType;
+        var reason = e.Reason;
+        var wasSuspended = e.WasSuspended;
+        var option = e.Option;
+        _ = BackgroundTask.Run(() => HandleInterruption(type, reason, wasSuspended, option),
+            Log,
+            "Failed to handle interruption");
+    }
+
+    private async Task HandleInterruption(AVAudioSessionInterruptionType type,
+        AVAudioSessionInterruptionReason reason, bool? wasSuspended, AVAudioSessionInterruptionOptions option)
+    {
+        Log.LogInformation(
+            "Interruption type={Type}, reason={Reason}, wasSuspended={WasSuspended}, option={Option}",
+            type,
+            reason,
+            wasSuspended,
+            option);
+        using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
+        switch (type) {
+        case AVAudioSessionInterruptionType.Began:
+            Pause();
+            break;
+        case AVAudioSessionInterruptionType.Ended:
+            if (option == AVAudioSessionInterruptionOptions.ShouldResume)
+                Resume(_modes.Max());
+            break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(type), type, "Invalid interruption type");
+        }
+    }
+}

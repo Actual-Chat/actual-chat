@@ -1,25 +1,23 @@
-using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using CoreHaptics;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.App.Maui.Audio;
 
-public class IosTuneUI(UIHub hub) : TuneUI(hub)
+public class Haptics(AppUIHub hub) : IDisposable
 {
     private const float Intensity = 0.5f;
     private const float Sharpness = 0.5f;
     private readonly Lock _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
+
     [field: AllowNull, MaybeNull]
     private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
     [field: AllowNull, MaybeNull]
-    private IosNativePlayer IosNativePlayer => field ??= Hub.Services.GetRequiredService<IosNativePlayer>();
+    protected ILogger Log => field ??= hub.LogFor(GetType());
 
-    protected override bool UseJsVibration => false;
-
-    public override void Dispose()
+    public void Dispose()
     {
-        base.Dispose();
         List<ICHHapticPatternPlayer> toDispose;
         lock (_lock) {
             if (_players.Count == 0)
@@ -32,40 +30,20 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
             player.DisposeSilently();
     }
 
-    // TODO: uncomment when playback/recording is implemented via ios native api
-    // public override Task Play(Tune tune)
-    //     => ForegroundTask.Run(() => {
-    //         var (_, sound) = Tunes[tune];
-    //         _ = Vibrate(tune);
-    //         return IosNativePlayer.Play(sound);
-    //     });
-    //
-    // public override ValueTask PlayAndWait(Tune tune)
-    // {
-    //     var (_, sound) = Tunes[tune];
-    //     return TaskExt.WhenAll(Vibrate(tune), IosNativePlayer.Play(sound).ToValueTask());
-    // }
-
-    // Protected methods
-
-    protected override async ValueTask Vibrate(Tune tune)
+    public async Task Vibrate(Tune tune, int[] vibration)
     {
-        await Task.Yield();
-        try {
             if (HapticEngine.IsMutedForHaptics)
                 return;
 
-            await HapticEngine.StartAsync().ConfigureAwait(true);
-            var player = GetPlayer(tune);
-            player.Start(0, out var error);
+            HapticEngine.Start(out var error);
             error.Assert();
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to vibrate '{Tune}'", tune);
-        }
+            var player = GetPlayer(tune, vibration);
+            player.Start(0, out error);
+            error.Assert();
+            await Task.Delay(vibration.Sum());
+            player.Cancel(out error);
+            error.Assert();
     }
-
-    // Private methods
 
     private CHHapticEngine CreateHapticEngine()
     {
@@ -84,13 +62,12 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
             }
     }
 
-    private ICHHapticPatternPlayer GetPlayer(Tune tune)
+    private ICHHapticPatternPlayer GetPlayer(Tune tune, int[] vibration)
     {
         lock (_lock) {
             if (_players.TryGetValue(tune, out var player))
                 return player;
 
-            var vibration = Tunes[tune].Vibration;
             var pattern = BuildPattern(vibration);
             player = HapticEngine.CreatePlayer(pattern, out var error);
             error.Assert();
@@ -113,7 +90,7 @@ public class IosTuneUI(UIHub hub) : TuneUI(hub)
     {
         var totalDuration = TimeSpan.FromMilliseconds(vibration.Sum());
         return new CHHapticEvent(CHHapticEventType.HapticContinuous,
-            new[] { new CHHapticEventParameter(CHHapticEventParameterId.HapticSharpness, Sharpness) },
+            [new CHHapticEventParameter(CHHapticEventParameterId.HapticSharpness, Sharpness)],
             0,
             totalDuration.TotalSeconds);
     }

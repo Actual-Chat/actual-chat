@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;
+using Sentry;
 using Application = Microsoft.Maui.Controls.Application;
 
 namespace ActualChat.App.Maui;

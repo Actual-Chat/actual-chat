@@ -6,7 +6,7 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed partial class AudioInitializer(UIHub hub)
-    : UIWorkerBase<UIHub>(hub), IAudioInfoBackend
+    : UIWorkerBase<UIHub>(hub), IAudioInitializer, IAudioInfoBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.AudioInitializer.init";
     private static readonly string JSUpdateBackgroundStateMethod = $"{BlazorUIAppModule.ImportName}.AudioInitializer.setBackgroundState";
@@ -23,6 +23,9 @@ public sealed partial class AudioInitializer(UIHub hub)
     private AppActivity AppActivity => field ??= Services.GetRequiredService<AppActivity>();
 
     public Task WhenInitialized => _whenInitializedSource.Task;
+
+    public void StartInitialization()
+        => _ = this.Start();
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -53,8 +56,6 @@ public sealed partial class AudioInitializer(UIHub hub)
         await JS
             .InvokeVoidAsync(JSInitMethod, CancellationToken.None, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
             .AsTask().WaitAsync(InitializeTimeout, cancellationToken).ConfigureAwait(false);
-        var audioRecorder = Services.GetRequiredService<AudioRecorder>();
-        await audioRecorder.WhenInitialized.ConfigureAwait(false);
     }
 
     // ReSharper disable once InconsistentNaming

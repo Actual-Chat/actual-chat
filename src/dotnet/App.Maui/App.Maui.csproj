@@ -6,7 +6,9 @@
   <!-- <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0-android;net9.0-ios;</TargetFrameworks>
+    <!-- Build Android by default; add iOS only on macOS to avoid iOS build issues on Windows CI -->
+    <TargetFrameworks>net9.0-android;</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net9.0-ios</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
@@ -15,7 +17,7 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>9.0.100</MauiVersion>
+    <MauiVersion>9.0.110</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
@@ -91,6 +93,9 @@
   </PropertyGroup>
 
   <!-- Project references -->
+  <ItemGroup>
+    <ProjectReference Include="..\Core.Audio\Core.Audio.csproj" />
+  </ItemGroup>
   <!-- UseAppPack == false -->
   <ItemGroup Condition="!$(UseAppPack)">
     <ProjectReference Include="..\UI.Blazor.AppPack\UI.Blazor.AppPack.csproj" />
@@ -138,14 +143,20 @@
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="sqlite-net-pcl" />
+    <!-- SignalR client needed for AudioStreamer -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
     <!--
       An extra package to use SQLite on MAUI:
       https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
     <PackageReference Include="SQLitePCLRaw.bundle_green" />
+    <PackageReference Include="Plugin.Maui.Audio" />
   </ItemGroup>
 
   <!-- Platform-specific package references -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" />
     <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
@@ -161,8 +172,12 @@
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="System.Net.WebSockets" />
+    <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" />
     <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Plugin.Firebase.CloudMessaging" />
     <PackageReference Include="Plugin.Firebase.Crashlytics" />
@@ -170,10 +185,19 @@
     <PackageReference Include="AdamE.Firebase.iOS.Analytics" />
     <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
     <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
+    <PackageReference Include="ActualLab.Opus.MaciOS" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Serilog.Sinks.File" />
+<!--    Commented out as both runtime and DirectML runtime have same biney names -->
+<!--    <PackageReference Include="Microsoft.ML.OnnxRuntime">-->
+<!--      <ExcludeAssets>runtime</ExcludeAssets>-->
+<!--    </PackageReference>-->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
+    <PackageReference Include="NAudio" />
+    <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
 
   <!-- Common Windows, iOS and Android build properties -->
@@ -445,10 +469,8 @@
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
 
-    <!-- UNUSED: Raw Assets (also remove the "Resources\Raw" prefix) -->
-    <!--
+    <!-- Raw Assets -->
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
-    -->
   </ItemGroup>
 
   <!-- Platform-specific files to compile -->
@@ -467,7 +489,8 @@
     <None Remove="android.etlx" />
   </ItemGroup>
   <!-- Android -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-android')) == true">
+  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <BundleResource Include="wwwroot\dist\sounds\*.webm" Link="sounds\%(Filename)%(Extension)" />
     <AndroidResource Include="..\..\..\resources\sounds\attention_ringtone.mp3" Link="Resources\Raw\attention_ringtone.mp3" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
@@ -494,7 +517,16 @@
   </ItemGroup>
   <!-- iOS -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <Folder Include="Platforms\iOS\Resources\" />
     <BundleResource Include="wwwroot\dist\sounds\*.m4a" Link="sounds\%(Filename)%(Extension)" />
+    <!-- Remove metadata.json from Content to prevent default SDK behavior -->
+    <Content Remove="Platforms\iOS\Resources\vad_stateless.mlmodelc\metadata.json" />
+    <!-- Includes all files in the .mlmodelc recursively as BundleResources -->
+    <BundleResource Include="Platforms\iOS\Resources\vad_stateless.mlmodelc\**" />
+    <!-- Remove metadata.json from Content to prevent default SDK behavior -->
+    <Content Remove="Platforms\iOS\Resources\vad_stateless_fp16.mlmodelc\metadata.json" />
+    <!-- Includes all files in the .mlmodelc recursively as BundleResources -->
+    <BundleResource Include="Platforms\iOS\Resources\vad_stateless_fp16.mlmodelc\**" />
     <BundleResource Include="wwwroot\dist\sounds\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
@@ -511,6 +543,10 @@
     <Compile Remove="**\MacCatalyst\**\*.cs" />
     <None Include="**\MacCatalyst\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
+  <!-- MacCatalyst -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
+    <BundleResource Include="wwwroot\dist\sounds\*.m4a" Link="sounds\%(Filename)%(Extension)" />
+  </ItemGroup>
 
   <!-- NOT Windows -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows')) != true">
@@ -520,8 +556,13 @@
     <None Include="**\Windows\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
   <!-- Windows -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-windows')) != true">
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <Content Include="Platforms\Windows\Assets\**\*.*" />
+    <Content Include="..\Core.Audio\APM\runtimes\win-x64\native\webrtc-apm.dll">
+      <Link>webrtc-apm.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -546,6 +587,14 @@
 
   <ItemGroup>
     <MauiAsset Include="wwwroot\loading_icon_voxt.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AndroidAsset Include="Resources\Raw\sounds\begin-recording.m4a" />
+    <AndroidAsset Include="Resources\Raw\sounds\end-recording.m4a" />
+    <AndroidAsset Include="Resources\Raw\sounds\new-audio-message-after-delay.m4a" />
+    <AndroidAsset Include="Resources\Raw\sounds\notify-on-new-message-in-app.m4a" />
+    <AndroidAsset Include="Resources\Raw\sounds\remind-of-recording.m4a" />
   </ItemGroup>
 
   <!-- Targets & overrides.

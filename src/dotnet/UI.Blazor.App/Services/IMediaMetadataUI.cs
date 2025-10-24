@@ -14,7 +14,7 @@ public record MediaMetadata(
 
 public interface IMediaMetadataUI
 {
-    public void SetPlayback(MediaMetadata metadata, bool isStreaming);
-    public void SetRecording(MediaMetadata metadata);
-    public void Reset();
+    public Task SetPlayback(MediaMetadata metadata, bool isStreaming);
+    public Task SetRecording(MediaMetadata metadata);
+    public Task Reset();
 }

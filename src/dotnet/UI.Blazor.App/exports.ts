@@ -44,8 +44,10 @@ export * from './notification-ui';
 
 export * from './Components/AudioPlayer/audio-player';
 export * from './Components/AudioRecorder/audio-recorder';
+export * from './Components/AudioRecorder/web-microphone-permission-handler';
 export * from './Components/AudioRecorder/opus-media-recorder';
 export * from './Components/AudioRecorder/opus-media-recorder-contracts';
+export * from './Components/AudioRecorder/recorder-state-hub';
 export * from './Pages/AudioRecorderTestPage/audio-recorder-test-page';
 export * from './Pages/AudioPlayerTestPage/audio-player-test-page';
 export * from './Services/audio-context-ref';

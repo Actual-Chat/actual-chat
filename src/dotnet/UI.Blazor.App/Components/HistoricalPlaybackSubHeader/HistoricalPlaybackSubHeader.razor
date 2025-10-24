@@ -99,8 +99,8 @@
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatTitle = chat?.Title ?? "";
-        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
-        var historicalChatPlayer = player as HistoricalChatPlayer;
+        var controller = await ChatPlayers.GetHistoricalChatPlayerController(chatId, cancellationToken).ConfigureAwait(false);
+        var historicalChatPlayer = controller?.ChatPlayer;
         var playback = historicalChatPlayer?.Playback;
         if (playback == null) {
             // This happens when player is being disposed, which means this method
@@ -128,7 +128,7 @@
             return new() {
                 ChatId = chatId,
                 PlayingAt = playingAt,
-                ChatPlayer = historicalChatPlayer,
+                Controller = controller,
                 IsPaused = isPaused,
                 ChatTitle = chatTitle,
                 ShowChatTitle = chatId != selectedChatId,
@@ -137,7 +137,7 @@
 
         var canUseLastState = lastState is not null
             && lastState.ChatId == chatId
-            && lastState.ChatPlayer == historicalChatPlayer
+            && lastState.Controller == controller
             && lastState.IsPaused == isPaused;
         return canUseLastState ? lastState : null;
     }
@@ -147,18 +147,18 @@
 
     private void OnResume() {
         var m = State.Value;
-        if (m?.ChatPlayer == null)
+        if (m?.Controller == null)
             return;
 
-        _ = m.ChatPlayer.Playback.Resume(default);
+        _ = m.Controller.Resume();
     }
 
     private void OnPause() {
         var m = State.Value;
-        if (m?.ChatPlayer == null)
+        if (m?.Controller == null)
             return;
 
-        _ = m.ChatPlayer.Playback.Pause(default);
+        m.Controller.Pause();
     }
 
     private void OnForward()
@@ -169,7 +169,7 @@
 
     private void Rewind(TimeSpan offset) {
         var m = State.Value;
-        if (m?.ChatPlayer is null || m.PlayingAt is not { } playingAt)
+        if (m?.Controller is null || m.PlayingAt is not { } playingAt)
             return;
 
         _rewindController ??= new RewindDelayer(OnRewindRequested);
@@ -179,8 +179,8 @@
     private void OnRewindRequested(ChatId chatId, Moment origin, TimeSpan offset) {
         _ = InvokeAsync(() => {
             var m = State.Value;
-            if (m?.ChatPlayer != null && m.ChatPlayer.ChatId == chatId)
-                _ = PlayAt(m.ChatPlayer, origin, offset);
+            if (m?.Controller != null && m.Controller.ChatId == chatId)
+                _ = PlayAt(m.Controller.ChatPlayer, origin, offset);
         });
     }
 
@@ -199,7 +199,7 @@
     {
         public Moment? PlayingAt { get; init; }
         public bool IsPaused { get; init; }
-        public HistoricalChatPlayer? ChatPlayer { get; init; }
+        public HistoricalChatPlayerController? Controller { get; init; }
         public string ChatTitle { get; init; } = "";
         public required ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }

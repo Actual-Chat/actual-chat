@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>ActualChat.Audio</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <!-- Ensure native libraries under APM/runtimes are copied to output and included when packing/publishing -->
+<!--  <ItemGroup>-->
+<!--    <Content Include="APM\runtimes\**\*.*">-->
+<!--      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>-->
+<!--      <Pack>true</Pack>-->
+<!--      <PackagePath>runtimes\%(RecursiveDir)%(Filename)%(Extension)</PackagePath>-->
+<!--    </Content>-->
+<!--  </ItemGroup>-->
+
+</Project>

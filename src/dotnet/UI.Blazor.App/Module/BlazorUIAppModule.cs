@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
+using ActualChat.UI.Blazor.App.Components.AudioPlayer;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
 using ActualChat.UI.Blazor.App.Components.Settings;
@@ -56,6 +57,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new FileUploader(c.UIHub()));
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
+        services.AddScoped(_ => new AudioFocusService());
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c.AppUIHub()));
@@ -183,11 +185,15 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<NotificationUI>());
         }
 
-        // Streaming
+        // Audio
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
-        services.AddScoped<AudioInitializer>(c => new AudioInitializer(c.UIHub()));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c.AppUIHub()));
+        services.AddScoped<IAudioRecorderBackend>(c => c.GetRequiredService<AudioRecorder>());
+        services.AddScoped<RecorderStateHub>(c => new RecorderStateHub(c.UIHub()));
         if (HostInfo.HostKind != HostKind.MauiApp) {
+            services.AddScoped<IAudioInitializer>(c => new AudioInitializer(c.UIHub()));
+            services.AddScoped<IAudioRecorderEngine>(c => new WebRecorderEngine(c.AppUIHub()));
+            services.AddScoped<IAudioPlaybackEngineFactory>(c => new WebAudioPlaybackEngineFactory(c));
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
