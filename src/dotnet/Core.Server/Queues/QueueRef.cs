@@ -33,7 +33,7 @@ public readonly struct QueueRef : ICanBeNone<QueueRef>, IEquatable<QueueRef>
     }
 
     public string Format()
-        => ShardScheme.Id.Value;
+        => ShardScheme.Name;
 
     public static implicit operator QueueRef(ShardScheme shardScheme) => new(shardScheme);
 

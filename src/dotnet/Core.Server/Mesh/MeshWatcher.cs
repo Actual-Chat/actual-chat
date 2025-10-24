@@ -31,7 +31,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
 #endif
 
     public MeshWatcher(IServiceProvider services, bool mustStart = true)
-        : base(services.HostLifetimeIfExist()?.ApplicationStopping.CreateLinkedTokenSource())
+        : base(services.HostLifetimeIfExist().CreateStopTokenSource())
     {
         Services = services;
         Log = services.LogFor(GetType());
@@ -243,8 +243,9 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                 return;
 
             Log.LogCritical("[!] {MeshNode} - failed to (re)acquire the node announcement lock in time", lockKey);
-            var hostLifetime = Services.GetService<IHostApplicationLifetime>();
-            if (MustStopHostOnAnnounceFailure && hostLifetime?.ApplicationStopping.IsCancellationRequested == false) {
+            if (MustStopHostOnAnnounceFailure
+                && Services.HostLifetimeIfExist() is { } hostLifetime
+                && !hostLifetime.StopToken().IsCancellationRequested) {
                 Log.LogCritical("[!] {MeshNode} - stopping the host", lockKey);
                 hostLifetime.StopApplication();
             }
@@ -266,9 +267,8 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                     Log.LogInformation("[+] {MeshNode}", lockKey);
 
                     using var linkedTokenSource = cancellationToken.LinkWith(holderStopToken);
-                    using var dTask = linkedTokenSource.Token.ToTask();
-                    await dTask.Resource.ConfigureAwait(false); //
-                    // Can't reach this point: dTask can only complete with cancellation
+                    await TaskExt.NeverEnding(linkedTokenSource.Token).ConfigureAwait(false);
+                    // Can't reach this point: above await can only complete with cancellation
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     if (e is TimeoutException)

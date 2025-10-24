@@ -1,5 +1,6 @@
 using ActualLab.Fusion.Internal;
 using ActualLab.Fusion.Operations.Internal;
+using Errors = ActualLab.Fusion.Internal.Errors;
 
 namespace ActualChat;
 

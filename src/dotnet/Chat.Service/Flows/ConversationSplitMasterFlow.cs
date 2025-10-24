@@ -18,8 +18,8 @@ public partial class ConversationSplitMasterFlow
     {
         var mustContinue = await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false);
         if (mustContinue)
-            // only created before now + 10sec. New chats are handled from events
-            // Note: intentionally set negative number
+            // Only created before now + 10sec. New chats are handled from events
+            // Note: intentionally sets it to a negative number
             MaxVersion = Clocks.GetMaxVersion(TimeSpan.FromSeconds(-10));
 
         return mustContinue;
@@ -40,6 +40,6 @@ public partial class ConversationSplitMasterFlow
     protected override async Task ProcessBatch(IReadOnlyList<Chat> batch, CancellationToken cancellationToken)
     {
         foreach (var item in batch.Where(x => x.IsSummarized ?? false))
-            await StartOrResetFor(item, cancellationToken).ConfigureAwait(false);
+            await Reset(item, cancellationToken).ConfigureAwait(false);
     }
 }

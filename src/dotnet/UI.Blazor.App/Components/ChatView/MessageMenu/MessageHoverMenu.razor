@@ -1,25 +1,22 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits Menu<AppUIHub>
 
-@if (_message != null) {
-    <MessageHoverMenuContent Message="@_message" IsSystem="@_isSystem"/>
+@if (MustShow) {
+    <MessageHoverMenuContent Entry="@Entry" IsSystem="@IsSystem" MessageWithAuthor="@MessageWithAuthor"/>
 }
 
 @code {
-    private ChatEntryMessage? _message;
-    private bool _isSystem;
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public bool IsSystem { get; set; }
+    [Parameter] public bool MessageWithAuthor { get; set; }
+    [Parameter] public bool MustShow { get; set; }
 
-    private IChats Chats => Hub.Chats;
+    public void Show() {
+        MustShow = true;
+        StateHasChanged();
+    }
 
-    protected override async Task OnParametersSetAsync() {
-        if (Arguments is not [ var sEntryId, var sIsSystem ])
-            throw new ArgumentOutOfRangeException(nameof(Arguments));
-
-        _isSystem = bool.Parse(sIsSystem);
-        var entryId = TextEntryId.Parse(sEntryId);
-        var entry = await Chats.GetEntry(Session, entryId, CancellationToken.None);
-        _message = entry != null
-            ? new ChatEntryMessage(entry)
-            : null;
+    public void Hide() {
+        MustShow = false;
+        StateHasChanged();
     }
 }

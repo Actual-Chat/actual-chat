@@ -4,22 +4,36 @@
 }
 .image-line {
     @apply flex-x gap-x-px;
-    @apply h-full w-64 md:w-96;
+    @apply h-full w-full min-w-full;
     @apply overflow-hidden;
+}
+.wide .image-line {
+    @apply w-full;
+}
+body.narrow .conversation-message .image-line,
+body.narrow .thread-message .image-line {
+    @apply w-full;
 }
 .message-image-attachments.one-row .image-line:not(.one-image) {
     @apply h-full;
 }
-.message-image-attachments .image-line:first-child {
-    @apply rounded-t-xl;
+.message-image-attachments .image-line:first-child .image-item:first-child {
+    @apply rounded-tl-xl;
 }
-.message-image-attachments .image-line:last-child {
-    @apply rounded-b-xl;
+.message-image-attachments .image-line:first-child .image-item:last-child {
+    @apply rounded-tr-xl;
+}
+.message-image-attachments .image-line:last-child .image-item:first-child {
+    @apply rounded-bl-xl;
+}
+.message-image-attachments .image-line:last-child .image-item:last-child {
+    @apply rounded-br-xl;
 }
 
 .image-line .image-item {
     @apply /*flex-1*/ flex-x;
     @apply w-full;
+    @apply overflow-hidden;
 }
 body.hoverable .image-line .image-item:hover {
     filter: brightness(1.1);
@@ -33,14 +47,26 @@ body.hoverable .image-line .image-item:hover {
 .line-height-sm {
     @apply h-12 md:h-16;
 }
+.wide .line-height-sm {
+    @apply h-20;
+}
 .line-height-md {
     @apply h-16 md:h-20;
+}
+.wide .line-height-md {
+    @apply h-26;
 }
 .line-height-lg {
     @apply h-28 md:h-32;
 }
+.wide .line-height-lg {
+    @apply h-40;
+}
 .line-height-xl {
     @apply h-40 md:h-48;
+}
+.wide .line-height-xl {
+    @apply h-60;
 }
 .image-line.sm-sm {
     @apply h-64 md:h-80;
@@ -108,11 +134,12 @@ body.hoverable .image-line .image-item:hover {
 
 /* attachment */
 .image-attachment, .file-attachment {
+    @apply relative;
     @apply flex-x;
     @apply overflow-hidden;
 }
 .image-attachment {
-    @apply relative;
+    @apply flex-none;
     @apply w-full;
 }
 .image-attachment > .c-content {
@@ -142,14 +169,17 @@ body.hoverable .image-line .image-item:hover {
     @apply rounded-full border border-separator;
     @apply bg-01;
 }
+.file-attachment.upload-file {
+    @apply pr-1;
+}
 .file-attachment.icon-only {
     @apply flex-none;
     @apply min-w-0 max-w-none;
     @apply p-0;
     @apply border-none;
 }
-body.hoverable .file-attachment:hover,
-.touch-capable .file-attachment:active {
+body.hoverable .file-attachment:not(.upload-file):hover,
+.touch-capable .file-attachment:not(.upload-file):active {
     filter: brightness(1.1);
 }
 .file-attachment .c-file-icon {
@@ -180,8 +210,13 @@ body.hoverable .file-attachment:hover,
 .file-attachment .c-normal-title .c-end {
     @apply flex-none;
 }
+.file-attachment.upload-file .remove-attachment-btn.btn {
+    @apply relative;
+    @apply min-w-10 max-w-10 min-h-10 max-h-10;
+}
 
 .file-attachment .c-bottom {
+    @apply relative;
     @apply flex-x justify-between;
 }
 .file-attachment .c-size {
@@ -213,4 +248,35 @@ body.hoverable .file-attachment:hover,
 .file-attachment .c-file-icon.file-default {
     @apply bg-cancel;
     @apply text-primary;
+}
+
+.message-image-attachments.media-attachment-uploads {
+    @apply w-full;
+    @apply mb-1;
+}
+.message-image-attachments.media-attachment-uploads .attachment-wrapper {
+    @apply w-full;
+    @apply rounded-none;
+}
+.message-image-attachments.media-attachment-uploads .attachment-wrapper > .c-content {
+    @apply h-full;
+}
+.message-image-attachments.media-attachment-uploads .attachment-item {
+    @apply gap-x-0;
+    @apply h-full w-auto;
+    @apply m-0;
+    @apply rounded-none;
+}
+.message-image-attachments.media-attachment-uploads .attachment-filename {
+    @apply w-full max-w-none;
+}
+body.hoverable .message-image-attachments.media-attachment-uploads .remove-attachment-btn.btn {
+    @apply hidden;
+}
+body.hoverable .message-image-attachments.media-attachment-uploads .image-item:hover .remove-attachment-btn.btn {
+    @apply flex;
+}
+.message-image-attachments.media-attachment-uploads .attachment-item > img,
+.message-image-attachments.media-attachment-uploads .attachment-item > video {
+    @apply h-full;
 }

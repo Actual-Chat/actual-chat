@@ -68,15 +68,13 @@ body.hoverable .image-viewer-header .btn-h:hover {
     @apply h-14 w-full;
     @apply md:shadow-md-top;
     background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
-    transition: transform 300ms ease-in-out, opacity 300ms ease-in-out;
+    transition: transform 200ms ease-in-out;
 
 }
 .image-viewer-footer.hide-to-show {
-    opacity: 1;
     transform: translateY(0);
 }
 .image-viewer-footer.show-to-hide {
-    opacity: 0;
     transform: translateY(3.5rem);
 }
 
@@ -283,8 +281,11 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
 }
 
 .media-preview-swiper .swiper-slide-visible {
-    max-width: 10%;
     cursor: pointer;
+}
+.media-preview-swiper swiper-slide {
+    min-width: 10%;
+    max-width: 10%;
 }
 
 .spinner-icon-wrapper {

@@ -2,7 +2,7 @@
 @{
     var firstAuthors = Authors.Take(3).ToList();
     var extraAuthorCount = Math.Clamp(Authors.Count - 3, 0, 99);
-    var timeRangeString = GetTimeRangeString();
+    var timeTotal = GetConversationTimeInfoString();
     var cls = IsSeparated ? "conversation-footer" : "conversation-footer-short";
 }
 
@@ -18,7 +18,7 @@
                 }
             </div>
             <div class="c-time">
-                @timeRangeString
+                @timeTotal
             </div>
         </div>
         <HeaderButton Click="CopyToClipboardRequested">
@@ -28,13 +28,59 @@
 </div>
 
 @code {
+    [Inject] protected AppUIHub Hub { get; init; } = null!;
+    private DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
+    private MomentClockSet Clocks => Hub.Clocks;
+
     [Parameter] public IReadOnlyList<AuthorId> Authors { get; set; } = null!;
     [Parameter] public DateTime StartsAt { get; set; }
     [Parameter] public DateTime EndsAt { get; set; }
     [Parameter] public bool IsSeparated { get; set; }
     [Parameter] public EventCallback CopyToClipboardRequested { get; set; }
 
-    private string GetTimeRangeString() {
-        return $"{StartsAt:HH:mm} - {EndsAt:HH:mm}";
+    private string GetConversationTimeInfoString() {
+        var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
+        var isToday = false;
+        var isYesterday = false;
+        var inWeek = false;
+        var timeRange = "";
+        var timestamp = "";
+
+        var totalDiff = EndsAt - StartsAt;
+        var minutesDiff = totalDiff.Seconds > 0 ? 1 : 0;
+        if (totalDiff.TotalDays >= 1) {
+            timeRange = $"{(int)totalDiff.TotalDays} d {(int)totalDiff.TotalHours} h {totalDiff.Minutes + minutesDiff} min";
+        } else if (totalDiff.TotalHours >= 1)
+            timeRange = $"{(int)totalDiff.TotalHours} h {totalDiff.Minutes + minutesDiff} min";
+        else if (totalDiff.TotalMinutes >= 1)
+            timeRange = $"{(int)totalDiff.TotalMinutes + minutesDiff} min";
+        else
+            timeRange = "1 min";
+
+        var delta = (now - StartsAt).Days;
+
+        switch (delta) {
+            case 0:
+                isToday = true;
+                break;
+            case 1:
+                isYesterday = true;
+                break;
+            case < 8:
+                inWeek = true;
+                break;
+        }
+
+        if (isToday)
+            timestamp = StartsAt.ToInvariantString("HH:mm");
+        else if (isYesterday)
+            timestamp = $"{StartsAt.ToInvariantString("HH:mm")}, Yesterday";
+        else if (inWeek)
+            timestamp = StartsAt.ToInvariantString("HH:mm, ddd");
+        else if (now.Year == StartsAt.Year)
+            timestamp = StartsAt.ToInvariantString("HH:mm, MMM dd");
+        else
+            timestamp = StartsAt.ToInvariantString("HH:mm, MMM dd, yyyy");
+        return $"{timeRange} at {timestamp}";
     }
 }

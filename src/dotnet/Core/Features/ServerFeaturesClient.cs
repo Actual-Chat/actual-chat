@@ -19,7 +19,7 @@ public class ServerFeaturesClient(IServiceProvider services) : IServerFeatures
 #pragma warning disable IL2026, IL2067
         var featureDef = ServerFeatureDefRegistry.Instance.Get(featureType);
         var data = await GetData(featureType, cancellationToken).ConfigureAwait(false);
-        var result = Serializer.Read(data, featureDef.ResultType);
+        var result = Serializer.Read(data, featureDef.ResultType, out _);
 #pragma warning restore IL2026, IL2067
         return result;
     }

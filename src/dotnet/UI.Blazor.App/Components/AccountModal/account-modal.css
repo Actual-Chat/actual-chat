@@ -129,10 +129,10 @@ body.hoverable .author-modal .tile:hover {
 .author-modal .tile-remove-from-group .tile-item-body-content {
     @apply text-danger;
 }
-
-.author-modal .dialog-buttons {
-    @apply mt-2;
+body.hoverable .author-modal .tile-remove-from-group:hover {
+    @apply bg-danger-outline-hover;
 }
+
 .start-chat-btn .c-title {
     @apply flex-x gap-x-1;
     @apply overflow-hidden;
@@ -157,18 +157,14 @@ body.hoverable .author-modal .tile:hover {
 }
 .author-modal .tile-wrapper > .c-incut {
     @apply flex-none;
-    @apply duration-250 ease-in-out;
-    height: 0;
-    filter: opacity(0);
+    @apply duration-250 ease-in-out transition-opacity;
+    @apply opacity-0;
     transition-behavior: allow-discrete;
-    transition-property: filter, height;
 }
-.author-modal .tile-wrapper > .c-incut:has(.c-info) {
-    height: 4.5rem;
-    filter: opacity(1);
+.author-modal .tile-wrapper > .c-incut.show {
+    @apply opacity-100;
     @starting-style {
-        filter: opacity(0);
-        height: 0;
+        opacity: 0;
     }
 }
 
@@ -180,19 +176,16 @@ body.hoverable .author-modal .tile:hover {
     @apply bg-[var(--sienna-50-20)];
     @apply text-caption-6 font-normal text-03;
 }
-.btn.anonymous-chat-btn {
-    @apply justify-start;
-}
-.btn-with-caption {
-    @apply flex-y items-start;
+.btn.anonymous-chat-btn .c-title {
+    @apply flex-x gap-x-1;
     @apply overflow-hidden;
 }
-.btn-with-caption .c-caption {
-    @apply flex-x gap-x-1;
-    @apply w-full;
-    @apply text-caption-8;
+.btn.anonymous-chat-btn .c-title .c-name {
     @apply truncate;
 }
-.btn-with-caption .c-caption > .c-name {
-    @apply truncate;
+.anonymous-chat-btn .btn-content::after {
+    content: "Anonymous";
+    @apply absolute bottom-1 md:bottom-0;
+    @apply text-xs;
+    @apply opacity-70;
 }

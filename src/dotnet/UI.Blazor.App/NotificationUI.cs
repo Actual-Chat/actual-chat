@@ -204,7 +204,7 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
                         Log.LogInformation("RegisterDeviceTask. Register command has been executed");
                         return deviceId;
                     }
-                    catch (Exception e) when (!StopToken.IsCancellationRequested) {
+                    catch (Exception e) when (!e.IsCancellationOf(StopToken)) {
                         Log.LogError(e, "Failed to register notification device - will retry");
                     }
                     await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false);

@@ -10,6 +10,9 @@
     @apply rounded-2xl;
     max-height: inherit;
 }
+.landing .landing-video {
+    @apply cursor-pointer;
+}
 .landing .page {
     @apply flex-y justify-center items-center;
     @apply px-16 lg:px-32;
@@ -136,7 +139,8 @@ body.narrow .landing .title-text.main {
     @apply py-2 px-16 lg:px-32;
     @apply bg-transparent;
     @apply opacity-100;
-    @apply transition-all duration-300 ease-in-out;
+    @apply duration-300 ease-in-out;
+    transition-property: backdrop-filter, opacity;
 }
 .landing .landing-header > .c-content {
     @apply flex-1 flex-x;
@@ -162,7 +166,6 @@ body.narrow .landing .landing-header > .c-content > .c-title-wrapper > .c-title 
 
 .landing .landing-header.hide-header {
     @apply opacity-0;
-    @apply transition-all duration-300 ease-in-out;
 }
 body.narrow .landing .landing-header {
     @apply h-14;
@@ -178,6 +181,8 @@ body.wide.app-maui .landing .landing-header {
 .docs-header .menu-header .dark-icon,
 .docs-left-panel .c-header .dark-icon {
     @apply min-w-10 min-h-10 max-h-10;
+    @apply ease-in-out duration-300;
+    transition-property: opacity;
 }
 
 /* Light & Dark headers */
@@ -210,7 +215,6 @@ body.wide.app-maui .landing .landing-header {
     @apply flex-x items-center justify-center gap-x-2;
     @apply min-w-fit w-fit;
     @apply text-06 font-medium;
-    @apply transition-all ease-in-out duration-100;
 }
 .landing .landing-header .c-btn-group .lg-icon i {
     @apply md:hidden lg:flex;
@@ -223,27 +227,28 @@ body.narrow .landing .landing-header .c-btn-group {
     @apply min-w-fit w-fit;
     @apply px-2;
     @apply text-06 text-headline-1 leading-4.5;
-    @apply transition-all ease-in-out duration-100;
+    @apply ease-in-out duration-300;
+    transition-property: color;
 }
 
 .landing .landing-header.filled .light-icon,
 .landing .landing-header.filled .light-title {
     @apply opacity-0;
-    @apply transition-all ease-in-out duration-100;
 }
 .landing .landing-header.filled .dark-icon,
 .landing .landing-header.filled .dark-title {
     @apply opacity-100;
-    @apply transition-all ease-in-out duration-100;
 }
 .landing .landing-header.filled .btn-text {
     @apply text-01;
-    @apply transition-all ease-in-out duration-100;
+    @apply ease-in-out duration-300;
+    transition-property: color;
 }
 .landing .landing-header.filled .signin-button-group {
     @apply text-01;
     @apply border-text-01;
-    @apply transition-all ease-in-out duration-100;
+    @apply ease-in-out duration-300;
+    transition-property: color, border-color;
 }
 .landing .landing-header.blur-bg {
     @apply backdrop-blur-xl;
@@ -729,6 +734,8 @@ body.narrow .landing .footer-link {
 .landing-menu {
     @apply flex;
     @apply bg-06;
+    @apply ease-in-out duration-300;
+    transition-property: translate;
     background: linear-gradient(to right, rgba(255,255,255,1) 75%, rgba(68,68,68,0.5) 25%);
 }
 body.wide .landing-menu {
@@ -742,11 +749,9 @@ body.narrow .landing-menu {
 }
 body.narrow .landing-menu.closed {
     @apply -translate-x-full;
-    @apply transition-all ease-in-out duration-200;
 }
 body.narrow .landing-menu.open {
     @apply translate-x-0;
-    @apply transition-all ease-in-out duration-200;
 }
 body.narrow .landing-menu .c-container {
     @apply relative flex-y;
@@ -1112,14 +1117,14 @@ body.narrow .landing-video-modal .dialog-body {
 .landing-video-modal .control-wrapper {
     @apply absolute z-30 top-0 bottom-0 left-0 right-0;
     @apply flex-y;
+    @apply ease-in-out duration-300;
+    transition-property: opacity;
 }
 .landing-video-modal .control-wrapper.hide-control {
     @apply opacity-0;
-    @apply transition-all duration-300 ease-in-out;
 }
 .landing-video-modal .control-wrapper.show-control {
     @apply opacity-100;
-    @apply transition-all duration-300 ease-in-out;
 }
 .landing-video-modal .c-header > .c-btn {
     @apply flex-none;
@@ -1474,9 +1479,9 @@ body.narrow .premium-features-modal .c-block-note {
     @apply opacity-95;
 }
 body.narrow .cookie-settings {
-    transform: none;
-    @apply transform-none;
     @apply inset-x-4;
+    @apply transform-none;
+    transform: none;
 }
 .cookie-settings .c-top {
     @apply flex-x items-center gap-x-4;
@@ -1492,7 +1497,8 @@ body.narrow .cookie-settings {
     @apply text-headline-7 text-white;
 }
 .cookie-settings .c-content {
-    @apply text-text-1 text-white flex flex-col gap-4;
+    @apply flex-y gap-4;
+    @apply text-text-1 text-white;
 }
 .cookie-settings .c-content a {
     @apply text-05;
@@ -1526,4 +1532,23 @@ body.narrow .cookie-settings .c-bottom .c-buttons {
 }
 body.narrow .btn.cookie-btn {
     @apply min-w-0 w-full;
+}
+
+/* Menu */
+.manage-account-item {
+    @apply flex-x items-center;
+}
+.manage-account-item .c-content {
+    @apply flex-1 flex-y;
+    @apply overflow-hidden;
+}
+.manage-account-item .c-content .c-name {
+    @apply truncate;
+    @apply text-sm;
+}
+.manage-account-item .c-ending {
+    @apply flex-none;
+    @apply w-8;
+    @apply -mt-1;
+    @apply rotate-180;
 }

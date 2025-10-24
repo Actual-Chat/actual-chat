@@ -1,29 +1,47 @@
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
-public sealed class AndroidContentDownloader(IServiceProvider services) : IIncomingShareFileDownloader
+public sealed class AndroidContentDownloader(IServiceProvider services)
 {
     private const string Prefix = "/in/content/";
-    private const string ContentSchemePrefix = "content://";
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
-#pragma warning disable CA1822 // Can be static
-    public bool CanHandlePath(string? relativeUrl)
-#pragma warning restore CA1822
+    public static bool CanHandleWebRequestUri(string? relativeUrl)
         => relativeUrl.OrdinalStartsWith(Prefix);
 
-    public static bool TryCreateAppHostRelativeUrl(string url, out string relativeUrl)
-    {
-        relativeUrl = "";
-        if (!url.OrdinalStartsWith(ContentSchemePrefix))
-            return false;
+    public static string CreateWebRequestUri(string url)
+        => Prefix + System.Uri.EscapeDataString(url);
 
-        relativeUrl = Prefix + url[ContentSchemePrefix.Length..];
-        return true;
+    public AttachFileInfo[] ConvertToAttachFileInfos(IEnumerable<Uri> uris)
+    {
+        var fileInfos = new List<AttachFileInfo>();
+        foreach (var uri in uris) {
+            var sUri = uri.ToString()!;
+            var (stream, mimeType) = OpenInputStream(sUri);
+            if (stream is null)
+                continue;
+
+            mimeType ??= "";
+            if (!TryExtractFileName(sUri, out var fileName))
+                fileName = "unknown";
+            var fileLength = stream.Length;
+            var fileProvider = new MauiFileProvider {
+                FileRef = sUri,
+                Metadata = new() {
+                    FileName = fileName,
+                    FileType = mimeType,
+                    Length = fileLength,
+                },
+            };
+            fileProvider.Initialize(services);
+            fileInfos.Add(new AttachFileInfo(fileProvider));
+        }
+        return fileInfos.ToArray();
     }
 
     public bool TryExtractFileName(string url, out string fileName)
@@ -46,14 +64,25 @@ public sealed class AndroidContentDownloader(IServiceProvider services) : IIncom
         }
     }
 
+    public (Stream?, string?) GetWebRequestStream(string requestUri)
+    {
+        if (!requestUri.OrdinalStartsWith(Prefix))
+            return (null, null);
+
+        var uri = System.Uri.UnescapeDataString(requestUri[Prefix.Length..]);
+        try {
+            return OpenInputStream(uri);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to open stream for uri: '{Url}'", uri);
+            return (null, null);
+        }
+    }
+
     public (Stream?, string?) OpenInputStream(string url)
     {
-        if (!url.OrdinalStartsWith(Prefix))
-            throw new ArgumentOutOfRangeException(nameof(url), "Invalid url");
-
-        var url2 = ContentSchemePrefix + url[Prefix.Length..];
         try {
-            var uri = Uri.Parse(url2);
+            var uri = Uri.Parse(url);
             if (uri == null) {
                 Log.LogWarning("Can not perform request for uri: '{Url}'. Failed to parse Uri", url);
                 return (null, null);

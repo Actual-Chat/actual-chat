@@ -37,7 +37,6 @@ public partial class ChatUI
         CancellationToken cancellationToken = default)
         => Chats.GetEntry(Session, id, cancellationToken);
 
-
     // Private methods
 
     private async Task<ChatItems> GetChatItemsInternal(
@@ -152,6 +151,8 @@ public partial class ChatUI
             }, cancellationToken).ConfigureAwait(false);
         }
 
+        var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
+        var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
         var isBot = chat.IsAiSearchChat();
         var tiles = new List<VirtualListTile<ChatMessage>>();
         var hasVeryFirstItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset <= chatIdRange.Start;
@@ -163,6 +164,7 @@ public partial class ChatUI
                 lastReadEntryLid = 0;
             else if (shownReadyEntryLid >= idTile.End - 1)
                 lastReadEntryLid = long.MaxValue;
+            var isLastTile = idTile.Contains(chatIdRange.End - 1);
             var tile = await GetTile(
                     chatId,
                     chat.Rules.Author?.Id,
@@ -171,6 +173,8 @@ public partial class ChatUI
                     expandedConversations,
                     prevMessage,
                     lastReadEntryLid,
+                    isLastTile ? chatIdRange.End : null,
+                    chatSendingMessagesWrapper,
                     cancellationToken)
                 .ConfigureAwait(false);
             if (tile.Items.Count == 0)
@@ -361,12 +365,15 @@ public partial class ChatUI
         IImmutableSet<ConversationId> expandedConversations,
         ChatMessage? prevMessage,
         long lastReadEntryId,
+        long? rangeEnd, /* specified only for last tile */
+        IgnoreComputeArg<ChatSendingMessagesAccessor> chatSendingMessagesWrapper,
         CancellationToken cancellationToken = default)
     {
         // DebugLog?.LogDebug("GetTile: {ChatId} {IdRange} {LastReadEntryId}", chatId, idRange, lastReadEntryId);
         if (idRange.IsEmptyOrNegative)
             throw new ArgumentOutOfRangeException(nameof(idRange));
 
+        var chatSendingMessages = chatSendingMessagesWrapper.Value;
         var requestedIdRange = prevMessage == null
             ? idRange.MoveStart(-IdTileStack.FirstLayer
                 .TileSize) // to request previous item of requested range to properly render block star - we will drop it off
@@ -399,11 +406,23 @@ public partial class ChatUI
                 cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
-        var entries = tiles
-            .OrderBy(t => t.IdTileRange.Start)
-            .SelectMany(t => t.Entries)
-            .Where(e => !idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
-            .ToList();
+        var entries = new List<ChatEntry>();
+        foreach (var tile in tiles.OrderBy(t => t.IdTileRange.Start)) {
+            foreach (var e in tile.Entries) {
+                if (idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
+                    continue;
+
+                var e2 = await chatSendingMessages.GetSelfOrEdited(e).ConfigureAwait(false);
+                entries.Add(e2);
+            }
+        }
+
+        if (rangeEnd.HasValue) {
+            // processing last tile
+            chatSendingMessages.RemoveSentNewMessages(rangeEnd.Value);
+            var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!, rangeEnd.Value).ConfigureAwait(false);
+            entries.AddRange(newMessages);
+        }
         if (entries.Count == 0 && conversations.Length == 0)
             return new VirtualListTile<ChatMessage>(idRange);
 
@@ -461,7 +480,7 @@ public partial class ChatUI
                 var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
                 var isEntryUnread = entry.LocalId > lastReadEntryId;
                 var isAudio = entry.HasAudioEntry;
-                var shouldAddToResult = idRange.Contains(entry.LocalId);
+                var shouldAddToResult = idRange.Contains(entry.LocalId) || entry.IsSending; // add sending entries
                 var flags = default(ChatMessageFlags);
                 var indexDocId = showIndexDocId ? indexDocIds.GetValueOrDefault(entry.Id, "") : "";
                 if (isBlockStart)
@@ -545,9 +564,15 @@ public partial class ChatUI
                         messages.Add(dateLineMessage);
                         prevMessage = dateLineMessage;
                     }
+                    // This messages should have special visibility keys to
+                    // 1) do not update read position
+                    // 2) do not affect get tiles query
+                    var isSendingNewMsg = entry.Version == 0;
                     var message = new ChatEntryMessage(entry) {
                         Date = date,
                         Flags = flags,
+                        ShouldSkipKey = isSendingNewMsg,
+                        Kind = isSendingNewMsg ? ChatMessageKind.SendingNewMessage : ChatMessageKind.None,
                         PreviousMessage = prevMessage,
                         ShowIndexDocId = showIndexDocId,
                         IndexDocId = indexDocId,

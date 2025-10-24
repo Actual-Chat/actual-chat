@@ -112,6 +112,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var range = await ChatsBackend.GetIdRange(threadChatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
         var entries = ChatsBackend.ReadEntries(threadChatId, ChatEntryKind.Text, range, false, cancellationToken);
         var entryCount = 0;
+        var attachmentList = new List<TextEntryAttachment>();
         const int entryCountLimit = 30;
         await foreach (var chatEntry in entries.ConfigureAwait(false)) {
             entryCount++;
@@ -122,13 +123,16 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             var authorId = chatEntry.AuthorId;
             if (authorIds.Add(authorId) && topAuthorIds.Count < displayAuthorsLimit)
                 topAuthorIds.Add(authorId);
+            if (chatEntry.Attachments.Length > 0) {
+                attachmentList.AddRange(chatEntry.Attachments);
+            }
             if (entryCount >= entryCountLimit) //NOTE(DF): count
                 break;
         }
         // NOTE(DF): When total entry count is above the limit, we don't count them precisely.
         if (entryCount >= entryCountLimit)
             messageCount = (int)range.End - 1;
-        return new ThreadStat(messageCount, topAuthorIds.ToArray(), authorIds.Count);
+        return new ThreadStat(messageCount, topAuthorIds.ToArray(), authorIds.Count, attachmentList.ToArray());
     }
 
     // Non-computed

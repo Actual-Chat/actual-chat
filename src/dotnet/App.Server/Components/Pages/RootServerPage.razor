@@ -95,15 +95,17 @@
                     https://www.google.com/recaptcha/enterprise/clr;
         upgrade-insecure-requests;
         " />
-    <link rel="icon" href="/favicon_voxt.svg">
+    <HeadOutlet @rendermode="@(_renderMode.Mode)" />
+    <PageTitle>@CoreConstants.AppName</PageTitle>
+    <HeadContent>
+        <link rel="icon" href="/favicon_voxt.svg">
+    </HeadContent>
     <link rel="mask-icon" href="/safari-pinned-tab_voxt.svg" color="#0C003D">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon_voxt.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="msapplication-TileColor" content="#0C003D">
     <meta name="theme-color" content="#444444">
-    <title>@CoreConstants.AppName</title>
     <base href="/" />
-
     @{
         var title = $"{CoreConstants.AppName}: The New Voice of Everyday Communication";
         var description =
@@ -193,7 +195,6 @@
         });
     </script>
     <script async src="/@Assets["dist/bundle.js"]" type="module"></script>
-    <HeadOutlet @rendermode="@(_renderMode.Mode)" />
 </head>
 
 <body class="app-web" style="background-color: #0C003D">

@@ -157,8 +157,8 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         static void Warmup<T>(T instance) {
 #pragma warning disable IL2026
             var s = ByteSerializer.Default;
-            using var buffer = s.Write(instance);
-            s.Read<T>(buffer.WrittenMemory);
+            using var buffer = s.Write(instance, typeof(T));
+            s.Read(buffer.WrittenMemory, typeof(T), out _);
 #pragma warning restore IL2026
         }
     }

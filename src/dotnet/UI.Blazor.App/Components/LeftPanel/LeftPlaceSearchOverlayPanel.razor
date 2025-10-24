@@ -3,56 +3,63 @@
 @{
     var m = State.Value;
     var cls = m.IsOpen ? "open" : "closed";
+    _shouldRenderContent |= m.IsOpen;
 }
 
 <RenderIntoStack Name="@LeftPanelContent.Regions.LeftPanelContentOverlay" Key="ChatsSearchResults">
     <div class="left-search-overlay-panel left-place-search-overlay-panel @cls">
-        @if (m.EnableIncompleteUI) {
-            <TabPanel
-                @key="@("left-place-search-panel")"
-                TabsClass="left-panel-tabs wide-left-panel-tabs"
-                BottomHill="true">
+        <ErrorBarrier Name="LeftPanelContentOverlay" Kind="@ErrorBarrierKind.Full">
+            @if (_shouldRenderContent) {
+                @if (m.EnableIncompleteUI) {
+                    <TabPanel
+                        @key="@("left-place-search-panel")"
+                        TabsClass="left-panel-tabs wide-left-panel-tabs"
+                        BottomHill="true">
 
-                <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
-                    <div class="c-container">
+                        <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
+                            <div class="c-container">
+                                <ChatSearchTab Place="@Place"/>
+                            </div>
+                        </Tab>
+                        <Tab @key="@("ai-search")" Id="ai-search" Title="Search" Order="1">
+                            <div class="c-container">
+                                <RecentlyViewedGroups
+                                    Title="Recent searches"
+                                    ListKind="@ChatUsageListKind.SearchChats"
+                                    Place="@Place"/>
+                            </div>
+                        </Tab>
+                        <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="2">
+                            <ToBeDone/>
+                        </Tab>
+                        <Tab @key="@("tags")" Id="tags" Title="Tags" Order="3">
+                            <ToBeDone/>
+                        </Tab>
+                        <Tab @key="@("media")" Id="media" Title="Media" Order="4">
+                            <ToBeDone/>
+                        </Tab>
+                    </TabPanel>
+
+                    <div class="ai-btn">
+                        <Button Class="btn-primary" Click="@OnAISearchClicked">
+                            <i class="icon-ai-search"></i>
+                            Open AI Search
+                        </Button>
+                    </div>
+                } else {
+                    // TODO: remove when migrated to markup above
+                    <div class="c-search-tab c-container">
                         <ChatSearchTab Place="@Place"/>
                     </div>
-                </Tab>
-                <Tab @key="@("ai-search")" Id="ai-search" Title="Search" Order="1">
-                    <div class="c-container">
-                        <RecentlyViewedGroups
-                            Title="Recent searches"
-                            ListKind="@ChatUsageListKind.SearchChats"
-                            Place="@Place"/>
-                    </div>
-                </Tab>
-                <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="2">
-                    <ToBeDone/>
-                </Tab>
-                <Tab @key="@("tags")" Id="tags" Title="Tags" Order="3">
-                    <ToBeDone/>
-                </Tab>
-                <Tab @key="@("media")" Id="media" Title="Media" Order="4">
-                    <ToBeDone/>
-                </Tab>
-            </TabPanel>
-
-            <div class="ai-btn">
-                <Button Class="btn-primary" Click="@OnAISearchClicked">
-                    <i class="icon-ai-search"></i>
-                    Open AI Search
-                </Button>
-            </div>
-        } else {
-            // TODO: remove when migrated to markup above
-            <div class="c-search-tab c-container">
-                <ChatSearchTab Place="@Place"/>
-            </div>
-        }
+                }
+            }
+        </ErrorBarrier>
     </div>
 </RenderIntoStack>
 
 @code {
+    private bool _shouldRenderContent;
+
     private SearchUI SearchUI => Hub.SearchUI;
 
     [Parameter] public Place? Place { get; set; }

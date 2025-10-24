@@ -62,7 +62,6 @@
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
-    <Using Include="ActualChat.Blobs" />
     <Using Include="ActualChat.Collections" />
     <Using Include="ActualChat.DependencyInjection" />
     <Using Include="ActualChat.Mathematics" />
@@ -100,8 +99,13 @@
     <Using Include="Microsoft.Extensions.Logging" />
     <Using Include="Microsoft.Extensions.DependencyInjection" />
 
+    <!-- Core.Server usings -->
+    <Using Include="ActualChat.Blobs" />
+    <Using Include="ActualChat.Mesh" />
+    <Using Include="ActualChat.Sharding" />
+
     <!-- Testing-related global usings -->
-    <Using Include="FluentAssertions" />
+    <Using Include="AwesomeAssertions" />
     <Using Include="Moq" />
     <Using Include="ActualLab.Testing" />
     <Using Include="Xunit" />

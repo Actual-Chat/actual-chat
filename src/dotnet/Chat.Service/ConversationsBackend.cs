@@ -383,7 +383,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var textEntries = new List<TextEntry>();
         var attachments = new List<TextEntryAttachment>();
-        const int attachmentMaxCount = 7;
         var attachmentCount = 0;
         var chatEntries = tiles
             .SelectMany(tile => tile.Entries)
@@ -392,11 +391,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         foreach (var entry in chatEntries) {
             textEntries.Add(new TextEntry(entry));
             attachmentCount += entry.Attachments.Length;
-            if (attachments.Count < attachmentMaxCount && entry.Attachments.Length > 0) {
-                foreach(var attachment in entry.Attachments)
-                    if (attachments.Count < attachmentMaxCount)
-                        attachments.Add(attachment);
-            }
+            foreach(var attachment in entry.Attachments)
+                attachments.Add(attachment);
         }
         Log.LogInformation("<- GetTextEntries: ChatId='{ChatId}', StartChatEntryId={StartChatEntryId}, LastChatEntryId={LastChatEntryId}, AttachmentCount={AttachmentCount}, AttachmentIds={AttachmentIds}",
             chatId,

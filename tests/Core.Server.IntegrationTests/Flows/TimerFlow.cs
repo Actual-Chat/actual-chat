@@ -1,46 +1,43 @@
 using System.Globalization;
 using ActualChat.Flows;
+using ActualLab.Generators;
 using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class TimerFlow : Flow
+public partial class TimerFlow : Flow<Unit>
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public int RemainingCount { get; private set; }
+    public bool IsInitialized { get; private set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
-    public double Period { get; private set; }
+    public int RemainingCount { get; private set; }
+    [DataMember(Order = 2), MemoryPackOrder(2)]
+    public TimeSpan Period { get; private set; }
 
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        var args = Id.SplitArguments("", "1", "1");
-        RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
-        Period = double.Parse(args[2], CultureInfo.InvariantCulture);
-        EventUuidQuantizationInterval = TimeSpan.FromSeconds(Period / 2);
+        if (!IsInitialized) {
+            IsInitialized = true;
+            var args = Id.SplitArguments("", "1", "1");
+            RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
+            Period = TimeSpan.FromSeconds(double.Parse(args[2], CultureInfo.InvariantCulture));
+            Console.Log($"Initialized: RemainingCount={RemainingCount}, Period={Period.ToShortString()}");
+        }
+        Runtime.DefaultResumeDelayQuanta = Period / 2;
 
-        var output = Host.Services.GetRequiredService<ITestOutputHelper>();
-        output.WriteLine($"`{Id}`.{nameof(OnReset)}: {RemainingCount}");
-        return WaitForTimer(nameof(OnTimer), TimeSpan.FromSeconds(Period));
-    }
-
-    protected async Task<FlowTransition> OnTimer(CancellationToken cancellationToken)
-    {
-        Event.Require<FlowTimerEvent>();
-        var output = Host.Services.GetRequiredService<ITestOutputHelper>();
-        output.WriteLine($"`{Id}`.{nameof(OnTimer)}: {RemainingCount--}");
-        return RemainingCount > 0
-            ? WaitForTimer(nameof(OnTimer), TimeSpan.FromSeconds(Period))
-            : End($"{nameof(RemainingCount)} is 0");
-    }
-
-    protected override ValueTask ApplyTransition(
-        FlowTransition transition, IFlowEvent @event, CancellationToken cancellationToken)
-    {
-        var output = Host.Services.GetRequiredService<ITestOutputHelper>();
-        output.WriteLine($"`{Id}` transition @ '{Step}': {transition}");
-        return base.ApplyTransition(transition, @event, cancellationToken);
+        if (RemainingCount > 0) {
+            RemainingCount--;
+            Runtime.ScheduleResumeIn(Period);
+            Console.Log($"Will resume in {Period.ToShortString()}, RemainingCount={RemainingCount}");
+            if (RemainingCount == 1) {
+                await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                await Runtime.Commit(cancellationToken).ConfigureAwait(false);
+                await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                Console.Log("Post-commit message");
+            }
+        }
+        else
+            SetResult(default);
     }
 }

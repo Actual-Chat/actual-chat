@@ -99,7 +99,7 @@ public class ThrottledWorkQueueTest(ITestOutputHelper @out) : TestBase(@out)
             sut.ListRunning().Should().BeEmpty();
             sut.ListAll().Should().BeEmpty();
         }, TimeSpan.FromSeconds(5).Debuggable());
-        workItems.Should().AllSatisfy(x => x.IsCompletedSuccessfully.Should().BeTrue());
+        workItems.Should().AllSatisfy(x => x?.IsCompletedSuccessfully.Should().BeTrue());
     }
 
     private class Fetcher

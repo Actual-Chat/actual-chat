@@ -88,5 +88,6 @@ body.wide .web-splash .wide-image {
 .web-splash .splash-page {
     @apply flex-x;
     @apply w-screen h-screen;
+    @apply bg-01;
 }
 

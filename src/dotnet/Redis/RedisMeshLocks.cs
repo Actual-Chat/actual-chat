@@ -1,4 +1,3 @@
-using ActualChat.Mesh;
 using ActualLab.Redis;
 using StackExchange.Redis;
 
@@ -40,13 +39,6 @@ public class RedisMeshLocks : MeshLocksBase
         local rGet = redis.call('GET', key)
 
         if rGet == false then
-            local rSet = redis.call('SET', key, value, 'NX', 'PX', expiresIn)
-            local rt = type(rSet)
-            if (rt == 'boolean' and rSet) or (rt == 'table' and rSet['ok'] == 'OK') then
-                redis.call('PUBLISH', key, '')
-                redis.call('PUBLISH', anyLockKey, key)
-                return 0
-            end
             return -2
         end
         if rGet ~= value then
@@ -225,7 +217,7 @@ public class RedisMeshLocks : MeshLocksBase
                     .ScriptEvaluateAsync(TryLockScript, [key, ""], [value, (long)expiresIn.TotalMilliseconds], CommandFlags.DemandMaster)
                     .ConfigureAwait(false);
                 if (r != 0)
-                    Log?.LogDebug("TryLock: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
+                    DebugLog?.LogDebug("TryLock: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
                 return r >= 0;
             }
             catch (RedisConnectionException) {
@@ -244,7 +236,7 @@ public class RedisMeshLocks : MeshLocksBase
             .ScriptEvaluateAsync(TryRenewScript, [key, ""], [value, expiresInMs], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         if (r != 0)
-            Log?.LogDebug("TryRenew: {Key} = {Value} -> {Result} @ {ExpiresIn}", $"{_fullKeyPrefix}{key}", value, r, expiresInMs);
+            DebugLog?.LogDebug("TryRenew: {Key} = {Value} -> {Result} @ {ExpiresIn}", $"{_fullKeyPrefix}{key}", value, r, expiresInMs);
         return r >= 0;
     }
 
@@ -256,7 +248,7 @@ public class RedisMeshLocks : MeshLocksBase
             .ScriptEvaluateAsync(TryReleaseScript, [key, ""], [value], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         if (r != 0)
-            Log?.LogDebug("TryRelease: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
+            DebugLog?.LogDebug("TryRelease: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
         return r switch {
             -2 => MeshLockReleaseResult.AcquiredBySomeoneElse,
             -1 => MeshLockReleaseResult.NotAcquired,
@@ -273,7 +265,7 @@ public class RedisMeshLocks : MeshLocksBase
             .ScriptEvaluateAsync(ForceReleaseScript, [key, ""], [mustNotify ? 1 : 0], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         if (r != 0)
-            Log?.LogDebug("ForceRelease: {Key} -> {Result}", $"{_fullKeyPrefix}{key}", r);
+            DebugLog?.LogDebug("ForceRelease: {Key} -> {Result}", $"{_fullKeyPrefix}{key}", r);
         return r >= 0;
     }
 }

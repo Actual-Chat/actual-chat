@@ -1,12 +1,13 @@
 using ActualChat.Concurrency;
 using ActualChat.Diagnostics;
 using ActualLab.Diagnostics;
+using ActualLab.Resilience;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 
 namespace ActualChat.Queues.Internal;
 
-public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardWorker, IQueueProcessor
+public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : LegacyShardWorker, IQueueProcessor
     where TSettings : QueueSettings
     where TQueues : IQueues
 {
@@ -17,7 +18,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
 
     protected ICommander Commander { get; }
     protected CommandHandlerResolver CommandHandlerResolver { get; }
-    protected new MomentClock Clock { get; }
+    protected MomentClock Clock { get; }
     protected new ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
 
     protected TimeSpan ProcessTimeout
@@ -31,7 +32,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
     public QueueRef QueueRef { get; }
 
     protected ShardQueueProcessor(TSettings settings, TQueues queues, QueueRef queueRef)
-        : base(queues.Services, queueRef.ShardScheme, $"Queues.{queueRef.Format()}")
+        : base(queues.Services, queueRef.ShardScheme)
     {
         Settings = settings;
         Queues = queues;
@@ -84,10 +85,10 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
             return;
         }
 
-        using var processCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
-        var processCancellationToken = processCts.Token;
         var timeout = (queuedCommand.UntypedCommand as IHasTimeout)?.Timeout ?? ProcessTimeout;
-        processCts.CancelAfter(timeout);
+        using var timeoutCts = cancellationToken.CreateLinkedTokenSource();
+        var timeoutToken = timeoutCts.Token;
+        timeoutCts.CancelAfter(timeout);
 
         ActivityContext senderContext = default;
         IEnumerable<ActivityLink>? links = null;
@@ -111,49 +112,56 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
             shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
         try {
             if (command.HasDelay(Clock.Now, out var delay)) {
-                activity?.SetStatus(ActivityStatusCode.Ok, $"Postponed for {delay}");
+                activity?.SetStatus(ActivityStatusCode.Ok, $"Postponed for {delay.ToShortString()}");
                 activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
-                await MarkPostponed(shardIndex, message, queuedCommand, delay.Value, processCancellationToken)
-                    .ConfigureAwait(false);
+                // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+                await MarkPostponed(shardIndex, message, queuedCommand, delay, cancellationToken).ConfigureAwait(false);
                 DebugLog?.LogDebug(
                     "Queued {Kind} #{Uuid} postponed: {Command} after {Time}",
                     kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
             }
             else {
                 var processTask = kind switch {
-                    CommandKind.Command => ProcessCommandOrBoundEvent(command, processCancellationToken),
-                    CommandKind.BoundEvent => ProcessCommandOrBoundEvent(command, processCancellationToken),
-                    CommandKind.UnboundEvent => ProcessUnboundEvent((IEventCommand)command, processCancellationToken),
+                    CommandKind.Command => ProcessCommandOrBoundEvent(command, timeoutToken),
+                    CommandKind.BoundEvent => ProcessCommandOrBoundEvent(command, timeoutToken),
+                    CommandKind.UnboundEvent => ProcessUnboundEvent((IEventCommand)command, timeoutToken),
                     _ => throw StandardError.Internal($"Invalid command kind: {kind}"),
                 };
                 await processTask.ConfigureAwait(false);
                 DebugLog?.LogDebug(
                     "Queued {Kind} #{Uuid} completed: {Command} in {Time}",
                     kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
-                await MarkCompleted(shardIndex, message, queuedCommand, processCancellationToken).ConfigureAwait(false);
+                // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+                await MarkCompleted(shardIndex, message, queuedCommand, cancellationToken).ConfigureAwait(false);
                 activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
             }
         }
         catch (Exception e) when (e.GetBaseException() is PostponeException pe) {
             activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
             activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
-            await MarkPostponed(shardIndex, message, queuedCommand, pe.Delay, processCancellationToken).ConfigureAwait(false);
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+            await MarkPostponed(shardIndex, message, queuedCommand, pe.Delay, cancellationToken).ConfigureAwait(false);
             DebugLog?.LogDebug(e,
                 "Queued {Kind} #{Uuid} postponed: {Command} after {Time}",
                 kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
         }
         catch (Exception e) {
-            Log.LogError(e,
-                "[{ShardIndex}]: Queued {Kind} #{Uuid} failed: {Command}",
-                shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
-            await MarkFailed(shardIndex, message, queuedCommand, e, processCancellationToken).ConfigureAwait(false);
-            if (e.IsCancellationOf(processCancellationToken)) {
-                activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+            if (e.IsCancellationOf(cancellationToken)) {
+                activity?.SetStatus(ActivityStatusCode.Ok, $"{GetType().Name} is stopping, processing cancelled.");
                 activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Canceled);
                 throw;
             }
+            if (e.IsCancellationOf(timeoutToken))
+                e = StandardError.Timeout($"Queued {kind}");
+            Log.LogError(e,
+                "[{ShardIndex}]: Queued {Kind} #{Uuid} failed: {Command}",
+                shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
+
             activity?.SetStatus(ActivityStatusCode.Error, e.Message);
             activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Failed);
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+            await MarkFailed(shardIndex, message, queuedCommand, e, cancellationToken).ConfigureAwait(false);
         }
         finally {
             InterlockedExt.ExchangeIfGreater(ref _lastCommandCompletedAt, Clock.Now.EpochOffsetTicks);

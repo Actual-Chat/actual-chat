@@ -51,9 +51,8 @@ public sealed class WebAudioPlaybackEngine(
             await _whenPlayerCreated.ConfigureAwait(false);
         if (_jsRef == null)
             throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-        _ = _jsRef.InvokeVoidAsync("pause", CancellationToken.None)
-            .Catch(Log, "Failed to invoke js player.pause()")
-            .SuppressCancellationAwait();
+
+        _ = _jsRef.InvokeVoidAsync("pause", CancellationToken.None);
     }
 
     public async Task Resume(CancellationToken cancellationToken)
@@ -62,9 +61,8 @@ public sealed class WebAudioPlaybackEngine(
             await _whenPlayerCreated.ConfigureAwait(false);
         if (_jsRef == null)
             throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-        _ = _jsRef.InvokeVoidAsync("resume", CancellationToken.None)
-            .Catch(Log, "Failed to invoke js player.resume()")
-            .SuppressCancellationAwait();
+
+        _ = _jsRef.InvokeVoidAsync("resume", CancellationToken.None);
     }
 
     public async Task End(bool abort, CancellationToken cancellationToken)
@@ -73,9 +71,8 @@ public sealed class WebAudioPlaybackEngine(
             await _whenPlayerCreated.ConfigureAwait(false);
         if (_jsRef == null)
             throw StandardError.StateTransition(GetType(), "Start command should be called first.");
-        _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, abort)
-            .Catch(Log, $"Failed to invoke js player.end({abort.ToString().ToLowerInvariant()})")
-            .SuppressCancellationAwait();
+
+        _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None, abort);
     }
 
     public ValueTask PushFrame(MediaFrame frame, CancellationToken cancellationToken)
@@ -84,9 +81,7 @@ public sealed class WebAudioPlaybackEngine(
             throw StandardError.StateTransition(GetType(), "Can't process media frame before initialization.");
 
         var chunk = frame.Data;
-        _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk)
-            .Catch(Log, "Failed to invoke js player.frame()")
-            .SuppressCancellationAwait(false);
+        _ = _jsRef.InvokeVoidAsync("frame", cancellationToken, chunk);
 
         return ValueTask.CompletedTask;
     }

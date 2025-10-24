@@ -1,4 +1,4 @@
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 public static class ShardSchemeExt
 {
@@ -12,14 +12,30 @@ public static class ShardSchemeExt
         return shardScheme;
     }
 
-    public static int? TryGetShardIndex(this ShardScheme? shardScheme, int shardKey)
-        => shardScheme is { IsValid: true }
-            ? shardKey.Mod(shardScheme.ShardCount)
-            : null;
-
-    public static int GetShardIndex(this ShardScheme? shardScheme, int shardKey)
-        => shardKey.Mod(shardScheme.RequireValid().ShardCount);
-
     public static bool HasFlags(this ShardScheme? shardScheme, ShardSchemeFlags flags)
         => shardScheme != null && (shardScheme.Flags & flags) == flags;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int? TryGetShardIndex(this ShardScheme? shardScheme, int shardKey)
+        => shardScheme is { IsValid: true }
+            ? shardKey.PositiveModulo(shardScheme.ShardCount)
+            : null;
+
+    public static int? TryGetShardIndex<T>(this ShardScheme? shardScheme, T shardKey)
+    {
+        var shardKeyResolver = ShardKeyResolvers.Get<T>(new Requester(typeof(ShardSchemeExt)));
+        var intShardKey = shardKeyResolver.Invoke(shardKey);
+        return shardScheme.TryGetShardIndex(intShardKey);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int GetShardIndex(this ShardScheme? shardScheme, int shardKey)
+        => shardKey.PositiveModulo(shardScheme.RequireValid().ShardCount);
+
+    public static int GetShardIndex<T>(this ShardScheme? shardScheme, T shardKey)
+    {
+        var shardKeyResolver = ShardKeyResolvers.Get<T>(new Requester(typeof(ShardSchemeExt)));
+        var intShardKey = shardKeyResolver.Invoke(shardKey);
+        return shardScheme.GetShardIndex(intShardKey);
+    }
 }

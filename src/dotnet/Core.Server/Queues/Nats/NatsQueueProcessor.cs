@@ -1,5 +1,4 @@
 using System.Buffers;
-using ActualChat.Mesh;
 using ActualChat.Queues.Internal;
 using ActualLab.IO;
 using ActualLab.Locking;
@@ -39,7 +38,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     public NatsQueueProcessor(NatsQueues.Options settings, NatsQueues queues, QueueRef queueRef)
         : base(settings, queues, queueRef)
     {
-        ActionLocks = GetMeshLocks(nameof(ActionLocks));
+        ActionLocks = queues.ActionLocks.WithKeyPrefix(ShardScheme.Name);
         _instancePrefix = queues.NatsSettings.InstancePrefix;
     }
 
@@ -111,9 +110,11 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         var expireIn = Settings.IdleTimeout.ToRandom(0.25);
         using var stopCts = cancellationToken.CreateLinkedTokenSource();
         var stopToken = stopCts.Token;
+        using var processingStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
+        var processingStopToken = processingStopCts.Token;
 
-        while (!stopToken.IsCancellationRequested) {
-            // retry pull until cancellation is requested
+        while (true) {
+            processingStopToken.ThrowIfCancellationRequested(); // HandleMessage cancels it on DI container disposal
             var consumer = await GetConsumer(shardIndex, stopToken).ConfigureAwait(false);
             DebugLog?.LogDebug(
                 "NATS: pulling messages from consumer='{Consumer}' stream='{Stream}' shard='{ShardIndex}'",
@@ -136,10 +137,15 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             var degreeOfParallelism = ShardScheme.DegreeOfParallelism ?? Settings.ConcurrencyLevel;
             var parallelOptions = new ParallelOptions {
                 MaxDegreeOfParallelism = degreeOfParallelism,
-                CancellationToken = stopToken,
+                CancellationToken = processingStopToken,
             };
-
             var handledCount = 0;
+
+            // NOTE(AY): Trying to address "Unable to cast object of type
+            // 'NATS.Client.JetStream.Internal.NatsJSFetch1[System.Buffers.IMemoryOwner1[System.Byte]]'
+            // to type 'ActualLab.Fusion.Computed'" via execution context flow suppression.
+            // NOTE(AY): Ended up commenting out the "fix": it slows down the tests somehow.
+            // using var _ = ExecutionContextExt.TrySuppressFlow();
             await Parallel
                 .ForEachAsync(messages, parallelOptions, HandleMessage)
                 .SilentAwait(false); // We swallow all exceptions here
@@ -165,7 +171,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                     // So here we detect this & instantly abort the message reader.
                     if (Services.IsDisposedOrDisposing())
                         // ReSharper disable once AccessToDisposedClosure
-                        stopCts.CancelAndDisposeSilently();
+                        processingStopCts.CancelAndDisposeSilently();
                     throw;
                 }
                 finally {
@@ -173,7 +179,6 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 }
             }
         }
-        stopToken.ThrowIfCancellationRequested();
     }
 
     // Private methods
@@ -226,18 +231,18 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     private string GetStreamName(int shardIndex)
         => Settings.UseStreamPerShard
-            ? $"{_instancePrefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}"
-            : $"{_instancePrefix}{QueueRef.ShardScheme.Id}";
+            ? $"{_instancePrefix}{QueueRef.ShardScheme.Name}-S{shardIndex.Format()}"
+            : $"{_instancePrefix}{QueueRef.ShardScheme.Name}";
 
     private string GetSubjectName(int shardIndex, Symbol topic)
         => Settings.UseStreamPerShard
-            ? $"{_instancePrefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}"
-            : $"{_instancePrefix}{QueueRef.ShardScheme.Id}.S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}";
+            ? $"{_instancePrefix}{QueueRef.ShardScheme.Name}-S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}"
+            : $"{_instancePrefix}{QueueRef.ShardScheme.Name}.S{shardIndex.Format()}.{topic.Value.NullIfEmpty() ?? "_"}";
 
     private string GetConsumerName(int shardIndex)
         => Settings.UseStreamPerShard
-            ? $"{_instancePrefix}{QueueRef.ShardScheme.Id}-S{shardIndex.Format()}"
-            : $"{_instancePrefix}{QueueRef.ShardScheme.Id}.S{shardIndex.Format()}";
+            ? $"{_instancePrefix}{QueueRef.ShardScheme.Name}-S{shardIndex.Format()}"
+            : $"{_instancePrefix}{QueueRef.ShardScheme.Name}.S{shardIndex.Format()}";
 
     private string GetConsumerFilter(int shardIndex)
         => $"{GetConsumerName(shardIndex)}.>";
@@ -385,12 +390,12 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         switch (version) {
         case 1: {
             var id = new Ulid(dataSpan[1..17]);
-            var command = TypeDecoratingSerializer.Read<ICommand>(dataMemory[17..]);
+            var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[17..], typeof(ICommand), out _)!;
             return QueuedCommand.NewUntyped(command, id.ToString(), message.Headers?.AsReadOnly());
         }
         case 2: {
-            var ulid = Serializer.Read<string>(dataMemory[1..], out var ulidLength);
-            var command = TypeDecoratingSerializer.Read<ICommand>(dataMemory[(1 + ulidLength)..]);
+            var ulid = (string)Serializer.Read(dataMemory[1..], typeof(string), out var ulidLength)!;
+            var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[(1 + ulidLength)..], typeof(ICommand), out _)!;
             return QueuedCommand.NewUntyped(command, ulid, message.Headers?.AsReadOnly());
         }
         default:
@@ -402,7 +407,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     {
         var command = queuedCommand.UntypedCommand;
         buffer.Write(VersionBytes);
-        Serializer.Write(buffer, queuedCommand.Uuid);
+        Serializer.Write(buffer, queuedCommand.Uuid, typeof(string));
         TypeDecoratingSerializer.Write(buffer, command, command.GetType()); // Command itself
     }
 }

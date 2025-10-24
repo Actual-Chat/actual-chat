@@ -17,7 +17,7 @@ public partial class DigestFlow : PeriodicFlow
     [IgnoreDataMember, MemoryPackIgnore]
     private TimeSpan DigestTime { get; set; }
 
-    protected override Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
     {
         MaxDelay = TimeSpan.FromDays(2);
         return base.OnReset(cancellationToken);

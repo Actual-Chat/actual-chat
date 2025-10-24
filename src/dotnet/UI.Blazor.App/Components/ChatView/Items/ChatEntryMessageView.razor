@@ -5,7 +5,7 @@
 @{
     var m = _rendered = State.Value ?? Model.Empty;
     // var chatId = ChatContext.ChatId;
-    // DebugLog?.LogDebug("Rendering ChatEntryMessageView for chat {ChatId} with message {MessageId}", chatId, Message.Entry.Id);
+    // DebugLog?.LogDebug("Rendering ChatEntryMessageView for chat {ChatId} with message {MessageId}, Content='{Content}'", chatId, Message.Entry.Id, Message.Entry.Content);
 
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
@@ -61,13 +61,15 @@
             <SearchChatWelcomeBlock Chat="@chat2" />
         }
         return;
+    case ChatMessageKind.SendingNewMessage:
+        break;
     default:
         throw new ArgumentOutOfRangeException();
 }
 
 @if (isSystem) {
     <div class="@cls"
-         data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.TrueString, "", ""))"
+         data-menu="@(MenuRef.New<MessageMenu>(entry.GetClientId(), bool.TrueString, "", ""))"
          @onmouseenter="@ShowHoverMenu"
          @onmouseleave="@HideHoverMenu">
         <div class="chat-message">
@@ -84,14 +86,14 @@
                 <MessageReactions Entry="@entry"/>
             }
         </div>
-        <MessageHoverMenuNew @ref="@_messageHoverMenuNew" Entry="@entry" IsSystem="@isSystem" />
+        <MessageHoverMenu @ref="@_messageHoverMenu" Entry="@entry" IsSystem="@true" />
     </div>
     return;
 }
 
 <div class="@cls"
      data-chat-entry-id="@(entry.Id)"
-     data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.FalseString, "", ""))"
+     data-menu="@(MenuRef.New<MessageMenu>(entry.GetClientId(), bool.FalseString, "", ""))"
      @onmouseenter="@ShowHoverMenu"
      @onmouseleave="@HideHoverMenu">
     <div class="chat-message group">
@@ -172,6 +174,10 @@
                 />
             </div>
             @if (entry.Attachments.Length > 0) {
+                if (_hasShownUploads) {
+                    Hub.SendingMessages.NotifyAttachmentsLoaded(entry.Id);
+                    _hasShownUploads = false;
+                }
                 var (mediaList, fileList) = GetOrderedAttachmentList(entry);
                 <div class="message-attachments">
                     <VisualMediaAttachmentList MediaList="@mediaList" />
@@ -186,6 +192,23 @@
                             IsDotOnly="@(!m.IsUnreadByOthersBlockStart)"/>
                     }
                 </div>
+            }
+            else if (entry.HasAttachmentUploads) {
+                if (m.IsOwnMessage) {
+                    // Check if we can display uploading medias.
+                    var mediaUploads = Hub.SendingMessages.GetMediaUploads(entry);
+                    if (mediaUploads is not null) {
+                        <div class="message-attachments">
+                            <ChatEntryMessageAttachmentUploadsView Uploads="@mediaUploads.Attachments"/>
+                            <ChatMessageSendingStatus
+                                Status="@ChatMessageSendingStatus.MessageStatus.Sending"
+                                IsDotOnly="@true"/>
+                        </div>
+                        _hasShownUploads = true;
+                    }
+                } else {
+                    // Display progress indicator or something else indicating that we expect addition content to be shown soon.
+                }
             }
             @if (entry.LinkPreviews.Length > 0) {
                 <div class="message-links">
@@ -212,7 +235,7 @@
             }
         </div>
     </div>
-    <MessageHoverMenuNew @ref="@_messageHoverMenuNew" Entry="@entry" IsSystem="@isSystem" MessageWithAuthor="@showAuthor"/>
+    <MessageHoverMenu @ref="@_messageHoverMenu" Entry="@entry" IsSystem="@false" MessageWithAuthor="@showAuthor"/>
 </div>
 
 
@@ -221,7 +244,7 @@
 }
 
 @code {
-    private MessageHoverMenuNew? _messageHoverMenuNew;
+    private MessageHoverMenu? _messageHoverMenu;
     private Model? _rendered;
     private ChatEntryMessage? _renderedMessage;
     private Markup? _renderedMarkup;
@@ -230,6 +253,7 @@
     private ChatEntryMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
     private bool _hasBeenRead;
+    private bool _hasShownUploads;
 
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
@@ -274,7 +298,8 @@
            || !ReferenceEquals(_renderedMessage, Message)
            || !ReferenceEquals(_renderedMarkup, _markup);
         // if (!shouldRender) {
-        //     DebugLog?.LogDebug("Skipping rendering ChatEntryMessageView for chat {ChatId} with message {MessageId} because state has not changed", ChatId, Message.Entry.Id);
+        //     DebugLog?.LogDebug("Skipping rendering ChatEntryMessageView for chat {ChatId} with message {MessageId} because state has not changed (Content = '{Content}')"
+        //         , ChatId, Message.Entry.Id, Message.Entry.Content);
         // }
         return shouldRender;
     }
@@ -475,12 +500,12 @@
 
     private void ShowHoverMenu() {
         if (!BrowserInfo.IsTouchCapable)
-            _messageHoverMenuNew?.Show();
+            _messageHoverMenu?.Show();
     }
 
     private void HideHoverMenu() {
         if (!BrowserInfo.IsTouchCapable)
-            _messageHoverMenuNew?.Hide();
+            _messageHoverMenu?.Hide();
     }
 
     private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(ChatEntry entry)

@@ -15,8 +15,10 @@ public readonly record struct Requester(
             return "Unknown";
         if (Target is MethodDef methodDef)
             return methodDef.ToString();
+        if (Target is not Type type)
+            type = Target.GetType();
 
-        return Target.GetType().NonProxyType().GetName();
+        return type.NonProxyType().GetName();
     }
 
     public static implicit operator Requester(string target) => new(target);

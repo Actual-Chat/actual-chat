@@ -1,4 +1,4 @@
-import { UseStore, createStore, get, set, del, getMany, setMany, delMany, clear } from 'idb-keyval';
+import { UseStore, createStore, get, entries, set, del, getMany, setMany, delMany, clear } from 'idb-keyval';
 import { Log } from 'logging';
 
 const { debugLog } = Log.get('Kvas');
@@ -19,6 +19,17 @@ export class Kvas {
     public async get(key: string): Promise<unknown> {
         const value = await get(key, this.store) as unknown;
         return this.processGet(key, value);
+    }
+
+    public async getAll(): Promise<Record<string, unknown>> {
+        const allEntries = await entries(this.store);
+        return Object.fromEntries(
+            allEntries.map(([key, value]) => {
+                const keyStr = key as string;
+                const processedValue = this.processGet(keyStr, value);
+                return [keyStr, processedValue] as [string, unknown];
+            })
+        );
     }
 
     public set(key: string, value: unknown): Promise<void> {

@@ -2,15 +2,14 @@ using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
-using ActualChat.Mesh;
 using ActualChat.Queues;
-using ActualChat.Sharding;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Rpc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Chat;
 
@@ -20,13 +19,13 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private readonly ConcurrentDictionary<StreamId, FuncWorker> _activePublishers = new ();
 
     [field: AllowNull, MaybeNull]
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbTranslation> EntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbTranslation>>();
     [field: AllowNull, MaybeNull]
     private Translator Translator => field ??= Services.GetRequiredService<Translator>();
     [field: AllowNull, MaybeNull]
     private Translator RealtimeTranslator => field ??= Services.GetRequiredKeyedService<Translator>(Constants.Translation.RealtimeServiceKey);
-    [field: AllowNull, MaybeNull]
-    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     [field: AllowNull, MaybeNull]
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
     [field: AllowNull, MaybeNull]
@@ -34,11 +33,14 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     [field: AllowNull, MaybeNull]
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     [field: AllowNull, MaybeNull]
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    [field: AllowNull, MaybeNull]
     private IStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IStreamingBackend>();
     [field: AllowNull, MaybeNull]
-    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-    [field: AllowNull, MaybeNull]
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
+    [field: AllowNull, MaybeNull]
+    private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
+
     private static bool DebugMode => Constants.DebugMode.TranslationBackend;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
@@ -318,11 +320,6 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return null;
 
         TranslationSourceId sourceId;
-        var applicationStopping = Services.HostLifetime().ApplicationStopping;
-        var cts = applicationStopping.CreateLinkedTokenSource();
-        var transcriptStream = transcript
-            .SuppressException<TranscriptDiff, RpcReconnectFailedException>(cts.Token)
-            .Memoize(cts.Token);
         var translatedStreamId = StreamId.New(streamId, targetLanguage);
         {
             // ReSharper disable PossiblyMistakenUseOfCancellationToken
@@ -356,19 +353,25 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (translation.Version != newTranslationVersion)
             return translatedStreamId; // Already being translated
 
+        var stopTokenSource = HostLifetime.CreateStopTokenSource();
+        var stopToken = stopTokenSource.Token;
+        var transcriptStream = transcript
+            .SuppressException<TranscriptDiff, RpcReconnectFailedException>(stopToken)
+            .Memoize(stopToken);
+
         var worker = _activePublishers.GetOrAdd(translatedStreamId,
-            static (_, args) => {
+            static (_, state) => {
                 return FuncWorker.New(
-                    (args1, ct) => args1.Item1.TranslateTranscriptStream(
-                        args1.transcriptStream,
-                        args1.translatedStreamId,
-                        args1.translationId,
-                        args1.newTranslationVersion,
+                    static (arg, ct) => arg.self.TranslateTranscriptStream(
+                        arg.transcriptStream,
+                        arg.translatedStreamId,
+                        arg.translationId,
+                        arg.newTranslationVersion,
                         ct),
-                    args,
-                    args.cts);
+                    state,
+                    state.stopTokenSource);
             },
-            (this, transcriptStream, translatedStreamId, translationId, newTranslationVersion, cts));
+            (self: this, transcriptStream, translatedStreamId, translationId, newTranslationVersion, stopTokenSource));
 
         DebugLog?.LogDebug("StartTranscriptStreamTranslation: {StreamId} -> {Language}", streamId, targetLanguage);
         worker.Start();

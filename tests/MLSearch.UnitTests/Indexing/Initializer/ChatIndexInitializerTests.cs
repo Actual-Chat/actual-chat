@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.Mesh;
 using ActualChat.MLSearch.ApiAdapters.ShardWorker;
 using ActualChat.MLSearch.Indexing.Initializer;
 using ActualChat.MLSearch.Module;
@@ -173,14 +172,14 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         await using var initializer = new ChatIndexInitializer(services, scheme, shardIndexResolver.Object, shard, coordinator, logger);
 
         var cancellationTokenSource = new CancellationTokenSource();
-        // Emulate staring of an inactive shard
+        // Emulate the start of an inactive shard
         var onRunTask = initializer.OnRun(InactiveShardIndex1, cancellationTokenSource.Token);
         Assert.False(onRunTask.IsCompleted);
         Assert.False(onRunTask.IsCanceled);
         Assert.False(onRunTask.IsFaulted);
         await cancellationTokenSource.CancelAsync();
-        Assert.True(onRunTask.IsCanceled);
         await Assert.ThrowsAsync<TaskCanceledException>(async () => await onRunTask);
+        Assert.True(onRunTask.IsCanceled);
     }
 
     private static Mock<IServiceProvider> MoqServiceProvider()
@@ -219,6 +218,9 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         moqServices
             .Setup(x => x.GetService(typeof(MeshNode)))
             .Returns(() => new MeshNode(NodeRef.None, string.Empty, new ApiSet<HostRole>(), MeshNodeState.Online));
+        moqServices
+            .Setup(x => x.GetService(typeof(ShardOwners)))
+            .Returns(() => new ShardOwners(moqServices.Object));
         return moqServices;
     }
 }

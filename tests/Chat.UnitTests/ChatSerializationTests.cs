@@ -11,7 +11,7 @@ public class ChatSerializationTests(ITestOutputHelper @out) : TestBase(@out)
             var s = new ImmutableOptionSet();
             foreach (var item in items)
                 s = s.Set(item, item);
-            var data = MemoryPackByteSerializer.Default.Write(s).WrittenSpan.ToArray();
+            var data = MemoryPackByteSerializer.Default.Write(s, typeof(ImmutableOptionSet)).WrittenSpan.ToArray();
             if (lastData != null)
                 data.SequenceEqual(lastData).Should().BeTrue();
             lastData = data;
@@ -33,7 +33,7 @@ public class ChatSerializationTests(ITestOutputHelper @out) : TestBase(@out)
             var items = i == 0 ? (string[])[s1, s2] : [s2, s1];
             foreach (var item in items)
                 s = s.Set(item, item);
-            var data = MemoryPackByteSerializer.Default.Write(s).WrittenSpan.ToArray();
+            var data = MemoryPackByteSerializer.Default.Write(s, typeof(string[])).WrittenSpan.ToArray();
             if (lastData != null)
                 data.SequenceEqual(lastData).Should().BeTrue();
             lastData = data;
@@ -58,10 +58,10 @@ public class ChatSerializationTests(ITestOutputHelper @out) : TestBase(@out)
         var tile1Bytes = ReadAsArray(stream1)[8..];
         var tile2Bytes = ReadAsArray(stream2)[8..];
 
-        var tile1 = MemoryPackByteSerializer.Default.Read<ChatTile>(tile1Bytes, out var readLength1);
+        var tile1 = (ChatTile)MemoryPackByteSerializer.Default.Read(tile1Bytes, typeof(ChatTile), out var readLength1)!;
         readLength1.Should().Be(tile1Bytes.Length);
 
-        var tile2 = MemoryPackByteSerializer.Default.Read<ChatTile>(tile2Bytes, out var readLength2);
+        var tile2 = (ChatTile)MemoryPackByteSerializer.Default.Read(tile2Bytes, typeof(ChatTile), out var readLength2)!;
         readLength2.Should().Be(tile2Bytes.Length);
 
         tile1.Should().BeEquivalentTo(tile2);
@@ -72,12 +72,12 @@ public class ChatSerializationTests(ITestOutputHelper @out) : TestBase(@out)
         var moment2 = tile2.Entries[0].ClientSideBeginsAt;
         moment2.Should().Be(moment1);
 
-        var bytes1 = MemoryPackByteSerializer.Default.Write(moment1.ToApiNullable()).WrittenSpan.ToArray();
-        var bytes2 = MemoryPackByteSerializer.Default.Write(moment2.ToApiNullable()).WrittenSpan.ToArray();
+        var bytes1 = MemoryPackByteSerializer.Default.Write(moment1.ToApiNullable(), typeof(ApiNullable<Moment>)).WrittenSpan.ToArray();
+        var bytes2 = MemoryPackByteSerializer.Default.Write(moment2.ToApiNullable(), typeof(ApiNullable<Moment>)).WrittenSpan.ToArray();
         bytes2.Should().Equal(bytes1);
 
-        bytes1 = MemoryPackByteSerializer.Default.Write(moment1.ToApiNullable8()).WrittenSpan.ToArray();
-        bytes2 = MemoryPackByteSerializer.Default.Write(moment2.ToApiNullable8()).WrittenSpan.ToArray();
+        bytes1 = MemoryPackByteSerializer.Default.Write(moment1.ToApiNullable8(), typeof(ApiNullable8<Moment>)).WrittenSpan.ToArray();
+        bytes2 = MemoryPackByteSerializer.Default.Write(moment2.ToApiNullable8(), typeof(ApiNullable8<Moment>)).WrittenSpan.ToArray();
         bytes2.Should().Equal(bytes1);
 
         bytes1 = MemoryPackByteSerializer.Default.Write(tile1).WrittenSpan.ToArray();

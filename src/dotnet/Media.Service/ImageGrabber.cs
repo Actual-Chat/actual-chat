@@ -5,7 +5,6 @@ using ActualChat.Hashing;
 using ActualChat.Media.Db;
 using ActualChat.Media.Flows;
 using ActualChat.Media.Module;
-using ActualChat.Mesh;
 using ActualChat.Uploads;
 using ActualLab.IO;
 
@@ -98,8 +97,9 @@ public class ImageGrabber(IServiceProvider services)
         if (!NeedsUpdate(grabStatus))
             return;
 
-        await Flows.StartOrReset<PreviewThumbnailUpdateFlow>(
-                PreviewThumbnailUpdateFlow.BuildArgs(imageUrl),
+        await Flows
+            .Reset<PreviewThumbnailUpdateFlow>(
+                PreviewThumbnailUpdateFlow.GetArguments(imageUrl),
                 GetUpdatePeriod(grabStatus),
                 "Schedule update",
                 cancellationToken)

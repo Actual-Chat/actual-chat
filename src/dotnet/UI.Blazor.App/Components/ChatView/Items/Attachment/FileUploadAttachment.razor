@@ -1,0 +1,57 @@
+@using ActualChat.Media
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var attachment = Attachment;
+    var progress = attachment.Progress;
+    var uploadProgressClass = "attachment-upload-progress";
+    MediaMimeTypes.TryGetExtension(attachment.FileType, out var extension);
+    var fileExtension = extension != null ? extension.Replace(".", "") : "";
+    var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
+    var iconOnlyCls = IconOnly ? "icon-only" : "";
+    var tooltipTitle = IconOnly ? GetTooltipTitle() : "";
+    if (attachment.Failed) {
+        progress = Math.Max(progress, 30);
+        uploadProgressClass += " attachment-upload-failed";
+    } else if (attachment.Uploaded) {
+        uploadProgressClass += " attachment-upload-completed";
+    }
+    var uploadStyle = $"width: {progress}%;";
+}
+
+<div class="file-attachment upload-file unfocusable @iconOnlyCls"
+   data-tooltip="@tooltipTitle"
+   data-tooltip-position="@FloatingPosition.Top.ToPositionString()">
+    <div class="c-file-icon @fileCls">
+        @if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
+            <i class="icon-play-fill text-2xl"></i>
+        } else {
+            <i class="icon-file text-xl"></i>
+        }
+    </div>
+    @if (!IconOnly) {
+        <div class="c-file-info">
+            <FileAttachmentTitle Title="@attachment.FileName"/>
+            <div class="c-bottom">
+                <div class="c-size">
+                    <span>@FileSizeFormatter.Format(Attachment.Length)</span>
+                </div>
+                <div class="@uploadProgressClass" style="@uploadStyle"></div>
+            </div>
+        </div>
+    }
+    <ButtonRound Click="@RemoveClick" Class="remove-attachment-btn btn-danger">
+        <i class="icon-trash03 text-2xl font-thin"></i>
+    </ButtonRound>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Attachment Attachment { get; set; } = null!;
+    [Parameter] public bool IconOnly { get; set; }
+    [Parameter] public EventCallback RemoveClick { get; set; }
+    [Parameter] public EventCallback RestartClick { get; set; }
+
+    private string GetTooltipTitle() {
+        var name = Attachment.FileName;
+        return name.Length <= 24 ? name : $"{name[..10]}...{name[^10..]}";
+    }
+}

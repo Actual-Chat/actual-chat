@@ -9,3 +9,8 @@ public interface IKvas : IHasServices
 }
 
 public interface IKvas<TScope> : IKvas;
+
+// public interface IKvas2 : IKvas
+// {
+//     ValueTask<(string Key, byte[] Value)[]> GetAll(CancellationToken cancellationToken = default);
+// }

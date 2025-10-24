@@ -159,8 +159,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         await UpdateIndexedChatContacts().ConfigureAwait(false);
         return;
 
-        Task UpdateIndexedChatContacts()
-        {
+        Task UpdateIndexedChatContacts() {
             if (chat.Id.Kind == ChatKind.Peer || chat.Id is PlaceChatId { IsRoot: true })
                 return Task.CompletedTask;
 
@@ -174,7 +173,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         Task StartIndexingEntries()
             => changeKind != ChangeKind.Create || chat.Id is PlaceChatId { IsRoot: true }
                 ? Task.CompletedTask
-                : Flows.GetOrStart<EntryIndexingFlow>(chat.Id.Value, cancellationToken);
+                : Flows.Get<EntryIndexingFlow>(chat.Id.Value, cancellationToken).AsTask();
     }
 
     // [EventHandler]
@@ -330,14 +329,15 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         BoolQueryDescriptor<IndexedUser> ConfigureQuery(BoolQueryDescriptor<IndexedUser> descriptor)
             => descriptor.Must(
                     qc => qc.HasRelationName<IndexedUser>(r => r.ContactToUser),
-                    qc => qc.MatchPhrasePrefix(
-                        m => m.Field(x => x.Name)
-                            .Query(query.Criteria)
-                            .Slop(20)),
+                    qc => qc.MatchPhrasePrefix(m => m.Field(x => x.Name)
+                        .Query(query.Criteria)
+                        .Slop(20)),
                     query.MustFilterByPlace
                         ? q => q.Match(m => m.Field(x => x.PlaceIds).Query(query.PlaceId.Value))
                         : null)
-                .MustNot(qc => qc.HasChild<IndexedUserContact>(c => c.Query(q => q.MatchAll())));
+                .MustNot(
+                    qc => qc.HasChild<IndexedUserContact>(c => c.Query(q => q.MatchAll())),
+                    qc => qc.Match(m => m.Field(x => x.Id).Query(userId.Value)));
 
         ContactSearchResult ToSearchResult(IHit<IndexedUser> hit)
             => new(ContactId.NewUser(userId, hit.Source.Id), hit.GetSearchMatch());
@@ -494,11 +494,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         }
     }
 
-    private Task<TFlow?> ResumeIndexingFlow<TFlow>(
+    private Task ResumeIndexingFlow<TFlow>(
         string arguments,
         string? tag = null,
         CancellationToken cancellationToken = default) where TFlow : Flow
-        => Flows.GetAndResume<TFlow>(arguments,
+        => Flows.Resume<TFlow>(arguments,
             Settings.ChangedEntityIndexingDelay,
             tag,
             Settings.ChangedEntityIndexingDelay + Settings.IndexingFlowResumeDelay, // to avoid too many flow executions

@@ -1,6 +1,5 @@
 ﻿import { customElement, property } from 'lit/decorators.js';
-import { css, html, LitElement } from 'lit';
-import { messageStyles } from './styles.lit';
+import { html, LitElement } from 'lit';
 import { guard } from 'lit/directives/guard.js';
 import { map } from 'lit/directives/map.js';
 import { range } from 'lit/directives/range.js';
@@ -9,29 +8,10 @@ import { fastRaf } from 'fast-raf';
 
 @customElement('chat-view-skeleton')
 class ChatViewSkeleton extends LitElement {
-    static styles = [
-        messageStyles, css`
-            :host {
-                width: 100%;
-                scrollbar-width: none;
-                display: flex;
-                flex-direction: column;
-            }
+    protected createRenderRoot() {
+        return this;
+    }
 
-            :host::-webkit-scrollbar {
-                display: none;
-            }
-
-            :host(.animated-skeleton) {
-                animation: pulse 2s infinite;
-            }
-            @media (min-width: 1280px) {
-                :host(.chat-view-skeleton-list) {
-                    align-self: center;
-                    max-width: 48rem;
-                }
-            }
-        `];
     private observer: IntersectionObserver;
 
     @property()
@@ -63,18 +43,18 @@ class ChatViewSkeleton extends LitElement {
         return html`
             ${guard([count], () => map(range(count), () => html`
                 <div class="message-skeleton">
-                    <div class="message-avatar-wrapper">
-                        <div class="message-avatar"></div>
+                    <div class="message-avatar-wrapper-skeleton">
+                        <div class="message-avatar-skeleton"></div>
                     </div>
                     <div class="c-container">
-                        <div class="title message ${this.getMessageWidth(2, 5)}"></div>
-                        <div class="message ${this.getMessageWidth(4, 9)}"></div>
+                        <div class="title message-content-skeleton ${this.getMessageWidth(2, 5)}"></div>
+                        <div class="message-content-skeleton ${this.getMessageWidth(4, 9)}"></div>
                     </div>
                 </div>
-                <div class="message-list">
+                <div class="message-list-skeleton">
                     ${map(range(randomIntFromInterval(0, 4)), () => html`
-                        <div class="message-wrapper">
-                            <div class="message ${this.getMessageWidth(4, 9)}"></div>
+                        <div class="message-wrapper-skeleton">
+                            <div class="message-content-skeleton ${this.getMessageWidth(4, 9)}"></div>
                         </div>
                     `)}
                 </div>

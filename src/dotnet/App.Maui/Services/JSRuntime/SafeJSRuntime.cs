@@ -110,7 +110,7 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static object? ToUnsafe(object? obj)
         => obj is SafeJSObjectReference safeJSObjectReference
-            ? safeJSObjectReference.JSObjectReference
+            ? safeJSObjectReference.Source
             : obj;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -15,7 +15,7 @@ internal sealed class ChatIndexInitializer(
     IChatIndexInitializerShard chatIndexInitializerShard,
     IServiceCoordinator serviceCoordinator,
     ILogger<ChatIndexInitializer> log
-) : ShardWorker(services, shardScheme, nameof(ChatIndexInitializer)), IChatIndexInitializer
+    ) : LegacyShardWorker(services, shardScheme), IChatIndexInitializer
 {
     private record DummyEvent : IHasShardKey<string>
     {
@@ -47,9 +47,7 @@ internal sealed class ChatIndexInitializer(
             // Lets wait for never ending task till cancellation
             // TODO: instead of this use a dedicated shard scheme with just a single shard
             // to process MLSearch_TriggerChatIndexingCompletion events
-            await ActualLab.Async.TaskExt.NewNeverEndingUnreferenced()
-                .WaitAsync(cancellationToken)
-                .ConfigureAwait(false);
+            await TaskExt.NeverEnding(cancellationToken).ConfigureAwait(false);
         }
     }
 }

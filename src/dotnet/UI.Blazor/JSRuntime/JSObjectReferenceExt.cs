@@ -1,11 +1,12 @@
 namespace ActualChat.UI.Blazor;
 
-/// <summary>
-/// Workaround for blazor server after <seealso href="https://github.com/dotnet/aspnetcore/pull/32901"/>
-/// Mutes only <see cref="Microsoft.JSInterop.JSDisconnectedException" />
-/// </summary>
 public static class JSObjectReferenceExt
 {
+    public static IJSObjectReference ToLogging(this IJSObjectReference source, string name, ILogger? log)
+        => log is null
+            ? source
+            : new LoggingJSObjectReference(source, name, log);
+
     public static ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsRef, string jsDisposeMethodName = "")
     {
         return ReferenceEquals(jsRef, null)

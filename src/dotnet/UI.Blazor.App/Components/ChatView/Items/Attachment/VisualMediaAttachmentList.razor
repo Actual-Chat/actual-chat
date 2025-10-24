@@ -1,85 +1,54 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
-    _rows = GetRows();
-    var listCls = GetListClass();
+    _attachmentsCls = IsConversation && !IsNarrow ? "wide" : "";
+    _listCls = _rows.Length == 1 ? "one-row" : "";
 }
 
-<div class="message-image-attachments @listCls">
+<div class="message-image-attachments @_listCls @_attachmentsCls">
     @foreach (var row in _rows) {
-        var cls = GetRowClass(row);
-        <VisualMediaAttachmentLine
-            Row="@row"
-            Class="@cls"
-            MediaList="@MediaList"/>
+        var cls = row.GetRowClass();
+        <VisualMediaAttachmentLine Row="@row" Class="@cls">
+            <ItemTemplate>
+                <VisualMediaAttachment Attachment="@context" Attachments="@MediaList"/>
+            </ItemTemplate>
+        </VisualMediaAttachmentLine>
     }
 </div>
+@if (_mediaList.Length < MediaList.Length) {
+    var extra = MediaList.Length - _mediaList.Length;
+    var attachment = MediaList[_mediaList.Length];
+    var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
+    <div class="extra-media-count"
+         @onclick="@(() => VisualMediaViewerUI.Show(url, MediaList))">
+        + @extra media
+    </div>
+}
 
 @code {
-    private IEnumerable<ImageRow> _rows = null!;
+    private VisualMediaGalleryLine<TextEntryAttachment>[] _rows = [];
+    private TextEntryAttachment[] _mediaList = [];
+
+    private string _listCls = "";
+    private string _attachmentsCls = "";
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private UrlMapper UrlMapper => Hub.UrlMapper;
+    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [Parameter, EditorRequired] public TextEntryAttachment[] MediaList { get; set; } = null!;
+    [Parameter] public bool IsConversation { get; set; }
+    [Parameter] public bool IsNarrow { get; set; }
 
-    private IEnumerable<ImageRow> GetRows() {
-        var line = new List<ImageTile>();
-        for (var index = 0; index < MediaList.Length; index++) {
-            var attachment = MediaList[index];
-            var tile = new ImageTile(attachment);
-
-            var isLast = index == MediaList.Length - 1;
-            var lineIsFull = line.Count >= 3;
-            var tileIsWide = tile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide;
-            var lineHasManyWide = line.Count(imageTile => imageTile.Proportions is ImageProportions.Wide or ImageProportions.ExtraWide) > 1;
-
-            if (MediaList.Length == 2
-                && index == 1
-                && line is [{ Proportions: ImageProportions.Wide or ImageProportions.ExtraWide }]
-                && tileIsWide) {
-                yield return new ImageRow(line);
-                line = [];
-            }
-
-            if ((!isLast && lineIsFull)
-                || (isLast && line.Count == 3 && tileIsWide && lineHasManyWide)) {
-                yield return new ImageRow(line);
-                line = [];
-            }
-
-            line.Add(tile);
-        }
-
-        if (line.Count > 0)
-            yield return new ImageRow(line);
+    protected override void OnParametersSet() {
+        var maxCount = IsConversation ? IsNarrow ? 6 : 8 : 10;
+        _mediaList = MediaList.Take(maxCount).ToArray();
+        _rows = GetRows(_mediaList, IsConversation, IsNarrow);
     }
 
-    private string GetRowClass(ImageRow row) {
-        var tiles = row.Tiles;
-        if (tiles.Count > 2)
-            return "normal-line";
-        if (tiles.Count == 2) {
-            if (tiles.Count(t => t.Proportions is ImageProportions.Square) == 2)
-                return "md-md";
-
-            if (tiles.Count(t => t.Proportions is ImageProportions.Narrow) == 2)
-                return "sm-sm";
-
-            if (tiles.Count(t => t.Proportions is ImageProportions.Narrow) == 1
-                && tiles.Count(t => t.Proportions is ImageProportions.Square) == 1)
-                return "sm-md";
-        }
-        if (tiles.Count == 1) {
-            var tile = tiles[0];
-            if (tile.Proportions is ImageProportions.Narrow)
-                return "sm-sm";
-            if (tile.Proportions is ImageProportions.Square)
-                return "md-md";
-            if (tile.Proportions is ImageProportions.Wide)
-                return "lg-lg";
-            if (tile.Proportions is ImageProportions.ExtraWide)
-                return "xl-xl";
-        }
-        return "normal-line";
+    private static VisualMediaGalleryLine<TextEntryAttachment>[] GetRows(TextEntryAttachment[] mediaList, bool isConversation, bool isNarrow) {
+        var arranger = isConversation && !isNarrow
+            ? VisualMediaGalleryArranger.ConversationWideScreen
+            : VisualMediaGalleryArranger.Default;
+        return arranger.Arrange(mediaList, a => (a.Media.Width, a.Media.Height));
     }
-
-    private string GetListClass()
-        => _rows.Count() == 1 ? "one-row" : "";
 }

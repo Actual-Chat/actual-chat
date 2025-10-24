@@ -115,6 +115,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 #if ANDROID
         services.AddScoped<AudioFocusService>(c => new AndroidAudioFocusService(c));
 #endif
+        // File attachments
+        services.AddScoped<IAttachmentFilePicker>(c => new MauiAttachmentFilePicker(c));
+        services.AddScoped<IMauiFileProviderImplFactory>(c => new MauiFileProviderImplFactory(c));
 
         // Test Page
 #if ANDROID

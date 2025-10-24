@@ -1,0 +1,106 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, RightPanelContent.Model>
+@{
+    var m = State.Value;
+    if (m.ShowSkeletons) { // Chat is null
+        <RightPanelSkeleton />
+        return;
+    }
+
+    var chat = m.Chat;
+}
+
+<div class="right-panel">
+    <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
+
+        @if (m.ShowSearchPanel) {
+            <AISearchPanel Chat="@chat"/>
+        }
+        <RightPanelHeader Chat="@chat" />
+        <div class="c-panel-content">
+            <RightPanelChatInfo Chat="@chat"/>
+            <div class="c-panel-tabs">
+                @if (m.ShowTabs) {
+                    <TabPanel
+                        @key="@chat.Id.Value"
+                        TabsClass="left-panel-tabs wide-left-panel-tabs"
+                        BottomHill="true">
+
+                        @if (m.ShowMembersTab) {
+                            <Tab @key="@("members")" Id="members" Title="Members" Order="0">
+                                <AuthorList ChatId="@chat.Id"/>
+                            </Tab>
+                        }
+                        @if (m.ShowThreads) {
+                            <Tab @key="@("threads")" Id="threads" Title="Threads" Order="1">
+                                <ThreadList ChatId="@chat.Id"/>
+                            </Tab>
+                        }
+                        @if (m.EnableIncompleteUI) {
+                            <Tab @key="@("media")" Id="media" Title="Media" Order="3">
+                                <ToBeDone/>
+                            </Tab>
+                            <Tab @key="@("files")" Id="files" Title="Files" Order="6">
+                                <ToBeDone/>
+                            </Tab>
+                            <Tab @key="@("links")" Id="links" Title="Links" Order="9">
+                                <ToBeDone/>
+                            </Tab>
+                        }
+                    </TabPanel>
+                }
+            </div>
+        </div>
+    </ErrorBarrier>
+</div>
+
+@code {
+    private IChats Chats => Hub.Chats;
+
+    [ParameterComparer(typeof(ByRefParameterComparer))]
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<Model>.Options() {
+                InitialValue = Chat is null ? Model.Skeletons : Model.Loading(Chat),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+        if (chat is null)
+            return Model.Skeletons;
+
+        var chatId = chat.Id;
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        // Disable 'members' tab for the announcements chat
+        var showMemberTab = chat.Id != Constants.Chat.AnnouncementsChatId && rules.CanSeeMembers() && !chat.IsAiSearchChat();
+        var showSearchPanel = await PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
+
+        return new () {
+            Chat = chat,
+            EnableIncompleteUI = enableIncompleteUI,
+            ShowMembersTab = showMemberTab,
+            ShowSearchPanel = showSearchPanel && enableIncompleteUI,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static Model Skeletons = new();
+        public static Model Loading(Chat chat) => new() { Chat = chat };
+
+        public Chat? Chat { get; init; }
+        [MemberNotNullWhen(false, nameof(Chat))]
+        public bool ShowSkeletons => Chat is null;
+        public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place;
+        public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
+        public bool ShowMembersTab { get; init; }
+        public bool ShowSearchPanel { get; init; }
+        public bool EnableIncompleteUI { get; init; }
+    }
+}

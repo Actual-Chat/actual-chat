@@ -18,7 +18,7 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.5")
+                .HasAnnotation("ProductVersion", "9.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -327,6 +327,11 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnName("chat_id")
                         .UseCollation("C");
 
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("client_id");
+
                     b.Property<DateTime?>("ClientSideBeginsAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("client_side_begins_at");
@@ -372,6 +377,10 @@ namespace ActualChat.Chat.Migrations
                     b.Property<string>("ForwardedChatTitle")
                         .HasColumnType("text")
                         .HasColumnName("forwarded_chat_title");
+
+                    b.Property<bool>("HasAttachmentUploads")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_attachment_uploads");
 
                     b.Property<bool>("HasAttachments")
                         .HasColumnType("boolean")
@@ -1072,8 +1081,8 @@ namespace ActualChat.Chat.Migrations
                     b.HasKey("Uuid")
                         .HasName("pk_events");
 
-                    b.HasIndex("DelayUntil")
-                        .HasDatabaseName("ix_events_delay_until");
+                    b.HasIndex("DelayUntil", "State")
+                        .HasDatabaseName("ix_events_delay_until_state");
 
                     b.HasIndex("State", "DelayUntil")
                         .HasDatabaseName("ix_events_state_delay_until");

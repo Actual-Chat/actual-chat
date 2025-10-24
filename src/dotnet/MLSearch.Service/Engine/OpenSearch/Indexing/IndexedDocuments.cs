@@ -27,7 +27,7 @@ internal sealed class IndexedDocuments(
         log.LogInformation("Saving {DocumentType} documents to opensearch index #{IndexName}: +{UpdatedCount} -{RemovedCount}", typeof(TDocument).Name, indexName, updatedCount, deletedCount);
         var result = await openSearch
             .BulkAsync(r => r
-                    .IndexMany(updatedDocuments, (op, x) => op.Index(indexName))
+                    .IndexMany(updatedDocuments, (op, _) => op.Index(indexName))
                     .DeleteMany<TDocument>(deletedSids,
                         (op, id) => op.Index(indexName).Routing(TDocument.GetRoutingKey(TKey.Parse(id)))),
                 cancellationToken

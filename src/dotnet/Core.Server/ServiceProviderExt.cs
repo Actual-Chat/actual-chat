@@ -1,4 +1,3 @@
-using ActualChat.Mesh;
 using ActualChat.Queues;
 using Microsoft.Extensions.Hosting;
 
@@ -6,6 +5,10 @@ namespace ActualChat;
 
 public static class ServiceProviderExt
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static BackendServiceDefs BackendServiceDefs(this IServiceProvider services)
+        => services.GetRequiredService<BackendServiceDefs>();
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IHostApplicationLifetime HostLifetime(this IServiceProvider services)
         => services.GetRequiredService<IHostApplicationLifetime>();
@@ -21,6 +24,16 @@ public static class ServiceProviderExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MeshWatcher MeshWatcher(this IServiceProvider services)
         => services.GetRequiredService<MeshWatcher>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ShardOwners ShardOwners(this IServiceProvider services)
+        => services.GetRequiredService<ShardOwners>();
+    public static ShardOwner ShardOwner<TBackend>(this IServiceProvider services)
+        => services.GetRequiredService<ShardOwners>()[typeof(TBackend)];
+    public static ShardOwner ShardOwner(this IServiceProvider services, Type backendServiceType)
+        => services.GetRequiredService<ShardOwners>()[backendServiceType];
+    public static ShardOwner ShardOwner(this IServiceProvider services, ShardScheme shardScheme)
+        => services.GetRequiredService<ShardOwners>()[shardScheme];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IBlobStorages BlobStorages(this IServiceProvider services)

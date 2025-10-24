@@ -39,7 +39,7 @@ public static class ForegroundTask
     {
         try {
             var task = taskFactory.Invoke();
-            return task.WithErrorHandler(errorHandler);
+            return task.WithErrorHandler(errorHandler, cancellationToken);
         }
         catch (OperationCanceledException) {
             return Task.FromCanceled(cancellationToken);
@@ -57,7 +57,7 @@ public static class ForegroundTask
     {
         try {
             var task = taskFactory.Invoke();
-            return task.WithErrorHandler(errorHandler);
+            return task.WithErrorHandler(errorHandler, cancellationToken);
         }
         catch (OperationCanceledException) {
             return Task.FromCanceled<T>(cancellationToken);

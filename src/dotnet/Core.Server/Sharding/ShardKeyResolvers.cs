@@ -1,4 +1,4 @@
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 public delegate int ShardKeyResolver<in T>(T source);
 

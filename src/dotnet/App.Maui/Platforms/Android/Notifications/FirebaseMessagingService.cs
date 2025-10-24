@@ -141,7 +141,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
                 notificationBuilder.SetLargeIcon(largeImage);
         }
         var notification = notificationBuilder.Build();
-        var notificationManager = NotificationManagerCompat.From(this);
+        var notificationManager = NotificationManagerCompat.From(this)!;
         notificationManager.Notify(data.Tag, 0, notification);
     }
 }

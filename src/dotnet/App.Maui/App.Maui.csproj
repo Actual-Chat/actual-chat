@@ -455,14 +455,14 @@
     <MauiIcon Include="Resources\AppIcon\appicon.svg"/>
 
     <!-- Splash Screen -->
-    <MauiSplashScreen Include="Resources\Splash\splashscreen_voxt.svg">
+    <MauiSplashScreen Include="Resources\Splash\splashscreen_voxt.png">
       <Color>#0C003D</Color>
       <BaseSize>200,200</BaseSize>
     </MauiSplashScreen>
 
     <!-- Images: none -->
     <MauiImage Remove="Resources\Images\**" />
-    <MauiImage Include="Resources\Splash\splashscreen_voxt.svg" />
+    <MauiImage Include="Resources\Splash\splashscreen_voxt.png" />
     <MauiXaml Remove="Resources\Images\**" />
     <EmbeddedResource Remove="Resources\Images\**" />
 
@@ -487,13 +487,11 @@
     <None Remove="android.nettrace" />
     <None Remove="android.etlx" />
     <None Remove="android.etlx" />
-    <Compile Update="Platforms\Windows\Audio\APM\AudioProcessingModule.cs">
-      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
-    </Compile>
   </ItemGroup>
   <!-- Android -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
     <BundleResource Include="wwwroot\dist\sounds\*.webm" Link="sounds\%(Filename)%(Extension)" />
+    <AndroidResource Include="..\..\..\resources\sounds\attention_ringtone.mp3" Link="Resources\Raw\attention_ringtone.mp3" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
@@ -529,6 +527,7 @@
     <Content Remove="Platforms\iOS\Resources\vad_stateless_fp16.mlmodelc\metadata.json" />
     <!-- Includes all files in the .mlmodelc recursively as BundleResources -->
     <BundleResource Include="Platforms\iOS\Resources\vad_stateless_fp16.mlmodelc\**" />
+    <BundleResource Include="wwwroot\dist\sounds\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />

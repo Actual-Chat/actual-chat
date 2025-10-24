@@ -34,12 +34,18 @@
 .conversation-header-short .c-title,
 .conversation-header .c-title {
     @apply flex-1;
-    @apply text-text-1 text-02 leading-4.5;
+    @apply text-text-1 text-cr-item-badge-selected-text leading-4.5;
 }
-.conversation-header-short .c-title .c-date,
-.conversation-header .c-title .c-date {
+.conversation-header-short .c-title .c-tldr,
+.conversation-header .c-title .c-tldr {
+    @apply relative;
     @apply inline-block;
-    @apply min-w-14;
+    @apply min-w-6 h-4;
+}
+.conversation-header-short .c-title .c-tldr i,
+.conversation-header .c-title .c-tldr i {
+    @apply absolute -top-0.5;
+    @apply text-title-1;
 }
 .conversation-header-short .c-ending,
 .conversation-header .c-ending {
@@ -163,7 +169,8 @@
 }
 .conversation-message .c-summary .c-short .show-more-btn,
 .conversation-message .c-long .show-more-btn {
-    @apply text-[var(--cr-item-badge-selected-text)];
+    @apply text-nowrap;
+    @apply text-caption-1 text-[var(--cr-item-badge-selected-text)];
 }
 body.hoverable .conversation-message .c-summary .c-short .show-more-btn:hover,
 body.hoverable .conversation-message .c-long .show-more-btn:hover {
@@ -222,11 +229,6 @@ body.hoverable .conversation-message .c-long .show-more-btn:hover {
 .conversation-attachments {
     @apply flex-x items-center gap-x-3;
     @apply px-4;
-}
-.conversation-attachments .image-attachment {
-    @apply flex-none;
-    @apply w-10 h-10;
-    @apply rounded-md;
 }
 body.hoverable .conversation-attachments .image-attachment:hover {
     filter: brightness(1.1);

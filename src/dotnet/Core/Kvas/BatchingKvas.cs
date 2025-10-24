@@ -57,6 +57,12 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
         await Reader.DisposeAsync().ConfigureAwait(false);
     }
 
+    public async ValueTask<(string Key, byte[] Value)[]> ListAllEntries(CancellationToken cancellationToken = default)
+    {
+        await Flush(cancellationToken).ConfigureAwait(false);
+        return await Backend.ListAllEntries(cancellationToken).ConfigureAwait(false);
+    }
+
     public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
     {
         if (ReadCache.TryGetValue(key, out var value))

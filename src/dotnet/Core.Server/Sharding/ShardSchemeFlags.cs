@@ -1,4 +1,4 @@
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 #pragma warning disable MA0062, CA2217
 

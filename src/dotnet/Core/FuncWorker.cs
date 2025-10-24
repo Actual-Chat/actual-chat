@@ -12,9 +12,8 @@ public sealed class FuncWorker : WorkerBase
         => new(taskFactory, cancellationToken != default ? cancellationToken.CreateLinkedTokenSource() : null);
     public static FuncWorker New(Func<CancellationToken, Task> taskFactory, CancellationTokenSource? cancellationTokenSource)
         => new(taskFactory, cancellationTokenSource);
-
-    public static FuncWorker New<TARg>(Func<TARg, CancellationToken, Task> taskFactory, TARg args, CancellationTokenSource? cancellationTokenSource)
-        => new(ct => taskFactory(args, ct), cancellationTokenSource);
+    public static FuncWorker New<TArg>(Func<TArg, CancellationToken, Task> taskFactory, TArg arg, CancellationTokenSource? cancellationTokenSource)
+        => new(ct => taskFactory.Invoke(arg, ct), cancellationTokenSource);
 
     public static FuncWorker Start(Func<CancellationToken, Task> taskFactory)
         => Start(taskFactory, null);
@@ -27,9 +26,9 @@ public sealed class FuncWorker : WorkerBase
         return worker;
     }
 
-    public static FuncWorker Start<TArg>(Func<TArg, CancellationToken, Task> taskFactory, TArg args, CancellationTokenSource? cancellationTokenSource)
+    public static FuncWorker Start<TArg>(Func<TArg, CancellationToken, Task> taskFactory, TArg arg, CancellationTokenSource? cancellationTokenSource)
     {
-        var worker = New(taskFactory, args, cancellationTokenSource);
+        var worker = New(taskFactory, arg, cancellationTokenSource);
         worker.Start();
         return worker;
     }

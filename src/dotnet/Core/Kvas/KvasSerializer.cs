@@ -16,7 +16,7 @@ public class KvasSerializer : ByteSerializerBase
 
     public static KvasSerializer Default { get; set; } = new();
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "True value always can be serialized.")]
-    public static readonly byte[] SerializedTrue = Default.Write(true).WrittenMemory.ToArray();
+    public static readonly byte[] SerializedTrue = Default.Write(true, typeof(bool)).WrittenMemory.ToArray();
 
     public IByteSerializer ByteSerializer { get; init; } = MemoryPackByteSerializer.Default;
     public ITextSerializer TextSerializer { get; init; } = SystemJsonSerializer.Default;

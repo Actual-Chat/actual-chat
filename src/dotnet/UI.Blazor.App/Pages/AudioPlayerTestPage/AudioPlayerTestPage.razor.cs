@@ -98,7 +98,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
                 }
-                _ = _jsRef.InvokeVoidAsync("frame", _cts.Token, frame.Data).Catch(Log, "Failed to call js testPlayer.frame()");
+                _ = _jsRef
+                    .ToLogging("testPlayer", Log)
+                    .InvokeVoidAsync("frame", _cts.Token, frame.Data);
             }
             if (!_cts.Token.IsCancellationRequested)
                 await _jsRef.InvokeVoidAsync("end", _cts.Token);

@@ -89,7 +89,6 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 
         var chunkSize = 512; // 32ms window expected by detector
         var processed = 0;
-        var eventCount = 0;
         for (var i = 0; i + chunkSize <= samples.Length; i += chunkSize) {
             var span = new ReadOnlySpan<float>(samples, i, chunkSize);
             var result = vad.AppendChunkInternal(span);

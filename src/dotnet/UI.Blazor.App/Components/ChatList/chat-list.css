@@ -165,9 +165,13 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 }
 .chat-list .navbar-item-content > .c-container > .c-description > .c-last-message {
     @apply flex-x items-end gap-x-1;
-    @apply w-full h-3.5;
+    @apply w-full h-4.5;
     @apply truncate;
     @apply text-caption-4 text-03;
+}
+.chat-list .navbar-item-content > .c-container > .c-description > .c-last-message .c-text i {
+    @apply text-caption-4;
+    vertical-align: -0.125rem;
 }
 .chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-chat-title > .c-skeleton,
 .chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-last-message > .c-skeleton {

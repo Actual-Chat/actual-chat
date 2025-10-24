@@ -231,7 +231,7 @@ public sealed partial record ChatsBackend_ChangeChatCopyState(
 public sealed partial record ChatsBackend_UpdateReadPositionsStat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] UserId UserId,
-    [property: DataMember, MemoryPackOrder(2)] long PositionId
+    [property: DataMember, MemoryPackOrder(2)] long EntryLid
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]

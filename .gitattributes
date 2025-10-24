@@ -45,6 +45,7 @@
 *.opuss filter=lfs diff=lfs merge=lfs -text
 *.flac filter=lfs diff=lfs merge=lfs -text
 *.webm filter=lfs diff=lfs merge=lfs -text
+*.caf filter=lfs diff=lfs merge=lfs -text
 
 # Video
 *.avi filter=lfs diff=lfs merge=lfs -text

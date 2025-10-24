@@ -11,7 +11,7 @@ public interface IUserPresencesBackend : IComputeService, IBackendService
     Task<ApiNullable8<Moment>> GetLastCheckIn(UserId userId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task OnCheckIn(UserPresencesBackend_CheckIn command, CancellationToken cancellationToken);
+    Task OnCheckIn(UserPresencesBackend_CheckIn command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

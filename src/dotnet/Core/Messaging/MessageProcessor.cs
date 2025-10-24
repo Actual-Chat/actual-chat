@@ -92,18 +92,19 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
     {
         var queuedProcesses = Queue!.Reader.ReadAllAsync(cancellationToken);
         await foreach (var process in queuedProcesses.ConfigureAwait(false)) {
+            // NOTE(DF): stop when cancellation has requested for the processor.
+            cancellationToken.ThrowIfCancellationRequested();
             DebugLog?.LogDebug($"{nameof(OnRun)} cycle");
             var message = process.Message;
             process.MarkStarted();
             Task<object?>? processTask = null;
             try {
                 process.CancellationToken.ThrowIfCancellationRequested();
-                object? result;
-                using (var cts = process.CancellationToken.CreateLinkedTokenSource()) {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, process.CancellationToken);
+                if (ProcessCallTimeout.Ticks > 0)
                     cts.CancelAfter(ProcessCallTimeout);
-                    processTask = Process(message, cts.Token);
-                    result = await processTask.ConfigureAwait(false);
-                }
+                processTask = Process(message, cts.Token);
+                var result = await processTask.ConfigureAwait(false);
                 if (result is Task<object?> resultTask) {
                     // Special case: Process may return Task<Task<object?>>,
                     // in this case we assume the rest of the processing will
@@ -131,7 +132,7 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
             }
             catch (Exception e) {
                 process.MarkFailed(e);
-                if (IsTerminator(message))
+                if (IsTerminator(message) || e.IsCancellationOf(cancellationToken))
                     break;
             }
         }

@@ -5,7 +5,7 @@ using MemoryPack;
 namespace ActualChat.Media.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class PreviewThumbnailUpdateFlow : Flow, IHasLastRunAt
+public sealed partial class PreviewThumbnailUpdateFlow : LegacyFlow, IHasLastRunAt
 {
     [field: AllowNull, MaybeNull]
     private MediaSettings Settings => field ??= Host.Services.GetRequiredService<MediaSettings>();
@@ -17,10 +17,10 @@ public sealed partial class PreviewThumbnailUpdateFlow : Flow, IHasLastRunAt
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public Moment LastRunAt { get; private set; }
 
-    public static string BuildArgs(string url)
+    public static string GetArguments(string url)
         => url.ToBase64();
 
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
     {
         await Run(cancellationToken).ConfigureAwait(false);
         return WaitForEvent(nameof(OnReset), Settings.LinkPreviewUpdatePeriod);

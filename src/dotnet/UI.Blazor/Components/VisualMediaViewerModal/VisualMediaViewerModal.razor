@@ -103,9 +103,7 @@
     @if (_attachments.Count > 1) {
         <swiper-container
             class="media-preview-swiper image-viewer-footer"
-            slides-per-view="@_attachments.Count"
-            free-mode="true"
-            watch-slides-progress="true">
+            init="false">
             @foreach (var attachment in _attachments) {
                 @if (attachment.IsSupportedImage()) {
                     var previewUrl = GetPreviewUrl(attachment);

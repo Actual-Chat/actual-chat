@@ -1,7 +1,7 @@
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { clearTimeout, setTimeout } from 'timerQueue';
 import { Swiper } from 'swiper';
-import { debounce } from 'promises';
+import { debounce, throttle } from 'promises';
 
 interface SwiperElement extends HTMLElement {
     swiper: any;
@@ -14,9 +14,7 @@ export class VisualMediaViewer {
     private readonly header: HTMLElement;
     private readonly footer: HTMLElement | undefined;
     private isHeaderAndFooterVisible: boolean = true;
-    private isHeaderAndFooterVisibilityForced: boolean = false;
     private readonly jumpTime: number = 5;
-    private timerId: number;
     private videos: HTMLCollectionOf<HTMLVideoElement>;
     private imageContainers: NodeListOf<HTMLElement>;
     private maxVideoWidth: number = 0;
@@ -25,6 +23,13 @@ export class VisualMediaViewer {
     private readonly headerHeight: number = 0;
     private windowWidth: number = 0;
     private windowHeight: number = 0;
+    private hideTimeoutId: number | null = null;
+    private swiperEl: any;
+    private thumbsEl: any;
+    private swiper: any;
+    private thumbs: any;
+    private clickTimeout: number | null = null;
+    private CLICK_DELAY = 250;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -40,24 +45,45 @@ export class VisualMediaViewer {
         this.footer = this.overlay.querySelector('.image-viewer-footer') as HTMLElement;
         this.videos = this.imageViewer.getElementsByTagName('video');
 
-        const swiperEl = document.querySelector('.media-swiper') as SwiperElement;
-        const swiperParams = {
+        this.swiperEl = document.querySelector('.media-swiper') as SwiperElement;
+        this.thumbsEl = document.querySelector('.media-preview-swiper') as SwiperElement;
+
+        const mainSwiperParams = {
             touchRatio: 1,
             touchAngle: 45,
             resistanceRatio: 0.85,
             threshold: 10,
         };
-        Object.assign(swiperEl, swiperParams);
-        swiperEl.initialize();
-        const swiper = swiperEl.swiper;
+        Object.assign(this.swiperEl, mainSwiperParams);
+        this.swiperEl.initialize();
+        this.swiper = this.swiperEl.swiper as SwiperElement;
 
-        swiper.on('slideChange', () => {
-            void this.onSlideChange(swiper);
+
+        if (this.thumbsEl) {
+            const footerSwiperParams = {
+                slidesPerView: 'auto',
+                watchSlidesProgress: true,
+                freeMode: true,
+            }
+            Object.assign(this.thumbsEl, footerSwiperParams);
+            this.thumbsEl.initialize();
+            this.thumbs = this.thumbsEl.swiper as SwiperElement;
+            void this.initThumbs();
+        }
+
+
+
+        this.swiper.on('init', () => this.safeCenterThumb());
+
+        this.swiper.on('slideChange', async () => {
+            void this.onSlideChange(this.swiper);
+            this.onUserActivityThrottled();
+            await this.safeCenterThumb();
         });
 
-        swiper.on('touchStart', (swiper: Swiper, event: TouchEvent) => {
-            this.onZoomedSlideSwipe(swiper, event);
-        });
+        this.swiper.on('pointerDown', (swiper: Swiper, event: PointerEvent) =>
+            this.onZoomedSlideSwipe(swiper, event)
+        );
 
         fromEvent(window.visualViewport ?? window, 'resize')
             .pipe(takeUntil(this.disposed$))
@@ -84,20 +110,28 @@ export class VisualMediaViewer {
             this.addImageListeners(container);
         });
 
-         fromEvent(this.overlay, 'click')
-             .pipe(takeUntil(this.disposed$))
-             .subscribe((event: PointerEvent) => this.onClick(event));
+        fromEvent(this.overlay, 'click')
+         .pipe(takeUntil(this.disposed$))
+         .subscribe((event: PointerEvent) => this.onClick(event));
+
+        fromEvent(this.overlay, 'dblclick')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent) => this.onClick(event, true));
 
         fromEvent(this.overlay, 'youtubeplayeronstatechange')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: CustomEvent<YT.OnStateChangeEvent>) => this.onYouTubePlayerStateChange(event));
 
-        setTimeout(() => {
-            if (!this.isHeaderAndFooterVisibilityForced) {
-                this.hideHeaderAndFooter();
-            }
-        }, 3000);
+        fromEvent<PointerEvent>(document, 'pointermove')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(ev => {
+                if (ev.pointerType !== 'mouse') {
+                    return;
+                }
+                this.onUserActivityThrottled();
+            });
 
+        this.setHideTimeout();
         this.updateVideoPlayback();
     }
 
@@ -107,6 +141,57 @@ export class VisualMediaViewer {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    private async initThumbs() {
+        ["imagesReady", "resize", "update"].forEach(event =>
+            this.thumbs.on(event, () => this.safeCenterThumb())
+        );
+
+        this.thumbs.update();
+        await this.safeCenterThumb();
+    }
+
+    private safeCenterThumb(attempt: number = 0): Promise<void> {
+        return new Promise(resolve => {
+            if (!this.swiper || !this.thumbs) {
+                resolve();
+                return;
+            }
+
+            const index = this.swiper.realIndex ?? this.swiper.activeIndex;
+            const slide = this.thumbs.slides[index];
+
+            if (!slide) {
+                resolve();
+                return;
+            }
+
+            const swiperWidth = this.thumbs.width;
+            const slideLeft = slide.offsetLeft;
+            const slideWidth = slide.scrollWidth;
+
+            if ((!swiperWidth || !slideWidth) && attempt < 10) {
+                setTimeout(() => {
+                    this.safeCenterThumb(attempt + 1).then(resolve);
+                }, 50);
+                return;
+            }
+
+            if (!swiperWidth || !slideWidth) {
+                resolve();
+                return;
+            }
+
+            const target = slideLeft - (swiperWidth / 2) + (slideWidth / 2);
+
+            this.thumbs.setTranslate(-target);
+            this.thumbs.updateProgress();
+            this.thumbs.updateActiveIndex();
+            this.thumbs.updateSlidesClasses();
+            this.thumbs.wrapperEl.style.transform = `translate3d(${-target}px, 0, 0)`;
+            resolve();
+        });
     }
 
     private setMaxSize(videoFile: HTMLMediaElement) {
@@ -171,55 +256,122 @@ export class VisualMediaViewer {
         }
     }
 
-    private setShowHeaderTimout() {
-        this.timerId = setTimeout(() => {
-            this.hideHeaderAndFooter();
-            clearTimeout(this.timerId);
+    private setHideTimeout() {
+        if (this.hideTimeoutId !== null)
+            clearTimeout(this.hideTimeoutId);
+
+        this.hideTimeoutId = window.setTimeout(() => {
+            void this.hideHeaderAndFooter();
         }, 3000);
     }
 
-    private showHeaderAndFooter() {
-        if (this.isHeaderAndFooterVisible)
-            return;
+    private onUserActivityThrottled = throttle(() =>
+        this.onUserActivity(), 500, 'delayHead');
 
-        this.setShowHeaderTimout();
-        this.isHeaderAndFooterVisible = true;
-        this.header.classList.remove('show-to-hide');
-        this.header.classList.add('hide-to-show');
-        this.footer?.classList.remove('show-to-hide');
-        this.footer?.classList.add('hide-to-show');
-        this.imageViewer.classList.remove('navigation-hidden');
-        this.imageViewer.classList.add('navigation-visible');
-        this.fixVideoPosition();
+    private onUserActivity() {
+        void this.showHeaderAndFooter();
     }
 
-    private hideHeaderAndFooter() {
+    private async showHeaderAndFooter() {
+        if (this.isHeaderAndFooterVisible) {
+            this.setHideTimeout();
+            return;
+        }
+
+        const footer = this.footer;
+        const header = this.header;
+        const viewer = this.imageViewer;
+        const canContinue = (!this.thumbsEl && header && viewer) || (this.thumbsEl && footer && header && viewer);
+        if (!canContinue)
+            return;
+
+        this.isHeaderAndFooterVisible = true;
+
+        header.classList.remove('show-to-hide');
+        viewer.classList.remove('navigation-hidden');
+        header.classList.add('hide-to-show');
+        viewer.classList.add('navigation-visible');
+
+        if (footer) {
+            footer.style.transition = 'none';
+            footer.style.opacity = '0';
+            footer.style.transform = 'translateY(3.5rem)';
+            footer.classList.remove('show-to-hide');
+            footer.classList.add('hide-to-show');
+
+            await this.safeCenterThumb();
+
+            requestAnimationFrame(() => {
+                footer.style.transition = '';
+                footer.style.opacity = '1';
+                footer.style.transform = '';
+                this.fixVideoPosition();
+            });
+        }
+
+        if (this.thumbs) {
+            setTimeout(() => {
+                this.thumbs.update();
+            }, 50);
+        }
+
+        this.setHideTimeout();
+    }
+
+    private async hideHeaderAndFooter() {
         if (!this.isHeaderAndFooterVisible)
             return;
 
-        clearTimeout(this.timerId);
+        const footer = this.footer;
+        const header = this.header;
+        const viewer = this.imageViewer;
+        const canContinue = (!this.thumbsEl && header && viewer) || (this.thumbsEl && footer && header && viewer);
+        if (!canContinue)
+            return;
+
         this.isHeaderAndFooterVisible = false;
-        this.header.classList.remove('hide-to-show');
-        this.header.classList.add('show-to-hide');
-        this.footer?.classList.remove('hide-to-show');
-        this.footer?.classList.add('show-to-hide');
-        this.imageViewer.classList.remove('navigation-visible');
-        this.imageViewer.classList.add('navigation-hidden');
-        this.fixVideoPosition();
+
+
+
+        header.classList.remove('hide-to-show');
+        viewer.classList.remove('navigation-visible');
+        header.classList.add('show-to-hide');
+        viewer.classList.add('navigation-hidden');
+
+        if (footer) {
+            footer.style.transition = 'none';
+            footer.style.transform = 'translateY(3.5rem)';
+            footer.classList.remove('hide-to-show');
+            footer.classList.add('show-to-hide');
+
+            await this.safeCenterThumb();
+
+            requestAnimationFrame(() => {
+                footer.style.transition = '';
+                footer.style.transform = '';
+                this.fixVideoPosition();
+            });
+
+        }
+
+        if (this.thumbs) {
+            setTimeout(() => {
+                this.thumbs.update();
+            }, 50);
+        }
     }
 
     private toggleHeaderAndFooterVisibility() {
-        this.isHeaderAndFooterVisibilityForced = true;
         if (this.isHeaderAndFooterVisible) {
-            this.hideHeaderAndFooter();
+            void this.hideHeaderAndFooter();
         } else {
-            this.showHeaderAndFooter();
+            void this.showHeaderAndFooter();
         }
     }
 
     // Event handlers
 
-    private onZoomedSlideSwipe(swiper: Swiper, event: TouchEvent) {
+    private onZoomedSlideSwipe(swiper: Swiper, event: PointerEvent) {
         if (swiper.zoom.scale > 1) {
             if (!swiper)
                 return;
@@ -247,7 +399,10 @@ export class VisualMediaViewer {
         }
     }
 
-    private onClick(event: PointerEvent | MouseEvent) {
+    private onClick(event: PointerEvent | MouseEvent, isDouble: boolean = false) {
+        if (isDouble)
+            return;
+
         const { pageY } = event;
         const cursorInHeaderArea = pageY <= this.header.offsetHeight;
         const cursorInFooterArea = this.footer
@@ -257,26 +412,35 @@ export class VisualMediaViewer {
             return;
 
         const target = event.target as HTMLElement;
-        if (target.classList.contains('media-swiper')) {
-            // click on prev / next buttons
-        } else if (target.classList.contains('swiper-zoom-container')) {
-            // click outside image/video
-            void this.blazorRef.invokeMethodAsync('Close');
-        } else {
-            // click on image/video
-            this.toggleHeaderAndFooterVisibility();
+
+        if (this.clickTimeout) {
+            clearTimeout(this.clickTimeout);
+            this.clickTimeout = null;
+            return;
         }
+
+        this.clickTimeout = window.setTimeout(() => {
+            this.clickTimeout = null;
+            if (target.classList.contains('media-swiper')) {
+                // click on prev / next buttons
+            } else if (target.classList.contains('swiper-zoom-container')) {
+                // click outside image/video
+                void this.blazorRef.invokeMethodAsync('Close');
+            } else {
+                // click on image/video
+                this.toggleHeaderAndFooterVisibility();
+            }
+        }, this.CLICK_DELAY);
     }
 
     private onYouTubePlayerStateChange(event: CustomEvent<YT.OnStateChangeEvent>): void {
         switch (event.detail.data) {
             case YT.PlayerState.PAUSED:
             case YT.PlayerState.ENDED:
-                this.isHeaderAndFooterVisibilityForced = true;
-                this.showHeaderAndFooter();
+                void this.showHeaderAndFooter();
                 break;
             case YT.PlayerState.PLAYING:
-                this.hideHeaderAndFooter();
+                void this.hideHeaderAndFooter();
                 break;
         }
     }

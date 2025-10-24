@@ -226,8 +226,8 @@ public partial class ChatAudioUI
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        using var dCancellationTask = cancellationToken.ToTask();
-        var cancellationTask = dCancellationTask.Resource;
+        using var cancellationTaskScope = cancellationToken.ToTask();
+        var cancellationTask = cancellationTaskScope.Resource;
 
         var playbackState = ChatPlayers.PlaybackState;
         var cExpectedPlaybackState = await Computed

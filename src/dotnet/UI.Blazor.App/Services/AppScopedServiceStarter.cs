@@ -51,6 +51,7 @@ public sealed class AppScopedServiceStarter
                 sessionHash,
                 browserInfo.BlazorRef);
             _ = recaptchaUI.EnsureInitialized();
+            var rightPanelStoredState = Hub.Services.GetRequiredService<RightPanelStoredState>();
 
             // Start AccountUI & UIEventHub
             _ = Hub.AccountUI; // Touch
@@ -84,6 +85,9 @@ public sealed class AppScopedServiceStarter
             var url = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);
             // Instantiate PanelsUI to register correspondent history states for left and right panels.
             // It's necessary to make a first history step always has BackStepCount == 0.
+            if (browserInfo.ScreenSize.Value.IsWide())
+                // Ensure that the right panel state is preloaded.
+                await rightPanelStoredState.WhenRead.ConfigureAwait(false);
             _ = Hub.PanelsUI; // Touch
             if (url.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
                 // We have to open chat root first - to make sure "Back" leads to it
@@ -133,8 +137,10 @@ public sealed class AppScopedServiceStarter
 
             await ConfigureDataCollection(cancellationToken).ConfigureAwait(false);
 
-            await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
             Hub.Services.GetRequiredService<ContactSync>().Start();
+            _ = Hub.SendingMessages; // Touch
+            _ = Hub.UploadSessions; // Touch
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(AfterFirstRender)} failed");

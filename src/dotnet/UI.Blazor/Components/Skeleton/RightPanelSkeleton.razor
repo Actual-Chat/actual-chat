@@ -1,0 +1,45 @@
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var cls = "right-panel-skeleton";
+}
+
+<div class="@cls">
+    <div class="c-wrapper">
+        <PanelHeaderSkeleton/>
+        <PanelBodySkeleton>
+            <PanelBodyItemSkeleton Class="c-buttons">
+                <round-skeleton radius="16" rootCls="@cls"/>
+                <div class="c-right">
+                    <round-skeleton rootCls="@cls"/>
+                    <round-skeleton rootCls="@cls"/>
+                    <round-skeleton rootCls="@cls"/>
+                </div>
+            </PanelBodyItemSkeleton>
+
+            <PanelBodyItemSkeleton Class="c-description">
+                <string-skeleton firstWidth="4" secondWidth="4" rootCls="@cls"/>
+                <string-skeleton firstWidth="10" secondWidth="10" rootCls="@cls"/>
+                <string-skeleton firstWidth="10" secondWidth="10" rootCls="@cls"/>
+                <string-skeleton firstWidth="10" secondWidth="10" rootCls="@cls"/>
+            </PanelBodyItemSkeleton>
+
+            <PanelBodyItemSkeleton Class="c-notification">
+                <string-skeleton firstWidth="4" secondWidth="4" rootCls="@cls"/>
+            </PanelBodyItemSkeleton>
+
+            <PanelBodyItemSkeleton Class="c-tab">
+                <tab-skeleton/>
+            </PanelBodyItemSkeleton>
+
+            <div class="members-container">
+                @for (var i = 0; i < 3; i++) {
+                    <PanelBodyItemSkeleton Class="c-members">
+                        <string-skeleton firstWidth="3" secondWidth="3" rootCls="@cls"/>
+                        <chat-list-skeleton count="2" />
+                    </PanelBodyItemSkeleton>
+                }
+            </div>
+
+        </PanelBodySkeleton>
+    </div>
+</div>

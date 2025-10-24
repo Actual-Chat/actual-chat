@@ -24,6 +24,10 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
 
     private readonly ConcurrentDictionary<(Type, string), string> _getTopicCache = new();
 
+    // ActionLocks root, see how it's used
+    internal IMeshLocks ActionLocks { get; }
+        = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ActionLocks));
+
     [field: AllowNull, MaybeNull]
     private NatsConnection Connection {
         get {

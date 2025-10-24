@@ -1,8 +1,7 @@
 using System.Text;
-using ActualChat.Mesh;
 using ActualLab.Scalability;
 
-namespace ActualChat;
+namespace ActualChat.Sharding;
 
 public sealed class ShardMap(ShardScheme shardScheme, ImmutableArray<MeshNode> nodes)
     : ShardMap<MeshNode>(shardScheme.ShardCount, nodes, static node => node.GetHashes<int>())

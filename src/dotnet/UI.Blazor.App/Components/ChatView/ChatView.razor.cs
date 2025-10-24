@@ -174,6 +174,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
+        _ = History
+            .When(x => !OrdinalEquals(x.Url, sUri), cancellationToken)
+            .ContinueWith(_ => cts.CancelAndDisposeSilently(), TaskScheduler.Default);
         _ = ForegroundTask.Run(async () => {
                 try {
                     await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
@@ -186,7 +189,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 }
             },
             CancellationToken.None);
-        History.CancelWhen(cts, x => !OrdinalEquals(x.Url, sUri));
         await NavigateTo(entryId, true);
     }
 

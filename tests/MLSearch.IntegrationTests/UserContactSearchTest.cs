@@ -57,6 +57,27 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldNotFindSelf(bool own)
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var accounts = await CreateAccounts(3);
+        var ownAccount = await Tester.SignIn(accounts[0]);
+        if (own)
+            foreach (var other in accounts[1..])
+                await Tester.CreatePeerContact(ownAccount, other);
+
+        // act
+        var searchResults = await Find("User", own, null, 2);
+
+        // assert
+        var expected = ownAccount.BuildSearchResults(accounts[1..]);
+        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
+    }
+
     [Fact]
     public async Task ShouldFindUsers()
     {

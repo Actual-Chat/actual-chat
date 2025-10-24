@@ -18,8 +18,10 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
         // Avoid checking the version for entry as we don't want to rerender a virtual list
         // do not check IsStreaming - it will lead to rerendering the message, and the message is able to rerender itself
         return Entry.Id == otherEntryMessage.Entry.Id
+            && Entry.IsSending == otherEntryMessage.Entry.IsSending
             && Entry.IsRemoved == otherEntryMessage.Entry.IsRemoved
             && Entry.HasReactions == otherEntryMessage.Entry.HasReactions
+            && OrdinalEquals(Entry.Content, otherEntryMessage.Entry.Content)
             && Kind == other.Kind
             && Date == other.Date
             && Flags == other.Flags

@@ -58,7 +58,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
 
         using var activity = CoreServerInstruments.ActivitySource.StartActivity(GetType(), activityKind: ActivityKind.Client);
         try {
-            var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
+            var executionSettings = CreateExecutionSettings(textToTranslate, targetLanguage);
             var chatHistory = await BuildRequest(textToTranslate, targetLanguage, context, cancellationToken).ConfigureAwait(false);
 
             var response = await Completion
@@ -92,7 +92,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
             yield break;
         }
 
-        var executionSettings = await CreateExecutionSettings(textToTranslate, targetLanguage, cancellationToken).ConfigureAwait(false);
+        var executionSettings = CreateExecutionSettings(textToTranslate, targetLanguage);
         var chatHistory = await BuildRequest(textToTranslate, targetLanguage, context, cancellationToken).ConfigureAwait(false);
 
         await foreach (var diff in StreamTranslation().ConfigureAwait(false))
@@ -136,10 +136,7 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
 
     // Private methods
 
-    private async Task<PromptExecutionSettings> CreateExecutionSettings(
-        string textToTranslate,
-        Language targetLanguage,
-        CancellationToken cancellationToken)
+    private PromptExecutionSettings CreateExecutionSettings(string textToTranslate, Language targetLanguage)
     {
         var isGemini = Completion.GetType().Name.Contains("Gemini", StringComparison.Ordinal);
         var isOpenAI = Completion.GetType().Name.Contains("OpenAI", StringComparison.Ordinal);
