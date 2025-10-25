@@ -1,35 +1,48 @@
+using System.Diagnostics;
 using ActualChat.IO;
 using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.UnitTests;
 
-public class DebouncerTest
+public class DebouncerTest(ITestOutputHelper @out)
 {
     [Fact]
     public async Task DebounceTest()
     {
         var results = new List<int>();
         using var clock = new TestClock();
+        var sw = Stopwatch.StartNew();
+        Action<string> log = msg => @out.WriteLine(sw.Elapsed.ToString("c") + " " + msg);
+        @out.WriteLine($"start: {sw.Elapsed}");
         var debouncer = Debouncer.New<int>(clock, TimeSpan.FromMilliseconds(1000), i => {
+            log($"debounce invoked, value ='{i}'");
             lock (results)
                 results.Add(i);
             return Task.CompletedTask;
         });
         debouncer.Debounce(1);
+        log.Invoke("after debounce 1");
         clock.OffsetBy(100);
         debouncer.Debounce(2);
+        log.Invoke("after debounce 2");
         clock.OffsetBy(100);
         debouncer.Debounce(3);
+        log.Invoke("after debounce 3");
         clock.OffsetBy(100);
         await Task.Delay(300); // Just to make sure async ops complete
+        log.Invoke("after delay 300");
         debouncer.Debounce(4);
+        log.Invoke("after debounce 4");
         clock.OffsetBy(2000);
+        log.Invoke("after OffsetBy(2000)");
 
         await debouncer.WhenCompleted();
+        log.Invoke("after WhenCompleted");
         results.Count.Should().Be(1);
         results[0].Should().Be(4);
 
         results.Clear();
+        log.Invoke("after results.Clear()");
         debouncer.Debounce(1, true);
         clock.OffsetBy(100);
         debouncer.Debounce(2, true);
