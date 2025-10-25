@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ActualChat.Flows;
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
@@ -20,8 +21,14 @@ public class TimerFlowTest(ITestOutputHelper @out)
         using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
 
+        var logger = h.Services.LogFor(GetType());
+        logger.LogWarning("app host init");
+        var sw = Stopwatch.GetTimestamp();
+
         var f0 = await flows.Get<TimerFlow>("f0,2");
         await WhenCompleted(flows, f0.Id);
+        var elapsed = Stopwatch.GetElapsedTime(sw);
+        logger.LogWarning("elapsed={Elapsed}ms", elapsed);
     }
 
     [Fact]
@@ -72,11 +79,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
     private async Task<TFlow?> GetFlow<TFlow>(
         IFlows flows, TFlow exampleFlow, CancellationToken cancellationToken = default)
         where TFlow : Flow
-    {
-        var flow = (TFlow?)await flows.TryGet(exampleFlow.Id, cancellationToken);
-        Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
-        return flow;
-    }
+        => await GetFlow<TFlow>(flows, exampleFlow.Id, cancellationToken);
 
     private async Task<TFlow?> GetFlow<TFlow>(
         IFlows flows, FlowId flowId, CancellationToken cancellationToken = default)

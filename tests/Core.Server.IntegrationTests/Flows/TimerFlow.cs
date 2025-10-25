@@ -37,7 +37,9 @@ public partial class TimerFlow : Flow<Unit>
                 Console.Log("Post-commit message");
             }
         }
-        else
+        else {
             SetResult(default);
+            Console.Log("Post-set-result message");
+        }
     }
 }
