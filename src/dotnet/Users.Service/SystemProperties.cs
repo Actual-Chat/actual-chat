@@ -50,7 +50,7 @@ public class SystemProperties(IServiceProvider services)
             var hostId = Services.GetRequiredService<HostId>();
             var operation = context.Operation;
             if (everywhere || OrdinalEquals(operation.HostId, hostId.Id))
-                ComputedRegistry.Instance.InvalidateEverything();
+                ComputedRegistry.InvalidateEverything();
             return;
         }
 

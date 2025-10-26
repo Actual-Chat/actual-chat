@@ -39,9 +39,9 @@ public sealed class CoreModule(IServiceProvider moduleServices)
         services.AddSingleton(c => new DiffEngine(c));
 
         // Fusion
-        ComputedGraphPruner.Options.Default = new () {
-            CheckPeriod = TimeSpan.FromMinutes(isApp || HostInfo.IsDevelopmentInstance ? 5 : 10).ToRandom(0.1),
-        };
+        ComputedGraphPruner.Settings.CheckPeriod
+            = TimeSpan.FromMinutes(isApp || HostInfo.IsDevelopmentInstance ? 5 : 10).ToRandom(0.1);
+
         var fusion = services.AddFusion();
         if (isServer) {
             // It's quite important to make sure fusion.WithServiceMode call follows the very first

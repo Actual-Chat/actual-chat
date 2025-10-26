@@ -49,7 +49,7 @@ public abstract class StringIdentifier(string value) : IStringIdentifier
         int clientSideCapacity,
         int serverSideCapacityMultiplier = 16, // That's per cache
         int serverSideCacheCount = 0)
-        => RpcDefaults.Mode == RpcMode.Server
+        => RuntimeInfo.IsServer
             ? new ConcurrentLruCache<string, TSelf>(
                 clientSideCapacity * serverSideCapacityMultiplier,
                 serverSideCacheCount,
