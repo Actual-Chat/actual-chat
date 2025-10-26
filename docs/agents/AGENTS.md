@@ -1,5 +1,4 @@
 For the complete installation, build, and test instructions refer to:
-- `.instructions.md` 
-- `docs/.instructions.md`
+- `docs/agents/instructions.md`
 
 These files play the same role as .instructions.md.
