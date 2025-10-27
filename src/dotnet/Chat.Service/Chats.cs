@@ -364,7 +364,6 @@ public class Chats(IServiceProvider services) : IChats
                 Change.Update(new ChatEntryDiff {
                     Content = text,
                     RepliedEntryLid = repliedEntryLid,
-                    ClientId = command.ClientId,
                     HasAttachmentUploads = command.HasAttachmentUploads,
                     Attachments = command.EntryAttachments,
                 }));
