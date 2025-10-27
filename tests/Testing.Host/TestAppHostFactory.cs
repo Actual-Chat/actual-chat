@@ -19,7 +19,10 @@ public static class TestAppHostFactory
     public static async Task<TestAppHost> NewAppHost(TestAppHostOptions options)
     {
         var instanceName = options.InstanceName.RequireNonEmpty();
-        var outputAccessor = new TestOutputHelperAccessor(options.Output.ToSafe());
+        var testOutputHelper = options.Output.ToSafe();
+        var outputAccessor = new TestOutputHelperAccessor(testOutputHelper);
+        var log = outputAccessor.CreateTestLoggerFactory().CreateLogger(nameof(TestAppHostFactory));
+        log.LogInformation("-> NewAppHost, instance '{InstanceName}'", instanceName);
         var manifestPath = GetManifestPath();
 
         var appHost = new TestAppHost(options, outputAccessor) {
@@ -90,6 +93,7 @@ public static class TestAppHostFactory
             ConfigureApp = (ctx, app) => options.ConfigureApp?.Invoke(ctx, app),
         };
         appHost.Build();
+        log.LogInformation("-- NewAppHost has built, instance '{InstanceName}'", instanceName);
 
         if (Constants.DebugMode.Npgsql)
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(), true);
@@ -106,6 +110,7 @@ public static class TestAppHostFactory
         if (options.MustStart)
             await appHost.Start();
 
+        log.LogInformation("<- NewAppHost, instance '{InstanceName}'", instanceName);
         return appHost;
     }
 

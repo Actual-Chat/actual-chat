@@ -49,21 +49,37 @@ public static class ServiceCollectionExt
             // logging.AddFilter("ActualLab.Fusion.EntityFramework", LogLevel.Debug);
             // logging.AddFilter("ActualLab.Fusion.EntityFramework.Operations", LogLevel.Debug);
             // logging.AddFilter(LogFilter);
-            logging.AddDebug();
-            if (!TestRunnerInfo.IsBuildAgent())
-                logging.AddSeq();
-            // XUnit logging requires weird setup b/c otherwise it filters out
-            // everything below LogLevel.Information
-            logging.AddProvider(
-#pragma warning disable CS0618
-                new XUnitLoggerProvider(
-                    new TestOutputHelperAccessorWrapper(outputAccessor),
-                    new XUnitLoggerOptions() {
-                        Filter = (_, _) => true,
-                        TimestampFormat = "mm:ss.fff",
-                    }));
-#pragma warning restore CS0618
+            ConfigureTestLogging(logging, outputAccessor);
         });
         return services;
+    }
+
+    public static ILoggerFactory CreateTestLoggerFactory(this TestOutputHelperAccessor outputAccessor)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(logging => {
+            logging.ClearProviders();
+            logging.SetMinimumLevel(LogLevel.Debug);
+            logging.ConfigureTestLogging(outputAccessor);
+        });
+        return services.BuildServiceProvider().GetRequiredService<ILoggerFactory>();
+    }
+
+    private static void ConfigureTestLogging(this ILoggingBuilder logging, TestOutputHelperAccessor outputAccessor)
+    {
+        logging.AddDebug();
+        if (!TestRunnerInfo.IsBuildAgent())
+            logging.AddSeq();
+        // XUnit logging requires weird setup b/c otherwise it filters out
+        // everything below LogLevel.Information
+        logging.AddProvider(
+#pragma warning disable CS0618
+            new XUnitLoggerProvider(
+                new TestOutputHelperAccessorWrapper(outputAccessor),
+                new XUnitLoggerOptions() {
+                    Filter = (_, _) => true,
+                    TimestampFormat = "HH:mm:ss.fff",
+                }));
+#pragma warning restore CS0618
     }
 }
