@@ -236,7 +236,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         // ReSharper disable once ExplicitCallerInfoArgument
         _recordingActivity = AppUIInstruments.ActivitySource.StartActivity(GetType(), "Record");
         _recordingActivity
-            ?.SetTag("AC." + nameof(ChatId), chatId)
+            ?.SetTag("AC." + nameof(ChatId), chatId.Value)
             .AddSentrySimulatedEvent(new ActivityEvent("Recoding is starting",
                 tags: new ActivityTagsCollection {
                     { "AC." + nameof(AudioRecorderState.IsRecording), isRecording },

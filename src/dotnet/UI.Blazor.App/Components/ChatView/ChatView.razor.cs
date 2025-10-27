@@ -335,7 +335,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // ReSharper disable once ExplicitCallerInfoArgument
         using var activity = AppUIInstruments.ActivitySource.StartActivity(GetType(), "GetVirtualListData");
 
-        activity?.SetTag("AC." + nameof(ChatId), chatId);
+        activity?.SetTag("AC." + nameof(ChatId), chatId.Value);
 
         // Handling NavigateTo + default navigation
         var itemVisibility = ItemVisibility.Value;
