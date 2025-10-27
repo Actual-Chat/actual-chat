@@ -163,7 +163,6 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
 
     public async ValueTask DisposeAsync()
     {
-        await _messageProcessor.Complete(CancellationToken.None).SilentAwait(false);
         await _messageProcessor.DisposeAsync().ConfigureAwait(false);
         _cancellationTokenSource.Dispose();
     }
