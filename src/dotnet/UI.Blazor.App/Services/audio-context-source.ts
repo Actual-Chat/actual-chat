@@ -26,7 +26,7 @@ const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
 const WakeUpDetectionIntervalMs = 5000;
 const SuspendDebounceTimeMs: number = 2000;
-const CloseUnusedContextDebounce: number = 60000;
+const CloseUnusedContextDebounce: number = 60000; // 60 seconds usually enough on iOS Safari to make audio context broken while backgrounded
 
 const Debug = {
     brokenKey: 'debugging_isBroken',
@@ -424,19 +424,28 @@ abstract class AudioContextSourceBase implements AudioContextSource {
         }
     }
 
+    protected abstract markNotReady(): void;
+
     // Event handlers
 
     protected async onDeviceAwake(durationMs: number): Promise<void> {
         debugLog?.log(`onDeviceAwake`, durationMs);
-        if (durationMs < CloseUnusedContextDebounce)
+        if (durationMs < WakeUpDetectionIntervalMs)
             return; // Skip, as device was sleeping for a short period of time
 
         this.deviceWokeUpAt = Date.now();
-
-        if (this.hasRefsInUse)
-            return; // Context is already being used
-
         this.isInteractiveWasReset = false;
+
+        // Proactively invalidate and close the current AudioContext, even if refs are in use.
+        // Rationale: after device sleep, an AudioContext may report "running" but be non-functional.
+        // Forcing re-creation ensures stable recovery across browsers/platforms.
+        const ctx = this._context;
+        if (!ctx)
+            return;
+
+        // Signal to consumers that the context is not ready anymore to force detach/reattach.
+        this.markNotReady();
+
         // Close current AudioContext as it might be corrupted and can produce clicking sound
         await this.closeContext();
     }
@@ -507,6 +516,12 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 
     public async whenReady(cancel?: Promise<Cancelled>): Promise<AudioContext> {
+        // Ensure the maintain loop is running so that `_whenReady` can eventually resolve.
+        if (!this._isActive) {
+            debugLog?.log(`whenReady: auto-start maintain (was inactive)`);
+            this._maintain = this.maintain();
+        }
+
         const whenReady = this._whenReady;
         if (whenReady.isCompleted()) {
             const context = await whenReady;
@@ -597,6 +612,22 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
         });
     }
 
+    protected markNotReady(): void {
+        // Invariant it maintains on exit:
+        // - _context == null
+        // - _whenReady is NOT completed
+        // - _whenNotReady is completed.
+
+        this._context = null;
+        debugLog?.log(`markNotReady`);
+
+        // _whenReady must be replaced first
+        this._whenReady = new PromiseSource<AudioContext>();
+
+        if (!this._whenNotReady.isCompleted())
+            this._whenNotReady.resolve(undefined);
+    }
+
     // Must be private, but good to keep it near markNotReady
     private markReady(context: AudioContext): void {
         // Invariant it maintains on exit:
@@ -615,22 +646,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
             this._whenNotReady = new PromiseSource<void>();
 
         this._whenReady.resolve(context);
-    }
-
-    private markNotReady(): void {
-        // Invariant it maintains on exit:
-        // - _context == null
-        // - _whenReady is NOT completed
-        // - _whenNotReady is completed.
-
-        this._context = null;
-        debugLog?.log(`markNotReady`);
-
-        // _whenReady must be replaced first
-        this._whenReady = new PromiseSource<AudioContext>();
-
-        if (!this._whenNotReady.isCompleted())
-            this._whenNotReady.resolve(undefined);
     }
 
     public break() {
@@ -812,69 +827,6 @@ class WebAudioContextSource extends AudioContextSourceBase implements AudioConte
     }
 }
 
-class MauiAudioContextSource extends AudioContextSourceBase implements AudioContextSource {
-    get isMaintained(): boolean { return true; }
-
-    public constructor(purpose: AudioContextPurpose) {
-        super(purpose);
-    }
-
-    public async whenReady(cancel?: Promise<symbol>): Promise<OverridenAudioContext> {
-        const context = this._context;
-        if (context == null || context.state === 'closed') {
-            const whileBackgroundIdle = this.whileBackgroundIdle;
-            if (whileBackgroundIdle)
-                await whileBackgroundIdle;
-            this._context = await this.create();
-        }
-        return this._context!;
-    }
-
-    public async whenNotReady(context: AudioContext, cancel?: Promise<symbol>): Promise<void> {
-        const whenContextClosed = firstValueFrom(this.contextClosed$);
-        await waitAsync(whenContextClosed, cancel);
-    }
-
-    public initContextInteractively(): Promise<void> {
-        return ResolvedPromise.Void;
-    }
-
-    public async reset(): Promise<void> {
-        await this.closeContext();
-    }
-
-    public async useRef(ref: AudioContextRef): Promise<Disposable> {
-        this.suspendContextDebounced.reset();
-        this.closeContextDebounced.reset();
-        let context = await this.whenReady();
-        // @ts-ignore
-        if (context.state === 'suspended' || context.state === 'interrupted') {
-            const whenDelayCompleted = delayAsync(MaxResumeTimeMs);
-            await Promise.race([context.resume(), whenDelayCompleted])
-                .then(async () => {
-                    if (context.state !== 'running') {
-                        void context.close();
-                        context = await this.whenReady();
-                    }
-                    await context.destinationFallback?.play();
-                });
-        }
-        else
-            await context.destinationFallback?.play();
-
-        return Disposables.fromAction(() => {
-            const hasRefsInUse = this.hasRefsInUse;
-            const backgroundState = AudioInitializer.backgroundState;
-            infoLog?.log('pauseRef:', hasRefsInUse, backgroundState);
-            if (hasRefsInUse)
-                return;
-
-            this.suspendContextDebounced();
-        });
-    }
-}
-
-
 // Init
 
 export const audioContextSource: AudioContextSource = BrowserInfo.hostKind === 'MauiApp'
@@ -889,4 +841,3 @@ globalThis.recordingAudioContextSource = recordingAudioContextSource;
 
 if (BrowserInfo.hostKind !== 'MauiApp')
     resetMediaSessionMetadata();
-
