@@ -23,7 +23,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     // Properties
-    private IRetryPolicy ResumeRetryPolicy { get; init; } = new RetryPolicy(100, RetryDelaySeq.Exp(0.25, 3)) {
+    private IRetryPolicy ResumeRetryPolicy { get; init; } = new RetryPolicy(10, RetryDelaySeq.Exp(0.25, 3)) {
         // RpcRerouteException is a special case: it's thrown when the shard is not owned by the current node
         RetryOn = (e, transiency) => e is not RpcRerouteException && transiency is not Transiency.Terminal,
     };
