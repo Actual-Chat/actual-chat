@@ -26,6 +26,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
         var sw = Stopwatch.GetTimestamp();
 
         var f0 = await flows.Get<TimerFlow>("f0,2");
+        logger.LogWarning("Got timer flow instance");
         await WhenCompleted(flows, f0.Id);
         var elapsed = Stopwatch.GetElapsedTime(sw);
         logger.LogWarning("elapsed={Elapsed}ms", elapsed);
