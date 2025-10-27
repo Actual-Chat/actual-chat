@@ -1,4 +1,4 @@
-# Build and test instructions for Voxt (formerly Actual Chat)  repository
+# AI Agent Instructions for Voxt (formerly Actual Chat) repository
 
 ## Scope
 
@@ -68,10 +68,7 @@ Tests are located under `tests/`.
 
 ## Coding Conventions
 
-- Follow .NET and C# best practices for code style and structure, BUT if you see a different convention is used in the existing source code, stick to it.
-- Organize code into appropriate folders.
-- Use clear, descriptive names for classes, methods, and variables.
-- DON'T write XML documentation comments for public APIs UNLESS they are already there.
+See [`CODING_STYLE.md`](./CODING_STYLE.md) for detailed coding style guidelines.
 
 ## Pull Request Messages
 

@@ -82,6 +82,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		run-watch.cmd = run-watch.cmd
 		run.cmd = run.cmd
 		version.json = version.json
+		AGENTS.md = AGENTS.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -216,6 +217,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-9
 		docs\BigTasks.md = docs\BigTasks.md
 		docs\Search.md = docs\Search.md
 		docs\SmallTasks.md = docs\SmallTasks.md
+		docs\CODING_STYLE.md = docs\CODING_STYLE.md
+		docs\AGENTS.md = docs\AGENTS.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
