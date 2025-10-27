@@ -16,12 +16,15 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
 
     protected override void Dispose(bool disposing)
     {
+        var log = Services.LogFor(GetType());
+        log.LogInformation("-> TestAppHost.Dispose, instance {InstanceName}", Options.InstanceName);
         if (disposing) {
             // NOTE(AY): These types were heavily rewritten, so let's try to disable this for now.
             // DisposeDbOperationCompletionNotifiers();
             _ = Services.Queues().Purge();
         }
         base.Dispose(disposing);
+        log.LogInformation("<- TestAppHost.Dispose, instance {InstanceName}", Options.InstanceName);
     }
 
     private void DisposeDbOperationCompletionNotifiers()
