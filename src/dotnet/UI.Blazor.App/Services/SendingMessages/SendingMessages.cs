@@ -143,7 +143,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                 attachEntries.Add(attachEntry);
             }
         }
-        var clientId = Guid.NewGuid().ToString();
+        var clientId = !cmd.LocalId.HasValue ? Guid.NewGuid().ToString() : "";
         var entry = new SendMessageRequestEntry(
             uuid, now,
             cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid,
