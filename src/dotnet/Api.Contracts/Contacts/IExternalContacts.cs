@@ -1,11 +1,10 @@
-﻿using ActualLab.Rpc;
-using MemoryPack;
+﻿using MemoryPack;
 
 namespace ActualChat.Contacts;
 
 public interface IExternalContacts : IComputeService
 {
-    [ComputeMethod]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ExternalContact[]> List(Session session, Symbol deviceId, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Result<ExternalContactFull?>[]> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
