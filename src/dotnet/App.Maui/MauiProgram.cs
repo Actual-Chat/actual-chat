@@ -330,6 +330,14 @@ public static partial class MauiProgram
                 && e.StackTrace.Contains("OpenTelemetry.Resources.ResourceBuilder..cctor"))
                 return true;
         }
+        else if (e is TimeoutException) {
+            if (OrdinalEquals(e.Message, "Timeout while connecting to remote host.")
+                && e.StackTrace is not null
+                && e.StackTrace.Contains("ActualLab.Rpc"))
+                return true;
+            if (OrdinalEquals(e.Message, "Timeout while waiting for RPC keep-alive."))
+                return true;
+        }
         return false;
     }
 #endif
