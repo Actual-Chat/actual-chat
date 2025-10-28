@@ -9,9 +9,13 @@ public static class FirstChanceExceptionLogger
     private static readonly ILogger Log = StaticLog.Factory.CreateLogger("FCE");
 
     public static Func<Exception, bool> ShouldSkip { get; set; } = _ => false;
+    public static bool IsActivated { get; private set; }
 
     public static void Use()
-        => AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
+    {
+        AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
+        IsActivated = true;
+    }
 
     private static void OnFirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
     {
