@@ -111,7 +111,6 @@ internal sealed class WindowsAudioPlaybackEngine(
         _isPaused = true;
         _pauseCts.CancelAndDisposeSilently();
         _pauseCts = null;
-        _delayedPlayTask.DisposeSilently();
         _delayedPlayTask = null;
         _ = ReportPlaying();
         return Task.CompletedTask;
@@ -166,8 +165,8 @@ internal sealed class WindowsAudioPlaybackEngine(
     public ValueTask DisposeAsync()
     {
         try {
-            _decodeTask.DisposeSilently();
-            _delayedPlayTask.DisposeSilently();
+            _decodeCts.CancelAndDisposeSilently();
+            _pauseCts.CancelAndDisposeSilently();
         }
         catch (OperationCanceledException) { }
         catch (Exception e) {
