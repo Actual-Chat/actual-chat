@@ -2,6 +2,27 @@ namespace ActualChat.App.Server.Module;
 
 public static class ApplicationBuilderExt
 {
+    public static IApplicationBuilder UseCoopHeaders(this IApplicationBuilder app)
+        => app.Use(async (context, next) => {
+            var path = context.Request.Path.Value ?? string.Empty;
+            var localUrl = new LocalUrl(path);
+            if (!localUrl.IsChat() && !localUrl.IsUser() && !localUrl.IsSettings() && !localUrl.IsHome()) {
+                await next();
+                return;
+            }
+
+            context.Response.OnStarting(() => {
+                var headers = context.Response.Headers;
+                if (!headers.ContainsKey("Cross-Origin-Opener-Policy"))
+                    headers.Append("Cross-Origin-Opener-Policy", "same-origin");
+                if (!headers.ContainsKey("Cross-Origin-Embedder-Policy"))
+                    headers.Append("Cross-Origin-Embedder-Policy", "require-corp");
+                return Task.CompletedTask;
+            });
+
+            await next();
+        });
+
     public static IApplicationBuilder UseBaseUrl(this IApplicationBuilder app, string baseUrl)
     {
         var baseUri = baseUrl.ToUri();

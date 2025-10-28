@@ -97,6 +97,7 @@
 # WASM and NN Models
 *.wasm filter=lfs diff=lfs merge=lfs -text
 *.onnx filter=lfs diff=lfs merge=lfs -text
+*.ort filter=lfs diff=lfs merge=lfs -text
 
 # Binary data
 *.bin filter=lfs diff=lfs merge=lfs -text

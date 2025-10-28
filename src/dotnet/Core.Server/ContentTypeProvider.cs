@@ -9,6 +9,7 @@ public class ContentTypeProvider : FileExtensionContentTypeProvider
         Mappings = {
             [".br"] = MediaTypeNames.Application.Octet,
             [".onnx"] = MediaTypeNames.Application.Octet,
+            [".ort"] = MediaTypeNames.Application.Octet,
         },
     };
 }
