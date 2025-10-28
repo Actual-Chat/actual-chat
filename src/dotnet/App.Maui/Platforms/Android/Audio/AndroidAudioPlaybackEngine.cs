@@ -2,7 +2,6 @@ using System.Buffers;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
-using Android.Content;
 using Android.Media;
 using AudioSource = ActualChat.Audio.AudioSource;
 using Encoding = Android.Media.Encoding;
@@ -37,19 +36,12 @@ internal sealed class AndroidAudioPlaybackEngine(
     // Last known number of played samples (playback head), used as a fallback when AudioTrack is not queryable
     private int _lastPlayedSamples;
 
-    // Android audio routing state
-    private bool? _prevSpeakerphoneOn;
-    private Mode? _prevAudioMode;
-
     // Playback reporting state
     private int _feedSamples;
     private int _endedReported;
 
     [field: AllowNull, MaybeNull]
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
-
-    [field: AllowNull, MaybeNull]
-    private MomentClockSet Clocks => field ??= services.GetRequiredService<MomentClockSet>();
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor<AndroidAudioPlaybackEngine>();
@@ -67,20 +59,6 @@ internal sealed class AndroidAudioPlaybackEngine(
         var sampleRate = Constants.Audio.PlaybackSampleRate;
         var channelOut = ChannelOut.Mono;
         var encoding = Encoding.PcmFloat;
-
-        // Force routing to speakerphone
-        try {
-            var context = global::Android.App.Application.Context;
-            var am = (AudioManager?)context.GetSystemService(Context.AudioService);
-            if (am != null) {
-                _prevSpeakerphoneOn = am.SpeakerphoneOn;
-                _prevAudioMode = am.Mode;
-                // Set communication mode and enable speakerphone for loud output
-                am.Mode = Mode.InCommunication;
-                am.SpeakerphoneOn = true;
-            }
-        }
-        catch { /* ignore routing errors */ }
 
         var minBufferBytes = AudioTrack.GetMinBufferSize(sampleRate, channelOut, encoding);
         if (minBufferBytes <= 0)
@@ -105,7 +83,7 @@ internal sealed class AndroidAudioPlaybackEngine(
                 .SetAudioFormat(audioFormat!)
                 .SetBufferSizeInBytes(bufferBytes)
                 .SetTransferMode(AudioTrackMode.Stream)
-                .SetSessionId(AudioManager.AudioSessionIdGenerate)!
+                .SetSessionId(AudioManager.AudioSessionIdGenerate)
                 .Build();
         }
         catch (Exception e) {
@@ -215,19 +193,6 @@ internal sealed class AndroidAudioPlaybackEngine(
                 try { _audioTrack.Release(); } catch { /* ignore */ }
                 _audioTrack.DisposeSilently();
             }
-
-            // Restore AudioManager routing state
-            try {
-                var context = global::Android.App.Application.Context;
-                var am = (AudioManager?)context.GetSystemService(Context.AudioService);
-                if (am != null) {
-                    if (_prevSpeakerphoneOn is bool sp)
-                        am.SpeakerphoneOn = sp;
-                    if (_prevAudioMode is Mode mode)
-                        am.Mode = mode;
-                }
-            }
-            catch { /* ignore restore errors */ }
         }
         finally {
             _audioTrack = null;
@@ -328,7 +293,7 @@ internal sealed class AndroidAudioPlaybackEngine(
             try {
                 var state = track.State;
                 // Only query when initialized; after Release() it's typically Uninitialized
-                if (state != Android.Media.AudioTrackState.Initialized)
+                if (state != AudioTrackState.Initialized)
                     return GetFeedSamples();
             }
             catch {
