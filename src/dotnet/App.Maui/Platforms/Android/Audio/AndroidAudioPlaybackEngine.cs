@@ -179,7 +179,6 @@ internal sealed class AndroidAudioPlaybackEngine(
     public ValueTask DisposeAsync()
     {
         try {
-            _decodeAndFeedTask.DisposeSilently();
             _decodeCts.CancelAndDisposeSilently();
         }
         catch (OperationCanceledException) { }
