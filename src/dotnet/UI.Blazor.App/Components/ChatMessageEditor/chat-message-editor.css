@@ -1,9 +1,9 @@
 .chat-message-editor {
     @apply relative;
-    @apply bg-post-panel md:bg-01;
+    @apply bg-transparent md:bg-01;
 }
-body.narrow .chat-message-editor {
-    background: transparent;
+.list-view-layout:has(.chat-activity-panel.listening) .chat-message-editor {
+    @apply bg-transparent;
 }
 
 /* Bottom Panel, Desktop view */
@@ -30,6 +30,9 @@ body.narrow .chat-message-editor > .c-content {
     @apply overflow-hidden;
     @apply break-all;
     transition: border-radius 0.25s ease;
+}
+body.wide .list-view-layout:has(.chat-activity-panel.listening) .post-panel {
+    @apply bg-01;
 }
 .post-panel.sharp-corners {
     @apply rounded-xl;
@@ -614,13 +617,13 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply hidden;
 }
 .rounded-sub-footer::before {
-    content: '';
+    @apply content-empty;
     @apply absolute left-0 bottom-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 60%)
 }
 .rounded-sub-footer::after {
-    content: '';
+    @apply content-empty;
     @apply absolute right-0 bottom-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%)
@@ -628,7 +631,7 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 .list-view-layout:has(.chat-activity-subheader.active-listening) .rounded-sub-footer {
     @apply -top-20;
     @apply h-20 inset-x-0;
-    background: linear-gradient(to top, var(--violet-90), 80%, transparent 100%);
+    background: linear-gradient(to top, var(--violet-90) 10%, var(--violet-90-60) 40%, transparent 80%);
 }
 .list-view-layout:has(.chat-activity-subheader.active-listening) .narrow-panel .rounded-sub-footer {
     @apply -top-12;
@@ -659,14 +662,21 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 .bell-svg {
     @apply inline-block;
     @apply w-6 h-6;
-}
-.bell-svg {
     @apply cursor-pointer;
     transform-origin: 50% 10%;
     transition: transform 0.2s;
 }
-body.hoverable .notify-call-btn:hover .bell-svg:not(.bell-svg-inactive),
-body.touch-capable .notify-call-btn:active .bell-svg:not(.bell-svg-inactive) {
+.bell-svg path {
+    fill: var(--cancel-text);
+}
+.bell-svg.active path {
+    fill: var(--primary);
+}
+.list-view-layout:has(.chat-activity-panel.listening) .bell-svg.active path {
+    fill: var(--violet-60);
+}
+body.hoverable .notify-call-btn:hover .bell-svg.active,
+body.touch-capable .notify-call-btn:active .bell-svg.active {
     animation: bell-shake 0.7s ease-in-out;
 }
 @keyframes bell-shake {
