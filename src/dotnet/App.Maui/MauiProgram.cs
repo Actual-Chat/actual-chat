@@ -72,6 +72,12 @@ public static partial class MauiProgram
 #endif
         ClientStartup.Initialize();
         // MainThreadTracker.Activate();
+#if DEBUG
+        // NOTE: Keep the noise down.
+        // It might be activated in Debug mode only hence no sense to keep this code in Release mode.
+        if (FirstChanceExceptionLogger.IsActivated)
+            FirstChanceExceptionLogger.ShouldSkip += ShouldSkipFce;
+#endif
 
 #if WINDOWS
         FixStaticContentProvider();
@@ -315,6 +321,16 @@ public static partial class MauiProgram
             ValidateOnBuild = true,
             ValidateScopes = true,
         }));
+    }
+
+    private static bool ShouldSkipFce(Exception e)
+    {
+        if (e is PlatformNotSupportedException) {
+            if (e.StackTrace is not null
+                && e.StackTrace.Contains("OpenTelemetry.Resources.ResourceBuilder..cctor"))
+                return true;
+        }
+        return false;
     }
 #endif
 
