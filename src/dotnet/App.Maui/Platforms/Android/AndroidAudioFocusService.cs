@@ -15,17 +15,19 @@ public class AndroidAudioFocusService : MauiAudioFocusService
     {
         _focusHelper = new AudioFocusHelper(Platform.AppContext, services.LogFor<AudioFocusHelper>());
         _focusHelper.OnFocusChanged += OnFocusChanged;
+        _focusHelper.OnOutputDevicesChanged += OnOutputDevicesChanged;
     }
 
     protected override Task<AudioFocusHandle?> RequestAudioFocus(AudioFocusConsumerKind mode)
     {
         Log.LogInformation("-> RequestAudioFocus, requested mode: '{Mode}', active focus handle id: '{Id}'", mode, _handle?.Id);
 
-        var success = mode == AudioFocusConsumerKind.Recording
-            ? _focusHelper.RequestFocusForCall()
-            : mode == AudioFocusConsumerKind.Tunes
-                ? _focusHelper.RequestFocusForNotification()
-                : _focusHelper.RequestFocusForPlayback();
+        var success = mode switch
+        {
+            AudioFocusConsumerKind.Recording => _focusHelper.RequestFocusForCall(),
+            AudioFocusConsumerKind.Tunes => _focusHelper.RequestFocusForNotification(),
+            _ => _focusHelper.RequestFocusForPlayback()
+        };
         if (!success) {
             Log.LogInformation("Failed to get audio focus");
             _handle = null;
@@ -61,5 +63,12 @@ public class AndroidAudioFocusService : MauiAudioFocusService
             _handle.RaiseLostFocus(false);
         if (af is AudioFocus.Gain or AudioFocus.GainTransient or AudioFocus.GainTransientExclusive)
             _handle.RaiseRecoverFocus();
+    }
+
+    private void OnOutputDevicesChanged()
+    {
+        Log.LogInformation("-> OnOutputDevicesChanged. Active focus handle id: {Id}", _handle?.Id);
+        if (_handle != null)
+            _focusHelper.ApplyPreferredRoute();
     }
 }
