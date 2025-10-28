@@ -27,7 +27,7 @@ public partial class ChatEditorUI
         if (entryRef == null)
             return (null, null);
 
-        var entry = await Chats.GetEntry(Session, entryRef.EntryId, cancellationToken).ConfigureAwait(false);
+        var entry = entryRef.EntryRef.ChatEntry ?? await Chats.GetEntry(Session, entryRef.EntryRef.EntryId, cancellationToken).ConfigureAwait(false);
         return (entryRef, entry);
     }
 }

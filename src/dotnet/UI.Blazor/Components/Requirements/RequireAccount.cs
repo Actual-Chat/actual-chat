@@ -17,6 +17,7 @@ public sealed class RequireAccount : RequirementComponent
         // Caching all used properties to use ConfigureAwait(false) here
         var mustBeActive = MustBeActive;
         var mustBeAdmin = MustBeAdmin;
+
         var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
         if (mustBeAdmin) {
             account.Require(AccountFull.MustBeAdmin);

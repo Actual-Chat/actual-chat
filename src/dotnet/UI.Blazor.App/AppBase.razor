@@ -3,6 +3,7 @@
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @inherits ComponentBase<UIHub>
 @implements IRootComponent
+@implements IDisposable
 @{
     if (!Hub.IsInteractive) {
         <LandingForWeb/>
@@ -52,6 +53,7 @@
     private bool _shouldRender;
     private Exception? _simulatedCrashError;
     private readonly AsyncTaskMethodBuilder _whenFirstRendered = AsyncTaskMethodBuilderExt.New();
+    private BlazorAppLifecycle _appLifecycle = null!;
 
     [field: AllowNull, MaybeNull]
     protected INavigationInterception NavigationInterception
@@ -75,6 +77,7 @@
 
     protected override void OnInitialized() {
         // Log.LogInformation("OnInitialized, Hash: {Hash}", GetHashCode());
+        _appLifecycle = Hub.BlazorAppLifecycle;
         if (IsInteractive)
             Hub.Initialize(this, RenderModeDef.GetOrDefault(RenderModeKey));
     }
@@ -127,4 +130,7 @@
         if (firstRender)
             _whenFirstRendered.TrySetResult();
     }
+
+    public virtual void Dispose()
+        => _appLifecycle.OnRootDisposing();
 }

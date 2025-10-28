@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31717.71
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11116.177 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BEC9AC19-13D3-4573-85CF-DCF5BA27377C}"
 EndProject
@@ -82,6 +82,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		run-watch.cmd = run-watch.cmd
 		run.cmd = run.cmd
 		version.json = version.json
+		AGENTS.md = AGENTS.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -106,12 +107,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.IntegrationTests", "t
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nodejs", "nodejs", "{609C47B5-30E6-4B2A-A8DB-1B1FD644948F}"
 	ProjectSection(SolutionItems) = preProject
+		src\nodejs\build.mjs = src\nodejs\build.mjs
 		src\nodejs\index.ts = src\nodejs\index.ts
 		src\nodejs\package.json = src\nodejs\package.json
+		src\nodejs\postcss.config.mjs = src\nodejs\postcss.config.mjs
 		src\nodejs\tailwind.config.js = src\nodejs\tailwind.config.js
 		src\nodejs\tsconfig.json = src\nodejs\tsconfig.json
-		src\nodejs\build.mjs = src\nodejs\build.mjs
-		src\nodejs\postcss.config.mjs = src\nodejs\postcss.config.mjs
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C53-98F6-45B2-8717-15B35A59AFDC}"
@@ -216,6 +217,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-9
 		docs\BigTasks.md = docs\BigTasks.md
 		docs\Search.md = docs\Search.md
 		docs\SmallTasks.md = docs\SmallTasks.md
+		docs\CODING_STYLE.md = docs\CODING_STYLE.md
+		docs\AGENTS.md = docs\AGENTS.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
@@ -233,8 +236,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Media.Service.Migration", "
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nginx", "nginx", "{A1F100F7-92DF-4B51-BF55-A90700BD9423}"
 	ProjectSection(SolutionItems) = preProject
-		.config\local.voxt.ai\nginx\nginx.conf = .config\local.voxt.ai\nginx\nginx.conf
 		.config\local.voxt.ai\ssl\create-certificate.cmd = .config\local.voxt.ai\ssl\create-certificate.cmd
+		.config\local.voxt.ai\nginx\nginx.conf = .config\local.voxt.ai\nginx\nginx.conf
 		.config\local.voxt.ai\nginx\nginx.proxy-headers.conf = .config\local.voxt.ai\nginx\nginx.proxy-headers.conf
 		.config\local.voxt.ai\nginx\snippets\ssl-params.conf = .config\local.voxt.ai\nginx\snippets\ssl-params.conf
 	EndProjectSection
@@ -343,6 +346,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "opensearch", "opensearch", 
 		services\opensearch\opensearch-setup.py = services\opensearch\opensearch-setup.py
 		services\opensearch\opensearch_dashboards.no-security.yaml = services\opensearch\opensearch_dashboards.no-security.yaml
 	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.Audio", "src\dotnet\Core.Audio\Core.Audio.csproj", "{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Audio.UnitTests", "tests\Core.Audio.UnitTests\Core.Audio.UnitTests.csproj", "{B07AEA67-A756-4A0C-85EA-3845ED19781D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -487,10 +494,10 @@ Global
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -651,6 +658,14 @@ Global
 		{BEC452E4-0671-4C1C-AEDC-761BA136EFC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BEC452E4-0671-4C1C-AEDC-761BA136EFC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BEC452E4-0671-4C1C-AEDC-761BA136EFC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -758,6 +773,8 @@ Global
 		{E013D1EE-9214-45CA-B0B4-3EF9AE8EA6F9} = {C9531717-EDD1-4D1D-9144-FB5B4D369B48}
 		{BEC452E4-0671-4C1C-AEDC-761BA136EFC4} = {82FCC17A-E824-491C-99A3-24403C73434C}
 		{2D28997D-79AC-4F70-8F45-AF58D1F69307} = {12D2A258-F930-4112-BB21-75B8E2442876}
+		{A0B1C2D3-E4F5-4678-ABCD-1234567890AB} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{B07AEA67-A756-4A0C-85EA-3845ED19781D} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

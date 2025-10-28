@@ -34,11 +34,23 @@
     // Should be named __builder
     // ReSharper disable once VariableHidesOuterVariable UnusedParameter.Local
     RenderFragment statusFragment = (__builder) => {
+        var status = ChatMessageSendingStatus.MessageStatus.Default;
+        if (entry.IsSending) {
+            if (!entry.HasAttachmentUploads)
+                status = ChatMessageSendingStatus.MessageStatus.Sending;
+        }
+        else if (entry.HasAttachmentUploads) {
+            // Use default
+        }
+        else if (IsUnreadByOthers) {
+            if (entry.Attachments.Length == 0)
+                status = ChatMessageSendingStatus.MessageStatus.Unread;
+        }
+        var showTextStatus = status == ChatMessageSendingStatus.MessageStatus.Unread && IsUnreadByOthersBlockStart;
+        @* <span>@entry.Id.LocalId : @entry.Version</span> *@
         @TranslationFragments.TranslationMark(m.Translation)
-        @if (IsUnreadByOthers && entry.Attachments.Length == 0) {
-            <ChatMessageSendingStatus
-                Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                IsDotOnly="@(!IsUnreadByOthersBlockStart)"/>
+        @if (status != ChatMessageSendingStatus.MessageStatus.Default) {
+            <ChatMessageSendingStatus Status="@status" IsDotOnly="@(!showTextStatus)" />
         }
         @if (message.ShowIndexDocId) {
             <span>[DocId=@message.IndexDocId]</span>
@@ -187,6 +199,7 @@
             && (stateValue.IsStreaming
                 || _rendered.IsStreaming != stateValue.IsStreaming
                 || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
+                || _rendered.Entry.IsSending != stateValue.Entry.IsSending
                 || _rendered.Markup != stateValue.Markup
                 || _rendered.Translation != stateValue.Translation
                 || _rendered.IsUnread != stateValue.IsUnread
@@ -209,12 +222,16 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var message = Message;
+        var isUnreadByOthers = IsUnreadByOthers;
+        var isUnreadByOthersBlockStart = IsUnreadByOthersBlockStart;
+        // When entry isSending, it's a local chat entry. It does not exist on the server side.
+        if (message.Entry.IsSending)
+            return new Model(Markup, message.Entry, TranslationState.None, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
+
         var renderedEntry = _rendered?.Entry ?? message.Entry;
         var markup = _rendered?.Markup ?? Markup;
         var isRenderedTranslated = (_rendered?.Translation ?? TranslationState.None) != TranslationState.None;
         var isRenderedStreaming = _rendered?.IsStreaming ?? false;
-        var isUnreadByOthers = IsUnreadByOthers;
-        var isUnreadByOthersBlockStart = IsUnreadByOthersBlockStart;
         var entry = await ChatUI.GetEntry(renderedEntry.Id, cancellationToken).ConfigureAwait(false);
         if (entry == null) {
             Log.LogWarning("Entry not found: {Id}", renderedEntry.Id);

@@ -1,0 +1,30 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.Components.SideNav
+@inherits ComputedStateComponent<AppUIHub, bool>
+
+@{
+    var isOpen = State.LastNonErrorValue;
+}
+
+<SideNav
+    Side="SideNavSide.Right"
+    IsOpen="@isOpen"
+    VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(b => PanelsUI.Right.SetIsVisible(b)))">
+    <RightPanelContent Chat="@Chat"/>
+</SideNav>
+
+@code {
+    [ParameterComparer(typeof(ByRefParameterComparer))]
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            t => new ComputedState<bool>.Options {
+                InitialValue = PanelsUI.Right.IsVisible.Value,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => PanelsUI.Right.IsVisible.Use(cancellationToken);
+}

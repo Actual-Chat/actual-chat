@@ -1,0 +1,15 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Text;
+global using System.Threading.Tasks;
+global using Microsoft.Maui;
+global using Microsoft.Maui.ApplicationModel;
+global using Microsoft.Maui.Authentication;
+global using Microsoft.Maui.Controls;
+global using Microsoft.Maui.Graphics;
+global using Microsoft.Maui.Hosting;
+global using Microsoft.Maui.Devices;
+global using Microsoft.Maui.Dispatching;
+global using Microsoft.Maui.Storage;
+global using Microsoft.Maui.Networking;

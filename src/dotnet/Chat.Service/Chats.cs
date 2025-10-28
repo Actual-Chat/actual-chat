@@ -336,7 +336,7 @@ public class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         var attachments = command.EntryAttachments;
-        if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0)
+        if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0 && !command.HasAttachmentUploads)
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
         ChatEntry textEntry;
@@ -364,6 +364,8 @@ public class Chats(IServiceProvider services) : IChats
                 Change.Update(new ChatEntryDiff {
                     Content = text,
                     RepliedEntryLid = repliedEntryLid,
+                    HasAttachmentUploads = command.HasAttachmentUploads,
+                    Attachments = command.EntryAttachments,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
@@ -383,6 +385,8 @@ public class Chats(IServiceProvider services) : IChats
                     ForwardedChatEntryId = command.ForwardedChatEntryId,
                     ForwardedChatEntryBeginsAt = command.ForwardedChatEntryBeginsAt,
                     Attachments = attachments.Length == 0 ? null : attachments,
+                    ClientId = command.ClientId,
+                    HasAttachmentUploads = command.HasAttachmentUploads,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
@@ -842,7 +846,7 @@ public class Chats(IServiceProvider services) : IChats
                     using (var _ = Computed.BeginIsolation()) {
                         // Do not capture dependency, we just need an author id
                         var author = await AuthorsBackend.GetByUserId(chatId,
-                                c.UserId,
+                                c.UserId!,
                                 RequestedAuthorKind.Full,
                                 cancellationToken)
                             .ConfigureAwait(false);

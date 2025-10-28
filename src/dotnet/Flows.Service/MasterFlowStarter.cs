@@ -16,6 +16,9 @@ internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(
 
     protected override Task OnStart(CancellationToken cancellationToken)
     {
+        if (!FlowRegistry.UseMasterFlows)
+            return Task.CompletedTask;
+
         var masterFlowTypes = FlowRegistry.NameByType.Keys.Where(x => x.IsAssignableTo(typeof(IMasterFlow)));
         foreach (var masterFlowType in masterFlowTypes)
             _flowTypesToStart[masterFlowType] = default;

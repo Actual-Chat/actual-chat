@@ -1,13 +1,10 @@
-using ActualChat.Kvas;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public class RightPanel
 {
-    private const string StatePrefix = nameof(RightPanel) + "UI";
     private readonly MutableState<bool> _isVisible;
     private readonly MutableState<bool> _isSearchMode;
-    private readonly StoredState<Box<bool>> _isVisibleStored;
+    private readonly RightPanelStoredState _storedState;
 
     private UIHub Hub { get; }
     private History History => Hub.History;
@@ -26,22 +23,24 @@ public class RightPanel
         Hub = owner.Hub;
 
         var stateFactory = Hub.StateFactory;
-        _isVisible = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsVisible)));
+        _storedState = Hub.Services.GetRequiredService<RightPanelStoredState>();
+        var isVisibleInitState = false;
+        if (Owner.IsWide()) {
+            if (_storedState.WhenRead.IsCompletedSuccessfully)
+                isVisibleInitState = _storedState.IsVisible;
+            else
+                // False warning CS8604 detection
+                Log!.LogWarning("Right panel stored state was not preloaded");
+        }
+        _isVisible = stateFactory.NewMutable(isVisibleInitState, StateCategories.Get(GetType(), nameof(IsVisible)));
         _isSearchMode = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchMode)));
-        var initialState = new OwnHistoryState(this, false);
+        var initialState = new OwnHistoryState(this, isVisibleInitState);
         History.Register(initialState);
 
-        var localSettings = Hub.LocalSettings.WithPrefix(StatePrefix);
-        _isVisibleStored = stateFactory.NewKvasStored<Box<bool>>(
-            new (localSettings, "RightPanel.IsVisible") {
-                InitialValue = Box.New(false),
-                Category = StateCategories.Get(GetType(), nameof(IsVisible) + "Stored"),
-            });
-
         // Automatically open the right panel on a wide screen if it was open during the last session
-        _ = Task.WhenAll(_isVisibleStored.WhenRead, Hub.History.WhenReady)
+        _ = Task.WhenAll(_storedState.WhenRead, Hub.History.WhenReady)
             .ContinueWith(_1 => {
-                    if (Owner.IsWide() && _isVisibleStored.Value.Value)
+                    if (Owner.IsWide() && _storedState.IsVisible)
                         SetIsVisible(true);
                 },
                 TaskScheduler.Default);
@@ -70,7 +69,7 @@ public class RightPanel
 
             _isVisible.Value = value;
             if (Owner.IsWide())
-                _isVisibleStored.Value = Box.New(value);
+                _storedState.IsVisible = value;
             if (!value)
                 _isSearchMode.Value = false;
             History.Save<OwnHistoryState>();

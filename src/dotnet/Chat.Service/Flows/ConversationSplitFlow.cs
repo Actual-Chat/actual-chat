@@ -7,7 +7,7 @@ using MemoryPack;
 namespace ActualChat.Chat.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class ConversationSplitFlow : Flow, IHasLastRunAt
+public partial class ConversationSplitFlow : LegacyFlow, IHasLastRunAt
 {
     public static class FlowSteps
     {
@@ -54,7 +54,7 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
 
     // Flow transitions
 
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(ChatId, cancellationToken).Require().ConfigureAwait(false);
         if (chat.IsSummarized ?? false) // Only process summarized chats
@@ -63,7 +63,7 @@ public partial class ConversationSplitFlow : Flow, IHasLastRunAt
         return WaitForEvent(FlowSteps.OnReset);
     }
 
-    protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
+    protected virtual async Task<LegacyFlowTransition> OnIndex(CancellationToken cancellationToken)
     {
         var now = Clocks.CoarseSystemClock.Now;
         LastRunAt = now;

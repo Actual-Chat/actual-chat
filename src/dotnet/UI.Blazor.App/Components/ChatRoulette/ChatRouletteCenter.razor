@@ -27,7 +27,7 @@
     else if (m.SearchState == SearchState.Started) {
         <div class="cr-main-title">Search is in progress...</div>
     } else {
-        @if (profile is null || profile.Preferences.Preferences.IsEmpty) {
+        @if (profile.Preferences.Preferences.IsEmpty) {
             <div class="cr-main-title">Select and fill in chat roulette profile or create a new one.</div>
         } else if (!m.SearchCriteria.IsSufficientForFiltering) {
             <div class="cr-main-title">Check search filter.</div>
@@ -43,6 +43,9 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var selectedProfile = await RouletteUI.SelectedProfile.Use(cancellationToken).ConfigureAwait(false);
+        if (selectedProfile is null)
+            return null;
+
         var searchCriteria = await RouletteUI.SearchCriteria.Use(cancellationToken).ConfigureAwait(false);
         var search = await RouletteUI.ActiveSearch.Use(cancellationToken).ConfigureAwait(false);
         if (search is not null) {

@@ -1,62 +1,14 @@
 import { customElement, property } from 'lit/decorators.js';
 import { createRef, Ref, ref } from 'lit/directives/ref.js';
-import { css, html, LitElement, nothing } from 'lit';
+import { html, LitElement, nothing } from 'lit';
 import { delayAsync } from 'promises';
 import { PROD_HOST } from '_constants';
 
 @customElement('image-skeleton')
 class ImageSkeleton extends LitElement {
-    static styles = css`
-      :host {
-        display: block;
-      }
-
-      :host(.show-image-skeleton) {
-        animation: pulse 2s infinite;
-        background-color: var(--background-05);
-      }
-
-      :host(.show-image-skeleton) .image,
-      :host(.show-image-thumbnail) .image,
-      :host(.show-image-skeleton) .image-thumbnail,
-      :host(.show-image-original) .image-thumbnail {
-        visibility: hidden;
-      }
-
-      :host(.show-image-original) .image {
-          display: block;
-      }
-      :host(.show-image-thumbnail) .image-thumbnail {
-          display: block;
-      }
-
-      :host(.image-cover) {
-          height: 100%;
-          width: 100%;
-      }
-
-      :host(.image-cover) .image {
-          object-fit: cover;
-      }
-
-      .image,
-      .image-thumbnail {
-        display: none;
-        width: 100%;
-        height: 100%;
-        border-radius: inherit;
-        object-fit: cover;
-      }
-
-      @keyframes pulse {
-        0%, 100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: .5;
-        }
-      }
-    `;
+    protected createRenderRoot() {
+        return this;
+    }
 
     @property({ reflect: true }) class: string;
     @property() src: string;

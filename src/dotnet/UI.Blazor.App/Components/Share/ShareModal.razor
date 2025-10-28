@@ -86,6 +86,7 @@
             ?? _memberSelectorRef?.SelectedUserIds.Value.Count ?? 0) > 0;
     private ShareRequest RequestWithComment => ModalModel.Request with { Text = _comment };
 
+    private SendingMessages SendingMessages => Hub.SendingMessages;
     private AccountFull OwnAccount => Hub.AccountUI.OwnAccount.Value;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -126,8 +127,8 @@
         }
 
         foreach (var chatId in selectedChatIds) {
-            var cmd = new Chats_UpsertTextEntry(Session, chatId, null, text);
-            _ = await UICommander.Run(cmd, CancellationToken.None);
+            var request = new SendMessageRequest(chatId, null, text);
+            _ = await SendingMessages.Post(request, CancellationToken.None);
         }
         Modal.Close(true);
     }

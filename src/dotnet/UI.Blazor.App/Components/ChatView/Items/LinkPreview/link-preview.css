@@ -29,7 +29,7 @@ body.narrow .link-preview.compact {
     @apply p-1;
 }
 .link-preview .c-info {
-    @apply flex-1 flex-y justify-between gap-y-4;
+    @apply flex-1 flex-y justify-between;
     @apply h-full max-w-full;
     @apply p-2 md:py-4;
     @apply overflow-hidden;
@@ -148,12 +148,8 @@ body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover .btn-con
     @apply bg-transparent;
 }
 .message-link-preview .link-buttons .btn.btn-round i {
-    @apply text-xl text-04;
+    @apply text-xl;
 }
-body.hoverable .message-link-preview .link-buttons .btn.btn-round:hover i {
-    @apply text-primary;
-}
-
 body.narrow .link-preview.compact .incut {
     @apply flex-none;
     @apply w-15 h-12;

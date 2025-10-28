@@ -222,7 +222,24 @@ jobs:
           dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
 
       - name: Run unit tests
-        run: ./run-build.cmd unit-tests --configuration Debug
+        id: run-unit-tests
+        run: ./run-build.cmd unit-tests --configuration Debug --dumps
+
+      - name: Upload crash dumps (unit)
+        if: failure() && steps.run-unit-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-dumps-unit
+          path: |
+            artifacts/tests/crash-dumps/**/*
+            **/TestResults/**/*.dmp
+            **/TestResults/**/*_crashdump*
+            **/TestResults/**/Sequence*.xml
+            **/TestResults/**/*sequence*.xml
+          if-no-files-found: ignore
+          retention-days: 7
+          include-hidden-files: 'true'
+          compression-level: '9'
 
       - name: Report unit test results
         uses: phoenix-actions/test-reporting@v15
@@ -415,7 +432,23 @@ jobs:
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
-          ./run-build.cmd integration-tests --configuration Debug
+          ./run-build.cmd integration-tests --configuration Debug --dumps
+
+      - name: Upload crash dumps (integration)
+        if: failure() && steps.run-integration-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-dumps-integration
+          path: |
+            artifacts/tests/crash-dumps/**/*
+            **/TestResults/**/*.dmp
+            **/TestResults/**/*_crashdump*
+            **/TestResults/**/Sequence*.xml
+            **/TestResults/**/*sequence*.xml
+          if-no-files-found: ignore
+          retention-days: 7
+          include-hidden-files: 'true'
+          compression-level: '9'
 
       - name: Dump opensearch
         id: dump-opensearch
@@ -665,7 +698,7 @@ jobs:
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 16.4
+          xcode-version: 26.0
 
       - name: Checkout
         uses: actions/checkout@v4

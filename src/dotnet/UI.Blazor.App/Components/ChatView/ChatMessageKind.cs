@@ -12,4 +12,5 @@ public enum ChatMessageKind
     ConversationStart,
     ConversationEnd,
     Thread,
+    SendingNewMessage,
 }

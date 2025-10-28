@@ -40,7 +40,7 @@
     [Inject] private IServiceProvider Services { get; init; } = null!;
 
     private Task OnInvalidateEverythingLocallyClick() {
-        ComputedRegistry.Instance.InvalidateEverything();
+        ComputedRegistry.InvalidateEverything();
         return Task.CompletedTask;
     }
 

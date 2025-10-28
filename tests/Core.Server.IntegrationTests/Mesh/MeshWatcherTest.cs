@@ -6,7 +6,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 public class MeshWatcherTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(MeshWatcherTest)}", TestAppHostOptions.None, @out)
 {
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
         using var h1 = await NewAppHost();
@@ -40,7 +40,7 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         await w1.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout);
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task PeerNodeRefTest()
     {
         using var h1 = await NewAppHost();

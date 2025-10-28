@@ -1,3 +1,5 @@
+using ActualLab.Fusion.EntityFramework.Operations;
+
 namespace ActualChat.Notification.IntegrationTests;
 
 public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@out)
@@ -29,5 +31,18 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
             HandledAt = null,
         };
         d.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void SerializeUpsertExplicitNotificationCommandTest()
+    {
+        var explicitNotificationId = ExplicitNotificationId.New(
+            UserId.Parse("9EV1f3"),
+            ExplicitNotificationKind.NotifyMentionedMembers,
+            "the-actual-one:0:2067");
+        var notification = new ExplicitNotification(explicitNotificationId);
+        var command = new NotificationsBackend_UpsertExplicitNotification(notification);
+        var commandJson = DbOperation.Serializer.Write(command);
+        commandJson.Should().NotBeNullOrWhiteSpace();
     }
 }

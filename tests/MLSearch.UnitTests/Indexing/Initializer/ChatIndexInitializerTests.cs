@@ -158,7 +158,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             Times.Once());
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact]
     public async Task OnRunOfInactiveShardReturnsNotCompletedButCancellableTask()
     {
         var services = MoqServiceProvider().Object;
@@ -178,8 +178,8 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         Assert.False(onRunTask.IsCanceled);
         Assert.False(onRunTask.IsFaulted);
         await cancellationTokenSource.CancelAsync();
-        Assert.True(onRunTask.IsCanceled);
         await Assert.ThrowsAsync<TaskCanceledException>(async () => await onRunTask);
+        Assert.True(onRunTask.IsCanceled);
     }
 
     private static Mock<IServiceProvider> MoqServiceProvider()
@@ -219,8 +219,8 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Setup(x => x.GetService(typeof(MeshNode)))
             .Returns(() => new MeshNode(NodeRef.None, string.Empty, new ApiSet<HostRole>(), MeshNodeState.Online));
         moqServices
-            .Setup(x => x.GetService(typeof(ShardBrokers)))
-            .Returns(() => new ShardBrokers(moqServices.Object));
+            .Setup(x => x.GetService(typeof(ShardOwners)))
+            .Returns(() => new ShardOwners(moqServices.Object));
         return moqServices;
     }
 }

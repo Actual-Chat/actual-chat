@@ -21,9 +21,10 @@
             @Markup.Text
         else {
             var lastWord = Markup.Words[^1];
+            var brokenLastWord = new MarkupString(InsertBreaks(lastWord.Value, 10));
             var firstPart = Markup.Text[..lastWord.TextRange.Start];
             @firstPart
-            <span class="last-word @colorCls">@lastWord.Value @LastFragment</span>
+            <span class="last-word @colorCls">@brokenLastWord @LastFragment</span>
         }
     } else {
         @for (var i = 0; i < Markup.Words.Length; i++) {
@@ -39,9 +40,11 @@
             if (i != Markup.Words.Length - 1) {
                 <span class="@cls @highlightedCls playable-word">@word.Value</span>
             } else if (LastFragment != null) {
-                <span class="@cls @highlightedCls playable-word last-word"><span class="painted">@word.Value</span> @LastFragment</span>
+                var brokenLastWord = new MarkupString(InsertBreaks(word.Value, 10));
+                <span class="@cls @highlightedCls playable-word last-word"><span class="painted">@brokenLastWord</span> @LastFragment</span>
             } else {
-                <span class="@cls @highlightedCls playable-word last-word">@word.Value</span>
+                var brokenLastWord = new MarkupString(InsertBreaks(word.Value, 10));
+                <span class="@cls @highlightedCls playable-word last-word">@brokenLastWord</span>
             }
         }
     }
@@ -300,6 +303,19 @@
         var m = State.Value;
         m.ColorLease?.Release();
         return base.DisposeAsync();
+    }
+
+    private static string InsertBreaks(string lastWord, int interval) {
+        if (string.IsNullOrEmpty(lastWord) || lastWord.Length <= interval)
+            return lastWord;
+
+        var sb = new System.Text.StringBuilder(lastWord.Length + lastWord.Length / interval * 5);
+        for (int i = 0; i < lastWord.Length; i++) {
+            sb.Append(lastWord[i]);
+            if ((i + 1) % interval == 0)
+                sb.Append("<wbr>");
+        }
+        return sb.ToString();
     }
 
     // Nested types

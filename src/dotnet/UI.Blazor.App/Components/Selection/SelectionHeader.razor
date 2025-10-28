@@ -26,30 +26,31 @@
         <div class="selection-header-buttons">
             @if (m.CanDelete) {
                 <ButtonRound
-                    Class="btn-xs btn-danger btn-transparent"
+                    Class="btn-sm btn-danger"
                     Click="@(() => SelectionUI.Delete())">
-                    <i class="icon-trash03 text-danger text-xl"></i>
+                    <i class="icon-trash03 text-danger text-2xl"></i>
                 </ButtonRound>
             }
             <ButtonRound
-                Class="btn-xs btn-primary btn-transparent"
+                Class="btn-sm btn-primary"
                 Click="@(() => SelectionUI.CopyToClipboard())">
-                <i class="icon-copy text-xl"></i>
+                <i class="icon-copy text-primary text-2xl"></i>
             </ButtonRound>
             <ButtonRound
-                Class="btn-xs btn-primary btn-transparent"
-                Click="@(() => SelectionUI.Forward())"
-                Tooltip="Forward selected"
-                TooltipPosition="FloatingPosition.Bottom">
-                <i class="icon-share text-xl"></i>
-            </ButtonRound>
-            <ButtonRound
-                Class="btn-xs btn-primary btn-transparent"
+                Class="btn-sm btn-primary"
                 Click="@(() => SelectionUI.StartThread())"
                 Tooltip="Convert to thread"
                 TooltipPosition="FloatingPosition.Bottom">
-                <i class="icon-conversation text-xl"></i>
+                <i class="icon-thread text-primary text-2xl"></i>
             </ButtonRound>
+            <ButtonRound
+                Class="btn-sm btn-primary"
+                Click="@(() => SelectionUI.Forward())"
+                Tooltip="Forward selected"
+                TooltipPosition="FloatingPosition.Bottom">
+                <i class="icon-share text-primary text-2xl"></i>
+            </ButtonRound>
+
         </div>
     </div>
     return;
@@ -83,21 +84,21 @@
             Click="@(() => SelectionUI.CopyToClipboard())"
             Tooltip="Copy selected as text"
             TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-copy text-xl"></i>
+            <i class="icon-copy text-xl text-primary"></i>
+        </ButtonRound>
+        <ButtonRound
+            Class="btn-xs btn-primary start-thread-btn"
+            Click="@(() => SelectionUI.StartThread())"
+            Tooltip="Convert to thread"
+            TooltipPosition="FloatingPosition.Bottom">
+            <i class="icon-conversation text-xl text-primary"></i>
         </ButtonRound>
         <ButtonRound
             Class="btn-xs btn-primary"
             Click="@(() => SelectionUI.Forward())"
             Tooltip="Forward selected"
             TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-share text-xl"></i>
-        </ButtonRound>
-        <ButtonRound
-            Class="btn-xs btn-primary btn-transparent"
-            Click="@(() => SelectionUI.StartThread())"
-            Tooltip="Convert to thread"
-            TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-conversation text-xl"></i>
+            <i class="icon-share text-xl text-primary"></i>
         </ButtonRound>
     </div>
 </div>

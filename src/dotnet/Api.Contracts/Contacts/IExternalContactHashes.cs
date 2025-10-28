@@ -4,7 +4,7 @@ namespace ActualChat.Contacts;
 
 public interface IExternalContactHashes : IComputeService
 {
-    [ComputeMethod]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ExternalContactsHash?> Get(Session session, Symbol deviceId, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ExternalContactsHash?> OnChange(ExternalContactHashes_Change command, CancellationToken cancellationToken);

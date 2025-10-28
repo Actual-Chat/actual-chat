@@ -1,5 +1,6 @@
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Queues;
+using ActualChat.Time;
 using ActualLab.CommandR.Operations;
 using ActualLab.Diagnostics;
 
@@ -9,17 +10,19 @@ public static partial class FlowsExt
 {
     // NewId
 
+    public static FlowId NewId<TFlow>(this IFlows flows, params ReadOnlySpan<string> arguments)
+        where TFlow : Flow
+        => flows.NewId(typeof(TFlow), FlowId.CombineArguments(arguments));
+
     public static FlowId NewId<TFlow>(this IFlows flows, string arguments)
         where TFlow : Flow
-    {
-        var flowRegistry = flows.GetServices().GetRequiredService<FlowRegistry>();
-        var flowId = flowRegistry.NewId(typeof(TFlow), arguments);
-        return flowId;
-    }
+        => flows.NewId(typeof(TFlow), arguments);
+
+    public static FlowId NewId(this IFlows flows, Type flowType, params ReadOnlySpan<string> arguments)
+        => flows.NewId(flowType, FlowId.CombineArguments(arguments));
 
     public static FlowId NewId(this IFlows flows, Type flowType, string arguments)
     {
-        Flow.RequireCorrectType(flowType);
         var flowRegistry = flows.GetServices().GetRequiredService<FlowRegistry>();
         var flowId = flowRegistry.NewId(flowType, arguments);
         return flowId;
@@ -144,7 +147,7 @@ public static partial class FlowsExt
         var debugLog = log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
         if (debugLog != null) {
             var delayUntil = (@event as IHasDelayUntil)?.DelayUntil;
-            var maxLastRunAt = (@event as FlowResumeEvent)?.MaxLastRunAt;
+            var maxLastRunAt = (@event as LegacyFlowResumeEvent)?.MaxLastRunAt;
             debugLog.LogDebug(
                 "`{Id}`.Notify: sent {Event} with DelayUntil={DelayUntil} and MaxLastRunAt={MaxLastRunAt}",
                 flowId,

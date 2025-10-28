@@ -1,41 +1,44 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, MessageHoverMenuContent.Model>
 @{
-    var entry = Message.Entry;
     var m = State.Value;
+    var topOffsetClass = IsSystem || MessageWithAuthor ? "small-offset" : "";
 }
 
-<div class="flex-x gap-x-1">
-    <ButtonRound Click="OnReactionClick" Class="btn-xs btn-transparent">
-        <EmojiIcon Emoji="@Emojis.ThumbsUp" Class="w-5 h-5"/>
-    </ButtonRound>
-    @if (m.CanReply && !IsSystem) {
+<div class="hover-menu-wrapper @topOffsetClass">
+    <div class="message-hover-menu-new">
+        <ButtonRound Click="OnReactionClick" Class="btn-xs btn-transparent">
+            <EmojiIcon Emoji="@Emojis.ThumbsUp" Class="w-5 h-5"/>
+        </ButtonRound>
+        @if (m.CanReply && !IsSystem) {
+            <ButtonRound
+                Class="btn-xs btn-transparent"
+                Click="@(() => Reply(Entry))"
+                Tooltip="Reply"
+                TooltipPosition="FloatingPosition.Top">
+                <i class="icon-reply text-xl text-icon-01"></i>
+            </ButtonRound>
+        }
+        @if (Entry.AudioEntryLid.HasValue) {
+            <MessageMenuPlay Entry="@Entry"/>
+        }
         <ButtonRound
             Class="btn-xs btn-transparent"
-            Click="@(() => Reply(Message.Entry))"
-            Tooltip="Reply"
-            TooltipPosition="FloatingPosition.Top">
-            <i class="icon-reply text-xl text-icon-01"></i>
+            data-menu="@(MenuRef.New<MessageMenu>(Entry.Id.Value, IsSystem.ToString(), "", "").ToString())"
+            data-menu-trigger="@MenuTrigger.Primary"
+            data-menu-placement="@(FloatingPosition.LeftStart.ToPositionString())">
+            <i class="icon-more-vertical text-xl text-icon-01"></i>
         </ButtonRound>
-    }
-    @if (entry.AudioEntryLid.HasValue) {
-        <MessageMenuPlay Entry="@entry"/>
-    }
-    <ButtonRound
-        Class="btn-xs btn-transparent"
-        data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id.Value, IsSystem.ToString(), "", "").ToString())"
-        data-menu-trigger="@MenuTrigger.Primary"
-        data-menu-placement="@(FloatingPosition.LeftStart.ToPositionString())">
-        <i class="icon-more-vertical text-xl text-icon-01"></i>
-    </ButtonRound>
+    </div>
 </div>
 
 @code {
     private IChats Chats => Hub.Chats;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
 
-    [Parameter, EditorRequired] public ChatEntryMessage Message { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }
+    [Parameter] public bool MessageWithAuthor { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -45,7 +48,7 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var entry = Message.Entry;
+        var entry = Entry;
 
         var rules = await Chats.GetRules(Session, entry.ChatId, cancellationToken).ConfigureAwait(false);
         // Default scheduler is used from here
@@ -60,7 +63,7 @@
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,
-            EntryId = Message.Entry.Id.ToTextEntryId(),
+            EntryId = Entry.Id.ToTextEntryId(),
             Emoji = Emojis.ThumbsUp,
         };
         return UICommander.Run(new Reactions_React(Session, reaction));

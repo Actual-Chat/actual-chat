@@ -108,4 +108,15 @@ public static class KvasExt
 
     public static IKvas<TScope> WithScope<TScope>(this IKvas kvas)
         => new ScopedKvasProxy<TScope>(kvas);
+
+    // BatchingKvas
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
+    public static async ValueTask<(string, T)[]> ListAllEntries<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+        (this BatchingKvas kvas, CancellationToken cancellationToken = default)
+        where T : class?
+    {
+        var data = await kvas.ListAllEntries(cancellationToken).ConfigureAwait(false);
+        return data.Select(x => (x.Key, (T)Serializer.Read(x.Value, typeof(T), out _)!)).ToArray();
+    }
 }

@@ -52,6 +52,12 @@ public sealed class ShardScheme(
         { UsersBackend.Id, UsersBackend },
         { TestBackend.Id, TestBackend },
     };
+    public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ByBackendHostRole
+        = ById.Values
+            .Where(x => x.IsNone || x.HostRole.IsBackend)
+            .Select(x => KeyValuePair.Create(x.HostRole.Id, x))
+            .Append(new KeyValuePair<Symbol, ShardScheme>(nameof(HostRole.None), None))
+            .ToDictionary();
 
     private string? _toString;
 
@@ -74,9 +80,6 @@ public sealed class ShardScheme(
     public ShardScheme? NullIfUndefined()
         => IsUndefined ? null : this;
 
-    public static ShardScheme? ForType<T>()
-        where T : class
-        => ForType(typeof(T));
     public static ShardScheme? ForType(Type type)
     {
         if (!type.IsInterface)
@@ -85,7 +88,7 @@ public sealed class ShardScheme(
         var attr = BackendClientAttributes.GetOrAdd(type,
             static (_, t) => t.GetCustomAttributes<BackendClientAttribute>().SingleOrDefault(),
             type);
-        var shardScheme = attr != null ? ById[attr.ShardScheme] : null;
+        var shardScheme = attr != null ? ByBackendHostRole[attr.HostRole] : null;
         return shardScheme ?? ForAssembly(type.Assembly);
     }
 
@@ -96,6 +99,6 @@ public sealed class ShardScheme(
         var attr = BackendClientAttributes.GetOrAdd(assembly,
             static (_, t) => t.GetCustomAttributes<BackendClientAttribute>().SingleOrDefault(),
             assembly);
-        return attr != null ? ById[attr.ShardScheme] : null;
+        return attr != null ? ByBackendHostRole[attr.HostRole] : null;
     }
 }

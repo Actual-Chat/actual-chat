@@ -173,7 +173,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 
 .chat-message-markup {
     @apply relative;
-    @apply my-0.5;
+    @apply my-0.5 pr-1.5;
     @apply text-02 text-text-1;
     transition: height 0.25s linear;
 }
@@ -264,6 +264,9 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 
 .chat-message-markup .chat-message-sending-status {
     @apply ml-1;
+}
+.chat-message-markup .plain-text-markup .chat-message-sending-status {
+    @apply ml-0;
 }
 .chat-message-markup .list-markup + .chat-message-sending-status {
     @apply -right-1;
@@ -379,7 +382,7 @@ body.hoverable .chat-message-quote:hover,
 .message-attachments {
     @apply relative;
     @apply flex-y gap-y-1;
-    @apply w-fit;
+    @apply w-full;
     @apply pr-2;
     @apply overflow-hidden;
 }
@@ -393,10 +396,9 @@ body.hoverable .chat-message-quote:hover,
 }
 .message-image-attachments {
     @apply relative;
-    @apply flex-y flex-wrap gap-px;
-    @apply w-fit max-w-96 /*lg:w-180*/ /*xl:w-240*//* 2xl:w-320*/;
+    @apply flex-none flex-y flex-wrap gap-px;
+    @apply w-96 max-w-96 md:w-120 md:max-w-120;
     @apply p-0.5;
-    @apply rounded-xl;
     @apply overflow-hidden;
 }
 .message-image-attachments.wide {

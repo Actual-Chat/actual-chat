@@ -2,14 +2,14 @@ namespace ActualChat.Flows.Infrastructure;
 
 public sealed class FlowHostShard(FlowHost host, int shardIndex, CancellationToken stopToken)
 {
-    private readonly ConcurrentDictionary<FlowId, FlowWorklet> _worklets = new();
+    private readonly ConcurrentDictionary<FlowId, LegacyFlowWorklet> _worklets = new();
 
     public FlowHost Host { get; } = host;
     public int ShardIndex { get; } = shardIndex;
     public CancellationToken StopToken { get; } = stopToken;
-    public IEnumerable<FlowWorklet> Worklets => _worklets.Values;
+    public IEnumerable<LegacyFlowWorklet> Worklets => _worklets.Values;
 
-    public FlowWorklet GetOrAddWorklet(FlowId flowId)
+    public LegacyFlowWorklet GetOrAddWorklet(FlowId flowId)
     {
         // ReSharper disable once InconsistentlySynchronizedField
         if (_worklets.TryGetValue(flowId, out var worklet))
@@ -18,13 +18,13 @@ public sealed class FlowHostShard(FlowHost host, int shardIndex, CancellationTok
             if (_worklets.TryGetValue(flowId, out worklet))
                 return worklet;
 
-            worklet = new FlowWorklet(this, flowId);
+            worklet = new LegacyFlowWorklet(this, flowId);
             _worklets.TryAdd(flowId, worklet); // Must succeed
         }
         return worklet.Start();
     }
 
-    public bool TryRemoveWorklet(FlowWorklet flowWorklet)
+    public bool TryRemoveWorklet(LegacyFlowWorklet flowWorklet)
     {
         lock (_worklets)
             return _worklets.TryRemove(flowWorklet.FlowId, flowWorklet);

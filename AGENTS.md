@@ -1,5 +1,5 @@
-For the complete installation, build, and test instructions refer to:
-- `.instructions.md` 
-- `docs/.instructions.md`
+# AI Agent Instructions for Voxt (formerly Actual Chat) repository
 
-These files play the same role as .instructions.md.
+For detailed build and test instructions, please see [`docs/agents/AGENTS.md`](docs/agents/AGENTS.md).
+
+For coding style guidelines, see [`docs/CODING_STYLE.md`](docs/CODING_STYLE.md).

@@ -2,7 +2,7 @@ using System.Security.Claims;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using ActualLab.Rpc;
-using FluentAssertions.Equivalency;
+using AwesomeAssertions.Equivalency;
 using Microsoft.AspNetCore.Authentication.Google;
 
 namespace ActualChat.Contacts.IntegrationTests;

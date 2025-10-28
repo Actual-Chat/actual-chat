@@ -5,11 +5,21 @@ namespace ActualChat.Flows;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
-public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
+public abstract class IndexingFlowBase<TCursor> : LegacyFlow, IHasLastRunAt
 {
+    [IgnoreDataMember, MemoryPackIgnore]
+    private bool IsReindexing { get; set; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected abstract int CurrentFlowSetVersion { get; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected virtual TimeSpan WatchdogInterval { get; } = TimeSpan.FromHours(24);
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected virtual TimeSpan RecheckInterval { get; } = TimeSpan.FromSeconds(10);
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected virtual TimeSpan TimerRescheduleThreshold { get; } = TimeSpan.FromSeconds(1);
+
     [DataMember(Order = 100), MemoryPackOrder(100)]
     public TCursor? Cursor { get; protected set; }
-
     [DataMember(Order = 102), MemoryPackOrder(102)]
     public Moment? NextWatchdogTimerAt { get; protected set; }
     [DataMember(Order = 105), MemoryPackOrder(105)]
@@ -18,22 +28,11 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
     public long FlowSetVersion { get; protected set; }
     [DataMember(Order = 104), MemoryPackOrder(104)]
     public Moment LastRunAt { get; protected set; }
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected abstract int CurrentFlowSetVersion { get; }
-    [IgnoreDataMember, MemoryPackIgnore]
-    private bool IsReindexing { get; set; }
 
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected virtual TimeSpan WatchdogInterval { get; } = TimeSpan.FromHours(24);
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected virtual TimeSpan RecheckInterval { get; } = TimeSpan.FromSeconds(10);
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected virtual TimeSpan TimerRescheduleThreshold { get; } = TimeSpan.FromSeconds(1);
-
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
     {
         if (!await OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false))
-            return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt);
+            return WaitForEvent(LegacyFlowSteps.OnReset, InfiniteHardResumeAt);
 
         return Resume(nameof(OnIndex));
     }
@@ -52,16 +51,18 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
 
     protected abstract Task<BatchIndexingResult<TCursor>> Process(TCursor? cursor, CancellationToken cancellationToken);
 
-    protected virtual async Task<FlowTransition> OnIndex(CancellationToken cancellationToken)
+    protected virtual async Task<LegacyFlowTransition> OnIndex(CancellationToken cancellationToken)
     {
         if (NeedsReindex() && !IsReindexing) {
+            Log.LogDebug("`{Id}`.OnIndex: awaiting for reindexing", Id);
             Event.MarkHandled();
             return default;
         }
 
         LastRunAt = Clocks.SystemClock.Now;
-        Log.LogDebug("`{Id}`.OnIndex: Started and updated LastRunAt = {LastRunAt}", Id, LastRunAt);
-        var (mustEnd, isTailReached, updatedCursor, hasProcessedAnyItems) = await Process(Cursor, cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("`{Id}`.OnIndex: started and updated LastRunAt = {LastRunAt}", Id, LastRunAt);
+        var batchIndexingResult = await Process(Cursor, cancellationToken).ConfigureAwait(false);
+        var (mustEnd, isTailReached, updatedCursor, hasProcessedAnyItems) = batchIndexingResult;
         Cursor = updatedCursor;
         var transitionKind = IndexingFlowTransitionKind.Resume;
         DebugLog?.LogDebug(
@@ -83,7 +84,7 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
             IndexingFlowTransitionKind.Resume => QueueResume(nameof(OnIndex), "Continue processing when possible"),
             IndexingFlowTransitionKind.Watchdog => WaitForWatchdog(),
             IndexingFlowTransitionKind.Recheck => WaitForRecheck(),
-            IndexingFlowTransitionKind.Suspend => WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt),
+            IndexingFlowTransitionKind.Suspend => WaitForEvent(LegacyFlowSteps.OnReset, InfiniteHardResumeAt),
             _ => throw new ArgumentOutOfRangeException(nameof(transitionKind), transitionKind, null),
         };
         Event.MarkHandled();
@@ -106,24 +107,26 @@ public abstract class IndexingFlowBase<TCursor> : Flow, IHasLastRunAt
         return Task.FromResult(transitionKind);
     }
 
-    private FlowTransition WaitForWatchdog()
+    private LegacyFlowTransition WaitForWatchdog()
     {
         if (GetNextWatchdogAt() is { } nextWatchdogAt) {
-            NextWatchdogTimerAt = nextWatchdogAt;
-            Log.LogInformation("`{Id}`.WaitForWatchdog: Waiting for watchdog timer at {NextTimerAt}", Id, nextWatchdogAt);
-            return WaitForTimer(nameof(OnIndex), nextWatchdogAt, "Waiting for watchdog timer");
+            var transition = WaitForTimer(nameof(OnIndex), nextWatchdogAt, "Waiting for watchdog timer");
+            NextWatchdogTimerAt = transition.Events.Single().DelayUntil;
+            Log.LogInformation("`{Id}`.WaitForWatchdog: Waiting for watchdog timer at {Moment}", Id, NextWatchdogTimerAt);
+            return transition;
         }
 
         Log.LogInformation("`{Id}`.WaitForWatchdog: watchdog was already set", Id);
         return default;
     }
 
-    private FlowTransition WaitForRecheck()
+    private LegacyFlowTransition WaitForRecheck()
     {
         if (GetNextRecheckAt() is { } nextRecheckAt) {
-            NextRecheckAt = nextRecheckAt;
-            Log.LogInformation("`{Id}`.WaitForRecheck: Waiting for recheck at {NextTimerAt}", Id, nextRecheckAt);
-            return WaitForTimer(nameof(OnIndex), nextRecheckAt, "Waiting for recheck");
+            var transition = WaitForTimer(nameof(OnIndex), nextRecheckAt, "Waiting for recheck");
+            NextRecheckAt = transition.Events.Single().DelayUntil;
+            Log.LogInformation("`{Id}`.WaitForRecheck: Waiting for recheck at {Moment}", Id, NextRecheckAt);
+            return transition;
         }
 
         Log.LogInformation("`{Id}`.WaitForRecheck: recheck was already set", Id);

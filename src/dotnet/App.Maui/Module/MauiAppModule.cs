@@ -1,15 +1,23 @@
+using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
-using ActualChat.UI.Blazor.App.Services;
+using ActualChat.App.Maui.Services.Playback;
+using ActualChat.App.Maui.Services.Recording;
+using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.MediaPlayback;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Pages.Test;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.IO;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.IO;
 
 namespace ActualChat.App.Maui.Module;
 
@@ -38,12 +46,36 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IMauiHostSwitcher>(c => new MauiHostSwitcher(c.UIHub().UrlMapper, c.GetRequiredService<ReloadUI>()));
         services.AddScoped<IDeveloperTools>(_ => new MauiDeveloperTools());
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
-        services.AddScoped<IMediaMetadataUI>(_ => new MediaMetadataUI());
+        services.AddScoped<IMediaMetadataUI>(c => new MediaMetadataUI(c.AppUIHub()));
         services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
         // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<IDataCollectionSettingsUI>(_ => new MauiDataCollectionSettingsUI());
+
+        // Audio
+        services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
+#if WINDOWS || ANDROID
+        services.AddScoped<IAudioCodec, OpusAudioCodec>();
+        services.AddScoped<TuneUI>(c => new MauiTunes(c.UIHub()));
+        // services.AddSingleton<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
+        services.AddSingleton<VoiceActivityDetector>(c => {
+            return new OnnxVoiceActivityDetector(c, ModelLoader);
+
+            async Task<byte[]> ModelLoader()
+            {
+                await using var modelStream = await FileSystem.OpenAppPackageFileAsync(@"wwwroot\dist\assets\onnx\vad.onnx");
+                using var ms = new MemoryStream();
+                await modelStream.CopyToAsync(ms, CancellationToken.None);
+                ms.Position = 0;
+                return ms.ToArray();
+            }
+        });
+#elif IOS || MACCATALYST
+        services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));
+#endif
+        services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
+        services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));
 
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));
@@ -78,6 +110,14 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Contacts
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));
+
+        // Audio Focus
+#if ANDROID
+        services.AddScoped<AudioFocusService>(c => new AndroidAudioFocusService(c));
+#endif
+        // File attachments
+        services.AddScoped<IAttachmentFilePicker>(c => new MauiAttachmentFilePicker(c));
+        services.AddScoped<IMauiFileProviderImplFactory>(c => new MauiFileProviderImplFactory(c));
 
         // Test Page
 #if ANDROID

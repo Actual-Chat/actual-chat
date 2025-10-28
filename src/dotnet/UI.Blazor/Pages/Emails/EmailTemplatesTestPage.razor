@@ -19,6 +19,7 @@
             HideValidationMessage="true"
             Label="Template">
             <InputSelect
+                TValue="@String"
                 Value="_model.SelectedTemplateName"
                 ValueExpression="@(() => _model.SelectedTemplateName)"
                 ValueChanged="@((string value) => OnSelectedTemplateChanged(value))">

@@ -81,8 +81,10 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ReloadUI(c));
         if (hostKind.IsMauiApp())
             services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c));
-        else
+        else {
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
+            services.AddScoped<TuneUI>(c => new WebTunes(c.UIHub()));
+        }
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new InteractiveUI(c.UIHub()));
         services.AddScoped(c => new AutoNavigationUI(c.UIHub()));
@@ -97,12 +99,12 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => (ISleepDurationProvider)c.GetRequiredService<DeviceAwakeUI>());
         services.AddScoped(c => new UserActivityUI(c.UIHub()));
         services.AddScoped(c => new Escapist(c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped(c => new TuneUI(c.UIHub()));
         services.AddScoped(c => new BubbleUI(c.UIHub()));
         services.AddScoped(c => new ShareUI(c.UIHub()));
         services.AddScoped(_ => new ToastUI());
         services.AddScoped(c => new ThemeUI(c.UIHub()));
         services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
+        services.AddScoped(_ => new BlazorAppLifecycle());
 
         // Fusion-based UI services
         if (hostKind == HostKind.Server)

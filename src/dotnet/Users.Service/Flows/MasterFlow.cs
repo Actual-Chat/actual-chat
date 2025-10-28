@@ -8,16 +8,16 @@ using MemoryPack;
 namespace ActualChat.Users.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class MasterFlow : Flow, IMasterFlow
+public partial class MasterFlow : LegacyFlow, IMasterFlow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public int FlowSetVersion { get; private set; }
 
-    protected override async Task<FlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
     {
         while (true) {
             var nextFlowSetVersion = FlowSetVersion + 1;
-            var migrationFunc = FlowSteps.Get(GetType(), $"MigrateToVersion{nextFlowSetVersion}");
+            var migrationFunc = LegacyFlowSteps.Get(GetType(), $"MigrateToVersion{nextFlowSetVersion}");
             if (migrationFunc == null)
                 break;
 
@@ -25,7 +25,7 @@ public partial class MasterFlow : Flow, IMasterFlow
             FlowSetVersion = nextFlowSetVersion;
             return StoreAndResume(nameof(OnReset));
         }
-        return WaitForEvent(FlowSteps.OnReset, InfiniteHardResumeAt);
+        return WaitForEvent(LegacyFlowSteps.OnReset, InfiniteHardResumeAt);
     }
 
     // ReSharper disable UnusedMember.Local

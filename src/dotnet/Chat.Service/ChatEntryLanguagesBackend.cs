@@ -120,8 +120,8 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             dbContext.Add(dbChatEntryLanguage);
         }
         else if (change.IsUpdate(out chatEntryLanguage)) {
-            await dbContext.ChatEntryLanguages.Lock(id, cancellationToken).ConfigureAwait(false);
             dbChatEntryLanguage.RequireVersion(expectedVersion);
+            await dbContext.ChatEntryLanguages.Lock(id, cancellationToken).ConfigureAwait(false);
             chatEntryLanguage = chatEntryLanguage with {
                 Version = VersionGenerator.NextVersion(dbChatEntryLanguage.Version),
                 ModifiedAt = now,
@@ -133,8 +133,8 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
             if (dbChatEntryLanguage == null)
                 return null;
 
-            await dbContext.ChatEntryLanguages.Lock(id, cancellationToken).ConfigureAwait(false);
             dbChatEntryLanguage.RequireVersion(expectedVersion);
+            await dbContext.ChatEntryLanguages.Lock(id, cancellationToken).ConfigureAwait(false);
             dbContext.Remove(dbChatEntryLanguage);
         }
 

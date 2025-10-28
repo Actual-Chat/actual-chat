@@ -3,6 +3,7 @@ import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { SoundPlayer } from './sound-player';
 import { Interactive } from 'interactive';
+import { BrowserInfo } from '../BrowserInfo/browser-info';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('TuneUI');
 
@@ -40,47 +41,43 @@ export enum Tune
 
 export type TuneName = keyof typeof Tune;
 
-interface TuneInfo { vibration: Array<number>, sound?: string }
+interface TuneInfo { vibration: number[], sound?: string }
 
 const cooldownMap = new Map<Tune, number>([
-        [Tune.CancelReply, 1],
-        [Tune.OpenModal, 1],
-        [Tune.CloseModal, 1],
-        [Tune.SelectNavbarItem, 1],
-        [Tune.ShowInputError, 1],
-        [Tune.BeginRecording, 1],
-        [Tune.ConfirmRecording, 1],
-        [Tune.EndRecording, 1],
-        [Tune.RemindOfRecording, 1],
-        [Tune.StartRealtimePlayback, 1],
-        [Tune.StartHistoricalPlayback, 1],
-        [Tune.StopHistoricalPlayback, 1],
-        [Tune.StopRealtimePlayback, 1],
-        [Tune.NotifyOnNewMessageInApp, 5],
-        [Tune.NotifyOnNewAudioMessageAfterDelay, 5],
-        [Tune.SendMessage, 1],
-        [Tune.EditMessage, 1],
-        [Tune.ReplyMessage, 1],
-        [Tune.ChangeAttachments, 1],
-        [Tune.ChangeLanguage, 1],
-        [Tune.ShowMenu, 1],
-        [Tune.React, 1],
-        [Tune.DragStart, 1],
-    ]);
+    [Tune.CancelReply, 1],
+    [Tune.OpenModal, 1],
+    [Tune.CloseModal, 1],
+    [Tune.SelectNavbarItem, 1],
+    [Tune.ShowInputError, 1],
+    [Tune.BeginRecording, 1],
+    [Tune.ConfirmRecording, 1],
+    [Tune.EndRecording, 1],
+    [Tune.RemindOfRecording, 1],
+    [Tune.StartRealtimePlayback, 1],
+    [Tune.StartHistoricalPlayback, 1],
+    [Tune.StopHistoricalPlayback, 1],
+    [Tune.StopRealtimePlayback, 1],
+    [Tune.NotifyOnNewMessageInApp, 5],
+    [Tune.NotifyOnNewAudioMessageAfterDelay, 5],
+    [Tune.SendMessage, 1],
+    [Tune.EditMessage, 1],
+    [Tune.ReplyMessage, 1],
+    [Tune.ChangeAttachments, 1],
+    [Tune.ChangeLanguage, 1],
+    [Tune.ShowMenu, 1],
+    [Tune.React, 1],
+    [Tune.DragStart, 1],
+]);
 
 export class TuneUI {
     private static whenReady = new PromiseSource();
-    private static useJsVibration: boolean;
     private static blazorRef: DotNet.DotNetObject;
-    private static tunes: { [key in Tune]: TuneInfo };
-    private static readonly soundPlayer = new SoundPlayer();
-
+    private static tunes: Record<Tune, TuneInfo>;
 
     /** Called by blazor */
-    public static async init(blazorRef: DotNet.DotNetObject, tunes: { [key in Tune]: TuneInfo }, useJsVibration: boolean): Promise<void>{
+    public static init(blazorRef: DotNet.DotNetObject, tunes: Record<Tune, TuneInfo>) {
         this.blazorRef = blazorRef;
         this.tunes = tunes;
-        this.useJsVibration = useJsVibration;
         this.whenReady.resolve(null);
     }
 
@@ -94,7 +91,6 @@ export class TuneUI {
         try {
             await this.whenReady;
             const tuneInfo = this.tunes[tune] ?? this.tunes[Tune[tune]];
-
             if (!tuneInfo)
             {
                 errorLog?.log(`${logScope}.playAndWait: unexpected tune ${tune}.`)
@@ -116,11 +112,6 @@ export class TuneUI {
         }
 
         debugLog?.log(`playVibration: '${tune}'`);
-        if (!this.useJsVibration) {
-            await this.blazorRef.invokeMethodAsync('OnVibrate', tune);
-            return;
-        }
-
         for (let i = 0; i < tuneInfo.vibration.length; i++) {
             const durationMs = tuneInfo.vibration[i];
             if (i % 2 == 0)
@@ -140,10 +131,13 @@ export class TuneUI {
         const ext = DeviceInfo.isWebKit ? '.m4a' : '.webm'; // TODO: allow webm for iOS >= 16.5
         const soundUrl = `dist/sounds/${tuneInfo.sound}${ext}`;
         const cooldown = cooldownMap.get(tune);
-        await TuneUI.soundPlayer.play(soundUrl, cooldown);
+        if (BrowserInfo.hostKind !== 'MauiApp')
+            await SoundPlayer.instance.play(soundUrl, cooldown);
+        else
+            await this.blazorRef.invokeMethodAsync('play', tune);
     }
 
-    private static vibrate(durationMs: number = 20): void {
+    private static vibrate(durationMs = 20): void {
         const canVibrate = ('vibrate' in navigator);
         if (!canVibrate) {
             debugLog?.log(`vibrate(${durationMs}ms): unsupported by browser`);

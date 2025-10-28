@@ -159,9 +159,8 @@ public static class ClientStartup
         }
 
         // Rpc & Fusion defaults
+        RuntimeInfo.IsServer = false;
         CoreSerializerAndRpcSetup.Configure(false);
-        RpcDefaults.Mode = RpcMode.Client;
-        FusionDefaults.Mode = FusionMode.Client;
 #if !DEBUG
         RpcDefaultDelegates.CallTracerFactory = _ => null; // No call tracing in release builds
 #endif

@@ -1,0 +1,223 @@
+.right-panel {
+    @apply relative;
+    @apply flex-y;
+    @apply w-full h-full;
+    @apply border-l border-transparent;
+    @apply bg-03;
+    @apply overflow-hidden;
+}
+.right-panel .tab-panel > .divider {
+    @apply mx-6;
+}
+.right-panel > .c-panel-content {
+    @apply flex-y;
+    @apply overflow-y-hidden;
+}
+.right-panel > .c-panel-content > .c-chat-info {
+    @apply flex-y gap-y-1;
+    @apply p-2 pt-4;
+}
+.right-panel-chat-info-item {
+    @apply flex-none flex-x;
+    @apply overflow-hidden;
+    @apply rounded-lg;
+}
+body.hoverable .right-panel-chat-info-item.hovered:hover,
+.touch-capable .right-panel-chat-info-item.hovered:active {
+    @apply cursor-pointer;
+    @apply bg-hover;
+}
+.right-panel-chat-info-item > .c-icon {
+    @apply flex items-center justify-center;
+    @apply min-h-12 min-w-12;
+}
+.right-panel-chat-info-item > .c-content {
+    @apply flex-y self-center grow;
+    @apply min-w-0;
+}
+.right-panel-chat-info-item > .c-content > .c-text {
+    @apply truncate;
+    @apply text-headline-1;
+}
+.right-panel-chat-info-item > .c-content > .c-hint {
+    @apply text-03 text-caption-6;
+}
+.right-panel-chat-info-item > .c-right {
+    @apply flex-x self-center;
+}
+.right-panel > .c-panel-content > .c-panel-tabs {
+    @apply flex-y;
+    @apply h-full;
+    @apply overflow-hidden;
+}
+
+.right-panel > .c-header {
+    @apply relative;
+    @apply flex-y items-center gap-x-4;
+    @apply min-h-44;
+}
+.right-panel > .c-header > .c-buttons {
+    @apply absolute top-2 right-4 z-10;
+    @apply flex-x items-center justify-center gap-x-3;
+}
+.right-panel > .c-header > .c-top {
+    @apply relative;
+    @apply flex-none;
+    @apply h-26 w-full;
+    @apply rounded-b-xl;
+    @apply overflow-hidden;
+}
+.right-panel > .c-header > .c-bottom {
+    @apply flex-y items-start justify-end gap-y-1;
+    @apply w-full;
+    @apply px-4 pt-10;
+    @apply bg-transparent;
+}
+.right-panel > .c-header > .c-bottom > .c-content {
+    @apply flex-x gap-x-2;
+    width: inherit;
+}
+.right-panel > .c-header > .c-bottom > .c-content > .c-title {
+    @apply w-full;
+    @apply text-headline-7 text-02;
+    @apply truncate;
+}
+.right-panel > .c-header > .c-bottom > .c-content > .c-info {
+    @apply flex-x;
+    @apply text-caption-6 text-03;
+}
+.right-panel > .c-header > .c-bottom > .c-chat-description {
+    @apply w-full;
+    @apply overflow-auto;
+    @apply text-caption-6 text-03;
+    line-height: 0.875rem;
+    max-height: calc(0.875rem * 3);
+    scrollbar-width: none;
+    word-break: break-word;
+}
+.right-panel > .c-header > .c-bottom > .c-info > .c-bullet {
+    @apply px-1;
+}
+.right-panel > .c-header > .c-center {
+    @apply absolute top-18 z-20;
+    @apply flex-x;
+    @apply h-16 w-full;
+    @apply px-4;
+}
+.right-panel > .c-header > .c-center > .c-buttons {
+    @apply flex-1 flex-x items-center justify-end gap-x-3;
+}
+.right-panel > .c-header > .c-center > .c-buttons .btn.btn-round {
+    @apply bg-[var(--round-right-panel)];
+    @apply text-primary;
+}
+
+.right-panel > .c-header > .c-center > .c-title {
+    @apply flex-1 flex-x md:flex-none self-center;
+    @apply text-02 text-title-1;
+}
+.right-panel > .c-header > .c-center i.icon-edit {
+    @apply text-primary;
+}
+
+.right-panel .tab-panel {
+    @apply h-full;
+}
+.right-panel .tab-panel .tab {
+    @apply h-full;
+    @apply overflow-hidden;
+}
+.tab-panel > .tab > .author-list-tab {
+    @apply flex-y;
+    @apply h-full;
+    @apply p-2;
+    @apply overflow-y-auto custom-scrollbar;
+}
+.author-list-tab .avatar-badge {
+    @apply h-12;
+    @apply px-2;
+    @apply rounded-xl;
+    @apply cursor-pointer;
+}
+.author-list-tab .avatar-badge {
+    @apply mt-0.5;
+}
+body.hoverable .author-list-tab .avatar-badge:hover,
+.touch-capable .author-list-tab .avatar-badge:active {
+    @apply bg-hover;
+}
+.author-list-tab > .c-content {
+    @apply flex-auto flex-y gap-y-1;
+}
+.author-list-tab > .c-content > .c-group-title {
+    @apply text-caption-1 text-02;
+}
+.author-list-tab .avatar-badge .avatar-name {
+    @apply font-medium text-02;
+}
+
+.thread-list-tab {
+    @apply p-2;
+}
+.thread-list-tab .c-content {
+    @apply flex-y gap-y-1;
+}
+.thread-list-tab .c-content .c-description {
+    @apply flex-1 flex-y items-start justify-start gap-1;
+    @apply w-full;
+    @apply overflow-hidden;
+}
+.thread-list-item {
+    @apply flex-x items-center gap-x-2;
+    @apply p-2;
+    @apply cursor-pointer;
+    @apply rounded-md;
+}
+body.hoverable .thread-list-item:hover,
+.touch-capable .thread-list-item:active {
+    @apply bg-hover;
+}
+.thread-list-item .c-top {
+    @apply flex-x items-start gap-x-1;
+    @apply w-full;
+    @apply overflow-hidden;
+}
+.thread-list-item .c-chat-title {
+    @apply w-full;
+    @apply line-clamp-2;
+    @apply text-text-1 text-01;
+}
+.thread-list-item .last-entry-time {
+    @apply leading-5;
+}
+.thread-list-item .c-bottom {
+    @apply flex-x items-end gap-x-1;
+    @apply w-full;
+}
+.thread-list-item .c-bottom .c-last-message {
+    @apply flex-x items-end gap-x-1;
+    @apply w-full h-3.5;
+    @apply truncate;
+    @apply text-caption-4 text-03;
+}
+.thread-list-item .c-bottom .c-last-message .c-name {
+    @apply flex;
+    @apply truncate;
+    @apply whitespace-pre;
+    @apply text-caption-1 text-[var(--blue-30)];
+}
+.thread-list-item .c-bottom .c-last-message .c-name:has(.non-shrinkable) {
+    @apply flex-none;
+}
+.thread-list-item .c-bottom .c-last-message .c-name:has(.shrinkable) {
+    @apply min-w-16;
+}
+.thread-list-item .c-bottom .c-last-message .c-colon {
+    @apply -ml-1;
+    @apply text-caption-1 text-02;
+}
+.thread-list-item .c-bottom .c-last-message .c-text {
+    @apply min-w-8;
+    @apply truncate;
+    @apply pointer-events-none;
+}

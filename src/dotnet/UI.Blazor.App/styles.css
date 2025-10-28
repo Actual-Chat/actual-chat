@@ -57,7 +57,7 @@
 @import './Components/PlaceInfo/place-info.css';
 @import './Components/Reactions/reaction-select.css';
 @import './Components/RecordingSubHeader/recording-sub-header.css';
-@import './Components/ChatRightPanel/right-chat-panel.css';
+@import './Components/RightPanel/right-panel.css';
 @import './Components/ChatRoulette/chat-roulette.css';
 @import './Components/AISearchPanel/ai-search-panel.css';
 @import './Components/SearchPanel/search-panel.css';

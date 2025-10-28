@@ -18,7 +18,7 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
 
     protected override Task OnRun(CancellationToken cancellationToken)
         => AsyncChain.From(SyncStreamingState)
-            .Log(LogLevel.Debug, Log)
+            .LogError(Log)
             .RetryForever(RetryDelaySeq.Exp(3, 60))
             .CycleForever()
             .RunIsolated(cancellationToken);

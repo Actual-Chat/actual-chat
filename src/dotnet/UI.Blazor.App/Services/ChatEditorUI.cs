@@ -25,7 +25,17 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
         => this.Start();
 
     public Task ShowRelatedEntry(RelatedEntryKind kind, TextEntryId entryId, bool focusOnEditor, bool updateUI = true)
-        => ShowRelatedEntry(new RelatedEntryRef(kind, entryId), focusOnEditor, updateUI);
+        => ShowRelatedEntry(new RelatedEntryRef(kind, new EntryRef(entryId)), focusOnEditor, updateUI);
+
+    public Task ShowRelatedEntry(RelatedEntryKind kind, ChatEntry chatEntry, bool focusOnEditor, bool updateUI = true)
+    {
+        var entryRef = new EntryRef((TextEntryId)chatEntry.Id);
+        if (chatEntry.IsSending && !chatEntry.IsStored())
+            entryRef = entryRef with {
+                ChatEntry = chatEntry
+            };
+        return ShowRelatedEntry(new RelatedEntryRef(kind, entryRef), focusOnEditor, updateUI);
+    }
 
     public async Task ShowRelatedEntry(RelatedEntryRef relatedEntryRef, bool focusOnEditor, bool updateUI = true)
     {
@@ -41,7 +51,8 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
         if (updateUI)
             _ = UICommander.RunNothing();
         PlayTune();
-        await SaveRelatedEntry(relatedEntryRef.EntryId.ChatId, relatedEntryRef).ConfigureAwait(false);
+        if (relatedEntryRef.EntryRef.ChatEntry is null)
+            await SaveRelatedEntry(relatedEntryRef.EntryId.ChatId, relatedEntryRef).ConfigureAwait(false);
 
         void PlayTune()
         {
@@ -81,25 +92,33 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
         if (author == null)
             return;
 
-        ChatEntry? lastEditableEntry;
+        ChatEntry? lastEditableEntry ;
         using (ComputedSynchronizer.Default.Activate()) {
             var chatIdRange = await Chats
                 .GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None)
                 .ConfigureAwait(false);
-            var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text);
-            lastEditableEntry = await chatEntryReader.GetLast(
-                    chatIdRange,
-                    x => x.AuthorId == author.Id && x is {
-                        HasMediaEntry: false,
-                        IsStreaming: false,
-                        ForwardedChatEntryId: null,
-                    },
-                    1000, // Max. 1000 entries to scan upwards
-                    CancellationToken.None)
-                .ConfigureAwait(false);
-            if (lastEditableEntry == null)
-                return;
+
+            var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
+            var newMessages = await chatSendingMessages.GetNewMessages(author.Id, chatIdRange.End).ConfigureAwait(false);
+            if (newMessages.Length > 0)
+                lastEditableEntry = newMessages[^1];
+            else {
+                var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text);
+                lastEditableEntry = await chatEntryReader.GetLast(
+                        chatIdRange,
+                        x => x.AuthorId == author.Id
+                            && x is {
+                                HasMediaEntry: false,
+                                IsStreaming: false,
+                                ForwardedChatEntryId: null,
+                            },
+                        1000, // Max. 1000 entries to scan upwards
+                        CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
         }
+        if (lastEditableEntry == null)
+            return;
 
         await Edit(lastEditableEntry, cancellationToken).ConfigureAwait(false);
     }

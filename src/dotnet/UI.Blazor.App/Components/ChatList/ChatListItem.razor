@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using System.Text
 @inherits ComputedRenderStateComponent<AppUIHub, ChatListItem.Model>
 @{
     var m = State.Value;
@@ -54,7 +55,7 @@
                         }
                         else {
                             <span class="c-text">
-                                @m.LastTextEntryText
+                                @((MarkupString)m.LastTextEntryIcons) @m.LastTextEntryText
                             </span>
                         }
                         <div class="c-incut"></div>
@@ -210,9 +211,13 @@
         var chatInfo = chatState.Info;
         var lastEntry = chatInfo.LastTextEntry;
         var isUnreadByOthers = false;
-        if (lastEntry != null)
+        var lastTextEntryIcons = "";
+        if (lastEntry != null) {
             isUnreadByOthers = ownAuthorId is not null && await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken);
-        return new() {
+            lastTextEntryIcons = GetIcons(lastEntry);
+        }
+
+         return new() {
             ListKind = listKind,
             Chat = chatState.Chat,
             AudioState = chatState.AudioState,
@@ -222,6 +227,7 @@
             HasUnreadMentions = chatInfo.HasUnreadMentions,
             LastTextEntry = lastEntry,
             LastTextEntryText = chatInfo.LastTextEntryText,
+            LastTextEntryIcons = lastTextEntryIcons,
             IsLastItemInBlock = isLastItemInBlock,
             IsFirstItem = isFirstItem,
             IsUnreadByOthers = isUnreadByOthers,
@@ -271,6 +277,40 @@
         return true;
     }
 
+    private string GetIcons(ChatEntry entry) {
+        var attachments = entry.Attachments;
+        if (attachments.Length == 0)
+            return "";
+
+        var containsImage = false;
+        var containsVideo = false;
+        var containsFile = false;
+
+        foreach (var x in attachments) {
+            if (x.IsSupportedImage()) {
+                containsImage = true;
+            } else if (x.IsSupportedVideo()) {
+                containsVideo = true;
+            } else {
+                containsFile = true;
+            }
+
+            if (containsImage && containsVideo && containsFile)
+                break;
+        }
+
+        var sb = ActualLab.Text.StringBuilderExt.Acquire();
+        if (containsImage)
+            sb.Append("<i class=\"icon-image-2\"></i>");
+        if (containsVideo)
+            sb.Append("<i class=\"icon-video\"></i>");
+        if (containsFile)
+            sb.Append("<i class=\"icon-file\"></i>");
+
+        return sb.ToStringAndRelease();
+    }
+
+
     // Nested types
 
     public sealed record Model {
@@ -279,6 +319,7 @@
         public ChatListKind? ListKind { get; init; }
         public Chat? Chat { get; init; }
         public string LastTextEntryText { get; init; } = "";
+        public string LastTextEntryIcons { get; init; } = "";
         public ChatEntry? LastTextEntry { get; init; }
         public ChatAudioState? AudioState { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }

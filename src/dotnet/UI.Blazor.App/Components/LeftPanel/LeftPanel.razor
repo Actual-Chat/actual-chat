@@ -10,9 +10,9 @@
         <ErrorBarrier Name="LeftPanelContent" Kind="@ErrorBarrierKind.Full">
             <LeftPanelButtons/>
             @if (IsSkeletonWidePanel) {
-                <SkeletonWideLeftPanel>
+                <WideLeftPanelSkeleton>
                     @WidePanelBottomContent
-                </SkeletonWideLeftPanel>
+                </WideLeftPanelSkeleton>
             } else {
                 <LeftPanelContent />
             }

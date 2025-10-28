@@ -67,6 +67,18 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         }
     }
 
+    public ValueTask<(string Key, byte[] Value)[]> ListAllEntries(CancellationToken cancellationToken = default)
+    {
+        if (_connectionPool == null)
+            return ValueTask.FromResult(Array.Empty<(string Key, byte[] Value)>());
+
+        using var lease = _connectionPool.Rent();
+        var connection = lease.Resource;
+        var dbItems = DbHelpers.SelectAll(connection);
+        var result = dbItems.Select(dbItem => (dbItem.Key, dbItem.Value)).ToArray();
+        return ValueTask.FromResult(result);
+    }
+
     public Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
     {
         if (_connectionPool == null || updates.Count == 0)
@@ -151,6 +163,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         private static volatile object? _initializedTag;
 
         public static TableMapping Mapping = null!;
+        public static string SelectAllSql = null!;
         public static string FindSql = null!;
         public static string FindManySql = null!;
         public static string DeleteSql = null!;
@@ -164,6 +177,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
                 using var _ = Lock.EnterScope();
                 if (_initializedTag == null) {
                     Mapping = connection.GetMapping(typeof(DbItem));
+                    SelectAllSql = $"select * from {Mapping.TableName}";
                     FindSql = Mapping.GetByPrimaryKeySql;
                     FindManySql =
                         $"select * from {Mapping.TableName} where Key in (select e.value from json_each(?) e)";
@@ -173,6 +187,12 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
                 }
             }
             return connection;
+        }
+
+        public static IEnumerable<DbItem> SelectAll(SQLiteConnection connection)
+        {
+            var cmd = connection.CreateCommand(SelectAllSql);
+            return cmd.ExecuteDeferredQuery<DbItem>(Mapping);
         }
 
         public static DbItem? Find(SQLiteConnection connection, string key)

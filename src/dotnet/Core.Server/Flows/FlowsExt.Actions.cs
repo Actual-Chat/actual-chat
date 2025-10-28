@@ -25,7 +25,7 @@ public static partial class FlowsExt
 
         var now = services.Clocks().SystemClock.Now;
         var delayUntil = (now + delay) ?? default;
-        var @event = new FlowResumeEvent(flowId, IsHardResume: false, tag, now + maxLastRunIn, delayUntil);
+        var @event = new LegacyFlowResumeEvent(flowId, IsHardResume: false, tag, now + maxLastRunIn, delayUntil);
         await flows.Notify(flowId, @event, ensureStarted: false, cancellationToken).ConfigureAwait(false);
     }
 
@@ -50,7 +50,7 @@ public static partial class FlowsExt
         await flows.EnsureStarted(flowId, cancellationToken).ConfigureAwait(false);
 
         var now = services.Clocks().SystemClock.Now;
-        var @event = new FlowResetEvent(flowId, tag, now + maxLastRunIn);
+        var @event = new LegacyFlowResetEvent(flowId, tag, now + maxLastRunIn);
         await flows.Notify(flowId, @event, ensureStarted: false, cancellationToken).ConfigureAwait(false);
     }
 }

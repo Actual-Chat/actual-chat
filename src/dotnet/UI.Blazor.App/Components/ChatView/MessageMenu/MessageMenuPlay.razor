@@ -66,8 +66,8 @@
         if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
             return Model.NotPlaying;
 
-        var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
-        var historicalChatPlayer = player as HistoricalChatPlayer;
+        var controller = await ChatPlayers.GetHistoricalChatPlayerController(chatId, cancellationToken).ConfigureAwait(false);
+        var historicalChatPlayer = controller?.ChatPlayer;
         var playback = historicalChatPlayer?.Playback;
         var lastState = State.Value;
         if (playback == null) {

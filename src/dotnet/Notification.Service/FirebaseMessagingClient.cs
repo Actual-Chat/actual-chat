@@ -38,9 +38,11 @@ public class FirebaseMessagingClient(
 
         var isChatRelated = chatId is not null;
         var isEntryRelated = entryId is not null;
-        var tag = isEntryRelated ? entryId!.ChatId.Value
-            : isChatRelated ? chatId!.Value
-            : "topic";
+        var tag = isEntryRelated
+            ? entryId!.ChatId.Value
+            : isChatRelated
+                ? chatId!.Value
+                : "topic";
         var link = isEntryRelated ? UrlMapper.ToAbsolute(Links.Chat(entryId))
             : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId!))
             : "";
@@ -75,14 +77,18 @@ public class FirebaseMessagingClient(
                 TimeToLive = TimeSpan.FromDays(10),
             },
             Apns = new ApnsConfig {
+                Headers = new Dictionary<string, string>(StringComparer.Ordinal) {
+                    ["apns-push-type"] = "alert",
+                    ["apns-priority"] = notification.GetAttentionNotification is not null ? "10" : "5",
+                },
                 Aps = new Aps {
                     Alert = new ApsAlert {
                         Title = title,
                         Body = content,
                     },
-                    Sound = "default",
+                    Sound = notification.GetAttentionNotification is not null ? "attention_ringtone.caf" : "default",
                     MutableContent = true,
-                    ThreadId = "topics",
+                    ThreadId = tag,
                 },
             },
             Webpush = new WebpushConfig {

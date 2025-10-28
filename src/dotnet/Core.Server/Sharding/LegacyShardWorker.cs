@@ -10,12 +10,12 @@ public abstract class LegacyShardWorker(IServiceProvider services, ShardScheme s
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     public IServiceProvider Services { get; } = services;
-    public ShardBroker ShardBroker { get; } = services.ShardBroker(shardScheme);
-    public ShardScheme ShardScheme => ShardBroker.ShardScheme;
+    public ShardOwner ShardOwner { get; } = services.ShardOwner(shardScheme);
+    public ShardScheme ShardScheme => ShardOwner.ShardScheme;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        await using var _ = ShardBroker.Use(GetType().GetName(), OnRun).ConfigureAwait(false);
+        await using var _ = ShardOwner.Use(GetType().GetName(), OnRun).ConfigureAwait(false);
         await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
     }
 

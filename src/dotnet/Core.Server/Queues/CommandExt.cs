@@ -1,3 +1,4 @@
+using ActualChat.Time;
 using ActualLab.CommandR.Operations;
 
 namespace ActualChat.Queues;
@@ -7,14 +8,15 @@ public static class CommandExt
     private static readonly Action<IEventCommand, string> ChainIdSetter =
         typeof(IEventCommand).GetProperty(nameof(IEventCommand.ChainId))!.GetSetter<string>();
 
-    public static bool HasDelay(this ICommand command, Moment now, [NotNullWhen(true)] out TimeSpan? delay)
+    public static bool HasDelay(this ICommand command, Moment now, out TimeSpan delay)
     {
-        if (command is IHasDelayUntil delayed && delayed.DelayUntil > now) {
-            delay = delayed.DelayUntil - now;
-            return true;
+        if (command is IHasDelayUntil hasDelayUntil) {
+            delay = hasDelayUntil.DelayUntil - now;
+            if (delay > TimeSpan.Zero)
+                return true;
         }
 
-        delay = null;
+        delay = default;
         return false;
     }
 

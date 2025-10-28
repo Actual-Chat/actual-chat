@@ -6,12 +6,12 @@ namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 public class RedisMeshLocksTest(ITestOutputHelper @out)
     : LocalAppHostTestBase($"x-{nameof(RedisMeshLocksTest)}", TestAppHostOptions.None, @out)
 {
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
         var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with {
-            ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
+            ExpirationPeriod = TimeSpan.FromSeconds(5),
         };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
@@ -19,25 +19,27 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         info.Should().BeNull();
         (await locks.ListKeys("")).Should().BeEmpty();
 
+        var expirationSafetyMargin = TimeSpan.FromSeconds(1);
         await using (var h = await locks.Lock(key, "", lockOptions)) {
             var now = CpuTimestamp.Now;
             (await locks.TryLock(key, "")).Should().BeNull();
             (await locks.ListKeys("")).Should().Equal([key]);
-            while (now.Elapsed <= lockOptions.ExpirationPeriod + TimeSpan.FromSeconds(1)) {
-                await Task.Delay(TimeSpan.FromSeconds(0.5));
+            while (now.Elapsed < (lockOptions.ExpirationPeriod - expirationSafetyMargin/2)) {
                 info = await locks.GetInfo(key);
                 if (info == null)
                     Assert.Fail($"info == null (elapsed = {now.Elapsed})");
                 info.HolderId.Should().Be(h.Id);
+                await Task.Delay(TimeSpan.FromSeconds(0.25));
             }
         }
 
+        await Task.Delay(expirationSafetyMargin);
         info = await locks.GetInfo(key);
         info.Should().BeNull();
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
-    public async Task LockIsGoneButReacquiredTest()
+    [Fact(Timeout = 30_000)]
+    public async Task LockIsGoneTest()
     {
         var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with {
@@ -45,7 +47,6 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
-        await using var changes = await locks.Changes("");
         (await locks.ListKeys("")).Should().BeEmpty();
         (await locks.GetInfo(key)).Should().BeNull();
 
@@ -56,20 +57,16 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         await locks.Backend.ForceRelease(key, false);
         (await locks.GetInfo(key)).Should().BeNull();
 
-        var minDelay = TimeSpanExt.Max(locks.LockOptions.UnconditionalCheckPeriod, lockOptions.ExpirationPeriod);
-        await Task.Delay(minDelay + TimeSpan.FromSeconds(0.25));
+        var minDelay = TimeSpanExt.Max(
+            locks.LockOptions.UnconditionalCheckPeriod,
+            lockOptions.ExpirationPeriod);
+        await Task.Delay(minDelay + TimeSpan.FromSeconds(0.5));
 
-        // reacquired
-        h.StopToken.IsCancellationRequested.Should().BeFalse();
-        (await locks.GetInfo(key)).Should().NotBeNull();
-
-        await changes.DisposeAsync();
-        var changeSet = await changes.Reader.ReadAllAsync().ToHashSetAsync(StringComparer.Ordinal);
-        changeSet.Count.Should().Be(1);
-        changeSet.Contains(key).Should().BeTrue();
+        // We don't silently re-acquire the locks, so it must be gone
+        h.StopToken.IsCancellationRequested.Should().BeTrue();
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task ReleaseNotifyTest()
     {
         var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
@@ -99,16 +96,16 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         changeSet.Contains(key).Should().BeTrue();
     }
 
-    [Fact(Skip = "AY Should resolve timeout")]
-    public async Task ReacquireTest()
+    [Fact(Timeout = 30_000)]
+    public async Task ReleaseAcquireTest()
     {
-        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ReacquireTest));
+        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ReleaseAcquireTest));
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(15) };
 
         var ctsA = new CancellationTokenSource();
         var ctsB = new CancellationTokenSource();
         var key = Alphabet.AlphaNumeric.Generator8.Next();
-        await using var changes = await locks.Changes("",CancellationToken.None);
+
         (await locks.ListKeys("", CancellationToken.None)).Should().BeEmpty();
         (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
 
@@ -125,7 +122,6 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
             CancellationToken.None);
 
         await Task.Delay(2000, CancellationToken.None);
-
 
         (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
         await using var h2 = await locks.Lock(key, "", lockOptions, ctsB.Token);

@@ -181,7 +181,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         if (mustStartDigestFlow) {
             Log.LogInformation("Digest flow reset for: {AccountId}", account.Id);
-            var e = new FlowResetEvent(FlowRegistry.NewId<DigestFlow>(account.Id.Value), "Account change");
+            var e = new LegacyFlowResetEvent(FlowRegistry.NewId<DigestFlow>(account.Id.Value), "Account change");
             context.Operation.AddEvent(e);
         }
 

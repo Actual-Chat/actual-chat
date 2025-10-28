@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using StringBuilderExt = ActualLab.Text.StringBuilderExt
-@inherits ComputedStateComponent<AppUIHub, ConversationMessageView.Model>
+@inherits ComputedStateComponent<AppUIHub, TranslatedConversation>
 @{
     var m = State.Value;
     var conversation = Message.Conversation!;
@@ -38,7 +37,7 @@
                 </div>
             </div>
         }
-        @if (attachments?.Length > 0) {
+        @if (attachments.Length > 0) {
             var (mediaList, fileList) = GetOrderedAttachmentList(attachments);
             <div class="message-attachments">
                 <VisualMediaAttachmentList MediaList="@mediaList" IsConversation="true" IsNarrow="@ScreenSize.IsNarrow()"/>
@@ -66,20 +65,21 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
     private ClipboardUI ClipboardUI => ChatContext.Hub.ClipboardUI;
-    private TranslationUI TranslationUI => Hub.TranslationUI;
+    private ConversationUI ConversationUI => Hub.ConversationUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ConversationMessage Message { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
+    protected override ComputedState<TranslatedConversation>.Options GetStateOptions() {
         var conversation = Message.Conversation!;
         var title = conversation.Title;
         var descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
         var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
         return ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(
+            t => new ComputedState<TranslatedConversation>.Options() {
+                InitialValue = new TranslatedConversation(
+                    conversation.Id,
                     TranslatedText.From(title),
                     TranslatedMarkup.From(descriptionMarkup),
                     TranslatedMarkup.From(summaryMarkup)),
@@ -97,31 +97,9 @@
         _lastMessage = Message;
     }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<TranslatedConversation> ComputeState(CancellationToken cancellationToken) {
         var conversation = Message.Conversation!;
-        var conversationId = conversation.Id;
-        var title = conversation.Title;
-        var descriptionMarkup = ChatMarkupHub.Parser.Parse(conversation.Description);
-        var summaryMarkup = ChatMarkupHub.Parser.Parse(conversation.Summary);
-        var mustTranslate = await TranslationUI.MustTranslate(conversation, cancellationToken).ConfigureAwait(false);
-
-        if (!mustTranslate)
-            return new Model(
-                TranslatedText.From(title),
-                TranslatedMarkup.From(descriptionMarkup),
-                TranslatedMarkup.From(summaryMarkup));
-
-        var titleTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Title, TranslationConsumers.ChatView, cancellationToken);
-        var descriptionTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Description, TranslationConsumers.ChatView, cancellationToken);
-        var summaryTranslationTask = TranslationUI.Get(conversationId, ConversationTranslationIdKind.Summary, TranslationConsumers.ChatView, cancellationToken);
-        var titleTranslation = await titleTranslationTask.ConfigureAwait(false);
-        var descriptionTranslation = await descriptionTranslationTask.ConfigureAwait(false);
-        var summaryTranslation = await summaryTranslationTask.ConfigureAwait(false);
-        await Task.WhenAll(titleTranslationTask, descriptionTranslationTask, summaryTranslationTask).ConfigureAwait(false);
-        var translatedTitle = TranslatedText.From(conversation.Title, titleTranslation);
-        var translatedDescription = TranslatedMarkup.From(conversation.Description, descriptionTranslation, ChatMarkupHub, descriptionMarkup);
-        var translatedSummary = TranslatedMarkup.From(conversation.Summary, summaryTranslation, ChatMarkupHub, summaryMarkup);
-        return new Model(translatedTitle, translatedDescription, translatedSummary);
+        return await ConversationUI.GetTranslatedConversation(conversation, cancellationToken).ConfigureAwait(false);
     }
 
     private void ToggleShowMessage()
@@ -133,31 +111,11 @@
     }
 
     private async Task OnCopyToClipboardRequested() {
-        var text = await GetText();
+        var text = await ConversationUI.GetClipboardText(State.Value);
         await ClipboardUI.WriteText(text).ConfigureAwait(false);
-    }
-
-    private async Task<string> GetText() {
-        var m = State.Value;
-        CancellationToken cancellationToken = default;
-        var sb = StringBuilderExt.Acquire();
-        sb.AppendLine(m.Title.Text);
-        sb.AppendLine();
-        var description = await ChatMarkupHub.ApplyMentionNamer(m.Description.Markup, cancellationToken).ConfigureAwait(false);
-        sb.AppendLine(description.ToReadableText());
-        sb.AppendLine();
-        var summary = await ChatMarkupHub.ApplyMentionNamer(m.Summary.Markup, cancellationToken).ConfigureAwait(false);
-        sb.AppendLine(summary.ToReadableText());
-        return sb.ToStringAndRelease();
     }
 
     private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(TextEntryAttachment[] attachments)
         => (attachments.Where(a => a.IsVisualMedia()).ToArray(),
             attachments.Where(a => !a.IsVisualMedia()).ToArray());
-
-    // Nested types
-    public record Model(
-        TranslatedText Title,
-        TranslatedMarkup Description,
-        TranslatedMarkup Summary);
 }

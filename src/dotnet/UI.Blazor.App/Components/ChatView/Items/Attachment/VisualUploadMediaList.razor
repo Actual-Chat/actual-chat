@@ -1,0 +1,38 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="media-attachment-uploads message-image-attachments @_listCls">
+    @foreach (var row in _rows) {
+        var cls = row.GetRowClass();
+        <VisualMediaAttachmentLine Row="@row" Class="@cls">
+            <ItemTemplate>
+                <UploadAttachmentItem
+                    Attachment="@context"
+                    RestartClick="@(() => OnRestartClick(context))"
+                    RemoveClick="@(() => OnRemoveClick(context))"/>
+            </ItemTemplate>
+        </VisualMediaAttachmentLine>
+    }
+</div>
+
+@code {
+    private VisualMediaGalleryLine<Attachment>[] _rows = [];
+    private string _listCls = "";
+
+    [Parameter, EditorRequired] public IAttachmentList Uploads { get; set; } = null!;
+    [Parameter, EditorRequired] public Attachment[] MediaList { get; set; } = null!;
+
+    protected override void OnParametersSet() {
+        _rows = GetRows(MediaList);
+        _listCls = _rows.Length == 1 ? "one-row" : "";
+    }
+
+    private static VisualMediaGalleryLine<Attachment>[] GetRows(Attachment[] mediaList) {
+        return VisualMediaGalleryArranger.Default.Arrange(mediaList, a => (a.Width, a.Height));
+    }
+
+    private Task OnRemoveClick(Attachment attachment)
+        => Uploads.Remove(attachment);
+
+    private Task OnRestartClick(Attachment attachment)
+        => Uploads.Restart(attachment);
+}

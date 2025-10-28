@@ -98,10 +98,17 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 30), MemoryPackOrder(30)] public LinkPreviewMode LinkPreviewMode { get; init; }
     [DataMember(Order = 33), MemoryPackOrder(33)] public bool IsThreadStartEntry { get; init; }
     [DataMember(Order = 34), MemoryPackOrder(34)] public bool IsThreadEntry { get; init; }
+    [DataMember(Order = 35), MemoryPackOrder(35)] public bool HasAttachmentUploads { get; init; }
+    [DataMember(Order = 36), MemoryPackOrder(36)] public string ClientId { get; init; } = "";
 
     // Populated only on reads
     [DataMember(Order = 50), MemoryPackOrder(50)] public TextEntryAttachment[] Attachments { get; init; } = [];
     [DataMember(Order = 52), MemoryPackOrder(52)] public LinkPreview[] LinkPreviews { get; init; } = [];
+    // Used on the client side only.
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public string ClientUid { get; init; } = "";
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public object? SendingTag { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -125,6 +132,8 @@ public sealed partial record ChatEntry(
     public bool HasMediaEntry => VideoEntryLid.HasValue || AudioEntryLid.HasValue;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasMarkup => Kind == ChatEntryKind.Text && !IsSystemEntry && !HasMediaEntry;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsSending => SendingTag is not null;
 
     [MemoryPackConstructor]
     public ChatEntry() : this((ChatEntryId)null!) { }
@@ -161,6 +170,8 @@ public sealed partial record ChatEntryDiff() : RecordDiff
     [DataMember, MemoryPackOrder(30)] public LinkPreviewMode? LinkPreviewMode { get; init; }
     [DataMember, MemoryPackOrder(31)] public bool IsThreadStartEntry { get; init; }
     [DataMember, MemoryPackOrder(32)] public bool IsThreadEntry { get; init; }
+    [DataMember, MemoryPackOrder(33)] public bool HasAttachmentUploads { get; init; }
+    [DataMember, MemoryPackOrder(34)] public string ClientId { get; init; } = "";
     [DataMember, MemoryPackOrder(50)] public TextEntryAttachment[]? Attachments { get; init; }
 
     public ChatEntryDiff(ChatEntry entry) : this()
@@ -188,5 +199,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff
         ForwardedAuthorName = entry.ForwardedAuthorName;
         LinkPreviewMode = entry.LinkPreviewMode;
         Attachments = entry.Attachments;
+        HasAttachmentUploads = entry.HasAttachmentUploads;
+        ClientId = entry.ClientId;
     }
 }

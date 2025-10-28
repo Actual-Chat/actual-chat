@@ -1,8 +1,5 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.Notification;
-using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Rpc;
 using CoreSpotlight;
 using Firebase.CloudMessaging;
 using Foundation;
@@ -28,7 +25,6 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     public override bool FinishedLaunching(UIApplication application, NSDictionary launchOptions)
     {
         RegisterBadgeNotifications();
-        IosAudioSessionHelper.ActivateRecordingAndBackgroundAudio();
         return base.FinishedLaunching(application, launchOptions);
     }
 

@@ -37,7 +37,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 continue;
 
             var playbackNow = PlaybackNow();
-            var entryEndsAt = entry.GetEndsAt() + MaxEntryDuration;
+            var entryEndsAt = entry.GetEndsAt();
             if (entryEndsAt < playbackNow)
                 continue;
 
@@ -109,7 +109,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 continue;
 
             var entryBeginsAt = Moment.Max(entry.BeginsAt, lastPlayingAt);
-            var entryEndsAt = entry.GetEndsAt() + MaxEntryDuration;
+            var entryEndsAt = entry.GetEndsAt();
 
             var expectedRewindPosition = entryBeginsAt + remainingOffset;
             if (expectedRewindPosition <= entryEndsAt)

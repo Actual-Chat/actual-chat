@@ -1,4 +1,4 @@
-import { AsyncDisposable, Disposable, Disposables } from 'disposable';
+import { AsyncDisposable, Disposable } from 'disposable';
 import {
     cancelled,
     Cancelled,
@@ -31,7 +31,6 @@ export class AudioContextRef implements AsyncDisposable {
     private readonly name: string;
     private readonly whenRunning: Promise<void>;
     private readonly whenDisposeRequested = new PromiseSource<Cancelled>();
-    private _whenReady = new PromiseSource<OverridenAudioContext>();
     private context: OverridenAudioContext | null = null;
     private inUse: Disposable | null = null;
 
@@ -72,10 +71,9 @@ export class AudioContextRef implements AsyncDisposable {
             this.inUse = null;
             inUse?.dispose();
         };
-        waitAsync(this._whenReady, this.whenDisposeRequested)
-            .then(async _ => {
+        this.source.whenReady(this.whenDisposeRequested)
+            .then(async context => {
                 this.inUse = await this.source.useRef(this);
-                const context = await this.source.whenReady(this.whenDisposeRequested);
                 return waitAsync(whenContextInUse(context), this.whenDisposeRequested);
             })
             .then(() => {
@@ -125,12 +123,10 @@ export class AudioContextRef implements AsyncDisposable {
                     debugLog?.log(`${this.name}: attach, context:`, Log.ref(this.context));
                     await this.options.attach?.(this.context);
                     lastContext = this.context;
-                    this._whenReady.resolve(this.context);
                 }
 
                 debugLog?.log(`${this.name}: awaiting whenNotReady`);
                 await this.source.whenNotReady(this.context, this.whenDisposeRequested);
-                this._whenReady = new PromiseSource<OverridenAudioContext>();
                 if (this.context.state === 'closed')
                     await this.options.detach?.(this.context);
             }

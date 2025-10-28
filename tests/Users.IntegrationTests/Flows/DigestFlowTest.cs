@@ -19,7 +19,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await flows.TryGet<DigestFlow>(f0.Id.Arguments, ct);
             flow.Should().NotBeNull();
-            flow.Step.Should().Be(FlowSteps.OnEnd);
+            flow.Step.Should().Be(LegacyFlowSteps.OnEnd);
         }, TimeSpan.FromSeconds(30));
     }
 

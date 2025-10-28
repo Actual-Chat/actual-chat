@@ -18,7 +18,6 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
     {
         ShardKeyResolvers.Register<FlowId>(static x => ShardKeyResolvers.ForString(x.Arguments));
         ShardKeyResolvers.Register<IFlowEvent>(static x => ShardKeyResolvers.ForString(x.FlowId.Arguments));
-        MeshRefResolvers.Register<Flows_Store>(static _ => NodeRef.ThisNodeAlias);
     }
 
     protected override CoreServerSettings GetSettings()
@@ -38,8 +37,8 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         // RPC host
         services.AddRpcHost(HostInfo, Log);
 
-        // ShardBrokers
-        services.AddSingleton(c => new ShardBrokers(c));
+        // ShardOwners
+        services.AddSingleton(c => new ShardOwners(c));
 
         // Queues
         services.AddSingleton(c => new EventHandlerRegistry(c));

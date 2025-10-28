@@ -21,7 +21,7 @@ public sealed record ShardRunnable : IRunnable
         Clock = clock;
     }
 
-    public ShardRunnable(string name, Func<ShardLease, CancellationToken, Task> func, MomentClock clock)
+    public ShardRunnable(string name, Func<ShardOwnership, CancellationToken, Task> func, MomentClock clock)
         : this(name, (Delegate)func, clock)
     { }
 
@@ -31,14 +31,14 @@ public sealed record ShardRunnable : IRunnable
 
     public async Task Run(IRunnableRunner runner, CancellationToken cancellationToken)
     {
-        var shardLease = (ShardLease)runner;
+        var shardOwnership = (ShardOwnership)runner;
         ILogger? log = null;
         var tryIndex = 0;
         var retryLogger = (RetryLogger?)null;
         while (true) {
             try {
                 while (true) {
-                    await InvokeFunc(shardLease, cancellationToken).ConfigureAwait(false);
+                    await InvokeFunc(shardOwnership, cancellationToken).ConfigureAwait(false);
                     if (RepeatDelay is not { } repeatDelay)
                         return;
 
@@ -46,7 +46,7 @@ public sealed record ShardRunnable : IRunnable
                 }
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                log ??= shardLease.ShardBroker.Log;
+                log ??= shardOwnership.ShardOwner.Log;
                 if (RetryPolicy is not { } retryPolicy || !retryPolicy.MustRetry(e, ref tryIndex)) {
                     log.LogError(e, "{Name} failed", Name);
                     throw;
@@ -68,10 +68,10 @@ public sealed record ShardRunnable : IRunnable
 
     // Private methods
 
-    private Task InvokeFunc(ShardLease shardLease, CancellationToken cancellationToken)
+    private Task InvokeFunc(ShardOwnership shardOwnership, CancellationToken cancellationToken)
         => Func switch {
-            Func<ShardLease, CancellationToken, Task> f1 => f1.Invoke(shardLease, cancellationToken),
-            Func<int, CancellationToken, Task> f2 => f2.Invoke(shardLease.ShardIndex, cancellationToken),
+            Func<ShardOwnership, CancellationToken, Task> f1 => f1.Invoke(shardOwnership, cancellationToken),
+            Func<int, CancellationToken, Task> f2 => f2.Invoke(shardOwnership.ShardIndex, cancellationToken),
             _ => throw StandardError.Internal($"Invalid Implementation type: {Func.GetType()}."),
         };
 }

@@ -43,4 +43,6 @@ public static class MediaTypeExt
         => contentType?.OrdinalIgnoreCaseStartsWith("image/") ?? false;
     public static bool IsVideo(string? contentType)
         => contentType?.OrdinalIgnoreCaseStartsWith("video/") ?? false;
+    public static bool IsVisualMedia(string? contentType)
+        => IsImage(contentType) || IsVideo(contentType);
 }

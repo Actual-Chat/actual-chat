@@ -8,6 +8,8 @@ public class FlowRegistryBuilder
     private readonly Dictionary<Type, Symbol> _flowNameByType = new(64);
 
     public IReadOnlyDictionary<Symbol, Type> Flows => _flows;
+    public bool UseMasterFlows { get; set; } = true;
+    public bool UseLegacyFlows { get; set; } = true;
 
     public FlowRegistryBuilder Add<TFlow>(Symbol name = default)
         where TFlow : Flow
@@ -15,7 +17,7 @@ public class FlowRegistryBuilder
 
     public FlowRegistryBuilder Add(Type flowType, Symbol name = default)
     {
-        Flow.RequireCorrectType(flowType);
+        RequireFlowType(flowType);
         if (_flowNameByType.ContainsKey(flowType))
             throw Errors.KeyAlreadyExists();
 
@@ -24,5 +26,13 @@ public class FlowRegistryBuilder
         _flows.Add(name, flowType);
         _flowNameByType.Add(flowType, name);
         return this;
+    }
+
+    // RequireFlowType
+
+    private static void RequireFlowType(Type type)
+    {
+        if (!typeof(Flow).IsAssignableFrom(type))
+            throw Errors.MustBeAssignableTo<Flow>(type);
     }
 }

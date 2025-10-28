@@ -92,6 +92,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
         var isPlayCommandProcessed = false;
         try {
             // We might send 0-20-40ms tracks, so the JS side should support this
+            var frameCount = 0;
             var frames = Source.GetFramesUntyped(cancellationToken);
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 if (!isPlayCommandProcessed) {
@@ -101,7 +102,9 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
                 while (_commandQueue.Reader.TryRead(out var command))
                     await ProcessCommand(command, cancellationToken).ConfigureAwait(false);
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
+                frameCount++;
             }
+            Log.LogDebug("Processed {FrameCount} frames for track {Id}", frameCount, trackInfo.TrackId);
 
             // Note that end command shouldn't be cancelled with cancellationToken
             // this prevents sending (end + stop) commands simultaneously, don't change this.
@@ -134,7 +137,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
                 try {
                     if (!isPlayCommandProcessed)
                         await playTask.AsTask()
-                            .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
+                            .WaitAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                             .ConfigureAwait(false);
                     var abortResult = await ProcessCommand(AbortCommand.Instance, CancellationToken.None).AsTask()
                         .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
@@ -142,7 +145,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
                     if (abortResult.HasError)
                         SetEndState(abortResult.Error);
                     await WhenCompleted
-                        .WaitResultAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
+                        .WaitAsync((stopTime - clock.Now).Positive(), CancellationToken.None)
                         .ConfigureAwait(false);
                 }
                 catch (Exception ex) {
@@ -180,8 +183,10 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
             catch (Exception ex) {
                 Log.LogError(ex, "Error on StateChanged handler(state) invocation");
             }
-            if (state.IsEnded)
+            if (state.IsEnded) {
+                Log.LogDebug("TrackPlayer for track {Id} ended", trackInfo.TrackId);
                 _whenCompletedSource.TrySetResult();
+            }
         }
     }
 

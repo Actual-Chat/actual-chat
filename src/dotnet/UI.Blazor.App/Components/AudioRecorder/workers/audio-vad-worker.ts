@@ -217,7 +217,8 @@ async function processQueue(): Promise<void> {
             if (typeof vadEvent === 'number') {
                 audioPowerEma.appendSample(vadEvent);
                 // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.value);
-                void stateServer.onAudioPowerChange(audioPowerEma.value, rpcNoWait);
+                if (vad.lastActivityEvent.kind === 'start') // Send gains only when voice activity is detected
+                    void stateServer.onAudioPowerChange(audioPowerEma.value, rpcNoWait);
             }
             else {
                 if (vadEvent.kind === "start") {

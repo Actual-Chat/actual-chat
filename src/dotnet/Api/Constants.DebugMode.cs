@@ -17,7 +17,7 @@ public static partial class Constants
         public static readonly bool RemoteComputedCache = false;
         public static readonly bool WebKvasBackend = false;
         public static readonly bool MeshLocks = false;
-        public static readonly bool ShardBroker = false;
+        public static readonly bool ShardOwner = false;
         public static readonly bool QueueProcessor = false;
         public static readonly bool Flows = false;
 
@@ -33,9 +33,11 @@ public static partial class Constants
         public static readonly bool AudioSource = false;
         public static readonly bool AudioProcessor = true;
         public static readonly bool AudioPlayback = false;
+        public static readonly bool NativeAudioPlayback = false;
+
         public static bool AudioPlaybackPlayMyOwnAudio
             => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
-        public static readonly bool AudioRecording = false;
+        public static readonly bool AudioRecording = true;
         public static readonly bool AudioRecordingStream = false;
 
         // Transcription

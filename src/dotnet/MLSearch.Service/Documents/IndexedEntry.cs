@@ -12,6 +12,6 @@ public sealed record IndexedEntry : IHasId<TextEntryId>, IHasRoutingKey<TextEntr
     // Computed
     public ChatId ChatId => Id.ChatId;
 
-    public static string? GetRoutingKey(TextEntryId? id)
-        => id?.ChatId.Value;
+    public static string GetRoutingKey(TextEntryId? id)
+        => id?.ChatId.Value ?? "";
 }

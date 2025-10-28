@@ -38,7 +38,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     public NatsQueueProcessor(NatsQueues.Options settings, NatsQueues queues, QueueRef queueRef)
         : base(settings, queues, queueRef)
     {
-        ActionLocks = ShardBroker.Host.ShardLockRoot.WithKeyPrefix(ShardScheme.Name.DotPrepend(nameof(ActionLocks)));
+        ActionLocks = queues.ActionLocks.WithKeyPrefix(ShardScheme.Name);
         _instancePrefix = queues.NatsSettings.InstancePrefix;
     }
 
@@ -110,9 +110,11 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         var expireIn = Settings.IdleTimeout.ToRandom(0.25);
         using var stopCts = cancellationToken.CreateLinkedTokenSource();
         var stopToken = stopCts.Token;
+        using var processingStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
+        var processingStopToken = processingStopCts.Token;
 
-        while (!stopToken.IsCancellationRequested) {
-            // retry pull until cancellation is requested
+        while (true) {
+            processingStopToken.ThrowIfCancellationRequested(); // HandleMessage cancels it on DI container disposal
             var consumer = await GetConsumer(shardIndex, stopToken).ConfigureAwait(false);
             DebugLog?.LogDebug(
                 "NATS: pulling messages from consumer='{Consumer}' stream='{Stream}' shard='{ShardIndex}'",
@@ -135,10 +137,15 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             var degreeOfParallelism = ShardScheme.DegreeOfParallelism ?? Settings.ConcurrencyLevel;
             var parallelOptions = new ParallelOptions {
                 MaxDegreeOfParallelism = degreeOfParallelism,
-                CancellationToken = stopToken,
+                CancellationToken = processingStopToken,
             };
-
             var handledCount = 0;
+
+            // NOTE(AY): Trying to address "Unable to cast object of type
+            // 'NATS.Client.JetStream.Internal.NatsJSFetch1[System.Buffers.IMemoryOwner1[System.Byte]]'
+            // to type 'ActualLab.Fusion.Computed'" via execution context flow suppression.
+            // NOTE(AY): Ended up commenting out the "fix": it slows down the tests somehow.
+            // using var _ = ExecutionContextExt.TrySuppressFlow();
             await Parallel
                 .ForEachAsync(messages, parallelOptions, HandleMessage)
                 .SilentAwait(false); // We swallow all exceptions here
@@ -164,7 +171,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                     // So here we detect this & instantly abort the message reader.
                     if (Services.IsDisposedOrDisposing())
                         // ReSharper disable once AccessToDisposedClosure
-                        stopCts.CancelAndDisposeSilently();
+                        processingStopCts.CancelAndDisposeSilently();
                     throw;
                 }
                 finally {
@@ -172,7 +179,6 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                 }
             }
         }
-        stopToken.ThrowIfCancellationRequested();
     }
 
     // Private methods

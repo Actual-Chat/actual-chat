@@ -1,7 +1,7 @@
 namespace ActualChat.Attributes;
 
 [AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Interface)]
-public sealed class BackendClientAttribute(string shardScheme) : Attribute
+public sealed class BackendClientAttribute(string hostRole) : Attribute
 {
-    public string ShardScheme { get; } = shardScheme;
+    public string HostRole { get; } = hostRole;
 }

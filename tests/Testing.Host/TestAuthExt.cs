@@ -54,16 +54,7 @@ public static class TestAuthExt
 
         var command = new AuthBackend_SignIn(session, user, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
-
-        // Wait till the authentication happens
-        var cAccount = await Computed
-            .Capture(() => accounts.GetOwn(session, cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        cAccount = await cAccount
-            .When(x => !x.IsGuestOrNull(), cancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
-            .ConfigureAwait(false);
-        return cAccount.Value;
+        return await WaitTillAuthenticationHappened(accounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }
 
     // TODO: (FC) Remove when AY takes a look at hanging Account.GetOwn on client side
@@ -77,21 +68,14 @@ public static class TestAuthExt
         var userIdentity = user.Identities.Keys.First();
         var commander = tester.AppServices.Commander();
 
-        var command = new AuthBackend_SignIn(tester.Session, user, userIdentity);
+        var session = tester.Session;
+        var command = new AuthBackend_SignIn(session, user, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
-        // Wait till the authentication happens
         var accounts = tester.ClientServices.GetRequiredService<IAccounts>();
         // TODO(FC): remove this debug line after AY
         var accountFull = await accounts.GetOwn(tester.Session, cancellationToken);
-        var cAccount = await Computed
-            .Capture(() => accounts.GetOwn(tester.Session, cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        cAccount = await cAccount
-            .When(x => !x.IsGuestOrNull(), cancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
-            .ConfigureAwait(false);
-        return cAccount.Value;
+        return await WaitTillAuthenticationHappened(accounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }
 
     public static Task SignOut(
@@ -122,6 +106,22 @@ public static class TestAuthExt
         string user,
         string password)
         => await ClientSignInWith(GoogleDefaults.AuthenticationScheme, user, password, page);
+
+    private static async Task<AccountFull> WaitTillAuthenticationHappened(
+        IAccounts accounts,
+        Session session,
+        UserIdentity userIdentity,
+        CancellationToken cancellationToken)
+    {
+        var cAccount = await Computed
+            .Capture(() => accounts.GetOwn(session, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        cAccount = await cAccount
+            .When(x => !x.IsGuestOrNull() && x.User.Identities.Keys.Contains(userIdentity), cancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
+            .ConfigureAwait(false);
+        return cAccount.Value;
+    }
 
     private static async Task ClientSignInWith(string authScheme, string user, string password, IPage page)
     {

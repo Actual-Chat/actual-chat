@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
+using ActualChat.UI.Blazor.App.Components.AudioPlayer;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
 using ActualChat.UI.Blazor.App.Components.Settings;
@@ -35,12 +36,14 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(_ => new AnalyticEvents());
         services.AddScoped(c => new NavbarUI(c));
         services.AddScoped(c => new PanelsUI(c.UIHub()));
+        services.AddScoped(c => new RightPanelStoredState(c.UIHub()));
         services.AddScoped(c => new AuthorUI(c.AppUIHub()));
         services.AddScoped(c => new EditMembersUI(c.AppUIHub()));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
         // Chat UI
         fusion.AddService<ChatUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ConversationUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
@@ -54,6 +57,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new FileUploader(c.UIHub()));
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
+        services.AddScoped(_ => new AudioFocusService());
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c.AppUIHub()));
@@ -181,11 +185,15 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<NotificationUI>());
         }
 
-        // Streaming
+        // Audio
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
-        services.AddScoped<AudioInitializer>(c => new AudioInitializer(c.UIHub()));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c.AppUIHub()));
+        services.AddScoped<IAudioRecorderBackend>(c => c.GetRequiredService<AudioRecorder>());
+        services.AddScoped<RecorderStateHub>(c => new RecorderStateHub(c.UIHub()));
         if (HostInfo.HostKind != HostKind.MauiApp) {
+            services.AddScoped<IAudioInitializer>(c => new AudioInitializer(c.UIHub()));
+            services.AddScoped<IAudioRecorderEngine>(c => new WebRecorderEngine(c.AppUIHub()));
+            services.AddScoped<IAudioPlaybackEngineFactory>(c => new WebAudioPlaybackEngineFactory(c));
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
@@ -195,5 +203,13 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddTypeMap<IModalView>(map => map
             .Add<RecordingTroubleshooterModal.Model, RecordingTroubleshooterModal>()
         );
+
+        // Sending messages & File uploads
+        fusion.AddService<ChatSendingMessagesTriggers>(ServiceLifetime.Scoped);
+        services.AddScoped(c => new SendingMessages(c.AppUIHub()));
+        services.AddScoped(c => new FileUploaderService(c));
+        services.AddScoped<UploadSessions>(c => new UploadSessions(c.AppUIHub()));
+        services.AddScoped(c => new AttachmentsController(c.AppUIHub()));
+        services.AddScoped(c => new IncomingShareAfterSendMessageHandler(c.AppUIHub()));
     }
 }

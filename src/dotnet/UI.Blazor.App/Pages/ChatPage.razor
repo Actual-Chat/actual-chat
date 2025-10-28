@@ -2,6 +2,7 @@
 @page "/chat/{*Route}"
 @layout ListViewLayout
 @using ActualChat.Hosting
+@using RightPanel = ActualChat.UI.Blazor.App.Components.RightPanel
 @inherits ComputedStateComponent<AppUIHub, ChatPage.Model?>
 @{
     var m = Rendered = State.Value;
@@ -33,7 +34,7 @@
     } else if (route?.ChatId is not null) {
         <ChatHeader Chat="@null" NoChatTitle="@UnavailableChatTitle"/>
     } else {
-        <SkeletonChatHeader/>
+        <ChatHeaderSkeleton/>
     }
 </RenderIntoSlot>
 
@@ -49,7 +50,7 @@
 </RenderIntoStack>
 
 <RenderIntoSlot Name="@LayoutSlots.MainRightDrawer">
-    <ChatRightPanel Chat="@chat"/>
+    <RightPanel Chat="@chat"/>
 </RenderIntoSlot>
 
 @if (m is null) {

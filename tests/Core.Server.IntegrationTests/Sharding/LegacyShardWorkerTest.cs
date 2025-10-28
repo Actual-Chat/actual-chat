@@ -6,7 +6,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Sharding;
 public class LegacyShardWorkerTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(LegacyShardWorkerTest)}", TestAppHostOptions.None, @out)
 {
-    [Fact(Skip = "AY Should resolve timeout")]
+    [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
         var shardScheme = ShardScheme.TestBackend;
@@ -68,7 +68,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
 
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
-            var thisNode = ShardBroker.Host.ThisNode;
+            var thisNode = ShardOwner.Host.ThisNode;
             Out.WriteLine($"-> OnRun({shardIndex} @ {thisNode.Ref}-{name})");
             await TaskExt.NeverEnding(cancellationToken).SilentAwait();
             Out.WriteLine($"<- OnRun({shardIndex} @ {thisNode.Ref}-{name})");
@@ -93,7 +93,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
 
         public override string ToString()
         {
-            var thisNode = ShardBroker.Host.ThisNode;
+            var thisNode = ShardOwner.Host.ThisNode;
             return $"{thisNode.Ref}-{name}";
         }
 
@@ -102,7 +102,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
             Out.WriteLine($"-> OnRun({shardIndex} @ {this})");
             lock (ShardOwners) {
                 var shardOwners = ShardOwners[shardIndex];
-                if (shardOwners.Any(x => x.ShardBroker != ShardBroker))
+                if (shardOwners.Any(x => x.ShardOwner != ShardOwner))
                     UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
                         $"Shard {shardIndex} @ {this} is used by a worker from another host!"));
                 shardOwners.Add(this);

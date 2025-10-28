@@ -74,10 +74,17 @@ public class AppPresenceReporter : UIWorkerBase<AppUIHub>, IComputeService
     private async Task CheckIn(bool isActive, CancellationToken cancellationToken)
     {
         try {
-            await RpcHub
-                .WhenClientPeerConnected(cancellationToken)
-                .WaitAsync(Constants.Presence.CheckInClientConnectTimeout, cancellationToken)
-                .ConfigureAwait(false);
+            try {
+                await RpcHub
+                    .WhenClientPeerConnected(cancellationToken)
+                    .WaitAsync(Constants.Presence.CheckInClientConnectTimeout, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (TimeoutException) {
+                // Do not log timeout errors, since it's expected. Just retry.
+                _lastCheckInAt.Value += Constants.Presence.CheckInRetryDelay;
+                return;
+            }
             await Commander.Call(new UserPresences_CheckIn(Session, isActive), cancellationToken).ConfigureAwait(false);
             _lastCheckInAt.Value = CpuNow;
         }

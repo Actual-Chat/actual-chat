@@ -7,6 +7,7 @@ using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Fusion.Client;
 using ActualLab.Interception;
+using MathExt = ActualLab.Mathematics.MathExt;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

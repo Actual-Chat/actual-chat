@@ -21,7 +21,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (roleId.ChatId != chatId)
             return null;
 
-        var dbRole = await DbRoleResolver.Get(DbShard.Single, roleId.Value, cancellationToken).ConfigureAwait(false);
+        var dbRole = await DbRoleResolver.Get(roleId.Value, cancellationToken).ConfigureAwait(false);
         return dbRole?.ToModel();
     }
 
