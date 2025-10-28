@@ -95,7 +95,7 @@ function getColors(): string {
 }
 
 function normalizeColor(hexColor: string): string {
-    if (hexColor && hexColor.length === 4)
+    if (hexColor.length === 4)
         return '#' + hexColor[1] + hexColor[1] + hexColor[2] + hexColor[2] + hexColor[3] + hexColor[3];
     return hexColor;
 }
