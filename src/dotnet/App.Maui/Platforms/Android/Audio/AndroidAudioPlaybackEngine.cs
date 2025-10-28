@@ -34,6 +34,9 @@ internal sealed class AndroidAudioPlaybackEngine(
     private Task? _decodeAndFeedTask;
     private PlayPositionListener? _listener;
 
+    // Last known number of played samples (playback head), used as a fallback when AudioTrack is not queryable
+    private int _lastPlayedSamples;
+
     // Android audio routing state
     private bool? _prevSpeakerphoneOn;
     private Mode? _prevAudioMode;
@@ -118,6 +121,10 @@ internal sealed class AndroidAudioPlaybackEngine(
         // Reasonable period to receive callbacks; not too frequent
         _audioTrack.SetPlaybackPositionUpdateListener(_listener);
         _audioTrack.SetPositionNotificationPeriod(Constants.Audio.PcmFrameLength * 10); // 200 ms
+
+        // Reset last known head position before starting playback
+        _lastPlayedSamples = 0;
+
         _audioTrack.Play();
         // Initial report that we're ready to play
         _ = ReportPlaying(0);
@@ -135,7 +142,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         // Enter paused state: create a gate CTS that will be canceled on Resume()
         _pauseCts?.CancelAndDisposeSilently();
         _pauseCts = new CancellationTokenSource();
-        _ = ReportPlaying(_audioTrack.PlaybackHeadPosition);
+        _ = ReportPlaying(GetSafePlayedSamples(_audioTrack));
         return Task.CompletedTask;
     }
 
@@ -148,7 +155,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         _pauseCts?.CancelAndDisposeSilently();
         _pauseCts = null;
         _audioTrack.Play();
-        _ = ReportPlaying(_audioTrack.PlaybackHeadPosition);
+        _ = ReportPlaying(GetSafePlayedSamples(_audioTrack));
         return Task.CompletedTask;
     }
 
@@ -300,6 +307,54 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
     }
 
+    // Safely read playback head position without throwing IllegalStateException
+    private int GetSafePlayedSamples(AudioTrack? track)
+    {
+        try {
+            if (track is null)
+                return GetFeedSamples();
+
+            // Avoid querying head position when the track is stopped or not initialized (released)
+            try {
+                var playState = track.PlayState;
+                if (playState == PlayState.Stopped)
+                    return GetFeedSamples();
+            }
+            catch {
+                // If reading PlayState itself fails, be conservative
+                return GetFeedSamples();
+            }
+
+            try {
+                var state = track.State;
+                // Only query when initialized; after Release() it's typically Uninitialized
+                if (state != Android.Media.AudioTrackState.Initialized)
+                    return GetFeedSamples();
+            }
+            catch {
+                // If we cannot read state reliably, fall back
+                return GetFeedSamples();
+            }
+
+            var head = track.PlaybackHeadPosition; // may throw in illegal state
+            // Clamp to [0, _feedSamples] and avoid regressions
+            var clamped = Math.Max(0, Math.Min(head, _feedSamples));
+            if (clamped < _lastPlayedSamples)
+                clamped = _lastPlayedSamples;
+            _lastPlayedSamples = clamped;
+            return clamped;
+        }
+        catch (Java.Lang.IllegalStateException) {
+            // GetFeedSamples to last known safe value within buffered range
+            return GetFeedSamples();
+        }
+        catch {
+            return GetFeedSamples();
+        }
+
+        int GetFeedSamples() => Math.Min(_feedSamples, _lastPlayedSamples);
+    }
+
     private async Task WaitIfPausedAsync(CancellationToken cancellationToken)
     {
         var gate = Volatile.Read(ref _pauseCts);
@@ -334,10 +389,13 @@ internal sealed class AndroidAudioPlaybackEngine(
         {
             parent.Log.LogDebug("AudioTrack marker reached");
             _whenCompletedSource.TrySetResult(true);
-            if (track is null)
+            if (track is null) {
+                var fallback = parent.GetSafePlayedSamples(null);
+                parent.ReportPlaying(fallback);
                 return;
+            }
 
-            var head = track.PlaybackHeadPosition;
+            var head = parent.GetSafePlayedSamples(track);
             parent.ReportPlaying(head);
         }
 
@@ -346,10 +404,12 @@ internal sealed class AndroidAudioPlaybackEngine(
             // parent.Log.LogDebug("AudioTrack periodic notification");
             if (track is null) {
                 _whenCompletedSource.TrySetResult(false);
+                var fallback = parent.GetSafePlayedSamples(null);
+                parent.ReportPlaying(fallback);
                 return;
             }
 
-            var head = track.PlaybackHeadPosition;
+            var head = parent.GetSafePlayedSamples(track);
             parent.ReportPlaying(head);
         }
     }
