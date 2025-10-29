@@ -2343,7 +2343,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return new(chatId, author, account, (ChatPermissions.SeeMembers | ChatPermissions.Join).AddImplied());
         }
 
-        var permissions = (ChatPermissions.Write | ChatPermissions.SeeMembers | ChatPermissions.Join).AddImplied();
+        var permissions = (ChatPermissions.Write | ChatPermissions.SeeMembers | ChatPermissions.Join | ChatPermissions.EditProperties).AddImplied();
         return new(chatId, author, account, permissions);
     }
 
