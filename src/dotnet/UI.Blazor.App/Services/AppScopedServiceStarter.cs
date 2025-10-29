@@ -141,6 +141,7 @@ public sealed class AppScopedServiceStarter
             Hub.Services.GetRequiredService<ContactSync>().Start();
             _ = Hub.SendingMessages; // Touch
             _ = Hub.UploadSessions; // Touch
+            _ = Hub.LogUI; // Touch
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(AfterFirstRender)} failed");

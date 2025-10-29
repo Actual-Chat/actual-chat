@@ -1,5 +1,4 @@
 @using ActualChat.Hosting
-@using ActualChat.Kvas
 @inherits ComputedStateComponent<AppUIHub, AppSettings.Model>
 @{
     var m = State.Value;
@@ -110,13 +109,13 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await AccountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var appSettings = await AccountSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
         return new(
             settings.IsDataCollectionEnabled ?? false,
             settings.AreExperimentalFeaturesEnabled ?? false,
             settings.IsIncompleteUIEnabled ?? false,
             account.IsAdmin,
-            appSettings.IsLogViewerEnabled ?? false);
+            appSettings.IsLogViewerEnabledOrDefault);
     }
 
     private async Task OnRestartWalkThrough() {
@@ -147,9 +146,8 @@
         });
 
     private Task OnLogUIEnabledClick()
-        // ReSharper disable once WithExpressionModifiesAllMembers
-        => LocalSettings.Update<LocalAppSettings>(x => x with {
-            IsLogViewerEnabled = !(x.IsLogViewerEnabled ?? false),
+        => LocalSettings.LocalAppSettings().Update(x => x with {
+            IsLogViewerEnabled = !x.IsLogViewerEnabledOrDefault,
         });
 
     private void OnLogsClick() {

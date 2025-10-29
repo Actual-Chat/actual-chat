@@ -13,7 +13,7 @@ public static class KvasExt
     public static KvasAccessor<UserAppSettings> UserAppSettings(this IKvas<User> kvas)
         => kvas.For<UserAppSettings>();
 
-    public static KvasAccessor<LocalAppSettings> LocalAppSettings(this IKvas<User> kvas)
+    public static KvasAccessor<LocalAppSettings> LocalAppSettings(this IKvas kvas)
         => kvas.For<LocalAppSettings>();
 
     public static KvasAccessor<UserTranscriptionEngineSettings> UserTranscriptionEngineSettings(this IKvas<User> kvas)
