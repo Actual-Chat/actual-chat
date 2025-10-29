@@ -4,6 +4,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
+    private const int MustSuggestTranslationChatListSizeLimit = 50;
+    private readonly List<ChatId> _mustSuggestTranslationChatList = new ();
+
     [field: AllowNull, MaybeNull]
     private ThrottledTranslations Translations => field ??= Hub.Services.GetRequiredService<ThrottledTranslations>();
     private ChatUI ChatUI => Hub.ChatUI;
@@ -15,6 +18,10 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
         var isVisible = await GetSubHeaderVisibility(chatId, cancellationToken).ConfigureAwait(false);
         if (isVisible != null)
             return isVisible.Value;
+
+        // Keep the header visible if it was suggested to show before during the app session.
+        if (await GetStoredMustSuggest(chatId, cancellationToken).ConfigureAwait(false))
+            return true;
 
         return await MustSuggest(chatId, cancellationToken).ConfigureAwait(false);
     }
@@ -122,10 +129,20 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
            return false;
 
        foreach (var entryId in itemVisibility.VisibleEntryIds)
-           if (await IsForeignEntry(entryId, true, cancellationToken).ConfigureAwait(false) == true)
+           if (await IsForeignEntry(entryId, true, cancellationToken).ConfigureAwait(false) == true) {
+               using(Computed.BeginIsolation())
+                   StoreMustSuggest(chatId);
                return true;
+           }
 
        return false;
+   }
+
+   [ComputeMethod]
+   protected virtual Task<bool> GetStoredMustSuggest(ChatId chatId, CancellationToken cancellationToken)
+   {
+       lock (_mustSuggestTranslationChatList)
+           return Task.FromResult(_mustSuggestTranslationChatList.Contains(chatId));
    }
 
    [ComputeMethod]
@@ -187,4 +204,24 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
    private ChatId GetTranslationSettingsTargetChatId(ChatId chatId)
        => chatId.IsThread(out var threadChatId) ? threadChatId.GetOutermostParent() : chatId;
+
+   private void StoreMustSuggest(ChatId chatId)
+   {
+       ChatId? removedChatId = null;
+       lock (_mustSuggestTranslationChatList) {
+           if (_mustSuggestTranslationChatList.Contains(chatId))
+               return;
+
+           if (_mustSuggestTranslationChatList.Count >= MustSuggestTranslationChatListSizeLimit) {
+               removedChatId = _mustSuggestTranslationChatList[0];
+               _mustSuggestTranslationChatList.RemoveAt(0);
+           }
+           _mustSuggestTranslationChatList.Add(chatId);
+       }
+       using (Invalidation.Begin()) {
+           _ = GetStoredMustSuggest(chatId, default);
+           if (removedChatId is not null)
+               _ = GetStoredMustSuggest(removedChatId, default);
+       }
+   }
 }
