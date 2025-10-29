@@ -1,13 +1,42 @@
+using System.Diagnostics;
 using ActualChat.App.Server;
 using ActualLab.Fusion.EntityFramework.Operations;
 using ActualLab.Testing.Output;
+using Timer = System.Timers.Timer;
 
 namespace ActualChat.Testing.Host;
 
-public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor outputAccessor) : AppHost
+public class TestAppHost : AppHost
 {
-    public TestAppHostOptions Options { get; } = options;
-    public TestOutputHelperAccessor OutputAccessor { get; } = outputAccessor;
+    private static long _hostIdSeed;
+    private long _hostId;
+    private readonly Timer _timer;
+    private int _tickCount;
+
+    public TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor outputAccessor)
+    {
+        Options = options;
+        OutputAccessor = outputAccessor;
+        _hostId = Interlocked.Increment(ref _hostIdSeed);
+        var timestamp = Stopwatch.GetTimestamp();
+        _timer = new Timer(200);
+        _timer.Elapsed += (_, _) => LogElapsedTime();
+        _timer.Start();
+        LogElapsedTime();
+        return;
+
+        void LogElapsedTime()
+        {
+            var testOutputHelper = outputAccessor.Output;
+            if (testOutputHelper != null) {
+                var elapsedMs = (int)Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
+                testOutputHelper.WriteLine($"** TestAppHost.Timer, id={_hostId}, instance {Options.InstanceName}, tick {_tickCount++}, elapsed {elapsedMs}ms");
+            }
+        }
+    }
+
+    public TestAppHostOptions Options { get; }
+    public TestOutputHelperAccessor OutputAccessor { get; }
 
     public ITestOutputHelper? Output {
         get => OutputAccessor.Output;
@@ -17,14 +46,16 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
     protected override void Dispose(bool disposing)
     {
         var log = Services.LogFor(GetType());
-        log.LogInformation("-> TestAppHost.Dispose, instance {InstanceName}", Options.InstanceName);
+        log.LogInformation("-> TestAppHost.Dispose, id={Id}, instance={InstanceName}", _hostId, Options.InstanceName);
         if (disposing) {
             // NOTE(AY): These types were heavily rewritten, so let's try to disable this for now.
             // DisposeDbOperationCompletionNotifiers();
             _ = Services.Queues().Purge();
         }
         base.Dispose(disposing);
-        log.LogInformation("<- TestAppHost.Dispose, instance {InstanceName}", Options.InstanceName);
+        _timer.Stop();
+        _timer.Dispose();
+        log.LogInformation("<- TestAppHost.Dispose, id={Id}, instance={InstanceName}", _hostId, Options.InstanceName);
     }
 
     private void DisposeDbOperationCompletionNotifiers()

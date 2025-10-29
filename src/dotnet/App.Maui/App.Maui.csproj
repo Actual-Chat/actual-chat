@@ -155,8 +155,9 @@
 
   <!-- Platform-specific package references -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" >
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
     <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
@@ -189,11 +190,12 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
 <!--    Commented out as both runtime and DirectML runtime have same biney names -->
 <!--    <PackageReference Include="Microsoft.ML.OnnxRuntime">-->
 <!--      <ExcludeAssets>runtime</ExcludeAssets>-->
 <!--    </PackageReference>-->
-    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
+<!--    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />-->
     <PackageReference Include="NAudio" />
     <PackageReference Include="OpusSharp.Core" />
   </ItemGroup>
@@ -494,6 +496,9 @@
     <AndroidNativeLibrary Include="runtimes\android-$(AndroidSupportedAbis)\native\*.so" />
     <!-- Explicitly include Opus for the ABIs we ship -->
     <AndroidNativeLibrary Include="runtimes\android-arm64-v8a\native\libopus.so">
+      <Abi>arm64-v8a</Abi>
+    </AndroidNativeLibrary>
+    <AndroidNativeLibrary Include="runtimes\android-arm64-v8a\native\libonnxruntime.so">
       <Abi>arm64-v8a</Abi>
     </AndroidNativeLibrary>
   </ItemGroup>
