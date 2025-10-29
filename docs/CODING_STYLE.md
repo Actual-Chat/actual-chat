@@ -1,21 +1,67 @@
 # Coding Style Guide
 
-This document describes the coding conventions used in the Voxt (formerly Actual Chat) project that differ from standard .NET conventions.
+This document describes the coding conventions used in Voxt (formerly Actual Chat) project that differ from standard .NET conventions.
 
 ## General Principles
 
-- Follow .NET and C# best practices for code style and structure, BUT if you see a different convention is used in the existing source code, stick to it.
-- DON'T write XML documentation comments for public APIs UNLESS they are already there.
+- The coding style documented here takes precedence over standard .NET conventions, so...
+- Follow .NET and C# best practices for code style and structure, BUT if you see a different convention is used here or in the existing source code, stick to it.
+- All modern C# language features are preferred over the legacy ones. In particular:
+  - Use file-scoped namespaces
+  - Use pattern matching
+  - Use record types and default constructors
+  - Use expression-bodied members
+  - Use field-backed auto-properties and field keyword
+  - Use nullable reference types
+  - Use var instead of explicit types
+  - etc.
+- When in Doubt, examine existing code in the same area and match its style.
 
 ## Key Differences from Default .NET Conventions
 
+
 ### File Organization
 
+#### File placement:
+- `src/` for the source code
+- `tests/` for test projects
+- `docs/` for documentation
+  
+#### Line Lengths and Indentation:
 - **Maximum line length**: **120 characters**
 - **Line endings**: use **LF** (`\n`) for all files (not CRLF)
 - **Indent sizes**:
-  - **4 spaces** for C#, TypeScript, and CSS code
-  - **2 spaces** for XML, JSON, YAML, and project files (instead of 4).
+    - **4 spaces** for C#, TypeScript, and CSS code
+    - **2 spaces** for XML, JSON, YAML, and project files (instead of 4).
+
+#### Method Parameters and Arguments Formatting:
+- Maximum **4 formal parameters** on a single line (more restrictive than default)
+- Maximum **6 invocation arguments** on a single line (more restrictive than default).
+
+#### Attribute Formatting:
+- Maximum attribute length for the same line: **70 characters** (more restrictive than default)
+- Place field attributes on separate lines
+- Place accessor holder attributes on separate lines (unless the owner is single-line).
+
+#### Comments and XML Documentation:
+- Prefer regular comments over XML documentation
+- **DON'T write XML documentation comments for public APIs UNLESS they are already there**
+- When XML documentation exists, maintain its style and completeness.
+
+#### Multi-targeting
+- Follow the project's multi-targeting patterns with conditional compilation.
+
+### Global Usings
+
+`Directory.Build.props` files may define some global usings, such as:
+
+```xml
+<Using Include="ActualLab" />
+<Using Include="ActualLab.Api" />
+<Using Include="ActualLab.Async" />
+```
+
+Search for `<Using>` to get the full list. Avoid adding explicit usings for global usings.
 
 ### Naming Conventions
 
@@ -29,7 +75,7 @@ This document describes the coding conventions used in the Voxt (formerly Actual
 - **Everything else**: opening brace on **same line** (K&R style)
 - **Any razor code**: opening brace on **same line** (K&R style).
 
-So in particular, the opening brace must be on **same line** (K&R style) for the following: 
+So in particular, the opening brace must be on **same line** (K&R style) for the following:
 - Properties, accessors, local methods, anonymous methods
 - If blocks, case blocks, and all other blocks that could be used inside method bodies
 
@@ -65,24 +111,14 @@ More restrictive than default:
 
 ### Code Style Preferences
 
-- **Expression-bodied members**: preferred for **all member types** 
+- **Expression-bodied members**: preferred for **all member types**
   including methods and constructors (default only suggests for properties/accessors).
   The `=>` arrow for one-line methods should be on the same line as return expression,
   and it's preferred to move it to the dedicated line for class method bodies,
   but not for property accessors.
-- **Braces for single statements**: optional/not required (set to `suggestion` instead of `warning`),
-  typically they're used only if the statement is prefixed with a comment.
-
-### Method Parameters and Arguments
-
-- Maximum **4 formal parameters** on a single line (more restrictive than default)
-- Maximum **6 invocation arguments** on a single line (more restrictive than default).
-
-### Attributes
-
-- Maximum attribute length for same line: **70 characters** (more restrictive than default)
-- Place field attributes on separate lines
-- Place accessor holder attributes on separate lines (unless owner is single-line).
+- **Braces for single statements** are not required,
+  typically they're used only if the statement is prefixed with a comment,
+  or when it significantly improves the readability.
 
 ### Using Directives
 
@@ -94,21 +130,21 @@ Members within a class should be ordered as follows:
 
 1. **Settings-style nested type**, if any.
    The instance of this type is passed to every constructor.
-   Other nested types are placed at the very end of the class. 
+   Other nested types are placed at the very end of the class.
 2. **Static fields** (public readonly, then public, then private)
 3. **Instance fields** (private, then internal)
 4. **Instance properties and public fields** ()
-   - Private, then protected properties - typically they are DI injected 
-   - Public properties and fields are located closer to the constructor
+    - Private, then protected properties - typically they are DI injected
+    - Public properties and fields are located closer to the constructor
 5. Lazy style is often preferred for DI-injected properties,
    especially in the UI-related code.
    Use `[field: AllowNull, MaybeNull]` with null-coalescing assignment of
    Services.GetRequiredService<T>()`
 6. **Constructor-like static NewXxx-style methods**
-7. **Constructors** (public, then private), 
+7. **Constructors** (public, then private),
    though primary constructors are preferred.
 8. **Public methods**, ordered by importance/usage frequency.
-9. **Protected/internal methods**. 
+9. **Protected/internal methods**.
    Use `// Protected/internal methods` comment to separate this section
 10. **Private methods**, such as helper methods and utilities.
     Use `// Private methods` comment to separate this section.
@@ -116,21 +152,21 @@ Members within a class should be ordered as follows:
     Use `// Nested types` comment to separate this section.
 
 For typical RPC API (interface):
-1. Read methods go first. 
+1. Read methods go first.
    Typically, these are `[ComputeMethod]` methods.
 2. Write methods go next,
    Typically, these are `[CommandHandler]` methods.
-3. Command handler methods should have `On` prefix 
+3. Command handler methods should have `On` prefix
    (e.g., `OnChange`, `OnUpdate`).
-4. Command handler commands should be declared right after API interface 
-   in the same file. Their names should start with `{InterfaceNameWithoutI}_` 
+4. Command handler commands should be declared right after API interface
+   in the same file. Their names should start with `{InterfaceNameWithoutI}_`
    prefix, e.g., `Chat_Edit` for `IChat` interface.
 
 Special cases:
-- **API implementation classes** should have the same member order 
+- **API implementation classes** should have the same member order
   as in the API interface.
 - **DI injected services** typically follow more specific to more general
-  order, so services like `ILogger` are placed at the very end of 
+  order, so services like `ILogger` are placed at the very end of
   DI injected member set.
 - If it's hard to determine the order, use alphabetical order.
 
@@ -226,21 +262,21 @@ public class Chats(IServiceProvider services) : IChats
 }
 ```
 
-2. **API records** should be fully serializable, 
-which typically implies presence of the following attributes: 
+2. **API records** should be fully serializable,
+   which typically implies presence of the following attributes:
 ```csharp
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor, SerializationConstructor, JsonConstructor]
 public sealed partial record TextEntry(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] long LocalId,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] string Content)
+    [property: DataMember(Order = 0), MemoryPackOrder(0), Key(0)] long LocalId,
+    [property: DataMember(Order = 1), MemoryPackOrder(1), Key(1)] string Content)
 { }
 ```
 
-3. **.ConfigureAwait(false)** is must be used in all async calls 
-in service layer code, and **.ConfigureAwait(true)** is typically needed 
-in the UI code, if the code after `await` uses instance properties
-or fields. Otherwise, it could be `ConfigureAwait(false)`.
+3. **.ConfigureAwait(false)** must be used in all async calls
+   in service layer code, and **.ConfigureAwait(true)** is typically needed
+   in the UI code, if the code after `await` uses instance properties
+   or fields. Otherwise, it could be `ConfigureAwait(false)`.
 
 Here is an example of how `.ConfigureAwait(false)` can be used in the UI code:
 ```csharp
@@ -260,15 +296,13 @@ public override async Task Require(CancellationToken cancellationToken)
 }
 ```
 
-### Disabled/Silenced Analyzers
+4. Two overloads similar to `.ConfigureAwait(...)` are used:
+- `.SilentAwait(true/false)` awaits a task w/o throwing any exceptions
+- `.ResultAwait(true/false)` awaits a task and returns `Result<T>` w/o throwing any exceptions.
 
-The following analyzers are disabled or set to silent in this project:
-- `IDE0032`: Use auto properties (silent)
-- `IDE0058`: Expression value is never used (silent)
-- `IDE1006`: Naming rule violations (none)
-- `RCS1001`: Add braces when expression spans multiple lines (none)
-- `RCS1139`: Add summary element to documentation comment (none)
-- `CA2007`: ConfigureAwait (none for Razor/Components)
-- `MA0004`: ConfigureAwait (none for Razor/Components)
 
-See [`.editorconfig`](../.editorconfig) for the complete list of analyzer configurations.
+### Disabled/Silenced Warnings
+
+Search for `<NoWarn>` to see the list of disabled warnings.
+
+See [`.editorconfig`](../.editorconfig) for the complete list of silenced analyzer warnings.
