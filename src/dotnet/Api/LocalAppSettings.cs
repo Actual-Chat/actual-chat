@@ -7,4 +7,6 @@ namespace ActualChat;
 public partial record LocalAppSettings : IHasKvasKey<LocalAppSettings>
 {
     [DataMember, MemoryPackOrder(0)] public bool? IsLogViewerEnabled { get; init; }
+    [IgnoreDataMember, MemoryPackIgnore]
+    public bool IsLogViewerEnabledOrDefault => IsLogViewerEnabled ?? true;
 }

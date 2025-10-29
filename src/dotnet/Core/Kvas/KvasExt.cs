@@ -11,6 +11,10 @@ public static class KvasExt
 
     // Get, Set, Remove w/ <T>
 
+    public static KvasAccessor<T> For<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
+        this IKvas kvas) where T : class, IHasKvasKey<T>, new()
+        => new (kvas, T.KvasKey);
+
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "T is marked with DynamicallyAccessedMembers.")]
     public static async ValueTask<T?> Get<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>

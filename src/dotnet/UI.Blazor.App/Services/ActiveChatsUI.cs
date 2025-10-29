@@ -1,5 +1,4 @@
 using ActualChat.Kvas;
-using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Locking;
 
@@ -58,7 +57,7 @@ public class ActiveChatsUI : UIServiceBase<AppUIHub>
                     chat = chat with { IsRecording = false };
 
                 var userChatSettings = await AccountSettings
-                    .GetUserChatSettings(chat.ChatId, cancellationToken)
+                    .UserChatSettings(chat.ChatId).Get(cancellationToken)
                     .ConfigureAwait(false);
                 var listeningMode = userChatSettings.ListeningMode;
                 var listeningDuration = listeningMode.GetInfo().Duration;

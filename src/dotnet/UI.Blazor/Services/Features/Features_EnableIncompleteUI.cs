@@ -13,8 +13,9 @@ public class Features_EnableIncompleteUI : FeatureDef<bool>, IClientFeatureDef
         if (!account.IsAdmin)
             return false;
 
-        var accountSettings = services.AccountSettings();
-        var appSettings = await accountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
-        return appSettings.IsIncompleteUIEnabled ?? false;
+        return await services.AccountSettings()
+            .UserAppSettings()
+            .Get(x => x.IsIncompleteUIEnabled ?? false, cancellationToken)
+            .ConfigureAwait(false);
     }
 }

@@ -141,8 +141,8 @@ public partial class StreamingBackend
     private async Task<Language[]> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
     {
         var kvas = ServerKvas.GetClient(record.Session);
-        var settings = await kvas.GetUserChatSettings(record.ChatId, cancellationToken).ConfigureAwait(false);
-        var languageSettings = await kvas.GetUserLanguageSettings(cancellationToken).ConfigureAwait(false);
+        var settings = await kvas.UserChatSettings(record.ChatId).Get(cancellationToken).ConfigureAwait(false);
+        var languageSettings = await kvas.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
         var language = await settings.LanguageOrPrimary(kvas, cancellationToken).ConfigureAwait(false);
         Language?[] languages = [
             language,
@@ -158,7 +158,7 @@ public partial class StreamingBackend
     private async Task<TranscriptionEngine> GetTranscriptionEngine(AudioRecord record, CancellationToken cancellationToken)
     {
         var kvas = ServerKvas.GetClient(record.Session);
-        var settings = await kvas.GetUserTranscriptionEngineSettings(cancellationToken).ConfigureAwait(false);
+        var settings = await kvas.UserTranscriptionEngineSettings().Get(cancellationToken).ConfigureAwait(false);
         return settings.TranscriptionEngine;
     }
 

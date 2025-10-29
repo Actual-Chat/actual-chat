@@ -141,6 +141,7 @@ public sealed class AppScopedServiceStarter
             Hub.Services.GetRequiredService<ContactSync>().Start();
             _ = Hub.SendingMessages; // Touch
             _ = Hub.UploadSessions; // Touch
+            _ = Hub.LogUI; // Touch
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(AfterFirstRender)} failed");
@@ -157,7 +158,7 @@ public sealed class AppScopedServiceStarter
             return;
 
         var accountSettings = Hub.AccountSettings;
-        var settings = await accountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
+        var settings = await accountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var isDataCollectionEnabled = settings.IsDataCollectionEnabled;
         if (!isDataCollectionEnabled.HasValue)
             return;

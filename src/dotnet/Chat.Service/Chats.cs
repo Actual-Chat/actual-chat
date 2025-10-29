@@ -1,6 +1,5 @@
 using ActualChat.Contacts;
 using ActualChat.Users;
-using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.Chat;
 
@@ -279,8 +278,12 @@ public class Chats(IServiceProvider services) : IChats
                     : ChatPermissions.EditProperties;
                 chat.Require().Rules.Permissions.Require(requiredPermissions);
 
-                if (change.IsUpdate(out var chatDiff2))
-                    await ValidatePlaceChatChangeConstraints((chat.Id as PlaceChatId)?.PlaceId, chatDiff2).ConfigureAwait(false);
+                if (change.IsUpdate(out var chatDiff2)) {
+                    await ValidatePlaceChatChangeConstraints((chat.Id as PlaceChatId)?.PlaceId, chatDiff2)
+                        .ConfigureAwait(false);
+                    if (chat.Id is PeerChatId)
+                        ValidatePeerChatChangeConstraints(chatDiff2);
+                }
             }
         }
 
@@ -322,6 +325,24 @@ public class Chats(IServiceProvider services) : IChats
             var isOwner = place.Rules.IsOwner();
             if (!isOwner && chatDiff.IsPublic == true)
                 throw StandardError.NotEnoughPermissions("Make chat public");
+        }
+
+        static void ValidatePeerChatChangeConstraints(ChatDiff chatDiff)
+        {
+            chatDiff.Title.RequireNull("Title");
+            chatDiff.Description.RequireNull("Description");
+            chatDiff.MediaId.RequireNull("MediaId");
+            chatDiff.AliasId.RequireNull("AliasId");
+            chatDiff.IsArchived.HasValue.RequireFalse("IsArchived");
+            chatDiff.IsPublic.HasValue.RequireFalse("IsPublic");
+            chatDiff.IsTemplate.HasValue.RequireFalse("IsTemplate");
+            chatDiff.TemplateId.HasValue.RequireFalse("TemplateId");
+            chatDiff.TemplatedForUserId.HasValue.RequireFalse("TemplatedForUserId");
+            chatDiff.Kind.HasValue.RequireFalse("Kind");
+            chatDiff.SystemTag.HasValue.RequireFalse("SystemTag");
+            chatDiff.AllowAnonymousAuthors.HasValue.RequireFalse("AllowAnonymousAuthors");
+            chatDiff.AllowGuestAuthors.HasValue.RequireFalse("AllowGuestAuthors");
+            chatDiff.PlaceId.RequireNull("PlaceId");
         }
     }
 
@@ -739,11 +760,11 @@ public class Chats(IServiceProvider services) : IChats
         async Task<bool> UpdateUserChatSettings(UserId userId)
         {
             var userKvas = ServerKvasBackend.GetUserClient(userId);
-            var userChatSettings = await userKvas.GetUserChatSettings(sourceChatId, cancellationToken).ConfigureAwait(false);
+            var userChatSettings = await userKvas.UserChatSettings(sourceChatId).Get(cancellationToken).ConfigureAwait(false);
             if (userChatSettings == UserChatSettings.Default)
                 return false;
 
-            await userKvas.SetUserChatSettings(newChatId, userChatSettings, cancellationToken).ConfigureAwait(false);
+            await userKvas.UserChatSettings(newChatId).Set(userChatSettings, cancellationToken).ConfigureAwait(false);
             return true;
         }
 

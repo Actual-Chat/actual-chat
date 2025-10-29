@@ -303,8 +303,8 @@ public partial class ChatAudioUI
             await stopTasks.Collect(ApiConstants.Concurrency.Unlimited, cancellationToken).ConfigureAwait(false);
 
             foreach (var chatId in toStart) {
-                var userChatSettings = await AccountSettings
-                    .GetUserChatSettings(chatId, cancellationToken)
+                var userChatSettings = await AccountSettings.UserChatSettings(chatId)
+                    .Get(cancellationToken)
                     .ConfigureAwait(false);
                 if (userChatSettings.ListeningMode == ListeningMode.Forever)
                     continue; // do not start listening idle watcher
@@ -349,10 +349,10 @@ public partial class ChatAudioUI
         }
         finally {
             if (mustStop) {
-                var userChatSettings = await AccountSettings
-                    .GetUserChatSettings(chatId, cancellationToken)
+                var listeningMode = await AccountSettings.UserChatSettings(chatId)
+                    .Get(x => x.ListeningMode, cancellationToken)
                     .ConfigureAwait(false);
-                if (userChatSettings.ListeningMode != ListeningMode.Forever)
+                if (listeningMode != ListeningMode.Forever)
                     // do not turn off listening when KeepListening is configured
                     await SetListeningState(chatId, false).ConfigureAwait(false);
             }

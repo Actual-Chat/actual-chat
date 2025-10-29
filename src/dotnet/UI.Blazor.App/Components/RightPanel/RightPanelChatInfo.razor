@@ -69,7 +69,7 @@
         var chatId = Chat.Id;
         var expectedVersion = Chat.Version;
         var update = Change.Update<ChatDiff>(new() { IsSummarized = isSummarized });
-        return UICommander.Call(new Chats_Change(Session, chatId, expectedVersion, update));
+        return UICommander.Run(new Chats_Change(Session, chatId, expectedVersion, update));
     }
 
     // Nested types

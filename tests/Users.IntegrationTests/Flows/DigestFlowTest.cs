@@ -95,13 +95,10 @@ public class DigestFlowTest(ITestOutputHelper @out)
 
         var userId = UserId.Parse("actual-admin");
         var kvas = serverKvasBackend.GetUserClient(userId);
-        var userEmailsSettings = await kvas.GetUserEmailsSettings(default);
-        await kvas.SetUserEmailsSettings(
-            userEmailsSettings with {
+        await kvas.UserEmailsSettings()
+            .Update(x => x with {
                 DigestTime = DateTime.Now.TimeOfDay.Add(new TimeSpan(0, 0, 10)),
-
-            },
-            default);
+            });
         var account = await accountsBackend.Get(userId, default).Require();
         var updateCmd = new AccountsBackend_Update(
             account with {

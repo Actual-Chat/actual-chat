@@ -1,4 +1,3 @@
-using ActualChat.Kvas;
 using ActualChat.Logging;
 using ActualChat.Users;
 using ActualLab.Interception;
@@ -23,10 +22,8 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
 
     void INotifyInitialized.Initialized()
     {
-        _isEnabled = Hub.StateFactory.NewComputed(async ct => {
-            var settings = await LocalSettings.Get<LocalAppSettings>(ct).ConfigureAwait(false);
-            return settings?.IsLogViewerEnabled ?? false;
-        });
+        _isEnabled = Hub.StateFactory.NewComputed(ct
+            => LocalSettings.LocalAppSettings().Get(x => x.IsLogViewerEnabledOrDefault, ct));
         Hub.RegisterDisposable(_isEnabled);
         Hub.RegisterDisposable(() => LogSinks.Remove(this));
         Hub.RegisterDisposable(() => _whenReady.TrySetException(new ObjectDisposedException("LogUI is disposed")));

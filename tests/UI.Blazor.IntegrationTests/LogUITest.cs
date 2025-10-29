@@ -3,6 +3,7 @@ using System.Text;
 using ActualChat.Kvas;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 
 // ReSharper disable WithExpressionModifiesAllMembers
 
@@ -32,7 +33,7 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         await Tester.SignInAsBobAdmin();
-        await LocalSettings.Update<LocalAppSettings>(x => x with { IsLogViewerEnabled = true });
+        await LocalSettings.LocalAppSettings().Update(x => x with { IsLogViewerEnabled = true });
         await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
         await LogUI.WhenReady;
         ScopedLog.LogInformation($"{nameof(ShouldReturnLogEntries)}: Hello, Info!");

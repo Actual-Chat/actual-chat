@@ -57,8 +57,7 @@
         var selectedProfileId = await RouletteProfiles.GetSelectedProfileId(Session, cancellationToken).ConfigureAwait(false);
         var profileId = selectedProfileId;
         if (profileId.IsEmpty) {
-            var accountSettings = await AccountSettings.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
-            var defaultAvatarId = accountSettings.DefaultAvatarId;
+            var defaultAvatarId = await AccountSettings.UserAvatarSettings().Get(x => x.DefaultAvatarId, cancellationToken).ConfigureAwait(false);
             if (!defaultAvatarId.IsEmpty)
                 profileId = defaultAvatarId;
         }

@@ -65,12 +65,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
     {
         await Hub.ChatUI.WhenReady.ConfigureAwait(false);
-
-        var listeningSettings = await AccountSettings
-            .GetUserListeningSettings(cancellationToken)
+        return await AccountSettings.UserListeningSettings()
+            .Get(x => x.AlwaysListenedChatIds.ToList(), cancellationToken)
             .ConfigureAwait(false);
-
-        return listeningSettings.AlwaysListenedChatIds.ToList();
     }
 
     [ComputeMethod] // Synced

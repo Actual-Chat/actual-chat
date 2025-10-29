@@ -27,28 +27,22 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
     }
 
     [ComputeMethod]
-    public virtual async Task<bool?> IsEnabled(ChatId chatId, CancellationToken cancellationToken = default)
-    {
-        chatId = GetTranslationSettingsTargetChatId(chatId);
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-        return userChatSettings.MustTranslate;
-    }
+    public virtual Task<bool?> IsEnabled(ChatId chatId, CancellationToken cancellationToken = default)
+        => AccountSettings.UserChatSettings(GetTranslationSettingsTargetChatId(chatId))
+            .Get(x => x.MustTranslate, cancellationToken);
 
     [ComputeMethod]
-    public virtual async Task<bool> MustTranslateOwnMessages(
+    public virtual Task<bool> MustTranslateOwnMessages(
         ChatId chatId,
         CancellationToken cancellationToken = default)
-    {
-        chatId = GetTranslationSettingsTargetChatId(chatId);
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-        return userChatSettings.MustTranslateOwnMessages ?? true;
-    }
+        => AccountSettings.UserChatSettings(GetTranslationSettingsTargetChatId(chatId))
+            .Get(x => x.MustTranslateOwnMessages ?? true, cancellationToken);
 
     [ComputeMethod]
     public virtual async Task<Language> GetTargetLanguage(ChatId chatId, CancellationToken cancellationToken = default)
     {
         chatId = GetTranslationSettingsTargetChatId(chatId);
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
+        var userChatSettings = await AccountSettings.UserChatSettings(chatId).Get(cancellationToken).ConfigureAwait(false);
         return userChatSettings.TranslationTargetLanguage ?? await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -182,35 +176,25 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
    }
 
    public Task SetIsSubHeaderVisible(ChatId chatId, bool isVisible, CancellationToken cancellationToken = default)
-       => AccountSettings.UpdateUserChatSettings(
-           GetTranslationSettingsTargetChatId(chatId),
-           x => x with { IsTranslationSubHeaderVisible = isVisible },
-           cancellationToken);
+       => AccountSettings.UserChatSettings(GetTranslationSettingsTargetChatId(chatId))
+           .Update(x => x with { IsTranslationSubHeaderVisible = isVisible },
+               cancellationToken);
 
    public Task SetIsOn(ChatId chatId, bool? value, CancellationToken cancellationToken = default)
-        => AccountSettings.UpdateUserChatSettings(
-            GetTranslationSettingsTargetChatId(chatId),
-            x => x with { MustTranslate = value },
-            cancellationToken);
+       => AccountSettings.UserChatSettings(GetTranslationSettingsTargetChatId(chatId))
+           .Update(x => x with { MustTranslate = value }, cancellationToken);
 
    public Task SetMustTranslateOwnMessages(ChatId chatId, bool? value, CancellationToken cancellationToken = default)
-        => AccountSettings.UpdateUserChatSettings(
-            GetTranslationSettingsTargetChatId(chatId),
-            x => x with { MustTranslateOwnMessages = value },
-            cancellationToken);
+       => AccountSettings.UserChatSettings(GetTranslationSettingsTargetChatId(chatId))
+           .Update(x => x with { MustTranslateOwnMessages = value }, cancellationToken);
 
    public Task SetTargetLanguage(ChatId chatId, Language? language, CancellationToken cancellationToken = default)
-        => AccountSettings.UpdateUserChatSettings(
-            GetTranslationSettingsTargetChatId(chatId),
-            x => x with { TranslationTargetLanguage = language },
-            cancellationToken);
+       => AccountSettings.UserChatSettings(GetTranslationSettingsTargetChatId(chatId))
+           .Update(x => x with { TranslationTargetLanguage = language }, cancellationToken);
 
-   private async Task<bool?> GetSubHeaderVisibility(ChatId chatId, CancellationToken cancellationToken)
-   {
-       chatId = GetTranslationSettingsTargetChatId(chatId);
-       var settings = await AccountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-       return settings.IsTranslationSubHeaderVisible;
-   }
+   private Task<bool?> GetSubHeaderVisibility(ChatId chatId, CancellationToken cancellationToken)
+       => AccountSettings.UserChatSettings(GetTranslationSettingsTargetChatId(chatId))
+           .Get(x => x.IsTranslationSubHeaderVisible, cancellationToken);
 
    private async Task<TranslationId> ToTranslationId(TranslationSourceId translationSourceId, CancellationToken cancellationToken)
    {
