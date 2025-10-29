@@ -128,7 +128,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
        if (itemVisibility.IsEmpty || itemVisibility.ChatId != chatId)
            return false;
 
-       foreach (var entryId in itemVisibility.VisibleEntryIds)
+       foreach (var entryId in itemVisibility.VisibleTextEntryIds)
            if (await IsForeignEntry(entryId, true, cancellationToken).ConfigureAwait(false) == true) {
                using(Computed.BeginIsolation())
                    StoreMustSuggest(chatId);

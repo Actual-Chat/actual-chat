@@ -124,8 +124,8 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
                 return [];
 
             return cState.Value is { } state
-                ? last.ItemVisibility.VisibleEntryIds.Except(state.ItemVisibility.VisibleEntryIds)
-                : last.ItemVisibility.VisibleEntryIds;
+                ? last.ItemVisibility.VisibleTextEntryIds.Except(state.ItemVisibility.VisibleTextEntryIds)
+                : last.ItemVisibility.VisibleTextEntryIds;
         }
     }
 
