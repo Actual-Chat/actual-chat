@@ -8,35 +8,55 @@ public sealed record ChatViewItemVisibility(
 {
     public static readonly ChatViewItemVisibility Empty = new(null!, ImmutableHashSet<ChatMessageKey>.Empty, false);
 
-    // EntryLid = Entry's LocalId
-    public long MinEntryLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Min(x => x.LocalId);
-    public long MaxEntryLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Max(x => x.LocalId);
+    public long MinMessageLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Min(x => x.LocalId);
+    public long MaxMessageLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Max(x => x.LocalId);
     public bool IsEmpty => VisibleKeys.Count == 0;
-    public IEnumerable<TextEntryId> VisibleEntryIds => VisibleKeys.Select(x => TextEntryId.New(ChatId, x.LocalId));
-    public IReadOnlySet<long> VisibleEntryLids => VisibleKeys.Select(x => x.LocalId).ToHashSet();
+
+    [field: AllowNull, MaybeNull]
+    public IReadOnlyList<TextEntryId> VisibleTextEntryIds => field ??= VisibleKeys
+        .Where(c => c.Kind == ChatMessageKind.None)
+        .OrderBy(x => x.LocalId)
+        .Select(x => TextEntryId.New(ChatId, x.LocalId))
+        .ToImmutableArray();
+    [field:AllowNull, MaybeNull]
+    public IReadOnlySet<long> VisibleMessageLids => field ??= VisibleKeys.Select(x => x.LocalId).ToHashSet();
 
     public ChatViewItemVisibility(VirtualListItemVisibility source)
         : this(
             ChatId.Parse(source.ListIdentity),
             source.VisibleKeys
                 .Select(ChatMessageKey.Parse)
-                .Where(x => x.LocalId > 0)
                 .ToHashSet(),
             source.IsEndAnchorVisible)
     { }
 
-    public bool IsPartiallyVisible(long entryLid)
-        => !IsEmpty && (entryLid == MinEntryLid || entryLid == MaxEntryLid);
+    public bool IsScrollRequired(long entryLid)
+    {
+        var found = VisibleKeys.Any(x => x.LocalId == entryLid && x.Kind == ChatMessageKind.None);
+        if (!found)
+            return true;
 
-    public bool IsFullyVisible(long entryLid)
-        => VisibleEntryLids.Contains(entryLid) && !IsPartiallyVisible(entryLid);
+        var hasBefore = VisibleKeys.Any(x => x.LocalId < entryLid || (x.LocalId == entryLid && x.Kind != ChatMessageKind.None));
+        var hasAfter = VisibleKeys.Any(x => x.LocalId > entryLid);
+
+        if (!hasBefore && !hasAfter) // the only visible item
+            return false;
+
+        if (hasBefore && hasAfter)
+            return false;
+
+        if (!hasAfter && IsEndAnchorVisible) // the last item
+            return false;
+
+        return true;
+    }
 
     public bool IsIdenticalTo(ChatViewItemVisibility other)
     {
         if (ChatId != other.ChatId)
             return false;
 
-        if (VisibleEntryLids.Count != other.VisibleEntryLids.Count)
+        if (VisibleKeys.Count != other.VisibleKeys.Count)
             return false;
 
         if (IsEndAnchorVisible != other.IsEndAnchorVisible)

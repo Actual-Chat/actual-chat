@@ -33,11 +33,7 @@ public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMe
 
     public const char Delimiter = '-';
 
-    private static ILogger? _log;
-    private static ILogger Log => _log ??= StaticLog.For<ChatMessageKey>();
     private static readonly ILruCache<string, ChatMessageKey> Cache = CreateCache<ChatMessageKey>(512);
-
-    public static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
 
     [IgnoreDataMember]
     public ChatMessageKind Kind { get; }

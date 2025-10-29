@@ -216,10 +216,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (itemVisibility.IsEndAnchorVisible)
             _ = UpdateReadPositionToTheLastId(ChatId);
         else
-            UpdateReadPosition(itemVisibility.MaxEntryLid);
+            UpdateReadPosition(itemVisibility.MaxMessageLid);
         if (_viewPositionLease is not null) {
-            var visibleEntryLids = itemVisibility.VisibleEntryLids;
-            var entryId = visibleEntryLids.Max();
+            var entryId = itemVisibility.MaxMessageLid;
             _viewPositionLease.Resource.Value = new ReadPosition(ChatId, entryId);
         }
         ChatUI.ItemVisibility.Value = itemVisibility;
@@ -352,7 +351,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (ReferenceEquals(nav, renderedData.NavigationState)) // Handles null case as well
             nav = null;
 
-        var mustScrollToEntry = nav != null && !ItemVisibility.Value.IsFullyVisible(nav.EntryLid);
+        var mustScrollToEntry = nav != null && ItemVisibility.Value.IsScrollRequired(nav.EntryLid);
         Computed<Range<long>> cChatIdRange;
         using (Computed.BeginIsolation())
             cChatIdRange = await Computed.Capture(
@@ -408,7 +407,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     .SelectMany(it => it.GetLeafMessages())
                     .Select(it => it.Id)
                     .ToHashSet();
-                var visibleIds = itemVisibility.VisibleEntryLids
+                var visibleIds = itemVisibility.VisibleMessageLids
                     .Where(id => id != 0 && id != long.MaxValue)
                     .ToList();
                 var keptIds = visibleIds
@@ -490,8 +489,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             (false, true) when oldData.HasVeryLastItem
                 => new ChatDataQuery(
                     new Range<long>(
-                        Math.Max(firstItem!.Id, itemVisibility.MinEntryLid),
-                        Math.Min(lastItem!.Id, itemVisibility.IsEmpty ? long.MaxValue : itemVisibility.MaxEntryLid)).EnsureNonEmpty(),
+                        Math.Max(firstItem!.Id, itemVisibility.MinMessageLid),
+                        Math.Min(lastItem!.Id, itemVisibility.IsEmpty ? long.MaxValue : itemVisibility.MaxMessageLid)).EnsureNonEmpty(),
                     -ChatUI.HalfLoadLimit,
                     ChatUI.HalfLoadLimit),
 
@@ -559,7 +558,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         // We see end anchor, when the new message appears so we can update shownReadEntryLid
         var lastEntryLid = items[^1].Id;
-        var maxVisibleEntryLid = itemVisibility.MaxEntryLid;
+        var maxVisibleEntryLid = itemVisibility.MaxMessageLid;
         var newShownReadEntryLid = UpdateReadPosition(Math.Max(lastEntryLid, maxVisibleEntryLid));
         if (newShownReadEntryLid == shownReadEntryLid) {
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: read position is unchanged");

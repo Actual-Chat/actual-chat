@@ -87,7 +87,7 @@
         }
 
         var readEntryLid = await chatView.ShownReadEntryLid.Use(cancellationToken).ConfigureAwait(false);
-        var canScrollToUnread = readEntryLid < lastEntryId && readEntryLid > itemVisibility.MaxEntryLid;
+        var canScrollToUnread = readEntryLid < lastEntryId && readEntryLid > itemVisibility.MaxMessageLid;
         var unreadCount = await ChatUI.GetUnreadCount(chatId, cancellationToken).ConfigureAwait(false);
         return new(true, lastEntryId, canScrollToUnread ? readEntryLid : null, unreadCount);
 
@@ -106,7 +106,7 @@
         var isJustClicked = CpuNow - _lastClickAt < TimeSpan.FromSeconds(5);
         _lastClickAt = CpuNow;
         var mustNavigateToUnread = !isJustClicked
-            && m.ReadEntryLid > ChatView.ItemVisibility.Value.MaxEntryLid;
+            && m.ReadEntryLid > ChatView.ItemVisibility.Value.MaxMessageLid;
         _ = mustNavigateToUnread
             ? ChatView.NavigateToNext(m.ReadEntryLid.GetValueOrDefault(), true)
             : ChatView.NavigateTo(m.LastEntryLid, false, true);
