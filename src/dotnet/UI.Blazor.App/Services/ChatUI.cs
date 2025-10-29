@@ -1,11 +1,10 @@
-using ActualChat.UI.Blazor.App.Events;
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.MLSearch;
 using ActualChat.Pooling;
+using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
-using ActualLab.Fusion.Client;
 using ActualLab.Interception;
 using MathExt = ActualLab.Mathematics.MathExt;
 
@@ -119,7 +118,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
             var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
             var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
-            var userSettingsTask = AccountSettings.GetUserChatSettings(chatId, cancellationToken);
+            var userSettingsTask = AccountSettings.UserChatSettings(chatId).Get(cancellationToken);
 
             var news = await chatNewsTask.ConfigureAwait(false);
             var userSettings = await userSettingsTask.ConfigureAwait(false);

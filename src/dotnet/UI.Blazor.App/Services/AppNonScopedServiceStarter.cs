@@ -103,7 +103,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
             var chatNewsTask = chats.GetNews(session, chatId, cancellationToken);
             var lastMentionTask = mentions.GetLastOwn(session, chatId, cancellationToken);
             var chatPositionTask = chatPositions.GetOwn(session, chatId, ChatPositionKind.Read, cancellationToken);
-            var userSettingsTask = accountSettings.GetUserChatSettings(chatId, cancellationToken);
+            var userSettingsTask = accountSettings.UserChatSettings(chatId).Get(cancellationToken);
 
             var contact = contactTask.ConfigureAwait(false);
             var news = await chatNewsTask.ConfigureAwait(false);

@@ -97,8 +97,8 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
 
         async Task<DigestParameters.DigestChat?> GetDigestChat(ContactId contactId)
         {
-            var userChatSettings = await accountSettings
-                .GetUserChatSettings(contactId.ChatId, cancellationToken)
+            var userChatSettings = await accountSettings.UserChatSettings(contactId.ChatId)
+                .Get(cancellationToken)
                 .ConfigureAwait(false);
             if (userChatSettings.NotificationMode == ChatNotificationMode.Muted)
                 return default;

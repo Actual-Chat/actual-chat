@@ -28,7 +28,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var accountSettings = services.AccountSettings(session);
         if (mustSetUserLanguageSettings) {
             var userLanguageSettings = new UserLanguageSettings() { Primary = Languages.Main };
-            await accountSettings.SetUserLanguageSettings(userLanguageSettings, CancellationToken.None);
+            await accountSettings.UserLanguageSettings().Set(userLanguageSettings, CancellationToken.None);
         }
 
         var thisNode = services.MeshWatcher().ThisNode;
@@ -75,7 +75,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         using var cts = new CancellationTokenSource();
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
-        await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
+        await accountSettings.UserChatSettings(chat.Id).Set(userChatSettings, CancellationToken.None);
 
         var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var audioRecord = new AudioRecord(
@@ -99,7 +99,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
     [Fact(Skip = "Depends on Google API")]
     public async Task ShortTranscriptionTest()
     {
-        var appHost = AppHost!;
+        var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -125,7 +125,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         using var cts = new CancellationTokenSource();
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
-        await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
+        await accountSettings.UserChatSettings(chat.Id).Set(userChatSettings, CancellationToken.None);
 
         var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var audioRecord = new AudioRecord(
@@ -193,7 +193,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         using var cts = new CancellationTokenSource();
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
-        await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
+        await accountSettings.UserChatSettings(chat.Id).Set(userChatSettings, CancellationToken.None);
 
         var streamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
         var audioRecord = new AudioRecord(
@@ -237,7 +237,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
     [Fact(Skip = "Depends on Google API")]
     public async Task PerformRecordingTest()
     {
-        var appHost = AppHost!;
+        var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -279,7 +279,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
     [Fact(Skip = "Depends on Google API")]
     public async Task RealtimeAudioStreamerSupportsSkip()
     {
-        var appHost = AppHost!;
+        var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();

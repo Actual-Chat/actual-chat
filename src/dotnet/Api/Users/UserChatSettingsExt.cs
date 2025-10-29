@@ -4,15 +4,10 @@ namespace ActualChat.Users;
 
 public static class UserChatSettingsExt
 {
-    public static async ValueTask<Language> LanguageOrPrimary(
+    public static Task<Language> LanguageOrPrimary(
         this UserChatSettings userChatSettings, IKvas<User> kvas,
         CancellationToken cancellationToken = default)
-    {
-        var language = userChatSettings.Language;
-        if (language != null)
-            return language;
-
-        var userLanguageSettings = await kvas.GetUserLanguageSettings(cancellationToken).ConfigureAwait(false);
-        return userLanguageSettings.Primary;
-    }
+        => userChatSettings.Language is { } language
+            ? Task.FromResult(language)
+            : kvas.UserLanguageSettings().Get(x => x.Primary, cancellationToken);
 }

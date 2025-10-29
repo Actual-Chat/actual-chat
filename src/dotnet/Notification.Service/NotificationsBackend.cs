@@ -678,13 +678,13 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task<UserId[]> FilterByNotificationMode(IReadOnlyList<UserId> userIds, ChatId chatId, CancellationToken cancellationToken)
     {
         if (userIds.Count == 0)
-            return Array.Empty<UserId>();
+            return [];
 
         var notificationModes = await userIds
             .Select(async userId => {
                 var kvas = ServerKvasBackend.GetUserClient(userId);
-                var userChatSettings = await kvas.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-                return (UserId: userId, userChatSettings.NotificationMode);
+                var notificationMode = await kvas.UserChatSettings(chatId).Get(x => x.NotificationMode, cancellationToken).ConfigureAwait(false);
+                return (UserId: userId, NotificationMode: notificationMode);
             })
             .Collect(cancellationToken)
             .ConfigureAwait(false);

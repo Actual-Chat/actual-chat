@@ -23,10 +23,10 @@ public static class AccountSettingsExt
         if (author == null || author.IsAnonymous)
             return new ChatVoiceMode(chatId, VoiceMode.JustText, false);
 
-        var userChatSettings = await accountSettings
-            .GetUserChatSettings(chatId, cancellationToken)
+        var voiceMode = await accountSettings
+            .UserChatSettings(chatId).Get(x => x.VoiceMode, cancellationToken)
             .ConfigureAwait(false);
-        return new ChatVoiceMode(chatId, userChatSettings.VoiceMode, true);
+        return new ChatVoiceMode(chatId, voiceMode, true);
     }
 
     public static async Task SetChatVoiceMode(
@@ -43,23 +43,20 @@ public static class AccountSettingsExt
             throw StandardError.Constraint("Voice streaming mode cannot be changed in this chat.");
 
         await accountSettings
-            .UpdateUserChatSettings(chatId, x => x with { VoiceMode = voiceMode }, default)
+            .UserChatSettings(chatId).Update(x => x with { VoiceMode = voiceMode }, cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public static async Task<ListeningMode> GetListeningMode(
+    public static Task<ListeningMode> GetListeningMode(
         this AccountSettings accountSettings,
         ChatId chatId,
         CancellationToken cancellationToken = default)
-    {
-        var userSettings = await accountSettings.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
-        return userSettings.ListeningMode;
-    }
+        => accountSettings.UserChatSettings(chatId).Get(x => x.ListeningMode, cancellationToken);
 
     public static Task SetListeningMode(
         this AccountSettings accountSettings,
         ChatId chatId,
         ListeningMode listeningMode,
         CancellationToken cancellationToken = default)
-        => accountSettings.UpdateUserChatSettings(chatId, x => x with { ListeningMode = listeningMode }, cancellationToken);
+        => accountSettings.UserChatSettings(chatId).Update(x => x with { ListeningMode = listeningMode }, cancellationToken);
 }

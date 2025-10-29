@@ -63,9 +63,9 @@
     }
 
     private async Task UpdateState(bool isEnabled) {
-        var settings = await AccountSettings.GetUserAppSettings(CancellationToken.None);
+        var settings = await AccountSettings.UserAppSettings().Get(CancellationToken.None);
         settings = settings with { IsDataCollectionEnabled = isEnabled };
-        await AccountSettings.SetUserAppSettings(settings, CancellationToken.None);
+        await AccountSettings.UserAppSettings().Set(settings, CancellationToken.None);
         await DataCollectionSettingsUI.UpdateState(isEnabled, CancellationToken.None);
     }
 }
