@@ -29,15 +29,6 @@
                 @if (chat.Kind == ChatKind.Peer) {
                     // Peer chat message
                     <div class="c-second-line">
-                        @if (ReferenceEquals(m.Author, m.OwnAuthor)) {
-                            <span class="c-name">
-                                <AuthorName
-                                    AuthorId="@m.Entry.AuthorId"
-                                    ShowDetailsOnClick="false"
-                                    ShowAsOwn="true"/>
-                                <span class="c-colon">:</span>
-                            </span>
-                        }
                         <div class="c-entry">
                             <SearchMatchHighlighter Match="@m.MessageMatch"/>
                         </div>
@@ -107,7 +98,6 @@
     {
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
-        AuthorFull? entryAuthorFull = null;
         Place? place = null;
         var foundItem = FoundItem;
         var chatId = foundItem.ChatId;
@@ -123,10 +113,6 @@
             place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
 
         var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
-        if (entry != null) {
-            var authorId = entry.AuthorId;
-            entryAuthorFull = await Authors.GetFull(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
-        }
         var ownAuthorFull = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var selectedFoundItem = await SearchUI.SelectedItem.Use(cancellationToken).ConfigureAwait(false);
 
@@ -134,7 +120,6 @@
             ChatState = chatState,
             MessageMatch = messageMatch.IsEmpty ? SearchMatch.New(chatState.Info.LastTextEntryText) : messageMatch,
             Entry = entry,
-            Author = entryAuthorFull,
             OwnAuthor = ownAuthorFull,
             Place = place,
             Link = Links.Chat(chatId, entry?.LocalId ?? 0),
@@ -151,7 +136,6 @@
         public ChatState? ChatState { get; init; }
         public SearchMatch MessageMatch { get; init; } = SearchMatch.Empty;
         public ChatEntry? Entry { get; init; }
-        public AuthorFull? Author { get; init; }
         public AuthorFull? OwnAuthor { get; init; }
         public Place? Place {get; init;}
         public LocalUrl Link { get; init; }
