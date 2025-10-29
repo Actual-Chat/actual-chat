@@ -3,13 +3,11 @@ namespace ActualChat.App.Server.Module;
 public static class ApplicationBuilderExt
 {
     public static IApplicationBuilder UseCoopHeaders(this IApplicationBuilder app)
-        => app.Use(async (context, next) => {
+        => app.Use((context, next) => {
             var path = context.Request.Path.Value ?? string.Empty;
             var localUrl = new LocalUrl(path);
-            if (!localUrl.IsChat() && !localUrl.IsUser() && !localUrl.IsSettings() && !localUrl.IsHome()) {
-                await next();
-                return;
-            }
+            if (!localUrl.IsChat() && !localUrl.IsUser() && !localUrl.IsSettings() && !localUrl.IsHome())
+                return next();
 
             context.Response.OnStarting(() => {
                 var headers = context.Response.Headers;
@@ -20,7 +18,7 @@ public static class ApplicationBuilderExt
                 return Task.CompletedTask;
             });
 
-            await next();
+            return next();
         });
 
     public static IApplicationBuilder UseBaseUrl(this IApplicationBuilder app, string baseUrl)
