@@ -1,6 +1,7 @@
 using System.Globalization;
 using ActualChat.Flows;
 using ActualLab.Generators;
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
@@ -8,6 +9,8 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class TimerFlow : Flow<Unit>
 {
+    private static bool _threwRerouteException;
+
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public bool IsInitialized { get; private set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
@@ -27,6 +30,11 @@ public partial class TimerFlow : Flow<Unit>
         Runtime.DefaultResumeDelayQuanta = Period / 2;
 
         if (RemainingCount > 0) {
+            if (!_threwRerouteException) {
+                _threwRerouteException = true;
+                throw RpcRerouteException.MustReroute();
+            }
+
             RemainingCount--;
             Runtime.ScheduleResumeIn(Period);
             Console.Log($"Will resume in {Period.ToShortString()}, RemainingCount={RemainingCount}");
