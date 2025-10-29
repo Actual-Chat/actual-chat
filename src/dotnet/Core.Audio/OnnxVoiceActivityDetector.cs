@@ -46,7 +46,7 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
             {
             case AppKind.Android:
                 options.AppendExecutionProvider_CPU();
-                options.AppendExecutionProvider_Nnapi();
+                // options.AppendExecutionProvider_Nnapi();
                 break;
             case AppKind.Ios or AppKind.MacOS:
                 options.AppendExecutionProvider_CPU();
@@ -54,7 +54,7 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
                 break;
             case AppKind.Windows:
                 options.AppendExecutionProvider_CPU();
-                options.AppendExecutionProvider_DML();
+                // options.AppendExecutionProvider_DML();
                 break;
             default:
                 options.AppendExecutionProvider_CPU();
@@ -73,7 +73,7 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
 
         _session = new InferenceSession(model, options);
 
-        ResetProcessingState();
+        Reset();
     }
 
     public override void Reset()
@@ -110,21 +110,45 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
         // Retrieve outputs
         var output = results.First(v => v.Name == "output").AsTensor<float>();
         var stateN = results.First(v => v.Name == "stateN").AsTensor<float>();
+        var contextN = results.First(v => v.Name == "contextN").AsTensor<float>();
 
-        // Update recurrent state and rolling context
-        _state = ToDense(stateN);
-        monoPcm.Slice(monoPcm.Length - ContextSamples, ContextSamples).CopyTo(_context);
+        UpdateStateFrom(stateN);
+        UpdateContextFrom(contextN);
 
-        var prob = output.Length == 0 ? 0f : output[0];
+        // Read score without allocating
+        float prob = 0f;
+        if (output is DenseTensor<float> { Length: > 0 } dOut)
+            prob = dOut.Buffer.Span[0];
         return prob;
     }
 
-    private static DenseTensor<float> ToDense(Tensor<float> tensor)
-    {
-        if (tensor is DenseTensor<float> dense)
-            return dense;
 
-        var arr = tensor.ToArray();
-        return new DenseTensor<float>(arr, tensor.Dimensions.ToArray());
+    private void UpdateStateFrom(Tensor<float> tensor)
+    {
+        if (tensor is DenseTensor<float> dt) {
+            var src = dt.Buffer.Span;
+            var dst = _state.Buffer.Span;
+            src.CopyTo(dst);
+            return;
+        }
+
+        // Fallback: enumerate without allocations
+        int i = 0;
+        foreach (var v in tensor)
+            _state.Buffer.Span[i++] = v;
+    }
+
+    private void UpdateContextFrom(Tensor<float> tensor)
+    {
+        if (tensor is DenseTensor<float> dt) {
+            var src = dt.Buffer.Span;
+            src.CopyTo(_context);
+            return;
+        }
+
+        // Fallback: enumerate without allocations
+        int i = 0;
+        foreach (var v in tensor)
+            _context[i++] = v;
     }
 }

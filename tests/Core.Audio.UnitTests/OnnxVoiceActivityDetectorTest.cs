@@ -1,4 +1,5 @@
-﻿using ActualChat.Audio;
+﻿using System.Diagnostics;
+using ActualChat.Audio;
 using ActualChat.Hosting;
 
 namespace Core.Audio.UnitTests;
@@ -14,7 +15,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 
         // Resolve model and data paths
         var modelPath = Path.Combine(repoRoot,
-            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.onnx");
+            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.ort");
         var dataPath = Path.Combine(repoRoot,
             "tests", "Core.Audio.UnitTests", "data", "vad-mono-16k-f32-512-0.bin");
 
@@ -65,7 +66,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 
         // Resolve model and data paths
         var modelPath = Path.Combine(repoRoot,
-            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.onnx");
+            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.ort");
         var dataPath = Path.Combine(repoRoot,
             "tests", "Core.Audio.UnitTests", "data", "vad-mono-16k-f32-512-0.bin");
 
@@ -115,7 +116,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 
         // Resolve model and data paths
         var modelPath = Path.Combine(repoRoot,
-            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.onnx");
+            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.ort");
         var dataPath = Path.Combine(repoRoot,
             "tests", "Core.Audio.UnitTests", "data", fileName);
 
@@ -139,6 +140,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         var samples = ReadFloat32Le(dataPath);
         Assert.True(samples.Length >= 512);
 
+        var sw = Stopwatch.StartNew();
         var chunkSize = 512; // 32ms window expected by detector
         var processed = 0;
         for (var i = 0; i + chunkSize <= samples.Length; i += chunkSize) {
@@ -148,10 +150,12 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
             processed++;
 
             var ms = i / 16000.0;
-            @out.WriteLine($"Chunk [{ms:F3}s]: {internalResult:F5} - {result.Gain:F5} change={result.Change?.Kind}");
+            // @out.WriteLine($"Chunk [{ms:F3}s]: {internalResult:F5} - {result.Gain:F5} change={result.Change?.Kind}");
         }
 
         Assert.True(processed > 0);
+        sw.Stop();
+        @out.WriteLine($"Processed {processed} chunks in {sw.ElapsedMilliseconds} ms");
         // We don't assert a specific number of events since it depends on the sample content and model,
         // but we verify the pipeline runs end-to-end without exceptions.
     }
