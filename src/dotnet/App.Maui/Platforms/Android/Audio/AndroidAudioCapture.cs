@@ -27,7 +27,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         AudioRecord? recorder = null;
         try {
             recorder = new AudioRecord(
-                /* audioSource: */ Android.Media.AudioSource.VoiceCommunication,
+                /* audioSource: */ Android.Media.AudioSource.VoiceRecognition,
                 /* sampleRateInHz: */ sampleRate,
                 /* channelConfig: */ channelConfig,
                 /* audioFormat: */ encoding,
@@ -49,12 +49,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
             return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
         }
 
-        var channel = Channel.CreateUnbounded<IMemoryOwner<float>>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-            AllowSynchronousContinuations = true,
-        });
-
+        var ringBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
 
         _ = BackgroundTask.Run(Producer, cancellationToken);
 
@@ -72,8 +67,10 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                     try {
                         // Use async read of float samples; cancel via WaitAsync
                         // readMode: 0 = blocking, 1 = non-blocking (constants per Android API)
-                        var readTask = recorder.ReadAsync(floatReadBuffer.Buffer, 0, frameSamples, 0);
-                        readCount = await readTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+                        readCount = await recorder
+                            .ReadAsync(floatReadBuffer.Buffer, 0, frameSamples * 2, 0)
+                            .WaitAsync(cancellationToken)
+                            .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) {
                         break;
@@ -86,28 +83,15 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
                         continue;
                     }
 
-                    var owner = MemoryPool<float>.Shared.Rent(readCount);
-                    try {
-                        var dst = owner.Memory.Span[..readCount];
-                        floatReadBuffer.Buffer.AsSpan(0, readCount).CopyTo(dst);
-                        if (channel.Writer.TryWrite(new BufferReference(owner.Memory[..readCount], owner)))
-                            continue;
-
-                        owner.Dispose();
-                        break;
-                    }
-                    catch {
-                        owner.Dispose();
-                        throw;
-                    }
+                    // Push to ring buffer; backpressure if full
+                    while (!ringBuffer.TryPush(floatReadBuffer.Buffer.AsSpan(0, readCount)))
+                        await ringBuffer.WhenPulled.WaitAsync(cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (Exception ex) {
                 Log.LogError(ex, "Error while capturing audio on Android");
             }
             finally {
-                channel.Writer.TryComplete();
-
                 floatReadBuffer.Release();
                 try {
                     if (recorder.RecordingState == RecordState.Recording)
@@ -126,14 +110,18 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
 
         async IAsyncEnumerable<IMemoryOwner<float>> Enumerate([EnumeratorCancellation] CancellationToken ct)
         {
-            await foreach (var block in channel.Reader.ReadAllAsync(ct).SuppressCancellation(ct).ConfigureAwait(false))
-                yield return block;
+            try {
+                while (!ct.IsCancellationRequested) {
+                    if (!ringBuffer.TryPull(Constants.Audio.OpusFrameLength, out var block)) {
+                        await ringBuffer.WhenPushed.WaitAsync(ct).ConfigureAwait(false);
+                        continue;
+                    }
+                    yield return block;
+                }
+            }
+            finally {
+                ringBuffer.DisposeSilently();
+            }
         }
-    }
-
-    private readonly struct BufferReference(Memory<float> memory, IMemoryOwner<float> owner): IMemoryOwner<float>
-    {
-        public Memory<float> Memory { get; } = memory;
-        public void Dispose() => owner.Dispose();
     }
 }
