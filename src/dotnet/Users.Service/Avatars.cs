@@ -33,7 +33,7 @@ public class Avatars(IServiceProvider services) : IAvatars
     public virtual async Task<IReadOnlyList<Symbol>> ListOwnAvatarIds(Session session, CancellationToken cancellationToken)
     {
         var kvasClient = ServerKvas.GetClient(session);
-        var settings = await kvasClient.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
+        var settings = await kvasClient.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
         return settings.AvatarIds.ToArray();
     }
 
@@ -79,25 +79,25 @@ public class Avatars(IServiceProvider services) : IAvatars
         var (session, avatarId) = command;
         var avatar = await GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
         var kvas = ServerKvas.GetClient(session);
-        var settings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
+        var settings = await kvas.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
         if (settings.DefaultAvatarId == avatar.Id)
             return;
 
         settings = settings with { DefaultAvatarId = avatarId };
-        await kvas.SetUserAvatarSettings(settings, cancellationToken).ConfigureAwait(false);
+        await kvas.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
     }
 
     internal static async Task UpdateAvatarList(IKvas<User> kvas, Change<AvatarFull> change, Symbol avatarId)
     {
         // We don't cancel anything from here
         CancellationToken cancellationToken = default;
-        var oldSettings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
+        var oldSettings = await kvas.UserAvatarSettings().Get(cancellationToken).ConfigureAwait(false);
         var settings = oldSettings;
         if (change.Create.HasValue)
             settings = settings.WithAvatarId(avatarId);
         else if (change.Remove)
             settings = settings.WithoutAvatarId(avatarId);
         if (!ReferenceEquals(settings, oldSettings))
-            await kvas.SetUserAvatarSettings(settings, cancellationToken).ConfigureAwait(false);
+            await kvas.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
     }
 }

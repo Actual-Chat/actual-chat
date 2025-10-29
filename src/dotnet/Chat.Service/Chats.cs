@@ -1,6 +1,5 @@
 using ActualChat.Contacts;
 using ActualChat.Users;
-using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.Chat;
 
@@ -739,11 +738,11 @@ public class Chats(IServiceProvider services) : IChats
         async Task<bool> UpdateUserChatSettings(UserId userId)
         {
             var userKvas = ServerKvasBackend.GetUserClient(userId);
-            var userChatSettings = await userKvas.GetUserChatSettings(sourceChatId, cancellationToken).ConfigureAwait(false);
+            var userChatSettings = await userKvas.UserChatSettings(sourceChatId).Get(cancellationToken).ConfigureAwait(false);
             if (userChatSettings == UserChatSettings.Default)
                 return false;
 
-            await userKvas.SetUserChatSettings(newChatId, userChatSettings, cancellationToken).ConfigureAwait(false);
+            await userKvas.UserChatSettings(newChatId).Set(userChatSettings, cancellationToken).ConfigureAwait(false);
             return true;
         }
 

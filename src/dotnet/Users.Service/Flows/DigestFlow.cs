@@ -41,7 +41,7 @@ public partial class DigestFlow : PeriodicFlow
 
         var serverKvasBackend = Host.Services.GetRequiredService<IServerKvasBackend>();
         var kvas = serverKvasBackend.GetUserClient(userId);
-        var userEmailsSettings = await kvas.GetUserEmailsSettings(cancellationToken).ConfigureAwait(false);
+        var userEmailsSettings = await kvas.UserEmailsSettings().Get(cancellationToken).ConfigureAwait(false);
         if (!userEmailsSettings.IsDigestEnabled)
             return "Digest is disabled for this account";
 

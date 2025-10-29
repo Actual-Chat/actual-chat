@@ -18,7 +18,7 @@ public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
             return false;
 
         var accountSettings = services.AccountSettings();
-        var appSettings = await accountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
+        var appSettings = await accountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         return appSettings.AreExperimentalFeaturesEnabled ?? true;
     }
 

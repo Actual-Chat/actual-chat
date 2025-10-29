@@ -55,9 +55,9 @@
         await AccountSettings.SetListeningMode(chatId, listeningMode, CancellationToken.None);
         if (listeningMode == ListeningMode.Forever) {
             await Hub.ChatAudioUI.SetListeningState(chatId, true);
-            await AccountSettings.UpdateUserListeningSettings(x => x.WithAlwaysListeningChat(chatId), default);
+            await AccountSettings.UserListeningSettings().Update(x => x.WithAlwaysListeningChat(chatId), CancellationToken.None);
         } else {
-            await AccountSettings.UpdateUserListeningSettings(x => x.WithoutAlwaysListeningChat(chatId), default);
+            await AccountSettings.UserListeningSettings().Update(x => x.WithoutAlwaysListeningChat(chatId), CancellationToken.None);
         }
         Context.Close();
     }

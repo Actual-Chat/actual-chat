@@ -187,7 +187,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             DefaultAvatarId = avatar.Id,
             AvatarIds = [avatar.Id],
         };
-        await userKvas.SetUserAvatarSettings(userAvatarSettings, cancellationToken).ConfigureAwait(false);
+        await userKvas.UserAvatarSettings().Set(userAvatarSettings, cancellationToken).ConfigureAwait(false);
 
         // Fetch the final account + do some final checks
         account = await accountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);

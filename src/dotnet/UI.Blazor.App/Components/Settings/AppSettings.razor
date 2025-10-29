@@ -100,7 +100,6 @@
     private BubbleUI BubbleUI => Hub.BubbleUI;
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
-    private LogUI LogUI => Hub.LogUI;
 
     protected override void OnInitialized()
         => NativeAppSettings = Hub.Services.GetService<INativeAppSettings>();
@@ -109,15 +108,15 @@
         => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await AccountSettings.GetUserAppSettings(cancellationToken).ConfigureAwait(false);
+        var settings = await AccountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var isLogUIEnabled = await LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
+        var appSettings = await AccountSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
         return new(
             settings.IsDataCollectionEnabled ?? false,
             settings.AreExperimentalFeaturesEnabled ?? false,
             settings.IsIncompleteUIEnabled ?? false,
             account.IsAdmin,
-            isLogUIEnabled);
+            appSettings.IsLogViewerEnabled ?? false);
     }
 
     private async Task OnRestartWalkThrough() {
@@ -131,26 +130,26 @@
     }
 
     private async Task OnEnableTelemetryClick() {
-        await AccountSettings.UpdateUserAppSettings(x => x with {
-            IsDataCollectionEnabled = !State.Value.IsDataCollectionEnabled,
+        var settings = await AccountSettings.UserAppSettings().Update(x => x with {
+            IsDataCollectionEnabled = !(x.IsDataCollectionEnabled ?? false),
         });
-        await DataCollectionSettingsUI.UpdateState(!State.Value.IsDataCollectionEnabled, CancellationToken.None);
+        await DataCollectionSettingsUI.UpdateState(settings.IsDataCollectionEnabled is true, CancellationToken.None);
     }
 
     private Task OnExperimentalFeatureEnabledClick()
-        => AccountSettings.UpdateUserAppSettings(x => x with {
-            AreExperimentalFeaturesEnabled = !State.Value.AreExperimentalFeaturesEnabled,
+        => AccountSettings.UserAppSettings().Update(x => x with {
+            AreExperimentalFeaturesEnabled = !(x.AreExperimentalFeaturesEnabled ?? false),
         });
 
     private Task OnIncompleteUIEnabledClick()
-        => AccountSettings.UpdateUserAppSettings(x => x with {
-            IsIncompleteUIEnabled = !State.Value.IsIncompleteUIEnabled,
+        => AccountSettings.UserAppSettings().Update(x => x with {
+            IsIncompleteUIEnabled = !(x.IsIncompleteUIEnabled ?? false),
         });
 
     private Task OnLogUIEnabledClick()
         // ReSharper disable once WithExpressionModifiesAllMembers
         => LocalSettings.Update<LocalAppSettings>(x => x with {
-            IsLogViewerEnabled = !State.Value.IsLogUIEnabled,
+            IsLogViewerEnabled = !(x.IsLogViewerEnabled ?? false),
         });
 
     private void OnLogsClick() {
