@@ -12,6 +12,7 @@ public class AudioFocusHelper
     private readonly ILogger _log;
     private AudioFocusRequestClass? _focusRequest;
     private bool _hasFocus;
+    private bool _isBluetoothScoActive;
 
     public event Action<AudioFocus>? OnFocusChanged;
     public event Action? OnOutputDevicesChanged;
@@ -28,7 +29,7 @@ public class AudioFocusHelper
         => RequestFocus(AudioFocus.GainTransientExclusive, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
 
     public bool RequestFocusForPlayback()
-        => RequestFocus(AudioFocus.Gain, AudioUsageKind.Media, AudioContentType.Speech);
+        => RequestFocus(AudioFocus.Gain, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
 
     public bool RequestFocusForNotification()
         => RequestFocus(AudioFocus.GainTransientMayDuck, AudioUsageKind.AssistanceSonification, AudioContentType.Sonification);
@@ -39,6 +40,7 @@ public class AudioFocusHelper
             return;
 
         _log.LogInformation("Abandon audio focus");
+        StopBluetoothSco();
         _audioManager.AbandonAudioFocusRequest(_focusRequest);
         _hasFocus = false;
     }
@@ -49,9 +51,13 @@ public class AudioFocusHelper
             // If any external output device is connected (Bluetooth/Wired/USB), do NOT force speakerphone.
             // Otherwise force speakerphone so audio leaves through loud speaker (not earpiece).
             var devices = _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [];
-            var hasExternal = devices.Any(d => d.Type is AudioDeviceType.BluetoothA2dp
-                                               or AudioDeviceType.BluetoothSco
-                                               or AudioDeviceType.WiredHeadphones
+
+            // Separate A2DP and SCO detection
+            var hasA2dp = devices.Any(d => d.Type == AudioDeviceType.BluetoothA2dp);
+            var hasScoOutput = devices.Any(d => d.Type == AudioDeviceType.BluetoothSco);
+
+            // Consider any external device (Bluetooth A2DP/SCO, wired, USB, etc.) as "not speakerphone"
+            var hasExternal = hasA2dp || hasScoOutput || devices.Any(d => d.Type is AudioDeviceType.WiredHeadphones
                                                or AudioDeviceType.WiredHeadset
                                                or AudioDeviceType.UsbHeadset
                                                or AudioDeviceType.UsbDevice
@@ -60,12 +66,18 @@ public class AudioFocusHelper
                                                or AudioDeviceType.LineDigital
                                                or AudioDeviceType.Dock);
 
-            var shouldUseSpeaker = !hasExternal;
-            if (_audioManager.SpeakerphoneOn == shouldUseSpeaker)
-                return;
+            // Manage Bluetooth SCO connection ONLY when a SCO-capable device is present
+            // Don't start SCO for A2DP-only devices
+            if (hasScoOutput)
+                StartBluetoothSco();
+            else
+                StopBluetoothSco();
 
-            _audioManager.SpeakerphoneOn = shouldUseSpeaker;
-            _log.LogInformation("Routing changed. SpeakerphoneOn={Speaker}", shouldUseSpeaker);
+            var shouldUseSpeaker = !hasExternal;
+            if (_audioManager.SpeakerphoneOn != shouldUseSpeaker) {
+                _audioManager.SpeakerphoneOn = shouldUseSpeaker;
+                _log.LogInformation("Routing changed. SpeakerphoneOn={Speaker}", shouldUseSpeaker);
+            }
         }
         catch (Exception e) {
             _log.LogWarning(e, "Failed to apply preferred audio route");
@@ -106,6 +118,41 @@ public class AudioFocusHelper
         _log.LogInformation("Output audio devices changed");
         OnOutputDevicesChanged?.Invoke();
         ApplyPreferredRoute();
+    }
+
+    private void StartBluetoothSco()
+    {
+        if (_isBluetoothScoActive)
+            return;
+
+        try {
+            if (!_audioManager.IsBluetoothScoAvailableOffCall)
+                return;
+
+            _audioManager.StartBluetoothSco();
+            _audioManager.BluetoothScoOn = true;
+            _isBluetoothScoActive = true;
+            _log.LogInformation("Bluetooth SCO started");
+        }
+        catch (Exception e) {
+            _log.LogWarning(e, "Failed to start Bluetooth SCO");
+        }
+    }
+
+    private void StopBluetoothSco()
+    {
+        if (!_isBluetoothScoActive)
+            return;
+
+        try {
+            _audioManager.StopBluetoothSco();
+            _audioManager.BluetoothScoOn = false;
+            _isBluetoothScoActive = false;
+            _log.LogInformation("Bluetooth SCO stopped");
+        }
+        catch (Exception e) {
+            _log.LogWarning(e, "Failed to stop Bluetooth SCO");
+        }
     }
 
     // Nested types
