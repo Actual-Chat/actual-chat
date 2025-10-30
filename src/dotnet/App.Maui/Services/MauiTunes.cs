@@ -16,7 +16,7 @@ public class MauiTunes : TuneUI
     private AudioFocusService AudioFocusService => field ??= Hub.Services.GetRequiredService<AudioFocusService>();
 
     public MauiTunes(UIHub hub) : base(hub)
-        => _audioFocusConsumer = new AudioFocusConsumer(AudioFocusConsumerKind.Tunes, OnLostFocus);
+        => _audioFocusConsumer = new AudioFocusConsumer(AudioMode.Tunes, OnLostFocus);
 
     public override void Dispose()
     {

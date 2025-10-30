@@ -1,10 +1,10 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public enum AudioFocusConsumerKind { Tunes, Playback, /* HistoricalPlayback, ChatListening, */ Recording }
+public enum AudioMode { Tunes, Playback, /* HistoricalPlayback, ChatListening, */ Recording }
 
 public delegate void RestoreFocusHandler();
 
-public record AudioFocusConsumer(AudioFocusConsumerKind Kind, Func<bool, RestoreFocusHandler?> LostFocusCallback);
+public record AudioFocusConsumer(AudioMode Kind, Func<bool, RestoreFocusHandler?> LostFocusCallback);
 
 public interface IAudioFocusActivation
 {
@@ -13,7 +13,7 @@ public interface IAudioFocusActivation
     void Release();
 }
 
-public class AudioFocusService
+public class AudioFocusService : ProcessorBase
 {
     public virtual Task<IAudioFocusActivation?> TryGainAudioFocus(AudioFocusConsumer consumer)
         => Task.FromResult<IAudioFocusActivation?>(FakeAudioFocusActivation.Instance);

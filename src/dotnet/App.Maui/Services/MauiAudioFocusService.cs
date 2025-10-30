@@ -3,16 +3,15 @@ using ActualLab.Locking;
 
 namespace ActualChat.App.Maui.Services;
 
-public abstract class MauiAudioFocusService : AudioFocusService
+public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
 {
     private readonly List<RestoreFocusHandler> _restoreFocusHandlers = new ();
     private readonly AsyncLock _asyncLock = new();
     private AudioFocusHolder? _lastAudioFocusHolder;
 
-    protected ILogger Log { get; }
-
-    protected MauiAudioFocusService(IServiceProvider services)
-        => Log = services.LogFor(GetType());
+    protected AppUIHub Hub => hub;
+    [field: AllowNull, MaybeNull]
+    protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     public override async Task<IAudioFocusActivation?> TryGainAudioFocus(AudioFocusConsumer consumer)
     {
@@ -60,7 +59,7 @@ public abstract class MauiAudioFocusService : AudioFocusService
         await RenewAudioFocus(null).ConfigureAwait(false);
     }
 
-    protected abstract Task<AudioFocusHandle?> RequestAudioFocus(AudioFocusConsumerKind mode);
+    protected abstract Task<AudioFocusHandle?> RequestAudioFocus(AudioMode mode);
 
     private async Task<AudioFocusHolder?> RenewAudioFocus(AudioFocusConsumer? consumer)
     {
@@ -120,7 +119,7 @@ public abstract class MauiAudioFocusService : AudioFocusService
         }
     }
 
-    private AudioFocusConsumerKind CalculateAudioFocusMode(IReadOnlyCollection<AudioFocusConsumer>? consumers, AudioFocusConsumer? newConsumer)
+    private AudioMode CalculateAudioFocusMode(IReadOnlyCollection<AudioFocusConsumer>? consumers, AudioFocusConsumer? newConsumer)
     {
         var list = new List<AudioFocusConsumer>();
         if (consumers is not null)
@@ -130,7 +129,7 @@ public abstract class MauiAudioFocusService : AudioFocusService
         return CalculateAudioFocusMode(list);
     }
 
-    protected virtual AudioFocusConsumerKind CalculateAudioFocusMode(IReadOnlyCollection<AudioFocusConsumer> consumers)
+    protected virtual AudioMode CalculateAudioFocusMode(IReadOnlyCollection<AudioFocusConsumer> consumers)
     {
         if (consumers.Count == 0)
             throw new ArgumentException("No consumers provided", nameof(consumers));
@@ -146,9 +145,9 @@ public abstract class MauiAudioFocusService : AudioFocusService
     }
 
     // Nested types
-    private class AudioFocusHolder(AudioFocusConsumerKind mode, AudioFocusHandle handle)
+    private class AudioFocusHolder(AudioMode mode, AudioFocusHandle handle)
     {
-        public AudioFocusConsumerKind Mode => mode;
+        public AudioMode Mode => mode;
         public bool IsSuspended { get; private set;}
         public AudioFocusHandle Handle => handle;
         public Dictionary<AudioFocusConsumer, AudioFocusActivation> Activations { get; } = new();

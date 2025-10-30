@@ -24,4 +24,10 @@ public static class AudioEngineExt
 
     private static NSUrl GetUrl(string soundName)
         => NSBundle.MainBundle.GetUrlForResource(soundName, "m4a", "sounds");
+
+    public static void StopRecording(this AudioEngine engine)
+    {
+        engine.Input.Reset();
+        engine.Stop();
+    }
 }

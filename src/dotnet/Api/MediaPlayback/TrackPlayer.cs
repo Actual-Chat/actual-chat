@@ -190,14 +190,16 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
         }
     }
 
-    protected void SetPlaybackState(TimeSpan offset, bool isPaused) => UpdateState(static (arg, state) => {
-        var (offset1, isPaused1) = arg;
-        return state with {
-            IsStarted = true,
-            IsPaused = isPaused1,
-            PlayingAt = TimeSpanExt.Max(state.PlayingAt, offset1),
-        };
-    }, (offset, isPaused));
+    protected void SetPlaybackState(TimeSpan offset, bool isPaused)
+        => UpdateState(static (arg, state) => {
+                var (offset1, isPaused1) = arg;
+                return state with {
+                    IsStarted = true,
+                    IsPaused = isPaused1,
+                    PlayingAt = TimeSpanExt.Max(state.PlayingAt, offset1),
+                };
+            },
+            (offset, isPaused));
 
     protected void SetEndState(Exception? exception = null)
         => UpdateState(static (exception, state) => state with { IsEnded = true, Error = exception }, exception);

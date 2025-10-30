@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Diagnostics;
-using ActualLab.Pooling;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
@@ -10,44 +9,37 @@ public class VoicePlayer : IDisposable
     private readonly AudioBufferCapacity _capacity;
     private readonly ComputedState<State> _state;
     private TimeSpan _position;
-    public string Id { get; }
-    private IResourceLease<AudioEngine> EngineLease { get; }
 
+    public string Id { get; }
     private PlayerNode Node { get; }
+    private AppUIHub Hub { get; }
+    private AudioEngine Engine { get; }
     public IState<State> PlaybackState => _state;
-    private ILogger<VoicePlayer> Log { get; }
+    [field: AllowNull, MaybeNull]
+    private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
 
-    private VoicePlayer(string id, IResourceLease<AudioEngine> engineLease, AppUIHub hub)
+    public VoicePlayer(string id, AppUIHub hub)
     {
         Id = id;
-        EngineLease = engineLease;
-        Node = engineLease.Resource.NewPlayer(AudioEngine.VoicePlaybackFormat);
+        Hub = hub;
+        Engine = Hub.Services.GetRequiredService<AudioEngines>().Playback;
+        Node = Engine.NewPlayer(AudioEngine.VoicePlaybackFormat);
+
         _capacity = new AudioBufferCapacity(hub);
-        Log = hub.LogFor<VoicePlayer>();
-
-        _state = hub.StateFactory.NewComputed(GetState, StateCategories.Get(GetType(), nameof(PlaybackState)));
-    }
-
-    public static async Task<VoicePlayer> Create(string id, AppUIHub hub)
-    {
-        var engineLease = await hub.Services.GetRequiredService<AudioEngines>()
-            .Rent(AudioMode.Playback)
-            .ConfigureAwait(false);
-        return new VoicePlayer(id, engineLease, hub);
+        _state = Hub.StateFactory.NewComputed(GetState, StateCategories.Get(GetType(), nameof(PlaybackState)));
     }
 
     public void Dispose()
     {
         _state.DisposeSilently();
         Node.DisposeSilently();
-        EngineLease.DisposeSilently();
     }
 
     public void Play()
     {
         DebugLog?.LogInformation("#{Id}.Play", Id);
-        EngineLease.Resource.EnsureRunning();
+        Engine.EnsureRunning();
         Node.Play();
     }
 
@@ -97,7 +89,7 @@ public class VoicePlayer : IDisposable
     private async Task<State> GetState(CancellationToken cancellationToken)
     {
         var isPlaying = await Node.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-        var isEngineRunning = await EngineLease.Resource.IsRunning.Computed.Use(cancellationToken).ConfigureAwait(false);
+        var isEngineRunning = await Engine.IsRunning.Computed.Use(cancellationToken).ConfigureAwait(false);
         var isBufferLow = await _capacity.IsBufferLow.Use(cancellationToken).ConfigureAwait(false);
         return new State(_position, isPlaying && isEngineRunning, isBufferLow);
     }

@@ -17,7 +17,6 @@ using ActualChat.UI.Blazor.Services;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.IO;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.IO;
 
 namespace ActualChat.App.Maui.Module;
 
@@ -113,7 +112,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Audio Focus
 #if ANDROID
-        services.AddScoped<AudioFocusService>(c => new AndroidAudioFocusService(c));
+        services.AddScoped<AudioFocusService>(c => new AndroidAudioFocusService(c.AppUIHub()));
 #endif
         // File attachments
         services.AddScoped<IAttachmentFilePicker>(c => new MauiAttachmentFilePicker(c));

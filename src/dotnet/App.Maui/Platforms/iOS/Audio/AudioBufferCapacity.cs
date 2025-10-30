@@ -16,7 +16,7 @@ internal sealed class AudioBufferCapacity(AppUIHub hub)
     public async Task AcquireAll(CancellationToken cancellationToken)
     {
         for (var i = 0; i < MaxRenderedBufferCount; i++)
-            await Acquire(cancellationToken);
+            await Acquire(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task Acquire(CancellationToken cancellationToken)

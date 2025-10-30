@@ -26,7 +26,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         _playbackState = hub.StateFactory.NewMutable(
             (PlaybackState?)null,
             StateCategories.Get(GetType(), nameof(PlaybackState)));
-        _audioFocusConsumer = new AudioFocusConsumer(AudioFocusConsumerKind.Playback, OnLostFocus);
+        _audioFocusConsumer = new AudioFocusConsumer(AudioMode.Playback, OnLostFocus);
     }
 
     void INotifyInitialized.Initialized()
@@ -338,10 +338,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
                             .Select(c => c.ChatPlayer)
                             .OfType<HistoricalChatPlayer>()
                             .FirstOrDefault(c => c.ChatId == historicalPlaybackState.ChatId);
-                        if (historicalChatPlayer != null &&
-                            historicalChatPlayer.Playback.IsPaused.Value &&
-                            !_players.Values.Any(c => c.ChatPlayer.Playback.IsPlaying.Value)
-                           ) {
+                        if (historicalChatPlayer is { Playback.IsPaused.Value: true }) {
                             historicalChatPlayer.Playback.Resume(CancellationToken.None);
                             Log.LogInformation("Resumed historical chat player");
                         }

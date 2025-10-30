@@ -49,7 +49,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
         _engine = Hub.Services.GetRequiredService<IAudioRecorderEngine>();
-        _audioFocusConsumer = new AudioFocusConsumer(AudioFocusConsumerKind.Recording, LostFocusCallback);
+        _audioFocusConsumer = new AudioFocusConsumer(AudioMode.Recording, LostFocusCallback);
     }
 
     protected override async Task DisposeAsyncCore()

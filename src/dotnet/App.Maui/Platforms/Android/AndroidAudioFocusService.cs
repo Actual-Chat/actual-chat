@@ -10,22 +10,22 @@ public class AndroidAudioFocusService : MauiAudioFocusService
     private long _idSeed;
     private AudioFocusHandle? _handle;
 
-    public AndroidAudioFocusService(IServiceProvider services)
-        : base(services)
+    public AndroidAudioFocusService(AppUIHub hub)
+        : base(hub)
     {
-        _focusHelper = new AudioFocusHelper(Platform.AppContext, services.LogFor<AudioFocusHelper>());
+        _focusHelper = new AudioFocusHelper(Platform.AppContext, hub.LogFor<AudioFocusHelper>());
         _focusHelper.OnFocusChanged += OnFocusChanged;
         _focusHelper.OnOutputDevicesChanged += OnOutputDevicesChanged;
     }
 
-    protected override Task<AudioFocusHandle?> RequestAudioFocus(AudioFocusConsumerKind mode)
+    protected override Task<AudioFocusHandle?> RequestAudioFocus(AudioMode mode)
     {
         Log.LogInformation("-> RequestAudioFocus, requested mode: '{Mode}', active focus handle id: '{Id}'", mode, _handle?.Id);
 
         var success = mode switch
         {
-            AudioFocusConsumerKind.Recording => _focusHelper.RequestFocusForCall(),
-            AudioFocusConsumerKind.Tunes => _focusHelper.RequestFocusForNotification(),
+            AudioMode.Recording => _focusHelper.RequestFocusForCall(),
+            AudioMode.Tunes => _focusHelper.RequestFocusForNotification(),
             _ => _focusHelper.RequestFocusForPlayback()
         };
         if (!success) {

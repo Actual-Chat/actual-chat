@@ -22,8 +22,7 @@ public class IosAudioCapture(AppUIHub hub) : IAudioCapture
     private async IAsyncEnumerable<IMemoryOwner<float>> CaptureInternal([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Log.LogInformation("CaptureInternal: starting");
-        using var engineLease = await AudioEngines.Rent(AudioMode.Recording).ConfigureAwait(false);
-        var engine = engineLease.Resource;
+        var engine = AudioEngines.Recording;
         using var outBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
         var hwFormat = engine.Input.GetOutputFormat();
         using var resampler = ResamplerFactory.Create(hwFormat, AudioEngine.VoiceRecordingFormat);
