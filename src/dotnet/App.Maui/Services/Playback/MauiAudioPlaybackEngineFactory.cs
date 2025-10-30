@@ -20,7 +20,7 @@ public sealed class MauiAudioPlaybackEngineFactory(AppUIHub hub) : IAudioPlaybac
 #elif ANDROID
         return new AndroidAudioPlaybackEngine(playerId, trackInfo, source, backend, Services);
 #elif IOS || MACCATALYST
-        return new IosAudioPlaybackEngine(playerId, trackInfo, source, backend, hub);
+        return new IosAudioPlaybackEngine(playerId, backend, hub);
 #else
         return new WebAudioPlaybackEngine(playerId,
             trackInfo,

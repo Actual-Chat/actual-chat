@@ -41,6 +41,7 @@ public static partial class MauiProgram
         services.AddScoped<Haptics>(c => new Haptics(c.AppUIHub()));
         services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
         services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.AppUIHub()));
+        services.AddScoped<AudioFocusService>(c => new IosAudioFocusService(c.AppUIHub()));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

@@ -30,6 +30,7 @@ public class PlayerNode : AudioNode, IDisposable
         lock (_lock)
             if (!Node.Playing)
                 Node.Play();
+        _isPlaying.Invalidate();
     }
 
     public void Pause()
@@ -37,6 +38,7 @@ public class PlayerNode : AudioNode, IDisposable
         lock (_lock)
             if (Node.Playing)
                 Node.Pause();
+        _isPlaying.Invalidate();
     }
 
     public void ScheduleBuffer(AVAudioPcmBuffer pcm, Action<AVAudioPlayerNodeCompletionCallbackType> callback)
@@ -60,6 +62,7 @@ public class PlayerNode : AudioNode, IDisposable
     {
         lock (_lock)
             Node.Stop();
+        _isPlaying.Invalidate();
     }
 
     private Task<bool> GetIsPlaying(CancellationToken cancellationToken)

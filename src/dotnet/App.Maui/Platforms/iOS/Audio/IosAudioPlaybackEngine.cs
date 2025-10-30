@@ -9,8 +9,6 @@ namespace ActualChat.App.Maui.Audio;
 
 public class IosAudioPlaybackEngine(
     string playerId,
-    TrackInfo trackInfo,
-    IMediaSource source,
     IAudioPlayerBackend backend,
     AppUIHub hub) : IAudioPlaybackEngine
 {
@@ -29,13 +27,14 @@ public class IosAudioPlaybackEngine(
         _decoder.DisposeSilently();
     }
 
-    public async Task Play(CancellationToken cancellationToken)
+    public Task Play(CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation("#{PlayerId}.Play", playerId);
-        _voicePlayer = await VoicePlayer.Create(playerId, hub).ConfigureAwait(false);
+        _voicePlayer = new VoicePlayer(playerId, hub);
         _processFeederWorker = FuncWorker.Start(MonitorPlayer);
         _decoder = Opus.CreateDecoder();
         _voicePlayer.Play();
+        return Task.CompletedTask;
     }
 
     public Task Pause(CancellationToken cancellationToken)
@@ -78,6 +77,9 @@ public class IosAudioPlaybackEngine(
     {
         await foreach (var cPosition in _voicePlayer.PlaybackState.Computed.Changes(cancellationToken)
                            .ConfigureAwait(false))
-            await backend.OnPlaying(cPosition.Value.Position.TotalSeconds, cPosition.Value.IsPlaying, cPosition.Value.IsBufferLow);
+            await backend.OnPlaying(cPosition.Value.Position.TotalSeconds,
+                    !cPosition.Value.IsPlaying,
+                    cPosition.Value.IsBufferLow)
+                .ConfigureAwait(false);
     }
 }
