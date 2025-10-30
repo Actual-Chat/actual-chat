@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.Kvas;
 using ActualChat.Users;
 using ActualLab.Interception;
 
