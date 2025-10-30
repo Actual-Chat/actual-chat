@@ -41,9 +41,12 @@ export class ChatEntryMessageInternalView {
         if (!content && !this.messageMarkup.classList.contains('streaming'))
             this.messageMarkup.classList.add('empty');
 
-        this.scrollbarDelta = this.getRemInPixels();
-
+        const isNotStreaming = this.messageMarkup.classList.contains('not-streaming');
         this.playableText = this.messageMarkup.querySelector('.playable-text-markup');
+        if (isNotStreaming && !this.playableText)
+            return;
+
+        this.scrollbarDelta = this.getRemInPixels();
 
         this.markupHeight = this.messageMarkup.offsetHeight;
         this.messageMarkup.style.height = this.markupHeight + 'px';
@@ -93,12 +96,6 @@ export class ChatEntryMessageInternalView {
 
             if (!targetEl)
                 return;
-
-            const codeParent = targetEl.closest('code');
-            if (codeParent) {
-                this.normalizeCodeBlocks(this.messageMarkup.querySelectorAll<HTMLElement>('code'));
-                return;
-            }
 
             if (mutation.type === 'characterData' &&
                 mutation.target.nodeType === Node.TEXT_NODE) {
@@ -174,20 +171,9 @@ export class ChatEntryMessageInternalView {
         this.markupHeight = height;
     }
 
-    private normalizeCodeBlocks(codeBlocks: NodeListOf<HTMLElement>) {
-        codeBlocks.forEach(codeEl => {
-            codeEl.style.height = "auto";
-            if (codeEl.scrollWidth > codeEl.clientWidth) {
-                codeEl.style.height = codeEl.getBoundingClientRect().height + this.scrollbarDelta / 4 + 'px';
-            } else
-                codeEl.style.height = codeEl.getBoundingClientRect().height + 'px';
-        });
-        this.changeSizeForText(false, true);
-    }
-
-    private changeSizeForText(slow: boolean = false, withCodeBlock: boolean = false) {
+    private changeSizeForText(slow: boolean = false) {
         const actualHeight = this.getActualHeight();
-        if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels() && !withCodeBlock)
+        if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels())
             return;
 
         const debounceFunc = actualHeight > this.markupHeight || !slow
