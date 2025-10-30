@@ -71,7 +71,9 @@
             </div>
             @if (ScreenSize.IsNarrow()) {
                 @RenderAttachmentListView()
-                <div class="rounded-sub-footer"></div>
+                <div class="rounded-sub-footer">
+                    <div class="bg-layer"></div>
+                </div>
                 <RelatedChatEntryPanel/>
             }
             <ChatAudioPanel Chat="@Chat" IsNarrow="@ScreenSize.IsNarrow()"/>

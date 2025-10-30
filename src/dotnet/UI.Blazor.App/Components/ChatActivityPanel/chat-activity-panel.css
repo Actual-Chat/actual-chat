@@ -3,6 +3,8 @@
     @apply flex-none flex-x items-center gap-x-1;
     @apply h-14 w-full md:w-64;
     @apply overflow-hidden;
+}
+.chat-activity-panel:not(.listening) {
     @apply bg-transparent;
 }
 body.wide .chat-activity-panel {
@@ -19,13 +21,13 @@ body.wide .chat-activity-panel {
     @apply content-empty;
     @apply absolute z-minus inset-0;
     @apply opacity-100;
-    background: linear-gradient(-10deg, #ABABFF, #FFD4FB) border-box;
+    background: linear-gradient(89deg, var(--magenta-90-10) 5.09%, var(--indigo-70-10) 94.69%);
 }
 .chat-activity-panel:before {
     @apply content-empty;
     @apply absolute z-minus inset-0;
     @apply opacity-0;
-    background: var(--white-40);
+    background: var(--white-05);
 }
 body.wide .chat-activity-panel:after,
 body.wide .chat-activity-panel.listening:before {
@@ -66,6 +68,11 @@ body.narrow .chat-activity-panel.listening:after {
 .chat-activity-panel > .c-buttons > .btn.btn-transparent:active::after {
     @apply hidden;
 }
+body.narrow .chat-activity-panel > .c-buttons > .btn.listening {
+    @apply px-4;
+    @apply rounded-lg;
+    @apply bg-[var(--leave-btn)];
+}
 .chat-activity-panel > .c-icon {
     @apply flex items-center justify-center;
     @apply h-8 w-8;
@@ -76,7 +83,7 @@ body.narrow .chat-activity-panel.listening:after {
 }
 .chat-activity-panel .btn.not-listening {
     @apply md:pr-1;
-    @apply text-[var(--violet-60)] text-caption-3;
+    @apply text-[var(--violet-70)] text-caption-3;
 }
 .chat-activity-panel .btn.listening {
     @apply md:px-2;
@@ -95,15 +102,29 @@ body.narrow .chat-activity-panel.listening:after {
     background:
         linear-gradient(-88deg, rgba(255, 202, 255, 0.80) 4.67%, rgba(130, 104, 255, 0.50) 87.89%) padding-box;
 }
+body.narrow .layout-subheader > div.chat-activity-subheader.active-listening,
+body.narrow .layout-subheader > div.chat-activity-subheader.active-listening .c-wrapper,
+body.narrow .chat-activity-panel.listening {
+    @apply bg-transparent;
+    background: transparent;
+}
+body.narrow .chat-activity-panel.listening:before,
+body.narrow .chat-activity-panel.listening:after {
+    @apply hidden;
+}
+body.narrow .chat-activity-panel.listening .c-icon {
+    @apply hidden;
+}
 .chat-activity-subheader .c-wrapper {
     @apply w-full;
     @apply rounded-lg;
     @apply overflow-hidden;
-    @apply bg-white;
+    @apply bg-01;
 }
 .chat-activity-subheader .chat-activity-panel {
     @apply h-12;
     @apply px-2;
+    background: linear-gradient(89deg, var(--magenta-90-10) 5.09%, var(--indigo-70-10) 94.69%);
 }
 
 .equalizer .bar {

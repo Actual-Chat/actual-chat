@@ -103,11 +103,17 @@
     --magenta-20: #5D0626;
     --magenta-10: #350013;
 
+    --magenta-20-20: #5D06261A;
     --magenta-40-10: #C80E511A;
     --magenta-40-20: #C80E5133;
     --magenta-50-05: #FF005C0D;
     --magenta-50-10: #FF005C1A;
     --magenta-50-20: #FF005C33;
+    --magenta-70-20: #FF649C33;
+    --magenta-80-10: #FF94BA1A;
+    --magenta-90-20: #FFC9DC33;
+    --magenta-90-10: #FFC9DC1A;
+
 
     --red-99: #FFFAFA;
     --red-95: #FFD5E5;
@@ -147,6 +153,8 @@
 
     --indigo-40-10: #2800C81A;
     --indigo-40-02: #2800C805;
+    --indigo-70-20: #7957FF33;
+    --indigo-70-10: #7957FF1A;
 
     --purple-99: #FDEFFF;
     --purple-95: #FBE2FF;
@@ -174,9 +182,12 @@
     --violet-10: #1B0030;
 
     --violet-60-20: #A635FF33;
-    --violet-50-20: #5200FF33;
-    --violet-50-10: #5200FF1A;
+    --violet-50-20: #8F00FF33;
+    --violet-50-10: #8F00FF1A;
+    --violet-80-10: #D39AFF1A;
     --violet-80-20: #D39AFF33;
+    --violet-80-40: #D39AFF66;
+    --violet-90-20: #E7C9FF33;
     --violet-90-60: #E7C9FF99;
 
     --navy-50: #0038FF;
@@ -431,6 +442,12 @@
     --thread-gradient-01: var(--ash-95);
     --thread-gradient-02: var(--white);
     --tooltip-shadow: var(--black-10);
+    --header-fog-color-1: var(--violet-90);
+    --header-fog-color-2: var(--white);
+    --footer-fog-color-1: var(--violet-90);
+    --footer-fog-color-2: var(--transparent);
+    --mobile-footer-fog-color-1: var(--violet-80);
+    --leave-btn: var(--white);
 
     /* Skeletons */
     --left-panel-skeleton-header: var(--gray-70);
@@ -746,6 +763,12 @@
     --thread-gradient-01: var(--white-10);
     --thread-gradient-02: var(--transparent);
     --tooltip-shadow: var(--white-10);
+    --header-fog-color-1: var(--violet-80-20);
+    --header-fog-color-2: var(--transparent);
+    --footer-fog-color-1: var(--violet-80-20);
+    --footer-fog-color-2: var(--transparent);
+    --mobile-footer-fog-color-1: var(--violet-80);
+    --leave-btn: var(--white-10);
 
     /* Skeletons */
     --left-panel-skeleton-header: var(--ash-26);
@@ -1060,6 +1083,12 @@
     --thread-gradient-01: var(--ash-95);
     --thread-gradient-02: var(--white);
     --tooltip-shadow: var(--black-10);
+    --header-fog-color-1: var(--violet-90);
+    --header-fog-color-2: var(--white);
+    --footer-fog-color-1: var(--violet-90);
+    --footer-fog-color-2: var(--transparent);
+    --mobile-footer-fog-color-1: var(--violet-80);
+    --leave-btn: var(--white);
 
     /* Skeletons */
     --left-panel-skeleton-header: var(--gray-70);
