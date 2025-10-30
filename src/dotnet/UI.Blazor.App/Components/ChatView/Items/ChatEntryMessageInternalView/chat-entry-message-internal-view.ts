@@ -13,7 +13,6 @@ export class ChatEntryMessageInternalView {
     private readonly messageMarkup: HTMLElement;
     private playableText: HTMLElement | null;
     private markupHeight: number = 0;
-    private scrollbarDelta = 0;
     private mutationObserver: MutationObserver;
     private resizeObserver: ResizeObserver;
     private observerOptions = {
@@ -41,28 +40,30 @@ export class ChatEntryMessageInternalView {
         if (!content && !this.messageMarkup.classList.contains('streaming'))
             this.messageMarkup.classList.add('empty');
 
-        const isNotStreaming = this.messageMarkup.classList.contains('not-streaming');
+        const isStreaming = !this.messageMarkup.classList.contains('not-streaming');
         this.playableText = this.messageMarkup.querySelector('.playable-text-markup');
-        if (isNotStreaming && !this.playableText)
-            return;
 
-        this.scrollbarDelta = this.getRemInPixels();
+        if (isStreaming) {
+            this.markupHeight = this.messageMarkup.offsetHeight;
+            this.messageMarkup.style.height = this.markupHeight + 'px';
+            this.mutationObserver = new MutationObserver(this.updateMarkupSize);
+            this.mutationObserver.observe(this.messageMarkup, this.observerOptions);
 
-        this.markupHeight = this.messageMarkup.offsetHeight;
-        this.messageMarkup.style.height = this.markupHeight + 'px';
-        this.mutationObserver = new MutationObserver(this.updateMarkupSize);
-        this.mutationObserver.observe(this.messageMarkup, this.observerOptions);
+            this.resizeObserver = new ResizeObserver(this.updateHeightOnWidthChange);
+            this.resizeObserver.observe(this.messageMarkup);
 
-        this.resizeObserver = new ResizeObserver(this.updateHeightOnWidthChange);
-        this.resizeObserver.observe(this.messageMarkup);
+            this.slowDebouncedChangeSize = debounce(async (height: number) => {
+                const actualHeight = this.getActualHeight();
+                if (actualHeight > height)
+                    return;
 
-        this.slowDebouncedChangeSize = debounce(async (height: number) => {
-            const actualHeight = this.getActualHeight();
-            if (actualHeight > height)
-                return;
-
-            this.changeSize(height);
-        }, 2000);
+                this.changeSize(height);
+            }, 2000);
+        } else if (this.playableText) {
+            this.mutationObserver = new MutationObserver(this.updateMarkupSize);
+            this.mutationObserver.observe(this.messageMarkup, this.observerOptions);
+        }
+        return;
     }
 
     public dispose() {
@@ -97,30 +98,20 @@ export class ChatEntryMessageInternalView {
             if (!targetEl)
                 return;
 
-            if (mutation.type === 'characterData' &&
-                mutation.target.nodeType === Node.TEXT_NODE) {
-                const element = mutation.target.parentElement as HTMLElement;
-                if ([...element.classList].some(cls => importantClasses.has(cls)) || element.classList.contains('playable-text-markup')) {
-                    this.changeSizeForText(true);
-                } else {
-                    this.changeSizeForText();
-                }
-            }
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach((node) => {
                     if (!(node instanceof HTMLElement))
                         return;
 
+                    if ([...node.classList].some(cls => importantClasses.has(cls))) {
+                        this.changeSizeForText();
+                    }
+
                     if (node.classList.contains('playable-text-markup')) {
                         this.playableText = node as HTMLElement;
                         this.onTranscriptionFinalizedResize();
-                    }
-                    if (node.classList.contains('plain-text-markup')) {
-                        if (this.messageMarkup.classList.contains('empty')) {
-                            this.messageMarkup.classList.remove('empty');
-                        } else {
-                            this.changeSizeForText(true);
-                        }
+                        this.messageMarkup.style.height = 'auto';
+                        return;
                     }
                 });
                 mutation.removedNodes.forEach((node) => {
@@ -129,10 +120,18 @@ export class ChatEntryMessageInternalView {
 
                     if ([...node.classList].some(cls => importantClasses.has(cls))) {
                         this.changeSizeForText(true);
-                    } else if (node.classList.contains('plain-text-markup')) {
-                        this.changeSizeForText();
                     }
                 });
+            }
+
+            if (mutation.type === 'characterData' &&
+                mutation.target.nodeType === Node.TEXT_NODE) {
+                const element = mutation.target.parentElement as HTMLElement;
+                if ([...element.classList].some(cls => importantClasses.has(cls))) {
+                    this.changeSizeForText(true);
+                } else {
+                    this.changeSizeForText();
+                }
             }
         });
     }
@@ -164,23 +163,32 @@ export class ChatEntryMessageInternalView {
 
         this.isResizing = true;
 
+        const resetTimeout = setTimeout(() => {
+            this.isResizing = false;
+        }, 2000);
+
         this.messageMarkup.removeEventListener('transitionend', this.onTransitionEndBound);
-        this.messageMarkup.addEventListener('transitionend', this.onTransitionEndBound);
+        this.messageMarkup.addEventListener('transitionend', (e: TransitionEvent) => {
+            clearTimeout(resetTimeout);
+            this.onTransitionEndBound(e);
+        });
 
         this.messageMarkup.style.height = height + 'px';
         this.markupHeight = height;
     }
 
     private changeSizeForText(slow: boolean = false) {
-        const actualHeight = this.getActualHeight();
-        if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels())
-            return;
+        requestAnimationFrame(() => {
+            const actualHeight = this.getActualHeight();
+            if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels())
+                return;
 
-        const debounceFunc = actualHeight > this.markupHeight || !slow
-            ? this.fastDebouncedChangeSize
-            : this.slowDebouncedChangeSize;
+            const debounceFunc = actualHeight > this.markupHeight || !slow
+                ? this.fastDebouncedChangeSize
+                : this.slowDebouncedChangeSize;
 
-        debounceFunc(actualHeight);
+            debounceFunc(actualHeight);
+        });
     }
 
     private getActualHeight(): number {
@@ -190,12 +198,19 @@ export class ChatEntryMessageInternalView {
     }
 
     private onTransitionEndBound = (e: TransitionEvent) => this.onTransitionEnd(e);
-
     private onTransitionEnd(e: TransitionEvent) {
         if (e.propertyName === 'height') {
             this.messageMarkup.removeEventListener('transitionend', this.onTransitionEndBound);
             this.markupHeight = this.messageMarkup.offsetHeight;
             this.isResizing = false;
+        }
+    }
+
+    private onFinalTransitionEndBound = (e: TransitionEvent) => this.onFinalTransitionEnd(e);
+    private onFinalTransitionEnd(e: TransitionEvent) {
+        if (e.propertyName === 'height') {
+            this.messageMarkup.removeEventListener('transitionend', this.onFinalTransitionEndBound);
+            this.isResizing = false
         }
     }
 }
