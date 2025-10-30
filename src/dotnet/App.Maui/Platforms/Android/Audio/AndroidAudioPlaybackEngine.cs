@@ -65,7 +65,7 @@ internal sealed class AndroidAudioPlaybackEngine(
             throw new InvalidOperationException($"AudioTrack min buffer size invalid: {minBufferBytes}");
 
         // Minimum buffer size to keep Feed blocked on track.WriteAsync
-        var bufferBytes = Math.Max(minBufferBytes, Constants.Audio.PcmFrameLength);
+        var bufferBytes = Math.Max(minBufferBytes, Constants.Audio.PcmFrameLength * 4);
         try {
             var attributes = new AudioAttributes.Builder()
                 .SetUsage(AudioUsageKind.VoiceCommunication)!
@@ -227,12 +227,23 @@ internal sealed class AndroidAudioPlaybackEngine(
                 if (playSamples > 0) {
                     var track = _audioTrack;
                     if (track is null) {
+                        Log.LogDebug("AudioTrack is null during DecodeAndFeed, terminating");
+                        _packetChannel.Writer.TryComplete();
                         await End(true, cancellationToken).ConfigureAwait(false);
                         break;
                     }
 
                     // If playback is paused, wait until it is resumed before feeding more data
                     await WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
+
+                    // Verify track is still valid before writing
+                    // Check if track was stopped or released while we were waiting
+                    if (!IsTrackValidForWrite(track)) {
+                        Log.LogDebug("AudioTrack became invalid during DecodeAndFeed, terminating");
+                        // Clean up the channel to prevent further processing
+                        _packetChannel.Writer.TryComplete();
+                        break;
+                    }
 
                     pcm.Span.CopyTo(audioData.AsSpan(0, pcm.Length));
                     var written = await track.WriteAsync(audioData, skip, playSamples, WriteMode.Blocking).ConfigureAwait(false);
@@ -340,6 +351,27 @@ internal sealed class AndroidAudioPlaybackEngine(
             return;
 
         _ = playerBackend.OnEnded(message);
+    }
+
+    private static bool IsTrackValidForWrite(AudioTrack? track)
+    {
+        if (track is null)
+            return false;
+
+        try {
+            // Check if track state is initialized (not released)
+            var state = track.State;
+            if (state != AudioTrackState.Initialized)
+                return false;
+
+            // Check if track is not stopped
+            var playState = track.PlayState;
+            return playState != PlayState.Stopped;
+        }
+        catch {
+            // If we can't read the state, assume it's invalid
+            return false;
+        }
     }
 
     private sealed class PlayPositionListener(AndroidAudioPlaybackEngine parent)
