@@ -89,9 +89,7 @@ public partial class AccountUI
     private async Task SaveSignedInState(AccountFull? account)
     {
         var isSignedIn = !account.IsGuestOrNull();
-        var webLocalSettings = WebLocalSettings;
-        await webLocalSettings.Set("AccountUI.IsSignedIn", Box.New(isSignedIn)).ConfigureAwait(false);
-        await webLocalSettings.Flush().ConfigureAwait(false);
+        await LocalStorage.SetString("AccountUI.IsSignedIn", isSignedIn ? "1" : "0").ConfigureAwait(false);
     }
 
     private async Task StartOnSignedInWorkflow()

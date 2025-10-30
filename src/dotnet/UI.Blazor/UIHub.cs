@@ -52,6 +52,8 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public IHttpClientFactory HttpClientFactory => field ??= Services.GetRequiredService<IHttpClientFactory>();
     [field: AllowNull, MaybeNull]
     public RpcHub RpcHub => field ??= Services.GetRequiredService<RpcHub>();
+    [field: AllowNull, MaybeNull]
+    public LocalStorage LocalStorage => field ??= Services.GetRequiredService<LocalStorage>();
 
     // Account-related & chat-related services
     [field: AllowNull, MaybeNull]

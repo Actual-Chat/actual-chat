@@ -24,8 +24,7 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private ReloadUI ReloadUI => Hub.ReloadUI;
     private MomentClock CpuClock { get; }
-    [field: AllowNull, MaybeNull]
-    private LocalSettings WebLocalSettings => field ??= Hub.Services.GetRequiredKeyedService<LocalSettings>(LocalSettings.WebServiceKey);
+    private LocalStorage LocalStorage => Hub.LocalStorage;
 
     public Task WhenReady => _whenReadySource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
