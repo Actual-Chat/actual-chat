@@ -1,4 +1,3 @@
-using ActualChat.Kvas;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
