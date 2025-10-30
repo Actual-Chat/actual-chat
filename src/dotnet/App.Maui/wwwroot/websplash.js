@@ -2,16 +2,14 @@
     try {
         const overlay = document.getElementById('web-splash');
         if (overlay) {
-            await window.App.whenBundleReady;
-            const trueLiteral = 'AAEBAQ==';
-            const isSignedInData = await ui.localSettings.kvas.get('AccountUI.IsSignedIn');
-            const isSignedIn = isSignedInData === trueLiteral;
+            const isSignedInData = localStorage.getItem('AccountUI.IsSignedIn');
+            const isSignedIn = isSignedInData === '1';
             // do not show skeletons splash screen if the user was not signed in
             if (!isSignedIn)
                 return;
 
-            const isVisibleData = await ui.localSettings.kvas.get('RightPanelUI.RightPanel.IsVisible');
-            const isRightPanelVisible = isVisibleData === trueLiteral;
+            const isRightPanelVisibleData = localStorage.getItem('RightPanelUI.RightPanel.IsVisible');
+            const isRightPanelVisible = isRightPanelVisibleData === '1';
             overlay.innerHTML = `
                 <splash-page-skeleton isRightPanelVisible="${isRightPanelVisible}"/>
             `;

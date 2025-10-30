@@ -10,17 +10,15 @@ public class RightPanelStoredState
     private readonly StoredState<Box<bool>> _isVisibleStored;
 
     private UIHub Hub { get; }
-    [field: AllowNull, MaybeNull]
-    protected LocalSettings WebLocalSettings => field ??= Hub.Services.GetRequiredKeyedService<LocalSettings>(LocalSettings.WebServiceKey);
+    protected LocalStorage LocalStorage => Hub.LocalStorage;
 
     public Task WhenRead => _isVisibleStored.WhenRead;
 
     public bool IsVisible {
         get => _isVisibleStored.Value.Value;
         set {
-            var boxedValue = Box.New(value);
-            _isVisibleStored.Value = boxedValue;
-            _ = SaveIsVisibleState(boxedValue).SilentAwait();
+            _isVisibleStored.Value = Box.New(value);
+            _ = SaveIsVisibleState(value).SilentAwait();
         }
     }
 
@@ -36,10 +34,6 @@ public class RightPanelStoredState
             });
     }
 
-    private async Task SaveIsVisibleState(Box<bool> boxedValue)
-    {
-        var webLocalSettings = WebLocalSettings;
-        await webLocalSettings.Set(StatePrefix + "." + PanelIsVisibleKey, boxedValue).SilentAwait();
-        await webLocalSettings.Flush().ConfigureAwait(false);
-    }
+    private async Task SaveIsVisibleState(bool isVisible)
+        => await LocalStorage.SetString(StatePrefix + "." + PanelIsVisibleKey, isVisible ? "1" : "0").SilentAwait();
 }
