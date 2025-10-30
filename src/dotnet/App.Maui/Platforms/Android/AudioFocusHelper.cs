@@ -26,7 +26,7 @@ public class AudioFocusHelper
     }
 
     public bool RequestFocusForCall()
-        => RequestFocus(AudioFocus.GainTransientExclusive, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
+        => RequestFocus(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
 
     public bool RequestFocusForPlayback()
         => RequestFocus(AudioFocus.Gain, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
