@@ -56,10 +56,18 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(_ => new RenderVars());
 
         // Settings
-        services.AddSingleton(_ => new LocalSettings.Options() {
-            BackendFactory = c => new WebKvasBackend($"{ImportName}.localSettings", c),
-        });
+        static LocalSettings.Options CreateWebLocalSettingsOptions()
+            => new () { BackendFactory = c => new WebKvasBackend($"{ImportName}.localSettings", c) };
+        services.AddSingleton(_ => CreateWebLocalSettingsOptions());
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
+        services.AddKeyedScoped(LocalSettings.WebServiceKey,  (x, _) => {
+            var settings1 = x.GetRequiredService<LocalSettings>();
+            if (settings1.Backend is WebKvasBackend)
+                return settings1;
+
+            var options = CreateWebLocalSettingsOptions();
+            return new LocalSettings(options, x);
+        });
         services.AddScoped(c => c.AccountSettings(c.Session()));
         services.AddScoped(c => c.ServerSettingsKvasClient(c.Session()));
         if (hostKind.IsServer()) {
