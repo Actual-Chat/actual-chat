@@ -192,6 +192,19 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply isolate;
     filter: opacity(1);
 }
+.list-view-layout .colorized-background {
+    @apply absolute inset-0 z-minus;
+}
+.list-view-layout .colorized-background:after {
+    @apply content-empty;
+    @apply absolute inset-x-0 top-0;
+    @apply h-40;
+}
+.list-view-layout .colorized-background:before {
+    @apply content-empty;
+    @apply absolute inset-x-0 bottom-0;
+    @apply h-40;
+}
 .list-view-layout .layout-header {
     @apply flex-x justify-center;
     @apply max-h-14;
@@ -200,20 +213,26 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply bg-transparent;
     @apply border-transparent;
 }
+/* Colorized header */
 .list-view-layout:has(.chat-activity-panel.listening):after {
     @apply content-empty;
     @apply absolute z-minus inset-x-0 top-0;
     @apply h-28;
     @apply opacity-90;
-    background: linear-gradient(180deg, var(--violet-90) 0%, var(--violet-90-60) 15%, var(--background-01) 100%);
+    background: linear-gradient(180deg, var(--header-fog-color-1) 0%, var(--header-fog-color-2) 100%);
     animation: smoothOpacity 1s ease forwards;
 }
+body.wide .list-view-layout:has(.chat-activity-panel.listening):after {
+    @apply h-40;
+    background: radial-gradient(56.91% 105.88% at 50% 0%, var(--header-fog-color-1) 0%, var(--header-fog-color-2) 100%);
+}
+/* Colorized footer */
 body.wide .list-view-layout:has(.chat-activity-panel.listening):before {
     @apply content-empty;
     @apply absolute z-minus inset-x-0 bottom-0;
-    @apply h-28;
+    @apply h-40;
     @apply opacity-90;
-    background: linear-gradient(0deg, var(--violet-90) 0%, var(--violet-90-60) 15%, var(--background-01) 100%);
+    background: radial-gradient(56.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
     animation: smoothOpacity 1s ease forwards;
 }
 @keyframes smoothOpacity {
@@ -431,3 +450,16 @@ body.wide .list-view-layout:has(.chat-activity-panel.listening):before {
     background-repeat: no-repeat;
     background-position: center;
 }
+
+/* Colorized Fog */
+.header-colorized-fog {
+    @apply absolute inset-x-0 top-0 z-minus;
+    @apply h-40;
+    background: radial-gradient(56.91% 105.88% at 50% 0%, rgba(211, 154, 255, 0.20) 0%, rgba(211, 154, 255, 0.00) 100%);
+}
+.footer-colorized-fog {
+    @apply absolute inset-x-0 bottom-0 z-minus;
+    @apply h-40;
+    background: radial-gradient(56.91% 105.88% at 50% 100%, rgba(211, 154, 255, 0.20) 0%, rgba(211, 154, 255, 0.00) 100%);
+}
+
