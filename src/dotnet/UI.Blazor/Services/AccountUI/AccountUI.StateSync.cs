@@ -1,3 +1,4 @@
+using ActualChat.Kvas;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -38,6 +39,7 @@ public partial class AccountUI
 
             Log.LogInformation("Account is changed to: {Account}", newAccount);
             _lastChangedAt.Value = CpuClock.Now;
+            await SaveSignedInState(newAccount).ConfigureAwait(false);
             await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
             await Hub.Dispatcher
                 .InvokeSafeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount), Log)
@@ -82,6 +84,14 @@ public partial class AccountUI
         }
 
         _ = StartOnSignedInWorkflow();
+    }
+
+    private async Task SaveSignedInState(AccountFull? account)
+    {
+        var isSignedIn = !account.IsGuestOrNull();
+        var webLocalSettings = WebLocalSettings;
+        await webLocalSettings.Set("AccountUI.IsSignedIn", Box.New(isSignedIn)).ConfigureAwait(false);
+        await webLocalSettings.Flush().ConfigureAwait(false);
     }
 
     private async Task StartOnSignedInWorkflow()
