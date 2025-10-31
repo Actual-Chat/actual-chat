@@ -271,7 +271,7 @@ internal sealed class AndroidAudioPlaybackEngine(
     private Task ReportPlaying(int playedSamples)
     {
         var played = (double)playedSamples / Constants.Audio.PlaybackSampleRate;
-        var buffered = TimeSpan.FromSeconds((double)_feedSamples / Constants.Audio.PlaybackSampleRate);
+        var buffered = TimeSpan.FromSeconds((double)(_feedSamples - playedSamples) / Constants.Audio.PlaybackSampleRate);
         var isBufferLow = buffered < Constants.Audio.LowPlaybackBufferDuration;
         var isPaused = _audioTrack?.PlayState is PlayState.Paused or PlayState.Stopped;
         try {
