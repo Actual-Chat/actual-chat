@@ -1,36 +1,38 @@
 using System.Buffers;
 using ActualChat.App.Maui.Services.Recording;
+using ActualChat.Audio;
 using Android.Media;
+using Encoding = Android.Media.Encoding;
 
 namespace ActualChat.App.Maui.Audio;
 
 public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCapture
 {
+    private const int NativeSampleRate = 48000;
+    private const int FrameSamples = 960; // 20 ms at 48 kHz
+    private const int BytesPerSample = sizeof(float);
+
     public ILogger<AndroidAudioCapture> Log { get; } = log;
 
     public Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)
     {
-        // Configure AudioRecord for float32 PCM mono at desired sample rate (API 23+ supports PCM_FLOAT)
-        var sampleRate = Constants.Audio.RecordingSampleRate;
-        var channelConfig = ChannelIn.Mono;
-        var encoding = Android.Media.Encoding.PcmFloat;
+        // Configure AudioRecord for float32 PCM mono at native 48kHz (API 23+ supports PCM_FLOAT)
+        // We'll resample from 48kHz to 16kHz using Resampler
 
-        var minBufferBytes = AudioRecord.GetMinBufferSize(sampleRate, channelConfig, encoding);
+        var minBufferBytes = AudioRecord.GetMinBufferSize(NativeSampleRate, ChannelIn.Mono, Android.Media.Encoding.PcmFloat);
         if (minBufferBytes <= 0)
             return Task.FromResult<IAsyncEnumerable<IMemoryOwner<float>>?>(null);
 
-        // We'll read at least VAD frame size per push
-        var frameSamples = Constants.Audio.OpusFrameLength; // 20 ms at 16 kHz = 320 samples
-        var bytesPerSample = sizeof(float);
-        var bufferBytes = Math.Max(minBufferBytes, frameSamples * bytesPerSample * 4); // some headroom
+        // At 48kHz, 20ms = 960 samples (will be resampled to 320 samples at 16kHz)
+        var bufferBytes = Math.Max(minBufferBytes, FrameSamples * BytesPerSample * 4); // some headroom
 
         AudioRecord? recorder = null;
         try {
             recorder = new AudioRecord(
                 /* audioSource: */ Android.Media.AudioSource.VoiceCommunication,
-                /* sampleRateInHz: */ sampleRate,
-                /* channelConfig: */ channelConfig,
-                /* audioFormat: */ encoding,
+                /* sampleRateInHz: */ NativeSampleRate,
+                /* channelConfig: */ ChannelIn.Mono,
+                /* audioFormat: */ Android.Media.Encoding.PcmFloat,
                 /* bufferSizeInBytes: */ bufferBytes);
 
             if (recorder.State != Android.Media.State.Initialized) {
@@ -50,6 +52,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
         }
 
         var ringBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
+        var resampler = new Resampler();
 
         _ = BackgroundTask.Run(Producer, cancellationToken);
 
@@ -58,33 +61,43 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
 
         async Task Producer()
         {
-            var floatReadBuffer = ArrayBuffer<float>.Lease(false, frameSamples * 4);
+            const int readBy = FrameSamples * 2;
+            var floatReadBuffer = ArrayBuffer<float>.Lease(false, readBy * 2);
+            var resampleOutputBuffer = ArrayBuffer<float>.Lease(false, resampler.GetMaxOutputLength(readBy));
             try {
                 recorder!.StartRecording();
 
                 while (!cancellationToken.IsCancellationRequested) {
-                    int readCount;
-                    try {
+                    // int readCount;
+                    // try {
                         // Use async read of float samples; cancel via WaitAsync
                         // readMode: 0 = blocking, 1 = non-blocking (constants per Android API)
-                        readCount = await recorder
-                            .ReadAsync(floatReadBuffer.Buffer, 0, frameSamples * 2, 0)
-                            .WaitAsync(cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException) {
-                        break;
-                    }
+                        // readCount = await recorder
+                        //     .ReadAsync(floatReadBuffer.Buffer, 0, readBy, 0) // 40 ms at 48 kHz
+                        //     .WaitAsync(cancellationToken)
+                        //     .ConfigureAwait(false);
 
+                    // }
+                    // catch (OperationCanceledException) {
+                    //     break;
+                    // }
+
+                    var readCount = recorder.Read(floatReadBuffer.Buffer, 0, readBy, 1);
                     if (readCount <= 0) {
                         if (readCount < 0)
                             break; // error
 
+                        await Task.Delay(20, cancellationToken).ConfigureAwait(false);
                         continue;
                     }
 
-                    // Push to ring buffer; backpressure if full
-                    while (!ringBuffer.TryPush(floatReadBuffer.Buffer.AsSpan(0, readCount)))
+                    // Resample from 48kHz to 16kHz
+                    var outputCount = resampler.ProcessChunk(
+                        floatReadBuffer.Buffer.AsSpan(0, readCount),
+                        resampleOutputBuffer.Buffer.AsSpan());
+
+                    // Push resampled audio to ring buffer; backpressure if full
+                    while (!ringBuffer.TryPush(resampleOutputBuffer.Buffer.AsSpan(0, outputCount)))
                         await ringBuffer.WhenPulled.WaitAsync(cancellationToken).ConfigureAwait(false);
                 }
             }
@@ -93,6 +106,7 @@ public class AndroidAudioCapture(ILogger<AndroidAudioCapture> log) : IAudioCaptu
             }
             finally {
                 floatReadBuffer.Release();
+                resampleOutputBuffer.Release();
                 try {
                     if (recorder.RecordingState == RecordState.Recording)
                         recorder.Stop();
