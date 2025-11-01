@@ -14,25 +14,12 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return;
 
         Operation = $"historical playback in \"{chat.Title}\"";
-        var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
-        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
-            .ConfigureAwait(false);
-        var startEntry = await audioEntryReader
-            .FindByMinBeginsAt(minPlayAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
-            .ConfigureAwait(false);
-        if (startEntry == null) {
-            Log.LogWarning("Couldn't find start entry");
-            return;
-        }
-
         var clock = Clocks.CpuClock;
         var initialSleepAndPauseDuration = SleepAndPauseDuration;
         var realStartAt = RealNow();
         var lastPlaybackBlockEnd = PlaybackNow(); // Any time in past, actually
 
-        idRange = (startEntry.LocalId, idRange.End);
-        var entries = audioEntryReader.Read(idRange, cancellationToken);
-        await foreach (var entry in entries.ConfigureAwait(false)) {
+        await foreach (var entry in ListHistoricalAudioEntries(minPlayAt, cancellationToken).ConfigureAwait(false)) {
             if (entry.IsStreaming)
                 continue;
 
@@ -78,6 +65,30 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         => offset < TimeSpan.Zero
             ? GetRewindMomentInPast(playingAt, offset.Negate(), cancellationToken)
             : GetRewindMomentInFuture(playingAt, offset, cancellationToken);
+
+    private async IAsyncEnumerable<ChatEntry> ListHistoricalAudioEntries(Moment minPlayAt, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
+        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
+            .ConfigureAwait(false);
+        var startEntry = await audioEntryReader
+            .FindByMinBeginsAt(minPlayAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            .ConfigureAwait(false);
+        if (startEntry == null) {
+            Log.LogWarning("Couldn't find start entry");
+            yield break;
+        }
+
+        idRange = (startEntry.LocalId, idRange.End);
+        while (!idRange.IsEmptyOrNegative) {
+            var entries = audioEntryReader.Read(idRange, cancellationToken).Where(x => !x.IsStreaming);
+            await foreach (var entry in entries.ConfigureAwait(false))
+                yield return entry;
+
+            var newIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken).ConfigureAwait(false);
+            idRange = new (idRange.End, newIdRange.End);
+        }
+    }
 
     private async Task<Moment?> GetRewindMomentInFuture(Moment playingAt, TimeSpan offset, CancellationToken cancellationToken)
     {
