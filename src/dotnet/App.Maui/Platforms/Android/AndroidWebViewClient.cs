@@ -54,8 +54,6 @@ public class AndroidWebViewClient(
     {
         const string contentTypeKey = "Content-Type";
         const string cacheControlKey = "Cache-Control";
-        const string coopKey = "Cross-Origin-Opener-Policy";
-        const string coepKey = "Cross-Origin-Embedder-Policy";
 
         if (IsDisconnected)
             return null;
@@ -86,23 +84,6 @@ public class AndroidWebViewClient(
         resourceResponse.ResponseHeaders?.Add(cacheControlKey, "public, max-age=604800");
         // We see duplicate Content-Type headers at Android
         resourceResponse.ResponseHeaders?.Remove(contentTypeKey);
-
-        // Append COOP/COEP headers for the main page only
-        try {
-            var path = requestUrl?.EncodedPath ?? string.Empty;
-            var isMainPage = string.Equals(path, "/", StringComparison.Ordinal)
-                || string.Equals(path, "/index.html", StringComparison.OrdinalIgnoreCase);
-            if (isMainPage) {
-                resourceResponse.ResponseHeaders?.Remove(coopKey);
-                resourceResponse.ResponseHeaders?.Remove(coepKey);
-                resourceResponse.ResponseHeaders?.Add(coopKey, "same-origin");
-                resourceResponse.ResponseHeaders?.Add(coepKey, "require-corp");
-            }
-        }
-        catch {
-            // ignore header append errors
-        }
-
         return resourceResponse;
     }
 
