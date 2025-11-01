@@ -78,7 +78,8 @@ public class IosAudioFocusService : MauiAudioFocusService
         var option = e.Option;
         _ = BackgroundTask.Run(() => HandleInterruption(type, reason, wasSuspended, option),
             Log,
-            "Failed to handle interruption");
+            "Failed to handle interruption",
+            StopToken);
     }
 
     private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
