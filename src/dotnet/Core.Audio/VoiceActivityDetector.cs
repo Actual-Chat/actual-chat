@@ -86,112 +86,126 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
     ///     Returns either a VoiceActivityChange when state flips, or the current input gain when no change.
     ///     Mirrors the logic of VoiceActivityDetectorBase.appendChunk in TS.
     /// </summary>
-    public virtual VadResult AppendChunk(ReadOnlySpan<float> monoPcm)
+    public virtual VadResult[] AppendChunk(ReadOnlySpan<float> monoPcm)
     {
-        var currentOffset = _sampleCount;
-        _sampleCount += monoPcm.Length;
-        var currentEvent = LastActivityEvent;
+        // Ensure input length is a multiple of 512 samples
+        if (monoPcm.Length % WindowSamples != 0)
+            throw new ArgumentException($"AppendChunk expects length to be a multiple of {WindowSamples} samples.", nameof(monoPcm));
 
-        var rawGain = AudioExt.ApproximateGain(monoPcm);
-        _gainEma.AppendSample(rawGain);
-        var gain = _gainEma.Value;
-        if (gain < MinRecordingGain && currentEvent.Kind == VoiceActivityKind.End)
-            return VadResult.GainOnly(gain);
+        var frames = monoPcm.Length / WindowSamples;
+        var results = new VadResult[frames];
 
-        var prob = AppendChunkInternal(monoPcm);
-        if (prob is null)
-            return VadResult.GainOnly(gain);
+        // Query model once for the whole batch
+        var probs = AppendChunkInternal(monoPcm);
 
-        //Log.LogInformation("VAD: {Offset} {Kind} {Prob} {Gain}", currentOffset, currentEvent.Kind, prob.Value, gain);
+        for (int fi = 0; fi < frames; fi++) {
+            var currentOffset = _sampleCount;
+            _sampleCount += WindowSamples;
+            var currentEvent = LastActivityEvent;
 
-        _probEma.AppendSample(prob.Value);
-        _longProbEma.AppendSample(prob.Value);
-        var probEma = _probEma.Value;
-        var longProbEma = _longProbEma.Value;
-        var probMedian = _probMedian.Value;
-        var speechProbTrigger = 0.67 * probMedian;
-        var pauseProbTrigger = 0.15 * probMedian;
-
-        if (currentEvent.Kind == VoiceActivityKind.End && probEma >= longProbEma && probEma >= speechProbTrigger) {
-            // speech start detected
-            var offset = (int)Math.Max(0, currentOffset - monoPcm.Length);
-            var duration = offset - currentEvent.OffsetSamples;
-            currentEvent = VoiceActivityChange.Start(offset, duration, probEma);
-            _whenTalkingProbMedian = new RunningUnitMedian();
-            _maxPauseSamples = (int)(SampleRate * MaxPauseS);
-        }
-        else if (currentEvent.Kind == VoiceActivityKind.Start && probEma < longProbEma && probEma < pauseProbTrigger) {
-            // pause start detected
-            _pauseCancelSamples = 0;
-            _pauseOffset ??= currentOffset;
-            _whenTalkingProbMedian = null;
-        }
-
-        if (currentEvent.Kind == VoiceActivityKind.Start) {
-            var currentSpeechSamples = (int)(currentOffset - currentEvent.OffsetSamples);
-
-            if (_pauseOffset is not null) {
-                // we detected pause earlier - should we materialize it?
-                if (probEma >= speechProbTrigger) {
-                    // and it's speech now
-                    _pauseCancelSamples += monoPcm.Length;
-                    if (_pauseCancelSamples >= (int)(SampleRate * MinSpeechToCancelPauseS)) {
-                        _pauseOffset = null;
-                        _pauseCancelSamples = 0;
-                    }
-                }
-                else if (probEma < pauseProbTrigger) {
-                    // it's still a pause
-                    var currentSilenceSamples = (int)(currentOffset - (_pauseOffset ?? 0));
-                    if (currentSilenceSamples > _maxPauseSamples
-                        && currentSpeechSamples > (int)(SampleRate * MinSpeechS)) {
-                        // materializing the pause
-                        var offset = (int)(_pauseOffset! + monoPcm.Length);
-                        var duration = offset - currentEvent.OffsetSamples;
-                        currentEvent = VoiceActivityChange.End(offset, duration, probEma);
-                        _pauseOffset = null;
-                    }
-                }
-            }
-            else if (_whenTalkingProbMedian is not null) {
-                // adjust speech boundary triggers if current period was speech with high probabilities
-                var offset = currentOffset + monoPcm.Length;
-                var duration = (int)(offset - currentEvent.OffsetSamples);
-                var durationS = duration / (double)SampleRate;
-                var speechRatio = _whenTalkingProbMedian.SampleCount / (double)duration;
-                if (speechRatio > 0.5 && durationS > 2)
-                    _probMedian.AppendSample((float)probEma);
+            var frameSpan = monoPcm.Slice(fi * WindowSamples, WindowSamples);
+            var rawGain = AudioExt.ApproximateGain(frameSpan);
+            _gainEma.AppendSample(rawGain);
+            var gain = _gainEma.Value;
+            if (probs is null || (gain < MinRecordingGain && currentEvent.Kind == VoiceActivityKind.End)) {
+                results[fi] = VadResult.GainOnly(gain);
+                continue;
             }
 
-            if (currentEvent.Kind == VoiceActivityKind.Start && currentSpeechSamples > (int)(SampleRate * MaxSpeechS)) {
-                // break long speech regardless of speech probability
-                var offset = (int)(_pauseOffset ?? currentOffset);
+            var prob = probs[Math.Min(fi, probs.Length - 1)];
+
+            _probEma.AppendSample(prob);
+            _longProbEma.AppendSample(prob);
+            var probEma = _probEma.Value;
+            var longProbEma = _longProbEma.Value;
+            var probMedian = _probMedian.Value;
+            var speechProbTrigger = 0.67 * probMedian;
+            var pauseProbTrigger = 0.15 * probMedian;
+
+            if (currentEvent.Kind == VoiceActivityKind.End && probEma >= longProbEma && probEma >= speechProbTrigger) {
+                // speech start detected
+                var offset = (int)Math.Max(0, currentOffset - WindowSamples);
                 var duration = offset - currentEvent.OffsetSamples;
-                currentEvent = VoiceActivityChange.End((int)currentOffset, duration, probEma);
-                _pauseOffset = null;
+                currentEvent = VoiceActivityChange.Start(offset, duration, probEma);
+                _whenTalkingProbMedian = new RunningUnitMedian();
+                _maxPauseSamples = (int)(SampleRate * MaxPauseS);
+            }
+            else if (currentEvent.Kind == VoiceActivityKind.Start && probEma < longProbEma && probEma < pauseProbTrigger) {
+                // pause start detected
+                _pauseCancelSamples = 0;
+                _pauseOffset ??= currentOffset;
+                _whenTalkingProbMedian = null;
             }
 
-            if (_whenTalkingProbMedian is not null && prob > 0.25)
-                _whenTalkingProbMedian.AppendSample(prob.Value);
+            if (currentEvent.Kind == VoiceActivityKind.Start) {
+                var currentSpeechSamples = (int)(currentOffset - currentEvent.OffsetSamples);
 
-            // adjust max pause for long speech - break more aggressively, but keep longer pauses for monologue
-            var isConversation = _lastConversationSignalAtSample is not null
-                && (_sampleCount - _lastConversationSignalAtSample) <= (long)(SampleRate * ConvDurationS);
-            var maxPause = isConversation ? MaxConvPauseS : MaxPauseS;
-            var maxPauseVariesFromSamples = (int)(SampleRate * PauseVariesFromS);
-            var maxPauseAlpha = (currentSpeechSamples - maxPauseVariesFromSamples)
-                / (double)((int)(SampleRate * MaxSpeechS) - maxPauseVariesFromSamples);
-            maxPauseAlpha = MathExt.Clamp(maxPauseAlpha, 0, 1);
-            maxPauseAlpha = Math.Pow(maxPauseAlpha, PauseVaryPower);
-            var silenceThreshold = MathExt.Lerp(maxPause, MinPauseS, maxPauseAlpha);
-            _maxPauseSamples = (int)Math.Floor(SampleRate * silenceThreshold);
+                if (_pauseOffset is not null) {
+                    // we detected pause earlier - should we materialize it?
+                    if (probEma >= speechProbTrigger) {
+                        // and it's speech now
+                        _pauseCancelSamples += WindowSamples;
+                        if (_pauseCancelSamples >= (int)(SampleRate * MinSpeechToCancelPauseS)) {
+                            _pauseOffset = null;
+                            _pauseCancelSamples = 0;
+                        }
+                    }
+                    else if (probEma < pauseProbTrigger) {
+                        // it's still a pause
+                        var currentSilenceSamples = (int)(currentOffset - (_pauseOffset ?? 0));
+                        if (currentSilenceSamples > _maxPauseSamples
+                            && currentSpeechSamples > (int)(SampleRate * MinSpeechS)) {
+                            // materializing the pause
+                            var offset = (int)(_pauseOffset! + WindowSamples);
+                            var duration = offset - currentEvent.OffsetSamples;
+                            currentEvent = VoiceActivityChange.End(offset, duration, probEma);
+                            _pauseOffset = null;
+                        }
+                    }
+                }
+                else if (_whenTalkingProbMedian is not null) {
+                    // adjust speech boundary triggers if current period was speech with high probabilities
+                    var offset = currentOffset + WindowSamples;
+                    var duration = (int)(offset - currentEvent.OffsetSamples);
+                    var durationS = duration / (double)SampleRate;
+                    var speechRatio = _whenTalkingProbMedian.SampleCount / (double)duration;
+                    if (speechRatio > 0.5 && durationS > 2)
+                        _probMedian.AppendSample((float)probEma);
+                }
+
+                if (currentEvent.Kind == VoiceActivityKind.Start && currentSpeechSamples > (int)(SampleRate * MaxSpeechS)) {
+                    // break long speech regardless of speech probability
+                    var offset = (int)(_pauseOffset ?? currentOffset);
+                    var duration = offset - currentEvent.OffsetSamples;
+                    currentEvent = VoiceActivityChange.End((int)currentOffset, duration, probEma);
+                    _pauseOffset = null;
+                }
+
+                if (_whenTalkingProbMedian is not null && prob > 0.25)
+                    _whenTalkingProbMedian.AppendSample(prob);
+
+                // adjust max pause for long speech - break more aggressively, but keep longer pauses for monologue
+                var isConversation = _lastConversationSignalAtSample is not null
+                    && (_sampleCount - _lastConversationSignalAtSample) <= (long)(SampleRate * ConvDurationS);
+                var maxPause = isConversation ? MaxConvPauseS : MaxPauseS;
+                var maxPauseVariesFromSamples = (int)(SampleRate * PauseVariesFromS);
+                var maxPauseAlpha = (currentSpeechSamples - maxPauseVariesFromSamples)
+                    / (double)((int)(SampleRate * MaxSpeechS) - maxPauseVariesFromSamples);
+                maxPauseAlpha = MathExt.Clamp(maxPauseAlpha, 0, 1);
+                maxPauseAlpha = Math.Pow(maxPauseAlpha, PauseVaryPower);
+                var silenceThreshold = MathExt.Lerp(maxPause, MinPauseS, maxPauseAlpha);
+                _maxPauseSamples = (int)Math.Floor(SampleRate * silenceThreshold);
+            }
+
+            if (LastActivityEvent.Equals(currentEvent) || LastActivityEvent.Kind == currentEvent.Kind)
+                results[fi] = VadResult.GainOnly(gain);
+            else {
+                LastActivityEvent = currentEvent;
+                results[fi] = VadResult.Event(currentEvent);
+            }
         }
 
-        if (LastActivityEvent.Equals(currentEvent) || LastActivityEvent.Kind == currentEvent.Kind)
-            return VadResult.GainOnly(gain);
-
-        LastActivityEvent = currentEvent;
-        return VadResult.Event(currentEvent);
+        return results;
     }
 
     /// <summary>
@@ -202,11 +216,11 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
         => _lastConversationSignalAtSample = _sampleCount;
 
     /// <summary>
-    ///     Appends a single 32ms mono PCM window (Float32, 16 kHz) and returns speech probability [0..1].
+    ///     Appends one or more 32ms mono PCM windows (Float32, 16 kHz) and returns speech probabilities [0..1] per window.
     ///     Returns null if EnsureInitialized has not completed yet.
     /// </summary>
-    /// <param name="monoPcm">512-sample window of mono PCM at 16 kHz</param>
-    protected internal abstract float? AppendChunkInternal(ReadOnlySpan<float> monoPcm);
+    /// <param name="monoPcm">N*512-sample buffer of mono PCM at 16 kHz where N is an integer >= 1</param>
+    protected internal abstract float[]? AppendChunkInternal(ReadOnlySpan<float> monoPcm);
 
     protected void ResetProcessingState()
     {

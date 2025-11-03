@@ -6,7 +6,7 @@ namespace Core.Audio.UnitTests;
 
 public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 {
-    [Fact(Skip = "Manual")]
+    [Fact/*(Skip = "Manual")*/]
     public async Task BasicTest()
     {
         // Find repository root (folder containing ActualChat.sln)
@@ -15,9 +15,9 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 
         // Resolve model and data paths
         var modelPath = Path.Combine(repoRoot,
-            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.ort");
+            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad_batched.with_runtime_opt.ort");
         var dataPath = Path.Combine(repoRoot,
-            "tests", "Core.Audio.UnitTests", "data", "vad-mono-16k-f32-512-0.bin");
+            "tests", "Core.Audio.UnitTests", "data", "micIn.bin");
 
         Assert.True(File.Exists(modelPath), $"Model file not found: {modelPath}");
         Assert.True(File.Exists(dataPath), $"Data file not found: {dataPath}");
@@ -37,18 +37,19 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         var samples = ReadFloat32Le(dataPath);
         Assert.True(samples.Length >= 512);
 
-        var chunkSize = 512; // 32ms window expected by detector
+        var chunkSize = 512 * 10; // 32ms window expected by detector
         var processed = 0;
         var eventCount = 0;
         for (var i = 0; i + chunkSize <= samples.Length; i += chunkSize) {
             var span = new ReadOnlySpan<float>(samples, i, chunkSize);
-            var result = vad.AppendChunk(span);
-            processed++;
-            if (result.HasEvent)
-                eventCount++;
-
-            var ms = i / 16000.0;
-            @out.WriteLine($"Chunk [{ms:F3}s]: {result.Change} ({result.Gain}) ");
+            var results = vad.AppendChunk(span);
+            foreach (var result in results) {
+                processed++;
+                if (result.HasEvent)
+                    eventCount++;
+                var ms = i / 16000.0;
+                @out.WriteLine($"Chunk [{ms:F3}s]: {result.Change} ({result.Gain}) ");
+            }
         }
 
         Assert.True(processed > 0);
@@ -57,7 +58,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
     }
 
 
-    [Fact(Skip = "Manual")]
+    [Fact/*(Skip = "Manual")*/]
     public async Task InternalTest()
     {
         // Find repository root (folder containing ActualChat.sln)
@@ -66,9 +67,9 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 
         // Resolve model and data paths
         var modelPath = Path.Combine(repoRoot,
-            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.ort");
+            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad_batched.with_runtime_opt.ort");
         var dataPath = Path.Combine(repoRoot,
-            "tests", "Core.Audio.UnitTests", "data", "vad-mono-16k-f32-512-0.bin");
+            "tests", "Core.Audio.UnitTests", "data", "micIn.bin");
 
         Assert.True(File.Exists(modelPath), $"Model file not found: {modelPath}");
         Assert.True(File.Exists(dataPath), $"Data file not found: {dataPath}");
@@ -88,15 +89,21 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         var samples = ReadFloat32Le(dataPath);
         Assert.True(samples.Length >= 512);
 
-        var chunkSize = 512; // 32ms window expected by detector
+        var chunkSize = 512 * 5; // 32ms window expected by detector
         var processed = 0;
         for (var i = 0; i + chunkSize <= samples.Length; i += chunkSize) {
             var span = new ReadOnlySpan<float>(samples, i, chunkSize);
-            var result = vad.AppendChunkInternal(span);
-            processed++;
+            var results = vad.AppendChunkInternal(span);
+            if (results != null)
+                processed += results.Length;
 
-            var ms = i / 16000.0;
-            @out.WriteLine($"Chunk [{ms:F3}s]: {result?.ToString() ?? "no output"} ");
+            if (results == null)
+                continue;
+
+            foreach (var result in results) {
+                var ms = i / 16000.0;
+                @out.WriteLine($"Chunk [{ms:F3}s]: {result} ");
+            }
         }
 
         Assert.True(processed > 0);
@@ -104,7 +111,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         // but we verify the pipeline runs end-to-end without exceptions.
     }
 
-    [Theory(Skip = "Manual")]
+    [Theory/*(Skip = "Manual")*/]
     [InlineData("micIn.bin")]
     [InlineData("outAEC.bin")]
     [InlineData("outAEC_NC_AGC.bin")]
@@ -116,7 +123,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 
         // Resolve model and data paths
         var modelPath = Path.Combine(repoRoot,
-            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad.ort");
+            "src", "dotnet", "UI.Blazor.App", "Components", "AudioRecorder", "workers", "vad_batched.with_runtime_opt.ort");
         var dataPath = Path.Combine(repoRoot,
             "tests", "Core.Audio.UnitTests", "data", fileName);
 
@@ -141,7 +148,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         Assert.True(samples.Length >= 512);
 
         var sw = Stopwatch.StartNew();
-        var chunkSize = 512; // 32ms window expected by detector
+        var chunkSize = 512 * 5; // 32ms window expected by detector
         var processed = 0;
         for (var i = 0; i + chunkSize <= samples.Length; i += chunkSize) {
             var span = new ReadOnlySpan<float>(samples, i, chunkSize);

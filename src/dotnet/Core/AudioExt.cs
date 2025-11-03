@@ -6,62 +6,71 @@ public static class AudioExt
 {
     public static double ApproximateGain(ReadOnlySpan<float> monoPcm, int stride = 5)
     {
-        if (monoPcm.Length == 0)
-            return 0;
+        if (monoPcm.Length == 0) return 0;
 
-        // Fast SIMD path for contiguous data
-        if (stride == 1 && Vector.IsHardwareAccelerated) {
-            var vecSize = Vector<float>.Count;
-            var len = monoPcm.Length;
-            var simdEnd = len - (len % vecSize);
+        // Estimate output count
+        int sampleCount = (monoPcm.Length + stride - 1) / stride;
+        if (sampleCount == 0) return 0;
 
-            var vectorSum = Vector<float>.Zero;
-            var i = 0;
-            while (i < simdEnd) {
-                var v = new Vector<float>(monoPcm.Slice(i, vecSize));
-                vectorSum += v * v;
-                i += vecSize;
-            }
+        // Fast path: stride == 1 && SIMD available → use original span directly
+        if (stride == 1 && Vector.IsHardwareAccelerated)
+            return ComputeRmsSimd(monoPcm);
 
-            var tailSum = 0f;
-            for (; i < len; i++) {
-                var e = monoPcm[i];
-                tailSum += e * e;
-            }
+        // General path: decimate into contiguous buffer, then use SIMD if available
+        Span<float> samples = sampleCount <= 256
+            ? stackalloc float[sampleCount]
+            : new float[sampleCount];
 
-            var acc = 0f;
-            for (var j = 0; j < vecSize; j++)
-                acc += vectorSum[j];
+        int di = 0;
+        for (int si = 0; si < monoPcm.Length; si += stride)
+            samples[di++] = monoPcm[si];
 
-            double total = acc + tailSum;
-            return Math.Sqrt(total / len);
+        return Vector.IsHardwareAccelerated
+            ? ComputeRmsSimd(samples)
+            : ComputeRmsScalar(samples);
+    }
+
+    // SIMD-accelerated RMS on contiguous span
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static double ComputeRmsSimd(ReadOnlySpan<float> samples)
+    {
+        var vectorSum = Vector<float>.Zero;
+        int vecSize = Vector<float>.Count;
+        int i = 0;
+        int simdEnd = samples.Length - (samples.Length % vecSize);
+
+        while (i < simdEnd)
+        {
+            var v = new Vector<float>(samples.Slice(i, vecSize));
+            vectorSum += v * v;
+            i += vecSize;
         }
 
-        // Generic stride path (default: 5), unrolled to reduce overhead
-        double sum = 0;
-        int count = 0;
-        int i2 = 0;
-
-        // Unroll by 4 stride-steps per iteration
-        for (; i2 + 4 * stride <= monoPcm.Length; i2 += 4 * stride) {
-            float e0 = monoPcm[i2];
-            float e1 = monoPcm[i2 + stride];
-            float e2 = monoPcm[i2 + 2 * stride];
-            float e3 = monoPcm[i2 + 3 * stride];
-            sum += (double)e0 * e0
-                + (double)e1 * e1
-                + (double)e2 * e2
-                + (double)e3 * e3;
-            count += 4;
+        float tailSum = 0f;
+        for (; i < samples.Length; i++)
+        {
+            float e = samples[i];
+            tailSum += e * e;
         }
 
-        for (; i2 < monoPcm.Length; i2 += stride) {
-            float e = monoPcm[i2];
+        float acc = 0f;
+        for (int j = 0; j < vecSize; j++)
+            acc += vectorSum[j];
+
+        double total = acc + tailSum;
+        return Math.Sqrt(total / samples.Length);
+    }
+
+    // Fallback scalar RMS
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static double ComputeRmsScalar(ReadOnlySpan<float> samples)
+    {
+        double sum = 0.0;
+        for (int i = 0; i < samples.Length; i++)
+        {
+            float e = samples[i];
             sum += e * e;
-            count++;
         }
-
-        if (count <= 0) return 0;
-        return Math.Sqrt(sum / count);
+        return samples.Length > 0 ? Math.Sqrt(sum / samples.Length) : 0.0;
     }
 }

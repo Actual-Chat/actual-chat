@@ -503,11 +503,6 @@ export class OpusMediaRecorder implements RecorderStateServer {
         return ResolvedPromise.Void;
     }
 
-    public onAudioPowerChange(power: number, _noWait?: RpcNoWait): Promise<void> {
-        RecorderStateHub.onAudioPowerChange(power);
-        return ResolvedPromise.Void;
-    }
-
     public microphoneIsCaptured(gain: number, noWait?: RpcNoWait): Promise<void> {
         RecorderStateHub.microphoneIsCaptured(gain);
         return ResolvedPromise.Void;

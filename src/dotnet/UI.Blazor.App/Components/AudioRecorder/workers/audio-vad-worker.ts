@@ -16,7 +16,7 @@ import { NeuralVoiceActivityDetector, WebRtcVoiceActivityDetector } from './audi
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { RecorderStateServer } from "../opus-media-recorder-contracts";
 // @ts-ignore
-import OnnxModel from './vad.ort';
+import OnnxModel from './vad_batched.ort';
 import { Log } from 'logging';
 import { ResamplerLoader } from './resampler-loader';
 
@@ -218,7 +218,7 @@ async function processQueue(): Promise<void> {
                 audioPowerEma.appendSample(vadEvent);
                 // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.value);
                 if (vad.lastActivityEvent.kind === 'start') // Send gains only when voice activity is detected
-                    void stateServer.onAudioPowerChange(audioPowerEma.value, rpcNoWait);
+                    void stateServer.microphoneIsCaptured(audioPowerEma.value, rpcNoWait);
             }
             else {
                 if (vadEvent.kind === "start") {

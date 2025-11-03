@@ -233,9 +233,6 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         return RecorderStateHub.SetVoiceActive(isVoiceActive);
     }
 
-    private ValueTask OnAudioPowerChange(double power)
-        => RecorderStateHub.OnAudioPowerChange(power);
-
     private async ValueTask MicrophoneIsCaptured(double gain)
     {
         await SetSignalDetected(true).ConfigureAwait(false);
@@ -360,22 +357,19 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         private readonly VoiceActivityDetector _vad = engine.VoiceActivityDetector;
         private readonly IAudioCodec _audioCodec = engine.AudioCodec;
 
-        private readonly BlockRingBuffer<float> _vadBuffer = new (Constants.Audio.RecordingSampleRate * 10); // 10s
+        private readonly BlockRingBuffer<float> _vadBuffer = new (Constants.Audio.RecordingSampleRate * 2); // 2s
         private readonly BlockRingBuffer<float> _encodingBuffer = new (Constants.Audio.RecordingSampleRate * 2); // 2s
 
         private FuncWorker? _encodeSendWorker;
         private bool _voiceActive;
-        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
 
         public async Task Process(
             IAsyncEnumerable<IMemoryOwner<float>> frames,
             CancellationToken cancellationToken)
         {
+            using var gainBuffer = new BlockRingBuffer<float>(Constants.Audio.OpusFrameLength * 10); // 200ms
             await _vad.EnsureInitialized(cancellationToken).ConfigureAwait(false);
             _vad.Reset();
-
-            var lastMicCapturedAt = TimeSpan.Zero;
-            var minInterval = TimeSpan.FromMilliseconds(200);
 
             try {
                 await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
@@ -385,11 +379,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     // Process the audio frame
                     await ProcessAudioFrame(memory, cancellationToken).ConfigureAwait(false);
 
-                    // Throttle microphone capture notifications
-                    var now = _stopwatch.Elapsed;
-                    if (now - lastMicCapturedAt >= minInterval) {
-                        lastMicCapturedAt = now;
-                        var gain = AudioExt.ApproximateGain(memory.Span);
+                    // Throttle microphone capture notifications by 60ms - 3 x 20 Opus frames
+                    gainBuffer.TryPush(memory.Span);
+                    if (gainBuffer.TryPull(Constants.Audio.OpusFrameLength * 3, out var gainMemory)) {
+                        using var __ = gainMemory;
+                        var gain = AudioExt.ApproximateGain(gainMemory.Memory.Span);
                         await engine.MicrophoneIsCaptured(gain).ConfigureAwait(false);
                     }
 
@@ -442,15 +436,14 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         private async Task ProcessVadEvents(CancellationToken cancellationToken)
         {
-            while (_vadBuffer.TryPull(Constants.Audio.VadFrameLength, out var vadFrame)) {
+            // Process VAD events in batches to reduce CPU usage
+            while (_vadBuffer.TryPull(Constants.Audio.VadFrameLength * 5, out var vadFrame)) {
                 using var _ = vadFrame;
-                var vadResult = _vad.AppendChunk(vadFrame.Memory.Span);
+                var vadResults = _vad.AppendChunk(vadFrame.Memory.Span);
 
-                if (vadResult.HasEvent)
-                    await HandleVadEvent(vadResult.Change!.Value, cancellationToken).ConfigureAwait(false);
-                else if (_vad.LastActivityEvent.Kind == VoiceActivityKind.Start)
-                    // Maintain UI/JS heartbeat
-                    await engine.OnAudioPowerChange(vadResult.Gain).ConfigureAwait(false);
+                foreach (var vadResult in vadResults)
+                    if (vadResult.HasEvent)
+                        await HandleVadEvent(vadResult.Change!.Value, cancellationToken).ConfigureAwait(false);
             }
         }
 

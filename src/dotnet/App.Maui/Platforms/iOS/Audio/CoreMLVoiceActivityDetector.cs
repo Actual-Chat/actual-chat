@@ -1,4 +1,3 @@
-using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Audio;
 using CoreML;
 using Foundation;
@@ -10,10 +9,9 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
     private MLModel? _model;
 
     // Reusable CoreML buffers to avoid per-call allocations and copies
-    private MLMultiArray? _inputArr;   // (1,512)
+    private MLMultiArray? _inputArr;   // (B,512) with B=1 here
     private MLMultiArray? _contextArr; // (1,64)
-    private MLMultiArray? _hArr;       // (1,1,128)
-    private MLMultiArray? _cArr;       // (1,1,128)
+    private MLMultiArray? _stateArr;   // (2,1,128) stacked [h;c]
 
     private ILogger Log { get; } = services.LogFor<CoreMLVoiceActivityDetector>();
 
@@ -27,17 +25,15 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
             return Task.CompletedTask;
         }
 
-        // Inputs:
-        //   input: (1, 512) float32 - current audio chunk
-        //   context: (1, 64) float32 - previous rolling context
-        //   h: (1, 1, 128) float32 - previous LSTM hidden state
-        //   c: (1, 1, 128) float32 - previous LSTM cell state
+        // Inputs (batched interface):
+        //   input:   (B, 512) float32  - B sequential 512-sample frames (we use B=1 here)
+        //   state:   (2, 1, 128) float32 - stacked LSTM state: [h; c]
+        //   context: (1, 64) float32   - previous tail context (last 64 samples)
         // Outputs:
-        //   score: (1, 1) float32 - VAD score
-        //   contextN: (1, 64) float32 - updated context
-        //   hn: (1, 1, 128) float32 - updated hidden state
-        //   cn: (1, 1, 128) float32 - updated cell state
-        var modelUrl = NSBundle.MainBundle.GetUrlForResource("vad_stateless", "mlmodelc");
+        //   output:   (B, 1) float32   - VAD score per frame
+        //   stateN:   (2, 1, 128) float32 - next stacked state after B steps
+        //   contextN: (1, 64) float32  - next tail context (last 64 from last frame)
+        var modelUrl = NSBundle.MainBundle.GetUrlForResource("vad_batched_fp16", "mlmodelc");
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (modelUrl is null) {
             Log.LogError("CoreML VAD model not found in app bundle");
@@ -64,18 +60,11 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
         if (e1 is not null) throw new InvalidOperationException(e1.LocalizedDescription);
         _contextArr = new MLMultiArray(Shape(1, 64), MLMultiArrayDataType.Float32, out var e2);
         if (e2 is not null) throw new InvalidOperationException(e2.LocalizedDescription);
-        _hArr = new MLMultiArray(Shape(1, 1, 128), MLMultiArrayDataType.Float32, out var e3);
+        _stateArr = new MLMultiArray(Shape(2, 1, 128), MLMultiArrayDataType.Float32, out var e3);
         if (e3 is not null) throw new InvalidOperationException(e3.LocalizedDescription);
-        _cArr = new MLMultiArray(Shape(1, 1, 128), MLMultiArrayDataType.Float32, out var e4);
-        if (e4 is not null) throw new InvalidOperationException(e4.LocalizedDescription);
 
         // Ensure initial state is zeros
-        unsafe {
-            if (_contextArr is not null) new Span<float>((float*)_contextArr.DataPointer, 64).Clear();
-            if (_hArr is not null) new Span<float>((float*)_hArr.DataPointer, 128).Clear();
-            if (_cArr is not null) new Span<float>((float*)_cArr.DataPointer, 128).Clear();
-        }
-
+        Reset();
         return Task.CompletedTask;
     }
 
@@ -86,12 +75,10 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
         _model = null;
         _inputArr.DisposeSilently();
         _contextArr.DisposeSilently();
-        _hArr.DisposeSilently();
-        _cArr.DisposeSilently();
+        _stateArr.DisposeSilently();
         _inputArr = null;
         _contextArr = null;
-        _hArr = null;
-        _cArr = null;
+        _stateArr = null;
     }
 
     public override void Reset()
@@ -99,16 +86,18 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
         base.Reset();
         // Zero the recurrent state/context in reusable arrays
         unsafe {
-            if (_contextArr is not null) new Span<float>((float*)_contextArr.DataPointer, 64).Clear();
-            if (_hArr is not null) new Span<float>((float*)_hArr.DataPointer, 128).Clear();
-            if (_cArr is not null) new Span<float>((float*)_cArr.DataPointer, 128).Clear();
+            if (_contextArr is not null)
+                new Span<float>((float*)_contextArr.DataPointer, 64).Clear();
+            if (_stateArr is not null)
+                new Span<float>((float*)_stateArr.DataPointer, 2 * 1 * 128).Clear();
         }
     }
 
-    protected override float? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
+    protected override float[]? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
     {
-        if (monoPcm.Length != WindowSamples)
-            throw StandardError.Constraint(nameof(monoPcm), $"Expected length {WindowSamples}, got {monoPcm.Length}");
+        // Support batched inference: monoPcm must contain N * WindowSamples samples
+        if (monoPcm.Length % WindowSamples != 0)
+            throw StandardError.Constraint(nameof(monoPcm), $"Expected N*{WindowSamples} samples, got {monoPcm.Length}");
 
         var model = _model;
         if (model is null) {
@@ -116,20 +105,32 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
             return null; // Not initialized yet
         }
 
-        var inputArr = _inputArr!;
         var contextArr = _contextArr!;
-        var hArr = _hArr!;
-        var cArr = _cArr!;
+        var stateArr = _stateArr!;
 
-        // Copy input samples directly into reusable MLMultiArray
+        var frames = monoPcm.Length / WindowSamples;
+
+        // Prepare or reuse input MLMultiArray matching current frames count
+        var inputArr = _inputArr!;
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (inputArr is null || (int)inputArr.Count != monoPcm.Length) {
+            static NSNumber[] Shape(params int[] dims) => dims.Select(NSNumber.FromInt32).ToArray();
+            _inputArr.DisposeSilently();
+            _inputArr = new MLMultiArray(Shape(frames, WindowSamples), MLMultiArrayDataType.Float32, out var nsError);
+            if (nsError is not null)
+                throw new InvalidOperationException(nsError.LocalizedDescription);
+
+            inputArr = _inputArr!;
+        }
+        // Copy all frame samples into the reusable array
         unsafe {
-            var dst = new Span<float>((float*)inputArr.DataPointer, WindowSamples);
+            var dst = new Span<float>((float*)inputArr.DataPointer, monoPcm.Length);
             monoPcm.CopyTo(dst);
         }
 
-        // Build feature provider
-        var keys = new[] { (NSString)"input", (NSString)"context", (NSString)"h", (NSString)"c" };
-        var values = new NSObject[] { inputArr, contextArr, hArr, cArr };
+        // Build feature provider (batched interface)
+        var keys = new[] { (NSString)"input", (NSString)"state", (NSString)"context" };
+        var values = new NSObject[] { inputArr, stateArr, contextArr };
         using var nsDict = new NSDictionary<NSString, NSObject>(keys, values);
         var inputProvider = new MLDictionaryFeatureProvider(nsDict, out var dictErr);
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
@@ -139,49 +140,45 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
             return null;
         }
 
-        var output = model.GetPrediction(inputProvider, out var predErr);
+        var prediction = model.GetPrediction(inputProvider, out var predErr);
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        if (predErr is not null || output is null) {
+        if (predErr is not null || prediction is null) {
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
             Log.LogError(predErr?.LocalizedDescription ?? "CoreML prediction failed");
             return null;
         }
 
         // Extract outputs
-        var scoreVal = output.GetFeatureValue("score");
-        var contextNVal = output.GetFeatureValue("contextN");
-        var hnVal = output.GetFeatureValue("hn");
-        var cnVal = output.GetFeatureValue("cn");
+        var outputVal = prediction.GetFeatureValue("output");
+        var contextNVal = prediction.GetFeatureValue("contextN");
+        var stateNVal = prediction.GetFeatureValue("stateN");
 
-        var scoreArr = scoreVal!.MultiArrayValue;
+        var outputArr = outputVal!.MultiArrayValue;
         var contextNArr = contextNVal!.MultiArrayValue;
-        var hnArr = hnVal!.MultiArrayValue;
-        var cnArr = cnVal!.MultiArrayValue;
+        var stateNArr = stateNVal!.MultiArrayValue;
 
         unsafe {
-            // score is (1,1)
-            float score = 0f;
-            if (scoreArr is not null)
-                score = *((float*)scoreArr.DataPointer);
-
             // Update reusable state arrays directly from outputs for next call
             if (contextNArr is not null) {
                 var src = new ReadOnlySpan<float>((float*)contextNArr.DataPointer, 64);
                 var dst = new Span<float>((float*)contextArr.DataPointer, 64);
                 src.CopyTo(dst);
             }
-            if (hnArr is not null) {
-                var src = new ReadOnlySpan<float>((float*)hnArr.DataPointer, 128);
-                var dst = new Span<float>((float*)hArr.DataPointer, 128);
-                src.CopyTo(dst);
-            }
-            if (cnArr is not null) {
-                var src = new ReadOnlySpan<float>((float*)cnArr.DataPointer, 128);
-                var dst = new Span<float>((float*)cArr.DataPointer, 128);
+            if (stateNArr is not null) {
+                var src = new ReadOnlySpan<float>((float*)stateNArr.DataPointer, 2 * 1 * 128);
+                var dst = new Span<float>((float*)stateArr.DataPointer, 2 * 1 * 128);
                 src.CopyTo(dst);
             }
 
-            return score;
+            // Extract probabilities for each frame (output shape is [B,1])
+            if (outputArr is null)
+                return null;
+            var outLen = (int)outputArr.Count; // should be B or B*1
+            var n = Math.Min(frames, outLen);
+            var srcOut = new ReadOnlySpan<float>((float*)outputArr.DataPointer, n);
+            var probs = new float[n];
+            srcOut.CopyTo(probs);
+            return probs;
         }
     }
 }
