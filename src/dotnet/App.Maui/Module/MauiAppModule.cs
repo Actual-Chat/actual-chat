@@ -63,7 +63,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
             async Task<byte[]> ModelLoader()
             {
-                await using var modelStream = await FileSystem.OpenAppPackageFileAsync(@"wwwroot\dist\assets\ort\vad.ort");
+                await using var modelStream = await FileSystem.OpenAppPackageFileAsync(@"wwwroot\dist\assets\ort\vad_batched.ort");
                 using var ms = new MemoryStream();
                 await modelStream.CopyToAsync(ms, CancellationToken.None);
                 ms.Position = 0;

@@ -16,9 +16,6 @@ public class RecorderStateHub(UIHub hub)
     private static readonly string JSSetVoiceActiveMethod =
         $"{BlazorUIAppModule.ImportName}.RecorderStateHub.setVoiceActive";
 
-    private static readonly string JSOnAudioPowerChangeMethod =
-        $"{BlazorUIAppModule.ImportName}.RecorderStateHub.onAudioPowerChange";
-
     private static readonly string JSMicrophoneIsCapturedMethod =
         $"{BlazorUIAppModule.ImportName}.RecorderStateHub.microphoneIsCaptured";
 
@@ -35,9 +32,6 @@ public class RecorderStateHub(UIHub hub)
 
     public ValueTask SetVoiceActive(bool isVoiceActive)
         => JS.InvokeVoidAsync(JSSetVoiceActiveMethod, isVoiceActive);
-
-    public ValueTask OnAudioPowerChange(double power)
-        => JS.InvokeVoidAsync(JSOnAudioPowerChangeMethod, power);
 
     public ValueTask MicrophoneIsCaptured(double gain)
         => JS.InvokeVoidAsync(JSMicrophoneIsCapturedMethod, gain);

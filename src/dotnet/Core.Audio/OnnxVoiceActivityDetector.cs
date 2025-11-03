@@ -40,29 +40,34 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
         options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
         options.EnableMemoryPattern = true;
         options.EnableCpuMemArena = true;
+        options.LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_VERBOSE;
         // Configure execution providers depending on platform. We always keep CPU as a fallback.
         try {
             switch (HostInfo.AppKind)
             {
             case AppKind.Android:
-                options.AppendExecutionProvider_CPU();
-                // options.AppendExecutionProvider_Nnapi();
+                options.AppendExecutionProvider_Nnapi();
+                options.AppendExecutionProvider("XNNPACK");
                 break;
             case AppKind.Ios or AppKind.MacOS:
-                options.AppendExecutionProvider_CPU();
                 options.AppendExecutionProvider_CoreML(CoreMLFlags.COREML_FLAG_USE_CPU_AND_GPU);
+                options.AppendExecutionProvider_CPU();
                 break;
             case AppKind.Windows:
+                options.AppendExecutionProvider_DML();
                 options.AppendExecutionProvider_CPU();
-                // options.AppendExecutionProvider_DML();
                 break;
             default:
+                // options.AppendExecutionProvider_DML();
                 options.AppendExecutionProvider_CPU();
+                // options.AppendExecutionProvider("XNNPACK");
+                // options.AppendExecutionProvider_CUDA();
                 break;
             }
         }
         catch {
             // If any EP is not supported by the current runtime build, fall back to safe CPU-only.
+            Log.LogWarning("Failed to initialize execution providers. Falling back to CPU-only");
             options = new SessionOptions();
             options.IntraOpNumThreads = Math.Max(1, Environment.ProcessorCount - 1);
             options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
@@ -83,28 +88,30 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
         _state = new DenseTensor<float>(new float[2 * 1 * 128], [2, 1, 128]);
     }
 
-    protected internal override float? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
+    protected internal override float[]? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
     {
         ThrowIfDisposed();
         var session = _session;
         if (session == null)
             return null; // Not initialized yet
 
-        if (monoPcm.Length != WindowSamples)
-            throw new ArgumentException($"AppendChunkInternal expects exactly {WindowSamples} samples.", nameof(monoPcm));
+        if (monoPcm.Length % WindowSamples != 0)
+            throw new ArgumentException($"AppendChunkInternal expects N*{WindowSamples} samples.", nameof(monoPcm));
 
-        // Prepare input buffer: [context | current window]
-        Array.Copy(_context, 0, _buffer, 0, ContextSamples);
-        monoPcm.CopyTo(_buffer.AsSpan(ContextSamples));
+        var frames = monoPcm.Length / WindowSamples;
 
-        // Create tensors
-        var inputTensor = new DenseTensor<float>(_buffer, [1, InputSamples]);
+        // Create tensors: input [B,512], state [2,1,128], context [1,64]
+        var inputData = new float[monoPcm.Length];
+        monoPcm.CopyTo(inputData);
+        var inputTensor = new DenseTensor<float>(inputData, new[] { frames, WindowSamples });
         var stateTensor = _state;
+        var contextTensor = new DenseTensor<float>(_context, [1, ContextSamples]);
 
         // Run inference
         using var results = session.Run([
             NamedOnnxValue.CreateFromTensor("input", inputTensor),
             NamedOnnxValue.CreateFromTensor("state", stateTensor),
+            NamedOnnxValue.CreateFromTensor("context", contextTensor),
         ]);
 
         // Retrieve outputs
@@ -115,11 +122,23 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
         UpdateStateFrom(stateN);
         UpdateContextFrom(contextN);
 
-        // Read score without allocating
-        float prob = 0f;
-        if (output is DenseTensor<float> { Length: > 0 } dOut)
-            prob = dOut.Buffer.Span[0];
-        return prob;
+        // Extract probabilities for each frame
+        if (output is DenseTensor<float> dOut) {
+            var span = dOut.Buffer.Span;
+            var probs = new float[Math.Min(frames, dOut.Length)];
+            for (int i = 0; i < probs.Length; i++)
+                probs[i] = span[i];
+            return probs;
+        }
+        else {
+            var probs = new float[frames];
+            int i = 0;
+            foreach (var v in output) {
+                if (i >= frames) break;
+                probs[i++] = v;
+            }
+            return probs;
+        }
     }
 
 

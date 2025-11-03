@@ -55,114 +55,132 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     }
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> {
-        const currentOffset = this.sampleCount;
+        // Support batched input: length must be N * windowSamples
+        const windowSamples = this.isNeural ? AR.SAMPLES_PER_WINDOW_32 : AR.SAMPLES_PER_WINDOW_30;
+        if (monoPcm.length % windowSamples !== 0)
+            throw new Error(`appendChunk() accepts ${windowSamples}*N sample audio windows only, but found ${monoPcm.length}.`);
+
+        const frames = monoPcm.length / windowSamples;
+        const startOffset = this.sampleCount;
         this.sampleCount += monoPcm.length;
+
+        // Query probabilities in one shot (for neural) or per-frame (for WebRTC)
+        const probs = await this.appendChunkInternal(monoPcm);
+        // If not initialized yet
+        if (probs === null)
+            return approximateGain(monoPcm.subarray(0, windowSamples));
+
         let currentEvent = this.lastActivityEvent;
-        const gain = approximateGain(monoPcm);
-        if (gain < AR.MIN_RECORDING_GAIN && currentEvent.kind === 'end')
-            return gain; // do not try to check VAD at low gain input
+        let lastReturn: VoiceActivityChange | number = 0;
 
-        const prob = await this.appendChunkInternal(monoPcm);
-        //debugLog?.log('appendChunk:', prob, gain);
-        if (prob === null)
-            return gain; // no voice activity probability yet
+        for (let i = 0; i < frames; i++) {
+            const frameOffset = startOffset + i * windowSamples;
+            const frame = monoPcm.subarray(i * windowSamples, (i + 1) * windowSamples);
+            const gain = approximateGain(frame);
+            if (gain < AR.MIN_RECORDING_GAIN && currentEvent.kind === 'end') {
+                lastReturn = gain; // do not try to check VAD at low gain input
+                continue;
+            }
 
-        // this.results.push(prob);
-        this.probEMA.appendSample(prob);
-        this.longProbEMA.appendSample(prob);
-        const probEma = this.probEMA.value;
-        const longProbEma = this.longProbEMA.value;
-        const probMedian = this.probMedian.value;
-        const speechProbTrigger = 0.67 * probMedian;
-        const pauseProbTrigger = 0.15 * probMedian;
+            const prob = Array.isArray(probs) ? probs[i] : (probs as unknown as number);
+            //debugLog?.log('appendChunk:', prob, gain);
+            // this.results.push(prob);
+            this.probEMA.appendSample(prob);
+            this.longProbEMA.appendSample(prob);
+            const probEma = this.probEMA.value;
+            const longProbEma = this.longProbEMA.value;
+            const probMedian = this.probMedian.value;
+            const speechProbTrigger = 0.67 * probMedian;
+            const pauseProbTrigger = 0.15 * probMedian;
 
-        if (currentEvent.kind === 'end'
-            && probEma >= longProbEma
-            && (probEma >= speechProbTrigger)
-        ) {
-            // speech start detected
-            const offset = Math.max(0, currentOffset - monoPcm.length);
-            const duration = offset - currentEvent.offset;
-            currentEvent = { kind: 'start', offset, speechProb: probEma, duration };
-            this.whenTalkingProbMedian = new RunningUnitMedian();
-            this.maxPauseSamples = this.sampleRate * AV.MAX_PAUSE;
-        }
-        else if (currentEvent.kind === 'start' && probEma < longProbEma && probEma < pauseProbTrigger) {
-            // pause start detected
-            this.pauseCancelSamples = 0;
-            if (this.pauseOffset === null)
-                this.pauseOffset = currentOffset;
-            this.whenTalkingProbMedian = null;
-        }
+            if (currentEvent.kind === 'end'
+                && probEma >= longProbEma
+                && (probEma >= speechProbTrigger)
+            ) {
+                // speech start detected
+                const offset = Math.max(0, frameOffset - windowSamples);
+                const duration = offset - currentEvent.offset;
+                currentEvent = { kind: 'start', offset, speechProb: probEma, duration };
+                this.whenTalkingProbMedian = new RunningUnitMedian();
+                this.maxPauseSamples = this.sampleRate * AV.MAX_PAUSE;
+            }
+            else if (currentEvent.kind === 'start' && probEma < longProbEma && probEma < pauseProbTrigger) {
+                // pause start detected
+                this.pauseCancelSamples = 0;
+                if (this.pauseOffset === null)
+                    this.pauseOffset = frameOffset;
+                this.whenTalkingProbMedian = null;
+            }
 
-        if (currentEvent.kind === 'start') {
-            const currentSpeechSamples = currentOffset - currentEvent.offset;
+            if (currentEvent.kind === 'start') {
+                const currentSpeechSamples = frameOffset - currentEvent.offset;
 
-            if (this.pauseOffset !== null) {
-                // we detected pause earlier - should we "materialize" it?
-                if (probEma >= speechProbTrigger) {
-                    // and it's speech now
-                    this.pauseCancelSamples += monoPcm.length;
-                    if (this.pauseCancelSamples >= this.maxPauseCancelSamples) {
-                        // which continues for
-                        this.pauseOffset = null;
-                        this.pauseCancelSamples = 0;
-                    }
-                } else if (probEma < pauseProbTrigger) {
-                    // it's still a pause
-                    const currentSilenceSamples = currentOffset - (this.pauseOffset ?? 0);
-                    if (currentSilenceSamples > this.maxPauseSamples && currentSpeechSamples > this.minSpeechSamples) {
-                        // "materializing" the pause
-                        const offset = this.pauseOffset + monoPcm.length;
-                        const duration = offset - currentEvent.offset;
-                        currentEvent = { kind: 'end', offset, speechProb: probEma, duration };
-                        this.pauseOffset = null;
+                if (this.pauseOffset !== null) {
+                    // we detected pause earlier - should we "materialize" it?
+                    if (probEma >= speechProbTrigger) {
+                        // and it's speech now
+                        this.pauseCancelSamples += windowSamples;
+                        if (this.pauseCancelSamples >= this.maxPauseCancelSamples) {
+                            // which continues for
+                            this.pauseOffset = null;
+                            this.pauseCancelSamples = 0;
+                        }
+                    } else if (probEma < pauseProbTrigger) {
+                        // it's still a pause
+                        const currentSilenceSamples = frameOffset - (this.pauseOffset ?? 0);
+                        if (currentSilenceSamples > this.maxPauseSamples && currentSpeechSamples > this.minSpeechSamples) {
+                            // "materializing" the pause
+                            const offset = this.pauseOffset + windowSamples;
+                            const duration = offset - currentEvent.offset;
+                            currentEvent = { kind: 'end', offset, speechProb: probEma, duration };
+                            this.pauseOffset = null;
+                        }
                     }
                 }
-            }
-            else if (this.whenTalkingProbMedian !== null) {
-                // adjust speech boundary triggers if current period was speech with high probabilities
-                const offset = currentOffset + monoPcm.length;
-                const duration = offset - currentEvent.offset;
-                const durationS = duration / this.sampleRate;
-                const speechRatio = this.whenTalkingProbMedian.sampleCount / duration;
-                if (speechRatio > 0.5 && durationS > 2)
-                    this.probMedian.appendSample(probEma);
+                else if (this.whenTalkingProbMedian !== null) {
+                    // adjust speech boundary triggers if current period was speech with high probabilities
+                    const offset = frameOffset + windowSamples;
+                    const duration = offset - currentEvent.offset;
+                    const durationS = duration / this.sampleRate;
+                    const speechRatio = this.whenTalkingProbMedian.sampleCount / duration;
+                    if (speechRatio > 0.5 && durationS > 2)
+                        this.probMedian.appendSample(probEma);
+                }
+
+                if (currentEvent.kind === 'start' && currentSpeechSamples > this.maxSpeechSamples) {
+                    // break long speech regardless of speech probability
+                    const offset = this.pauseOffset ?? frameOffset;
+                    const duration = offset - currentEvent.offset;
+                    currentEvent = { kind: 'end', offset: frameOffset, speechProb: probEma, duration };
+                    this.pauseOffset = null;
+                }
+
+                if (this.whenTalkingProbMedian !== null && prob > 0.25)
+                    this.whenTalkingProbMedian.appendSample(prob);
+
+                // adjust max pause for long speech - break more aggressively, but keep longer pauses for monologue
+                const isConversation = this.lastConversationSignalAtSample !== null
+                    && (this.sampleCount - this.lastConversationSignalAtSample) <= this.sampleRate * AV.CONV_DURATION;
+                const maxPause = isConversation ? AV.MAX_CONV_PAUSE : AV.MAX_PAUSE;
+                const maxPauseVariesFromSamples = this.sampleRate * AV.PAUSE_VARIES_FROM;
+                let maxPauseAlpha =
+                    (currentSpeechSamples - maxPauseVariesFromSamples) /
+                    (this.maxSpeechSamples - maxPauseVariesFromSamples); // Always > 0
+                maxPauseAlpha = clamp(maxPauseAlpha, 0, 1);
+                maxPauseAlpha = Math.pow(maxPauseAlpha, AV.PAUSE_VARY_POWER);
+                const silenceThreshold = lerp(maxPause, AV.MIN_PAUSE, maxPauseAlpha);
+                this.maxPauseSamples = Math.floor(this.sampleRate * silenceThreshold);
             }
 
-            if (currentEvent.kind === 'start' && currentSpeechSamples > this.maxSpeechSamples) {
-                // break long speech regardless of speech probability
-                const offset = this.pauseOffset ?? currentOffset;
-                const duration = offset - currentEvent.offset;
-                currentEvent = { kind: 'end', offset: currentOffset, speechProb: probEma, duration };
-                this.pauseOffset = null;
+            if (this.lastActivityEvent == currentEvent || this.lastActivityEvent.kind == currentEvent.kind) {
+                lastReturn = gain;
+            } else {
+                this.lastActivityEvent = currentEvent;
+                lastReturn = adjustChangeEventsToSeconds(currentEvent, this.sampleRate);
             }
-
-            if (this.whenTalkingProbMedian !== null && prob > 0.25)
-                this.whenTalkingProbMedian.appendSample(prob);
-
-            // adjust max pause for long speech - break more aggressively, but keep longer pauses for monologue
-            const isConversation = this.lastConversationSignalAtSample !== null
-                && (this.sampleCount - this.lastConversationSignalAtSample) <= this.sampleRate * AV.CONV_DURATION;
-            const maxPause = isConversation ? AV.MAX_CONV_PAUSE : AV.MAX_PAUSE;
-            const maxPauseVariesFromSamples = this.sampleRate * AV.PAUSE_VARIES_FROM;
-            let maxPauseAlpha =
-                (currentSpeechSamples - maxPauseVariesFromSamples) /
-                (this.maxSpeechSamples - maxPauseVariesFromSamples); // Always > 0
-            maxPauseAlpha = clamp(maxPauseAlpha, 0, 1);
-            maxPauseAlpha = Math.pow(maxPauseAlpha, AV.PAUSE_VARY_POWER);
-            const silenceThreshold = lerp(maxPause, AV.MIN_PAUSE, maxPauseAlpha);
-            this.maxPauseSamples = Math.floor(this.sampleRate * silenceThreshold);
         }
 
-        if (this.lastActivityEvent == currentEvent || this.lastActivityEvent.kind == currentEvent.kind)
-            return gain;
-
-        this.lastActivityEvent = currentEvent;
-        // uncomment for debugging
-        // console.log(movingAverages.lastAverage, longMovingAverages.lastAverage, speechBoundaries.median, [...this.results], gain);
-        // this.results.length = 0;
-        return adjustChangeEventsToSeconds(currentEvent, this.sampleRate);
+        return lastReturn;
     }
 
     public conversationSignal(): void {
@@ -170,7 +188,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     }
 
     protected resetInternal?(): void;
-    protected abstract appendChunkInternal(monoPcm: Float32Array): Promise<number|null>;
+    protected abstract appendChunkInternal(monoPcm: Float32Array): Promise<number[] | null>;
 }
 
 // WebRtcVoiceActivityDetector
@@ -192,24 +210,27 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
         return ResolvedPromise.Void;
     }
 
-    protected override appendChunkInternal(monoPcm: Float32Array): Promise<number | null> {
-        if (monoPcm.length !== AR.SAMPLES_PER_WINDOW_30)
-            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_30} sample audio windows only.`);
+    protected override appendChunkInternal(monoPcm: Float32Array): Promise<number[] | null> {
+        if (monoPcm.length % AR.SAMPLES_PER_WINDOW_30 !== 0)
+            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_30}*N sample audio windows only.`);
 
-        // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
-        const activity = this.baseVad.detect(new Uint8Array(monoPcm.buffer, 0, monoPcm.length * 4));
-        const now = Date.now();
-        if (activity > 0 && (this.sampleCount / AR.SAMPLES_PER_MS < AV.SKIP_FIRST_RECORDING_MS || now - this.lastSkippedAt < 5)) {
-            this.lastSkippedAt = now;
-            return Promise.resolve(null); // Skip triggering on microphone noise at the beginning of the first microphone stream
+        const frames = monoPcm.length / AR.SAMPLES_PER_WINDOW_30;
+        const probs: number[] = [];
+        for (let i = 0; i < frames; i++) {
+            const frame = monoPcm.subarray(i * AR.SAMPLES_PER_WINDOW_30, (i + 1) * AR.SAMPLES_PER_WINDOW_30);
+            // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
+            const activity = this.baseVad.detect(new Uint8Array(frame.buffer, frame.byteOffset, frame.length * 4));
+            const now = Date.now();
+            if (activity > 0 && (this.sampleCount / AR.SAMPLES_PER_MS < AV.SKIP_FIRST_RECORDING_MS || now - this.lastSkippedAt < 5)) {
+                this.lastSkippedAt = now;
+                return Promise.resolve(null); // Skip triggering on microphone noise at the beginning of the first microphone stream
+            }
+            if (activity == VadActivity.Error)
+                throw new Error(`Error calling WebRtc VAD`);
+            // Map 1|0 to ~[0,0.8]
+            probs.push(Number(0.8 * activity));
         }
-
-        if (activity == VadActivity.Error)
-            throw new Error(`Error calling WebRtc VAD`);
-
-        // Our base class logic has been developed for float speech probability about 0.75 and higher,
-        // so let's adjust 1|0 to tested range to reuse existing heuristics
-        return Promise.resolve(Number(0.8 * activity));
+        return Promise.resolve(probs);
     }
 
     protected override resetInternal() {
@@ -222,16 +243,15 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
 export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
     private readonly modelUri: URL;
 
-    private readonly context: Float32Array;
-    private readonly buffer: Float32Array;
+    private readonly buffer: Float32Array; // legacy buffer; not used with batched model
     private session: ort.InferenceSession | null = null;
     private state: ort.Tensor;
+    private context: ort.Tensor;
 
     constructor(modelUri: URL, lastActivityEvent: VoiceActivityChange) {
         super(true, AR.SAMPLE_RATE, lastActivityEvent);
 
         this.modelUri = modelUri;
-        this.context = new Float32Array(AV.NN_VAD_CONTEXT_SAMPLES).fill(0);
         this.buffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 + AV.NN_VAD_CONTEXT_SAMPLES).fill(0);
         this.resetInternal();
 
@@ -262,30 +282,34 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
         this.session = session;
     }
 
-    protected async appendChunkInternal(monoPcm: Float32Array): Promise<number | null> {
-        const { state, buffer, context } = this;
+    protected async appendChunkInternal(monoPcm: Float32Array): Promise<number[] | null> {
+        const { state, context } = this;
         if (this.session == null) {
             // skip processing until initialized
             return null;
         }
 
-        if (monoPcm.length !== AR.SAMPLES_PER_WINDOW_32) {
-            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_32} sample audio windows only, but found ${monoPcm.length}.`);
+        if (monoPcm.length % AR.SAMPLES_PER_WINDOW_32 !== 0) {
+            throw new Error(`appendChunk() accepts ${AR.SAMPLES_PER_WINDOW_32}*N sample audio windows only, but found ${monoPcm.length}.`);
         }
 
-        buffer.set(context);
-        buffer.set(monoPcm, context.length);
-        const tensor = new ort.Tensor(buffer, [1, buffer.length]);
-        const feeds = { input: tensor, state: state };
+        const frames = monoPcm.length / AR.SAMPLES_PER_WINDOW_32;
+        const inputTensor = new ort.Tensor(monoPcm, [frames, AR.SAMPLES_PER_WINDOW_32]);
+        const feeds = { input: inputTensor, state: state, context: context } as const;
         const result = await this.session.run(feeds);
-        const { output, stateN } = result;
-        this.state = stateN;
-        this.context.set(monoPcm.slice(-context.length));
-        return output.data[0] as number;
+        const { output, stateN, contextN } = result as any;
+        this.state = stateN as ort.Tensor;
+        this.context = contextN as ort.Tensor;
+        const out = output.data as Float32Array | number[];
+        // output shape is [B,1] — take first B values
+        const probs: number[] = new Array(frames);
+        for (let i = 0; i < frames; i++) probs[i] = Number((out as any)[i]);
+        return probs;
     }
 
     protected resetInternal(): void {
-        this.state = new ort.Tensor(new Float32Array(2 * 128), [2, 1, 128]);
+        this.state = new ort.Tensor(new Float32Array(2 * 1 * 128), [2, 1, 128]);
+        this.context = new ort.Tensor(new Float32Array(AV.NN_VAD_CONTEXT_SAMPLES), [1, AV.NN_VAD_CONTEXT_SAMPLES]);
     }
 }
 
