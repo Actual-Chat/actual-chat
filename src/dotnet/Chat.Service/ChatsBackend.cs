@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
+using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
@@ -72,6 +73,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
     [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    [field: AllowNull, MaybeNull]
+    private AudioSourceDownloader AudioSourceDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
+    [field: AllowNull, MaybeNull]
+    private OpenAITranscriber OpenAITranscriber => field ??= Services.GetRequiredService<OpenAITranscriber>();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -1225,6 +1230,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatEntry entry;
         ChatEntry? oldEntry;
         bool boundToThreadHasChanged = false;
+        bool finilizedTransribedTextEntry = false;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
             var dbEntry = changeKind == ChangeKind.Create
@@ -1273,6 +1279,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 dbEntry.HasAttachments = hasAttachments;
                 boundToThreadHasChanged = existingChatEntry.IsThreadEntry ^ entry.IsThreadEntry
                     || existingChatEntry.IsThreadStartEntry ^ entry.IsThreadStartEntry;
+                finilizedTransribedTextEntry = existingChatEntry.Kind is ChatEntryKind.Text && existingChatEntry.IsStreaming && !entry.IsStreaming;
             }
             else if (change.IsRemove()) {
                 dbEntry.Require();
@@ -1336,6 +1343,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Let's enqueue the TextEntryChangedEvent
         await EnqueueChangedEvent().ConfigureAwait(false);
+        if (finilizedTransribedTextEntry)
+            EnqueueTranscriptionFinalizedEvent();
         return entry;
 
         ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate)
@@ -1406,6 +1415,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var authorId = entry.AuthorId;
             var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
+        }
+
+        void EnqueueTranscriptionFinalizedEvent()
+        {
+            Log.LogInformation("Enqueueing transcription finalized event for chat entry {ChatEntryId}", entry.Id);
+            context.Operation.AddEvent(new TextEntryTranscriptionFinalizedEvent(entry.Id));
         }
 
         async Task StorePreviousAndNextEntryIds(long localEntryLid)
@@ -1820,7 +1835,47 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
     }
 
-    // Event handlers
+    public virtual async Task OnRetranscribeChatEntry(
+        ChatsBackend_RetranscribeChatEntry command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var entryId = command.EntryId;
+        if (entryId.Kind != ChatEntryKind.Text)
+            throw new ArgumentException("Text entry id must be given.");
+
+        var textEntry = await this.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        if (textEntry is null)
+            return;
+
+        var audioEntryLid = textEntry.AudioEntryLid;
+        if (audioEntryLid is null)
+            // Apparently text entry was transcribed in no voice streaming mode.
+            return;
+
+        var audioEntryId = AudioEntryId.New(textEntry.ChatId, audioEntryLid.Value);
+        var audioEntry = await this.GetEntry(audioEntryId, cancellationToken).Require().ConfigureAwait(false);
+        var audioBlobId = audioEntry.Content;
+        if (audioBlobId.IsNullOrEmpty())
+            throw StandardError.Constraint("Audio entry has no audio blob id reference.");
+
+        Log.LogInformation("Retranscribing audio entry {AudioEntryId}...", audioEntryId);
+        var audioSource = await AudioSourceDownloader.Download(audioBlobId, TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
+        var transcription = await OpenAITranscriber.Transcribe(audioSource, cancellationToken).ConfigureAwait(false);
+        if (transcription is null)
+            return;
+
+        Log.LogWarning("Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
+        await Commander.Run(new ChatsBackend_ChangeEntry(
+            entryId,
+            null,
+            Change.Update(new ChatEntryDiff {
+                Content = transcription.Text,
+                TimeMap = transcription.TimeMap,
+            })), cancellationToken).ConfigureAwait(false);
+    }      // Event handlers
 
     // [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
@@ -2013,6 +2068,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+    }
+
+    // [EventHandler]
+    public virtual Task OnTextEntryTranscriptionFinalized(TextEntryTranscriptionFinalizedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
+
+        return Commander.Call(new ChatsBackend_RetranscribeChatEntry(eventCommand.EntryId), cancellationToken);
     }
 
     // Protected methods

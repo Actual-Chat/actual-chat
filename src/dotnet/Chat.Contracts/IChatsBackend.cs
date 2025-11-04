@@ -118,6 +118,8 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task<ChatCopyState> OnChangeChatCopyState(ChatsBackend_ChangeChatCopyState command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnUpdateReadPositionsStat(ChatsBackend_UpdateReadPositionsStat command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnRetranscribeChatEntry(ChatsBackend_RetranscribeChatEntry command, CancellationToken cancellationToken);
 
     // Events
 
@@ -131,6 +133,8 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnTextEntryTranscriptionFinalized(TextEntryTranscriptionFinalizedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -236,4 +240,14 @@ public sealed partial record ChatsBackend_UpdateReadPositionsStat(
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => ChatId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_RetranscribeChatEntry(
+    [property: DataMember, MemoryPackOrder(0)] ChatEntryId EntryId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => EntryId.ChatId;
 }

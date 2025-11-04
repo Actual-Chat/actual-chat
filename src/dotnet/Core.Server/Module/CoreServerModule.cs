@@ -63,6 +63,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         else
             services.AddSingleton<IBlobStorages>(_ => new GoogleCloudBlobStorages(storageBucket));
         services.AddSingleton<IContentSaver>(c => new ContentSaver(c.BlobStorages()));
+        services.AddSingleton<AudioSourceDownloader>();
 
         // Controllers, etc.
         services.AddRouting();

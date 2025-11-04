@@ -150,6 +150,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizerStub>();
         }
 
+        services.AddSingleton(c => new OpenAITranscriber(c, Settings.OpenAIApiKey));
+
         // Embeddings
         var embeddingSettings = Cfg.Settings<EmbeddingSettings>();
         services.TryAddSingleton(embeddingSettings);
