@@ -133,8 +133,6 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
-    [EventHandler]
-    Task OnTextEntryTranscriptionFinalized(TextEntryTranscriptionFinalizedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -245,7 +243,8 @@ public sealed partial record ChatsBackend_UpdateReadPositionsStat(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RetranscribeChatEntry(
-    [property: DataMember, MemoryPackOrder(0)] ChatEntryId EntryId
+    [property: DataMember, MemoryPackOrder(0)] ChatEntryId EntryId,
+    [property: DataMember, MemoryPackOrder(1)] Language Language
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]

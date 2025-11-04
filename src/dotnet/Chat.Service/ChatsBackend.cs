@@ -9,6 +9,7 @@ using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
+using ActualChat.Transcription;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -1230,7 +1231,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatEntry entry;
         ChatEntry? oldEntry;
         bool boundToThreadHasChanged = false;
-        bool finilizedTransribedTextEntry = false;
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using (var __ = dbContext.ConfigureAwait(false)) {
             var dbEntry = changeKind == ChangeKind.Create
@@ -1279,7 +1279,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 dbEntry.HasAttachments = hasAttachments;
                 boundToThreadHasChanged = existingChatEntry.IsThreadEntry ^ entry.IsThreadEntry
                     || existingChatEntry.IsThreadStartEntry ^ entry.IsThreadStartEntry;
-                finilizedTransribedTextEntry = existingChatEntry.Kind is ChatEntryKind.Text && existingChatEntry.IsStreaming && !entry.IsStreaming;
             }
             else if (change.IsRemove()) {
                 dbEntry.Require();
@@ -1343,8 +1342,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Let's enqueue the TextEntryChangedEvent
         await EnqueueChangedEvent().ConfigureAwait(false);
-        if (finilizedTransribedTextEntry)
-            EnqueueTranscriptionFinalizedEvent();
         return entry;
 
         ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate)
@@ -1415,12 +1412,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var authorId = entry.AuthorId;
             var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
             context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
-        }
-
-        void EnqueueTranscriptionFinalizedEvent()
-        {
-            Log.LogInformation("Enqueueing transcription finalized event for chat entry {ChatEntryId}", entry.Id);
-            context.Operation.AddEvent(new TextEntryTranscriptionFinalizedEvent(entry.Id));
         }
 
         async Task StorePreviousAndNextEntryIds(long localEntryLid)
@@ -1840,9 +1831,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        if (!Settings.IsRetranscriptionEnabled)
             return;
 
-        var entryId = command.EntryId;
+        var (entryId, language) = command;
         if (entryId.Kind != ChatEntryKind.Text)
             throw new ArgumentException("Text entry id must be given.");
 
@@ -1861,13 +1855,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (audioBlobId.IsNullOrEmpty())
             throw StandardError.Constraint("Audio entry has no audio blob id reference.");
 
-        Log.LogInformation("Retranscribing audio entry {AudioEntryId}...", audioEntryId);
+        Log.LogDebug("Retranscribing audio entry {AudioEntryId}...", audioEntryId);
         var audioSource = await AudioSourceDownloader.Download(audioBlobId, TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
-        var transcription = await OpenAITranscriber.Transcribe(audioSource, cancellationToken).ConfigureAwait(false);
+        var options = new TranscriptionOptions {
+            Language = language,
+        };
+        var transcription = await OpenAITranscriber.Transcribe(audioSource, options, cancellationToken).ConfigureAwait(false);
         if (transcription is null)
             return;
 
-        Log.LogWarning("Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
+        Log.LogDebug("Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
         await Commander.Run(new ChatsBackend_ChangeEntry(
             entryId,
             null,
@@ -2068,15 +2065,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     cancellationToken)
                 .ConfigureAwait(false);
         }
-    }
-
-    // [EventHandler]
-    public virtual Task OnTextEntryTranscriptionFinalized(TextEntryTranscriptionFinalizedEvent eventCommand, CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
-
-        return Commander.Call(new ChatsBackend_RetranscribeChatEntry(eventCommand.EntryId), cancellationToken);
     }
 
     // Protected methods

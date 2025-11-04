@@ -17,6 +17,8 @@ public sealed class ChatSettings
     public int MinConversationEntries { get; set; } = 10;
     public FilePath SummarizeChatDigestPromptFile { get; set; } = "summarize-chat-digest.md";
     public FilePath SuggestChatThreadTitlePromptFile { get; set; } = "suggest-thread-title.md";
+    public bool IsRetranscriptionEnabled { get; set; }
+    public RetranscriptionSettings Retranscription { get; set; } = new ();
 }
 
 public class TranslationSettings
@@ -43,4 +45,10 @@ public class LanguageDetectionSettings
     public string OpenAIKey { get; set; } = "";
     public string OpenAIModel { get; set; } = "gpt-4.1-nano";
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromMinutes(3);
+}
+
+public class RetranscriptionSettings
+{
+    public string OpenAIKey { get; set; } = "";
+    public string OpenAIModel { get; set; } = "gpt-4o-transcribe";
 }
