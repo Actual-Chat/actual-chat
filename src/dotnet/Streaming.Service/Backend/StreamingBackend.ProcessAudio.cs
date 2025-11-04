@@ -168,8 +168,9 @@ public partial class StreamingBackend
         Task<ChatEntry>? audioEntryTask,
         CancellationToken cancellationToken)
     {
+        var audioSegmentLanguage = audioSegment.Languages[0];
         var transcriptionOptions = new TranscriptionOptions {
-            Language = audioSegment.Languages[0],
+            Language = audioSegmentLanguage,
         };
         var transcriptionEngine = await GetTranscriptionEngine(audioSegment.Record, cancellationToken)
             .ConfigureAwait(false);
@@ -212,7 +213,7 @@ public partial class StreamingBackend
         }
         finally {
             if (lastTranscript != null && textEntry != null)
-                await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
+                await Task.WhenAll(FinalizeAndRetranscribeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
         }
         return;
 
@@ -243,6 +244,12 @@ public partial class StreamingBackend
             return textEntry;
         }
 
+        async Task FinalizeAndRetranscribeTextEntry()
+        {
+            await FinalizeTextEntry().ConfigureAwait(false);
+            await RetranscribeTextEntry().ConfigureAwait(false);
+        }
+
         async Task FinalizeTextEntry()
         {
             audioEntry ??= audioEntryTask != null
@@ -267,6 +274,14 @@ public partial class StreamingBackend
                 textEntry.Id,
                 null, // do not perform version check there - it might have already been changed and it's OK
                 change);
+            await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        async Task RetranscribeTextEntry()
+        {
+            var command = new ChatsBackend_RetranscribeChatEntry(
+                textEntry.Id,
+                audioSegmentLanguage);
             await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
         }
 
