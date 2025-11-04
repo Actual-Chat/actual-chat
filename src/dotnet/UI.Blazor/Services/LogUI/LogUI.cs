@@ -10,11 +10,12 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
     private static readonly TileStack<long> IdTileStack = Constants.TileStacks.Long5To80;
     private readonly Lock _lock = new();
     private readonly AsyncTaskMethodBuilder _whenReady = AsyncTaskMethodBuilderExt.New();
+    private LogSinks? _logSinks;
     private RingBuffer<LogEntry> _events = new(10_000);
     private long _entryIdGenerator = 1;
     private ComputedState<bool>? _isEnabled;
 
-    private LogSinks LogSinks => Hub.LogSinks;
+    private LogSinks LogSinks => _logSinks ??= Hub.LogSinks;
 
     public static ILogger? DiagLog { get; set; }
     public IState<bool> IsEnabled => _isEnabled!;
@@ -25,7 +26,10 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
         _isEnabled = Hub.StateFactory.NewComputed(ct
             => LocalSettings.LocalAppSettings().Get(x => x.IsLogViewerEnabledOrDefault, ct));
         Hub.RegisterDisposable(_isEnabled);
-        Hub.RegisterDisposable(() => LogSinks.Remove(this));
+        Hub.RegisterDisposable(() => {
+            if (_logSinks is not null)
+                _logSinks.Remove(this);
+        });
         Hub.RegisterDisposable(() => _whenReady.TrySetException(new ObjectDisposedException("LogUI is disposed")));
         this.Start();
     }
@@ -105,7 +109,6 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
             return Task.FromResult<Range<long>>(default);
         }
     }
-
 
     [ComputeMethod(AutoInvalidationDelay = 10 * 60 * 1000)]
     protected virtual async Task<LogTile> GetTile(Tile<long> idTile, CancellationToken cancellationToken)
