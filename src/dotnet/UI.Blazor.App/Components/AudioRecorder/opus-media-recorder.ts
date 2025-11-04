@@ -110,26 +110,44 @@ export class OpusMediaRecorder implements RecorderStateServer {
         let stream: MediaStream | null = null;
         try {
             infoLog?.log('-> getMicrophoneStream');
-            function getConstraints(): MediaStreamConstraints & any {
-                return {
-                    audio: {
-                        channelCount: 1,
-                        sampleRate: DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate
-                        sampleSize: 32,
-                        echoCancellation: true,
-                        autoGainControl: !(BrowserInfo.appKind === 'Android' || isAndroid), // Android auto gain delays recording and produces zeroes instead of signal
-                        noiseSuppression: true,
-                        latency: 20,
-                    },
-                    video: false,
-                };
+            let hasDefaultMic = false;
+            if (navigator.mediaDevices?.enumerateDevices) {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                for (const device of devices) {
+                    if (device.kind === 'audioinput' && device.deviceId === 'default') {
+                        hasDefaultMic = true;
+                        break;
+                    }
+                }
             }
             // Better integration with native mobile audio pipeline - we are resetting to defaults
             if ('audioSession' in navigator) {
                 (navigator.audioSession as any)['type'] = 'auto';
             }
 
-            stream = await navigator.mediaDevices.getUserMedia(getConstraints());
+            const constraints : MediaStreamConstraints & any = {
+                audio: {
+                    channelCount: 1,
+                    sampleRate: DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate
+                    sampleSize: 32,
+                    echoCancellation: true,
+                    autoGainControl: !(BrowserInfo.appKind === 'Android' || isAndroid), // Android auto gain delays recording and produces zeroes instead of signal
+                    noiseSuppression: true,
+                    latency: 20,
+                },
+                video: false,
+            };
+            if (hasDefaultMic) {
+                try {
+                    constraints.audio.deviceId = { exact: 'default' };
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                }
+                catch {
+                    constraints.audio.deviceId = null;
+                }
+            }
+            if (!stream)
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
             // Better integration with native mobile audio pipeline - SHOULD BE AFTER ACQUIRING THE STREAM!
             if ('audioSession' in navigator) {
                 (navigator.audioSession as any)['type'] = 'play-and-record';
