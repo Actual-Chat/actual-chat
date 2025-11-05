@@ -426,12 +426,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 }
             }
 
+            // log.LogInformation("ProcessAudioFrame: {Vad}, Encoding: {Encoding}, VoiceActive: {VoiceActive}", isVadPushed, isEncodingPushed, isVoiceActive);
             if (!isVadPushed || (isVoiceActive && !isEncodingPushed))
                 await Task.WhenAll(_vadBuffer.WhenPulled, _encodingBuffer.WhenPulled)
                     .WaitAsync(cancellationToken)
                     .ConfigureAwait(false);
-
-            await engine.SetSignalDetected(true).ConfigureAwait(false);
         }
 
         private async Task ProcessVadEvents(CancellationToken cancellationToken)
