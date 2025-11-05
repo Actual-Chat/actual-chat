@@ -11,7 +11,7 @@
     <EntityFrameworkCoreNpgsqlVersion>9.0.4</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>9.1.0</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>[9.0.8,)</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>[9.0.9,)</MicrosoftExtensionsVersion>
     <NpgsqlVersion>9.0.3</NpgsqlVersion>
     <RedisVersion>2.9.32</RedisVersion>
     <SignalRVersion>[9.0.8,)</SignalRVersion>
@@ -21,7 +21,7 @@
     <MemoryPackVersion>1.21.4</MemoryPackVersion>
     <MessagePackVersion>3.1.3</MessagePackVersion>
     <SemanticKernelVersion>1.64.0</SemanticKernelVersion>
-    <XamarinAndroidLifecycle>2.9.4</XamarinAndroidLifecycle>
+    <XamarinAndroidLifecycle>[2.9.2.1,)</XamarinAndroidLifecycle>
   </PropertyGroup>
   <!--
     MAUI is not fully compatible with centralized packages management:
