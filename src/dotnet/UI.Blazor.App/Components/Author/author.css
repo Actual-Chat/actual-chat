@@ -8,6 +8,7 @@
     @apply -ml-4;
     @apply rounded-full;
     @apply overflow-hidden;
+    transition: margin-left 0.5s ease;
 }
 .author-circle:first-child {
     @apply ml-0;
@@ -18,7 +19,7 @@
     @apply p-0.5;
     @apply rounded-full;
     @apply pointer-events-none;
-    background: linear-gradient(135deg, #ff00cc, #3333ff);
+    background: linear-gradient(135deg, var(--magenta-60), var(--indigo-60));
     mask:
         linear-gradient(white, white) content-box,
         linear-gradient(white, white);

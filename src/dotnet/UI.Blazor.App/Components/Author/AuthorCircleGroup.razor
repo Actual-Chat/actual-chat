@@ -7,7 +7,7 @@
 
     var avatarSize = SquareSize.Size7;
     var size = "w-7 h-7";
-    var maxLength = MaxIconCount > authorIds.Count ? authorIds.Count : MaxIconCount;
+    var maxLength = authorIds.Count > MaxIconCount ? MaxIconCount - 1 : authorIds.Count;
     var groupCls = IsListening ? "" : "non-active";
 }
 

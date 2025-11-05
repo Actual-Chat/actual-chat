@@ -45,11 +45,56 @@ body.narrow .chat-activity-panel.listening:after {
     @apply text-headline-1 text-03;
 }
 .chat-activity-panel > .author-circle-group {
-    @apply flex-1 justify-start gap-x-1;
+    @apply justify-start gap-x-1;
+}
+.chat-activity-panel > .author-circle-group .author-circle {
+    box-shadow:
+        -2px -2px 2px 2px var(--magenta-60-10),
+        -1px -1px 2px 2px var(--magenta-60-20),
+        1px 1px 2px 2px var(--indigo-60-20),
+        2px 2px 2px 2px var(--indigo-60-10);
+        animation: rotating-shadow 3s linear infinite;
+}
+@keyframes rotating-shadow {
+    0% {
+        box-shadow:
+            -2px -2px 2px 2px var(--magenta-60-10),
+            -1px -1px 2px 2px var(--magenta-60-20),
+            1px 1px 2px 2px var(--indigo-60-20),
+            2px 2px 2px 2px var(--indigo-60-10);
+    }
+    25% {
+        box-shadow:
+            -2px 2px 2px 2px var(--magenta-60-10),
+            -1px 1px 2px 2px var(--magenta-60-20),
+            1px -1px 2px 2px var(--indigo-60-20),
+            2px -2px 2px 2px var(--indigo-60-10);
+    }
+    50% {
+        box-shadow:
+            2px 2px 2px 2px var(--magenta-60-10),
+            1px 1px 2px 2px var(--magenta-60-20),
+            -1px -1px 2px 2px var(--indigo-60-20),
+            -2px -2px 2px 2px var(--indigo-60-10);
+    }
+    75% {
+        box-shadow:
+            2px -2px 2px 2px var(--magenta-60-10),
+            1px -1px 2px 2px var(--magenta-60-20),
+            -1px 1px 2px 2px var(--indigo-60-20),
+            -2px 2px 2px 2px var(--indigo-60-10);
+    }
+    100% {
+        box-shadow:
+            -2px -2px 2px 2px var(--magenta-60-10),
+            -1px -1px 2px 2px var(--magenta-60-20),
+            1px 1px 2px 2px var(--indigo-60-20),
+            2px 2px 2px 2px var(--indigo-60-10);
+    }
 }
 .chat-activity-panel > .c-buttons {
     @apply flex-none flex-x items-center gap-x-4 md:gap-x-2;
-    @apply px-1;
+    @apply pl-1 md:pr-1;
 }
 .chat-activity-panel > .c-buttons > .btn {
     @apply px-0;
@@ -70,12 +115,13 @@ body.narrow .chat-activity-panel.listening:after {
 }
 body.narrow .chat-activity-panel > .c-buttons > .btn.listening {
     @apply px-4;
-    @apply rounded-lg;
+    @apply rounded-lg border border-[var(--violet-90)];
     @apply bg-[var(--leave-btn)];
 }
 .chat-activity-panel > .c-icon {
     @apply flex items-center justify-center;
     @apply h-8 w-8;
+    @apply md:ml-1;
     @apply rounded-full;
 }
 .activity-svg {
@@ -112,16 +158,15 @@ body.narrow .chat-activity-panel.listening:before,
 body.narrow .chat-activity-panel.listening:after {
     @apply hidden;
 }
-body.narrow .chat-activity-panel.listening .c-icon {
-    @apply hidden;
-}
 .chat-activity-subheader .c-wrapper {
-    @apply w-full;
+    @apply relative;
+    @apply w-full h-12;
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply bg-01;
 }
 .chat-activity-subheader .chat-activity-panel {
+    @apply absolute;
     @apply h-12;
     @apply px-2;
     background: linear-gradient(89deg, var(--magenta-90-10) 5.09%, var(--indigo-70-10) 94.69%);
@@ -164,4 +209,15 @@ body.narrow .chat-activity-panel.listening .c-icon {
     60%  { transform: scaleY(1.2); }
     80%  { transform: scaleY(0.8); }
     100% { transform: scaleY(0.6); }
+}
+
+.header-activity-panel-wrapper .chat-activity-panel {
+    @apply absolute z-10 bottom-1 left-1 right-1;
+    @apply h-12 w-auto;
+    @apply px-2;
+    @apply rounded-md;
+    @apply border border-[var(--violet-90)];
+}
+.header-activity-panel-wrapper .chat-activity-panel.listening {
+    @apply border-transparent;
 }

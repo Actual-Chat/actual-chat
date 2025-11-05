@@ -9,36 +9,38 @@
             : chat.Id.Kind;
 }
 
-@switch (chatKind) {
-case ChatKind.Group or ChatKind.Place:
-    <Pic
-        Title="@chat!.Title"
-        Picture="@chat.Picture.ToPicture()"
-        Size="@Size"
-        Class="@Class"
-        IsSquare="@IsSquare"
-        HideTitle="@HideTitle"
-        IsBlurred="@IsBlurred"
-        ShowFullSizeAvatar="@ShowFullSizeAvatar"
-        AvatarKind="@AvatarKind.Marble"
-        AvatarKey="@chat.Id.Value"/>
-    break;
-case ChatKind.Peer when _peerChatUserId is not null:
-    <AccountCircle
-        ShowPresence="@ShowPresence"
-        UserId="@_peerChatUserId"
-        Size="@Size"
-        IsBlurred="@IsBlurred"
-        Class="@Class"
-        ShowFullSizeAvatar="@ShowFullSizeAvatar"/>
-    break;
-default:
-    <AvatarCircle
-        Avatar="@null"
-        Size="@Size"
-        IsBlurred="@IsBlurred" />
-    break;
-}
+<div class="hideable">
+    @switch (chatKind) {
+    case ChatKind.Group or ChatKind.Place:
+        <Pic
+            Title="@chat!.Title"
+            Picture="@chat.Picture.ToPicture()"
+            Size="@Size"
+            Class="@Class"
+            IsSquare="@IsSquare"
+            HideTitle="@HideTitle"
+            IsBlurred="@IsBlurred"
+            ShowFullSizeAvatar="@ShowFullSizeAvatar"
+            AvatarKind="@AvatarKind.Marble"
+            AvatarKey="@chat.Id.Value"/>
+        break;
+    case ChatKind.Peer when _peerChatUserId is not null:
+        <AccountCircle
+            ShowPresence="@ShowPresence"
+            UserId="@_peerChatUserId"
+            Size="@Size"
+            IsBlurred="@IsBlurred"
+            Class="@Class"
+            ShowFullSizeAvatar="@ShowFullSizeAvatar"/>
+        break;
+    default:
+        <AvatarCircle
+            Avatar="@null"
+            Size="@Size"
+            IsBlurred="@IsBlurred" />
+        break;
+    }
+</div>
 
 @code {
     private UserId? _peerChatUserId;
