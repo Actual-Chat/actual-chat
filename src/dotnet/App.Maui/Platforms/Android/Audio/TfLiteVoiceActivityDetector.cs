@@ -1,0 +1,321 @@
+using Java.Nio;
+using Java.Nio.Channels;
+using System.Buffers;
+using ActualChat.Audio;
+using Xamarin.TensorFlow.Lite;
+using Xamarin.TensorFlow.Lite.Nnapi; // Assuming your base namespace
+
+namespace ActualChat.App.Maui.Audio;
+
+public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
+    : VoiceActivityDetector(services), IDisposable
+{
+    private Interpreter? _interpreter;
+    private NnApiDelegate? _nnapiDelegate;  // For proper disposal
+    private int _lastFrames = -1;           // Track current batch size for ResizeInput
+
+    // Persistent recurrent state/context (flat arrays)
+    private readonly float[] _state = new float[2 * 1 * 128];
+    private readonly float[] _context = new float[ContextSamples];
+
+    // Pooled buffer for frame input to avoid allocations per call
+    private float[]? _framesArray; // rented from ArrayPool
+    private int _framesArraySize;  // current length in floats
+
+    // Reusable ByteBuffers for inputs and outputs to avoid allocations
+    private ByteBuffer? _framesInputBuffer;
+    private ByteBuffer? _stateInputBuffer;
+    private ByteBuffer? _contextInputBuffer;
+    private ByteBuffer? _probsOutputBuffer;
+    private ByteBuffer? _stateOutputBuffer;
+    private ByteBuffer? _contextOutputBuffer;
+
+    // Cached tensor indices to avoid lookup loops per inference
+    private int _framesInputIdx = -1;
+    private int _stateInputIdx = -1;
+    private int _contextInputIdx = -1;
+    private int _probsOutputIdx = -1;
+    private int _stateOutputIdx = -1;
+    private int _contextOutputIdx = -1;
+
+    // Reusable inputs array and outputs dictionary to avoid allocations
+    private Java.Lang.Object[]? _inputsArray;
+    private readonly Dictionary<int, Java.Lang.Object> _outputsDict = new(3);
+
+    public override bool IsInitialized => _interpreter != null;
+
+    public override Task EnsureInitialized(CancellationToken cancellationToken = default)
+    {
+        if (IsInitialized) {
+            Reset();
+            return Task.CompletedTask;
+        }
+
+        // Load model with zero-copy MappedByteBuffer from raw resource
+        var res = Android.App.Application.Context.Resources!;
+        using var afd = res.OpenRawResourceFd(Resource.Raw.vad_batched_fp16);
+        using var inputStream = new Java.IO.FileInputStream(afd!.FileDescriptor);
+        var channel = inputStream.Channel;
+        var modelBuffer = channel!.Map(FileChannel.MapMode.ReadOnly, afd.StartOffset, afd.DeclaredLength);
+
+        // Prefer NNAPI: Try with delegate + XNNPACK for fallback ops
+        try {
+            var nnapiOptions = new NnApiDelegate.Options()
+                .SetAllowFp16(true)!
+                .SetExecutionPreference(NnApiDelegate.Options.ExecutionPreferenceLowPower);
+
+            _nnapiDelegate = new NnApiDelegate(nnapiOptions);
+            var options = new Interpreter.Options()
+                .SetNumThreads(Math.Max(1, Environment.ProcessorCount - 1))!
+                .SetUseXNNPACK(true)! // Accelerate CPU fallback ops
+                .AddDelegate(_nnapiDelegate);
+
+            _interpreter = new Interpreter(modelBuffer, (Interpreter.Options)options!);
+            Log.LogInformation("VAD initialized with NNAPI (preferred) and XNNPACK fallback");
+        }
+        catch (Exception ex)
+        {
+            Log.LogError("NNAPI failed: {Message}. Falling back to CPU with XNNPACK", ex.Message);
+            _nnapiDelegate?.Close();  // Clean up failed delegate
+            _nnapiDelegate = null;
+
+            var fallbackOptions = new Interpreter.Options()
+                .SetNumThreads(Math.Max(1, Environment.ProcessorCount - 1))!
+                .SetUseXNNPACK(true);
+
+            _interpreter = new Interpreter(modelBuffer, (Interpreter.Options)fallbackOptions!);
+            Log.LogInformation("VAD initialized with XNNPACK fallback");
+        }
+
+        // Cache tensor indices
+        CacheTensorIndices();
+
+        // Preallocate inputs array (fixed size)
+        _inputsArray = new Java.Lang.Object[_interpreter!.InputTensorCount];
+
+        // Ensure clean recurrent state
+        Reset();
+        return Task.CompletedTask;
+    }
+
+    public override void Reset()
+    {
+        base.Reset();
+        Array.Clear(_state, 0, _state.Length);
+        Array.Clear(_context, 0, _context.Length);
+        _lastFrames = -1;
+    }
+
+    public new void Dispose()  // Override if base has Dispose, else just implement
+    {
+        base.Dispose();
+        ReleaseFramesArray();
+        _interpreter?.Close();
+        _interpreter?.Dispose();
+        _interpreter = null;
+
+        _nnapiDelegate?.Close();
+        _nnapiDelegate = null;
+
+        // Clear buffers (optional, GC will handle)
+        _framesInputBuffer = null;
+        _stateInputBuffer = null;
+        _contextInputBuffer = null;
+        _probsOutputBuffer = null;
+        _stateOutputBuffer = null;
+        _contextOutputBuffer = null;
+        _inputsArray = null;
+    }
+
+    protected override float[]? AppendChunkInternal(ReadOnlySpan<float> monoPcm)
+    {
+        var interpreter = _interpreter;
+        if (interpreter == null)
+            return null;  // Not initialized
+
+        if (monoPcm.Length % WindowSamples != 0)
+            throw new ArgumentException($"AppendChunkInternal expects N*{WindowSamples} samples.", nameof(monoPcm));
+
+        int frames = monoPcm.Length / WindowSamples;
+        if (frames == 0)
+            return [];
+
+        // Resize input for dynamic batch if changed and (re)allocate tensors
+        if (_lastFrames != frames) {
+            interpreter.ResizeInput(_framesInputIdx, [frames, WindowSamples]);
+            interpreter.AllocateTensors();
+            _lastFrames = frames;
+        }
+
+        // Prepare reusable buffers (create/grow if needed, set limits for dynamic)
+        PrepareInputOutputBuffers(frames, interpreter);
+
+        // Copy data to input buffers (rewind and put)
+        CopyDataToInputBuffers(monoPcm);
+
+        // Set inputs array
+        _inputsArray![_framesInputIdx] = _framesInputBuffer!;
+        _inputsArray[_stateInputIdx] = _stateInputBuffer!;
+        _inputsArray[_contextInputIdx] = _contextInputBuffer!;
+
+        // Set outputs dict (clear and add)
+        _outputsDict.Clear();
+        _outputsDict[_probsOutputIdx] = _probsOutputBuffer!;
+        _outputsDict[_stateOutputIdx] = _stateOutputBuffer!;
+        _outputsDict[_contextOutputIdx] = _contextOutputBuffer!;
+
+        interpreter.RunForMultipleInputsOutputs(_inputsArray, _outputsDict);
+
+        // Read results
+        var probs = new float[frames];
+        ReadBufferToFloatArray(_probsOutputBuffer!, probs, frames);
+        ReadBufferToFloatArray(_stateOutputBuffer!, _state, _state.Length);
+        ReadBufferToFloatArray(_contextOutputBuffer!, _context, _context.Length);
+
+        return probs;
+    }
+
+    private void CacheTensorIndices()
+    {
+        var interpreter = _interpreter!;
+        // Input indices
+        for (int i = 0; i < interpreter.InputTensorCount; i++) {
+            var sh = interpreter.GetInputTensor(i)!.Shape()!;
+            if (sh is [_, WindowSamples])
+                _framesInputIdx = i;
+            else if (sh is [2, 1, 128])
+                _stateInputIdx = i;
+            else if (sh is [1, ContextSamples])
+                _contextInputIdx = i;
+        }
+        if (_framesInputIdx < 0 || _stateInputIdx < 0 || _contextInputIdx < 0)
+            throw new InvalidOperationException("Unexpected TfLite VAD input shapes.");
+
+        // Output indices
+        for (int i = 0; i < interpreter.OutputTensorCount; i++) {
+            var sh = interpreter.GetOutputTensor(i)!.Shape()!;
+            if (sh is [_, 1])
+                _probsOutputIdx = i;
+            else if (sh is [2, 1, 128])
+                _stateOutputIdx = i;
+            else if (sh is [1, ContextSamples])
+                _contextOutputIdx = i;
+        }
+        if (_probsOutputIdx < 0 || _stateOutputIdx < 0 || _contextOutputIdx < 0)
+            throw new InvalidOperationException("Unexpected TfLite VAD output shapes.");
+    }
+
+    private void PrepareInputOutputBuffers(int frames, Interpreter interpreter)
+    {
+        // Fixed buffers (create once if null)
+        var stateTensor = interpreter.GetInputTensor(_stateInputIdx)!;
+        if (_stateInputBuffer == null)
+            _stateInputBuffer = CreateEmptyBufferForTensor(stateTensor);
+        else {
+            _stateInputBuffer.Position(0);
+            _stateInputBuffer.Limit(stateTensor.NumBytes());
+        }
+
+        var contextTensor = interpreter.GetInputTensor(_contextInputIdx)!;
+        if (_contextInputBuffer == null)
+            _contextInputBuffer = CreateEmptyBufferForTensor(contextTensor);
+        else {
+            _contextInputBuffer.Position(0);
+            _contextInputBuffer.Limit(contextTensor.NumBytes());
+        }
+
+        var stateOutTensor = interpreter.GetOutputTensor(_stateOutputIdx)!;
+        if (_stateOutputBuffer == null)
+            _stateOutputBuffer = CreateEmptyBufferForTensor(stateOutTensor);
+        else {
+            _stateOutputBuffer.Position(0);
+            _stateOutputBuffer.Limit(stateOutTensor.NumBytes());
+        }
+
+        var contextOutTensor = interpreter.GetOutputTensor(_contextOutputIdx)!;
+        if (_contextOutputBuffer == null)
+            _contextOutputBuffer = CreateEmptyBufferForTensor(contextOutTensor);
+        else {
+            _contextOutputBuffer.Position(0);
+            _contextOutputBuffer.Limit(contextOutTensor.NumBytes());
+        }
+
+        // Dynamic buffers (grow if needed, set limit)
+        int framesBytes = sizeof(float) * frames * WindowSamples;
+        if (_framesInputBuffer == null || _framesInputBuffer.Capacity() < framesBytes) {
+            int newCapacity = Math.Max(framesBytes, (_framesInputBuffer?.Capacity() ?? 0) * 2);
+            _framesInputBuffer = ByteBuffer.AllocateDirect(newCapacity).Order(ByteOrder.NativeOrder()!);
+        }
+        _framesInputBuffer.Position(0);
+        _framesInputBuffer.Limit(framesBytes);
+
+        int probsBytes = sizeof(float) * frames * 1;
+        if (_probsOutputBuffer == null || _probsOutputBuffer.Capacity() < probsBytes) {
+            int newCapacity = Math.Max(probsBytes, (_probsOutputBuffer?.Capacity() ?? 0) * 2);
+            _probsOutputBuffer = ByteBuffer.AllocateDirect(newCapacity).Order(ByteOrder.NativeOrder()!);
+        }
+        _probsOutputBuffer.Position(0);
+        _probsOutputBuffer.Limit(probsBytes);
+    }
+
+    private void CopyDataToInputBuffers(ReadOnlySpan<float> monoPcm)
+    {
+        // Frames input
+        var monoPcmLength = monoPcm.Length;
+        EnsureFramesArray(monoPcmLength);
+        monoPcm.CopyTo(_framesArray!.AsSpan(0, monoPcmLength));
+        var framesFb = _framesInputBuffer!.AsFloatBuffer();
+        framesFb.Position(0);
+        framesFb.Put(_framesArray, 0, monoPcmLength);
+        _framesInputBuffer.Position(0);
+
+        // State input
+        var stateFb = _stateInputBuffer!.AsFloatBuffer();
+        stateFb.Position(0);
+        stateFb.Put(_state);
+        _stateInputBuffer.Position(0);
+
+        // Context input
+        var contextFb = _contextInputBuffer!.AsFloatBuffer();
+        contextFb.Position(0);
+        contextFb.Put(_context);
+        _contextInputBuffer.Position(0);
+    }
+
+    // Rent/release frames array to avoid allocations
+    private void EnsureFramesArray(int length)
+    {
+        if (_framesArray is not null && _framesArraySize >= length)
+            return;
+
+        ReleaseFramesArray();
+        _framesArray = ArrayPool<float>.Shared.Rent(length);
+        _framesArraySize = length;
+    }
+
+    private void ReleaseFramesArray()
+    {
+        if (_framesArray is null)
+            return;
+        ArrayPool<float>.Shared.Return(_framesArray);
+        _framesArray = null;
+        _framesArraySize = 0;
+    }
+
+    // Helper: Create an empty direct ByteBuffer for a tensor (enforces float32)
+    private static ByteBuffer CreateEmptyBufferForTensor(ITensor tensor)
+    {
+        var byteBuffer = ByteBuffer.AllocateDirect(tensor.NumBytes())
+            .Order(ByteOrder.NativeOrder()!);
+        byteBuffer.Position(0);
+        return byteBuffer;
+    }
+
+    // Helper: Read tensor data from a ByteBuffer into a float[]; expects float32 tensors only
+    private static void ReadBufferToFloatArray(ByteBuffer buffer, float[] destination, int length)
+    {
+        buffer.Position(0);
+        var fb = buffer.AsFloatBuffer();
+        fb.Get(destination, 0, length);
+    }
+}

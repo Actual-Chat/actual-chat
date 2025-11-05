@@ -155,9 +155,6 @@
 
   <!-- Platform-specific package references -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" >
-      <ExcludeAssets>runtime</ExcludeAssets>
-    </PackageReference>
     <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.AndroidX.Collection" />
     <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
@@ -172,6 +169,8 @@
     <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.Google.Dagger" />
+    <PackageReference Include="Xamarin.Google.AI.Edge.LiteRT" />
+    <PackageReference Include="Xamarin.Google.AI.Edge.LiteRT.GPU" />
     <PackageReference Include="System.Net.WebSockets" />
     <PackageReference Include="OpusSharp.Core" />
   </ItemGroup>
@@ -270,7 +269,7 @@
 
   <!-- Android: Release configuration -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+    <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
     <!-- Trimming & AOT -->
     <AndroidDexTool>d8</AndroidDexTool>
     <AndroidLinkTool>r8</AndroidLinkTool>
@@ -498,9 +497,6 @@
     <AndroidNativeLibrary Include="runtimes\android-arm64-v8a\native\libopus.so">
       <Abi>arm64-v8a</Abi>
     </AndroidNativeLibrary>
-    <AndroidNativeLibrary Include="runtimes\android-arm64-v8a\native\libonnxruntime.so">
-      <Abi>arm64-v8a</Abi>
-    </AndroidNativeLibrary>
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
@@ -605,6 +601,10 @@
     <AndroidAsset Include="Resources\Raw\sounds\new-audio-message-after-delay.m4a" />
     <AndroidAsset Include="Resources\Raw\sounds\notify-on-new-message-in-app.m4a" />
     <AndroidAsset Include="Resources\Raw\sounds\remind-of-recording.m4a" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Platforms\Android\Resources\Raw\" />
   </ItemGroup>
 
   <!-- Targets & overrides.
