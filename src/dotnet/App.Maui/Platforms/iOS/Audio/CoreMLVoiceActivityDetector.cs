@@ -13,8 +13,6 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
     private MLMultiArray? _contextArr; // (1,64)
     private MLMultiArray? _stateArr;   // (2,1,128) stacked [h;c]
 
-    private ILogger Log { get; } = services.LogFor<CoreMLVoiceActivityDetector>();
-
     public override bool IsInitialized => _model is not null;
 
     public override Task EnsureInitialized(CancellationToken cancellationToken = default)
@@ -129,8 +127,10 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
         }
 
         // Build feature provider (batched interface)
-        var keys = new[] { (NSString)"input", (NSString)"state", (NSString)"context" };
-        var values = new NSObject[] { inputArr, stateArr, contextArr };
+        // iOS 16/17/18 CoreML may require an extra "state_workaround" input name for certain converted models.
+        // Provide it as an alias to "state"; extra features are ignored if the model doesn't need them.
+        var keys = new[] { (NSString)"input", (NSString)"state", (NSString)"context", (NSString)"state_workaround" };
+        var values = new NSObject[] { inputArr, stateArr, contextArr, stateArr };
         using var nsDict = new NSDictionary<NSString, NSObject>(keys, values);
         var inputProvider = new MLDictionaryFeatureProvider(nsDict, out var dictErr);
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
