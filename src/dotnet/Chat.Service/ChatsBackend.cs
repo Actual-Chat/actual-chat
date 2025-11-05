@@ -1865,12 +1865,19 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         Log.LogDebug("Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
+        var timeMap = transcription.TimeMap;
+        if (timeMap.IsDegenerate && !textEntry.TimeMap.IsDegenerate) {
+            timeMap = LinearMapDtwRemapper.Remap(textEntry.Content,
+                transcription.Text,
+                textEntry.TimeMap,
+                AlignmentMode.RetranscribeSameAudio);
+        }
         await Commander.Run(new ChatsBackend_ChangeEntry(
             entryId,
             null,
             Change.Update(new ChatEntryDiff {
                 Content = transcription.Text,
-                TimeMap = transcription.TimeMap,
+                TimeMap = timeMap,
             })), cancellationToken).ConfigureAwait(false);
     }      // Event handlers
 
