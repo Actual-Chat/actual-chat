@@ -8,7 +8,6 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
 {
     private InferenceSession? _session;
     private DenseTensor<float> _state = new (new float[2 * 1 * 128], [2, 1, 128]);
-    private readonly float[] _buffer = new float[InputSamples];
     private readonly float[] _context = new float[ContextSamples];
 
     public override bool IsInitialized => _session != null;

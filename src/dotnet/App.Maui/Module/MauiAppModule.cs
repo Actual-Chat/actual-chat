@@ -54,7 +54,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Audio
         services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
-#if WINDOWS || ANDROID
+#if WINDOWS
         services.AddScoped<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<TuneUI>(c => new MauiTunes(c.UIHub()));
         // services.AddSingleton<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
@@ -70,6 +70,10 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
                 return ms.ToArray();
             }
         });
+#elif ANDROID
+        services.AddScoped<IAudioCodec, OpusAudioCodec>();
+        services.AddScoped<TuneUI>(c => new MauiTunes(c.UIHub()));
+        services.AddSingleton<VoiceActivityDetector>(c => new TfLiteVoiceActivityDetector(c));
 #elif IOS || MACCATALYST
         services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));
 #endif

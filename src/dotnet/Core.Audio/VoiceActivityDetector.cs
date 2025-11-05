@@ -19,7 +19,6 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
 
     // AUDIO_VAD constants (subset)
     protected const int ContextSamples = 64; // AUDIO_VAD.NN_VAD_CONTEXT_SAMPLES
-    protected const int InputSamples = WindowSamples + ContextSamples; // 576
     private const double MinSpeechS = 0.5;
     private const double MaxSpeechS = 60 * 2;
     private const double MinSpeechToCancelPauseS = 0.15;
