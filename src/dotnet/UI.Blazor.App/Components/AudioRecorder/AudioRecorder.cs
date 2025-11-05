@@ -150,6 +150,12 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     [JSInvokable]
     public void OnRecordingStateChange(bool isRecording, bool isSignalDetected, bool isConnected, bool isVoiceActive)
     {
+        // Log.LogInformation(
+        //     "OnRecordingStateChange: isRecording={IsRecording}, isSignalDetected={IsSignalDetected}, isConnected={IsConnected}, isVoiceActive={IsVoiceActive}",
+        //     isRecording,
+        //     isSignalDetected,
+        //     isConnected,
+        //     isVoiceActive);
         var state = State.Value;
         if (state.ChatId is null) {
             if (isRecording)

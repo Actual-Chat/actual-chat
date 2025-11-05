@@ -3,7 +3,7 @@ using Java.Nio.Channels;
 using System.Buffers;
 using ActualChat.Audio;
 using Xamarin.TensorFlow.Lite;
-using Xamarin.TensorFlow.Lite.Nnapi; // Assuming your base namespace
+using Xamarin.TensorFlow.Lite.Nnapi;
 
 namespace ActualChat.App.Maui.Audio;
 

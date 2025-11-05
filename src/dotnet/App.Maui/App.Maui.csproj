@@ -175,8 +175,6 @@
     <PackageReference Include="OpusSharp.Core" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" />
     <PackageReference Include="Plugin.Firebase.Analytics" />
     <PackageReference Include="Plugin.Firebase.CloudMessaging" />
     <PackageReference Include="Plugin.Firebase.Crashlytics" />
@@ -189,12 +187,12 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Serilog.Sinks.File" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+<!--    <PackageReference Include="Microsoft.ML.OnnxRuntime" />-->
 <!--    Commented out as both runtime and DirectML runtime have same biney names -->
 <!--    <PackageReference Include="Microsoft.ML.OnnxRuntime">-->
 <!--      <ExcludeAssets>runtime</ExcludeAssets>-->
 <!--    </PackageReference>-->
-<!--    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />-->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
     <PackageReference Include="NAudio" />
     <PackageReference Include="OpusSharp.Core" />
   </ItemGroup>
