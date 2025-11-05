@@ -81,7 +81,6 @@ public class OpenAITranscriber
         if (transcription.Words.Count <= 0)
             return linearMap;
 
-        linearMap.Append(new Vector2(0, 0));
         var start = 0;
         foreach (var transcriptionWord in transcription.Words) {
             var i = text.IndexOf(transcriptionWord.Word, start, StringComparison.Ordinal);
