@@ -845,3 +845,6 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
 .list-view-layout:has(.chat-activity-panel.listening) .playback-toggle-svg.on {
     @apply text-[var(--violet-60)];
 }
+.header-activity-panel-wrapper .playback-toggle-svg {
+    @apply text-[var(--violet-60)];
+}

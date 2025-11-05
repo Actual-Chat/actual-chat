@@ -9,7 +9,7 @@
 @implements IAttachmentWebFilePickerBackend
 @implements IAsyncDisposable
 @{
-    var placeholder = ScreenSize.IsNarrow() ? "Message..." : "Write a message - or simply record one!";
+    var placeholder = ScreenSize.IsNarrow() || (ScreenSize.IsLarge() && _isRightPanelVisible) ? "Message..." : "Write a message - or simply record one!";
 
     RenderFragment RenderAttachmentListView() =>
         @<AttachmentListView
@@ -91,6 +91,7 @@
     private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
     private AttachmentListHolder _attachmentListHolder = null!;
     private bool _hasAttachments;
+    private bool _isRightPanelVisible;
     private bool Autofocus => ScreenSize.IsWide() && !BrowserInfo.IsTouchCapable;
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IAttachmentWebFilePickerBackend> BlazorRef { get; set; } = null!;
@@ -120,9 +121,16 @@
         _attachmentListHolder.Changed += OnAttachmentListChanged;
         FileAttachments =  new FileAttachments(Hub, Chat.Id);
         AttachmentFilePicker = Hub.Services.GetService<IAttachmentFilePicker>();
+        PanelsUI.Right.IsVisible.Updated += OnRightPanelVisibilityChanged;
+    }
+
+    private void OnRightPanelVisibilityChanged(State state, StateEventKind kind) {
+        _isRightPanelVisible = ((IState<bool>)state).Value;
+        InvokeAsync(StateHasChanged);
     }
 
     public async ValueTask DisposeAsync() {
+        PanelsUI.Right.IsVisible.Updated -= OnRightPanelVisibilityChanged;
         if (AttachmentsStorage != null)
             AttachmentsStorage.AttachmentsStored -= OnAttachmentsStored;
         AttachmentsStorage = null;

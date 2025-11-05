@@ -8,6 +8,7 @@ export * from './Pages/Test/js-test-page';
 
 export * from './Components/AISearchPanel/ai-bot-svg.lit';
 export * from './Components/AISearchPanel/ai-talking-svg.lit';
+export * from './Components/ChatActivityPanel/chat-activity-panel';
 export * from './Components/ChatActivityPanel/chat-activity-panel-icon-svg.lit';
 export * from './Components/ChatAudioPanel/playback-toggle-svg.lit';
 export * from './Components/ChatAudioPanel/recorder-toggle';

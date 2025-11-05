@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, ChatActivityPanel.Model?>
 @{
     var m = State.Value;
@@ -9,7 +10,6 @@
     if (!isVisible)
         return;
 
-    var maxCount = 5;
     var chat = Chat;
     var chatId = chat?.Id;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
@@ -18,18 +18,20 @@
     var cls = IsListening ? " listening" : "";
 }
 
-<div class="chat-activity-panel @cls" @onclick:preventDefault="true" @onclick:stopPropagation="true">
-    <div class="c-icon">
-        <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive"/>
-    </div>
+<div @ref="Ref" class="chat-activity-panel @cls" @onclick:preventDefault="true" @onclick:stopPropagation="true">
+    @if (!m.IsAnyoneTalking) {
+        <div class="c-icon">
+            <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive"/>
+        </div>
+    }
     @if (m.IsAnyoneTalking && chatId is not null) {
         <ChatActivities
             @key="@chatId.Value"
             Chat="@chat"
-            MaxIconCount="@maxCount"
+            MaxIconCount="@MaxCount"
             IsListening="@IsListening"/>
     } else {
-        <div class="silence-text">You are listening...</div>
+        <div class="w-full"></div>
     }
     <div class="c-buttons">
         @if (!IsListening) {
@@ -59,6 +61,12 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatActivityPanel.create";
+
+    private ElementReference Ref { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<ChatActivityPanel> BlazorRef { get; set; } = null!;
+
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
@@ -75,8 +83,17 @@
     private bool IsUpdating => Chat?.Id is not null && State.Value?.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
-    [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
+    [Parameter] public int MaxCount { get; set; } = 5;
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+        await base.DisposeAsync();
+    }
 
     protected override async Task OnParametersSetAsync() {
         ChatRecordingActivity?.Dispose();
@@ -84,6 +101,13 @@
             ? await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None)
             : null;
         await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender && ScreenSize.IsNarrow()) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, BlazorRef, Ref);
+        }
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {

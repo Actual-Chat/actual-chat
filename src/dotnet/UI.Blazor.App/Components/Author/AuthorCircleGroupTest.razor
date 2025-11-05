@@ -4,7 +4,7 @@
     List<string> circles = ["bg-red-400", "bg-green-400", "bg-blue-400", "bg-yellow-400", "bg-gray-400", "bg-yellow-400", "bg-purple-400"];
     var avatarSize = SquareSize.Size7;
     var size = "w-7 h-7";
-    var maxLength = MaxIconCount > circles.Count ? circles.Count : MaxIconCount;
+    var maxLength = circles.Count > MaxIconCount ? MaxIconCount - 1 : circles.Count;
     var currentCount = circles.Count;
 }
 
