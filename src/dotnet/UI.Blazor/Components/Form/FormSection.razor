@@ -5,8 +5,12 @@
 @inherits ComponentBase
 @implements IDisposable
 @{
-    var messages = CurrentEditContext.GetValidationMessages(_fieldIdentifier).ToList();
-    var isInvalid = messages.Any();
+    var isInvalid = false;
+    IEnumerable<string> messages = [];
+    if (ShowErrors) {
+        messages = CurrentEditContext.GetValidationMessages(_fieldIdentifier).ToList();
+        isInvalid = messages.Any();
+    }
     var cls = Class;
     if (isInvalid) {
         cls += " invalid";
@@ -67,7 +71,7 @@
     [Parameter] public string InputId { get; set; } = "";
     [Parameter] public bool? IsRequired { get; set; }
     [Parameter] public bool IsLabelInsideInput { get; set; }
-    [Parameter] public bool ShowErrors { get; set; }
+    [Parameter] public bool ShowErrors { get; set; } = true;
     [Parameter] public bool HideValidationMessage { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Right { get; set; }

@@ -44,19 +44,22 @@
         <Form
             Class="c-phone-form"
             Model="@_stepModel"
-            OnValidSubmit="OnSignInWithPhone">
+            OnSubmit="OnSignInWithPhone">
             <AsyncDataAnnotationsValidator @ref="_validator"/>
             <FormSection
                 For="() => _stepModel.Phone"
                 InputId="@_stepModel.PhoneFieldId"
                 Label="Phone"
                 Class="grow"
+                ShowErrors="@_showPhoneValidationErrors"
                 IsLabelInsideInput="true"
                 IsRequired="true">
                 <TextBox
                     Id="@_stepModel.PhoneFieldId"
-                    @bind-Value="_stepModel.Phone"
+                    Value="@(!_stepModel.Phone.IsNullOrEmpty() ? _stepModel.Phone : _defaultPhoneValue)"
+                    ValueExpression="@(() => _stepModel.Phone)"
                     Autocomplete="true"
+                    ValueChanged="@OnPhoneChanged"
                     disabled="@codeHasBeenSent"
                     type="tel"
                     inputmode="tel"/>
@@ -98,11 +101,13 @@
 </div>
 
 @code {
+    private readonly string _defaultPhoneValue = PhoneCodes.Default.DisplayCode;
     private ValidationState _validationState = ValidationState.None;
     private StepModel _stepModel = null!;
     private List<AuthSchemaModel>? _authSchemas;
     private bool _isPhoneAuthEnabled;
     private AsyncDataAnnotationsValidator _validator = null!;
+    private bool _showPhoneValidationErrors;
 
     private IPhones Phones => Hub.Phones;
     private ICaptcha Captcha => Hub.Captcha;
@@ -161,7 +166,21 @@
     private void OnSignInWith(string schema)
         => _ = AccountUI.SignIn(schema);
 
+    private void OnPhoneChanged(string? value) {
+        _showPhoneValidationErrors = true;
+        var newValue = value ?? "";
+        if (newValue == _defaultPhoneValue)
+            newValue = "";
+
+        _stepModel.Phone = newValue;
+    }
+
     private async Task OnSignInWithPhone() {
+        _showPhoneValidationErrors = true;
+        var isValid = await _validator.Validate().ConfigureAwait(false);
+        if (!isValid)
+            return;
+
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
         if (hasSentCodeRecently) {
             _validationState = ValidationState.CodeSentRecently;
@@ -204,7 +223,7 @@
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
-        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+        [Required, PhoneNumber] public string Phone { get; set; } = "";
         public string PhoneFieldId { get; set; } = "";
     }
 }
