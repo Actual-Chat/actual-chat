@@ -190,32 +190,6 @@
         chatPlayers.StartHistoricalPlayback(chatId, startAt);
     }
 
-    private async Task OnClick(int startIndex) {
-        // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
-        var markup = Markup;
-        var entry = Entry;
-        var chatId = entry.ChatId;
-
-        var startTimeOpt = markup.TimeMap.TryMap(startIndex);
-        if (startTimeOpt is not { } startTime)
-            return;
-
-        // We resolve some of the services lazily here, coz they're supposed to be used quite rarely
-        var session = Services.Session();
-        var chats = Services.GetRequiredService<IChats>();
-
-        var audioEntryId = AudioEntryId.New(chatId, entry.AudioEntryLid ?? -1);
-        var audioEntry = await chats.GetEntry(session, audioEntryId);
-        if (audioEntry == null) {
-            Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
-            return; // We can't do much in this case
-        }
-
-        var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
-        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
-        chatPlayers.StartHistoricalPlayback(chatId, startAt);
-    }
-
     private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)
     {
         WordPlayback[] enrichedMap;
