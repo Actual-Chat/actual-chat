@@ -6,7 +6,7 @@ namespace Core.Audio.UnitTests;
 
 public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 {
-    [Fact/*(Skip = "Manual")*/]
+    [Fact(Skip = "Manual")]
     public async Task BasicTest()
     {
         // Find repository root (folder containing ActualChat.sln)
@@ -58,7 +58,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
     }
 
 
-    [Fact/*(Skip = "Manual")*/]
+    [Fact(Skip = "Manual")]
     public async Task InternalTest()
     {
         // Find repository root (folder containing ActualChat.sln)
@@ -111,7 +111,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
         // but we verify the pipeline runs end-to-end without exceptions.
     }
 
-    [Theory/*(Skip = "Manual")*/]
+    [Theory(Skip = "Manual")]
     [InlineData("micIn.bin")]
     [InlineData("outAEC.bin")]
     [InlineData("outAEC_NC_AGC.bin")]
