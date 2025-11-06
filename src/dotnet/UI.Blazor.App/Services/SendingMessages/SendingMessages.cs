@@ -1,4 +1,5 @@
 using ActualChat.Hashing;
+using ActualChat.Media;
 using ActualChat.Messaging;
 using ActualChat.UI.Blazor.Services;
 
@@ -169,9 +170,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
                     var fileProvider = session.FileProvider;
                     var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
                     if (canAccess) {
-                        // NOTE(DF): may be better to do it on-demand in the AttachmentListView.
-                        // We don't need it until we need to show preview.
-                        if (previewUrl.IsNullOrEmpty())
+                        if (previewUrl.IsNullOrEmpty() && MediaTypeExt.IsVisualMedia(session.FileProvider.Metadata.FileType))
                             previewUrl = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
                         attachmentIsOk = true;
                     }
