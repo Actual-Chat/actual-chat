@@ -78,7 +78,7 @@
                 </div>
             }
             <FormButtons IsEndAligned="false" Class="dialog-buttons">
-                <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState == ValidationState.Invalid)">
+                <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid or ValidationState.CannotSend)">
                     @switch (_validationState) {
                         case ValidationState.Validating:
                             <i class="icon-refresh"></i><span>Validating...</span>
@@ -159,8 +159,20 @@
 
     protected override async Task<bool> Save() {
         var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
+        if (phone is null) {
+            PhoneSignInModel.Phone = null;
+            return false;
+        }
+
+        var canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(phone, TotpPurpose.SignIn, CancellationToken.None);
+        if (!canSendValidationMessage.IsNullOrEmpty()) {
+            _validationState = ValidationState.CannotSend;
+            UICommander.ShowError(canSendValidationMessage);
+            return false;
+        }
+
         PhoneSignInModel.Phone = phone;
-        return phone != null;
+        return true;
     }
 
     private void OnSignInWith(string schema)
@@ -171,16 +183,16 @@
         var newValue = value ?? "";
         if (newValue == _defaultPhoneValue)
             newValue = "";
+        if (Equals(_stepModel.Phone, newValue))
+            return;
 
         _stepModel.Phone = newValue;
+        if (_validationState == ValidationState.CannotSend)
+            _validationState = ValidationState.None;
     }
 
     private async Task OnSignInWithPhone() {
         _showPhoneValidationErrors = true;
-        var isValid = await _validator.Validate().ConfigureAwait(false);
-        if (!isValid)
-            return;
-
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
         if (hasSentCodeRecently) {
             _validationState = ValidationState.CodeSentRecently;

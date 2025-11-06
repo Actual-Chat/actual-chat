@@ -8,15 +8,17 @@
     var buttonText = _validationState switch {
         ValidationState.Validating => "Validating...",
         ValidationState.Invalid => "Unavailable",
+        ValidationState.CannotSend => "Unavailable",
         ValidationState.CodeSentRecently => "Code sent",
         _ => "Verify by SMS",
     };
     var description = _validationState switch {
         ValidationState.Invalid => "Please try again later.",
+        ValidationState.CannotSend => _canSendValidationMessage,
         ValidationState.CodeSentRecently => "You can try again in a few minutes.",
         _ => $"Verify your phone number to sign in to {CoreConstants.AppName}.",
     };
-    var isDisabled = _validationState is ValidationState.Invalid or ValidationState.Validating;
+    var isDisabled = _validationState is ValidationState.Invalid or ValidationState.Validating or ValidationState.CannotSend;
 }
 
 <div class="phone-verifier @Class">
@@ -45,6 +47,7 @@
 @code {
     private TotpVerifier? _totpVerifier;
     private ValidationState _validationState = ValidationState.None;
+    private string _canSendValidationMessage = "";
 
     private ICaptcha Captcha => Hub.Captcha;
     private TotpUI TotpUI => Hub.TotpUI;
@@ -78,6 +81,13 @@
                 _validationState = validationResult.Success
                     ? ValidationState.Valid
                     : ValidationState.Invalid;
+                if (_validationState is ValidationState.Valid) {
+                    _canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(Phone, TotpPurpose.VerifyPhone, CancellationToken.None);
+                    if (!_canSendValidationMessage.IsNullOrEmpty()) {
+                        _validationState = ValidationState.CannotSend;
+                        UICommander.ShowError(_canSendValidationMessage);
+                    }
+                }
             }
             catch {
                 _validationState = ValidationState.Invalid;

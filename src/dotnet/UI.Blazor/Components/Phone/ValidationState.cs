@@ -5,5 +5,6 @@ public enum ValidationState {
     Validating,
     Valid,
     Invalid,
+    CannotSend,
     CodeSentRecently,
 }

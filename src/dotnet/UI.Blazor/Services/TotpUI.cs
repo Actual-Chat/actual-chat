@@ -7,6 +7,12 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
     private readonly IMutableState<Moment> _totpExpiresAt = hub.StateFactory.NewMutable<Moment>();
     public IState<Moment> TotpExpiresAt => _totpExpiresAt;
 
+    [field:AllowNull, MaybeNull]
+    private IPhoneAuth PhoneAuth => field ??= Services.GetRequiredService<IPhoneAuth>();
+
+    public Task<string> ValidateCanSendToPhone(Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
+        => PhoneAuth.ValidateCanSendToPhone(Session, phone, purpose, cancellationToken);
+
     [ComputeMethod]
     public virtual async Task<bool> HasSentCodeRecently(CancellationToken cancellationToken)
     {

@@ -32,6 +32,24 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     public virtual Task<bool> IsEnabled(CancellationToken cancellationToken)
         => Task.FromResult(HostInfo.IsDevelopmentInstance || Settings.IsTwilioEnabled || Settings.IsSMSToEnabled);
 
+    // [ComputeMethod]
+    public virtual Task<string> ValidateCanSendToPhone(
+        Session session,
+        ActualChat.Phone phone,
+        TotpPurpose purpose,
+        CancellationToken cancellationToken)
+    {
+        var value = phone.Normalize().Value;
+        if (Equals(value, "1-23456789")) {
+            var message = purpose switch {
+                TotpPurpose.SignIn => "Unable to send SMS to this number, please use other login methods.",
+                _ => "Unable to send SMS to this number",
+            };
+            return Task.FromResult(message);
+        }
+        return Task.FromResult(string.Empty);
+    }
+
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken)
     {
@@ -52,6 +70,10 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose, cancellationToken).ConfigureAwait(false);
         var totp = Totps.Generate(securityToken, modifier); // generate totp with the newest one
         var expiresAt = GetExpiresAt();
+
+        var canSendValidationMessage = await ValidateCanSendToPhone(session, phone, purpose, cancellationToken).ConfigureAwait(false);
+        if (!canSendValidationMessage.IsNullOrEmpty())
+            throw StandardError.Constraint(canSendValidationMessage);
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
         await TextMessage.Send(phone, $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
@@ -83,9 +105,6 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     public virtual async Task<bool> OnVerifyPhone(PhoneAuth_VerifyPhone command, CancellationToken cancellationToken)
     {
         // NOTE(AY): Add backend, implement IApiCommand
-        if (Invalidation.IsActive)
-            return false; // It just spawns other commands, so nothing to do here
-
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
