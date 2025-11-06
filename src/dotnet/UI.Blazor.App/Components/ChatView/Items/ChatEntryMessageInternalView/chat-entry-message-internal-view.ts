@@ -1,5 +1,6 @@
 import { Subject } from 'rxjs';
 import { debounce, ResettableFunc } from 'promises';
+import { fastRaf } from 'fast-raf';
 
 const importantClasses = new Set([
     'change-item',
@@ -126,8 +127,11 @@ export class ChatEntryMessageInternalView {
 
             if (mutation.type === 'characterData' &&
                 mutation.target.nodeType === Node.TEXT_NODE) {
-                const element = mutation.target.parentElement as HTMLElement;
-                if ([...element.classList].some(cls => importantClasses.has(cls))) {
+                const element = (mutation.target.parentElement?.closest(
+                    '.change-item, .changed-item, .changes, .retained'
+                )) as HTMLElement | null;
+
+                if (element) {
                     this.changeSizeForText(true);
                 } else {
                     this.changeSizeForText();
@@ -178,16 +182,23 @@ export class ChatEntryMessageInternalView {
     }
 
     private changeSizeForText(slow: boolean = false) {
-        requestAnimationFrame(() => {
-            const actualHeight = this.getActualHeight();
-            if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels())
-                return;
+        let actualHeight: number;
 
-            const debounceFunc = actualHeight > this.markupHeight || !slow
-                ? this.fastDebouncedChangeSize
-                : this.slowDebouncedChangeSize;
+        fastRaf({
+            read: () => {
+                actualHeight = this.getActualHeight();
+            },
+            write: () => {
+                if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels())
+                    return;
 
-            debounceFunc(actualHeight);
+                const debounceFunc =
+                    actualHeight > this.markupHeight || !slow
+                        ? this.fastDebouncedChangeSize
+                        : this.slowDebouncedChangeSize;
+
+                debounceFunc(actualHeight);
+            }
         });
     }
 
