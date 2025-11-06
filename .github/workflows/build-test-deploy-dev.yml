@@ -881,6 +881,7 @@ jobs:
           lfs: true
 
       - name: Prepare short workspace path
+        working-directory: D:\
         run: |
           if (Test-Path 'D:\AC') { Remove-Item 'D:\AC' -Force -Recurse }
           cmd /c mklink /J D:\AC "$env:GITHUB_WORKSPACE"
