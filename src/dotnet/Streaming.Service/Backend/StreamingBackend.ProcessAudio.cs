@@ -135,7 +135,11 @@ public partial class StreamingBackend
                 .ConfigureAwait(false);
 
         // And we await for the last "pending" task, which is likely already completed
-        await transcribeTask.ConfigureAwait(false);
+        var textEntryId = await transcribeTask.ConfigureAwait(false);
+        if (textEntryId is not null) {
+            // Launch re-transcribe after text and audio entries have been finalized.
+            await RetranscribeTextEntry(textEntryId, openSegment.Languages[0]).SilentAwait();
+        }
     }
 
     private async Task<Language[]> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
@@ -162,7 +166,7 @@ public partial class StreamingBackend
         return settings.TranscriptionEngine;
     }
 
-    private async Task TranscribeAudio(
+    private async Task<TextEntryId?> TranscribeAudio(
         OpenAudioSegment audioSegment,
         Moment beginsAt,
         Task<ChatEntry>? audioEntryTask,
@@ -213,9 +217,9 @@ public partial class StreamingBackend
         }
         finally {
             if (lastTranscript != null && textEntry != null)
-                await Task.WhenAll(FinalizeAndRetranscribeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
+                await Task.WhenAll(FinalizeTextEntry(), FinalizeLanguages()).ConfigureAwait(false);
         }
-        return;
+        return textEntry?.Id as TextEntryId;
 
         async Task<ChatEntry> CreateTextEntry(Transcript transcript)
         {
@@ -244,12 +248,6 @@ public partial class StreamingBackend
             return textEntry;
         }
 
-        async Task FinalizeAndRetranscribeTextEntry()
-        {
-            await FinalizeTextEntry().ConfigureAwait(false);
-            await RetranscribeTextEntry().ConfigureAwait(false);
-        }
-
         async Task FinalizeTextEntry()
         {
             audioEntry ??= audioEntryTask != null
@@ -274,14 +272,6 @@ public partial class StreamingBackend
                 textEntry.Id,
                 null, // do not perform version check there - it might have already been changed and it's OK
                 change);
-            await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
-        }
-
-        async Task RetranscribeTextEntry()
-        {
-            var command = new ChatsBackend_RetranscribeChatEntry(
-                textEntry.Id,
-                audioSegmentLanguage);
             await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
         }
 
@@ -356,5 +346,13 @@ public partial class StreamingBackend
                 ContentEndsAt = contentEndsAt,
             }));
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    async Task RetranscribeTextEntry(ChatEntryId textEntryId, Language audioSegmentLanguage)
+    {
+        var command = new ChatsBackend_RetranscribeChatEntry(
+            textEntryId,
+            audioSegmentLanguage);
+        await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
     }
 }
