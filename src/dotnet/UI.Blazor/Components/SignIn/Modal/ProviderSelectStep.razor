@@ -152,27 +152,15 @@
     }
 
     protected override async Task<bool> Validate() {
-        var isValid = _validationState != ValidationState.Invalid
+        var isValid = _validationState is not (ValidationState.Invalid or ValidationState.CannotSend)
             && await _validator.Validate().ConfigureAwait(false);
         return isValid;
     }
 
     protected override async Task<bool> Save() {
         var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
-        if (phone is null) {
-            PhoneSignInModel.Phone = null;
-            return false;
-        }
-
-        var canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(phone, TotpPurpose.SignIn, CancellationToken.None);
-        if (!canSendValidationMessage.IsNullOrEmpty()) {
-            _validationState = ValidationState.CannotSend;
-            UICommander.ShowError(canSendValidationMessage);
-            return false;
-        }
-
         PhoneSignInModel.Phone = phone;
-        return true;
+        return phone != null;
     }
 
     private void OnSignInWith(string schema)
@@ -216,6 +204,17 @@
             }
             finally {
                 StateHasChanged();
+            }
+        }
+
+        if (_validationState is ValidationState.Valid) {
+            var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
+            if (phone is not null) {
+                var canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(phone, TotpPurpose.SignIn, CancellationToken.None);
+                if (!canSendValidationMessage.IsNullOrEmpty()) {
+                    _validationState = ValidationState.CannotSend;
+                    UICommander.ShowError(canSendValidationMessage);
+                }
             }
         }
 
