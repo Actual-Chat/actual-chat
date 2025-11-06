@@ -108,9 +108,14 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             inputNode.DisposeSilently();
             graph.DisposeSilently();
             loopbackCapture.DisposeSilently();
-            micDevice?.DisposeSilently();
+            micDevice.DisposeSilently();
             return null;
         }
+
+        // Throttled access to microphone volume to avoid per-frame COM calls
+        var endpointVolume = micDevice?.AudioEndpointVolume;
+        var currentVolume = Math.Clamp(endpointVolume?.MasterVolumeLevelScalar ?? 0.5f, 0f, 1f);
+        endpointVolume?.OnVolumeNotification += OnVolumeChanged;
 
         // Processing loop to emit mic frames through APM
         var processingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -149,25 +154,17 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                     apm.AnalyzeReverseStream(loopIn);
 
                     // Inform APM about current analog microphone level (mapped from system scalar 0..1 to 0..255)
-                    if (micDevice is not null) {
-                        var scalar = micDevice.AudioEndpointVolume?.MasterVolumeLevelScalar ?? 0.5f;
-                        scalar = Math.Clamp(scalar, 0f, 1f);
-                        var analog = (int)MathF.Round(scalar * 255f);
-                        apm.SetAnalogLevel(Math.Clamp(analog, 0, 255));
-                    }
+                    var currentLevel = Math.Clamp((int)MathF.Round(currentVolume * 255f), 0, 255);
+                    apm.SetAnalogLevel(currentLevel);
 
                     // Process delayed microphone input
                     apm.ProcessStream(micIn, outSpan);
 
                     // After processing, get APM recommended analog level and apply back to system microphone volume
-                    if (micDevice is not null) {
-                        var recommended = apm.GetRecommendedAnalogLevel();
-                        recommended = Math.Clamp(recommended, 0, 255);
-                        var desiredScalar = recommended / 255f;
-                        var currentScalar = micDevice.AudioEndpointVolume?.MasterVolumeLevelScalar ?? desiredScalar;
-                        if (Math.Abs(currentScalar - desiredScalar) > 0.02f)
-                            micDevice.AudioEndpointVolume!.MasterVolumeLevelScalar = Math.Clamp(desiredScalar, 0f, 1f);
-                    }
+                    var recommendedLevel = apm.GetRecommendedAnalogLevel();
+                    var recommendedVolume = Math.Clamp(Math.Clamp(recommendedLevel, 0, 255) / 255f, 0f, 1f);
+                    if (Math.Abs(currentVolume - recommendedVolume) > 0.02f)
+                        endpointVolume?.MasterVolumeLevelScalar = recommendedVolume;
 
                     // Log.LogDebug("APM.ProcessStream gains for mic and loopback: {GainMic} {GainLoop}", AudioExt.ApproximateGain(micIn), AudioExt.ApproximateGain(loopIn));
 
@@ -231,7 +228,6 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 catch {
                     /* ignore */
                 }
-
                 apm.DisposeSilently();
                 inputNode?.DisposeSilently();
                 outputNode?.DisposeSilently();
@@ -283,6 +279,11 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
                 return;
 
             PushToBuffer(args, loopbackCapture.WaveFormat, loopbackRingBuffer);
+        }
+
+        void OnVolumeChanged(AudioVolumeNotificationData data)
+        {
+            currentVolume = Math.Clamp(data.MasterVolume, 0f, 1f);
         }
     }
 
