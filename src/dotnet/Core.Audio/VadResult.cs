@@ -1,7 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.Audio;
 
+[StructLayout(LayoutKind.Auto)]
 public readonly record struct VadResult(VoiceActivityChange? Change, double Gain)
 {
     [MemberNotNullWhen(true, nameof(Change))]

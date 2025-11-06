@@ -104,7 +104,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
                 frameCount++;
             }
-            Log.LogDebug("Processed {FrameCount} frames for track {Id}", frameCount, trackInfo.TrackId);
+            Log.LogDebug("Processed {FrameCount} frames for track {Id}", frameCount, TrackInfo.TrackId);
 
             // Note that end command shouldn't be cancelled with cancellationToken
             // this prevents sending (end + stop) commands simultaneously, don't change this.
@@ -184,7 +184,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
                 Log.LogError(ex, "Error on StateChanged handler(state) invocation");
             }
             if (state.IsEnded) {
-                Log.LogDebug("TrackPlayer for track {Id} ended", trackInfo.TrackId);
+                Log.LogDebug("TrackPlayer for track {Id} ended", TrackInfo.TrackId);
                 _whenCompletedSource.TrySetResult();
             }
         }

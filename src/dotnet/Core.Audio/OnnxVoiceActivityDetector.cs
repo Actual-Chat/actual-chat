@@ -114,9 +114,9 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
         ]);
 
         // Retrieve outputs
-        var output = results.First(v => v.Name == "output").AsTensor<float>();
-        var stateN = results.First(v => v.Name == "stateN").AsTensor<float>();
-        var contextN = results.First(v => v.Name == "contextN").AsTensor<float>();
+        var output = results.First(v => OrdinalEquals(v.Name, "output")).AsTensor<float>();
+        var stateN = results.First(v => OrdinalEquals(v.Name, "stateN")).AsTensor<float>();
+        var contextN = results.First(v => OrdinalEquals(v.Name, "contextN")).AsTensor<float>();
 
         UpdateStateFrom(stateN);
         UpdateContextFrom(contextN);

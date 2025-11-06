@@ -1,5 +1,6 @@
 namespace ActualChat.Audio;
 
+[StructLayout(LayoutKind.Auto)]
 public readonly record struct VoiceActivityChange(
     VoiceActivityKind Kind,
     int OffsetSamples,
