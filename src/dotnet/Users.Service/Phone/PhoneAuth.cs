@@ -10,23 +10,37 @@ using StackExchange.Redis;
 
 namespace ActualChat.Users.Phone;
 
-public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IPhoneAuth
+public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Phone.TotpLength);
+    private readonly Lazy<string[]> _blockedPhonePrefixes;
 
-    private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
-    private HostInfo HostInfo { get; } = services.HostInfo();
-    private ITextMessageSender TextMessage { get; } = services.GetRequiredService<ITextMessageSender>();
-    private TotpCodes Totps { get; } = services.GetRequiredService<TotpCodes>();
-    private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
-    private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
-    private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
+    private UsersSettings Settings { get; }
+    private HostInfo HostInfo { get; }
+    private ITextMessageSender TextMessage { get; }
+    private TotpCodes Totps { get; }
+    private TotpSecrets TotpSecrets { get; }
+    private RedisDb<UsersDbContext> RedisDb { get; }
+    private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
     [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     [field: AllowNull, MaybeNull]
     private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
     [field: AllowNull, MaybeNull]
     private IDbEntityConverter<DbUser, User> UserConverter => field ??= Services.DbEntityConverter<DbUser, User>();
+
+    public PhoneAuth(IServiceProvider services) : base(services)
+    {
+        Settings = services.GetRequiredService<UsersSettings>();
+        HostInfo = services.HostInfo();
+        TextMessage = services.GetRequiredService<ITextMessageSender>();
+        Totps = services.GetRequiredService<TotpCodes>();
+        TotpSecrets = services.GetRequiredService<TotpSecrets>();
+        RedisDb = services.GetRequiredService<RedisDb<UsersDbContext>>();
+        DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
+        _blockedPhonePrefixes = new Lazy<string[]>(()
+            => Settings.BlockedPhonePrefixes.Split([';', ','], StringSplitOptions.RemoveEmptyEntries));
+    }
 
     // [ComputeMethod]
     public virtual Task<bool> IsEnabled(CancellationToken cancellationToken)
@@ -40,14 +54,21 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         CancellationToken cancellationToken)
     {
         var value = phone.Normalize().Value;
-        if (Equals(value, "1-23456789")) {
-            var message = purpose switch {
-                TotpPurpose.SignIn => "Unable to send SMS to this number, please use other login methods.",
-                _ => "Unable to send SMS to this number",
-            };
-            return Task.FromResult(message);
+        if (!IsBlocked())
+            return Task.FromResult(string.Empty);
+
+        var message = purpose switch {
+            TotpPurpose.SignIn => "Unable to send SMS to this number, please use other login methods.",
+            _ => "Unable to send SMS to this number",
+        };
+        return Task.FromResult(message);
+
+        bool IsBlocked() {
+            foreach (var blockedPrefix in _blockedPhonePrefixes.Value)
+                if (value.OrdinalStartsWith(blockedPrefix))
+                    return true;
+            return false;
         }
-        return Task.FromResult(string.Empty);
     }
 
     // [CommandHandler]
