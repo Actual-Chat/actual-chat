@@ -17,7 +17,7 @@ public static class AudioExt
             return ComputeRmsSimd(monoPcm);
 
         // General path: decimate into contiguous buffer, then use SIMD if available
-        Span<float> samples = sampleCount <= 256
+        Span<float> samples = sampleCount <= 1024
             ? stackalloc float[sampleCount]
             : new float[sampleCount];
 
@@ -66,11 +66,8 @@ public static class AudioExt
     private static double ComputeRmsScalar(ReadOnlySpan<float> samples)
     {
         double sum = 0.0;
-        for (int i = 0; i < samples.Length; i++)
-        {
-            float e = samples[i];
+        foreach (var e in samples)
             sum += e * e;
-        }
         return samples.Length > 0 ? Math.Sqrt(sum / samples.Length) : 0.0;
     }
 }

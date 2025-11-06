@@ -4,7 +4,7 @@ import { filter, scan, Subscription } from 'rxjs';
 import { clamp, RunningMax, translate } from 'math';
 import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
 
-const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 200 * 30ms = 3s
+const SIGNAL_COUNT_TO_CALCULATE_MAX = 100;
 
 interface Result {
     runningMax: RunningMax;
@@ -118,7 +118,11 @@ class ActiveRecordingSvg extends LitElement {
             .pipe(filter((p, i) => i % 2 === 0))
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
                 const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
-                runningMax.appendSample(p);
+                // Fill the window first; once full, only advance it while voice is active
+                const isWindowNotFull = runningMax.sampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX;
+                const shouldAppend = isWindowNotFull || this.isVoiceActive;
+                if (shouldAppend)
+                    runningMax.appendSample(p);
                 return { runningMax, p, i };
             }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)));
 
@@ -126,13 +130,10 @@ class ActiveRecordingSvg extends LitElement {
             this.isVoiceActive = rs.isVoiceActive;
             this._isRecording = rs.isRecording;
         });
-        const getHeight = (power: number, maxPower: number) => Math.floor((translate(power, [0, 0.8*maxPower], [MIN_HEIGHT, MAX_HEIGHT]))) * 100 / MAX_HEIGHT;
+        const getHeight = (power: number, maxPower: number) => Math.floor((translate(power, [0, 0.6*maxPower], [MIN_HEIGHT, MAX_HEIGHT]))) * 100 / MAX_HEIGHT;
         this.signalPowerChangedSubscription = signalPower$.subscribe(({ runningMax, p }) => {
             if (!this._isRecording || !this.isVoiceActive)
                 return;
-
-            if (this.audioPowerState === DEFAULT_STATE)
-                runningMax.reset(); // On turn on recording
 
             const maxPower = runningMax.value;
             const maxSampleCount = runningMax.sampleCount;

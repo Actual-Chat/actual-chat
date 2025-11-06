@@ -255,12 +255,26 @@ export class RunningMax implements RunningCounter {
     }
 
     public appendSample(value: number): void {
+        // Add new sample
+        this._samples.push(value);
         if (value > this.max)
             this.max = value;
-        this._samples.push(value);
 
-        if (this._samples.length > this.windowSize)
-            this._samples.shift();
+        // Enforce window size and maintain correct running max within the window
+        if (this._samples.length > this.windowSize) {
+            const removed = this._samples.shift();
+            // If the removed value was the current max, we must recompute the max over the window
+            if (removed === this.max) {
+                if (this._samples.length === 0) {
+                    this.max = this.defaultValue;
+                } else {
+                    let m = this._samples[0];
+                    for (let i = 1; i < this._samples.length; i++)
+                        if (this._samples[i] > m) m = this._samples[i];
+                    this.max = m;
+                }
+            }
+        }
     }
 }
 

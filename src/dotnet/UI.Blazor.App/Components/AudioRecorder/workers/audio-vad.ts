@@ -60,29 +60,26 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         if (monoPcm.length % windowSamples !== 0)
             throw new Error(`appendChunk() accepts ${windowSamples}*N sample audio windows only, but found ${monoPcm.length}.`);
 
-        const frames = monoPcm.length / windowSamples;
-        const startOffset = this.sampleCount;
+        let currentEvent = this.lastActivityEvent;
+        const startOffset = this.sampleCount - monoPcm.length;
         this.sampleCount += monoPcm.length;
+
+        const gain = approximateGain(monoPcm);
+        if (gain < AR.MIN_RECORDING_GAIN && currentEvent.kind === 'end') {
+            // do not try to check VAD at low gain input
+            return gain;
+        }
 
         // Query probabilities in one shot (for neural) or per-frame (for WebRTC)
         const probs = await this.appendChunkInternal(monoPcm);
         // If not initialized yet
         if (probs === null)
-            return approximateGain(monoPcm.subarray(0, windowSamples));
+            return gain;
 
-        let currentEvent = this.lastActivityEvent;
-        let lastReturn: VoiceActivityChange | number = 0;
-
+        const frames = monoPcm.length / windowSamples;
         for (let i = 0; i < frames; i++) {
             const frameOffset = startOffset + i * windowSamples;
-            const frame = monoPcm.subarray(i * windowSamples, (i + 1) * windowSamples);
-            const gain = approximateGain(frame);
-            if (gain < AR.MIN_RECORDING_GAIN && currentEvent.kind === 'end') {
-                lastReturn = gain; // do not try to check VAD at low gain input
-                continue;
-            }
-
-            const prob = Array.isArray(probs) ? probs[i] : (probs as unknown as number);
+            const prob = probs[i];
             //debugLog?.log('appendChunk:', prob, gain);
             // this.results.push(prob);
             this.probEMA.appendSample(prob);
@@ -172,15 +169,13 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
                 this.maxPauseSamples = Math.floor(this.sampleRate * silenceThreshold);
             }
 
-            if (this.lastActivityEvent == currentEvent || this.lastActivityEvent.kind == currentEvent.kind) {
-                lastReturn = gain;
-            } else {
+            if (this.lastActivityEvent !== currentEvent && this.lastActivityEvent.kind !== currentEvent.kind) {
                 this.lastActivityEvent = currentEvent;
-                lastReturn = adjustChangeEventsToSeconds(currentEvent, this.sampleRate);
+                return adjustChangeEventsToSeconds(currentEvent, this.sampleRate);
             }
         }
 
-        return lastReturn;
+        return gain;
     }
 
     public conversationSignal(): void {

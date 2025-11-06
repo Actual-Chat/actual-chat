@@ -4,7 +4,7 @@ import { scan,  Subscription, filter } from 'rxjs';
 import { clamp, RunningMax, translate } from 'math';
 import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
 
-const SIGNAL_COUNT_TO_CALCULATE_MAX = 200; // 200 * 30ms = 6s
+const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 200 * 30ms = 6s
 
 type Result = {
     runningMax: RunningMax;
@@ -43,6 +43,9 @@ class NarrowRecordingSvg extends LitElement {
     @state()
     private opacity: number | null = null;
 
+    @state()
+    private isVoiceActive: boolean = false;
+
     private _isRecording: boolean;
     @property({type: Boolean})
     set isRecording(val: boolean) {
@@ -62,12 +65,17 @@ class NarrowRecordingSvg extends LitElement {
             .pipe(filter((p, i) => i % 2 === 0))
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
                 const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
-                runningMax.appendSample(p);
+                // Fill the window first; once full, only advance it while voice is active
+                const isWindowNotFull = runningMax.sampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX;
+                const shouldAppend = isWindowNotFull || this.isVoiceActive;
+                if (shouldAppend)
+                    runningMax.appendSample(p);
                 return { runningMax, p, i };
             }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)));
 
         this.recorderStateChangedSubscription = RecorderStateHub.recorderStateChanged$.subscribe(s => {
             this.isRecording = s.isRecording;
+            this.isVoiceActive = s.isVoiceActive;
         });
         this.signalPowerSubscription = signalPower$.subscribe(({ runningMax, p }) => {
             if (!this._isRecording)
@@ -82,7 +90,7 @@ class NarrowRecordingSvg extends LitElement {
                 ? clamp(maxSampleCount / (SIGNAL_COUNT_TO_CALCULATE_MAX / 4), 0, 1)
                 : 1;
             const power = p * maxNotYetCalculatedAdjustment;
-            const opacity = translate(power, [0, 0.8*maxPower], [minOpacity, maxOpacity]) / maxOpacity;
+            const opacity = translate(power, [0, 0.6*maxPower], [minOpacity, maxOpacity]) / maxOpacity;
             this.opacity = isNaN(opacity)
                 ? minOpacity / 100
                 : opacity

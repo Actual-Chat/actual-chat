@@ -19,11 +19,14 @@ import { RecorderStateServer } from "../opus-media-recorder-contracts";
 import OnnxModel from './vad_batched.ort';
 import { Log } from 'logging';
 import { ResamplerLoader } from './resampler-loader';
+import { AudioRingBuffer } from '../audio-ring-buffer';
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('AudioVadWorker');
 
 const worker = globalThis as unknown as Worker;
 const queue = new Denque<ArrayBuffer>();
+const vadRingBuffer: AudioRingBuffer = new AudioRingBuffer(AR.SAMPLES_PER_WINDOW_32 * 10, 1);
+const vadBuffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 * 2).buffer;
 
 let vadWorklet: AudioVadWorklet & Disposable;
 let encoderWorker: OpusEncoderWorker & Disposable;
@@ -195,11 +198,11 @@ async function processQueue(): Promise<void> {
         isProcessing = true;
         while (!queue.isEmpty()) {
             const samplesBuffer = queue.shift()!;
-            let vadEvent: VoiceActivityChange | number = 0;
+            // let vadEvent: VoiceActivityChange | number = 0;
 
             if (samplesBuffer.byteLength === expectedWindowSizeBytes) {
                 const samples = new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples);
-                vadEvent = await vad.appendChunk(samples);
+                vadRingBuffer.push([samples]);
             }
             else {
                 // Needs resampling
@@ -207,12 +210,20 @@ async function processQueue(): Promise<void> {
                 const actualSampleRate = Math.floor(samplesBuffer.byteLength / 4 / vads.windowSizeMs * 1000 / 100) * 100;
                 const resampler = await resamplerLoader.getResampler(actualSampleRate, expectedSampleRate);
                 const samples = resampler.resample(samplesBuffer, new Float32Array(samplesBuffer, 0, expectedWindowSizeSamples));
+                vadRingBuffer.push([samples]);
                 if (samples.length != 0)
-                    vadEvent = await vad.appendChunk(samples);
+                    vadRingBuffer.push([samples]);
             }
-            lastVadEventProcessedAt = Date.now();
-
             void vadWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
+
+            // Process VAD samples as 2 x expectedWindowSizeSamples - 60ms | 64ms buffer - important to keep in sync with MauiRecorderEngine.cs
+            const vadSamples = new Float32Array(vadBuffer, 0, expectedWindowSizeSamples * 2);
+            const hasVadSamples = vadRingBuffer.pull([vadSamples])
+            if (!hasVadSamples)
+                continue;
+
+            lastVadEventProcessedAt = Date.now();
+            const vadEvent = await vad.appendChunk(vadSamples);
             // debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
             if (typeof vadEvent === 'number') {
                 audioPowerEma.appendSample(vadEvent);

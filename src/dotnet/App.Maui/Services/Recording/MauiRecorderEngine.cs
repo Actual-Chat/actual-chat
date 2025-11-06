@@ -379,9 +379,9 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     // Process the audio frame
                     await ProcessAudioFrame(memory, cancellationToken).ConfigureAwait(false);
 
-                    // Throttle microphone capture notifications by 32ms
+                    // Throttle microphone capture notifications by 32ms * 2 = 64ms
                     gainBuffer.TryPush(memory.Span);
-                    if (gainBuffer.TryPull(Constants.Audio.VadFrameLength, out var gainMemory)) {
+                    if (gainBuffer.TryPull(Constants.Audio.VadFrameLength * 2, out var gainMemory)) {
                         using var __ = gainMemory;
                         var gain = AudioExt.ApproximateGain(gainMemory.Memory.Span);
                         await engine.MicrophoneIsCaptured(gain).ConfigureAwait(false);
