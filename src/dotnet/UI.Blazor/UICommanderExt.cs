@@ -34,4 +34,7 @@ public static class UICommanderExt
         var command = LocalCommand.New(() => throw error);
         _ = uiCommander.Run(command, CancellationToken.None);
     }
+
+    public static void ShowError(this UICommander uiCommander, string errorMessage)
+        => ShowError(uiCommander, new Exception(errorMessage));
 }
