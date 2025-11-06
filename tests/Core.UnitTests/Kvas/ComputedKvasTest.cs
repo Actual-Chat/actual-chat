@@ -13,7 +13,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var services = new ServiceCollection();
         services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Trace).AddXUnit(Out));
         var fusion = services.AddFusion();
-        fusion.AddService<IKvas, TestComputedKvas>();
+        fusion.AddService<TestComputedKvas>();
         configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }
@@ -22,7 +22,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task BasicTest()
     {
         var services = CreateServices();
-        var kvas = services.GetRequiredService<IKvas>();
+        var kvas = services.GetRequiredService<TestComputedKvas>();
 
         await kvas.Set("a", "a");
         (await kvas.Get<string>("a")).Should().Be("a");
@@ -38,7 +38,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         await kvas.Set("b", null);
         (await kvas.Get<Box<int>>("b")).Should().BeNull();
 
-        var kvas2 = services.GetRequiredService<IKvas>();
+        var kvas2 = services.GetRequiredService<TestComputedKvas>();
         var aTask = kvas2.Get<string>("a");
         var bTask = kvas2.Get<string>("b");
         var cTask = kvas2.Get<string>("c");
@@ -61,7 +61,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task JsonHandlingTest()
     {
         var services = CreateServices();
-        var kvas = services.GetRequiredService<IKvas>();
+        var kvas = services.GetRequiredService<TestComputedKvas>();
 
         var value = "test-value";
         using var buffer = new ArrayPoolBufferWriter<byte>();
@@ -74,7 +74,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task SyncedStateTest1()
     {
         var services = CreateServices();
-        var kvas = services.GetRequiredService<IKvas>();
+        var kvas = services.GetRequiredService<TestComputedKvas>();
         var stateFactory = services.StateFactory();
         var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
         var updateDelayer = FixedDelayer.NextTick;
@@ -111,7 +111,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
     public async Task SyncedStateTest2()
     {
         var services = CreateServices();
-        var kvas = services.GetRequiredService<IKvas>();
+        var kvas = services.GetRequiredService<TestComputedKvas>();
         var stateFactory = services.StateFactory();
         var updateDelayer = FixedDelayer.NextTick;
         var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
@@ -167,10 +167,11 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var rsg = new RandomStringGenerator(alphabet: Alphabet.AlphaNumericLower);
         var keyPrefix = rsg.Next(5);
         var services = CreateServices();
-        var kvas = services.GetRequiredService<IKvas>();
+        var kvas = services.GetRequiredService<TestComputedKvas>();
         var stateFactory = services.StateFactory();
         var updateDelayer = FixedDelayer.NextTick;
         var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 5);
+
         for (var i = 0; i < propertyCount; i++) {
             using var cts = new CancellationTokenSource(timeout);
             var cancellationToken = cts.Token;
@@ -191,10 +192,11 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         // arrange
         var rsg = new RandomStringGenerator(alphabet: Alphabet.AlphaNumericLower);
         var services = CreateServices();
-        var kvas = services.GetRequiredService<IKvas>();
+        var kvas = services.GetRequiredService<TestComputedKvas>();
         var stateFactory = services.StateFactory();
         var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
         var updateDelayer = FixedDelayer.NextTick;
+
         using var cts = new CancellationTokenSource(timeout);
         var cancellationToken = cts.Token;
         using var state = stateFactory.NewKvasSynced<Box<bool>>(new(kvas, $"{rsg.Next(5)}.b1") {

@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class ChatSendingMessagesTriggers : IComputeService, IHasIsDisposed
+public class ChatSendingMessagesTriggers : IComputeService, IHasDisposeStatus
 {
     [ComputeMethod]
     public virtual Task<Unit> OnNewMessagesChanged(ChatId chatId)

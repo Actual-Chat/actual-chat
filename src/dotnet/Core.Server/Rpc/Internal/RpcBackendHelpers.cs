@@ -22,30 +22,25 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
         _whenRoutingStarted = null;
     }
 
-    public bool IsBackendService(Type serviceType)
-        => BackendServiceDefs.Contains(serviceType)
-            || typeof(IBackendService).IsAssignableFrom(serviceType)
-            || serviceType.Name.EndsWith("Backend", StringComparison.Ordinal);
+    public Func<ArgumentList, RpcPeerRef> RouteCall(RpcMethodDef methodDef)
+        => arguments => {
+            // When invalidation is active, commands must be routed to the local peer to handle it locally
+            if (methodDef.Kind is RpcMethodKind.Command && Invalidation.IsActive)
+                return RpcPeerRef.Local;
 
-    public RpcPeerRef RouteCall(RpcMethodDef methodDef, ArgumentList arguments)
-    {
-        // When invalidation is active, commands must be routed to the local peer to handle it locally
-        if (methodDef.IsCommand && Invalidation.IsActive)
-            return RpcPeerRef.Local;
+            var serviceDef = methodDef.Service;
+            if (!serviceDef.IsBackend)
+                throw StandardError.Internal("Only backend service methods can be called by servers.");
 
-        var serviceDef = methodDef.Service;
-        if (!serviceDef.IsBackend)
-            throw StandardError.Internal("Only backend service methods can be called by servers.");
+            var backendServiceDef = BackendServiceDefs[serviceDef.Type].RequireClientOrDistributedServiceMode();
+            if (_whenRoutingStarted is { Task.IsCompleted: false })
+                return RpcPeerRef.Local;
 
-        var backendServiceDef = BackendServiceDefs[serviceDef.Type].RequireClientOrDistributedServiceMode();
-        if (_whenRoutingStarted is { Task.IsCompleted: false })
-            return RpcPeerRef.Local;
-
-        var callRouter = methodDef.GetCallRouter();
-        var meshRef = callRouter.Invoke(methodDef, arguments, backendServiceDef.ShardScheme);
-        var peerRef = PeerRefs.Get(meshRef).Require(meshRef);
-        return peerRef;
-    }
+            var callRouter = methodDef.GetCallRouter();
+            var meshRef = callRouter.Invoke(methodDef, arguments, backendServiceDef.ShardScheme);
+            var peerRef = PeerRefs.Get(meshRef).Require(meshRef);
+            return peerRef;
+        };
 
     public Uri? GetConnectionUri(RpcWebSocketClient client, RpcClientPeer peer)
     {

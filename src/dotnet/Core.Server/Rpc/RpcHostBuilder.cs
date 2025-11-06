@@ -227,8 +227,9 @@ public readonly struct RpcHostBuilder
             },
         });
 
-        // Replace RpcBackendServiceDetector (it's used by both RPC client & server)
-        Services.AddSingleton<RpcBackendServiceDetector>(c => c.GetRequiredService<RpcBackendHelpers>().IsBackendService);
+        // Replace RpcServiceDef and RpcMethodDef builders
+        Services.AddSingleton<RpcServiceDefBuilder>(_ => (hub, service) => new MeshRpcServiceDef(hub, service));
+        Services.AddSingleton<RpcMethodDefBuilder>(_ => (service, method) => new MeshRpcMethodDef(service, method));
 
         // Remove SessionMiddleware - we don't use it
         Services.RemoveAll<SessionMiddleware.Options>();
@@ -250,7 +251,7 @@ public readonly struct RpcHostBuilder
         Services.AddSingleton(c => new MeshRpcPeerRefs(c));
 
         // Replace RpcCallRouter
-        Services.AddSingleton<RpcCallRouter>(c => c.GetRequiredService<RpcBackendHelpers>().RouteCall);
+        Services.AddSingleton<RpcCallRouterFactory>(c => c.GetRequiredService<RpcBackendHelpers>().RouteCall);
 
         // Replace RpcWebSocketClient.Options
         Services.AddSingleton(c => RpcWebSocketClient.Options.Default with {

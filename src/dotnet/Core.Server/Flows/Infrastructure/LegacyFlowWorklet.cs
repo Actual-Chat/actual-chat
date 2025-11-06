@@ -1,5 +1,3 @@
-using ActualLab.Fusion.Internal;
-
 namespace ActualChat.Flows.Infrastructure;
 
 public class LegacyFlowWorklet : WorkerBase, IGenericTimeoutHandler
@@ -31,7 +29,7 @@ public class LegacyFlowWorklet : WorkerBase, IGenericTimeoutHandler
         StopToken.Register(() => Writer.TryComplete());
     }
 
-    void IGenericTimeoutHandler.OnTimeout()
+    void IGenericTimeoutHandler.OnTimeout(object? state)
         => Dispose();
 
     public override string ToString()
@@ -93,12 +91,13 @@ public class LegacyFlowWorklet : WorkerBase, IGenericTimeoutHandler
                     }
                     else {
                         // Enlist this worklet for timeout-based removal
-                        Timeouts.Generic.AddOrUpdateToLater(this, clock.Now + flow.KeepAliveFor);
+                        var timeoutSlot = new GenericTimeoutSlot(this, null);
+                        Timeouts.Generic.AddOrUpdateToLater(timeoutSlot, clock.Now + flow.KeepAliveFor);
                         if (!await canReadTask.ConfigureAwait(false))
                             return;
 
                         // Un-enlist this worklet for timeout-based removal
-                        Timeouts.Generic.Remove(this);
+                        Timeouts.Generic.Remove(timeoutSlot);
                     }
                     if (!Reader.TryRead(out var entry))
                         continue;

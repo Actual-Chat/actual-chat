@@ -5,7 +5,7 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor;
 
-public abstract class UIServiceBase<THub>(THub hub) : IHasIsDisposed
+public abstract class UIServiceBase<THub>(THub hub) : IHasDisposeStatus
     where THub : UIHub
 {
     public THub Hub { get; } = hub;

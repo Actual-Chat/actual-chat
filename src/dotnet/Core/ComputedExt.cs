@@ -14,13 +14,13 @@ public static class ComputedExt
     public static string DebugDump(this Computed computed, int maxDepth = 0)
     {
         var type = computed.GetType();
-        var pFlags = GetProperty(type, "Flags")!;
+        var fState = GetField(type, "_state")!;
 
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         // var flags = pFlags.GetGetter<ComputedFlags>().Invoke(computed);
-        var flags = (ComputedFlags)pFlags.GetMethod!.Invoke(computed, [])!;
+        var invalidationFlags = (InvalidationFlags)((int)fState.GetValue(computed)! & 0xF00);
         sb.Append("Computed: ").Append(computed).AppendLine();
-        sb.Append("- Flags: ").Append(flags).AppendLine();
+        sb.Append("- Invalidation flags: ").Append(invalidationFlags).AppendLine();
         DumpDependencies(ComputedImpl.GetDependencies(computed), 0);
         return sb.ToStringAndRelease();
 
