@@ -105,7 +105,7 @@ public sealed class CoreModule(IServiceProvider moduleServices)
 
         // Features
         fusion.AddClient<IServerFeaturesClient>();
-        fusion.Rpc.Service<IServerFeaturesClient>().HasName(nameof(IServerFeatures));
+        fusion.RpcService<IServerFeaturesClient>(tryGetExisting: true).HasName(nameof(IServerFeatures));
         fusion.AddService<IServerFeatures, ServerFeaturesClient>();
     }
 }
