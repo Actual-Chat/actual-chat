@@ -3,7 +3,7 @@
 namespace ActualChat.App.Maui.Services;
 
 public sealed class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObjectReference source)
-    : IJSObjectReference, IHasIsDisposed
+    : IJSObjectReference, IHasDisposeStatus
 {
     private volatile int _isDisposed;
 
