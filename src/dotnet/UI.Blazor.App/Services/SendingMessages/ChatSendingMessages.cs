@@ -7,8 +7,8 @@ public class ChatSendingMessages
     private readonly List<SendingMessage> _newMessages = new ();
     private readonly List<SendingMessage> _editMessages = new ();
 
-    public SendingMessages Owner { get; init; }
-    public ChatId ChatId { get; init; }
+    public SendingMessages Owner { get; }
+    public ChatId ChatId { get; }
 
     public bool IsEmpty {
         get {
@@ -17,11 +17,11 @@ public class ChatSendingMessages
         }
     }
 
-    public ChatSendingMessages(SendingMessages owner, ChatId chatId)
+    public ChatSendingMessages(SendingMessages owner, ChatSendingMessagesTriggers triggers, ChatId chatId)
     {
         Owner = owner;
         ChatId = chatId;
-        _triggers = owner.Hub.Services.GetRequiredService<ChatSendingMessagesTriggers>();
+        _triggers = triggers;
     }
 
     public async Task<SendingMessage[]> GetNewMessages()

@@ -15,7 +15,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
 
     private readonly Dictionary<ChatId, ChatSendingMessages> _chatSendingMessages = new ();
     private readonly WeakValueTable<string, ChatEntry> _clientEntries = new ();
-    private readonly List<(SendingMessage, AttachmentUploads)> _uploads = new ();
+    private readonly MediaUploadsUI _mediaUploadsUI;
     private readonly Lock _chatSendingMessagesLock = new (); // This lock is used add/remove ChatSendingMessages and add/remove items inside.
     private readonly SendMessageRequestsRepo _requestsRepo;
     private readonly Task _whenReady;
@@ -37,6 +37,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         DebugLog?.LogInformation("SendingMessages constructor");
         _requestsRepo = new SendMessageRequestsRepo(hub);
         _triggers = Services.GetRequiredService<ChatSendingMessagesTriggers>();
+        _mediaUploadsUI = new MediaUploadsUI(_triggers);
         _whenReady = BackgroundTask.Run(StartStoredPostRequests);
         var cancellationToken = hub.BlazorAppLifecycle.StopToken;
         _cancellationTokenSource = cancellationToken.CreateLinkedTokenSource();
@@ -63,48 +64,10 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     }
 
     public void NotifyAttachmentsLoaded(ChatEntryId chatEntryId)
-    {
-        lock (_chatSendingMessagesLock) {
-            var uploadsItem = _uploads.FirstOrDefault(c => Equals(c.Item1.PostedChatEntry?.Id, chatEntryId));
-            if (uploadsItem.Item1 is null || !uploadsItem.Item2.WhenUploaded.IsCompletedSuccessfully)
-                return;
-
-            _uploads.Remove(uploadsItem);
-            _ = _triggers.OnMediaUploadsChanged(chatEntryId);
-            _ = _triggers.OnMediaUploadsChanged(uploadsItem.Item1);
-        }
-    }
+        => _mediaUploadsUI.NotifyAttachmentsLoaded(chatEntryId);
 
     public AttachmentUploads? GetMediaUploads(ChatEntry entry)
-    {
-        if (entry.IsSending) {
-            var sendingMessage = entry.SendingTag as SendingMessage;
-            if (sendingMessage is null)
-                return null;
-
-            return GetMediaUploads(sendingMessage);
-        }
-
-        return GetMediaUploads(entry.Id);
-    }
-
-    private AttachmentUploads? GetMediaUploads(ChatEntryId chatEntryId)
-    {
-        _ = _triggers.OnMediaUploadsChanged(chatEntryId); // NOTE: completed synchronously
-        lock (_chatSendingMessagesLock) {
-            var uploadsItem = _uploads.FirstOrDefault(c => Equals(c.Item1.PostedChatEntry?.Id, chatEntryId));
-            return uploadsItem.Item2;
-        }
-    }
-
-    private AttachmentUploads? GetMediaUploads(SendingMessage sendingMessage)
-    {
-        _ = _triggers.OnMediaUploadsChanged(sendingMessage);  // NOTE: completed synchronously
-        lock (_chatSendingMessagesLock) {
-            var uploadsItem = _uploads.FirstOrDefault(c => Equals(c.Item1, sendingMessage));
-            return uploadsItem.Item2;
-        }
-    }
+        => _mediaUploadsUI.GetMediaUploads(entry);
 
     public void RegisterEntryByClientId(ChatEntry chatEntry)
     {
@@ -334,6 +297,8 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
     private async Task PostInternal(PostMessageRequestInternal request, TaskCompletionSource<ChatEntry?> resultSource, CancellationToken cancellationToken)
     {
         try {
+            DebugLog?.LogInformation("Sending message: LocalId={LocalId}, Content='{Content}', ClientId='{ClientId}', NewChatEntryLocalId={NewChatEntryLocalId}",
+                request.LocalId, request.Text, request.ClientId, request.NewChatEntryLocalId);
             var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cancellationToken1 = cancellationTokenSource.Token;
             Result<ChatEntry> result;
@@ -342,14 +307,9 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
             lock (_chatSendingMessagesLock) {
                 chatSendingMessages = GetChatSendingMessages(request.ChatId);
                 chatSendingMessages.AddSendingMessage(sendingMessage);
-                if (request.AttachmentUploads is not null) {
-                    _uploads.Add((sendingMessage, request.AttachmentUploads));
-                    _ = _triggers.OnMediaUploadsChanged(sendingMessage);
-                }
+                if (request.AttachmentUploads is not null)
+                    _mediaUploadsUI.Add(sendingMessage, request.AttachmentUploads);
             }
-            DebugLog?.LogInformation("Sending message: LocalId={LocalId}, Content='{Content}'",
-                request.LocalId,
-                request.Text);
 
             if (!request.NewChatEntryLocalId.HasValue) {
                 var queueMessageProcess = _messageProcessor.Enqueue(new PostMessageQueueItem(request), cancellationToken1);
@@ -382,25 +342,16 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
 
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
-                _ = _triggers.OnMediaUploadsChanged(chatEntry1.Id);
-                _ = _triggers.OnMediaUploadsChanged(sendingMessage);
+                _mediaUploadsUI.Invalidate(sendingMessage);
                 if (chatEntry1.HasAttachmentUploads && request.AttachmentUploads is not null) {
                     if (!request.NewChatEntryLocalId.HasValue)
                         await _requestsRepo.MarkMessageHasCreated(request.Uuid, chatEntry1.LocalId, cancellationToken1).ConfigureAwait(false);
                     var chatEntry2 = await CreateAttachments(chatEntry1, request.AttachmentUploads, default).ConfigureAwait(false);
                     // Delete upload info with delay to avoid flickering in the UI.
-                    var chatEntryId = chatEntry1.Id;
                     chatEntry1 = chatEntry2;
                     _ = BackgroundTask.Run(async () => {
                         await Task.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
-                        var deletedItems = 0;
-                        lock (_chatSendingMessagesLock)
-                            deletedItems = _uploads.RemoveAll(c => Equals(c.Item1, sendingMessage));
-                        if (deletedItems == 0)
-                            return;
-
-                        _ = _triggers.OnMediaUploadsChanged(chatEntryId);
-                        _ = _triggers.OnMediaUploadsChanged(sendingMessage);
+                        _mediaUploadsUI.Delete(sendingMessage);
                     }, CancellationToken.None);
                 }
                 resultSource.SetResult(chatEntry1);
@@ -577,7 +528,7 @@ public class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncD
         if (_chatSendingMessages.TryGetValue(chatId, out var chatSendingMessages))
             return chatSendingMessages;
 
-        chatSendingMessages = new ChatSendingMessages(this, chatId);
+        chatSendingMessages = new ChatSendingMessages(this, _triggers, chatId);
         _chatSendingMessages.Add(chatId, chatSendingMessages);
         return chatSendingMessages;
     }

@@ -195,9 +195,7 @@
             }
             else if (entry.HasAttachmentUploads) {
                 if (m.IsOwnMessage) {
-                    // Check if we can display uploading medias.
-                    var mediaUploads = Hub.SendingMessages.GetMediaUploads(entry);
-                    if (mediaUploads is not null) {
+                    if (m.MediaUploads is {} mediaUploads) {
                         <div class="message-attachments">
                             <ChatEntryMessageAttachmentUploadsView Uploads="@mediaUploads.Attachments"/>
                             <ChatMessageSendingStatus
@@ -384,6 +382,7 @@
         var (isUnreadByOthers, isUnreadBlockStart) = (false, false);
         if (chat is not null && ownAuthorId is not null)
             (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
+        var mediaUploads = Entry.HasAttachmentUploads && isOwnMessage ? Hub.SendingMessages.GetMediaUploads(entry) : null;
         var result = new Model(chat) {
             RepliedEntry = repliedEntry,
             IsOwnMessage = isOwnMessage,
@@ -400,6 +399,7 @@
             IsUnreadByOthers = isUnreadByOthers,
             IsUnreadByOthersBlockStart = isUnreadBlockStart,
             MentionedAuthorIds = mentionedAuthorIds,
+            MediaUploads = mediaUploads,
         };
         return result.Equals(_rendered) ? _rendered! : result;
 
@@ -590,5 +590,6 @@
         public bool IsUnreadByOthers { get; init; }
         public bool IsUnreadByOthersBlockStart { get; init; }
         public IReadOnlyList<AuthorId>? MentionedAuthorIds { get; init; }
+        public AttachmentUploads? MediaUploads { get; init; }
     }
 }
