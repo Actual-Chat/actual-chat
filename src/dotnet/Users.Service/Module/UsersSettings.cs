@@ -25,6 +25,7 @@ public sealed class UsersSettings
     public string TwilioSmsFrom { get; set; } = "";
     public string SMSToApiKey { get; set; } = "";
     public string SMSToFrom { get; set; } = "SMSto";
+    public string BlockedPhonePrefixes { get; set; } = "";
     public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
 
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Active;
