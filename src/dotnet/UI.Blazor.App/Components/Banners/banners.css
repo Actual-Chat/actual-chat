@@ -1,6 +1,7 @@
 .banner.reconnect-banner  {
     @apply gap-x-2;
     @apply min-h-8 max-h-8 h-8;
+    @apply border-banner-error;
     @apply bg-banner-error;
     @apply animate-opacity-from-0;
 }
@@ -24,6 +25,10 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 }
 .banner.reconnect-banner .btn.btn-transparent {
     @apply text-caption-1;
+}
+.left-panel .reconnect-banner {
+    @apply self-center;
+    width: calc(100% - 1rem);
 }
 
 .banner.add-members-banner {
