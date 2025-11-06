@@ -856,9 +856,9 @@ jobs:
     defaults:
       run:
         shell: pwsh
-        working-directory: D:\\AC
+        working-directory: D:\AC
     env:
-      NUGET_PACKAGES: D:\\AC\\.nuget\\packages
+      NUGET_PACKAGES: D:\AC\.nuget\packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
       ActualChat_AndroidSigningKeyPass: ${{ secrets.ANDROIDSIGNINGKEYPASS }}
       ActualChat_AndroidSigningStorePass: ${{ secrets.ANDROIDSIGNINGSTOREPASS }}
@@ -882,8 +882,8 @@ jobs:
 
       - name: Prepare short workspace path
         run: |
-          if (Test-Path 'D:\\AC') { Remove-Item 'D:\\AC' -Force -Recurse }
-          cmd /c mklink /J D:\\AC "$env:GITHUB_WORKSPACE"
+          if (Test-Path 'D:\AC') { Remove-Item 'D:\AC' -Force -Recurse }
+          cmd /c mklink /J D:\AC "$env:GITHUB_WORKSPACE"
 
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
@@ -922,7 +922,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.aab
-          path: D:\\AC\\artifacts\\publish\\App.Maui\\release_net9.0-android\\${{env.AAB_FILE_NAME}}
+          path: D:\AC\artifacts\publish\App.Maui\release_net9.0-android\${{env.AAB_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
@@ -931,7 +931,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.apk
-          path: D:\\AC\\artifacts\\publish\\App.Maui\\release_net9.0-android\\${{env.APK_FILE_NAME}}
+          path: D:\AC\artifacts\publish\App.Maui\release_net9.0-android\${{env.APK_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
