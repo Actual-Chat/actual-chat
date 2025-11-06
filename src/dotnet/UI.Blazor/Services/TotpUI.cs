@@ -16,7 +16,7 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
     [ComputeMethod]
     public virtual async Task<bool> HasSentCodeRecently(CancellationToken cancellationToken)
     {
-        var now = Hub.Clocks.ServerClock.Now;
+        var now = Clocks.ServerClock.Now;
         var expiresAt = await _totpExpiresAt.Use(cancellationToken).ConfigureAwait(false);
         var canExpire = expiresAt > now;
         if (canExpire)
