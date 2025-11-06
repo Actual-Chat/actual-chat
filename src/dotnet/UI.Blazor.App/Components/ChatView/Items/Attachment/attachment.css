@@ -218,10 +218,11 @@ body.hoverable .file-attachment:not(.upload-file):hover,
 .file-attachment .c-bottom {
     @apply relative;
     @apply flex-x justify-between;
+    @apply h-5;
 }
 .file-attachment .c-size {
     @apply flex-x gap-x-2;
-    @apply text-caption-4 text-03;
+    @apply text-caption-8 text-03;
 }
 .file-attachment .c-open {
     @apply text-caption-4 text-primary;
