@@ -183,17 +183,22 @@ export class ChatEntryMessageInternalView {
 
     private changeSizeForText(slow: boolean = false) {
         let actualHeight: number;
+        let needToResize = false;
+        let markupHeight = this.markupHeight;
 
         fastRaf({
             read: () => {
                 actualHeight = this.getActualHeight();
+                markupHeight = this.markupHeight;
+                const remInPx = this.getRemInPixels();
+                needToResize = Math.abs(actualHeight - markupHeight) > remInPx;
             },
             write: () => {
-                if (Math.abs(actualHeight - this.markupHeight) <= this.getRemInPixels())
+                if (!needToResize)
                     return;
 
                 const debounceFunc =
-                    actualHeight > this.markupHeight || !slow
+                    actualHeight > markupHeight || !slow
                         ? this.fastDebouncedChangeSize
                         : this.slowDebouncedChangeSize;
 
