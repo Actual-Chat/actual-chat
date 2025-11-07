@@ -39,6 +39,15 @@
             </div>
         </div>
     }
+    @if (!attachment.Uploaded) {
+        <span class="spinner-icon-wrapper">
+            @if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
+                <ButtonRound Click="@RestartClick">
+                    <i class="icon-sync text-2xl"></i>
+                </ButtonRound>
+            }
+        </span>
+    }
     <ButtonRound Click="@RemoveClick" Class="remove-attachment-btn btn-danger">
         <i class="icon-trash03 text-2xl font-thin"></i>
     </ButtonRound>
