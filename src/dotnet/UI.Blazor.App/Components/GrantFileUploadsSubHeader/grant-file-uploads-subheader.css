@@ -1,0 +1,20 @@
+.grant-file-upload-permissions-subheader {
+    @apply flex-x gap-x-2;
+    @apply p-1;
+    @apply border-2 border-banner-info rounded-lg;
+    @apply bg-banner-info text-banner-info;
+}
+.grant-file-upload-permissions-subheader .c-icon {
+    @apply flex items-center justify-center;
+    @apply pl-3;
+}
+.grant-file-upload-permissions-subheader .c-icon i {
+    @apply text-xl md:text-2xl;
+}
+.grant-file-upload-permissions-subheader .c-content {
+    @apply flex-1 flex-x gap-x-1 items-center;
+    @apply px-2 md:pl-1;
+}
+body.narrow .grant-file-upload-permissions-subheader .c-content {
+    @apply text-sm leading-4;
+}

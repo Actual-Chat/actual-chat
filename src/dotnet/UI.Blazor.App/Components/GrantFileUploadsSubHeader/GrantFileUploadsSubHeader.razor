@@ -1,3 +1,4 @@
+@namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComponentBase<AppUIHub>
 @implements GrantFileUploadsSubHeader.IGrantFileUploadsSubHeader
@@ -6,14 +7,24 @@
     return;
 
 <div class="grant-file-upload-permissions-subheader subheader-item">
+    @if (!ScreenSize.IsNarrow()) {
+        <div class="c-icon">
+            <i class="icon-alert-circle"></i>
+        </div>
+    }
     <div class="c-content">
-        <Button Click="InvokeGrantFilePermissions">Grant file pending uploads</Button>
+        <span>Pending file uploads detected.</span><span>Allow to continue?</span>
+    </div>
+    <div class="c-buttons">
+        <Button Class="btn-transparent btn-primary" Click="InvokeGrantFilePermissions">Allow</Button>
     </div>
 </div>
 
 @code {
     private bool _isVisible;
     private DotNetObjectReference<IGrantFileUploadsSubHeader>? BlazorRef { get; set; }
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     private Task InvokeGrantFilePermissions()
         => Hub.JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.WebFileProviders.grantFileUploadPermissions").AsTask();
