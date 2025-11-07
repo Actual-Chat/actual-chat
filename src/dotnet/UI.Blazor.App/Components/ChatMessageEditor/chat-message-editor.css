@@ -446,8 +446,8 @@ body.narrow .attachment-item > .c-file .c-extension {
     @apply rounded-t-sm;
     @apply overflow-hidden;
     @apply cursor-default;
-    @apply bg-01;
-    @apply text-03 text-xs font-medium;
+    @apply bg-[var(--black-60)];
+    @apply text-white text-xs font-medium;
 }
 body.narrow .attachment-filename {
     @apply max-w-30;
@@ -458,7 +458,7 @@ body.narrow .narrow-panel .attachment-filename {
 .attachment-upload-progress {
     @apply absolute bottom-4.5 z-20;
     @apply h-1;
-    @apply bg-05;
+    @apply bg-[var(--white-80)];
     @apply rounded-full;
     @apply overflow-hidden;
     transition: all 150ms ease-in-out;

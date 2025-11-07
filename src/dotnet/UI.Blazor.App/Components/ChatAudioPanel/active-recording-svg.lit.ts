@@ -24,7 +24,7 @@ const DEFAULT_STATE: AudioPowerState = {
     height1: MIN_HEIGHT,
     height2: MIN_HEIGHT,
     height3: MIN_HEIGHT,
-}
+};
 
 @customElement('active-recording-svg')
 class ActiveRecordingSvg extends LitElement {
@@ -142,16 +142,19 @@ class ActiveRecordingSvg extends LitElement {
                 ? clamp(maxSampleCount / (SIGNAL_COUNT_TO_CALCULATE_MAX / 4), 0, 0.8)
                 : 0.8;
             const power1 = p * maxNotYetCalculatedAdjustment;
-            const height1 = getHeight(power1, maxPower);
-            const power2 = prevAudioPower[prevAudioPower.length - 4] * maxNotYetCalculatedAdjustment; // with 180 ms delay
-            const height2 = Math.floor(clamp(0.6 * getHeight(power2, maxPower), MIN_HEIGHT, MAX_HEIGHT));
-            const power3 = prevAudioPower[prevAudioPower.length - 7] * maxNotYetCalculatedAdjustment; // with 360 ms delay
-            const height3 = Math.floor(clamp(0.4 * getHeight(power3, maxPower), MIN_HEIGHT, MAX_HEIGHT));
+            const targetHeight1 = getHeight(power1, maxPower);
+            const power2 = prevAudioPower[prevAudioPower.length - 4] * maxNotYetCalculatedAdjustment;
+            const targetHeight2 = Math.floor(clamp(0.6 * getHeight(power2, maxPower), MIN_HEIGHT, MAX_HEIGHT));
+            const power3 = prevAudioPower[prevAudioPower.length - 7] * maxNotYetCalculatedAdjustment;
+            const targetHeight3 = Math.floor(clamp(0.4 * getHeight(power3, maxPower), MIN_HEIGHT, MAX_HEIGHT));
+            const smoothHeight = (current: number, target: number) =>
+                current + (target - current) * 0.6;
+            const MAX_HEIGHT_WITH_PADDING = MAX_HEIGHT - 4;
             this.audioPowerState = {
-                height1: height1,
-                height2: height2,
-                height3: height3,
-            }
+                height1: Math.min(smoothHeight(this.audioPowerState.height1, targetHeight1), MAX_HEIGHT_WITH_PADDING),
+                height2: Math.min(smoothHeight(this.audioPowerState.height2, targetHeight2), MAX_HEIGHT_WITH_PADDING),
+                height3: Math.min(smoothHeight(this.audioPowerState.height3, targetHeight3), MAX_HEIGHT_WITH_PADDING),
+            };
         });
     }
 
