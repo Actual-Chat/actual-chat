@@ -67,8 +67,11 @@ export class RecorderStateHub {
         RecorderStateHub.stateChanged();
     }
 
-    public static microphoneIsCaptured(gain: number): void {
-        RecorderStateHub.audioPowerChangedSubject.next(gain);
+    public static onAudioPowerChange(power: number): void {
+        RecorderStateHub.audioPowerChangedSubject.next(power);
+    }
+
+    public static microphoneIsCaptured(): void {
         RecorderStateHub.recordingHeartbeatSubject.next();
         if (!RecorderStateHub.isSignalDetected)
             RecorderStateHub.setSignalDetected(true);

@@ -118,10 +118,9 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
             this.samplesSinceLastReport ??= AR.SAMPLES_PER_RECORDING_IN_PROGRESS_CALL;
             this.samplesSinceLastReport += input[0].length;
-            const gain = approximateGain(input[0]);
             if (this.samplesSinceLastReport >= AR.SAMPLES_PER_RECORDING_IN_PROGRESS_CALL) {
                 this.samplesSinceLastReport = 0;
-                void this.stateServer.microphoneIsCaptured(gain, rpcNoWait);
+                void this.stateServer.microphoneIsCaptured(rpcNoWait);
             }
         }
         catch (error) {

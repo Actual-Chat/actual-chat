@@ -26,13 +26,12 @@ const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('AudioVadWork
 const worker = globalThis as unknown as Worker;
 const queue = new Denque<ArrayBuffer>();
 const vadRingBuffer: AudioRingBuffer = new AudioRingBuffer(AR.SAMPLES_PER_WINDOW_32 * 10, 1);
-const vadBuffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 * 2).buffer;
+const vadBuffer = new Float32Array(AR.SAMPLES_PER_WINDOW_32 * 3).buffer;
 
 let vadWorklet: AudioVadWorklet & Disposable;
 let encoderWorker: OpusEncoderWorker & Disposable;
 let isActive = false;
 let isProcessing = false;
-let audioPowerEma = new RunningEMA(0, 10);
 let lastVadEventProcessedAt = 0;
 
 class VadLoader {
@@ -216,20 +215,17 @@ async function processQueue(): Promise<void> {
             }
             void vadWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
 
-            // Process VAD samples as 2 x expectedWindowSizeSamples - 60ms | 64ms buffer - important to keep in sync with MauiRecorderEngine.cs
-            const vadSamples = new Float32Array(vadBuffer, 0, expectedWindowSizeSamples * 2);
+            // Process VAD samples as 3 x expectedWindowSizeSamples - 90ms | 96ms buffer - important to keep in sync with MauiRecorderEngine.cs
+            const vadSamples = new Float32Array(vadBuffer, 0, expectedWindowSizeSamples * 3);
             const hasVadSamples = vadRingBuffer.pull([vadSamples])
             if (!hasVadSamples)
                 continue;
 
             lastVadEventProcessedAt = Date.now();
             const vadEvent = await vad.appendChunk(vadSamples);
-            // debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
             if (typeof vadEvent === 'number') {
-                audioPowerEma.appendSample(vadEvent);
-                // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.value);
                 if (vad.lastActivityEvent.kind === 'start') // Send gains only when voice activity is detected
-                    void stateServer.microphoneIsCaptured(audioPowerEma.value, rpcNoWait);
+                    void stateServer.onAudioPowerChange(vadEvent, rpcNoWait);
             }
             else {
                 if (vadEvent.kind === "start") {

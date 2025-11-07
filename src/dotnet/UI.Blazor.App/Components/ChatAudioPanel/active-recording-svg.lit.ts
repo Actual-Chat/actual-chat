@@ -1,13 +1,14 @@
 import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { filter, scan, Subscription } from 'rxjs';
-import { clamp, RunningMax, translate } from 'math';
+import { clamp, RunningMax, translate, RunningEMA} from 'math';
 import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
 
-const SIGNAL_COUNT_TO_CALCULATE_MAX = 100;
+const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 100 * 96ms ~ 10s
 
 interface Result {
     runningMax: RunningMax;
+    runningEMA: RunningEMA;
     p: number;
     i: number;
 }
@@ -77,6 +78,7 @@ class ActiveRecordingSvg extends LitElement {
         }
     `];
 
+    private recentPowers: number[] = [];
     private _isRecording: boolean = false;
     private observer: IntersectionObserver;
     private recorderStateChangedSubscription: Subscription;
@@ -113,47 +115,52 @@ class ActiveRecordingSvg extends LitElement {
         });
         this.observer.observe(this);
 
+        const initialResult: Result = {
+            runningMax: new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0.05),
+            runningEMA: new RunningEMA(0, 10, 0.8),
+            p: 0,
+            i: 0,
+        };
         const recorderState$ = RecorderStateHub.recorderStateChanged$;
         const signalPower$ = RecorderStateHub.audioPowerChanged$
-            .pipe(filter((p, i) => i % 2 === 0))
-            .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
-                const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
+            .pipe(scan<number, Result, Result>((result, p, i) => {
+                const runningMax = result.runningMax;
+                const runningEMA = result.runningEMA;
                 // Fill the window first; once full, only advance it while voice is active
                 const isWindowNotFull = runningMax.sampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX;
-                const shouldAppend = isWindowNotFull || this.isVoiceActive;
-                if (shouldAppend)
+                const shouldAppendMax = isWindowNotFull || this.isVoiceActive;
+                if (shouldAppendMax)
                     runningMax.appendSample(p);
-                return { runningMax, p, i };
-            }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)));
+                runningEMA.appendSample(p);
+                return { runningMax, runningEMA, p, i };
+            }, initialResult));
 
         this.recorderStateChangedSubscription = recorderState$.subscribe(rs => {
             this.isVoiceActive = rs.isVoiceActive;
             this._isRecording = rs.isRecording;
         });
         const getHeight = (power: number, maxPower: number) => Math.floor((translate(power, [0, 0.6*maxPower], [MIN_HEIGHT, MAX_HEIGHT]))) * 100 / MAX_HEIGHT;
-        this.signalPowerChangedSubscription = signalPower$.subscribe(({ runningMax, p }) => {
+        this.signalPowerChangedSubscription = signalPower$.subscribe(({ runningMax, runningEMA }) => {
             if (!this._isRecording || !this.isVoiceActive)
                 return;
 
             const maxPower = runningMax.value;
-            const maxSampleCount = runningMax.sampleCount;
-            const prevAudioPower = runningMax.samples;
-            const maxNotYetCalculatedAdjustment = maxSampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX / 2
-                ? clamp(maxSampleCount / (SIGNAL_COUNT_TO_CALCULATE_MAX / 4), 0, 0.8)
-                : 0.8;
-            const power1 = p * maxNotYetCalculatedAdjustment;
+            const power1 = runningEMA.value;
+            this.recentPowers.push(power1);
+            if (this.recentPowers.length > 10)
+                this.recentPowers.shift();
+
+            const recentPowers = this.recentPowers;
             const targetHeight1 = getHeight(power1, maxPower);
-            const power2 = prevAudioPower[prevAudioPower.length - 4] * maxNotYetCalculatedAdjustment;
+            const power2 = recentPowers[recentPowers.length - 3] ?? 0;
             const targetHeight2 = Math.floor(clamp(0.6 * getHeight(power2, maxPower), MIN_HEIGHT, MAX_HEIGHT));
-            const power3 = prevAudioPower[prevAudioPower.length - 7] * maxNotYetCalculatedAdjustment;
+            const power3 = recentPowers[recentPowers.length - 5] ?? 0;
             const targetHeight3 = Math.floor(clamp(0.4 * getHeight(power3, maxPower), MIN_HEIGHT, MAX_HEIGHT));
-            const smoothHeight = (current: number, target: number) =>
-                current + (target - current) * 0.6;
             const MAX_HEIGHT_WITH_PADDING = MAX_HEIGHT - 4;
             this.audioPowerState = {
-                height1: Math.min(smoothHeight(this.audioPowerState.height1, targetHeight1), MAX_HEIGHT_WITH_PADDING),
-                height2: Math.min(smoothHeight(this.audioPowerState.height2, targetHeight2), MAX_HEIGHT_WITH_PADDING),
-                height3: Math.min(smoothHeight(this.audioPowerState.height3, targetHeight3), MAX_HEIGHT_WITH_PADDING),
+                height1: clamp(targetHeight1, MIN_HEIGHT, MAX_HEIGHT_WITH_PADDING),
+                height2: clamp(targetHeight2, MIN_HEIGHT, MAX_HEIGHT_WITH_PADDING),
+                height3: clamp(targetHeight3, MIN_HEIGHT, MAX_HEIGHT_WITH_PADDING),
             };
         });
     }

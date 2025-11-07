@@ -233,10 +233,17 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         return RecorderStateHub.SetVoiceActive(isVoiceActive);
     }
 
-    private async ValueTask MicrophoneIsCaptured(double gain)
+    private async ValueTask OnAudioPowerChange(double power)
+    {
+        var isVoiceActive = Volatile.Read(ref _isVoiceActive);
+        if (isVoiceActive)
+            await RecorderStateHub.OnAudioPowerChange(power).ConfigureAwait(false);
+    }
+
+    private async ValueTask MicrophoneIsCaptured()
     {
         await SetSignalDetected(true).ConfigureAwait(false);
-        await RecorderStateHub.MicrophoneIsCaptured(gain).ConfigureAwait(false);
+        await RecorderStateHub.MicrophoneIsCaptured().ConfigureAwait(false);
     }
 
     private void NotifyStateChange()
@@ -367,24 +374,32 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             IAsyncEnumerable<IMemoryOwner<float>> frames,
             CancellationToken cancellationToken)
         {
+            const int samplesPerRecordingInProgressCall = Constants.Audio.RecordingSampleRate / 1000 * 200; // 200ms
             using var gainBuffer = new BlockRingBuffer<float>(Constants.Audio.OpusFrameLength * 10); // 200ms
             await _vad.EnsureInitialized(cancellationToken).ConfigureAwait(false);
             _vad.Reset();
-
+            var samplesSinceLastReport = samplesPerRecordingInProgressCall;
             try {
                 await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     using var _ = frame;
                     var memory = frame.Memory;
 
+                    // Notify that microphone is captured
+                    samplesSinceLastReport += memory.Length;
+                    if (samplesSinceLastReport >= samplesPerRecordingInProgressCall) {
+                        samplesSinceLastReport = 0;
+                        await engine.MicrophoneIsCaptured().ConfigureAwait(false);
+                    }
+
                     // Process the audio frame
                     await ProcessAudioFrame(memory, cancellationToken).ConfigureAwait(false);
 
-                    // Throttle microphone capture notifications by 32ms * 2 = 64ms
+                    // Throttle microphone capture notifications by 32ms * 3 = 96ms
                     gainBuffer.TryPush(memory.Span);
-                    if (gainBuffer.TryPull(Constants.Audio.VadFrameLength * 2, out var gainMemory)) {
+                    if (gainBuffer.TryPull(Constants.Audio.VadFrameLength * 3, out var gainMemory)) {
                         using var __ = gainMemory;
                         var gain = AudioExt.ApproximateGain(gainMemory.Memory.Span);
-                        await engine.MicrophoneIsCaptured(gain).ConfigureAwait(false);
+                        await engine.OnAudioPowerChange(gain).ConfigureAwait(false);
                     }
 
                     // Process VAD events

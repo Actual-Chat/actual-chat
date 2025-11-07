@@ -4,7 +4,7 @@ import { scan,  Subscription, filter } from 'rxjs';
 import { clamp, RunningMax, translate } from 'math';
 import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
 
-const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 200 * 30ms = 6s
+const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 100 * 96ms ~ 10s
 
 type Result = {
     runningMax: RunningMax;
@@ -62,7 +62,6 @@ class NarrowRecordingSvg extends LitElement {
         const minOpacity = 60;
         const maxOpacity = 100;
         const signalPower$ = RecorderStateHub.audioPowerChanged$
-            .pipe(filter((p, i) => i % 2 === 0))
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
                 const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
                 // Fill the window first; once full, only advance it while voice is active
@@ -71,7 +70,7 @@ class NarrowRecordingSvg extends LitElement {
                 if (shouldAppend)
                     runningMax.appendSample(p);
                 return { runningMax, p, i };
-            }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0)));
+            }, new RunningMax(SIGNAL_COUNT_TO_CALCULATE_MAX, 0.05)));
 
         this.recorderStateChangedSubscription = RecorderStateHub.recorderStateChanged$.subscribe(s => {
             this.isRecording = s.isRecording;
