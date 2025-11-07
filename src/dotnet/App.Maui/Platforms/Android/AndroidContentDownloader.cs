@@ -49,7 +49,32 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
         fileName = "";
         try {
             var uri = Uri.Parse(url);
-            if (uri?.Path == null)
+            if (uri is null)
+                return false;
+
+            if (OrdinalEquals(uri.Scheme, "content")) {
+                var contentResolver = Platform.AppContext.ContentResolver!;
+                var cursor = contentResolver.Query(uri, null, null, null, null);
+                if (cursor is not null) {
+                    try {
+                        if (cursor.MoveToFirst()) {
+                            int nameIndex = cursor.GetColumnIndex(Android.Provider.IOpenableColumns.DisplayName);
+                            if (nameIndex != -1) {
+                                var s = cursor.GetString(nameIndex);
+                                if (!s.IsNullOrEmpty()) {
+                                    fileName = s;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    finally {
+                        cursor.Close();
+                    }
+                }
+            }
+
+            if (uri.Path == null)
                 return false;
 
             var index = uri.Path.LastIndexOf('/');
