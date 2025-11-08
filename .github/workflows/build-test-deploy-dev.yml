@@ -685,7 +685,7 @@ jobs:
     needs:
       - calc-pkg-params
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' }}
-    runs-on: macos-15
+    runs-on: macos-latest
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
@@ -698,7 +698,7 @@ jobs:
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 26.0
+          xcode-version: 26.0.1
 
       - name: Checkout
         uses: actions/checkout@v4
