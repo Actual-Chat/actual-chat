@@ -80,6 +80,18 @@ public partial class DeepgramTranscriber : ITranscriber
                     Languages.Spanish,
                     Languages.SpanishMX,
                     Languages.SpanishUS,
+                    Languages.Czech,
+                    Languages.Russian,
+                    Languages.Polish,
+                    Languages.Ukrainian,
+                    Languages.Finnish,
+                    Languages.Hindi,
+                    Languages.Japanese,
+                    Languages.Korean,
+                    Languages.Vietnamese,
+                    Languages.Italian,
+                    Languages.Turkish,
+                    Languages.Indonesian,
                 }
                 .ToHashSet();
             var model = options.Language.IsAnyEnglish || nova3Languages.Contains(options.Language)
