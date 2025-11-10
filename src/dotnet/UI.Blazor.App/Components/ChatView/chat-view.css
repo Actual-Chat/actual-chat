@@ -720,3 +720,68 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 .chat-view.virtual-list .c-virtual-container div.item .chat-message > .c-author-badge .avatar-badge {
     @apply top-20 md:top-16;
 }
+
+.upload-plug {
+    @apply relative;
+    @apply inline-flex flex-row items-center gap-x-0.5;
+    @apply w-full;
+    @apply bg-transparent;
+    animation: plugPulse 1.5s infinite linear;
+}
+.upload-plug-icons {
+    @apply relative;
+    @apply flex justify-start;
+    @apply w-16 h-5;
+    @apply overflow-hidden;
+}
+.upload-plug-icons .c-icon {
+    @apply absolute top-0;
+    @apply flex items-center justify-center;
+    @apply w-5 h-5;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    transform: scale(0);
+    animation: move 2.1s infinite ease-in-out;
+}
+.upload-plug-icons .c-icon {
+    @apply opacity-80;
+}
+.upload-plug-icons .c-icon i {
+    @apply text-caption-8 text-01;
+}
+.upload-plug-icons .c-icon:nth-child(1) {
+    animation-delay: 0s;
+}
+.upload-plug-icons .c-icon:nth-child(2) {
+    animation-delay: 0.7s;
+}
+.upload-plug-icons .c-icon:nth-child(3) {
+    animation-delay: 1.4s;
+}
+
+@keyframes move {
+    0% {
+        left: 0;
+        transform: scale(0);
+    }
+    50% {
+        transform: scale(1.25);
+    }
+    100% {
+        left: calc(100% - 1.25rem);
+        transform: scale(0);
+    }
+}
+@keyframes plugPulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.upload-plug-text {
+    @apply whitespace-nowrap;
+    @apply text-text-1;
+}
