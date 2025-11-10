@@ -152,7 +152,16 @@ public partial class DeepgramTranscriber : ITranscriber
     {
         var audioSource = state.AudioSource;
         try {
-            var byteFrameStream = OggOpusStreamConverter.ToByteFrameStream(audioSource, cancellationToken);
+            // Add short silence at the start and end to help Deepgram finalize the last words
+            var silenceAudio = await TranscriberHelper.GetSilenceAudioSource(Services).ConfigureAwait(false);
+            var transcribedAudioSource = TranscriberHelper.AddSilentPrefixAndSuffix(
+                audioSource,
+                silenceAudio,
+                SilentPrefixDuration,
+                SilentSuffixDuration,
+                cancellationToken);
+
+            var byteFrameStream = OggOpusStreamConverter.ToByteFrameStream(transcribedAudioSource, cancellationToken);
             var clock = Clocks.CpuClock;
             var startedAt = clock.Now;
             var nextChunkAt = startedAt;
@@ -164,7 +173,8 @@ public partial class DeepgramTranscriber : ITranscriber
                 deepgramClient.Send(chunk);
 
                 if (lastFrame != null) {
-                    var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration).Positive();
+                    // Subtract the artificial silent prefix from timing to keep scheduler in sync with original audio
+                    var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
                     if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully())
                         processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
                     // state.ProcessedAudioDuration = (float)processedAudioDuration.TotalSeconds;

@@ -36,7 +36,6 @@ public partial class GoogleTranscriber : ITranscriber
 
     private SpeechClient SpeechClient { get; set; } = null!; // Post-WhenInitialized
     private string GoogleProjectId { get; set; } = null!; // Post-WhenInitialized
-    private AudioSource SilenceAudioSource { get; set; } = null!; // Post-WhenInitialized
 
     public Task WhenInitialized { get; }
 
@@ -61,7 +60,6 @@ public partial class GoogleTranscriber : ITranscriber
 
         // Start a few tasks in parallel
         var speechClientTask = speechClientBuilder.BuildAsync();
-        var loadSilenceAudioTask = LoadSilenceAudio();
 
         if (!CoreServerSettings.GoogleProjectId.IsNullOrEmpty())
             GoogleProjectId = CoreServerSettings.GoogleProjectId;
@@ -73,7 +71,6 @@ public partial class GoogleTranscriber : ITranscriber
 
         if (!OrdinalEquals(GoogleProjectId, "n/a"))
             SpeechClient = await speechClientTask.ConfigureAwait(false);
-        SilenceAudioSource = await loadSilenceAudioTask.ConfigureAwait(false);
     }
 
     public async Task Transcribe(
@@ -176,7 +173,15 @@ public partial class GoogleTranscriber : ITranscriber
         var audioSource = state.AudioSource;
         var recognizeStream = state.RecognizeStream;
         try {
-            var transcribedAudioSource = AddSilentPrefixAndSuffix(audioSource, cancellationToken);
+            // Add short silence at the start and end to help transcriber to finalize the last words
+            var silenceAudio = await TranscriberHelper.GetSilenceAudioSource(Services).ConfigureAwait(false);
+            var transcribedAudioSource = TranscriberHelper.AddSilentPrefixAndSuffix(
+                audioSource,
+                silenceAudio,
+                SilentPrefixDuration,
+                SilentSuffixDuration,
+                cancellationToken);
+
             var streamConverter = (IAudioStreamConverter) (IsWebMOpusEnabled
                 ? WebMStreamConverter
                 : OggOpusStreamConverter);
@@ -497,27 +502,6 @@ public partial class GoogleTranscriber : ITranscriber
         => GetOriginalAudioTime((float)time.ToTimeSpan().TotalSeconds);
     private static float GetOriginalAudioTime(float time)
         => (float)Math.Round(Math.Max(0, time - SilentPrefixDuration.TotalSeconds), 2);
-
-    private AudioSource AddSilentPrefixAndSuffix(AudioSource audioSource, CancellationToken cancellationToken)
-        => SilenceAudioSource
-            .Take(SilentPrefixDuration, cancellationToken)
-            .Concat(audioSource, cancellationToken)
-            .ConcatUntil(SilenceAudioSource, SilentSuffixDuration, cancellationToken);
-
-    private async Task<AudioSource> LoadSilenceAudio()
-    {
-        var silenceChunks = await typeof(GoogleTranscriber).Assembly
-            .GetManifestResourceStream("ActualChat.Streaming.data.silence.opuss")!
-            .ReadByteStream(true)
-            .ToListAsync()
-            .ConfigureAwait(false);
-        var converter = new ActualOpusStreamConverter(
-            MomentClockSet.Default,
-            Services.LogFor<ActualOpusStreamConverter>());
-        return await converter
-            .FromByteStream(silenceChunks.AsAsyncEnumerable(), CancellationToken.None)
-            .ConfigureAwait(false);
-    }
 
     private record struct RecognizerOptions(string LanguageCode, bool EnableAutomaticPunctuation, bool ProfanityFilter);
 }
