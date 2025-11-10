@@ -41,6 +41,7 @@
                 @if (lastTextEntry != null) {
                     <div class="c-last-message">
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                            <span class="hidden last-entry-id">@m.LastTextEntry?.Id.Value</span>
                             <span class="c-name">
                                 <AuthorName
                                     AuthorId="@m.LastAuthorId"
