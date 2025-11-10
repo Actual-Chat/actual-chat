@@ -32,15 +32,6 @@
 
     @if (_isPhoneAuthEnabled) {
         <div class="c-separator">or</div>
-
-        <div class="c-header">
-            <div class="c-title">Sign in with your phone number</div>
-            <p class="c-description">
-                Enter your phone number and click "Continue" to receive a text message
-                with one-time verification code.
-            </p>
-        </div>
-
         <Form
             Class="c-phone-form"
             Model="@_stepModel"
@@ -49,17 +40,17 @@
             <FormSection
                 For="() => _stepModel.Phone"
                 InputId="@_stepModel.PhoneFieldId"
-                Label="Phone"
                 Class="grow"
                 ShowErrors="@_showPhoneValidationErrors"
                 IsLabelInsideInput="true"
                 IsRequired="true">
                 <TextBox
                     Id="@_stepModel.PhoneFieldId"
-                    Value="@(!_stepModel.Phone.IsNullOrEmpty() ? _stepModel.Phone : _defaultPhoneValue)"
+                    Value="@(!_stepModel.Phone.IsNullOrEmpty() ? _stepModel.Phone : "")"
                     ValueExpression="@(() => _stepModel.Phone)"
                     Autocomplete="true"
                     ValueChanged="@OnPhoneChanged"
+                    Placeholder="Sign in with email or phone number"
                     disabled="@codeHasBeenSent"
                     type="tel"
                     inputmode="tel"/>
