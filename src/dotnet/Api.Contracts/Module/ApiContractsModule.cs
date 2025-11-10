@@ -94,6 +94,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IPhoneAuth>();
         fusion.AddClient<IPhones>();
         fusion.AddClient<IEmails>();
+        fusion.AddClient<IEmailAuth>();
         fusion.AddClient<ITimeZones>();
         rpc.AddClient<ICaptcha>();
     }

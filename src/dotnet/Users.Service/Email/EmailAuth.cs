@@ -1,0 +1,137 @@
+// filepath: d:\Projects\actual-chat\src\dotnet\Users.Service\Email\EmailAuth.cs
+using System.Text;
+using ActualChat.Hashing;
+using ActualChat.Users.Db;
+using ActualChat.Users.Module;
+using ActualLab.Fusion.EntityFramework;
+using ActualChat.Users.Phone;
+using ActualChat.Users.Templates;
+using ActualLab.Redis;
+using Mjml.Net;
+using StackExchange.Redis;
+
+namespace ActualChat.Users.Email;
+
+public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IEmailAuth
+{
+    private static readonly string TotpFormat = new('0', Constants.Auth.Email.TotpLength);
+
+    private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
+    private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IAuthBackend AuthBackend { get; } = services.GetRequiredService<IAuthBackend>();
+    private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
+    private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
+    private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
+
+    // [CommandHandler]
+    public virtual async Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return default; // It just spawns other commands, so nothing to do here
+
+        var session = command.Session;
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var email = account.Email;
+
+        if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
+            return GetExpiresAt();
+
+        var (securityToken, modifier) = await GetTotpInputs(session, email, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false);
+        var totp = TotpCodes.Generate(securityToken, modifier);
+        var expiresAt = GetExpiresAt();
+
+        var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
+        var parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
+            { nameof(EmailVerification.Token), sTotp },
+        };
+        var blazorRenderer = new BlazorRenderer();
+        await using var _ = blazorRenderer.ConfigureAwait(false);
+        var mjml = await blazorRenderer.RenderComponent<EmailVerification>(parameters).ConfigureAwait(false);
+        var mjmlRenderer = new MjmlRenderer();
+        var mjmlOptions = new MjmlOptions { Beautify = false };
+        var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
+        await EmailSender.Send(
+                "",
+                email,
+                $"{CoreConstants.AppName}: email verification",
+                renderResult.Html,
+                cancellationToken)
+            .ConfigureAwait(false);
+        return expiresAt;
+
+        DateTimeOffset GetExpiresAt()
+            => Clocks.SystemClock.UtcNow + UsersSettings.TotpUIThrottling;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<bool> OnVerifyEmail(EmailAuth_VerifyEmail command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return false; // It just spawns other commands, so nothing to do here
+
+        var context = CommandContext.GetCurrent();
+        if (Invalidation.IsActive) {
+            var userId = context.Operation.Items.KeylessGet<UserId>();
+            if (userId is not null)
+                _ = AuthBackend.GetUser(DbShard.Single, userId.Value, cancellationToken);
+            return default;
+        }
+
+        var (session, totp) = command;
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!await ValidateCode(session, account.Email, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
+            return false;
+
+        account = account with { IsEmailVerified = true };
+        await Accounts.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
+        var cmd = new AccountsBackend_Update(account, account.Version);
+        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+
+        context.Operation.Items.KeylessSet(account.Id);
+        return true;
+    }
+
+    // Private methods
+
+    private async Task<bool> ValidateCode(
+        Session session,
+        string email,
+        int totp,
+        TotpPurpose purpose,
+        CancellationToken cancellationToken)
+    {
+        var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
+        return TotpCodes.Validate(securityToken, totp, modifier);
+    }
+
+    private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
+        Session session,
+        string email,
+        TotpPurpose purpose,
+        CancellationToken cancellationToken)
+    {
+        var randomSecret = await TotpSecrets.Get(session, cancellationToken).ConfigureAwait(false);
+        var securityTokens = Encoding.UTF8.GetBytes($"{randomSecret}_{session.Id}_{email}");
+        var modifier = $"{purpose}:{email}";
+        return (securityTokens, modifier);
+    }
+
+    private async Task<bool> IsThrottled(Session session, string email, CancellationToken cancellationToken)
+    {
+        var db = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var window = UsersSettings.TotpUIThrottling;
+        var emailKey = $".EmailTotpThrottle:email:{Hash(email)}";
+        var sessionKey = $".EmailTotpThrottle:session:{Hash(session.Id)}";
+        var emailOk = await db.StringSetAsync(emailKey, "1", window, When.NotExists).ConfigureAwait(false);
+        var sessionOk = await db.StringSetAsync(sessionKey, "1", window, When.NotExists).ConfigureAwait(false);
+        return !(emailOk && sessionOk);
+    }
+
+    private static string Hash(string value)
+        => value
+            .Hash()
+            .SHA256()
+            .ToBase64HashString(HashAlgorithm.SHA256);
+}
+

@@ -41,7 +41,7 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
 
     public async Task<bool> SendEmailCode(CancellationToken cancellationToken)
     {
-        var (_, error) = await UICommander.Run(new Emails_SendTotp(Session), cancellationToken).ConfigureAwait(false);
+        var (_, error) = await UICommander.Run(new EmailAuth_SendTotp(Session), cancellationToken).ConfigureAwait(false);
         return error == null;
     }
 }

@@ -67,7 +67,7 @@
         ICommand<bool> cmd = Purpose switch {
             TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, Phone!, totp),
             TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone!, totp),
-            TotpPurpose.VerifyEmail => new Emails_VerifyEmail(Session, totp),
+            TotpPurpose.VerifyEmail => new EmailAuth_VerifyEmail(Session, totp),
             _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
         };
 
