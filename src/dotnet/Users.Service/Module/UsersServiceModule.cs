@@ -148,6 +148,9 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // PhoneAuth
         rpcHost.AddApi<IPhoneAuth, PhoneAuth>(); // Requires Redis & ITextMessageSender
 
+        // EmailAuth
+        rpcHost.AddApi<IEmailAuth, EmailAuth>(); // Requires Redis & IEmailSender
+
         // Emails
         rpcHost.AddApi<IEmails, Emails>();
         rpcHost.AddBackend<IEmailsBackend, EmailsBackend>();
@@ -186,7 +189,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<TotpCodes>();
         services.AddSingleton<TotpSecrets>(); // Requires Redis
 
-        // Email sender - used by IEmails (API)
+        // Email sender - used by IEmailAuth (API) & Emails
         services.AddSingleton<IEmailSender, EmailSender>();
 
         // Text message sender registration - covers all combinations of Twilio / SMS.to availability

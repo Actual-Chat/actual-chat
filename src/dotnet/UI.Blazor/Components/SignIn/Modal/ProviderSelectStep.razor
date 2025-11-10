@@ -30,65 +30,63 @@
         }
     </div>
 
-    @if (_isPhoneAuthEnabled) {
-        <div class="c-separator">or</div>
-        <Form
-            Class="c-phone-form"
-            Model="@_stepModel"
-            OnSubmit="OnSignInWithPhone">
-            <AsyncDataAnnotationsValidator @ref="_validator"/>
-            <FormSection
-                For="() => _stepModel.Phone"
-                InputId="@_stepModel.PhoneFieldId"
-                Class="grow"
-                ShowErrors="@_showPhoneValidationErrors"
-                IsLabelInsideInput="true"
-                IsRequired="true">
-                <TextBox
-                    Id="@_stepModel.PhoneFieldId"
-                    Value="@(!_stepModel.Phone.IsNullOrEmpty() ? _stepModel.Phone : "")"
-                    ValueExpression="@(() => _stepModel.Phone)"
-                    Autocomplete="true"
-                    ValueChanged="@OnPhoneChanged"
-                    Placeholder="Sign in with email or phone number"
-                    disabled="@codeHasBeenSent"
-                    type="tel"
-                    inputmode="tel"/>
-                @if (codeHasBeenSent) {
-                    <div class="c-info">
-                        <i class="icon-info"></i>
-                        <span>Code sent. Check your phone.</span>
-                    </div>
-                }
-            </FormSection>
-            @if (CaptchaUI.IsConfigured) {
-                <div class="c-recaptcha-info">
-                    This site is protected by reCAPTCHA and the Google
-                    <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
-                    <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
+    <div class="c-separator">or</div>
+    <Form
+        Class="c-phone-form"
+        Model="@_stepModel"
+        OnSubmit="OnSignInWithPhone">
+        <AsyncDataAnnotationsValidator @ref="_validator"/>
+        <FormSection
+            For="() => _stepModel.Phone"
+            InputId="@_stepModel.PhoneFieldId"
+            Class="grow"
+            ShowErrors="@_showPhoneValidationErrors"
+            IsLabelInsideInput="true"
+            IsRequired="true">
+            <TextBox
+                Id="@_stepModel.PhoneFieldId"
+                Value="@(!_stepModel.Phone.IsNullOrEmpty() ? _stepModel.Phone : "")"
+                ValueExpression="@(() => _stepModel.Phone)"
+                Autocomplete="true"
+                ValueChanged="@OnPhoneChanged"
+                Placeholder="Sign in with email or phone number"
+                disabled="@codeHasBeenSent"
+                type="tel"
+                inputmode="tel"/>
+            @if (codeHasBeenSent) {
+                <div class="c-info">
+                    <i class="icon-info"></i>
+                    <span>Code sent. Check your phone.</span>
                 </div>
             }
-            <FormButtons IsEndAligned="false" Class="dialog-buttons">
-                <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid or ValidationState.CannotSend)">
-                    @switch (_validationState) {
-                        case ValidationState.Validating:
-                            <i class="icon-refresh"></i><span>Validating...</span>
-                            break;
-                        case ValidationState.Invalid:
-                            <span>Unavailable</span>
-                            break;
-                        case ValidationState.None:
-                        case ValidationState.Valid:
-                        case ValidationState.CodeSentRecently:
-                        default:
-                            <span>Continue</span>
-                            break;
-                    }
-                </Button>
-            </FormButtons>
+        </FormSection>
+        @if (CaptchaUI.IsConfigured) {
+            <div class="c-recaptcha-info">
+                This site is protected by reCAPTCHA and the Google
+                <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
+                <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
+            </div>
+        }
+        <FormButtons IsEndAligned="false" Class="dialog-buttons">
+            <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid or ValidationState.CannotSend)">
+                @switch (_validationState) {
+                    case ValidationState.Validating:
+                        <i class="icon-refresh"></i><span>Validating...</span>
+                        break;
+                    case ValidationState.Invalid:
+                        <span>Unavailable</span>
+                        break;
+                    case ValidationState.None:
+                    case ValidationState.Valid:
+                    case ValidationState.CodeSentRecently:
+                    default:
+                        <span>Continue</span>
+                        break;
+                }
+            </Button>
+        </FormButtons>
 
-        </Form>
-    }
+    </Form>
 </div>
 
 @code {
@@ -96,7 +94,6 @@
     private ValidationState _validationState = ValidationState.None;
     private StepModel _stepModel = null!;
     private List<AuthSchemaModel>? _authSchemas;
-    private bool _isPhoneAuthEnabled;
     private AsyncDataAnnotationsValidator _validator = null!;
     private bool _showPhoneValidationErrors;
 
@@ -124,7 +121,6 @@
                 },
             })
             .ToList();
-        _isPhoneAuthEnabled = await Features.Get<Features_EnablePhoneAuth, bool>(CancellationToken.None);
         _stepModel = new StepModel(ComponentIdGenerator).CopyToBase();
         await CaptchaUI.EnsureInitialized().ConfigureAwait(false);
     }
