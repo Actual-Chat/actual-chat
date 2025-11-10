@@ -136,9 +136,9 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         };
         attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
         await AttachmentsController.AddAttachment(list, attachment);
-        // NOTE: Do not start upload immediately after adding attachments.
-        // await AttachmentsController.InitUpload(list, attachment.Id, ChatId);
-        // await AttachmentsController.ResumeUpload(list, attachment.Id);
+        // NOTE: Start upload immediately after adding attachments.
+        await AttachmentsController.InitUpload(list, attachment.Id, ChatId);
+        await AttachmentsController.ResumeUpload(list, attachment.Id);
         return true;
     }
 
