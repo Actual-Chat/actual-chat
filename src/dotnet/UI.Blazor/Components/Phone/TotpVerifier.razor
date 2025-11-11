@@ -65,7 +65,7 @@
         _isVerifying = true;
         StateHasChanged();
         ICommand<bool> cmd = Purpose switch {
-            TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, Phone!, totp),
+            TotpPurpose.SignInPhone => new PhoneAuth_ValidateTotp(Session, Phone!, totp),
             TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone!, totp),
             TotpPurpose.VerifyEmail => new EmailAuth_VerifyEmail(Session, totp),
             _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
@@ -94,8 +94,8 @@
     }
 
     private async Task SendTotp() {
-        var codeSent = Purpose == TotpPurpose.VerifyEmail
-            ? await TotpUI.SendEmailCode(CancellationToken.None)
+        var codeSent = Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail
+            ? await TotpUI.SendEmailCode(Purpose, CancellationToken.None)
             : await TotpUI.SendPhoneCode(Purpose, Phone!, CancellationToken.None);
         if (!codeSent)
             return;

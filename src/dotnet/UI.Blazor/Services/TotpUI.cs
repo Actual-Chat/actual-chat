@@ -28,7 +28,7 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
     public async Task<bool> SendPhoneCode(TotpPurpose purpose, Phone phone, CancellationToken cancellationToken)
     {
         var cmd = purpose switch {
-            TotpPurpose.SignIn or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, phone, purpose),
+            TotpPurpose.SignInPhone or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, phone, purpose),
             _ => throw new ArgumentOutOfRangeException(nameof(purpose)),
         };
         var (totpExpiresAt, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
@@ -39,9 +39,9 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
         return true;
     }
 
-    public async Task<bool> SendEmailCode(CancellationToken cancellationToken)
+    public async Task<bool> SendEmailCode(TotpPurpose purpose, CancellationToken cancellationToken)
     {
-        var (_, error) = await UICommander.Run(new EmailAuth_SendTotp(Session), cancellationToken).ConfigureAwait(false);
+        var (_, error) = await UICommander.Run(new EmailAuth_SendTotp(Session, purpose), cancellationToken).ConfigureAwait(false);
         return error == null;
     }
 }

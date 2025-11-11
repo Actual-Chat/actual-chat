@@ -197,7 +197,7 @@
         if (_validationState is ValidationState.Valid) {
             var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
             if (phone is not null) {
-                var canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(phone, TotpPurpose.SignIn, CancellationToken.None);
+                var canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(phone, TotpPurpose.SignInPhone, CancellationToken.None);
                 if (!canSendValidationMessage.IsNullOrEmpty()) {
                     _validationState = ValidationState.CannotSend;
                     UICommander.ShowError(canSendValidationMessage);
