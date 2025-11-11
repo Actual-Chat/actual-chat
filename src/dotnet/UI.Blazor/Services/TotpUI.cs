@@ -16,8 +16,8 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
     [field:AllowNull, MaybeNull]
     private IEmailAuth EmailAuth => field ??= Services.GetRequiredService<IEmailAuth>();
 
-    public Task<string> ValidateCanSendToEmail(TotpPurpose purpose, CancellationToken cancellationToken)
-        => EmailAuth.ValidateCanSendToEmail(Session, purpose, cancellationToken);
+    public Task<string> ValidateCanSendToEmail(Email email, TotpPurpose purpose, CancellationToken cancellationToken)
+        => EmailAuth.ValidateCanSendToEmail(Session, email, purpose, cancellationToken);
 
     [ComputeMethod]
     public virtual async Task<bool> HasSentCodeRecently(CancellationToken cancellationToken)
@@ -45,9 +45,13 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
         return true;
     }
 
-    public async Task<bool> SendEmailCode(TotpPurpose purpose, CancellationToken cancellationToken)
+    public async Task<bool> SendEmailCode(TotpPurpose purpose, Email email, CancellationToken cancellationToken)
     {
-        var (_, error) = await UICommander.Run(new EmailAuth_SendTotp(Session, purpose), cancellationToken).ConfigureAwait(false);
-        return error == null;
+        var (totpExpiresAt, error) = await UICommander.Run(new EmailAuth_SendTotp(Session, email, purpose), cancellationToken).ConfigureAwait(false);
+        if (error != null)
+            return false;
+
+        _totpExpiresAt.Value = totpExpiresAt;
+        return true;
     }
 }

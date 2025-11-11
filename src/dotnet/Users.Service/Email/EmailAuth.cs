@@ -1,4 +1,3 @@
-// filepath: d:\Projects\actual-chat\src\dotnet\Users.Service\Email\EmailAuth.cs
 using System.Text;
 using ActualChat.Hashing;
 using ActualChat.Users.Db;
@@ -25,20 +24,15 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
 
     // [ComputeMethod]
-    public virtual Task<string> ValidateCanSendToEmail(Session session, TotpPurpose purpose, CancellationToken cancellationToken)
+    public virtual Task<string> ValidateCanSendToEmail(Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
     {
-        // Basic checks: account must have email, format must be valid
-        return Accounts.GetOwn(session, cancellationToken).ContinueWith(t => {
-            if (t.IsFaulted || t.IsCanceled)
-                return "Unable to check account.";
-            var account = t.Result;
-            var email = account.Email;
-            if (email.IsNullOrEmpty())
-                return "Email is not set on your account.";
-            if (!System.Net.Mail.MailAddress.TryCreate(email, out _))
-                return "Email address looks invalid.";
-            return string.Empty;
-        }, cancellationToken);
+        // Basic checks: email must be set and format must be valid
+        if (email is null)
+            return Task.FromResult("Email address is not specified.");
+        var value = email.Value;
+        if (!System.Net.Mail.MailAddress.TryCreate(value, out _))
+            return Task.FromResult("Email address looks invalid.");
+        return Task.FromResult(string.Empty);
     }
 
     // [CommandHandler]
@@ -49,13 +43,12 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         var session = command.Session;
         var purpose = command.Purpose;
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var email = account.Email;
+        var email = command.Email.Value;
 
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
             return GetExpiresAt();
 
-        var canSendValidationMessage = await ValidateCanSendToEmail(session, purpose, cancellationToken).ConfigureAwait(false);
+        var canSendValidationMessage = await ValidateCanSendToEmail(session, command.Email, purpose, cancellationToken).ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
@@ -105,9 +98,9 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return default;
         }
 
-        var (session, totp) = command;
+        var (session, email, totp) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (!await ValidateCode(session, account.Email, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
+        if (!await ValidateCode(session, email.Value, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
             return false;
 
         account = account with { IsEmailVerified = true };
@@ -125,18 +118,16 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (Invalidation.IsActive)
             return false; // It just spawns other commands, so nothing to do here
 
-        var (session, totp) = command;
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var email = account.Email;
-        if (email.IsNullOrEmpty())
+        var (session, email, totp) = command;
+        if (email is null)
             return false; // No email to validate against
 
         // Try both purposes: SignIn and VerifyEmail. We accept either successful validation
-        if (!await ValidateCode(session, email, totp, TotpPurpose.SignInEmail, cancellationToken).ConfigureAwait(false)
-            && !await ValidateCode(session, email, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
+        if (!await ValidateCode(session, email.Value, totp, TotpPurpose.SignInEmail, cancellationToken).ConfigureAwait(false)
+            && !await ValidateCode(session, email.Value, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var user = new User(Symbol.Empty, string.Empty).WithEmailIdentities(email);
+        var user = new User(Symbol.Empty, string.Empty).WithEmailIdentities(email.Value);
         var signInCommand = new AuthBackend_SignIn(session, user, user.GetEmailIdentity());
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;

@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 public interface IEmailAuth : IComputeService
 {
     [ComputeMethod]
-    Task<string> ValidateCanSendToEmail(Session session, TotpPurpose purpose, CancellationToken cancellationToken);
+    Task<string> ValidateCanSendToEmail(Session session, Email email, TotpPurpose purpose, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -19,19 +19,22 @@ public interface IEmailAuth : IComputeService
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailAuth_SendTotp(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] TotpPurpose Purpose = TotpPurpose.SignInEmail
+    [property: DataMember, MemoryPackOrder(1)] Email Email,
+    [property: DataMember, MemoryPackOrder(2)] TotpPurpose Purpose = TotpPurpose.SignInEmail
 ) : ISessionCommand<Moment>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailAuth_ValidateTotp(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] int Totp
+    [property: DataMember, MemoryPackOrder(1)] Email Email,
+    [property: DataMember, MemoryPackOrder(2)] int Totp
 ) : ISessionCommand<bool>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailAuth_VerifyEmail(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] int Token
+    [property: DataMember, MemoryPackOrder(1)] Email Email,
+    [property: DataMember, MemoryPackOrder(2)] int Token
 ) : ISessionCommand<bool>; // NOTE(AY): Add backend, implement IApiCommand
