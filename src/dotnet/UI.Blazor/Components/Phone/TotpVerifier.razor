@@ -3,7 +3,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComponentBase<UIHub>
 @{
-    var address = Purpose is TotpPurpose.VerifyEmail ? Email : Phone!.ToReadable();
+    var address = Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail ? Email : Phone!.ToReadable();
 }
 
 <UITimer @key="@_timerKey" Period="@TimerPeriod" IsRecurring="false" Tick="@OnTimerTick" />
@@ -67,6 +67,7 @@
         ICommand<bool> cmd = Purpose switch {
             TotpPurpose.SignInPhone => new PhoneAuth_ValidateTotp(Session, Phone!, totp),
             TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone!, totp),
+            TotpPurpose.SignInEmail => new EmailAuth_ValidateTotp(Session, totp),
             TotpPurpose.VerifyEmail => new EmailAuth_VerifyEmail(Session, totp),
             _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
         };

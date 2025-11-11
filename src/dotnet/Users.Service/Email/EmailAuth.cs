@@ -24,6 +24,23 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
 
+    // [ComputeMethod]
+    public virtual Task<string> ValidateCanSendToEmail(Session session, TotpPurpose purpose, CancellationToken cancellationToken)
+    {
+        // Basic checks: account must have email, format must be valid
+        return Accounts.GetOwn(session, cancellationToken).ContinueWith(t => {
+            if (t.IsFaulted || t.IsCanceled)
+                return "Unable to check account.";
+            var account = t.Result;
+            var email = account.Email;
+            if (email.IsNullOrEmpty())
+                return "Email is not set on your account.";
+            if (!System.Net.Mail.MailAddress.TryCreate(email, out _))
+                return "Email address looks invalid.";
+            return string.Empty;
+        }, cancellationToken);
+    }
+
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken)
     {
@@ -37,6 +54,10 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
             return GetExpiresAt();
+
+        var canSendValidationMessage = await ValidateCanSendToEmail(session, purpose, cancellationToken).ConfigureAwait(false);
+        if (!canSendValidationMessage.IsNullOrEmpty())
+            throw StandardError.Constraint(canSendValidationMessage);
 
         var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
         var totp = TotpCodes.Generate(securityToken, modifier);

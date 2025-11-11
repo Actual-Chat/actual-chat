@@ -13,6 +13,12 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
     public Task<string> ValidateCanSendToPhone(Phone phone, TotpPurpose purpose, CancellationToken cancellationToken)
         => PhoneAuth.ValidateCanSendToPhone(Session, phone, purpose, cancellationToken);
 
+    [field:AllowNull, MaybeNull]
+    private IEmailAuth EmailAuth => field ??= Services.GetRequiredService<IEmailAuth>();
+
+    public Task<string> ValidateCanSendToEmail(TotpPurpose purpose, CancellationToken cancellationToken)
+        => EmailAuth.ValidateCanSendToEmail(Session, purpose, cancellationToken);
+
     [ComputeMethod]
     public virtual async Task<bool> HasSentCodeRecently(CancellationToken cancellationToken)
     {
