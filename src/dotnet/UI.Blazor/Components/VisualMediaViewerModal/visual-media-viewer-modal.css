@@ -301,6 +301,16 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
     @apply bg-transparent;
     background-image: none;
 }
+.reload-icon-wrapper {
+    @apply absolute inset-0 z-20;
+    @apply bg-[var(--black-50)];
+    backdrop-filter: blur(2px);
+}
+.reload-icon-wrapper .btn {
+    @apply absolute z-20;
+    left: calc(50% - 1.25rem);
+    top: calc(50% - 1.25rem);
+}
 .video-wrapper .video-thumbnail-wrapper {
     @apply absolute z-10 inset-0;
     @apply flex items-center justify-center;

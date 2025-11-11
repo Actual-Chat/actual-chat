@@ -392,11 +392,10 @@ body.narrow .narrow-panel .attachment-item > img,
     @apply min-h-10;
 }
 .remove-attachment-btn.btn {
-    @apply absolute;
+    @apply absolute z-30;
     @apply self-center;
     @apply min-w-8 max-w-8 min-h-8 max-h-8;
     @apply top-0 right-0;
-    @apply z-10;
     @apply opacity-60;
 }
 .narrow-panel .remove-attachment-btn.btn {
