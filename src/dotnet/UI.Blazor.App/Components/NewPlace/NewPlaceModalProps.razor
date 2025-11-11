@@ -30,7 +30,7 @@
                 @bind-Value="@_form.Title"
                 Id="@_form.TitleId"
                 Autofocus="false"
-                Autocomplete="false"/>
+                Autocomplete="off"/>
         </FormSection>
         <FormSection
             For="() => _form.Description"
@@ -42,7 +42,7 @@
                 @bind-Value="@_form.Description"
                 Id="@_form.DescriptionId"
                 Autofocus="false"
-                Autocomplete="false"/>
+                Autocomplete="off"/>
         </FormSection>
     </FormBlock>
     <FormBlock Title="Place type" Class="with-input-radio">

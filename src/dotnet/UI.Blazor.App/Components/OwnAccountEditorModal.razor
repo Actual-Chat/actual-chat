@@ -77,7 +77,7 @@
                         Value="@(!_form.Phone.IsNullOrEmpty() ? _form.Phone : _defaultPhoneValue)"
                         ValueExpression="@(() => _form.Phone)"
                         ValueChanged="@OnPhoneChanged"
-                        Autocomplete="true"
+                        Autocomplete="tel"
                         type="tel"
                         inputmode="tel"
                         disabled="@isPhoneVerified"/>

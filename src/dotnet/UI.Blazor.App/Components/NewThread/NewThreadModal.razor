@@ -23,7 +23,7 @@
                     @bind-Value="@_form.Title"
                     Id="@_form.TitleId"
                     Autofocus="false"
-                    Autocomplete="false"/>
+                    Autocomplete="off"/>
                 @if (_generatingSmartTitle && string.IsNullOrEmpty(_form.Title)) {
                     <div class="waiting-message-container">
                         <span id="waiting-circle-1" class="c-circle"></span>

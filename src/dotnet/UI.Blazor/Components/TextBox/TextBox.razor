@@ -17,7 +17,7 @@
         <input @ref="Ref"
                id="@Id"
                type="text"
-               autocomplete="@(Autocomplete ? "on" : "off")"
+               autocomplete="@(Autocomplete ?? "on")"
                class="flex-1 @cls"
                value="@CurrentValue"
                placeholder="@Placeholder"
@@ -29,7 +29,7 @@
                rows="@MultilineRows"
                cols="@MultilineCols"
                type="text"
-               autocomplete="@(Autocomplete ? "on" : "off")"
+               autocomplete="@(Autocomplete ?? "on")"
                class="flex-1 @cls"
                value="@CurrentValue"
                placeholder="@Placeholder"
@@ -59,7 +59,7 @@
 
     [Parameter] public string? Id { get; set; }
     [Parameter] public bool Autofocus { get; set; }
-    [Parameter] public bool Autocomplete { get; set; } = true;
+    [Parameter] public string Autocomplete { get; set; } = "on";
     [Parameter] public bool IsMultiline { get; set; }
     [Parameter] public int MultilineRows { get; set; } = 2;
     [Parameter] public int MultilineCols { get; set; } = 20;
