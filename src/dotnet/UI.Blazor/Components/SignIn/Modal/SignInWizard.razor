@@ -17,13 +17,13 @@
         }
     </Header>
     <Steps>
-        <ProviderSelectStep PhoneSignInModel="_model"/>
-        <CompletePhoneSignInStep PhoneSignInModel="_model"/>
+        <ProviderSelectStep TotpSignInModel="_model"/>
+        <CompleteSignInStep TotpSignInModel="_model"/>
     </Steps>
 </Stepper>
 
 @code {
-    private PhoneSignInModel _model = new();
+    private TotpSignInModel _model = new();
 
     [Parameter] public string Reason { get; set; } = "";
 }

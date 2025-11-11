@@ -34,29 +34,30 @@
     <Form
         Class="c-phone-form"
         Model="@_stepModel"
-        OnSubmit="OnSignInWithPhone">
+        OnSubmit="@OnSignIn">
         <AsyncDataAnnotationsValidator @ref="_validator"/>
         <FormSection
-            For="() => _stepModel.Phone"
-            InputId="@_stepModel.PhoneFieldId"
+            For="() => _stepModel.Contact"
+            InputId="@_stepModel.ContactFieldId"
             Class="grow"
             ShowErrors="@_showPhoneValidationErrors"
             IsLabelInsideInput="true"
             IsRequired="true">
             <TextBox
-                Id="@_stepModel.PhoneFieldId"
-                Value="@(!_stepModel.Phone.IsNullOrEmpty() ? _stepModel.Phone : "")"
-                ValueExpression="@(() => _stepModel.Phone)"
+                Id="@_stepModel.ContactFieldId"
+                Value="@(!_stepModel.Contact.IsNullOrEmpty() ? _stepModel.Contact : "")"
+                ValueExpression="@(() => _stepModel.Contact)"
                 Autocomplete="true"
-                ValueChanged="@OnPhoneChanged"
+                ValueChanged="@OnContactChanged"
                 Placeholder="Sign in with email or phone number"
                 disabled="@codeHasBeenSent"
-                type="tel"
-                inputmode="tel"/>
+                type="text"
+                inputmode="text"
+                />
             @if (codeHasBeenSent) {
                 <div class="c-info">
                     <i class="icon-info"></i>
-                    <span>Code sent. Check your phone.</span>
+                    <span>Code sent. Check your inbox or phone.</span>
                 </div>
             }
         </FormSection>
@@ -102,7 +103,7 @@
     private CaptchaUI CaptchaUI => Hub.CaptchaUI;
     private TotpUI TotpUI => Hub.TotpUI;
 
-    [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
+    [Parameter, EditorRequired] public TotpSignInModel TotpSignInModel { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
@@ -145,9 +146,21 @@
     }
 
     protected override async Task<bool> Save() {
-        var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
-        PhoneSignInModel.Phone = phone;
-        return phone != null;
+        var input = _stepModel.Contact;
+        // Try parse as phone first
+        var phone = await Phones.Parse(input, CancellationToken.None);
+        if (phone != null) {
+            TotpSignInModel.Phone = phone;
+            TotpSignInModel.Email = null;
+            return true;
+        }
+        // Try parse as email
+        if (!input.IsNullOrEmpty() && System.Net.Mail.MailAddress.TryCreate(input, out var email)) {
+            TotpSignInModel.Email = email.Address.ToLowerInvariant();
+            TotpSignInModel.Phone = null;
+            return true;
+        }
+        return false;
     }
 
     private void OnSignInWith(string schema)
@@ -208,6 +221,69 @@
         await Stepper.TryMoveForward().AsTask();
     }
 
+    private void OnContactChanged(string? value) {
+        _showPhoneValidationErrors = true;
+        var newValue = value ?? "";
+        if (newValue == _defaultPhoneValue)
+            newValue = "";
+        if (Equals(_stepModel.Contact, newValue))
+            return;
+
+        _stepModel.Contact = newValue;
+        if (_validationState == ValidationState.CannotSend)
+            _validationState = ValidationState.None;
+    }
+
+    private async Task OnSignIn() {
+        _showPhoneValidationErrors = true;
+        var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
+        if (hasSentCodeRecently) {
+            _validationState = ValidationState.CodeSentRecently;
+            StateHasChanged();
+            await Stepper.TryMoveForward().AsTask();
+            return;
+        }
+
+        if (CaptchaUI.IsConfigured) {
+            _validationState = ValidationState.Validating;
+            StateHasChanged();
+            try {
+                var captchaAction = Constants.Recaptcha.Actions.PhoneSignIn; // reuse action unless project defines a separate EmailSignIn
+                var captchaToken = await CaptchaUI.GetActionToken(captchaAction, CancellationToken.None);
+                var validationResult = await Captcha.Validate(captchaToken, captchaAction, CancellationToken.None);
+                _validationState = validationResult.Success
+                    ? ValidationState.Valid
+                    : ValidationState.Invalid;
+            }
+            catch {
+                _validationState = ValidationState.Invalid;
+            }
+            finally {
+                StateHasChanged();
+            }
+        }
+
+        if (_validationState is ValidationState.Valid) {
+            // Determine kind and pre-validate sending for phones
+            var phone = await Phones.Parse(_stepModel.Contact, CancellationToken.None);
+            if (phone is not null) {
+                var canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(phone, TotpPurpose.SignInPhone, CancellationToken.None);
+                if (!canSendValidationMessage.IsNullOrEmpty()) {
+                    _validationState = ValidationState.CannotSend;
+                    UICommander.ShowError(canSendValidationMessage);
+                }
+            } else if (!(_stepModel.Contact.IsNullOrEmpty())) {
+                var emailCheck = await TotpUI.ValidateCanSendToEmail(TotpPurpose.SignInEmail, CancellationToken.None);
+                if (!emailCheck.IsNullOrEmpty()) {
+                    _validationState = ValidationState.CannotSend;
+                    UICommander.ShowError(emailCheck);
+                }
+            }
+        }
+
+        await Stepper.TryMoveForward().AsTask();
+    }
+
     // Nested types
 
     private class AuthSchemaModel {
@@ -221,7 +297,11 @@
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
-        [Required, PhoneNumber] public string Phone { get; set; } = "";
+        [Required] public string Contact { get; set; } = "";
+        public string ContactFieldId { get; set; } = "";
+
+        // Back-compat fields for existing usage (can be removed if not used elsewhere)
+        public string Phone { get; set; } = "";
         public string PhoneFieldId { get; set; } = "";
     }
 }

@@ -5,6 +5,8 @@ namespace ActualChat.Users;
 
 public interface IEmailAuth : IComputeService
 {
+    [ComputeMethod]
+    Task<string> ValidateCanSendToEmail(Session session, TotpPurpose purpose, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken);
     [CommandHandler]

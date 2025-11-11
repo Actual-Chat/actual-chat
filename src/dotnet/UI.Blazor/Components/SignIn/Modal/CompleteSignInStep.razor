@@ -1,0 +1,45 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using TaskExt = ActualLab.Async.TaskExt
+@inherits SimpleStep<UIHub>;
+@{
+    var phone = TotpSignInModel.Phone;
+    var email = TotpSignInModel.Email;
+    if (CurrentStep != this || (phone is null && email.IsNullOrEmpty()))
+        return;
+    var purpose = phone is not null ? TotpPurpose.SignInPhone : TotpPurpose.SignInEmail;
+}
+
+<div class="sign-in-step verify-phone-step" @onclick="@TryFocusTotpInput">
+    <div class="flex-x flex-1 justify-center">
+        <phone-verification-cat-svg/>
+    </div>
+    <div class="c-text-container">
+        <p class="c-title">Enter the code</p>
+        <p class="c-text">
+            @if (phone is not null) {
+                <text>Please verify your phone number to sign in and make it discoverable to friends on @CoreConstants.AppName.</text>
+            } else {
+                <text>Please verify your email address to sign in and make it discoverable to friends on @CoreConstants.AppName.</text>
+            }
+        </p>
+    </div>
+    @if (purpose is TotpPurpose.SignInPhone) {
+        <TotpVerifier @ref="_totpVerifier" Purpose="@purpose" Phone="@phone" Verified="OnTotpVerified" />
+    } else {
+        <TotpVerifier @ref="_totpVerifier" Purpose="@purpose" Email="@email" Verified="OnTotpVerified" />
+    }
+</div>
+
+@code {
+    private TotpVerifier? _totpVerifier;
+
+    [Parameter, EditorRequired] public TotpSignInModel TotpSignInModel { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    protected override Task<bool> Save() => TaskExt.TrueTask;
+    protected override Task<bool> Validate() => TaskExt.TrueTask;
+
+    private Task TryFocusTotpInput() => _totpVerifier?.Focus().AsTask() ?? Task.CompletedTask;
+    private Task OnTotpVerified() => Stepper.TryMoveForward().AsTask();
+}
