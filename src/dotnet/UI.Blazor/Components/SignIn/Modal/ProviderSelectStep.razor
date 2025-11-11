@@ -47,7 +47,7 @@
                 Id="@_stepModel.ContactFieldId"
                 Value="@(!_stepModel.Contact.IsNullOrEmpty() ? _stepModel.Contact : "")"
                 ValueExpression="@(() => _stepModel.Contact)"
-                Autocomplete="true"
+                Autocomplete="tel email username"
                 ValueChanged="@OnContactChanged"
                 Placeholder="Sign in with email or phone number"
                 disabled="@codeHasBeenSent"
