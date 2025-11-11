@@ -28,15 +28,17 @@
                 </video>
             }
             @if (!attachment.Uploaded) {
-                <span class="spinner-icon-wrapper">
-                    @if (attachment.IsUploading) {
+                @if (attachment.IsUploading) {
+                    <span class="spinner-icon-wrapper">
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                    } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
-                        <ButtonRound Click="@RestartClick">
+                    </span>
+                } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
+                    <span class="reload-icon-wrapper">
+                        <ButtonRound Click="@RestartClick" Class="btn-sm">
                             <i class="icon-sync text-2xl"></i>
                         </ButtonRound>
-                    }
-                </span>
+                    </span>
+                }
             }
         </div>
         <div class="attachment-filename" title="@attachment.FileName">

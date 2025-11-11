@@ -211,7 +211,7 @@ body.hoverable .file-attachment:not(.upload-file):hover,
     @apply flex-none;
 }
 .file-attachment.upload-file .remove-attachment-btn.btn {
-    @apply relative;
+    @apply relative z-30;
     @apply min-w-10 max-w-10 min-h-10 max-h-10;
 }
 
