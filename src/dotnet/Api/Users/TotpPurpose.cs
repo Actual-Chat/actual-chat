@@ -2,7 +2,8 @@ namespace ActualChat.Users;
 
 public enum TotpPurpose
 {
-    SignIn,
+    SignInPhone,
+    SignInEmail,
     VerifyPhone,
     VerifyEmail,
 }

@@ -28,7 +28,7 @@
         </FormSection>
 
         @if (_model.ShowVerifier) {
-            <TotpVerifier Purpose="TotpPurpose.SignIn" Verified="@OnVerified" Phone="@_model.Phone" />
+            <TotpVerifier Purpose="TotpPurpose.SignInPhone" Verified="@OnVerified" Phone="@_model.Phone" />
         }
 
         <FormButtons>

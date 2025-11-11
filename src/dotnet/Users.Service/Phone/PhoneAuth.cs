@@ -58,7 +58,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
             return Task.FromResult(string.Empty);
 
         var message = purpose switch {
-            TotpPurpose.SignIn => "Unable to send SMS to this number, please use other login methods.",
+            TotpPurpose.SignInPhone => "Unable to send SMS to this number, please use other login methods.",
             _ => "Unable to send SMS to this number",
         };
         return Task.FromResult(message);
@@ -113,7 +113,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
             return false; // It just spawns other commands, so nothing to do here
 
         var (session, phone, totp) = command;
-        if (!await ValidateCode(session, phone, totp, TotpPurpose.SignIn, cancellationToken).ConfigureAwait(false))
+        if (!await ValidateCode(session, phone, totp, TotpPurpose.SignInPhone, cancellationToken).ConfigureAwait(false))
             return false;
 
         var user = new User(Symbol.Empty, string.Empty).WithPhone(phone);

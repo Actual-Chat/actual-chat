@@ -21,7 +21,7 @@ public interface IPhoneAuth : IComputeService
 public sealed partial record PhoneAuth_SendTotp(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Phone Phone,
-    [property: DataMember, MemoryPackOrder(2)] TotpPurpose Purpose = TotpPurpose.SignIn
+    [property: DataMember, MemoryPackOrder(2)] TotpPurpose Purpose = TotpPurpose.SignInPhone
 ) : ISessionCommand<Moment>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

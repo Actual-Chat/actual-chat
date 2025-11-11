@@ -31,13 +31,14 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return default; // It just spawns other commands, so nothing to do here
 
         var session = command.Session;
+        var purpose = command.Purpose;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var email = account.Email;
 
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
             return GetExpiresAt();
 
-        var (securityToken, modifier) = await GetTotpInputs(session, email, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false);
+        var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
         var totp = TotpCodes.Generate(securityToken, modifier);
         var expiresAt = GetExpiresAt();
 
@@ -51,10 +52,15 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var mjmlRenderer = new MjmlRenderer();
         var mjmlOptions = new MjmlOptions { Beautify = false };
         var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
+        var subject = purpose switch {
+            TotpPurpose.SignInEmail => $"{CoreConstants.AppName}: sign-in code",
+            TotpPurpose.VerifyEmail => $"{CoreConstants.AppName}: email verification",
+            _ => $"{CoreConstants.AppName}: code",
+        };
         await EmailSender.Send(
                 "",
                 email,
-                $"{CoreConstants.AppName}: email verification",
+                subject,
                 renderResult.Html,
                 cancellationToken)
             .ConfigureAwait(false);
@@ -89,6 +95,29 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
 
         context.Operation.Items.KeylessSet(account.Id);
+        return true;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<bool> OnValidateTotp(EmailAuth_ValidateTotp command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return false; // It just spawns other commands, so nothing to do here
+
+        var (session, totp) = command;
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var email = account.Email;
+        if (email.IsNullOrEmpty())
+            return false; // No email to validate against
+
+        // Try both purposes: SignIn and VerifyEmail. We accept either successful validation
+        if (!await ValidateCode(session, email, totp, TotpPurpose.SignInEmail, cancellationToken).ConfigureAwait(false)
+            && !await ValidateCode(session, email, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
+            return false;
+
+        var user = new User(Symbol.Empty, string.Empty).WithEmailIdentities(email);
+        var signInCommand = new AuthBackend_SignIn(session, user, user.GetEmailIdentity());
+        await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -134,4 +163,3 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             .SHA256()
             .ToBase64HashString(HashAlgorithm.SHA256);
 }
-
