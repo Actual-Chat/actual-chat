@@ -22,6 +22,9 @@ public static class UserExt
     public static User WithPhone(this User user, Phone phone)
         => user.WithPhoneIdentities(phone).WithClaim(ClaimTypes.MobilePhone, phone.Value);
 
+    public static User WithEmail(this User user, Email email)
+        => user.WithEmailIdentities(email).WithClaim(ClaimTypes.Email, email.Value);
+
     public static User WithPhoneIdentities(this User user, Phone phone)
     {
         phone.Require();
@@ -34,16 +37,14 @@ public static class UserExt
             .WithClaim(ClaimTypes.MobilePhone, phone.Value);
     }
 
-    public static User WithEmailIdentities(this User user, string email)
+    public static User WithEmailIdentities(this User user, Email email)
     {
-        email.RequireNonEmpty();
-        email = email.ToLowerInvariant();
         var emailIdentity = user.GetEmailIdentity();
-        if (emailIdentity != UserIdentity.None)
+        if (emailIdentity != UserIdentity.None && emailIdentity.SchemaBoundId != email.Value)
             throw StandardError.Constraint("Email identity already set for this user.");
 
         return user.WithIdentity(ToEmailIdentity(email))
-            .WithIdentity(ToHashedEmailIdentity(ContactIdExt.Hash(email)));
+            .WithIdentity(ToHashedEmailIdentity(email.Hash));
     }
 
     public static UserIdentity GetPhoneIdentity(this User user)
@@ -59,8 +60,8 @@ public static class UserExt
 
     private static UserIdentity ToPhoneIdentity(Phone phone)
         => new (AuthSchema.Phone, phone.Value);
-    private static UserIdentity ToEmailIdentity(string email)
-        => new (AuthSchema.Email, email);
+    private static UserIdentity ToEmailIdentity(Email email)
+        => new (AuthSchema.Email, email.Value);
     public static UserIdentity ToHashedPhoneIdentity(string phoneHash)
         => new (AuthSchema.HashedPhone, phoneHash);
     public static UserIdentity ToHashedEmailIdentity(string emailHash)

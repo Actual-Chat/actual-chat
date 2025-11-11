@@ -119,15 +119,13 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return false; // It just spawns other commands, so nothing to do here
 
         var (session, email, totp) = command;
-        if (email is null)
-            return false; // No email to validate against
 
         // Try both purposes: SignIn and VerifyEmail. We accept either successful validation
         if (!await ValidateCode(session, email.Value, totp, TotpPurpose.SignInEmail, cancellationToken).ConfigureAwait(false)
             && !await ValidateCode(session, email.Value, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var user = new User(Symbol.Empty, string.Empty).WithEmailIdentities(email.Value);
+        var user = new User(Symbol.Empty, string.Empty).WithEmail(email);
         var signInCommand = new AuthBackend_SignIn(session, user, user.GetEmailIdentity());
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;

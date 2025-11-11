@@ -8,7 +8,8 @@ public class UserExtTest
     public void ShouldCreateCorrectIdentities(string phone, string email, string expectedPhoneHash, string expectedEmailHash)
     {
         // act
-        var user = new User("user1", "User 1").WithPhoneIdentities(ActualChat.Phone.Parse(phone)).WithEmailIdentities(email);
+        var emailId = ActualChat.Email.Parse(email);
+        var user = new User("user1", "User 1").WithPhoneIdentities(ActualChat.Phone.Parse(phone)).WithEmailIdentities(emailId);
 
         // assert
         user.Identities.Keys.Select(x => x.Id)
