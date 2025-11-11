@@ -27,6 +27,7 @@ public static class ApiModuleInitializer
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<MediaId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<StreamId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Phone>());
+        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<Email>());
         // Principal identifiers
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<PrincipalId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UserId>());

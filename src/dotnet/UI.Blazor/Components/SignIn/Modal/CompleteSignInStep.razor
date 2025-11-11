@@ -5,7 +5,7 @@
 @{
     var phone = TotpSignInModel.Phone;
     var email = TotpSignInModel.Email;
-    if (CurrentStep != this || (phone is null && email.IsNullOrEmpty()))
+    if (CurrentStep != this || (phone is null && email is null))
         return;
     var purpose = phone is not null ? TotpPurpose.SignInPhone : TotpPurpose.SignInEmail;
 }

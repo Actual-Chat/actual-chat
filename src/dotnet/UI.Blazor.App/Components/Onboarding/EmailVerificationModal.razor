@@ -33,7 +33,7 @@
         Modal.Close();
     }
 
-    public sealed record Model(string Email) {
+    public sealed record Model(ActualChat.Email Email) {
         public bool IsVerified { get; set; }
     }
 }

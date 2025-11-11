@@ -48,7 +48,7 @@
                 Value="@(!_stepModel.Contact.IsNullOrEmpty() ? _stepModel.Contact : "")"
                 ValueExpression="@(() => _stepModel.Contact)"
                 Autocomplete="tel email username"
-                ValueChanged="@OnContactChanged"
+                ValueChanged="@((string? v) => OnContactChanged(v))"
                 Placeholder="Sign in with email or phone number"
                 disabled="@codeHasBeenSent"
                 type="text"
@@ -147,79 +147,25 @@
 
     protected override async Task<bool> Save() {
         var input = _stepModel.Contact;
-        // Try parse as phone first
-        var phone = await Phones.Parse(input, CancellationToken.None);
-        if (phone != null) {
-            TotpSignInModel.Phone = phone;
-            TotpSignInModel.Email = null;
-            return true;
-        }
-        // Try parse as email
         if (!input.IsNullOrEmpty() && System.Net.Mail.MailAddress.TryCreate(input, out var email)) {
-            TotpSignInModel.Email = email.Address.ToLowerInvariant();
+            // Parse into Email identifier
+            TotpSignInModel.Email = Email.Parse(input);
             TotpSignInModel.Phone = null;
             return true;
         }
-        return false;
+
+        var phone = await Phones.Parse(input, CancellationToken.None);
+        if (phone == null)
+            return false;
+
+        TotpSignInModel.Phone = phone;
+        TotpSignInModel.Email = null;
+        return true;
+
     }
 
     private void OnSignInWith(string schema)
         => _ = AccountUI.SignIn(schema);
-
-    private void OnPhoneChanged(string? value) {
-        _showPhoneValidationErrors = true;
-        var newValue = value ?? "";
-        if (newValue == _defaultPhoneValue)
-            newValue = "";
-        if (Equals(_stepModel.Phone, newValue))
-            return;
-
-        _stepModel.Phone = newValue;
-        if (_validationState == ValidationState.CannotSend)
-            _validationState = ValidationState.None;
-    }
-
-    private async Task OnSignInWithPhone() {
-        _showPhoneValidationErrors = true;
-        var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
-        if (hasSentCodeRecently) {
-            _validationState = ValidationState.CodeSentRecently;
-            StateHasChanged();
-            await Stepper.TryMoveForward().AsTask();
-            return;
-        }
-
-        if (CaptchaUI.IsConfigured) {
-            _validationState = ValidationState.Validating;
-            StateHasChanged();
-            try {
-                var captchaToken = await CaptchaUI.GetActionToken(Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
-                var validationResult = await Captcha.Validate(captchaToken, Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
-                _validationState = validationResult.Success
-                    ? ValidationState.Valid
-                    : ValidationState.Invalid;
-            }
-            catch {
-                _validationState = ValidationState.Invalid;
-            }
-            finally {
-                StateHasChanged();
-            }
-        }
-
-        if (_validationState is ValidationState.Valid) {
-            var phone = await Phones.Parse(_stepModel.Phone, CancellationToken.None);
-            if (phone is not null) {
-                var canSendValidationMessage = await TotpUI.ValidateCanSendToPhone(phone, TotpPurpose.SignInPhone, CancellationToken.None);
-                if (!canSendValidationMessage.IsNullOrEmpty()) {
-                    _validationState = ValidationState.CannotSend;
-                    UICommander.ShowError(canSendValidationMessage);
-                }
-            }
-        }
-
-        await Stepper.TryMoveForward().AsTask();
-    }
 
     private void OnContactChanged(string? value) {
         _showPhoneValidationErrors = true;
@@ -273,10 +219,20 @@
                     UICommander.ShowError(canSendValidationMessage);
                 }
             } else if (!(_stepModel.Contact.IsNullOrEmpty())) {
-                var emailCheck = await TotpUI.ValidateCanSendToEmail(TotpPurpose.SignInEmail, CancellationToken.None);
-                if (!emailCheck.IsNullOrEmpty()) {
+                // Parse contact as email identifier for validation
+                Email? emailId = null;
+                if (System.Net.Mail.MailAddress.TryCreate(_stepModel.Contact, out var mail))
+                    Email.TryParse(mail.Address, out emailId);
+
+                if (emailId is null) {
                     _validationState = ValidationState.CannotSend;
-                    UICommander.ShowError(emailCheck);
+                    UICommander.ShowError("Invalid email address.");
+                } else {
+                    var emailCheck = await TotpUI.ValidateCanSendToEmail(emailId, TotpPurpose.SignInEmail, CancellationToken.None);
+                    if (!emailCheck.IsNullOrEmpty()) {
+                        _validationState = ValidationState.CannotSend;
+                        UICommander.ShowError(emailCheck);
+                    }
                 }
             }
         }
@@ -299,9 +255,5 @@
         : FormModel<StepModel>("phone-signin", componentIdGenerator) {
         [Required] public string Contact { get; set; } = "";
         public string ContactFieldId { get; set; } = "";
-
-        // Back-compat fields for existing usage (can be removed if not used elsewhere)
-        public string Phone { get; set; } = "";
-        public string PhoneFieldId { get; set; } = "";
     }
 }

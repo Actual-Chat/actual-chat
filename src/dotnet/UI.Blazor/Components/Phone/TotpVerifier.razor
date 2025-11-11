@@ -1,9 +1,10 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
+@using ActualChat
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComponentBase<UIHub>
 @{
-    var address = Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail ? Email : Phone!.ToReadable();
+    var address = Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail ? Email?.Value : Phone!.ToReadable();
 }
 
 <UITimer @key="@_timerKey" Period="@TimerPeriod" IsRecurring="false" Tick="@OnTimerTick" />
@@ -33,7 +34,7 @@
     private TotpUI TotpUI => Hub.TotpUI;
 
     [Parameter] public Phone? Phone { get; set; }
-    [Parameter] public string Email { get; set; } = "";
+    [Parameter] public Email? Email { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public TotpPurpose Purpose { get; set; }
     [Parameter] public EventCallback Verified { get; set; }
@@ -67,8 +68,8 @@
         ICommand<bool> cmd = Purpose switch {
             TotpPurpose.SignInPhone => new PhoneAuth_ValidateTotp(Session, Phone!, totp),
             TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone!, totp),
-            TotpPurpose.SignInEmail => new EmailAuth_ValidateTotp(Session, totp),
-            TotpPurpose.VerifyEmail => new EmailAuth_VerifyEmail(Session, totp),
+            TotpPurpose.SignInEmail => new EmailAuth_ValidateTotp(Session, Email!, totp),
+            TotpPurpose.VerifyEmail => new EmailAuth_VerifyEmail(Session, Email!, totp),
             _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
         };
 
@@ -96,7 +97,7 @@
 
     private async Task SendTotp() {
         var codeSent = Purpose is TotpPurpose.VerifyEmail or TotpPurpose.SignInEmail
-            ? await TotpUI.SendEmailCode(Purpose, CancellationToken.None)
+            ? await TotpUI.SendEmailCode(Purpose, Email!, CancellationToken.None)
             : await TotpUI.SendPhoneCode(Purpose, Phone!, CancellationToken.None);
         if (!codeSent)
             return;

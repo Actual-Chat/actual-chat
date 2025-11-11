@@ -71,6 +71,7 @@
 
     protected override Task<bool> Validate() {
         var isValid = _formRef?.EditContext?.Validate() ?? false;
+        isValid &= Email.TryParse(_model.Email, out _);
         return Task.FromResult(isValid);
     }
 
@@ -81,7 +82,10 @@
         if (error is not null)
             return false;
 
-        var verificationModel = new EmailVerificationModal.Model(_model.Email);
+        if (!Email.TryParse(_model.Email, out var email))
+            return false;
+
+        var verificationModel = new EmailVerificationModal.Model(email);
         var modalRef = await ModalUI.Show(verificationModel);
         await modalRef.WhenClosed;
         _showVerificationStatus = verificationModel.IsVerified;
