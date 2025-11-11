@@ -225,10 +225,13 @@ public sealed class ServerAuth
         {
             var existingUserId = await AccountsBackend.GetIdByUserIdentity(userIdentity, cancellationToken).ConfigureAwait(false);
             // Check if a user with such email exists when logging in with external identity
-            if (existingUserId is not null || !AuthSchema.IsExternal(schema) || httpUser.FindFirstValue(ClaimTypes.Email) is not { } email)
+            if (existingUserId is not null || !AuthSchema.IsExternal(schema) || httpUser.FindFirstValue(ClaimTypes.Email) is not { } emailString)
                 return;
 
-            var emailHash = ContactIdExt.Hash(email);
+            if (!ActualChat.Email.TryParse(emailString, out var email))
+                return;
+
+            var emailHash = email.Hash;
             var userId = await AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken)
                 .ConfigureAwait(false);
             if (userId is null)

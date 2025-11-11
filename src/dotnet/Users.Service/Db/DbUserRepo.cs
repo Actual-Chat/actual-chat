@@ -32,10 +32,10 @@ public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceP
             Phone = user.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
             CreatedAt = dbUser.CreatedAt,
         };
-        var email = dbAccount.Email;
         dbContext.Accounts.Add(dbAccount);
 
-        if (!email.IsNullOrEmpty()) {
+        var emailString = dbAccount.Email;
+        if (!emailString.IsNullOrEmpty() && ActualChat.Email.TryParse(emailString, out var email)) {
             user = user.WithEmailIdentities(email);
             UserConverter.UpdateEntity(user, dbUser);
         }
