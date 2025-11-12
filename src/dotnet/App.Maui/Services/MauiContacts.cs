@@ -44,7 +44,15 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             var ownPhone = account.HasVerifiedPhone()
                 ? account.Phone?.E164Value ?? ""
                 : "";
-            var phoneParser = PhoneParser.ForOwnPhone(ownPhone);
+
+            // Get device region as fallback when user has no verified phone
+            var deviceRegion = DeviceRegionProvider.GetDeviceRegion();
+
+            // Use user's phone region if available, otherwise use device region
+            var phoneParser = !ownPhone.IsNullOrEmpty()
+                ? PhoneParser.ForOwnPhone(ownPhone)
+                : PhoneParser.ForRegion(deviceRegion);
+
             var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts
                 .GetAllAsync(cancellationToken)
                 .ConfigureAwait(false)).ToList();
