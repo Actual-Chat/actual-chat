@@ -218,7 +218,7 @@
                     _validationState = ValidationState.CannotSend;
                     UICommander.ShowError(canSendValidationMessage);
                 }
-            } else if (!(_stepModel.Contact.IsNullOrEmpty())) {
+            } else if (!_stepModel.Contact.IsNullOrEmpty()) {
                 // Parse contact as email identifier for validation
                 Email? emailId = null;
                 if (System.Net.Mail.MailAddress.TryCreate(_stepModel.Contact, out var mail))

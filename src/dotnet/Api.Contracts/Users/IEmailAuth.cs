@@ -1,4 +1,3 @@
-// filepath: d:\Projects\actual-chat\src\dotnet\Api.Contracts\Users\IEmailAuth.cs
 using MemoryPack;
 
 namespace ActualChat.Users;

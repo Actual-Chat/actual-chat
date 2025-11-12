@@ -107,12 +107,7 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
     // Helpers
 
     private static bool IsValidEmail(string email)
-    {
-        if (email.IsNullOrEmpty())
-            return false;
-
-        return MailAddress.TryCreate(email, out var mailAddress) &&
+        => MailAddress.TryCreate(email, out var mailAddress) &&
             // Ensure that the parsed address matches the original input
             mailAddress.Address == email;
-    }
 }

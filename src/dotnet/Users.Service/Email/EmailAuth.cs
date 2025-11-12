@@ -107,9 +107,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     // [CommandHandler]
     public virtual async Task<bool> OnVerifyEmail(EmailAuth_VerifyEmail command, CancellationToken cancellationToken)
     {
-        if (Invalidation.IsActive)
-            return false; // It just spawns other commands, so nothing to do here
-
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             var userId = context.Operation.Items.KeylessGet<UserId>();
