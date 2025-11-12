@@ -3,7 +3,6 @@ using Java.Nio.Channels;
 using System.Buffers;
 using ActualChat.Audio;
 using Xamarin.TensorFlow.Lite;
-using Xamarin.TensorFlow.Lite.Nnapi;
 
 namespace ActualChat.App.Maui.Audio;
 
@@ -11,7 +10,6 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
     : VoiceActivityDetector(services), IDisposable
 {
     private Interpreter? _interpreter;
-    private NnApiDelegate? _nnapiDelegate;  // For proper disposal
     private int _lastFrames = -1;           // Track current batch size for ResizeInput
 
     // Persistent recurrent state/context (flat arrays)
@@ -57,35 +55,11 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
         using var inputStream = new Java.IO.FileInputStream(afd!.FileDescriptor);
         var channel = inputStream.Channel;
         var modelBuffer = channel!.Map(FileChannel.MapMode.ReadOnly, afd.StartOffset, afd.DeclaredLength);
-
-        // Prefer NNAPI: Try with delegate + XNNPACK for fallback ops
-        try {
-            var nnapiOptions = new NnApiDelegate.Options()
-                .SetAllowFp16(true)!
-                .SetExecutionPreference(NnApiDelegate.Options.ExecutionPreferenceLowPower);
-
-            _nnapiDelegate = new NnApiDelegate(nnapiOptions);
-            var options = new Interpreter.Options()
-                .SetNumThreads(Math.Max(1, Environment.ProcessorCount - 1))!
-                .SetUseXNNPACK(true)! // Accelerate CPU fallback ops
-                .AddDelegate(_nnapiDelegate);
-
-            _interpreter = new Interpreter(modelBuffer, (Interpreter.Options)options!);
-            Log.LogInformation("VAD initialized with NNAPI (preferred) and XNNPACK fallback");
-        }
-        catch (Exception ex)
-        {
-            Log.LogError("NNAPI failed: {Message}. Falling back to CPU with XNNPACK", ex.Message);
-            _nnapiDelegate?.Close();  // Clean up failed delegate
-            _nnapiDelegate = null;
-
-            var fallbackOptions = new Interpreter.Options()
-                .SetNumThreads(Math.Max(1, Environment.ProcessorCount - 1))!
-                .SetUseXNNPACK(true);
-
-            _interpreter = new Interpreter(modelBuffer, (Interpreter.Options)fallbackOptions!);
-            Log.LogInformation("VAD initialized with XNNPACK fallback");
-        }
+        var options = new Interpreter.Options()
+            .SetNumThreads(1)!
+            .SetUseXNNPACK(true); // Accelerate CPU fallback ops
+        _interpreter = new Interpreter(modelBuffer, (Interpreter.Options)options!);
+        Log.LogInformation("VAD initialized with XNNPACK");
 
         // Cache tensor indices
         CacheTensorIndices();
@@ -113,9 +87,6 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
         _interpreter?.Close();
         _interpreter?.Dispose();
         _interpreter = null;
-
-        _nnapiDelegate?.Close();
-        _nnapiDelegate = null;
 
         // Clear buffers (optional, GC will handle)
         _framesInputBuffer = null;
@@ -241,6 +212,13 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
         }
 
         // Dynamic buffers (grow if needed, set limit)
+        var framesInputTensor = interpreter.GetInputTensor(_framesInputIdx);
+        var currentInputShape = framesInputTensor!.Shape()!;
+        if (currentInputShape[0] != frames) {
+            interpreter.ResizeInput(_framesInputIdx, [frames, WindowSamples]);
+            interpreter.AllocateTensors();
+            Log.LogInformation("VAD resized input tensor to {Frames}x{WindowSamples}", frames, WindowSamples);
+        }
         int framesBytes = sizeof(float) * frames * WindowSamples;
         if (_framesInputBuffer == null || _framesInputBuffer.Capacity() < framesBytes) {
             int newCapacity = Math.Max(framesBytes, (_framesInputBuffer?.Capacity() ?? 0) * 2);

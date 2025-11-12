@@ -170,7 +170,6 @@
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Google.AI.Edge.LiteRT" />
-    <PackageReference Include="Xamarin.Google.AI.Edge.LiteRT.GPU" />
     <PackageReference Include="System.Net.WebSockets" />
     <PackageReference Include="OpusSharp.Core" />
   </ItemGroup>
