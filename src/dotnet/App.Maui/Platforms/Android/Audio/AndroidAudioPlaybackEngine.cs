@@ -157,7 +157,8 @@ internal sealed class AndroidAudioPlaybackEngine(
 
         // Abort immediately
         try {
-            _audioTrack?.Stop();
+            if (_audioTrack is { PlayState: PlayState.Playing or PlayState.Paused } audioTrack)
+                audioTrack.Stop();
         } catch { /* ignore */ }
         _packetChannel.Writer.TryComplete();
         _decodeCts.CancelAndDisposeSilently();
@@ -188,7 +189,10 @@ internal sealed class AndroidAudioPlaybackEngine(
 
         try {
             if (_audioTrack != null) {
-                try { _audioTrack.Stop(); } catch { /* ignore */ }
+                try {
+                    if (_audioTrack is { PlayState: PlayState.Playing or PlayState.Paused } audioTrack)
+                        audioTrack.Stop();
+                } catch { /* ignore */ }
                 try { _audioTrack.Release(); } catch { /* ignore */ }
                 _audioTrack.DisposeSilently();
             }
