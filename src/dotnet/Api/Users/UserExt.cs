@@ -30,7 +30,7 @@ public static class UserExt
         phone.Require();
         var phoneIdentity = user.GetPhoneIdentity();
         if (phoneIdentity != UserIdentity.None)
-            throw StandardError.Constraint("Phone identity already set for this user.");
+            throw StandardError.Constraint("Cannot change phone identity - already set to a different phone number.");
 
         return user.WithIdentity(ToPhoneIdentity(phone))
             .WithIdentity(ToHashedPhoneIdentity(phone.Hash))
@@ -41,7 +41,7 @@ public static class UserExt
     {
         var emailIdentity = user.GetEmailIdentity();
         if (emailIdentity != UserIdentity.None && emailIdentity.SchemaBoundId != email.Value)
-            throw StandardError.Constraint("Email identity already set for this user.");
+            throw StandardError.Constraint("Cannot change email identity - already set to a different email address.");
 
         return user.WithIdentity(ToEmailIdentity(email))
             .WithIdentity(ToHashedEmailIdentity(email.Hash));
