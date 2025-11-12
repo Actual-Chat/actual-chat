@@ -255,11 +255,18 @@ internal sealed class AndroidAudioPlaybackEngine(
                 if (_remainingPreSkip < 0)
                     _remainingPreSkip = 0;
             }
-            if (_audioTrack is { } currentTrack && _listener is { } listener) {
-                currentTrack.SetNotificationMarkerPosition(_feedSamples);
-                await listener.WhenCompleted.WaitAsync(cancellationToken).ConfigureAwait(false);
-                await End(true, CancellationToken.None).ConfigureAwait(false);
-            }
+            var currentTrack = _audioTrack;
+            var listener = _listener;
+            if (currentTrack != null && listener != null && IsTrackValidForWrite(currentTrack)) {
+                var played = GetSafePlayedSamples(currentTrack);
+                if (_feedSamples > played) {
+                    currentTrack.SetNotificationMarkerPosition(_feedSamples);
+                    await listener.WhenCompleted.WaitAsync(cancellationToken).ConfigureAwait(false);
+                } else
+                    TryReportEnded(null);
+            } else
+                TryReportEnded(null);
+            await End(true, CancellationToken.None).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { /* ignore */ }
         catch (Exception e) {
