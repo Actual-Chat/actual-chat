@@ -17,7 +17,7 @@
     @apply absolute top-0 z-20;
     @apply w-full;
     @apply md:shadow-md;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+    background: linear-gradient(to bottom, var(--black-60) 40%, var(--transparent) 100%);
     transition: transform 300ms ease-in-out, opacity 300ms ease-in-out;
 }
 .image-viewer-header > .c-author {
@@ -67,15 +67,17 @@ body.hoverable .image-viewer-header .btn-h:hover {
     @apply flex-x justify-center items-center;
     @apply h-14 w-full;
     @apply md:shadow-md-top;
-    background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
-    transition: transform 200ms ease-in-out;
+    background: linear-gradient(to top, var(--black-60) 40%, var(--transparent) 100%);
+    transition: transform 200ms ease-in-out, opacity 200ms ease-in-out;
 
 }
 .image-viewer-footer.hide-to-show {
     transform: translateY(0);
+    opacity: 1;
 }
 .image-viewer-footer.show-to-hide {
     transform: translateY(3.5rem);
+    opacity: 0;
 }
 
 /* Swiper */
@@ -98,13 +100,11 @@ body.device-ios swiper-slide img {
     touch-action: none;
 }
 .media-swiper .video-wrapper {
-    max-height: calc(100vh - 7rem);
-    max-height: calc(100dvh - 7rem);
-    transition: max-width 300ms ease-in-out, max-height 300ms ease-in-out, transform 300ms ease-in-out;
-}
-.media-swiper .video-wrapper.single-attachment {
-    max-height: calc(100vh - 3.5rem);
-    max-height: calc(100dvh - 3.5rem);
+    @apply flex items-center justify-center;
+    @apply w-screen h-screen;
+    @apply my-0;
+    max-width: 100vw;
+    max-height: 100vh;
 }
 .image-viewer-modal:has(.show-to-hide) .media-swiper .video-wrapper:not(.youtube-wrapper) {
     @apply max-h-full;
@@ -115,12 +115,6 @@ body.device-ios swiper-slide img {
 .video-wrapper {
     @apply relative;
     @apply flex justify-center;
-}
-.media-swiper .video-wrapper.youtube-wrapper {
-    @apply w-full h-full;
-    max-height: calc(100vh - 3.5rem);
-    max-height: calc(100dvh - 3.5rem);
-    transform: translateY(1.75rem);
 }
 .image-viewer-modal:has(.show-to-hide) .media-swiper .video-wrapper.youtube-wrapper {
     max-height: 100%;
@@ -142,19 +136,22 @@ body.device-ios swiper-slide img {
     @apply rounded-t-xl;
     background: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 5%,  rgba(0,0,0,0.75) 20% 80%, rgba(0,0,0,0.5) 95%, rgba(0,0,0,0) 100%);
     backdrop-filter: blur(2px);
-    transition: filter 300ms ease-in-out, -webkit-filter 300ms ease-in-out;
+    transition: opacity 300ms ease-in-out;
 }
 .video-wrapper .video-control.hide-control {
     @apply z-minus;
-    filter: opacity(0);
+    opacity: 0;
+}
+.video-wrapper .video-control:not(.single-attachment) {
+    bottom: var(--footer-height);
 }
 .video-wrapper .video-control {
-    filter: opacity(1);
+    opacity: 1;
     animation: show-control 300ms linear forwards;
 }
 .image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control {
     filter: opacity(0);
-    animation: hide-control 300ms linear forwards;
+    animation: hide-control 100ms linear forwards;
 }
 @keyframes hide-control {
     0% {
@@ -174,14 +171,14 @@ body.device-ios swiper-slide img {
     }
 }
 @keyframes show-control {
-    0% {
+    0%, 50% {
         filter: opacity(0);
         transform: translateY(100%);
         z-index: -1;
     }
-    10% {
+    60% {
         filter: opacity(0.1);
-        transform: translateY(90%);
+        transform: translateY(100%);
         z-index: 10;
     }
     100% {
@@ -322,6 +319,9 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
 }
 .video-wrapper .video-plug img {
     @apply object-contain;
+}
+.image-viewer-modal .video-thumbnail {
+    @apply min-h-full max-h-full;
 }
 .image-container {
     @apply relative;

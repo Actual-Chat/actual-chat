@@ -24,12 +24,15 @@ export class VisualMediaViewer {
     private windowWidth: number = 0;
     private windowHeight: number = 0;
     private hideTimeoutId: number | null = null;
+    private hideLockedUntil: number = 0;
     private swiperEl: any;
     private thumbsEl: any;
     private swiper: any;
     private thumbs: any;
     private clickTimeout: number | null = null;
     private CLICK_DELAY = 250;
+    private isHiding = false;
+    private hideBlocked = false;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -70,8 +73,6 @@ export class VisualMediaViewer {
             this.thumbs = this.thumbsEl.swiper as SwiperElement;
             void this.initThumbs();
         }
-
-
 
         this.swiper.on('init', () => this.safeCenterThumb());
 
@@ -131,6 +132,16 @@ export class VisualMediaViewer {
                 this.onUserActivityThrottled();
             });
 
+        fromEvent(this.header, 'transitionend')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.onHideTransitionEnd());
+
+        if (this.footer) {
+            fromEvent(this.footer, 'transitionend')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => this.onHideTransitionEnd());
+        }
+
         this.setHideTimeout();
         this.updateVideoPlayback();
     }
@@ -141,6 +152,14 @@ export class VisualMediaViewer {
 
         this.disposed$.next();
         this.disposed$.complete();
+    }
+
+    private onHideTransitionEnd() {
+        if (!this.isHiding)
+            return;
+
+        this.isHiding = false;
+        this.hideBlocked = false;
     }
 
     private async initThumbs() {
@@ -160,8 +179,11 @@ export class VisualMediaViewer {
             }
 
             const index = this.swiper.realIndex ?? this.swiper.activeIndex;
+            if (index === null || index === undefined) {
+                resolve();
+                return;
+            }
             const slide = this.thumbs.slides[index];
-
             if (!slide) {
                 resolve();
                 return;
@@ -228,32 +250,15 @@ export class VisualMediaViewer {
         if (!activeSlide)
             return;
 
-        const isHeaderVisible = this.isHeaderAndFooterVisible;
+        const headerHeight = this.isHeaderAndFooterVisible ? this.headerHeight : 0;
+        const footerHeight = (this.isHeaderAndFooterVisible && this.footer) ? this.footer.offsetHeight : 0;
+
         const videoWrapper = activeSlide.querySelector('.video-wrapper') as HTMLElement;
         if (!videoWrapper)
             return;
 
-        const videoFile = videoWrapper.querySelector('video');
-        if (!videoFile)
-            return;
-
-        this.setMaxSize(videoFile);
-
-        if (!isHeaderVisible) {
-            videoWrapper.style.transform = "translateY(0)";
-            return;
-        }
-
-        const videoHeight = videoWrapper.offsetHeight;
-        const containerHeight = document.documentElement.offsetHeight - this.headerHeight;
-        if (videoHeight >= containerHeight) {
-            if (!this.footer) {
-                videoWrapper.style.transform = `translateY(${this.headerHeight / 2}px)`;
-            } else {
-                videoWrapper.style.transform = "translateY(0)";
-            }
-            return;
-        }
+        videoWrapper.style.setProperty('--header-height', `${headerHeight}px`);
+        videoWrapper.style.setProperty('--footer-height', `${footerHeight}px`);
     }
 
     private setHideTimeout() {
@@ -273,8 +278,16 @@ export class VisualMediaViewer {
     }
 
     private async showHeaderAndFooter() {
+        if (this.hideBlocked || this.isHiding) {
+            return;
+        }
+
         if (this.isHeaderAndFooterVisible) {
             this.setHideTimeout();
+            return;
+        }
+
+        if (Date.now() < this.hideLockedUntil) {
             return;
         }
 
@@ -322,6 +335,8 @@ export class VisualMediaViewer {
         if (!this.isHeaderAndFooterVisible)
             return;
 
+        this.hideLockedUntil = Date.now() + 1500;
+
         const footer = this.footer;
         const header = this.header;
         const viewer = this.imageViewer;
@@ -330,8 +345,8 @@ export class VisualMediaViewer {
             return;
 
         this.isHeaderAndFooterVisible = false;
-
-
+        this.isHiding = true;
+        this.hideBlocked = true;
 
         header.classList.remove('hide-to-show');
         viewer.classList.remove('navigation-visible');
@@ -362,6 +377,9 @@ export class VisualMediaViewer {
     }
 
     private toggleHeaderAndFooterVisibility() {
+        if (this.isHiding || this.hideBlocked)
+            return;
+
         if (this.isHeaderAndFooterVisible) {
             void this.hideHeaderAndFooter();
         } else {
