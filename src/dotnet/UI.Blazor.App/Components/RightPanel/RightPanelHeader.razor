@@ -27,13 +27,13 @@
     <div class="c-center">
         <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false"/>
         <div class="c-buttons">
-            @if (canEditProperties) {
-                <ButtonRound Class="btn-sm" Click="@OnEditChatSettingsClick">
+            @if (m.PeerContact is not null) {
+                <ButtonRound Class="btn-sm" Click="@(() => OnEditPeerContactClick(m.PeerContact))">
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
             }
-            else if (m.PeerContact is not null) {
-                <ButtonRound Class="btn-sm" Click="@(() => OnEditPeerContactClick(m.PeerContact))">
+            else if (canEditProperties) {
+                <ButtonRound Class="btn-sm" Click="@OnEditChatSettingsClick">
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
             }
