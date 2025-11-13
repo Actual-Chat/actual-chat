@@ -284,7 +284,20 @@ internal sealed class AndroidAudioPlaybackEngine(
         var played = (double)playedSamples / Constants.Audio.PlaybackSampleRate;
         var buffered = TimeSpan.FromSeconds((double)(_feedSamples - playedSamples) / Constants.Audio.PlaybackSampleRate);
         var isBufferLow = buffered < Constants.Audio.LowPlaybackBufferDuration;
-        var isPaused = _audioTrack?.PlayState is PlayState.Paused or PlayState.Stopped;
+
+        bool isPaused;
+        var track = _audioTrack;
+        if (track == null || track.Handle == IntPtr.Zero)
+            isPaused = true; // Assume ended/disposed
+        else
+            try {
+                isPaused = track.PlayState is PlayState.Paused or PlayState.Stopped;
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Error checking PlayState in ReportPlaying, assuming paused");
+                isPaused = true;
+            }
+
         try {
             return playerBackend.OnPlaying(played, isPaused, isBufferLow);
         }
@@ -297,30 +310,18 @@ internal sealed class AndroidAudioPlaybackEngine(
     private int GetSafePlayedSamples(AudioTrack? track)
     {
         try {
-            if (track is null)
+            if (track == null || track.Handle == IntPtr.Zero)
                 return GetFeedSamples();
 
             // Avoid querying head position when the track is stopped or not initialized (released)
-            try {
-                var playState = track.PlayState;
-                if (playState == PlayState.Stopped)
-                    return GetFeedSamples();
-            }
-            catch {
-                // If reading PlayState itself fails, be conservative
+            var playState = track.PlayState;
+            if (playState == PlayState.Stopped)
                 return GetFeedSamples();
-            }
 
-            try {
-                var state = track.State;
-                // Only query when initialized; after Release() it's typically Uninitialized
-                if (state != AudioTrackState.Initialized)
-                    return GetFeedSamples();
-            }
-            catch {
-                // If we cannot read state reliably, fall back
+            var state = track.State;
+            // Only query when initialized; after Release() it's typically Uninitialized
+            if (state != AudioTrackState.Initialized)
                 return GetFeedSamples();
-            }
 
             var head = track.PlaybackHeadPosition; // may throw in illegal state
             // Clamp to [0, _feedSamples] and avoid regressions
@@ -395,14 +396,14 @@ internal sealed class AndroidAudioPlaybackEngine(
         public void OnMarkerReached(AudioTrack? track)
         {
             parent.Log.LogDebug("AudioTrack marker reached");
+            parent._lastPlayedSamples = parent._feedSamples; // Align to end position
             _whenCompletedSource.TrySetResult(true);
-            if (track is null) {
-                var fallback = parent.GetSafePlayedSamples(null);
-                parent.ReportPlaying(fallback);
-                return;
-            }
 
-            var head = parent.GetSafePlayedSamples(track);
+            int head;
+            if (track is null || track.Handle == IntPtr.Zero)
+                head = parent._lastPlayedSamples;
+            else
+                head = parent.GetSafePlayedSamples(track);
             parent.ReportPlaying(head);
         }
 
