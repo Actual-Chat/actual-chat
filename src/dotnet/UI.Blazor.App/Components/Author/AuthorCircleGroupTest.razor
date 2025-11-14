@@ -4,7 +4,7 @@
     List<string> circles = ["bg-red-400", "bg-green-400", "bg-blue-400", "bg-yellow-400", "bg-gray-400", "bg-yellow-400", "bg-purple-400"];
     var avatarSize = SquareSize.Size7;
     var size = "w-7 h-7";
-    var maxLength = circles.Count > MaxIconCount ? MaxIconCount - 1 : circles.Count;
+    var maxLength = circles.Count > MaxCount ? MaxCount - 1 : circles.Count;
     var currentCount = circles.Count;
 }
 
@@ -20,13 +20,13 @@
             </div>
             zIndex--;
         }
-        if (currentCount > MaxIconCount) {
+        if (currentCount > MaxCount) {
             <div class="author-circle">
                 <div class="author-wrapper">
                     <div class="@size avatar-circle last">
                         @{
                             var avatarText = circles.Count < 11
-                                ? "+" + (circles.Count - MaxIconCount)
+                                ? "+" + (circles.Count - MaxCount)
                                 : "...";
                         }
                         <AvatarText Size="@avatarSize" Text="@avatarText"/>
@@ -39,7 +39,7 @@
 
 @code {
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public int MaxIconCount { get; set; } = 5;
+    [Parameter] public int MaxCount { get; set; } = 5;
     [Parameter] public bool IsListening { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;
 }

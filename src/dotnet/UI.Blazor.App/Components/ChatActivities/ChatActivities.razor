@@ -7,7 +7,7 @@
 
 <AuthorCircleGroup
     Class="chat-activity-group"
-    MaxIconCount="@MaxIconCount"
+    MaxCount="@MaxCount"
     Size="@size"
     IsListening="@IsListening"
     AuthorIds="@m.RecordingAuthorIds" />
@@ -15,7 +15,7 @@
 @* !!! For testing ChatActivityPanel only *@
 @* <AuthorCircleGroupTest *@
 @*      Class="chat-activity-group" *@
-@*      MaxIconCount="@MaxIconCount" *@
+@*      MaxCount="@MaxCount" *@
 @*      IsListening="@IsListening" *@
 @*      Size="@size" /> *@
 
@@ -28,7 +28,7 @@
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsListening { get; set; }
-    [Parameter] public int MaxIconCount { get; set; } = 5;
+    [Parameter] public int MaxCount { get; set; } = 5;
 
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync();

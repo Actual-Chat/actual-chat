@@ -1,0 +1,103 @@
+.video-panel {
+    @apply relative z-10;
+    @apply flex items-center justify-center;
+    @apply w-full h-full;
+    @apply px-1 md:px-2 py-0;
+    @apply bg-transparent;
+}
+.video-panel.first-time-open {
+    animation: smoothShowVideoPanel 0.3s ease-in-out forwards;
+}
+.video-panel.expanded,
+body.wide .video-panel.expanded,
+body.wide .video-panel.rp-visible.expanded,
+body.narrow .video-panel.expanded {
+    @apply fixed z-tooltip inset-0;
+    @apply max-w-none max-h-none;
+    @apply p-0;
+}
+.video-panel.expanded > .c-content {
+    @apply rounded-none;
+}
+.video-panel .video-frame {
+    @apply h-full;
+}
+.video-panel .video-frame video {
+    @apply h-full;
+}
+body.narrow .video-panel {
+    @apply min-h-48 max-h-48;
+}
+body.wide .video-panel {
+    @apply min-h-112 max-h-112;
+}
+body.wide .video-panel.rp-visible {
+    @apply min-h-96 max-h-96;
+}
+.video-panel > .c-content {
+    @apply relative;
+    @apply flex items-center justify-center;
+    @apply w-full h-full;
+    @apply rounded-lg;
+    @apply bg-black;
+}
+.video-panel.first-time-open > .c-content {
+    @apply w-0 h-0;
+    @apply rounded-none;
+    animation: smoothShowVideoPanelContent 0.3s ease-in-out 0.2s forwards;
+}
+.video-panel .btn-h.expand-btn {
+    @apply absolute top-2 right-2;
+    @apply text-white text-lg;
+}
+body.hoverable .btn-h.expand-btn:hover {
+    @apply text-white;
+    @apply opacity-80;
+}
+.video-panel .show-with-delay {
+    @apply invisible;
+}
+.video-panel .show-with-delay.show {
+    @apply visible;
+}
+
+@keyframes smoothShowVideoPanel {
+    0% {
+        filter: blur(4px) opacity(0);
+    }
+    50% {
+        filter: blur(4px) opacity(0.3);
+    }
+    80% {
+        filter: blur(2px) opacity(0.7);
+    }
+    100% {
+        filter: blur(0) opacity(1);
+    }
+}
+@keyframes smoothShowVideoPanelContent {
+    0% {
+        height: 0;
+        width: 0;
+        border-radius: 9999px;
+        filter: blur(4px) opacity(0);
+    }
+    50% {
+        height: 1rem;
+        width: 1rem;
+        border-radius: 9999px;
+        filter: blur(4px) opacity(0.1);
+    }
+    75% {
+        height: 1rem;
+        width: 100%;
+        border-radius: 0.5rem;
+        filter: blur(4px) opacity(0.2);
+    }
+    100% {
+        height: 100%;
+        width: 100%;
+        border-radius: 0.5rem;
+        filter: blur(0) opacity(1);
+    }
+}
