@@ -1,0 +1,33 @@
+.join-video-call-modal .form-block:not(:first-of-type) {
+    @apply border-none;
+}
+.join-video-call-modal .video-frame {
+    @apply flex items-center justify-center;
+    @apply min-h-56 max-h-64;
+    @apply rounded-lg;
+    @apply overflow-hidden;
+    @apply bg-03;
+}
+.join-video-call-modal .video-frame .plug-text {
+    @apply text-title-1 text-02;
+}
+.join-video-call-modal .c-members {
+    @apply flex-x items-center gap-x-4;
+}
+.join-video-call-modal .c-members .c-text {
+    @apply w-full;
+    @apply text-caption-4 text-03;
+}
+.join-video-call-modal .c-buttons {
+    @apply flex-x gap-x-3 items-center justify-end;
+    @apply py-1;
+}
+.join-video-call-modal .c-rules {
+    @apply flex-y gap-0;
+}
+.join-video-call-modal .c-rules .c-title {
+    @apply text-caption-1 text-01;
+}
+.join-video-call-modal .c-rules .c-text {
+    @apply text-caption-4 text-03;
+}

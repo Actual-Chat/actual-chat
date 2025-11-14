@@ -71,8 +71,10 @@
 @import './Components/StatusBadge/status-badge.css';
 @import './Components/SubHeader/sub-header.css';
 @import './Components/TranslationSubHeader/translation-sub-header.css';
+@import './Components/VideoPanel/video-panel.css';
 @import './Components/ChatActivityPanel/chat-activity-panel.css';
 @import './Components/IncomingShare/incoming-share-modal.css';
+@import './Components/JoinVideoCallModal/join-video-call-modal.css';
 @import './Components/NoResults/no-results.css';
 
 @import './Components/own-avatar.css';

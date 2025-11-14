@@ -7,7 +7,7 @@
 
     var avatarSize = SquareSize.Size7;
     var size = "w-7 h-7";
-    var maxLength = authorIds.Count > MaxIconCount ? MaxIconCount - 1 : authorIds.Count;
+    var maxLength = authorIds.Count > MaxCount ? MaxCount - 1 : authorIds.Count;
     var groupCls = IsListening ? "" : "non-active";
 }
 
@@ -25,13 +25,13 @@
             zIndex--;
         }
 
-        if (authorIds.Count > MaxIconCount) {
+        if (authorIds.Count > MaxCount) {
             <div class="@size author-circle-group-item last">
                 <div class="author-circle">
                     <div class="author-wrapper">
                         @{
                             var avatarText = authorIds.Count < 11
-                                ? "+" + (authorIds.Count - MaxIconCount)
+                                ? "+" + (authorIds.Count - MaxCount)
                                 : "...";
                         }
                         <AvatarText Size="@avatarSize" Text="@avatarText"/>
@@ -44,7 +44,7 @@
 
 @code {
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public int MaxIconCount { get; set; } = 5;
+    [Parameter] public int MaxCount { get; set; } = 5;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size6;
     [Parameter] public bool IsListening { get; set; }
 

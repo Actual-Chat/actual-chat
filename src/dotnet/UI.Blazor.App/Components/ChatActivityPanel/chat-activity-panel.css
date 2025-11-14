@@ -211,6 +211,10 @@ body.narrow .chat-activity-panel.listening:after {
     100% { transform: scaleY(0.6); }
 }
 
+.header-activity-panel-wrapper {
+    @apply relative;
+    animation: smoothShow 0.3s ease-in-out forwards;
+}
 .header-activity-panel-wrapper .chat-activity-panel {
     @apply absolute z-10 bottom-1 left-1 right-1;
     @apply h-12 w-auto;
@@ -220,4 +224,14 @@ body.narrow .chat-activity-panel.listening:after {
 }
 .header-activity-panel-wrapper .chat-activity-panel.listening {
     @apply border-transparent;
+}
+@keyframes smoothShow {
+    0% {
+        opacity: 0;
+        transform: translateY(-100%);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
