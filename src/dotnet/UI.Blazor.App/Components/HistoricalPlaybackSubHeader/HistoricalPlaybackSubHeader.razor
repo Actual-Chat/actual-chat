@@ -100,15 +100,13 @@
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatTitle = chat?.Title ?? "";
         var controller = await ChatPlayers.GetHistoricalChatPlayerController(chatId, cancellationToken).ConfigureAwait(false);
-        var historicalChatPlayer = controller?.ChatPlayer;
-        var playback = historicalChatPlayer?.Playback;
-        if (playback == null) {
+        if (controller == null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
             return lastState; // Keep the last state to avoid blinking
         }
-
-        var isPaused = await playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+        var isPaused = await controller.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+        var playback = controller.ChatPlayer.Playback;
         var playingTracks = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         var authorIds = new HashSet<AuthorId>();
         Moment? playingAt = null;

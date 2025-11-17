@@ -33,6 +33,23 @@ public static class NotificationHelper
             ? null
             : ImagesCache.GetOrCreate(imageUrl, DownloadImage);
 
+    public static Task<Bitmap?> GetImageAsync(string imageUrl)
+    {
+        if (imageUrl.IsNullOrEmpty())
+            return Task.FromResult<Bitmap?>(null);
+
+        if (ImagesCache.TryGetValue(imageUrl, out var bitmap))
+            return Task.FromResult<Bitmap?>(bitmap);
+
+        var tcs = TaskCompletionSourceExt.New<Bitmap?>();
+        _ = BackgroundTask.Run(() => {
+            var bitmap2 = ImagesCache.GetOrCreate(imageUrl, DownloadImage);
+            tcs.TrySetResult(bitmap2);
+            return Task.CompletedTask;
+        });
+        return tcs.Task;
+    }
+
     private static Bitmap? DownloadImage(string imageUrl)
     {
         var sw = Stopwatch.GetTimestamp();

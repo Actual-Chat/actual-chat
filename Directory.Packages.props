@@ -58,6 +58,7 @@
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Process" Version="$(XamarinAndroidLifecycle)" />
+    <PackageVersion Include="Xamarin.AndroidX.Media" Version="1.7.1" />
     <PackageVersion Include="Xamarin.Firebase.Analytics" Version="123.0.0.1" />
     <PackageVersion Include="Xamarin.Firebase.Crashlytics" Version="119.4.4" />
     <PackageVersion Include="Xamarin.Firebase.Messaging" Version="124.1.2" />

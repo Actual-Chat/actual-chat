@@ -16,6 +16,7 @@ public class HistoricalChatPlayerController(HistoricalChatPlayer chatPlayer, Cha
 
     public new HistoricalChatPlayer ChatPlayer { get; } = chatPlayer;
     public ChatId ChatId => ChatPlayer.ChatId;
+    public IState<bool> IsPaused => ChatPlayer.Playback.IsPaused;
 
     public void Pause()
     {

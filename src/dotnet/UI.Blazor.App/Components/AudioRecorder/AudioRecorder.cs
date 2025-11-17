@@ -26,19 +26,19 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private HostInfo HostInfo => Hub.HostInfo;
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private MomentClockSet Clocks => Hub.Clocks;
-    private IJSRuntime JS => Hub.JS;
     private TuneUI TuneUI => Hub.TuneUI;
 
     [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
 
+    protected AudioFocusService AudioFocusService => Hub.AudioFocusService;
+    protected AudioWidgetSession AudioWidgetSession => Hub.AudioWidgetSession;
+
     [field: AllowNull, MaybeNull]
     public MicrophonePermissionHandler MicrophonePermission
         => field ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
-    [field: AllowNull, MaybeNull]
-    public AudioFocusService AudioFocusService
-        => field ??= Hub.Services.GetRequiredService<AudioFocusService>();
+
     public IState<AudioRecorderState> State => _state;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioRecorder))]
@@ -251,6 +251,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
         DebugLog?.LogDebug("Chat #{ChatId}: recording is starting, {State}", chatId, State.Value);
+        AudioWidgetSession.OnRecodingStateChanged(chatId);
     }
 
     private void MarkStopped()
@@ -275,6 +276,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         _recordingActivity?.Dispose();
         ReleaseAudioFocus();
         DebugLog?.LogDebug("Recording is stopped, {State}", State.Value);
+        AudioWidgetSession.OnRecodingStateChanged(null);
     }
 
     private void ReleaseAudioFocus()

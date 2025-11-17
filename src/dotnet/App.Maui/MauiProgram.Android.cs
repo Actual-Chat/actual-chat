@@ -42,6 +42,16 @@ public static partial class MauiProgram
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMauiLogAccessor>(c => new AndroidLogAccessor(c.LogFor<AndroidLogAccessor>()));
         services.AddScoped<IAudioCapture>(c => new AndroidAudioCapture(c.LogFor<AndroidAudioCapture>()));
+
+        services.AddSingleton<AudioWidgetSession>(c => {
+            var chatResolver = new AudioWidgetSessionChatResolver(c);
+            var audioSession = new AudioWidgetSession(chatResolver, ChatPlayersAccessor);
+            audioSession.StateChanged += (_, _) => AudioWidgetController.OnAudioSessionStateChanged(audioSession);
+            return audioSession;
+
+            ChatPlayers? ChatPlayersAccessor()
+                => !TryGetScopedServices(out var services1) ? null : services1.GetRequiredService<ChatPlayers>();
+        });
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

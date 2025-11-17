@@ -198,6 +198,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }
+        services.AddScoped(c => new AudioWidgetSession(new AudioWidgetSessionChatResolver(c), c.GetRequiredService<ChatPlayers>));
 
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
