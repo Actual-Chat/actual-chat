@@ -12,8 +12,7 @@ public class MauiTunes : TuneUI
     private readonly AudioFocusConsumer _audioFocusConsumer;
     private IAudioFocusActivation? _audioFocusActivation;
 
-    [field:AllowNull, MaybeNull]
-    private AudioFocusService AudioFocusService => field ??= Hub.Services.GetRequiredService<AudioFocusService>();
+    private AudioFocusService AudioFocusService => ((AppUIHub)Hub).AudioFocusService;
 
     public MauiTunes(UIHub hub) : base(hub)
         => _audioFocusConsumer = new AudioFocusConsumer(AudioMode.Tunes, OnLostFocus);

@@ -81,6 +81,10 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     [field: AllowNull, MaybeNull]
     public ChatPlayers ChatPlayers => field ??= Services.GetRequiredService<ChatPlayers>();
     [field: AllowNull, MaybeNull]
+    public AudioFocusService AudioFocusService => field ??= Services.GetRequiredService<AudioFocusService>();
+    [field: AllowNull, MaybeNull]
+    public AudioWidgetSession AudioWidgetSession => field ??= Services.GetRequiredService<AudioWidgetSession>();
+    [field: AllowNull, MaybeNull]
     public AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
     [field: AllowNull, MaybeNull]
     public AudioRecorder AudioRecorder => field ??= Services.GetRequiredService<AudioRecorder>();
