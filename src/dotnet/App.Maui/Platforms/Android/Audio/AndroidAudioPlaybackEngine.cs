@@ -188,18 +188,21 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
 
         try {
-            if (_audioTrack != null) {
-                try {
-                    if (_audioTrack is { PlayState: PlayState.Playing or PlayState.Paused } audioTrack)
-                        audioTrack.Stop();
-                } catch { /* ignore */ }
-                try { _audioTrack.Release(); } catch { /* ignore */ }
-                _audioTrack.DisposeSilently();
+            var track = Interlocked.Exchange(ref _audioTrack, null);
+            if (track is not null) {
+                track.SetPlaybackPositionUpdateListener(null); // Deregister listener before releasing
+                if (track.PlayState is PlayState.Playing or PlayState.Paused)
+                    track.Stop();
+                track.Release();
+                track.Dispose();
             }
         }
         finally {
-            _audioTrack = null;
             _decodeAndFeedTask = null;
+
+            // Dispose the listener to help GC and prevent finalizer issues
+            _listener?.DisposeSilently();
+            _listener = null;
         }
 
         return ValueTask.CompletedTask;
@@ -395,6 +398,10 @@ internal sealed class AndroidAudioPlaybackEngine(
 
         public void OnMarkerReached(AudioTrack? track)
         {
+            // Defensive check: ensure parent's track is still valid
+            if (parent._audioTrack is null)
+                return;
+
             parent.Log.LogDebug("AudioTrack marker reached");
             parent._lastPlayedSamples = parent._feedSamples; // Align to end position
             _whenCompletedSource.TrySetResult(true);
@@ -409,6 +416,10 @@ internal sealed class AndroidAudioPlaybackEngine(
 
         public void OnPeriodicNotification(AudioTrack? track)
         {
+            // Defensive check: ensure parent's track is still valid
+            if (parent._audioTrack is null)
+                return;
+
             // parent.Log.LogDebug("AudioTrack periodic notification");
             if (track is null) {
                 _whenCompletedSource.TrySetResult(false);
