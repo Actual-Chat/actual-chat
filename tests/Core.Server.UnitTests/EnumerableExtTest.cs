@@ -346,6 +346,153 @@ public class EnumerableExtTest
             );
     }
 
+    [Fact]
+    public void EnsureMonotonic_Ranges_EmptySequence_ReturnsEmpty()
+        => Array.Empty<Range<long>>()
+            .EnsureMonotonic()
+            .Should()
+            .BeEmpty();
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_SingleRange_ReturnsSameRange()
+        => new[] { new Range<long>(1, 5) }
+            .EnsureMonotonic()
+            .Should()
+            .Equal(new Range<long>(1, 5));
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_AlreadyMonotonic_ReturnsUnchanged()
+        => new[]
+            {
+                new Range<long>(1, 3),
+                new Range<long>(5, 7),
+                new Range<long>(9, 11)
+            }
+            .EnsureMonotonic()
+            .Should()
+            .Equal(
+                new Range<long>(1, 3),
+                new Range<long>(5, 7),
+                new Range<long>(9, 11)
+            );
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_SameStart_KeepsLargest()
+        => new[]
+            {
+                new Range<long>(5, 10),
+                new Range<long>(5, 15), // largest
+                new Range<long>(5, 8)
+            }
+            .EnsureMonotonic()
+            .Should()
+            .Equal(new Range<long>(5, 15));
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_DecreasingStart_FiltersOut()
+        => new[]
+            {
+                new Range<long>(10, 15),
+                new Range<long>(5, 8), // Start decreased, should be filtered
+                new Range<long>(20, 25)
+            }
+            .EnsureMonotonic()
+            .Should()
+            .Equal(
+                new Range<long>(10, 15),
+                new Range<long>(20, 25)
+            );
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_MixedDuplicatesAndDecreasing_FiltersAndKeepsLargest()
+        => new[]
+            {
+                new Range<long>(1, 5),
+                new Range<long>(3, 6), // Start increased (3 > 1), becomes next candidate
+                new Range<long>(5, 10),
+                new Range<long>(5, 15), // Same Start, larger
+                new Range<long>(5, 8), // Same Start, smaller
+                new Range<long>(4, 9), // Start decreased (4 < 5), filtered
+                new Range<long>(10, 20)
+            }
+            .EnsureMonotonic()
+            .Should()
+            .Equal(
+                new Range<long>(1, 5),
+                new Range<long>(3, 6),
+                new Range<long>(5, 15),
+                new Range<long>(10, 20)
+            );
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_AllSameStart_KeepsOnlyLargest()
+        => new[]
+            {
+                new Range<long>(5, 10),
+                new Range<long>(5, 20), // largest
+                new Range<long>(5, 8),
+                new Range<long>(5, 15)
+            }
+            .EnsureMonotonic()
+            .Should()
+            .Equal(new Range<long>(5, 20));
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_AllDecreasing_ReturnsOnlyFirst()
+        => new[]
+            {
+                new Range<long>(10, 15),
+                new Range<long>(9, 14),
+                new Range<long>(8, 13),
+                new Range<long>(7, 12)
+            }
+            .EnsureMonotonic()
+            .Should()
+            .Equal(new Range<long>(10, 15));
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_MultipleSameStartGroups_KeepsLargestFromEachGroup()
+        => new[]
+            {
+                new Range<long>(1, 3),
+                new Range<long>(1, 5), // largest in first group
+                new Range<long>(10, 12),
+                new Range<long>(10, 20), // largest in second group
+                new Range<long>(10, 15),
+                new Range<long>(30, 35)
+            }
+            .EnsureMonotonic()
+            .Should()
+            .Equal(
+                new Range<long>(1, 5),
+                new Range<long>(10, 20),
+                new Range<long>(30, 35)
+            );
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_NullInput_ThrowsArgumentNullException()
+    {
+        IEnumerable<Range<long>>? nullSequence = null;
+        Action act = () => nullSequence!.EnsureMonotonic().ToList();
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void EnsureMonotonic_Ranges_IntegerType_WorksCorrectly()
+        => new[]
+            {
+                new Range<int>(1, 5),
+                new Range<int>(1, 10), // largest with Start=1
+                new Range<int>(5, 15),
+                new Range<int>(3, 7) // Start decreased, filtered
+            }
+            .EnsureMonotonic()
+            .Should()
+            .Equal(
+                new Range<int>(1, 10),
+                new Range<int>(5, 15)
+            );
+
     private static IReadOnlyList<(int? Left, int? Right)> Merge(
         IEnumerable<int> left,
         IEnumerable<int> right)

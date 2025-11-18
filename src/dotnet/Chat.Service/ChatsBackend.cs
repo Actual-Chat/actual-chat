@@ -455,13 +455,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Deduplicate conversationIdRanges by Start into a new collection
         var mergedConversationIdRanges = conversationIdRanges
-            .EnsureMonotonic(RangeExt.LongRangeComparer)
+            .EnsureMonotonic()
             .ToList();
 
         return new ChatRangeMeta(
             new Range<long>(start, end),
-            mergedEntryIdRanges.EnsureMonotonic(RangeExt.LongRangeComparer).ToArray(),
-            mergedConversationIdRanges.EnsureMonotonic(RangeExt.LongRangeComparer).ToArray(),
+            mergedEntryIdRanges.EnsureMonotonic().ToArray(),
+            mergedConversationIdRanges.EnsureMonotonic().ToArray(),
             minCount,
             previousId == 0 ? null : IdTileStack.LastLayer.GetTile(previousId).Start,
             nextId == long.MaxValue ? null : IdTileStack.LastLayer.GetTile(nextId).Start);

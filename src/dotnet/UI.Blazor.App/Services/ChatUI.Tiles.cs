@@ -68,7 +68,7 @@ public partial class ChatUI
         if (showConversations && dataQuery.Navigation is { ShouldRestoreViewPosition: false }) {
             var conversationRanges = chatRangeMetaList
                 .SelectMany(rm => rm.ConversationIdRanges)
-                .EnsureMonotonic(RangeExt.LongRangeComparer)
+                .EnsureMonotonic()
                 .ToList();
             var navigateToId = dataQuery.Navigation.EntryLid;
             var index = conversationRanges.AsSpan().BinarySearch(r => r.Contains(navigateToId) || r.Start > navigateToId);
@@ -136,13 +136,13 @@ public partial class ChatUI
                 var prefetchEntriesTask = idTiles
                     .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r))
                     .Select(t => t.Range)
-                    .EnsureMonotonic(RangeExt.LongRangeComparer)
+                    .EnsureMonotonic()
                     .Select(r => Chats.GetTile(Session, chatId, ChatEntryKind.Text, r, cancellationToken))
                     .Collect(ApiConstants.Concurrency.High, cancellationToken);
                 var prefetchConversationsTask = showConversations
                     ? idTiles
                         .Select(r => ServerIdTileStack.LastLayer.GetTile(r.Start).Range)
-                        .EnsureMonotonic(RangeExt.LongRangeComparer)
+                        .EnsureMonotonic()
                         .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
                         .Collect(ApiConstants.Concurrency.High, cancellationToken)
                     : Task.CompletedTask;
@@ -251,10 +251,10 @@ public partial class ChatUI
             var hasNextIdTile = chatRangeMeta1[^1].NextIdTileStart.HasValue;
             var entryIdRanges = chatRangeMeta1
                 .SelectMany(m => m.EntryIdRanges)
-                .EnsureMonotonic(RangeExt.LongRangeComparer);
+                .EnsureMonotonic();
             var conversationIdRanges = chatRangeMeta1
                 .SelectMany(m => m.ConversationIdRanges)
-                .EnsureMonotonic(RangeExt.LongRangeComparer);
+                .EnsureMonotonic();
 
             var excludedRanges = conversationIdRanges
                 .Where(r => !expandedConversations.Contains(ConversationId.New(chatId, r.Start)))
@@ -330,7 +330,7 @@ public partial class ChatUI
                 .SelectMany(r => IdTileStack.FirstLayer.GetCoveringTiles(r).Select(t => t.Range))
                 .SkipWhile(r => r.End <= startEntryLid)
                 .TakeWhile(r => r.Start <= endEntryLid)
-                .EnsureMonotonic(RangeExt.LongRangeComparer)
+                .EnsureMonotonic()
                 .ToList();
 
             hasMoreBefore1 = hasPreviousIdTile || (hasFulfilledStart && idTiles1.Count > 0 && idTiles1[0].Start > resultIdRanges[0].Start);
