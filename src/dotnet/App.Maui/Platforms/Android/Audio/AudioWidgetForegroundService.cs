@@ -3,7 +3,6 @@ using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.Graphics;
-using Android.Media.Session;
 using Android.OS;
 using AndroidX.Core.App;
 using Mode = ActualChat.UI.Blazor.App.Services.AudioWidgetSessionStateMode;
@@ -108,7 +107,10 @@ public class AudioWidgetForegroundService : Service
             void StartForegroundX()
             {
                 var notification = BuildNotification(title, text, bitmap, link, actions);
-                StartForeground(NotificationId, notification, serviceType);
+                if (Build.VERSION.SdkInt >= BuildVersionCodes.Q)
+                    StartForeground(NotificationId, notification, serviceType);
+                else
+                    StartForeground(NotificationId, notification);
             }
 
         case ActionPause:
@@ -130,8 +132,6 @@ public class AudioWidgetForegroundService : Service
 
     private Android.App.Notification BuildNotification(string title, string text, Bitmap? bitmap, string link, Actions actions)
     {
-        var mediaSession = new MediaSession(this, "AudioWidgetForegroundService");
-
         var resumeIntent = new Intent(this, typeof(AudioWidgetForegroundService)).SetAction(ActionResume);
         var pauseIntent = new Intent(this, typeof(AudioWidgetForegroundService)).SetAction(ActionPause);
         var stopIntent = new Intent(this, typeof(AudioWidgetForegroundService)).SetAction(ActionStop);
