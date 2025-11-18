@@ -29,7 +29,7 @@ body.narrow .chat-message-editor > .c-content {
     @apply bg-post-panel md:bg-input;
     @apply overflow-hidden;
     @apply break-all;
-    transition: border-radius 0.3s ease;
+    transition: border-radius 0.25s ease;
 }
 .post-panel.sharp-corners {
     @apply rounded-xl;
@@ -78,10 +78,11 @@ body.narrow .post-panel .message-input a {
 .post-panel .message-input-label {
     @apply flex-auto flex-x justify-items-stretch items-center;
     @apply truncate;
+    transition: height 0.25s ease;
 }
 body.narrow .text-mode .post-panel .message-input-label,
 body.narrow .narrow-panel .post-panel .message-input-label {
-    @apply mx-1 py-2;
+    @apply mx-1 my-2;
 }
 
 .post-panel .message-input .editor-content {
