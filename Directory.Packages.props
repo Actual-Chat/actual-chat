@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>11.1.4</ActualLabFusionVersion>
+    <ActualLabFusionVersion>11.2.44</ActualLabFusionVersion>
     <AspNetCoreVersion>9.0.8</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>9.0.8</EntityFrameworkCoreVersion>
@@ -255,7 +255,7 @@
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
     <PackageVersion Include="bunit" Version="1.39.5" />
-    <PackageVersion Include="AwesomeAssertions" Version="9.2.0" />
+    <PackageVersion Include="AwesomeAssertions" Version="9.3.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />

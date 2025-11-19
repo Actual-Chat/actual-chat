@@ -21,13 +21,11 @@ public static class CoreSerializerAndRpcSetup
             RpcSerializationFormat.MemoryPackV4,
             RpcSerializationFormat.MemoryPackV4C);
 
-        RpcSerializationFormatResolver.Default = RpcSerializationFormatResolver.Default with {
-            DefaultClientFormatKey =
+        RpcSerializationFormatResolver.Default
 #if DEBUG
-                "mempack4",
+            = new("mempack5");
 #else
-                isServer ? "mempack4" : "mempack4c",
+            = isServer ? new("mempack5") : new("mempack5c");
 #endif
-        };
     }
 }
