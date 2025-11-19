@@ -4,6 +4,8 @@ using Android.Content;
 using Android.Content.PM;
 using Android.Graphics;
 using Android.OS;
+using Android.Support.V4.Media;
+using Android.Support.V4.Media.Session;
 using AndroidX.Core.App;
 using Mode = ActualChat.UI.Blazor.App.Services.AudioWidgetSessionStateMode;
 
@@ -23,13 +25,10 @@ public class AudioWidgetForegroundService : Service
     }
 
     public const string ActionShow = "ACTION_SHOW";
-    public const string ActionPause = "ACTION_PAUSE";
-    public const string ActionResume = "ACTION_RESUME";
-    public const string ActionStop = "ACTION_STOP";
-
     private const string ChannelId = "audio_widget";
     private const int NotificationId = 3001;
     private string _requestId = "";
+    private MediaSessionCompat? _mediaSession;
 
     public override void OnCreate()
     {
@@ -40,6 +39,8 @@ public class AudioWidgetForegroundService : Service
     public override void OnDestroy()
     {
         _requestId = Guid.NewGuid().ToString();
+        _mediaSession?.DisposeSilently();
+        _mediaSession = null;
         base.OnDestroy();
     }
 
@@ -48,133 +49,139 @@ public class AudioWidgetForegroundService : Service
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {
         _requestId = Guid.NewGuid().ToString();
-        var action = intent?.Action;
+        if (!OrdinalEquals(intent?.Action ?? "", ActionShow))
+            return StartCommandResult.Sticky;
 
-        switch (action) {
-        case ActionShow:
-            var mode = (Mode)intent!.Extras!.GetInt(IntentExtras.Mode);
-            var chatTitle = intent.Extras!.GetString(IntentExtras.ChatTitle) ?? "Unknown chat";
-            var chatSid = intent.Extras!.GetString(IntentExtras.ChatId);
-            var chatPicUrl = intent.Extras!.GetString(IntentExtras.ChatPicUri) ?? "";
-            var extraChatCount = intent.Extras!.GetInt(IntentExtras.ExtraChatCount);
-            var isPaused = intent.Extras!.GetBoolean(IntentExtras.IsPaused);
-            var text = mode switch {
-                Mode.Recording => "Recording",
-                Mode.RealtimePlayback => "Listening",
-                Mode.HistoricalPlayback => "Historical listening",
-                _ => throw new ArgumentOutOfRangeException()
+        var mode = (Mode)intent!.Extras!.GetInt(IntentExtras.Mode);
+        var chatTitle = intent.Extras!.GetString(IntentExtras.ChatTitle) ?? "Unknown chat";
+        var chatSid = intent.Extras!.GetString(IntentExtras.ChatId);
+        var chatPicUrl = intent.Extras!.GetString(IntentExtras.ChatPicUri) ?? "";
+        var extraChatCount = intent.Extras!.GetInt(IntentExtras.ExtraChatCount);
+        var isPaused = intent.Extras!.GetBoolean(IntentExtras.IsPaused);
+
+        if (_mediaSession is null) {
+            _mediaSession = new MediaSessionCompat(this, "AudioWidgetSession") {
+                Active = true,
             };
-            var title = chatTitle;
-            if (extraChatCount > 0) {
-                if (extraChatCount == 1)
-                    title += " (+ 1 chat)";
-                else
-                    title += $" (+ {extraChatCount} chats)";
-            }
-
-            var serviceType = mode is Mode.Recording
-                ? ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback
-                : ForegroundService.TypeMediaPlayback;
-            var actions = mode is Mode.HistoricalPlayback
-                ? GetHistoricalPlaybackActions(isPaused)
-                : Actions.None;
-            var chatId = ChatId.Parse(chatSid);
-            var link = Links.Chat(chatId);
-            Bitmap? bitmap = null;
-            if (!chatPicUrl.IsNullOrEmpty()) {
-                var bitmapTask = NotificationHelper.GetImageAsync(chatPicUrl);
-                if (bitmapTask.IsCompleted) {
-                    if (bitmapTask.IsCompletedSuccessfully) {
- #pragma warning disable VSTHRD002
-                        bitmap = bitmapTask.Result;
- #pragma warning restore VSTHRD002
-                    }
-                }
-                else {
-                    var lastRequestId = _requestId;
-                    _ = bitmapTask.ContinueWith(t => {
-                            if (Equals(lastRequestId, _requestId)) {
-                                bitmap = t.Result;
-                                StartForegroundX();
-                            }
-                        },
-                        TaskScheduler.FromCurrentSynchronizationContext());
-                }
-            }
-            StartForegroundX();
-            break;
-
-            void StartForegroundX()
-            {
-                var notification = BuildNotification(title, text, bitmap, link, actions);
-                if (Build.VERSION.SdkInt >= BuildVersionCodes.Q)
-                    StartForeground(NotificationId, notification, serviceType);
-                else
-                    StartForeground(NotificationId, notification);
-            }
-
-        case ActionPause:
-            AudioWidgetController.Pause();
-            break;
-        case ActionStop:
-            AudioWidgetController.Stop();
-            break;
-        case ActionResume:
-            AudioWidgetController.Resume();
-            break;
+#pragma warning disable CS0618
+            // Type or member is obsolete
+            _mediaSession.SetFlags(
+                MediaSessionCompat.FlagHandlesMediaButtons
+                | MediaSessionCompat.FlagHandlesTransportControls);
+#pragma warning restore CS0618
+            // Type or member is obsolete
+            _mediaSession.SetCallback(new Callback());
         }
 
+        var text = mode switch {
+            Mode.Recording => "Recording",
+            Mode.RealtimePlayback => "Listening",
+            Mode.HistoricalPlayback => "Historical listening",
+            _ => throw new ArgumentOutOfRangeException(nameof(mode)),
+        };
+        var title = chatTitle;
+        if (extraChatCount > 0)
+            title += extraChatCount == 1 ? " (+ 1 chat)" : $" (+ {extraChatCount} chats)";
+        var chatId = ChatId.Parse(chatSid);
+        var link = Links.Chat(chatId);
+
+        long capabilities = 0;
+        if (mode is Mode.HistoricalPlayback) {
+            capabilities |= isPaused ? PlaybackStateCompat.ActionPlay : PlaybackStateCompat.ActionPause;
+            capabilities |= PlaybackStateCompat.ActionStop;
+        }
+        var playbackStateCompat = new PlaybackStateCompat.Builder()
+            .SetState(
+                mode is Mode.HistoricalPlayback && isPaused
+                    ? PlaybackStateCompat.StatePaused
+                    : PlaybackStateCompat.StatePlaying,
+                PlaybackStateCompat.PlaybackPositionUnknown,
+                1.0f)!
+            .SetActions(capabilities)!
+            .Build();
+        _mediaSession.SetPlaybackState(playbackStateCompat);
+
+        var lastRequestId = _requestId;
+        ResolveBitmapAndRun(
+            chatPicUrl,
+            bitmap => {
+                // Callback can be called twice if the image could not be resolved synchronously.
+                // The first time it will be null, the second time it will be the bitmap.
+                if (!Equals(lastRequestId, _requestId))
+                    return;
+
+                var metadata = new MediaMetadataCompat.Builder()
+                    .PutString(MediaMetadataCompat.MetadataKeyTitle, title)!
+                    .PutString(MediaMetadataCompat.MetadataKeyArtist, text)!
+                    .PutBitmap(MediaMetadataCompat.MetadataKeyAlbumArt, bitmap)!
+                    .Build();
+                _mediaSession.SetMetadata(metadata);
+                var notification = BuildNotification(_mediaSession, link);
+                StartForeground1(notification);
+            });
+
         return StartCommandResult.Sticky;
+
+        void StartForeground1(Android.App.Notification notification)
+        {
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.Q) {
+                var serviceType = mode is Mode.Recording
+                    ? ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback
+                    : ForegroundService.TypeMediaPlayback;
+                StartForeground(NotificationId, notification, serviceType);
+            }
+            else
+                StartForeground(NotificationId, notification);
+        }
     }
 
-    private static Actions GetHistoricalPlaybackActions(bool isPaused)
-        => isPaused ? Actions.Resume | Actions.Stop : Actions.Pause | Actions.Stop;
-
-    private Android.App.Notification BuildNotification(string title, string text, Bitmap? bitmap, string link, Actions actions)
+    private static void ResolveBitmapAndRun(string uri, Action<Bitmap?> callback)
     {
-        var resumeIntent = new Intent(this, typeof(AudioWidgetForegroundService)).SetAction(ActionResume);
-        var pauseIntent = new Intent(this, typeof(AudioWidgetForegroundService)).SetAction(ActionPause);
-        var stopIntent = new Intent(this, typeof(AudioWidgetForegroundService)).SetAction(ActionStop);
+        if (uri.IsNullOrEmpty()) {
+            callback(null);
+            return;
+        }
 
-        var viewIntent = NotificationHelper.CreateViewIntent(this, link);// PackageManager!.GetLaunchIntentForPackage(PackageName!)!;
+        var bitmapTask = NotificationHelper.GetImageAsync(uri);
+        if (bitmapTask.IsCompleted) {
+            if (!bitmapTask.IsCompletedSuccessfully)
+                callback(null);
+            else {
+#pragma warning disable VSTHRD002
+                callback(bitmapTask.Result);
+#pragma warning restore VSTHRD002
+            }
+            return;
+        }
 
-        var resumePending = PendingIntent.GetService(this, 0, resumeIntent, PendingIntentFlags.Immutable);
-        var pausePending = PendingIntent.GetService(this, 1, pauseIntent, PendingIntentFlags.Immutable);
-        var stopPending = PendingIntent.GetService(this, 2, stopIntent, PendingIntentFlags.Immutable);
+        _ = bitmapTask.ContinueWith(t => {
+                if (!t.IsCompletedSuccessfully)
+                    return;
+
+#pragma warning disable VSTHRD002
+                var bitmap = bitmapTask.Result;
+#pragma warning restore VSTHRD002
+                MainThread.BeginInvokeOnMainThread(() => {
+                    callback(bitmap);
+                });
+            },
+            TaskScheduler.Default);
+    }
+
+    private Android.App.Notification BuildNotification(MediaSessionCompat mediaSession, string link)
+    {
+        // PackageManager!.GetLaunchIntentForPackage(PackageName!)!;
+        var viewIntent = NotificationHelper.CreateViewIntent(this, link);
         var viewPending = PendingIntent.GetActivity(this, 3, viewIntent, PendingIntentFlags.Immutable);
 
         var builder = new NotificationCompat.Builder(this, ChannelId)
-            .SetContentTitle(title)!
-            .SetContentText(text)!
-            .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)! //.SetSmallIcon(Android.Resource.Drawable.IcMediaPlay)!
+            .SetSmallIcon(ResourceConstant.Drawable.notification_app_icon)!
             .SetContentIntent(viewPending)!
-            .SetOngoing(true)!
-            .SetPriority((int)NotificationPriority.Low)!
-            .SetVisibility((int)NotificationVisibility.Public)!;
-
-        if (bitmap is not null)
-            builder.SetLargeIcon(bitmap);
-
-        var actionIndices = new List<int>();
-        var actionIndex = 0;
-
-        if (actions.HasFlag(Actions.Resume)) {
-            builder.AddAction(Android.Resource.Drawable.IcMediaPlay, "Play", resumePending);
-            actionIndices.Add(actionIndex++);
-        }
-
-        if (actions.HasFlag(Actions.Pause)) {
-            builder.AddAction(Android.Resource.Drawable.IcMediaPause, "Pause", pausePending);
-            actionIndices.Add(actionIndex++);
-        }
-
-        if (actions.HasFlag(Actions.Stop)) {
-            builder.AddAction(Android.Resource.Drawable.IcMenuCloseClearCancel, "Stop", stopPending);
-            actionIndices.Add(actionIndex);
-        }
+            .SetOngoing(true)!;
 
         var mediaStyle = new AndroidX.Media.App.NotificationCompat.MediaStyle()
-            .SetShowActionsInCompactView(actionIndices.ToArray())!;
+            .SetMediaSession(mediaSession.SessionToken)!
+            .SetShowActionsInCompactView(0);
         builder.SetStyle(mediaStyle);
 
         return builder.Build()!;
@@ -188,13 +195,15 @@ public class AudioWidgetForegroundService : Service
     }
 
     // Nested types
-
-    [Flags]
-    private enum Actions
+    private class Callback : MediaSessionCompat.Callback
     {
-        None    = 0x0,
-        Resume  = 0x1,
-        Pause   = 0x2,
-        Stop    = 0x4,
+        public override void OnPlay()
+            => AudioWidgetController.Resume();
+
+        public override void OnPause()
+            => AudioWidgetController.Pause();
+
+        public override void OnStop()
+            => AudioWidgetController.Stop();
     }
 }
