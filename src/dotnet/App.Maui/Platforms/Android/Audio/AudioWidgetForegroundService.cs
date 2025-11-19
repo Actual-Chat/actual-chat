@@ -39,8 +39,12 @@ public class AudioWidgetForegroundService : Service
     public override void OnDestroy()
     {
         _requestId = Guid.NewGuid().ToString();
-        _mediaSession?.DisposeSilently();
-        _mediaSession = null;
+        if (_mediaSession is not null) {
+            _mediaSession.Active = false;
+            _mediaSession.Release();
+            _mediaSession.DisposeSilently();
+            _mediaSession = null;
+        }
         base.OnDestroy();
     }
 
