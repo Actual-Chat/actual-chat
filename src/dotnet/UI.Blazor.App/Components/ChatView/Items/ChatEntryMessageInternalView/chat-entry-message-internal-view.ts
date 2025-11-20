@@ -20,6 +20,7 @@ export class ChatEntryMessageInternalView {
     private classObserver: MutationObserver;
     private messageHeightObserver: MutationObserver;
     private messageWidthObserver: ResizeObserver;
+    private createPlayableTextObserver: MutationObserver;
     private observerOptions = {
         childList: true,
         subtree: true,
@@ -68,6 +69,13 @@ export class ChatEntryMessageInternalView {
             this.messageMarkup.style.height = this.markupHeight + 'px';
             this.observerHandler(true);
         }
+        if (!this.playableText && isStreaming) {
+            this.createPlayableTextObserver = new MutationObserver(this.smoothShowPlayableText);
+            this.createPlayableTextObserver.observe(this.messageMarkup, {
+                childList: true,
+                subtree: true,
+            });
+        }
     }
 
     public dispose() {
@@ -80,6 +88,7 @@ export class ChatEntryMessageInternalView {
         this.messageHeightObserver?.disconnect();
         this.messageWidthObserver?.disconnect();
         this.classObserver?.disconnect();
+        this.createPlayableTextObserver?.disconnect();
     }
 
     private getRemInPixels(): number {
@@ -161,6 +170,41 @@ export class ChatEntryMessageInternalView {
 
                     if ([...node.classList].some(cls => importantClasses.has(cls))) {
                         this.changeSizeForText(true);
+                    }
+                });
+            }
+
+            if (mutation.type === 'characterData' &&
+                mutation.target.nodeType === Node.TEXT_NODE) {
+                const element = (mutation.target.parentElement?.closest(
+                    '.change-item, .changed-item, .changes, .retained'
+                )) as HTMLElement | null;
+
+                if (element) {
+                    this.changeSizeForText(true);
+                } else {
+                    this.changeSizeForText();
+                }
+            }
+        });
+    }
+
+    private smoothShowPlayableText: MutationCallback = (mutations) => {
+        mutations.forEach(mutation => {
+            const targetEl = mutation.target instanceof HTMLElement
+                ? mutation.target
+                : mutation.target.parentElement;
+
+            if (!targetEl)
+                return;
+
+            if (mutation.type === 'childList') {
+                mutation.addedNodes.forEach((node) => {
+                    if (!(node instanceof HTMLElement))
+                        return;
+
+                    if (node.classList.contains('playable-text-markup')) {
+                        node.classList.add('smooth-show');
                     }
                 });
             }
