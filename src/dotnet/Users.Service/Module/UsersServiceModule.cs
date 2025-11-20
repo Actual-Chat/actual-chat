@@ -117,7 +117,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // IAuth
         if (rpcHost.IsApiHost)
-            rpc.Service<IAuth>().IsServer(typeof(IAuth)); // IAuth is registered below
+            rpc.Configure<IAuth>().IsServer(typeof(IAuth)); // IAuth is registered below
 
         // Accounts
         rpcHost.AddLocalApi<IAccounts, Accounts>(); // Used by Chats, etc.

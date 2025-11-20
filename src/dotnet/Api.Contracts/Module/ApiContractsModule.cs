@@ -103,12 +103,13 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
     {
         var hostKind = HostInfo.HostKind;
         fusion.Rpc.AddWebSocketClient(c => {
-            var options = new RpcWebSocketClient.Options() {
-                ConnectionUriResolver = (client, peer) => {
+            var options = RpcWebSocketClientOptions.Default with {
+                ConnectionUriResolver = peer => {
                     if (peer.Ref != RpcPeerRef.Default)
                         throw StandardError.Internal("Client-side RpcPeer.Ref != RpcPeerRef.Default.");
 
-                    var settings = client.Settings;
+                    var client = peer.Hub.Services.GetRequiredService<RpcWebSocketClient>();
+                    var settings = client.Options;
                     var urlMapper = client.Services.UrlMapper();
                     var sb = ActualLab.Text.StringBuilderExt.Acquire();
                     sb.Append(urlMapper.WebsocketBaseUrl);
@@ -129,7 +130,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                 // - PlatformNotSupportedException: Operation is not supported on this platform.
                 // So the code below should never run in WASM.
                 options = options with {
-                    WebSocketOwnerFactory = (client, peer) => {
+                    WebSocketOwnerFactory = peer => {
                         var ws = new ClientWebSocket();
                         var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
                         ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
@@ -137,7 +138,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                             ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id);
                         if (Constants.Rpc.Compression.IsClientSideEnabled)
                             ws.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
-                        return new WebSocketOwner(peer.Ref.Address, ws, client.Services);
+                        return new WebSocketOwner(peer.Ref.Address, ws, peer.Hub.Services);
 #if false
                         // Non-native Android WebSocket stack requires SocketsHttpHandler to support TLS 1.2
                         var handler = new SocketsHttpHandler() {
@@ -145,7 +146,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                                 EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
                             },
                         };
-                        return new WebSocketOwner(peer.Ref.Address, ws, client.Services) { Handler = handler };
+                        return new WebSocketOwner(peer.Ref.Address, ws, peer.Hub.Services) { Handler = handler };
 #endif
                     },
                 };

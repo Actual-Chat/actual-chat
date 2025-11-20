@@ -62,10 +62,11 @@ public sealed class CoreModule(IServiceProvider moduleServices)
             var rpcCallLogLevel = CoreConstants.DebugMode.RpcCalls.ApiClient && isDevelopmentInstance
                 ? LogLevel.Debug
                 : LogLevel.None;
-            services.AddSingleton<RpcPeerFactory>(_
-                => (hub, peerRef) => peerRef.IsServer
+            services.AddSingleton<RpcPeerOptions>(_ => RpcPeerOptions.Default with {
+                PeerFactory = (hub, peerRef) => peerRef.IsServer
                     ? throw StandardError.Internal("Server peer is requested on the client side!")
-                    : new RpcClientPeer(hub, peerRef) { CallLogLevel = rpcCallLogLevel });
+                    : new RpcClientPeer(hub, peerRef) { CallLogLevel = rpcCallLogLevel }
+            });
 
             RpcServiceRegistry.ConstructionDumpLogLevel = hostKind.IsWasmApp() && isDevelopmentInstance
                 ? LogLevel.Debug
@@ -105,7 +106,7 @@ public sealed class CoreModule(IServiceProvider moduleServices)
 
         // Features
         fusion.AddClient<IServerFeaturesClient>();
-        fusion.RpcService<IServerFeaturesClient>(tryGetExisting: true).HasName(nameof(IServerFeatures));
+        fusion.Configure<IServerFeaturesClient>().HasName(nameof(IServerFeatures));
         fusion.AddService<IServerFeatures, ServerFeaturesClient>();
     }
 }

@@ -7,7 +7,7 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
 
     public readonly ResolvedMeshRef Target;
     public readonly int Version;
-    public override CancellationToken RerouteToken { get; }
+    public CancellationToken RerouteToken { get; }
 
     internal MeshRpcPeerRef(ResolvedMeshRef target, int version)
     {

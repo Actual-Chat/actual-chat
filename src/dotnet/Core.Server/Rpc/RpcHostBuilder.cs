@@ -37,8 +37,6 @@ public readonly struct RpcHostBuilder
             throw StandardError.Internal("Something is off: RpcWebSocketServer is already added.");
 
         // Common services
-        if (IsApiHost)
-            RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto(); // Only for API host!
         RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.Information;
         Services.AddSingleton(c => new BackendServiceDefs(c));
         Services.AddSingleton(c => new RpcBackendHelpers(c));
@@ -49,7 +47,7 @@ public readonly struct RpcHostBuilder
 
         // Debug stuff
         if (CoreConstants.DebugMode.RpcCalls.AnyServerInboundDelay is { } delay)
-            Rpc.AddInboundMiddleware(c => new RpcRandomDelayMiddleware(c) {
+            Rpc.AddInboundCallPreprocessor(c => new RpcRandomDelayInboundCallPreprocessor() {
                 Delay = delay,
             });
     }
@@ -98,7 +96,7 @@ public readonly struct RpcHostBuilder
         if (IsApiHost || makeLocal) // Add the implementation on API hosts or if requested explicitly
             AddLocal(serviceType, implementationType);
         if (IsApiHost) // Expose the service only on API hosts
-            Rpc.Service(serviceType).HasName(name).IsServer(serviceType);
+            Rpc.Configure(serviceType).HasName(name).IsServer(serviceType);
         return this;
     }
 
@@ -219,44 +217,57 @@ public readonly struct RpcHostBuilder
     {
         Fusion.AddWebServer();
 
-        // Replace RpcWebSocketServer.Options
-        Services.AddSingleton(RpcWebSocketServer.Options.Default with {
+        // Replace RpcWebSocketServerOptions
+        Services.AddSingleton(RpcWebSocketServerOptions.Default with {
             ExposeBackend = true,
             ConfigureWebSocket = () => new WebSocketAcceptContext() {
                 DangerousEnableCompression = Constants.Rpc.Compression.IsServerSideEnabled,
             },
         });
 
-        // Replace RpcServiceDef and RpcMethodDef builders
-        Services.AddSingleton<RpcServiceDefBuilder>(_ => (hub, service) => new MeshRpcServiceDef(hub, service));
-        Services.AddSingleton<RpcMethodDefBuilder>(_ => (service, method) => new MeshRpcMethodDef(service, method));
-
         // Remove SessionMiddleware - we don't use it
         Services.RemoveAll<SessionMiddleware.Options>();
         Services.RemoveAll<SessionMiddleware>();
 
-        // Replace DefaultSessionReplacerRpcMiddleware
-        Rpc.RemoveInboundMiddleware<DefaultSessionReplacerRpcMiddleware>();
-        Rpc.AddInboundMiddleware<RpcBackendDefaultSessionReplacerMiddleware>();
+        // Replace default session replacer preprocessor
+        Rpc.RemoveInboundCallPreprocessor<RpcDefaultSessionInboundCallPreprocessor>();
+        Rpc.AddInboundCallPreprocessor<RpcBackendDefaultSessionReplacerMiddleware>();
 
-        // Replace RpcServerConnectionFactory
-        Services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<RpcBackendHelpers>().GetServerConnection);
+        // Replace ServerConnectionFactory in RpcPeerOptions
+        Services.AddSingleton<RpcPeerOptions>(c => {
+            var helpers = c.GetRequiredService<RpcBackendHelpers>();
+            return RpcPeerOptions.Default with {
+                ServerConnectionFactory = helpers.GetServerConnection
+            };
+        });
     }
 
     private void AddRpcClient()
     {
-        Rpc.AddWebSocketClient();
-
         // Additional services
         Services.AddSingleton(c => new MeshRpcPeerRefs(c));
 
-        // Replace RpcCallRouter
-        Services.AddSingleton<RpcCallRouterFactory>(c => c.GetRequiredService<RpcBackendHelpers>().RouteCall);
-
-        // Replace RpcWebSocketClient.Options
-        Services.AddSingleton(c => RpcWebSocketClient.Options.Default with {
-            ConnectionUriResolver = c.GetRequiredService<RpcBackendHelpers>().GetConnectionUri,
+        // Replace RpcOutboundCallOptions with custom router
+        Services.AddSingleton<RpcOutboundCallOptions>(c => {
+            var helpers = c.GetRequiredService<RpcBackendHelpers>();
+            return RpcOutboundCallOptions.Default with {
+                RouterFactory = helpers.RouteCall
+            };
         });
+
+        // Capture IsApiHost in a local variable to avoid struct lambda issue
+        var isApiHost = IsApiHost;
+
+        // Replace RpcWebSocketClientOptions
+        Services.AddSingleton(c => {
+            var helpers = c.GetRequiredService<RpcBackendHelpers>();
+            return RpcWebSocketClientOptions.Default with {
+                ConnectionUriResolver = helpers.GetConnectionUri,
+                UseAutoFrameDelayerFactory = isApiHost, // Only for API host!
+            };
+        });
+
+        Rpc.AddWebSocketClient();
 
         // Replace RpcClientPeerReconnectDelayer
         Services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) { Delays = RetryDelaySeq.Exp(1, 10) });
@@ -274,13 +285,14 @@ public readonly struct RpcHostBuilder
         var backendOutboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.BackendClient && isDevelopmentInstance
             ? LogLevel.Debug
             : LogLevel.None;
-        Services.AddSingleton<RpcPeerFactory>(_
-            => (hub, peerRef) => peerRef.IsServer
+        Services.AddSingleton<RpcPeerOptions>(c => RpcPeerOptions.Default with {
+            PeerFactory = (hub, peerRef) => peerRef.IsServer
                 ? new RpcServerPeer(hub, peerRef) {
                     CallLogLevel = peerRef.IsBackend ? backendInboundCallLogLevel : serverInboundCallLogLevel,
                 }
                 : new RpcClientPeer(hub, peerRef) {
                     CallLogLevel = backendOutboundCallLogLevel,
-                });
+                }
+        });
     }
 }

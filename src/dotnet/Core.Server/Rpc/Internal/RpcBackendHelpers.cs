@@ -42,7 +42,7 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
             return peerRef;
         };
 
-    public Uri? GetConnectionUri(RpcWebSocketClient client, RpcClientPeer peer)
+    public Uri? GetConnectionUri(RpcClientPeer peer)
     {
         if (peer.Ref is not MeshRpcPeerRef peerRef)
             throw new RpcReconnectFailedException($"Unsupported RpcPeerRef type: {peer.Ref}.");
@@ -57,7 +57,8 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
             return null; // null Uri = peer will hang waiting for RpcPeerRef.RerouteToken cancellation
         }
 
-        var settings = client.Settings;
+        var client = peer.Hub.Services.GetRequiredService<RpcWebSocketClient>();
+        var settings = client.Options;
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("ws://");
         sb.Append(node.Endpoint);
