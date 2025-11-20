@@ -9,6 +9,11 @@
     var entry = m.Entry;
     var oldTranslation = _rendered?.Translation ?? m.Translation;
     var oldStreaming = _rendered?.Streaming.IsStreaming ?? m.Streaming.IsStreaming;
+    var oldRetainedText = _rendered?.Streaming.RetainedText;
+    if (oldStreaming && !State.Value.IsStreaming) {
+        _temporaryText = oldRetainedText ?? "oldRetainedText is null";
+    }
+
     _rendered = m;
     var isSimpleMarkup = markup is PlainTextMarkup or PlayableTextMarkup;
     var streamingCls = "";
@@ -87,6 +92,14 @@
             @TranslationFragments.TranslationMark(TranslationState.Translating)
         }
     } else {
+        @if (!_temporaryText.IsNullOrEmpty()) {
+            <div class="temporary-container hide">
+                @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
+                    <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
+                }
+                <span>@_temporaryText</span>
+            </div>
+        }
         <CascadingValue Value="@entry" IsFixed="true">
             @if (isSimpleMarkup) {
                 <CascadingValue Value="@statusFragment">
@@ -108,6 +121,7 @@
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
     private static readonly IThreadSafeLruCache<TextEntryId, TranscriptStreamer> StreamersCache = new ThreadSafeLruCache<TextEntryId, TranscriptStreamer>(100);
 
+    private string? _temporaryText;
     private Model? _rendered;
     private TranscriptStreamer _streamer = null!;
     private TextEntryId _textEntryId = null!;
