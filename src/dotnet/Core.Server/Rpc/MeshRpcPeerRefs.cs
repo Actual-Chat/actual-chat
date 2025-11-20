@@ -37,10 +37,10 @@ public sealed class MeshRpcPeerRefs
 
         // Double-check locking
         // ReSharper disable once InconsistentlySynchronizedField
-        if (_peerRefs.TryGetValue(meshRef, out var peerRef) && !peerRef.RerouteToken.IsCancellationRequested)
+        if (_peerRefs.TryGetValue(meshRef, out var peerRef) && !peerRef.RouteState.IsChanged())
             return peerRef;
         lock (_lock) {
-            if (_peerRefs.TryGetValue(meshRef, out peerRef) && !peerRef.RerouteToken.IsCancellationRequested)
+            if (_peerRefs.TryGetValue(meshRef, out peerRef) && !peerRef.RouteState.IsChanged())
                 return peerRef;
 
             var version = (peerRef?.Version ?? 0) + 1;

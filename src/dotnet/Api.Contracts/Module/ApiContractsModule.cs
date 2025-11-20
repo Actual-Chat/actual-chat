@@ -108,7 +108,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                     if (peer.Ref != RpcPeerRef.Default)
                         throw StandardError.Internal("Client-side RpcPeer.Ref != RpcPeerRef.Default.");
 
-                    var client = peer.Hub.Services.GetRequiredService<RpcWebSocketClient>();
+                    var client = c.GetRequiredService<RpcWebSocketClient>();
                     var settings = client.Options;
                     var urlMapper = client.Services.UrlMapper();
                     var sb = ActualLab.Text.StringBuilderExt.Acquire();
@@ -138,7 +138,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                             ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id);
                         if (Constants.Rpc.Compression.IsClientSideEnabled)
                             ws.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
-                        return new WebSocketOwner(peer.Ref.Address, ws, peer.Hub.Services);
+                        return new WebSocketOwner(peer.Ref.Address, ws, c);
 #if false
                         // Non-native Android WebSocket stack requires SocketsHttpHandler to support TLS 1.2
                         var handler = new SocketsHttpHandler() {
@@ -146,7 +146,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                                 EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
                             },
                         };
-                        return new WebSocketOwner(peer.Ref.Address, ws, peer.Hub.Services) { Handler = handler };
+                        return new WebSocketOwner(peer.Ref.Address, ws, c) { Handler = handler };
 #endif
                     },
                 };

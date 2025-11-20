@@ -62,11 +62,12 @@ public sealed class CoreModule(IServiceProvider moduleServices)
             var rpcCallLogLevel = CoreConstants.DebugMode.RpcCalls.ApiClient && isDevelopmentInstance
                 ? LogLevel.Debug
                 : LogLevel.None;
-            services.AddSingleton<RpcPeerOptions>(_ => RpcPeerOptions.Default with {
-                PeerFactory = (hub, peerRef) => peerRef.IsServer
-                    ? throw StandardError.Internal("Server peer is requested on the client side!")
-                    : new RpcClientPeer(hub, peerRef) { CallLogLevel = rpcCallLogLevel }
-            });
+            services.AddSingleton<RpcPeerOptions>(
+                _ => RpcPeerOptions.Default with {
+                    PeerFactory = (hub, peerRef) => peerRef.IsServer
+                        ? throw StandardError.Internal("Server peer is requested on the client side!")
+                        : new RpcClientPeer(hub, peerRef) { CallLogLevel = rpcCallLogLevel }
+                });
 
             RpcServiceRegistry.ConstructionDumpLogLevel = hostKind.IsWasmApp() && isDevelopmentInstance
                 ? LogLevel.Debug
