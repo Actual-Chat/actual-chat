@@ -10,8 +10,8 @@
     var oldTranslation = _rendered?.Translation ?? m.Translation;
     var oldStreaming = _rendered?.Streaming.IsStreaming ?? m.Streaming.IsStreaming;
     var oldRetainedText = _rendered?.Streaming.RetainedText;
-    if (oldStreaming && !State.Value.IsStreaming) {
-        _temporaryText = oldRetainedText ?? "oldRetainedText is null";
+    if (oldStreaming && !m.IsStreaming) {
+        _temporaryText = oldRetainedText;
     }
 
     _rendered = m;
