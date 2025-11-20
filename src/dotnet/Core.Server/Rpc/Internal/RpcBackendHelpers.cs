@@ -1,3 +1,5 @@
+using ActualChat.Hosting;
+using ActualLab.Caching;
 using ActualLab.Interception;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
@@ -22,27 +24,29 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
         _whenRoutingStarted = null;
     }
 
-    public Func<ArgumentList, RpcPeerRef> RouteCall(RpcMethodDef methodDef)
-        => arguments => {
-            // When invalidation is active, commands must be routed to the local peer to handle it locally
-            if (methodDef.Kind is RpcMethodKind.Command && Invalidation.IsActive)
-                return RpcPeerRef.Local;
+    public Func<ArgumentList, RpcPeerRef> RouterFactory(RpcMethodDef methodDef)
+    {
+        var serviceDef = methodDef.Service;
+        if (!serviceDef.IsBackend)
+            return _ => throw StandardError.Internal("Only backend service methods can be called by servers.");
 
-            var serviceDef = methodDef.Service;
-            if (!serviceDef.IsBackend)
-                throw StandardError.Internal("Only backend service methods can be called by servers.");
+        var backendServiceDef = BackendServiceDefs[serviceDef.Type];
+        if (backendServiceDef.ServiceMode is not ServiceMode.Client and not ServiceMode.Distributed)
+            return _ => throw StandardError.Internal(
+                $"{backendServiceDef} must be a ServiceMode.Client or Distributed mode service.");
 
-            var backendServiceDef = BackendServiceDefs[serviceDef.Type].RequireClientOrDistributedServiceMode();
+        var typedRouter = GetTypedRouter(methodDef.Parameters.GetValueOrDefault(0)?.ParameterType);
+        return args => {
             if (_whenRoutingStarted is { Task.IsCompleted: false })
                 return RpcPeerRef.Local;
 
-            var callRouter = methodDef.GetCallRouter();
-            var meshRef = callRouter.Invoke(methodDef, arguments, backendServiceDef.ShardScheme);
+            var meshRef = typedRouter.Invoke(backendServiceDef, methodDef, args);
             var peerRef = PeerRefs.Get(meshRef).Require(meshRef);
             return peerRef;
         };
+    }
 
-    public Uri? GetConnectionUri(RpcWebSocketClient client, RpcClientPeer peer)
+    public Uri? GetConnectionUri(RpcClientPeer peer)
     {
         if (peer.Ref is not MeshRpcPeerRef peerRef)
             throw new RpcReconnectFailedException($"Unsupported RpcPeerRef type: {peer.Ref}.");
@@ -57,7 +61,8 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
             return null; // null Uri = peer will hang waiting for RpcPeerRef.RerouteToken cancellation
         }
 
-        var settings = client.Settings;
+        var client = Services.GetRequiredService<RpcWebSocketClient>();
+        var settings = client.Options;
         var sb = ActualLab.Text.StringBuilderExt.Acquire();
         sb.Append("ws://");
         sb.Append(node.Endpoint);
@@ -84,5 +89,32 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
         return Task.FromResult(session.IsValid()
             ? new RpcBackendConnection(channel, properties, session)
             : new RpcConnection(channel, properties));
+    }
+
+    // Private methods
+
+    private static Func<BackendServiceDef, RpcMethodDef, ArgumentList, MeshRef> GetTypedRouter(Type? arg0Type)
+    {
+        arg0Type ??= typeof(Unit);
+        return GenericInstanceCache.Get<Func<BackendServiceDef, RpcMethodDef, ArgumentList, MeshRef>>(
+            typeof(TypedRouterFactory<>),
+            arg0Type);
+    }
+
+    // Nested types
+
+    public sealed class TypedRouterFactory<T> : GenericInstanceFactory, IGenericInstanceFactory<T>
+    {
+        [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "We assume Task<T> methods are preserved")]
+        public override Func<BackendServiceDef, RpcMethodDef, ArgumentList, MeshRef> Generate()
+        {
+            if (typeof(T) == typeof(Unit))
+                return (backendServiceDef, _, _) => MeshRef.ZeroShard.WithSchemeIfUndefined(backendServiceDef.ShardScheme);
+
+            return (backendServiceDef, methodDef, args) => {
+                var meshRef = MeshRefResolvers.Get<T>(new Requester(methodDef)).Invoke(args.Get0<T>());
+                return meshRef.WithSchemeIfUndefined(backendServiceDef.ShardScheme);
+            };
+        }
     }
 }

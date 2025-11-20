@@ -32,7 +32,7 @@ public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCach
     {
         Settings = settings;
         Hub = services.RpcHub();
-        ArgumentSerializer = Hub.SerializationFormats.GetDefault(false).ArgumentSerializer;
+        ArgumentSerializer = Hub.SerializationFormats.DefaultFormat.ArgumentSerializer;
         AnyMethodResolver = Hub.ServiceRegistry.AnyMethodResolver;
         ForceFlushFor = [..Settings.ForceFlushFor]; // Read-only copy
     }

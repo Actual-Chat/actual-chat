@@ -25,6 +25,7 @@ using ActualLab.Fusion.Trimming;
 using ActualLab.Interception;
 using ActualLab.Interception.Trimming;
 using ActualLab.Internal;
+using ActualLab.Rpc.Clients;
 using ActualLab.Rpc;
 using ActualLab.Trimming;
 using MemoryPack.Formatters;
@@ -162,10 +163,14 @@ public static class ClientStartup
         RuntimeInfo.IsServer = false;
         CoreSerializerAndRpcSetup.Configure(false);
 #if !DEBUG
-        RpcDefaultDelegates.CallTracerFactory = _ => null; // No call tracing in release builds
+        RpcDiagnosticsOptions.Default = RpcDiagnosticsOptions.Default with {
+            CallTracerFactory = _ => null // No call tracing in release builds
+        };
 #endif
-        RpcDefaultDelegates.FrameDelayerProvider = RpcFrameDelayerProviders.Auto();
-        RpcCallTimeouts.Defaults.Command = new RpcCallTimeouts(20, null); // 20s for connecting
+        RpcWebSocketClientOptions.Default = RpcWebSocketClientOptions.Default with {
+            UseAutoFrameDelayerFactory = true,
+        };
+        RpcCallTimeouts.Default.Command = new RpcCallTimeouts(20, null); // 20s for connecting
         ComputedSynchronizer.Default = ComputedSynchronizer.Safe.Instance = new ComputedSynchronizer.Safe() {
             MaxSynchronizeDurationProvider = static _ => TimeSpan.FromSeconds(1),
         };
