@@ -785,3 +785,32 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply whitespace-nowrap;
     @apply text-text-1;
 }
+
+.temporary-container {
+    @apply absolute inset-0 z-minus;
+    animation: hide 1s ease-in-out forwards;
+}
+.playable-text-markup.smooth-show {
+    opacity: 0;
+    animation: smoothShow 1s ease-in-out forwards;
+}
+@keyframes hide {
+    0% {
+        opacity: 1;
+        filter: blur(0);
+    }
+    100% {
+        opacity: 0;
+        filter: blur(4px);
+    }
+}
+@keyframes smoothShow {
+    0% {
+        opacity: 0;
+        filter: blur(4px);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+    }
+}

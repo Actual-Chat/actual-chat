@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace ActualChat;
 
 public static class EnumerableExt
@@ -341,6 +343,59 @@ public static class EnumerableExt
 
             last = current;
             yield return current;
+        }
+    }
+
+    public static IEnumerable<Range<T>> EnsureMonotonic<T>(this IEnumerable<Range<T>> source)
+        where T : IComparable<T>, INumber<T>
+    {
+        if (source == null)
+            throw new ArgumentNullException(nameof(source));
+
+        using var enumerator = source.GetEnumerator();
+        if (!enumerator.MoveNext())
+            yield break;
+
+        // current "best" range for the current Start value
+        var last = enumerator.Current;
+
+        while (true) {
+            Range<T>? candidate = null;
+
+            // group ranges with the same Start and pick the largest
+            do {
+                var current = enumerator.Current;
+                var startCompareResult = current.Start.CompareTo(last.Start);
+                if (startCompareResult == 0) {
+                    // same Start, keep the largest (by length)
+                    var lastLength = last.End - last.Start;
+                    var currLength = current.End - current.Start;
+                    if (currLength > lastLength)
+                        last = current;
+                }
+                else if (startCompareResult > 0) {
+                    // Start increased, remember as candidate for the next group
+                    candidate = current;
+                    break;
+                }
+                // if Start decreased or equal and not larger, just skip
+
+            } while (enumerator.MoveNext());
+
+            // emit the best range for the previous Start group
+            yield return last;
+
+            if (candidate == null) // no further increasing Start found
+                yield break;
+
+            last = candidate.Value;
+
+            if (enumerator.MoveNext())
+                continue;
+
+            // no more items, emit the last group immediately
+            yield return last;
+            yield break;
         }
     }
 

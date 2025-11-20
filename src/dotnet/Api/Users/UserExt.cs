@@ -40,7 +40,7 @@ public static class UserExt
     public static User WithEmailIdentities(this User user, Email email)
     {
         var emailIdentity = user.GetEmailIdentity();
-        if (emailIdentity != UserIdentity.None && emailIdentity.SchemaBoundId != email.Value)
+        if (emailIdentity != UserIdentity.None && OrdinalEquals(emailIdentity.SchemaBoundId, email.Value))
             throw StandardError.Constraint("Cannot change email identity - already set to a different email address.");
 
         return user.WithIdentity(ToEmailIdentity(email))

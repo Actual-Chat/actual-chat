@@ -209,9 +209,8 @@ public static partial class Constants
         public static class Deepgram
         {
             public static readonly double Speed = 2;
-            public static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(2);
-            public static readonly TimeSpan SilentSuffixDuration = TimeSpan.FromSeconds(3);
-
+            public static readonly TimeSpan SilentPrefixDuration = TimeSpan.FromSeconds(0);
+            public static readonly TimeSpan SilentSuffixDuration = TimeSpan.FromSeconds(1);
         }
     }
 

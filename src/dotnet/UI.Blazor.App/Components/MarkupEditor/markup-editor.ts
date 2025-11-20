@@ -5,6 +5,8 @@ import { throttle } from 'promises';
 import { preventDefaultForEvent } from 'event-handling';
 import { UndoStack } from './undo-stack';
 import { Log } from 'logging';
+import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
+import { fastRaf } from 'fast-raf';
 
 const { debugLog, errorLog } = Log.get('MarkupEditor');
 
@@ -38,6 +40,8 @@ export class MarkupEditor {
     private readonly listHandlers: Array<ListHandler>;
     private listHandler?: ListHandler;
     private listFilter: string = "";
+    private sizeObserver: ResizeObserver | null = null;
+    private parent: HTMLElement | null = null;
 
     constructor(
         public readonly editorDiv: HTMLDivElement,
@@ -75,6 +79,12 @@ export class MarkupEditor {
         this.updateHasContent(this.contentDiv.innerHTML);
         if (autofocus)
             this.focus();
+
+        this.parent = this.editorDiv.parentElement as HTMLElement;
+        if (parent) {
+            this.sizeObserver = new ResizeObserver(this.onResize);
+            this.sizeObserver.observe(this.editorDiv);
+        }
     }
 
     public dispose() {
@@ -86,7 +96,45 @@ export class MarkupEditor {
         this.contentDiv.removeEventListener("input", this.onInput);
         document.removeEventListener("selectionchange", this.onSelectionChange);
         document.removeEventListener("click", this.onDocumentClick);
+        this.sizeObserver?.disconnect();
     }
+
+    private onResize: ResizeObserverCallback = (entries) => {
+        const parent = this.parent;
+        const editor = this.editorDiv;
+        if (!parent || !editor)
+            return;
+
+        let contentHeight = 0;
+        let lineHeight = 0;
+        let maxAutoHeight = 0;
+
+        fastRaf({
+            read: () => {
+                let maxHeight = 0;
+                for (const entry of entries) {
+                    maxHeight = Math.max(maxHeight, entry.contentRect.height);
+                }
+
+                const style = getComputedStyle(editor);
+                lineHeight = parseFloat(style.lineHeight);
+                contentHeight = maxHeight;
+                maxAutoHeight = ScreenSize.isNarrow() ? 0 : lineHeight * 2;
+            },
+            write: () => {
+                if (contentHeight <= maxAutoHeight) {
+                    parent.style.transition = "height 0.25s ease";
+                    parent.style.height = "auto";
+                } else {
+                    const newHeight = contentHeight + "px";
+                    if (parent.style.height !== newHeight) {
+                        parent.style.transition = "height 0.25s ease";
+                        parent.style.height = newHeight;
+                    }
+                }
+            },
+        });
+    };
 
     public transaction(title: string, action: () => void): void {
         debugLog?.log(`-> transaction ${title}`);

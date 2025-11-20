@@ -20,11 +20,13 @@ internal static class Program
 
         RuntimeInfo.IsServer = true;
         CoreSerializerAndRpcSetup.Configure(true);
-        RpcDefaultDelegates.HashProvider = data => {
-            // SIMD-based version of Blake3 we use here is much faster than SSH256.
-            // See https://github.com/xoofx/Blake3.NET?tab=readme-ov-file#results
-            var hash = Blake3.Hasher.Hash(data.Span);
-            return Convert.ToBase64String(hash.AsSpan()[..18]); // 18 bytes -> 24 chars
+        RpcOutboundCallOptions.Default = RpcOutboundCallOptions.Default with {
+            Hasher = data => {
+                // SIMD-based version of Blake3 we use here is much faster than SSH256.
+                // See https://github.com/xoofx/Blake3.NET?tab=readme-ov-file#results
+                var hash = Blake3.Hasher.Hash(data.Span);
+                return Convert.ToBase64String(hash.AsSpan()[..18]); // 18 bytes -> 24 chars
+            }
         };
         ComputedSynchronizer.Default = ComputedSynchronizer.None.Instance; // Server shouldn't use it
 

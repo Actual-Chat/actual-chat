@@ -132,9 +132,11 @@ public class ChatBotConversationHandlerTest(ITestOutputHelper @out): TestBase(@o
                 It.IsAny<CommandContext>(),
                 It.IsAny<CancellationToken>()))
             .Returns<CommandContext, CancellationToken>(
-                (context, ct) => {
+                async (context, ct) => {
                     context.TryComplete(ct);
-                    return action?.Invoke(context, ct) ?? Task.CompletedTask;
+                    if (action != null)
+                        await action.Invoke(context, ct);
+                    return context;
                 });
         return commander;
     }
