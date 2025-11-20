@@ -15,11 +15,13 @@ public static class CoreSerializerAndRpcSetup
     public static void Configure(bool isServer)
     {
         RpcSerializationFormat.All = ImmutableList.Create(
-            RpcSerializationFormat.SystemJsonV3,
+            RpcSerializationFormat.SystemJsonV5,
             RpcSerializationFormat.MemoryPackV3,
             RpcSerializationFormat.MemoryPackV3C,
             RpcSerializationFormat.MemoryPackV4,
-            RpcSerializationFormat.MemoryPackV4C);
+            RpcSerializationFormat.MemoryPackV4C,
+            RpcSerializationFormat.MemoryPackV5,
+            RpcSerializationFormat.MemoryPackV5C);
 
         RpcSerializationFormatResolver.Default
 #if DEBUG
