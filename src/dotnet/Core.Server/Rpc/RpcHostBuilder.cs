@@ -97,10 +97,10 @@ public readonly struct RpcHostBuilder
         if (!serviceType.IsAssignableFrom(implementationType))
             throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
 
-        if (IsApiHost || makeLocal) // Add the implementation on API hosts or if requested explicitly
+        if (IsApiHost)
+            AddServer(serviceType, implementationType, "");
+        else if (makeLocal)
             AddLocal(serviceType, implementationType);
-        if (IsApiHost) // Expose the service only on API hosts
-            Rpc.Configure(serviceType).HasName(name).IsServer(serviceType);
         return this;
     }
 
@@ -150,37 +150,41 @@ public readonly struct RpcHostBuilder
     private void AddLocal(Type serviceType, Type implementationType)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
-            Fusion.AddComputeService(serviceType, implementationType, false);
-        else
+            Fusion.AddComputeService(serviceType, implementationType);
+        else {
             Services.AddSingleton(serviceType, implementationType);
-        Commander.AddHandlers(serviceType);
+            Commander.AddHandlers(serviceType);
+        }
     }
 
     private void AddServer(Type serviceType, Type implementationType, string name)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
-            Fusion.AddServer(serviceType, implementationType, name, false);
-        else
+            Fusion.AddServer(serviceType, implementationType, name);
+        else {
             Rpc.AddServer(serviceType, implementationType, name);
-        Commander.AddHandlers(serviceType);
+            Commander.AddHandlers(serviceType);
+        }
     }
 
     private void AddClient(Type serviceType, string name)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
-            Fusion.AddClient(serviceType, name, false);
-        else
+            Fusion.AddClient(serviceType, name);
+        else {
             Rpc.AddClient(serviceType, name);
-        Commander.AddHandlers(serviceType);
+            Commander.AddHandlers(serviceType);
+        }
     }
 
     private void AddDistributed(Type serviceType, Type implementationType, string name)
     {
         if (typeof(IComputeService).IsAssignableFrom(serviceType))
-            Fusion.AddDistributedService(serviceType, implementationType, name, false);
-        else
+            Fusion.AddDistributedService(serviceType, implementationType, name);
+        else {
             Rpc.AddDistributedService(serviceType, implementationType, name);
-        Commander.AddHandlers(serviceType);
+            Commander.AddHandlers(serviceType);
+        }
     }
 
     private void AddMeshServices()
@@ -230,14 +234,19 @@ public readonly struct RpcHostBuilder
         });
 
         // Replace RpcRegistryOptions
-        Services.AddSingleton(c => {
+        Services.ReplaceFactory<RpcRegistryOptions>((c, oldFactory) => {
+            var oldOptions = oldFactory.Invoke();
+            var oldServiceDefFactory = oldOptions.ServiceDefFactory;
+            var isBackendSetter = typeof(RpcServiceDef)
+                .GetProperty(nameof(RpcServiceDef.IsBackend))!
+                .GetSetter<bool>();
             var backendServiceDefs = (BackendServiceDefs?)null;
-            return RpcRegistryOptions.Default with {
+            return oldOptions with {
                 ServiceDefFactory = (hub, service) => {
                     backendServiceDefs ??= c.GetRequiredService<BackendServiceDefs>();
-                    return new RpcServiceDef(hub, service) {
-                        IsBackend = backendServiceDefs.Contains(service.Type),
-                    };
+                    var serviceDef = oldServiceDefFactory.Invoke(hub, service);
+                    isBackendSetter.Invoke(serviceDef, backendServiceDefs.Contains(service.Type));
+                    return serviceDef;
                 },
             };
         });
@@ -246,15 +255,11 @@ public readonly struct RpcHostBuilder
         Services.RemoveAll<SessionMiddleware.Options>();
         Services.RemoveAll<SessionMiddleware>();
 
-        // Replace default session replacer preprocessor
-        Rpc.RemoveInboundCallPreprocessor<RpcDefaultSessionInboundCallPreprocessor>();
-        Rpc.AddInboundCallPreprocessor<RpcBackendDefaultSessionReplacerMiddleware>();
-
         // Replace ServerConnectionFactory in RpcPeerOptions
-        Services.AddSingleton<RpcPeerOptions>(c => {
+        Services.ReplaceFactory<RpcPeerOptions>((c, oldFactory) => {
             var helpers = c.GetRequiredService<RpcBackendHelpers>();
-            return RpcPeerOptions.Default with {
-                ServerConnectionFactory = helpers.GetServerConnection
+            return oldFactory.Invoke() with {
+                ServerConnectionFactory = helpers.GetServerConnection,
             };
         });
     }
@@ -301,14 +306,15 @@ public readonly struct RpcHostBuilder
         var backendOutboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.BackendClient && isDevelopmentInstance
             ? LogLevel.Debug
             : LogLevel.None;
-        Services.AddSingleton<RpcPeerOptions>(c => RpcPeerOptions.Default with {
-            PeerFactory = (hub, peerRef) => peerRef.IsServer
-                ? new RpcServerPeer(hub, peerRef) {
-                    CallLogLevel = peerRef.IsBackend ? backendInboundCallLogLevel : serverInboundCallLogLevel,
-                }
-                : new RpcClientPeer(hub, peerRef) {
-                    CallLogLevel = backendOutboundCallLogLevel,
-                }
-        });
+        Services.ReplaceFactory<RpcPeerOptions>(
+            (_, oldFactory) => oldFactory.Invoke() with {
+                PeerFactory = (hub, peerRef) => peerRef.IsServer
+                    ? new RpcServerPeer(hub, peerRef) {
+                        CallLogLevel = peerRef.IsBackend ? backendInboundCallLogLevel : serverInboundCallLogLevel,
+                    }
+                    : new RpcClientPeer(hub, peerRef) {
+                        CallLogLevel = backendOutboundCallLogLevel,
+                    }
+            });
     }
 }

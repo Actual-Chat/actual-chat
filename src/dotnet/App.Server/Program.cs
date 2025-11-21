@@ -61,7 +61,7 @@ internal static class Program
         await appHost.Run().ConfigureAwait(false);
         return 0;
 
-        // We preserve default thread pool settings only if they are bigger of our minimals
+        // We preserve default thread pool settings only if they are higher than our minimums
         static void AdjustThreadPool()
         {
             var (maxWorker, maxIO) = (16384, 16384);
@@ -96,6 +96,12 @@ internal static class Program
             GrpcEnvironment.SetCompletionQueueCount(threadCount);
             // true is dangerous: if user block in async code, this can easily lead to deadlocks
             GrpcEnvironment.SetHandlerInlining(false);
+        }
+
+        static void AdjustThreadPoolToOneThread()
+        {
+            ThreadPool.SetMinThreads(1, 1);
+            ThreadPool.SetMaxThreads(1, 1);
         }
     }
 }

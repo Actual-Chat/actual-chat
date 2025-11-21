@@ -21,9 +21,14 @@ public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCach
     protected new Options Settings { get; }
     protected HashSet<Symbol> ForceFlushFor { get; }
     protected RpcHub Hub { get; }
-    protected RpcArgumentSerializer ArgumentSerializer { get; }
-    protected RpcMethodResolver AnyMethodResolver { get; }
-    protected ILogger? DebugLog => Constants.DebugMode.RemoteComputedCache ? Log.IfEnabled(LogLevel.Debug) : null;
+    [field: AllowNull, MaybeNull]
+    protected RpcArgumentSerializer ArgumentSerializer
+        => field ??= Hub.SerializationFormats.DefaultFormat.ArgumentSerializer;
+    [field: AllowNull, MaybeNull]
+    protected RpcMethodResolver AnyMethodResolver
+        => field ??= Hub.ServiceRegistry.AnyMethodResolver;
+    protected ILogger? DebugLog
+        => Constants.DebugMode.RemoteComputedCache ? Log.IfEnabled(LogLevel.Debug) : null;
 
     public Task WhenInitialized { get; protected set; } = Task.CompletedTask;
 
@@ -32,8 +37,6 @@ public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCach
     {
         Settings = settings;
         Hub = services.RpcHub();
-        ArgumentSerializer = Hub.SerializationFormats.DefaultFormat.ArgumentSerializer;
-        AnyMethodResolver = Hub.ServiceRegistry.AnyMethodResolver;
         ForceFlushFor = [..Settings.ForceFlushFor]; // Read-only copy
     }
 
