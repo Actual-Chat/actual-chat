@@ -4,12 +4,14 @@ using SixLabors.ImageSharp;
 
 namespace ActualChat.Chat;
 
-public sealed class MediaStorage(ICommander commander, IContentSaver contentSaver)
+// TODO(DF): to think where to put this.
+public sealed class MediaSaver(ICommander commander, IContentSaver contentSaver) : IMediaSaver
 {
-    public Task<Media.Media?> Save(ChatId chatId, UploadedFile file, Size? size, CancellationToken cancellationToken)
-        => Save(file, size, MediaId.New(chatId.Value), cancellationToken);
-
-    public async Task<Media.Media?> Save(UploadedFile file, Size? size, MediaId mediaId, CancellationToken cancellationToken)
+    public async Task<Media.Media> Save(
+        MediaId mediaId,
+        UploadedFile file,
+        Size? size,
+        CancellationToken cancellationToken)
     {
         var media = new Media.Media(mediaId) {
             ContentId = mediaId.GetContentId(Path.GetExtension(file.FileName)),
@@ -30,6 +32,6 @@ public sealed class MediaStorage(ICommander commander, IContentSaver contentSave
             new Change<Media.Media> {
                 Create = media,
             });
-        return await commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+        return await commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false)!;
     }
 }

@@ -1,8 +1,6 @@
-using System.Text;
 using ActualChat.Controllers;
-using ActualChat.Hashing;
-using ActualChat.Media;
 using ActualChat.Security;
+using ActualChat.Uploads;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
@@ -11,8 +9,7 @@ namespace ActualChat.Users.Controllers;
 public sealed class AvatarPicturesController(IServiceProvider services) : ControllerBase
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private IContentSaver ContentSaver => services.GetRequiredService<IContentSaver>();
-    private ICommander Commander => services.Commander();
+    private IMediaSaver MediaSaver => services.GetRequiredService<IMediaSaver>();
 
     [HttpPost("upload-picture")]
     [DisableFormValueModelBinding]
@@ -46,26 +43,12 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             return BadRequest("Image is too big.");
 
         var mediaId = MediaId.New(account.Id.Value);
-        var mediaIdHash = mediaId.Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
-        var media = new Media.Media(mediaId) {
-            ContentId = $"media/{mediaIdHash}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
-            FileName = file.FileName,
-            Length = file.Length,
-            ContentType = file.ContentType,
-        };
-
-        var stream = file.OpenReadStream();
-        await using (var _ = stream.ConfigureAwait(false)) {
-            var content = new Content(media.ContentId, file.ContentType, stream);
-            await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
-        }
-
-        var changeCommand = new MediaBackend_Change(
-            mediaId,
-            new Change<Media.Media> {
-                Create = media,
-            });
-        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+        var uploadedFile = new UploadedStreamFile(
+            file.FileName,
+            file.ContentType,
+            file.Length,
+            () => Task.FromResult(file.OpenReadStream()));
+        var media = await MediaSaver.Save(mediaId, uploadedFile, null, cancellationToken).ConfigureAwait(false);
         return Ok(new MediaContent(media.Id, media.ContentId));
     }
 }

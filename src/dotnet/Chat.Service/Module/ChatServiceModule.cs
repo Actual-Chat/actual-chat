@@ -10,11 +10,11 @@ using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Roulette;
+using ActualChat.Uploads;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Google;
@@ -34,7 +34,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
-        services.AddSingleton<MediaStorage>();
+        services.AddSingleton<IMediaSaver>(c => new MediaSaver(c.Commander(), c.GetRequiredService<IContentSaver>()));
 
         // Places
         rpcHost.AddLocalApi<IPlaces, Places>(); // Used by Chats
