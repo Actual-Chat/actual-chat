@@ -10,7 +10,7 @@ namespace ActualChat.Chat.Controllers;
 public sealed class ChatMediaController(IServiceProvider services) : ControllerBase
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private MediaStorage MediaStorage { get; } = services.GetRequiredService<MediaStorage>();
+    private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
     private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
         = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
 
@@ -37,27 +37,26 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
         if (httpRequest.Form.Files.Count > 1)
             return BadRequest("Too many files.");
 
-        var formFile = httpRequest.Form.Files[0];
-        if (formFile.Length == 0)
+        var file = httpRequest.Form.Files[0];
+        if (file.Length == 0)
             return BadRequest("File is empty.");
 
-        if (formFile.Length > Constants.Attachments.FileSizeLimit)
+        if (file.Length > Constants.Attachments.FileSizeLimit)
             return BadRequest("File is too big.");
 
-        var uploadedFile = new UploadedStreamFile(formFile.FileName,
-            formFile.ContentType,
-            formFile.Length,
-            () => Task.FromResult(formFile.OpenReadStream()));
+        var uploadedFile = new UploadedStreamFile(
+            file.FileName,
+            file.ContentType,
+            file.Length,
+            () => Task.FromResult(file.OpenReadStream()));
         using var processedFile = await UploadProcessors.Process(uploadedFile, cancellationToken).ConfigureAwait(false);
-        var media = await MediaStorage.Save(chatId, processedFile.File, processedFile.Size, cancellationToken)
-            .Require()
+        var media = await MediaSaver.Save(chatId, processedFile.File, processedFile.Size, cancellationToken)
             .ConfigureAwait(false);
         if (processedFile.Thumbnail == null)
             return Ok(new MediaContent(media.Id, media.ContentId));
 
-        var thumbnailMedia = await MediaStorage
+        var thumbnailMedia = await MediaSaver
             .Save(chatId, processedFile.Thumbnail, processedFile.Size, cancellationToken)
-            .Require()
             .ConfigureAwait(false);
         return Ok(new MediaContent(media.Id, media.ContentId, thumbnailMedia.Id, thumbnailMedia.ContentId));
     }

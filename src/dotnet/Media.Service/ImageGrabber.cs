@@ -15,7 +15,7 @@ public class ImageGrabber(IServiceProvider services)
     private MediaSettings Settings => field ??= services.GetRequiredService<MediaSettings>();
     private IMediaBackend MediaBackend => field ??= services.GetRequiredService<IMediaBackend>();
     private IGrabStatusesBackend GrabStatusesBackend => field ??= services.GetRequiredService<IGrabStatusesBackend>();
-    private IContentSaver ContentSaver => field ??= services.GetRequiredService<IContentSaver>();
+    private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
     private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient(Crawler.HttpClientName);
     private IReadOnlyList<IUploadProcessor> UploadProcessors => field ??= services.GetServices<IUploadProcessor>().ToList();
     private IFlows Flows => field ??= services.GetRequiredService<IFlows>();
@@ -153,27 +153,7 @@ public class ImageGrabber(IServiceProvider services)
             return media.Id;
         }
 
-        // TODO: extract common part with ChatMediaController
-        media = new Media(mediaId) {
-            ContentId = mediaId.GetContentId(processedFile.File.FileName.Extension),
-            FileName = processedFile.File.FileName,
-            Length = processedFile.File.Length,
-            ContentType = processedFile.File.ContentType,
-            Width = processedFile.Size?.Width ?? 0,
-            Height = processedFile.Size?.Height ?? 0,
-        };
-
-        var stream = await processedFile.File.Open().ConfigureAwait(false);
-        await using var _ = stream.ConfigureAwait(false);
-        var content = new Content(media.ContentId, media.ContentType, stream);
-        await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
-
-        var changeCommand = new MediaBackend_Change(
-            mediaId,
-            new Change<Media> {
-                Create = media,
-            });
-        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+        await MediaSaver.Save(mediaId, processedFile.File, processedFile.Size, cancellationToken).ConfigureAwait(false);
         await SaveGrabStatus(imageUrl, true, cancellationToken).ConfigureAwait(false);
 
         return mediaId;
