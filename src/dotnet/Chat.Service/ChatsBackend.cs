@@ -958,12 +958,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag))
                 throw StandardError.Constraint("It's prohibited to remove 'Welcome' chat.");
 
-            if (!dbChat.MediaId.IsNullOrEmpty()) {
-                var removeMediaCommand = new MediaBackend_Change(
-                    MediaId.Parse(dbChat.MediaId),
-                    new Change<Media.Media> { Remove = true });
-                await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
-            }
+            await RemoveMedia(dbChat.MediaId, cancellationToken).ConfigureAwait(false);
             var attachmentMediaIds = await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId.Value && ce.HasAttachments)
                 .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea.MediaId)
@@ -975,10 +970,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 if (!OrdinalEquals(mediaId.Scope, chatId.Value))
                     continue; // NOTE(DF): Do not remove media from current chat scope. Forwarded messages can contain media from another chat.
 
-                var removeMediaCommand = new MediaBackend_Change(
-                    mediaId,
-                    new Change<Media.Media> { Remove = true });
-                await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
+                await RemoveMedia(mediaId, cancellationToken).ConfigureAwait(false);
             }
             // Remove attachments
             await dbContext.ChatEntries
@@ -1548,12 +1540,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Distinct()
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
-            foreach (var mediaId in attachmentMediaIds) {
-                var removeMediaCommand = new MediaBackend_Change(
-                    MediaId.Parse(mediaId),
-                    new Change<Media.Media> { Remove = true });
-                await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
-            }
+            foreach (var mediaId in attachmentMediaIds)
+                await RemoveMedia(mediaId, cancellationToken).ConfigureAwait(false);
 
             // Remove attachments
             await dbContext.ChatEntries
@@ -2424,5 +2412,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
             return attachments.SelectMany(x => x).ToLookup(x => x.EntryId);
         }
+    }
+
+    private Task RemoveMedia(string mediaSid, CancellationToken cancellationToken)
+        => !mediaSid.IsNullOrEmpty() ? RemoveMedia(MediaId.Parse(mediaSid), cancellationToken) : Task.CompletedTask;
+
+    private async Task RemoveMedia(MediaId mediaId, CancellationToken cancellationToken)
+    {
+        var removeCommand = new MediaBackend_Change(
+            mediaId,
+            new Change<Media.Media> { Remove = true });
+        await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }
