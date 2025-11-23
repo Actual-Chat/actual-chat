@@ -318,8 +318,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net9.0-windows10.0.22621.0",
-                    @"/p:TargetFrameworks=\""net9.0-windows10.0.22621.0;net9.0\""", // otherwise needs maui-ios etc
+                    "-f net10.0-windows10.0.22621.0",
+                    @"/p:TargetFrameworks=\""net10.0-windows10.0.22621.0;net10.0\""", // otherwise needs maui-ios etc
                     "-p:RuntimeIdentifierOverride=win10-x64",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
@@ -334,8 +334,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net9.0-windows10.0.22621.0",
-                    @"/p:TargetFrameworks=\""net9.0-windows10.0.22621.0;net9.0\""", // otherwise needs maui-ios etc
+                    "-f net10.0-windows10.0.22621.0",
+                    @"/p:TargetFrameworks=\""net10.0-windows10.0.22621.0;net10.0\""", // otherwise needs maui-ios etc
                     "-p:RuntimeIdentifierOverride=win10-x64",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
@@ -359,8 +359,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net9.0-android",
-                    @"/p:TargetFrameworks=\""net9.0-android;net9.0\""", // otherwise needs maui-ios etc
+                    "-f net10.0-android",
+                    @"/p:TargetFrameworks=\""net10.0-android;net10.0\""", // otherwise needs maui-ios etc
                     $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
                     hasAndroidSdkDirectory ? $"/p:AndroidSdkDirectory={androidSdkDirectory}" : "",
                     $"-c {configuration}",
@@ -377,8 +377,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net9.0-android",
-                    @"/p:TargetFrameworks=\""net9.0-android;net9.0\""", // otherwise needs maui-ios etc
+                    "-f net10.0-android",
+                    @"/p:TargetFrameworks=\""net10.0-android;net10.0\""", // otherwise needs maui-ios etc
                     $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
@@ -398,8 +398,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net9.0-ios",
-                    @"/p:TargetFrameworks=\""net9.0-ios;net9.0\""", // otherwise needs maui-android etc
+                    "-f net10.0-ios",
+                    @"/p:TargetFrameworks=\""net10.0-ios;net10.0\""", // otherwise needs maui-android etc
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
@@ -414,8 +414,8 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net9.0-ios",
-                    @"/p:TargetFrameworks=\""net9.0-ios;net9.0\""", // otherwise needs maui-android etc
+                    "-f net10.0-ios",
+                    @"/p:TargetFrameworks=\""net10.0-ios;net10.0\""", // otherwise needs maui-android etc
                     "-p:RuntimeIdentifier=ios-arm64",
                     "-p:ArchiveOnBuild=true",
                     $"-c {configuration}",

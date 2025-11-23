@@ -9,7 +9,7 @@ IMPORTANT: See `README.md` in the root folder to learn what Voxt (formerly Actua
 
 ## Technology Stack
 
-- **Language and Platform**: the project is compiled with .NET 9 (and C# 13)
+- **Language and Platform**: the project is compiled with .NET 10 (and C# 13)
 - **Databases**: PostgreSQL, Redis. See `docker-compose.yml.
 - **UI**: mostly Blazor, with a decent amount of TypeScript.
 - **Testing**: all tests are based on xUnit.
@@ -26,7 +26,7 @@ IMPORTANT: See `README.md` in the root folder to learn what Voxt (formerly Actua
 
 ## Build Prerequisites
 
-- Install .NET 9
+- Install .NET 10
 - Run:
   ```powershell
   dotnet restore

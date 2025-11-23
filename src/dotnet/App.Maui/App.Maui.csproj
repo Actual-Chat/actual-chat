@@ -7,9 +7,9 @@
 
   <PropertyGroup>
     <!-- Build Android by default; add iOS only on macOS to avoid iOS build issues on Windows CI -->
-    <TargetFrameworks>net9.0-android;</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net9.0-ios</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>
+    <TargetFrameworks>net10.0-android;</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.22621.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
@@ -17,7 +17,7 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>9.0.120</MauiVersion>
+    <MauiVersion>10.0.0</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
@@ -395,7 +395,7 @@
   </PropertyGroup>
 
   <!-- iOS: Debug configuration -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-ios|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net10.0-ios|AnyCPU'">
     <CreatePackage>false</CreatePackage>
     <CodesignProvision>chat.actual.dev.app</CodesignProvision>
     <CodesignKey>iPhone Developer</CodesignKey>
@@ -404,7 +404,7 @@
   </PropertyGroup>
 
   <!-- iOS: Release configuration -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-ios|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-ios|AnyCPU'">
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
@@ -504,7 +504,7 @@
   </ItemGroup>
 
   <!-- NOT iOS and NOT Mac Catalyst -->
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net9.0-ios')) != true AND $(TargetFramework.StartsWith('net9.0-maccatalyst')) != true">
+  <ItemGroup Condition="$(TargetFramework.StartsWith('net10.0-ios')) != true AND $(TargetFramework.StartsWith('net10.0-maccatalyst')) != true">
     <Compile Remove="**\**\*.MaciOS.cs" />
     <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\MaciOS\**\*.cs" />
