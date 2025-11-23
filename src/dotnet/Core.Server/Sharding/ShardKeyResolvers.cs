@@ -87,8 +87,6 @@ public static class ShardKeyResolvers
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
         => Unsafe.As<Delegate>(GenericInstanceCache.Get(typeof(Factory<>), type)!);
 
-    // Private methods
-
     // Nested types
 
     private sealed class Factory<T> : GenericInstanceFactory, IGenericInstanceFactory<ShardKeyResolver<T>>
