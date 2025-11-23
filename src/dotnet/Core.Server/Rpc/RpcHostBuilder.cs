@@ -5,6 +5,7 @@ using ActualLab.Fusion.Server.Middlewares;
 using ActualLab.Fusion.Server.Rpc;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
+using ActualLab.Rpc.Middlewares;
 using ActualLab.Rpc.Server;
 using ActualLab.Rpc.Testing;
 using Microsoft.AspNetCore.Http;
@@ -51,9 +52,7 @@ public readonly struct RpcHostBuilder
 
         // Debug stuff
         if (CoreConstants.DebugMode.RpcCalls.AnyServerInboundDelay is { } delay)
-            Rpc.AddInboundCallPreprocessor(c => new RpcRandomDelayInboundCallPreprocessor() {
-                Delay = delay,
-            });
+            Rpc.AddMiddleware(_ => new RpcInboundCallDelayer() { Delay = delay });
     }
 
     // AddApi, AddLocalApi, AddBackend
