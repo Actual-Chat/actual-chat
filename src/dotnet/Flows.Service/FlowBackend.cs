@@ -46,122 +46,94 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
     }
 
     // [ComputeMethod]
-    public virtual Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken)
-        => TryGetImpl(flowId, cancellationToken);
+    public virtual async Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken)
+    {
+        // Check cache
+        if (_cache.TryGetValue(flowId, out var flow))
+            return flow;
+
+        // Read the ground truth
+        var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
+        flow = dbFlow?.ToModel(flowId);
+        return _cache[flowId] = flow;  // Update cache
+    }
 
     // Regular RPC method!
     public virtual async Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken)
     {
         var flowType = Registry.TypeByName[flowId.Name];
+        DebugLog?.LogDebug("Start: `{FlowId}`", flowId);
+        return await ResumeRetryPolicy.Run(async ct => {
+            var version = 0L;
+            while (true) {
+                Flow? flow;
+                using (Computed.BeginIsolation())
+                    flow = await TryGet(flowId, ct).ConfigureAwait(false);
+                if (flow is not null && flow.Version >= version)
+                    return flow;
 
-        // Ensure the shard for this flow is owned by the current node
-        var shardOwnership = await ShardOwner
-            .RequireOwnedOrReroute(flowId, addDependency: false, cancellationToken)
-            .ConfigureAwait(false);
-        using var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
-        var linkedToken = linkedCts.Token;
-
-        // Ensure the resume logic below doesn't run concurrently for the same flow
-        using var _ = await _resumeLocks.Lock(flowId, linkedToken).ConfigureAwait(false);
-
-        return await ResumeRetryPolicy.Run(async _ => {
-            try {
-                var version = 0L;
-                while (true) {
-                    Flow? flow;
-                    using (Computed.BeginIsolation())
-                        flow = await TryGet(flowId, linkedToken).ConfigureAwait(false);
-                    if (flow is not null && flow.Version >= version)
-                        return flow;
-
-                    if (version > 0L) {
-                        // We already executed Flows_Store command and it succeeded
-                        await TickSource.Default.WhenNextTick().ConfigureAwait(false);
-                        linkedToken.ThrowIfCancellationRequested();
-                        continue;
-                    }
-
-                    flow = (Flow)flowType.CreateInstance();
-                    var legacyFlowImpl = flow as ILegacyFlowImpl;
-                    var flowImpl = (IFlowImpl)flow;
-                    var console = new FlowConsole();
-                    if (legacyFlowImpl is not null)
-                        legacyFlowImpl.SetProperties(flowId, 0, LegacyFlowSteps.Starting, null, console, null);
-                    else
-                        flowImpl.SetProperties(flowId, 0, null, console);
-
-                    // Flow_Store is guaranteed to run locally
-                    var storeCommand = new Flows_Store(flow.Id, 0) {
-                        Flow = flow,
-                    };
-                    version = await Commander.Call(storeCommand, linkedToken).ConfigureAwait(false);
+                if (version > 0L) {
+                    // We already executed Flows_Store command and it succeeded
+                    await TickSource.Default.WhenNextTick().ConfigureAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    continue;
                 }
+
+                flow = (Flow)flowType.CreateInstance();
+                var legacyFlowImpl = flow as ILegacyFlowImpl;
+                var flowImpl = (IFlowImpl)flow;
+                var console = new FlowConsole();
+                if (legacyFlowImpl is not null)
+                    legacyFlowImpl.SetProperties(flowId, 0, LegacyFlowSteps.Starting, null, console, null);
+                else
+                    flowImpl.SetProperties(flowId, 0, null, console);
+
+                // Flow_Store is guaranteed to run locally
+                var storeCommand = new Flows_Store(flow.Id, 0) {
+                    Flow = flow,
+                };
+                version = await Commander.Call(storeCommand, ct).ConfigureAwait(false);
             }
-            catch (Exception e) when (e.IsCancellationOf(shardOwnership.LockToken)) {
-                if (!cancellationToken.IsCancellationRequested)
-                    throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
-                throw;
-            }
-        }, new RetryLogger(Log), linkedToken).ConfigureAwait(false);
+        }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
     // [CommandHandler]
-    public virtual Task<long> OnEvent(IFlowEvent command, CancellationToken cancellationToken)
+    public virtual async Task<long> OnEvent(IFlowEvent command, CancellationToken cancellationToken)
     {
         var flowId = command.FlowId;
-        DebugLog?.LogDebug("OnEvent: `{FlowId}` <- {Event}", flowId, command);
         var flowType = Registry.TypeByName[flowId.Name];
-        return flowType.IsAssignableTo(typeof(LegacyFlow))
-            ? Host.ProcessEvent(flowId, command, cancellationToken)
-            : ProcessEvent();
+        DebugLog?.LogDebug("OnEvent: `{FlowId}` <- {Event}", flowId, command);
+        if (flowType.IsAssignableTo(typeof(LegacyFlow))) // The Host handles legacy flows
+            return await Host.ProcessEvent(flowId, command, cancellationToken).ConfigureAwait(false);
 
-        async Task<long> ProcessEvent() {
-            if (command is not FlowResume flowResume)
-                throw StandardError.Internal($"Unsupported event type: {command.GetType()}.");
+        if (command is not FlowResume flowResume)
+            throw StandardError.Internal($"Unsupported event type: {command.GetType()}.");
 
-            // Ensure the shard for this flow is owned by the current node
-            var shardOwnership = await ShardOwner
-                .RequireOwnedOrReroute(flowId, addDependency: false, cancellationToken)
-                .ConfigureAwait(false);
-            using var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
-            var linkedToken = linkedCts.Token;
-
-            // Ensure the resume logic below doesn't run concurrently for the same flow
-            using var _ = await _resumeLocks.Lock(flowId, linkedToken).ConfigureAwait(false);
-
-            // Get the flow, clone it
+        return await ResumeRetryPolicy.Run(async ct => {
+            using var _ = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
             Flow originalFlow;
             using (Computed.BeginIsolation()) // Not needed inside a command handler, but let's be safe
-                originalFlow = await this.Get(flowId, linkedToken).ConfigureAwait(false);
+                originalFlow = await this.Get(flowId, ct).ConfigureAwait(false);
             if (originalFlow.UntypedResult is not null)
                 return originalFlow.Version; // The flow has already completed, so all subsequent events are ignored
 
-            return await ResumeRetryPolicy.Run(async _ => {
-                try {
-                    IFlowImpl flow;
-                    if (flowResume.MustRestart) {
-                        var console = new FlowConsole(originalFlow.Console.Prefix);
-                        console.LogSection("[0>]");
-                        flow = (Flow)flowType.CreateInstance();
-                        flow.SetProperties(flowId, originalFlow.Version, null, console);
-                    }
-                    else {
-                        flow = originalFlow.Clone();
-                        flow.Console.LogSection("[>]");
-                    }
+            IFlowImpl flow;
+            if (flowResume.MustRestart) {
+                var console = new FlowConsole(originalFlow.Console.Prefix);
+                console.LogSection("[0>]");
+                flow = (Flow)flowType.CreateInstance();
+                flow.SetProperties(flowId, originalFlow.Version, null, console);
+            }
+            else {
+                flow = originalFlow.Clone();
+                flow.Console.LogSection("[>]");
+            }
 
-                    // Run the HandleResume method
-                    await flow.OnResume(Services, linkedToken).ConfigureAwait(false);
-                    return flow.Version;
-                }
-                catch (Exception e) when (e.IsCancellationOf(shardOwnership.LockToken)) {
-                    if (!cancellationToken.IsCancellationRequested)
-                        throw RpcRerouteException.MustReroute(); // Retry policy doesn't retry on this one
-                    throw;
-                }
-            }, new RetryLogger(Log), linkedToken).ConfigureAwait(false);
-        }
+            // Run the HandleResume method
+            await flow.OnResume(Services, ct).ConfigureAwait(false);
+            return flow.Version;
+        }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
     }
 
     // The `long` it returns is DbFlow/FlowData.Version
@@ -242,20 +214,5 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbFlow?.Version ?? 0L;
-    }
-
-    // Private methods methods
-
-    private async Task<Flow?> TryGetImpl(FlowId flowId, CancellationToken cancellationToken = default)
-    {
-        await ShardOwner.RequireOwnedOrReroute(flowId, cancellationToken).ConfigureAwait(false);
-        // Check cache
-        if (_cache.TryGetValue(flowId, out var flow))
-            return flow;
-
-        // Read the ground truth
-        var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
-        flow = dbFlow?.ToModel(flowId);
-        return _cache[flowId] = flow;  // Update cache
     }
 }
