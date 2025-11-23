@@ -103,13 +103,14 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
 
     // Nested types
 
-    public sealed class TypedRouterFactory<T> : GenericInstanceFactory, IGenericInstanceFactory<T>
+    private sealed class TypedRouterFactory<T> : GenericInstanceFactory, IGenericInstanceFactory<T>
     {
         [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "We assume Task<T> methods are preserved")]
         public override Func<BackendServiceDef, RpcMethodDef, ArgumentList, MeshRef> Generate()
         {
             if (typeof(T) == typeof(Unit))
-                return (backendServiceDef, _, _) => MeshRef.ZeroShard.WithSchemeIfUndefined(backendServiceDef.ShardScheme);
+                return (backendServiceDef, _, _)
+                    => MeshRef.ZeroShard.WithSchemeIfUndefined(backendServiceDef.ShardScheme);
 
             return (backendServiceDef, methodDef, args) => {
                 var meshRef = MeshRefResolvers.Get<T>(new Requester(methodDef)).Invoke(args.Get0<T>());

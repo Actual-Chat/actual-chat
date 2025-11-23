@@ -56,19 +56,19 @@ public static class MeshRefResolvers
     public static MeshRefResolver<T> Get<T>(Requester requester)
         => (MeshRefResolver<T>)Get(typeof(T), requester);
     public static Delegate Get(Type type, Requester requester)
-        => Resolved.GetOrAdd(type, static (type1, requester1) => {
-            if (Registered.TryGetValue(type1, out var result))
+        => Resolved.GetOrAdd(type, static (type, requester) => {
+            if (Registered.TryGetValue(type, out var result))
                 return result;
 
-            if (!type1.IsValueType)
-                foreach (var baseType in type1.GetAllBaseTypes(false, true)) {
+            if (!type.IsValueType)
+                foreach (var baseType in type.GetAllBaseTypes(false, true)) {
                     if (Registered.TryGetValue(baseType, out result))
                         return result;
                 }
 
             return (Delegate)CreateShardKeyBasedResolverMethod
-                .MakeGenericMethod(type1)
-                .Invoke(null, [requester1])!;
+                .MakeGenericMethod(type)
+                .Invoke(null, [requester])!;
         }, requester);
 
     // Private methods
