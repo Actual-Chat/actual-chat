@@ -6,15 +6,15 @@ namespace ActualChat.Hashing;
 
 public interface IHashOutput
 {
-    public static abstract int Size { get; }
-    public Span<byte> Bytes { get; }
-    public uint First4Bytes { get; }
-    public ulong First8Bytes { get; }
-    public Int128 First16Bytes { get; }
+    static abstract int Size { get; }
+    Span<byte> Bytes { get; }
+    uint First4Bytes { get; }
+    ulong First8Bytes { get; }
+    Int128 First16Bytes { get; }
 
-    public int Count<T>() where T : unmanaged;
-    public T Item<T>(int index) where T : unmanaged;
-    public Span<T> AsSpan<T>() where T : unmanaged;
+    int Count<T>() where T : unmanaged;
+    T Item<T>(int index) where T : unmanaged;
+    Span<T> AsSpan<T>() where T : unmanaged;
 }
 
 [InlineArray(16)]
