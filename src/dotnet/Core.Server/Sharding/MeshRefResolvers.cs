@@ -44,14 +44,14 @@ public static class MeshRefResolvers
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MeshRefResolver<object?> GetUntyped(Type type)
-        => GenericInstanceCache.Get<MeshRefResolver<object?>>(typeof(UntypedFactory<>), type);
+        => GenericInstanceCache.GetUnsafe<MeshRefResolver<object?>>(typeof(UntypedFactory<>), type);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MeshRefResolver<T> Get<T>()
-        => GenericInstanceCache.Get<MeshRefResolver<T>>(typeof(Factory<>), typeof(T));
+        => GenericInstanceCache.GetUnsafe<MeshRefResolver<T>>(typeof(Factory<>), typeof(T));
 
     public static Delegate Get(Type type)
-        => (Delegate)GenericInstanceCache.Get(typeof(Factory<>), type)!;
+        => Unsafe.As<Delegate>(GenericInstanceCache.Get(typeof(Factory<>), type)!);
 
     // Private methods
 

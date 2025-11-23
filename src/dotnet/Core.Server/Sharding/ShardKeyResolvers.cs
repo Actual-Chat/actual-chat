@@ -77,15 +77,15 @@ public static class ShardKeyResolvers
 
     public static ShardKeyResolver<object?> GetUntyped(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
-        => GenericInstanceCache.Get<ShardKeyResolver<object?>>(typeof(UntypedFactory<>), type);
+        => GenericInstanceCache.GetUnsafe<ShardKeyResolver<object?>>(typeof(UntypedFactory<>), type);
 
     public static ShardKeyResolver<T> Get<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
-        => GenericInstanceCache.Get<ShardKeyResolver<T>>(typeof(Factory<>), typeof(T));
+        => GenericInstanceCache.GetUnsafe<ShardKeyResolver<T>>(typeof(Factory<>), typeof(T));
 
     public static Delegate Get(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
-        => (Delegate)GenericInstanceCache.Get(typeof(Factory<>), type)!;
+        => Unsafe.As<Delegate>(GenericInstanceCache.Get(typeof(Factory<>), type)!);
 
     // Private methods
 
@@ -103,7 +103,8 @@ public static class ShardKeyResolvers
                 if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) {
                     var baseType = type.GetGenericArguments()[0];
                     if (Registered.TryGetValue(baseType, out result))
-                        return (ShardKeyResolver<T>)GenericInstanceCache.Get(typeof(NullableFactory<>), baseType)!;
+                        return (ShardKeyResolver<T>)GenericInstanceCache
+                            .Get(typeof(NullableFactory<>), baseType)!;
                 }
                 return NotFound(type);
             }

@@ -96,7 +96,7 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
     private static Func<BackendServiceDef, RpcMethodDef, ArgumentList, MeshRef> GetTypedRouter(Type? arg0Type)
     {
         arg0Type ??= typeof(Unit);
-        return GenericInstanceCache.Get<Func<BackendServiceDef, RpcMethodDef, ArgumentList, MeshRef>>(
+        return GenericInstanceCache.GetUnsafe<Func<BackendServiceDef, RpcMethodDef, ArgumentList, MeshRef>>(
             typeof(TypedRouterFactory<>),
             arg0Type);
     }

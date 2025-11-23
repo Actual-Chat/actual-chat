@@ -110,7 +110,7 @@ public static class StableHash
     // Helper
 
     public static Hasher<T>? Get<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
-        => GenericInstanceCache.Get<Hasher<T>?>(typeof(HasherFactory<>), typeof(T));
+        => GenericInstanceCache.GetUnsafe<Hasher<T>>(typeof(HasherFactory<>), typeof(T));
 
     // Private methods
 
