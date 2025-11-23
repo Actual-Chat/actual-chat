@@ -18,7 +18,11 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         UseReferentialEquality = true;
         _routeChangedSource = ConnectionKind is RpcPeerConnectionKind.None ? null : new();
         var routeChangedToken = _routeChangedSource?.Token ?? CancellationToken.None;
-        RouteState = routeChangedToken.CanBeCanceled ? new RpcRouteState(routeChangedToken) : null;
+        RouteState = routeChangedToken.CanBeCanceled
+            ? Target.ShardRef.IsNone
+                ? new RpcRouteState(routeChangedToken)
+                : new RpcShardRouteState(ShardLockAwaiter, routeChangedToken)
+            : null;
         Initialize();
     }
 
@@ -26,4 +30,14 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
 
     internal void MarkRerouted()
         => _routeChangedSource.CancelAndDisposeSilently();
+
+    private async ValueTask<CancellationToken> ShardLockAwaiter(CancellationToken cancellationToken)
+    {
+        var shardRef = Target.ShardRef;
+        var shardOwner = Target.Owner.ShardOwners[shardRef.Scheme];
+        var shardOwnership = await shardOwner
+            .RequireOwnedOrReroute(shardRef.Key, cancellationToken)
+            .ConfigureAwait(false);
+        return shardOwnership.LockToken;
+    }
 }

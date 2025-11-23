@@ -9,13 +9,16 @@ public sealed class MeshRpcPeerRefs
 
     private ILogger Log { get; }
 
+    public IServiceProvider Services { get; }
     public MeshWatcher MeshWatcher { get; }
     public IState<MeshState> MeshState { get; }
     public MeshNode ThisNode { get; }
+    public ShardOwners ShardOwners => field ??= MeshWatcher.Services.ShardOwners();
 
     public MeshRpcPeerRefs(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
+        Services = services;
         MeshWatcher = services.MeshWatcher();
         MeshState = MeshWatcher.State;
         ThisNode = MeshWatcher.ThisNode;
