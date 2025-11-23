@@ -11,28 +11,24 @@ public class TestAppHost : AppHost
     private static long _hostIdSeed;
     private readonly long _hostId;
     private readonly Timer _timer;
-    private int _tickCount;
 
     public TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor outputAccessor)
     {
         Options = options;
         OutputAccessor = outputAccessor;
         _hostId = Interlocked.Increment(ref _hostIdSeed);
-        var timestamp = Stopwatch.GetTimestamp();
+
+        var startedAt = CpuTimestamp.Now;
+        var testOutputHelper = outputAccessor.Output;
         _timer = new Timer(1000);
-        _timer.Elapsed += (_, _) => LogElapsedTime();
+        _timer.Elapsed += (_, _) => LogElapsed();
         _timer.Start();
-        LogElapsedTime();
+        LogElapsed();
         return;
 
-        void LogElapsedTime()
-        {
-            var testOutputHelper = outputAccessor.Output;
-            if (testOutputHelper != null) {
-                var elapsedMs = (int)Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
-                testOutputHelper.WriteLine($"** TestAppHost.Timer, id={_hostId}, instance {Options.InstanceName}, tick {_tickCount++}, elapsed {elapsedMs}ms");
-            }
-        }
+        void LogElapsed()
+            => testOutputHelper?.WriteLine(
+                $"<> AppHost['{Options.InstanceName}', {_hostId}]: {startedAt.Elapsed.ToShortString()}");
     }
 
     public TestAppHostOptions Options { get; }
