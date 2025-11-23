@@ -5,7 +5,7 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-[Collection(nameof(ServerCollection))]
+// [Collection(nameof(ServerCollection))]
 public class TimerFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(TimerFlowTest)}", TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
