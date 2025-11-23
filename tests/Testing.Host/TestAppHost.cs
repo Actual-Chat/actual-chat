@@ -9,7 +9,7 @@ namespace ActualChat.Testing.Host;
 public class TestAppHost : AppHost
 {
     private static long _hostIdSeed;
-    private long _hostId;
+    private readonly long _hostId;
     private readonly Timer _timer;
     private int _tickCount;
 
@@ -19,7 +19,7 @@ public class TestAppHost : AppHost
         OutputAccessor = outputAccessor;
         _hostId = Interlocked.Increment(ref _hostIdSeed);
         var timestamp = Stopwatch.GetTimestamp();
-        _timer = new Timer(200);
+        _timer = new Timer(1000);
         _timer.Elapsed += (_, _) => LogElapsedTime();
         _timer.Start();
         LogElapsedTime();
