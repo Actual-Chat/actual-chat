@@ -4,8 +4,6 @@ namespace ActualChat.Flows.Infrastructure;
 
 public sealed class FlowHost : LegacyShardWorker, IHasServices
 {
-    private static readonly Requester Requester = new(typeof(FlowHost));
-
     private readonly FlowHostShard?[] _shards;
 
     public new IServiceProvider Services => base.Services;
@@ -98,7 +96,7 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
     private LegacyFlowWorklet GetOrAddWorklet(FlowId flowId)
     {
         flowId.Require();
-        var shardKey = ShardKeyResolvers.Get<FlowId>(Requester).Invoke(flowId);
+        var shardKey = ShardKeyResolvers.Get<FlowId>().Invoke(flowId);
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
         // ReSharper disable once InconsistentlySynchronizedField
         var shard = _shards[shardIndex];

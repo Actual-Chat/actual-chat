@@ -113,7 +113,7 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
                     => MeshRef.ZeroShard.WithSchemeIfUndefined(backendServiceDef.ShardScheme);
 
             return (backendServiceDef, methodDef, args) => {
-                var meshRef = MeshRefResolvers.Get<T>(new Requester(methodDef)).Invoke(args.Get0<T>());
+                var meshRef = MeshRefResolvers.Get<T>().Invoke(args.Get0<T>());
                 return meshRef.WithSchemeIfUndefined(backendServiceDef.ShardScheme);
             };
         }

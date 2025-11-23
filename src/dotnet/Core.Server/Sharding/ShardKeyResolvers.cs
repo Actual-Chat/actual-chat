@@ -76,17 +76,15 @@ public static class ShardKeyResolvers
     }
 
     public static ShardKeyResolver<object?> GetUntyped(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type,
-        Requester requester)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
         => GenericInstanceCache.Get<ShardKeyResolver<object?>>(typeof(UntypedFactory<>), type);
 
     public static ShardKeyResolver<T> Get<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(Requester requester)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
         => GenericInstanceCache.Get<ShardKeyResolver<T>>(typeof(Factory<>), typeof(T));
 
     public static Delegate Get(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type,
-        Requester requester)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
         => (Delegate)GenericInstanceCache.Get(typeof(Factory<>), type)!;
 
     // Private methods
@@ -149,7 +147,7 @@ public static class ShardKeyResolvers
     {
         public override ShardKeyResolver<T> Generate()
         {
-            var resolver = Get<TShardKey>(new Requester("GenericInstanceFactory"));
+            var resolver = Get<TShardKey>();
             if (typeof(T).IsValueType)
                 return x => resolver.Invoke(x.ShardKey);
 
@@ -163,6 +161,6 @@ public static class ShardKeyResolvers
         : GenericInstanceFactory, IGenericInstanceFactory<ShardKeyResolver<object?>>
     {
         public override ShardKeyResolver<object?> Generate()
-            => Get<T>(new Requester("GenericInstanceFactory")).ToUntyped();
+            => Get<T>().ToUntyped();
     }
 }

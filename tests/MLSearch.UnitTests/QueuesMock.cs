@@ -8,7 +8,7 @@ public static class QueuesMock
     {
         var queueRefResolver = new Mock<IQueueRefResolver>(MockBehavior.Loose);
         queueRefResolver
-            .Setup(x => x.GetQueueShardRef(It.IsAny<ICommand>(), It.IsAny<Requester>()))
+            .Setup(x => x.GetQueueShardRef(It.IsAny<ICommand>()))
             .Returns(new QueueShardRef(ShardScheme.EventQueue, 1));
         var services = new Mock<IServiceProvider>(MockBehavior.Loose);
         services

@@ -15,15 +15,15 @@ public sealed class QueueRefResolver(IServiceProvider services) : IQueueRefResol
     private CommandHandlerResolver CommandHandlerResolver { get; } = services.GetRequiredService<CommandHandlerResolver>();
     private ILogger Log { get; } = services.LogFor<QueueRefResolver>();
 
-    public QueueShardRef GetQueueShardRef(ICommand command, Requester requester)
+    public QueueShardRef GetQueueShardRef(ICommand command)
     {
-        var queueRef = GetQueueRef(command, requester);
-        var shardKeyResolver = ShardKeyResolvers.GetUntyped(command.GetType(), requester);
+        var queueRef = GetQueueRef(command);
+        var shardKeyResolver = ShardKeyResolvers.GetUntyped(command.GetType());
         var shardKey = shardKeyResolver.Invoke(command);
         return new QueueShardRef(queueRef, shardKey);
     }
 
-    public QueueRef GetQueueRef(ICommand command, Requester requester)
+    public QueueRef GetQueueRef(ICommand command)
     {
         var commandType = command.GetType();
         var commandKind = command.GetKind();

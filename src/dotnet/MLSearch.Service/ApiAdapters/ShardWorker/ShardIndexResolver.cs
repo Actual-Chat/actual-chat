@@ -7,8 +7,7 @@ internal interface IShardIndexResolver<in TShardKey>
 
 internal sealed class ShardIndexResolver<TShardKey> : IShardIndexResolver<TShardKey>
 {
-    private readonly ShardKeyResolver<TShardKey> _resolver = ShardKeyResolvers.Get<TShardKey>(
-            new Requester(null, static _ => $"MLSearch.{nameof(ShardIndexResolver<TShardKey>)}<{typeof(TShardKey).Name}>"))
+    private readonly ShardKeyResolver<TShardKey> _resolver = ShardKeyResolvers.Get<TShardKey>()
         ?? throw StandardError.NotFound<ShardKeyResolver<TShardKey>>();
 
     public int Resolve<TItem>(TItem item, ShardScheme shardScheme) where TItem : IHasShardKey<TShardKey>

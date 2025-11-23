@@ -32,9 +32,7 @@ public static class QueuesExt
     {
         var queueRefResolver = queues.Services.GetRequiredService<IQueueRefResolver>();
         var command = queuedCommand.UntypedCommand;
-        var requester = new Requester(command,
-            static c => $"{nameof(QueuesExt)}.{nameof(Enqueue)}({c?.GetType().GetName() ?? "null"})");
-        var queueShardRef = queueRefResolver.GetQueueShardRef(command, requester);
+        var queueShardRef = queueRefResolver.GetQueueShardRef(command);
         var queueProcessor = queues.GetSender(queueShardRef.QueueRef);
         return queueProcessor.Enqueue(queueShardRef, queuedCommand, cancellationToken);
     }

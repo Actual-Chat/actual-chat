@@ -43,21 +43,21 @@ public static class MeshRefResolvers
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static MeshRefResolver<object?> GetUntyped(Type type, Requester requester)
+    public static MeshRefResolver<object?> GetUntyped(Type type)
         => GenericInstanceCache.Get<MeshRefResolver<object?>>(typeof(UntypedFactory<>), type);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static MeshRefResolver<T> Get<T>(Requester requester)
+    public static MeshRefResolver<T> Get<T>()
         => GenericInstanceCache.Get<MeshRefResolver<T>>(typeof(Factory<>), typeof(T));
 
-    public static Delegate Get(Type type, Requester requester)
+    public static Delegate Get(Type type)
         => (Delegate)GenericInstanceCache.Get(typeof(Factory<>), type)!;
 
     // Private methods
 
-    private static MeshRefResolver<T> CreateShardKeyBasedResolver<T>(Requester requester)
+    private static MeshRefResolver<T> CreateShardKeyBasedResolver<T>()
     {
-        var shardKeyResolver = ShardKeyResolvers.Get<T>(requester);
+        var shardKeyResolver = ShardKeyResolvers.Get<T>();
         return x => MeshRef.Shard(shardKeyResolver.Invoke(x));
     }
 
@@ -77,13 +77,13 @@ public static class MeshRefResolvers
                 }
             }
 
-            return CreateShardKeyBasedResolver<T>(new Requester("GenericInstanceFactory"));
+            return CreateShardKeyBasedResolver<T>();
         }
     }
 
     private sealed class UntypedFactory<T> : GenericInstanceFactory, IGenericInstanceFactory<MeshRefResolver<object?>>
     {
         public override MeshRefResolver<object?> Generate()
-            => Get<T>(new Requester("GenericInstanceFactory")).ToUntyped();
+            => Get<T>().ToUntyped();
     }
 }
