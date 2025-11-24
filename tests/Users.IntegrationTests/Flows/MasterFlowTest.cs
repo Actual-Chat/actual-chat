@@ -15,7 +15,8 @@ public class MasterFlowTest(ITestOutputHelper @out)
         var flows = h.Services.GetRequiredService<IFlows>();
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.TryGet<DigestFlow>("actual-admin", ct);
+            var userId = Constants.User.Admin.UserId.Value;
+            var flow = await flows.TryGet<DigestFlow>(userId, ct);
             flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
     }

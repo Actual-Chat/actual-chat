@@ -14,7 +14,8 @@ public class DigestFlowTest(ITestOutputHelper @out)
         using var h = await NewAppHost();
 
         var flows = h.Services.GetRequiredService<IFlows>();
-        var f0 = await flows.Get<DigestFlow>("actual-admin");
+        var userId = Constants.User.Admin.UserId.Value;
+        var f0 = await flows.Get<DigestFlow>(userId);
 
         await ComputedTest.When(async ct => {
             var flow = await flows.TryGet<DigestFlow>(f0.Id.Arguments, ct);
@@ -32,7 +33,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var flows = h.Services.GetRequiredService<IFlows>();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
-        var userId = UserId.Parse("actual-admin");
+        var userId = Constants.User.Admin.UserId;
         var account = await accountsBackend.Get(userId, CancellationToken.None).Require();
         var updateCmd = new AccountsBackend_Update(
             account with {
@@ -59,7 +60,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var flows = h.Services.GetRequiredService<IFlows>();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
-        var userId = UserId.Parse("actual-admin");
+        var userId = Constants.User.Admin.UserId;
         var account = await accountsBackend.Get(userId, default).Require();
         var updateCmd = new AccountsBackend_Update(
             account with {
@@ -93,7 +94,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
         var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
 
-        var userId = UserId.Parse("actual-admin");
+        var userId = Constants.User.Admin.UserId;
         var kvas = serverKvasBackend.GetUserClient(userId);
         await kvas.UserEmailsSettings()
             .Update(x => x with {
