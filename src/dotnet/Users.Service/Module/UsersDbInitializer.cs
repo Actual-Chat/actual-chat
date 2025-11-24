@@ -24,7 +24,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         => await EnsureUserExists(
                 new InternalUserInfo(Constants.User.Admin.UserId, Constants.User.Admin.Name) {
                     AvatarBio = "Admin",
-                    AvatarPictureUrl = Constants.User.Admin.Picture
+                    AvatarPictureUrl = Constants.User.Admin.Picture,
                 },
                 cancellationToken)
             .ConfigureAwait(false);
