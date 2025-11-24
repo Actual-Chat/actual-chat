@@ -32,7 +32,6 @@ public static class AndroidUtils
 
         // Screen is on and unlocked, now check if the process is in the foreground
 
-
         int pid = Android.OS.Process.MyPid();
         var appProcesses = activityManager.RunningAppProcesses;
         if (appProcesses != null) {
