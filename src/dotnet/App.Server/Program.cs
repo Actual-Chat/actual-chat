@@ -97,11 +97,5 @@ internal static class Program
             // true is dangerous: if user block in async code, this can easily lead to deadlocks
             GrpcEnvironment.SetHandlerInlining(false);
         }
-
-        static void AdjustThreadPoolToOneThread()
-        {
-            ThreadPool.SetMinThreads(1, 1);
-            ThreadPool.SetMaxThreads(1, 1);
-        }
     }
 }
