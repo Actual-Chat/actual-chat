@@ -73,7 +73,7 @@ public sealed partial class ShardOwner
             if (waitTimeout > TimeSpan.Zero)
                 return CompleteAsync(waitTimeout);
 
-            resultTask = Task.FromException<ShardOwnership>(RpcRerouteException.MustReroute());
+            resultTask = Task.FromException<ShardOwnership>(new RpcRerouteException("No shard ownership."));
         }
         else
             resultTask = (Task<ShardOwnership>)cOwnershipState.GetValuePromise();
@@ -96,7 +96,7 @@ public sealed partial class ShardOwner
             cOwnershipState = ownershipState.Computed; // cOwnershipState.Update, but faster
             if (cCurrent is not null)
                 ComputedImpl.AddDependency(cCurrent, cOwnershipState);
-            return cOwnershipState.Value ?? throw RpcRerouteException.MustReroute();
+            return cOwnershipState.Value ?? throw new RpcRerouteException("No shard ownership.");
         }
     }
 }
