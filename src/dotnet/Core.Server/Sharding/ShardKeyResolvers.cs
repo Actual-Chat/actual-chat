@@ -1,3 +1,4 @@
+using ActualChat.Flows;
 using ActualLab.Caching;
 
 namespace ActualChat.Sharding;
@@ -57,11 +58,13 @@ public static class ShardKeyResolvers
         Register<UserDeviceId>(static x => ForString(x.OwnerId.Value));
         Register<StreamId>(static x => ForString(x.Value)); // Used as a shard key in TranslationsBackend_TranslateStream
         Register<UserIdentity>(static x => ForString(x.Id));
+        Register<FlowId>(static x => ForString(x.Arguments));
 
         // Classes
         Register<string>(ForString); // Todo: likely, we should get rid of this kind of shard key
         Register<Session>(x => ForString(x.Id));
         Register<ISessionCommand>(x => ForString(x.Session.Id));
+        Register<IFlowEvent>(static x => ForString(x.FlowId.Arguments));
     }
 
     public static void Register<T>(ShardKeyResolver<T> resolver)
