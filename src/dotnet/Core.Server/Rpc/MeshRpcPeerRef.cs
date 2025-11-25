@@ -3,7 +3,6 @@ namespace ActualChat.Rpc;
 
 public sealed class MeshRpcPeerRef : RpcPeerRef
 {
-    private CancellationTokenSource? _routeChangedSource;
     private readonly ShardOwner.ShardState? _shardState;
 
     public readonly ResolvedMeshRef Target;
@@ -19,27 +18,29 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         UseReferentialEquality = true;
         var shardRef = Target.ShardRef;
         if (!shardRef.IsNone) {
-            _routeChangedSource = new();
-            var routeChangedToken = _routeChangedSource.Token;
             _shardState = Target.Owner.ShardOwners[shardRef.Scheme].GetShardState(shardRef.Key);
-            _ = _shardState.WhenDisposed.ContinueWith(
-                _ => MarkRerouted(),
-                CancellationToken.None, TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Default);
-            RouteState = _shardState.MustLock
-                ? new RpcShardRouteState(ShardLockAwaiter, routeChangedToken)
-                : new RpcRouteState(routeChangedToken);
+            RouteState = new();
+            _ = RouteState.WhenChanged.ContinueWith(
+                _ => Target.Owner.Log.LogWarning(
+                    "'{RpcPeerRef}': rerouted from {OldTarget} to {NewTarget}",
+                    this, Target, Target.Latest),
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            if (_shardState.MustLock) {
+                RouteState.LocalExecutionAwaiter = LocalExecutionAwaiter;
+                _ = MarkChangedWhenShardOwnershipEnds(_shardState, RouteState.ChangedToken);
+            }
+            _ = MarkChangedWhenShardStateChanged(_shardState);
         }
         Initialize();
     }
 
     // Private methods
 
-    private async ValueTask<CancellationToken> ShardLockAwaiter(CancellationToken cancellationToken)
+    private async ValueTask LocalExecutionAwaiter(CancellationToken cancellationToken)
     {
         var shardState = _shardState!;
         try {
-            var shardOwnership = await shardState.RequireOwnership(cancellationToken).ConfigureAwait(false);
-            return shardOwnership.LockToken;
+            await shardState.RequireOwnership(cancellationToken).ConfigureAwait(false);
         }
         catch (RpcRerouteException) {
             var shardOwners = shardState.ShardOwner.Host;
@@ -48,20 +49,34 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
             if (shardOwners.Services.IsDisposedOrDisposing())
                 throw new ObjectDisposedException(nameof(IServiceProvider));
 
-            MarkRerouted();
+            RouteState?.MarkChanged();
             throw;
         }
     }
 
-    private void MarkRerouted()
+    private async Task MarkChangedWhenShardOwnershipEnds(
+        ShardOwner.ShardState shardState, CancellationToken cancellationToken)
     {
-        var routeChangedSource = Interlocked.Exchange(ref _routeChangedSource, null);
-        if (routeChangedSource is null)
-            return;
+        try {
+            var ownershipState = shardState.OwnershipState;
+            // Waiting for ownership
+            var computed = await ownershipState.Computed
+                .When(x => x is not null, FixedDelayer.NoneUnsafe, cancellationToken)
+                .ConfigureAwait(false);
+            // It's always set to null after that
+            await computed.WhenInvalidated(cancellationToken).SilentAwait(false);
+        }
+        catch {
+            // Intended
+        }
+        finally {
+            RouteState?.MarkChanged();
+        }
+    }
 
-        _routeChangedSource.CancelAndDisposeSilently();
-        Target.Owner.Log.LogWarning(
-            "'{RpcPeerRef}': rerouted from {OldTarget} to {NewTarget}",
-            this, Target, Target.Latest);
+    private async Task MarkChangedWhenShardStateChanged(ShardOwner.ShardState shardState)
+    {
+        await shardState.WhenChanged.SilentAwait();
+        RouteState?.MarkChanged();
     }
 }

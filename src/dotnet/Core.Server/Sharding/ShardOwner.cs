@@ -93,7 +93,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         var lockedShards = new BitArray(ShardScheme.ShardCount);
         var addedShards = new List<int>();
         var removedShards = new List<int>();
-        var disposeTasks = new List<Task>();
+        var waitList = new List<Task>();
         var shardStates = State.Value.ShardStates; // Initial value
         var version = 1;
         try {
@@ -116,15 +116,16 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                 foreach (var shardIndex in ShardScheme.ShardIndexes) {
                     var nodeIndex = nodeIndexes[shardIndex];
                     var node = nodeIndex.HasValue ? nodes[nodeIndex.GetValueOrDefault()] : null;
-                    var lockState = shardStates[shardIndex];
+                    var shardState = shardStates[shardIndex];
                     var mustLock = node == ThisNode;
-                    if (lockState.MustLock == mustLock) {
-                        nextShardStates[shardIndex] = lockState;
+                    if (shardState.MustLock == mustLock) {
+                        nextShardStates[shardIndex] = shardState;
                         continue;
                     }
 
-                    disposeTasks.Add(lockState.WhenDisposed);
-                    nextShardStates[shardIndex] = new ShardState(lockState, mustLock, version);
+                    if (shardState.WhenLockAndUseRunning is { } whenLockAndUseRunning)
+                        waitList.Add(whenLockAndUseRunning);
+                    nextShardStates[shardIndex] = new ShardState(shardState, mustLock, version);
                     (mustLock ? addedShards : removedShards).Add(shardIndex);
                     lockedShards[shardIndex] = mustLock;
                 }
@@ -139,13 +140,13 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                     version++;
                 }
 
-                await Task.WhenAll(disposeTasks).SilentAwait(false);
-                disposeTasks.Clear();
+                await Task.WhenAll(waitList).SilentAwait(false);
+                waitList.Clear();
             }
         }
         finally {
             State.SetError(new ObjectDisposedException(nameof(ShardState)));
-            await Task.WhenAll(shardStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait(false);
+            await Task.WhenAll(shardStates.Select(x => x.MarkFinal())).SilentAwait(false);
         }
     }
 
@@ -155,7 +156,8 @@ public sealed class ShardOwner : WorkerBase, IHasServices
     {
         // We must make sure we don't run LockShard in parallel with the previous one.
         // We always cancel the previous one, but there is no guarantee that it will stop immediately.
-        await prevShardState.WhenDisposed.SilentAwait(false);
+        if (prevShardState.WhenLockAndUseRunning is { } prevLockAndUseRunning)
+            await prevLockAndUseRunning.SilentAwait(false);
 
         var shardIndex = shardState.ShardIndex;
         var cancelLockToken = shardState.CancelLockToken;
@@ -221,9 +223,9 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         public TimeSpan Age => ShardOwner.Host.Clock.Now - CreatedAt;
     }
 
-    public sealed class ShardState : IAsyncDisposable
+    public sealed class ShardState
     {
-        private readonly Task? _lockTask;
+        private readonly TaskCompletionSource<ShardState> _nextState;
         private readonly CancellationTokenSource _cancelLockTokenSource;
 
         internal readonly Lock MutableStateChangeLock = new();
@@ -233,31 +235,36 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         public ShardOwner ShardOwner { get; }
         public int ShardIndex { get; }
         public long ShardOwnerStateVersion { get; }
-        public bool MustLock => _lockTask != null; // or !CancelLockToken.IsCancellationRequested
         public CancellationToken CancelLockToken { get; }
+        public bool MustLock => WhenLockAndUseRunning is not null;
         public IState<ShardOwnership?> OwnershipState => MutableOwnershipState;
         public IState<Moment> InvalidateUntilState => MutableInvalidateUntilState;
-        public Task WhenDisposed { get; }
+        public Task? WhenLockAndUseRunning { get; }
+        public Task<ShardState> WhenChanged => _nextState.Task;
 
         internal ShardState(ShardOwner shardOwner, int shardIndex, int shardOwnerStateVersion)
         {
             ShardOwner = shardOwner;
             ShardIndex = shardIndex;
             ShardOwnerStateVersion = shardOwnerStateVersion;
+
+            _nextState = TaskCompletionSourceExt.New<ShardState>();
+            _cancelLockTokenSource = ShardOwner.StopToken.CreateLinkedTokenSource();
+            CancelLockToken = _cancelLockTokenSource.Token;
+            _cancelLockTokenSource.CancelAndDisposeSilently(); // ~ MustLock = false
+
             var stateFactory = ShardOwner.Host.StateFactory;
             MutableOwnershipState = stateFactory.NewMutable<ShardOwnership?>(
                 category: StateCategories.Get(GetType(), nameof(OwnershipState)));
             MutableInvalidateUntilState = stateFactory.NewMutable<Moment>(
                 category: StateCategories.Get(GetType(), nameof(InvalidateUntilState)));
-            _cancelLockTokenSource = ShardOwner.StopToken.CreateLinkedTokenSource();
-            CancelLockToken = _cancelLockTokenSource.Token;
-            _cancelLockTokenSource.CancelAndDisposeSilently(); // ~ MustLock = false
-            WhenDisposed = Task.CompletedTask;
+            WhenLockAndUseRunning = null;
         }
 
         internal ShardState(ShardState prevState, bool mustLock, int shardOwnerStateVersion)
         {
             prevState._cancelLockTokenSource.CancelAndDisposeSilently();
+            _nextState = TaskCompletionSourceExt.New<ShardState>();
             ShardOwner = prevState.ShardOwner;
             ShardIndex = prevState.ShardIndex;
             ShardOwnerStateVersion = shardOwnerStateVersion;
@@ -266,20 +273,23 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             if (mustLock) {
                 _cancelLockTokenSource = ShardOwner.StopToken.CreateLinkedTokenSource();
                 CancelLockToken = _cancelLockTokenSource.Token;
-                WhenDisposed = _lockTask = ShardOwner.LockAndUseShard(this, prevState);
+                WhenLockAndUseRunning = ShardOwner.LockAndUseShard(this, prevState);
             }
             else {
                 _cancelLockTokenSource = prevState._cancelLockTokenSource;
                 CancelLockToken = prevState.CancelLockToken;
-                WhenDisposed = prevState.WhenDisposed;
+                WhenLockAndUseRunning = null;
             }
+            prevState._nextState.SetResult(this);
         }
 
-        public ValueTask DisposeAsync()
+        public Task MarkFinal()
         {
-            MutableOwnershipState.SetError(new ObjectDisposedException(nameof(ShardState)));
+            var error = new ObjectDisposedException(nameof(ShardState));
+            _nextState.SetException(error);
+            MutableOwnershipState.SetError(error);
             _cancelLockTokenSource.CancelAndDisposeSilently();
-            return WhenDisposed.ToValueTask();
+            return WhenLockAndUseRunning ?? Task.CompletedTask;
         }
 
         public ShardOwnershipStatus GetOwnershipStatus(bool addDependency = true)
@@ -336,7 +346,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                 else
                     ComputedImpl.AddDependency(cCurrent, cState);
             }
-            throw new RpcRerouteException("The shard isn't mapped to this node.");
+            throw RpcRerouteException.MustReroute("the shard isn't mapped to this node");
 
             async Task<ShardOwnership> CompleteAsync() {
                 var linkedCts = cancellationToken.LinkWith(CancelLockToken);
@@ -350,7 +360,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                 catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
                     // If we're here, CancelLockToken was canceled while the ownership was being acquired,
                     // which means that at this point the shard isn't own already.
-                    throw new RpcRerouteException("The shard isn't mapped to this node anymore.");
+                    throw RpcRerouteException.MustReroute("the shard isn't mapped to this node anymore");
                 }
                 finally {
                     linkedCts.CancelAndDisposeSilently();
