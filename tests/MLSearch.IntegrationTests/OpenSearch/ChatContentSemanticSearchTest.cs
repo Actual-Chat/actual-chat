@@ -96,8 +96,18 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var chatInfoSink = AppHost.Services.GetRequiredService<ISink<ChatInfo, string>>();
         await chatInfoSink.ExecuteAsync([chatInfo1, chatInfo2], null);
 
+        await DumpStat();
+
         var documentSink = AppHost.Services.GetRequiredService<ISink<ChatSlice, string>>();
-        await documentSink.ExecuteAsync(documents.ToArray(), null);
+        try {
+            await documentSink.ExecuteAsync(documents.ToArray(), null);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to ingest documents to the index.");
+        }
+        finally {
+            await DumpStat();
+        }
 
         // Ensure all documents processed by the ingestion pipeline
         var documentLoader = AppHost.Services.GetRequiredService<IChatContentDocumentLoader>();
@@ -151,6 +161,34 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var query3Count = queryResult3.Documents.Count;
         Assert.True(query3Count > 0);
         Assert.True(query2Count > query3Count);
+    }
+
+    private async Task DumpStat()
+    {
+        var openSearchClient = AppHost.Services.GetRequiredService<IOpenSearchClient>();
+        var nodesStatsResponse = await openSearchClient.Nodes.StatsAsync();
+        //var clusterStatResponse = await openSearchClient.Cluster.StatsAsync();
+
+        var sb = new StringBuilder();
+        foreach (var node in nodesStatsResponse.Nodes) {
+            sb.AppendLine($"Node ID stat: {node.Key}");
+            var breakers = node.Value.Breakers;
+            if (breakers == null) {
+                sb.AppendLine("  No breakers info");
+                continue;
+            }
+            foreach (var br in breakers) {
+                var brKey = br.Key;
+                var breakerStats = br.Value;
+                sb.AppendLine($"  Breaker: {brKey}");
+                sb.AppendLine($"    Estimated Size: {breakerStats.EstimatedSizeInBytes}");
+                sb.AppendLine($"    Limit Size: {breakerStats.LimitSizeInBytes}");
+                sb.AppendLine($"    Overhead: {breakerStats.Overhead}");
+                sb.AppendLine($"    Tripped: {breakerStats.Tripped}");
+            }
+
+        }
+        Log.LogInformation(sb.ToString());
     }
 
     [Fact]
