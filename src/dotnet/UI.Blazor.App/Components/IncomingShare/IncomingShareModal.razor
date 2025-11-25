@@ -65,7 +65,7 @@
 
     private SendingMessages SendingMessages => Hub.SendingMessages;
     private ILogger Log => field ??= Hub.LogFor(GetType());
-    private VisualMediaDimensions VisualMediaDimensions => field ??= new VisualMediaDimensions(Hub.JS);
+    private VisualMediaDimensions VisualMediaDimensions => field ??= new VisualMediaDimensions(Hub.JS, Hub.LogFor<VisualMediaDimensions>());
 
     private ImmutableHashSet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
