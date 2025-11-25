@@ -7,7 +7,7 @@ namespace ActualChat.Users.IntegrationTests.Flows;
 public class MasterFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(MasterFlowTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task ShouldStartDigestFlow()
     {
         using var h = await NewAppHost();
@@ -15,12 +15,13 @@ public class MasterFlowTest(ITestOutputHelper @out)
         var flows = h.Services.GetRequiredService<IFlows>();
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.TryGet<DigestFlow>("actual-admin", ct);
+            var userId = Constants.User.Admin.UserId.Value;
+            var flow = await flows.TryGet<DigestFlow>(userId, ct);
             flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task ShouldBeHangingOnReset()
     {
         using var h = await NewAppHost();

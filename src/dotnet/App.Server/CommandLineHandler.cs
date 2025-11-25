@@ -34,7 +34,8 @@ public static class CommandLineHandler
         // -kb argument
         UseKeyboard = args.Any(x => OrdinalEquals(x, KeyboardArg));
         // -distributed argument
-        ForceDistributed = HostRolesExt.ForceDistributedModeForServerModeServices = args.Any(x => OrdinalEquals(x, ForceDistributedArg));
+        ForceDistributed = HostRolesExt.ForceDistributedModeForServerModeServices
+            = args.Any(x => OrdinalEquals(x, ForceDistributedArg));
 
         // -url:<url> argument
         var urlOverride = args

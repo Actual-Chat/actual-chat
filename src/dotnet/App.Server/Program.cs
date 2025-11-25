@@ -94,14 +94,8 @@ internal static class Program
             Console.WriteLine($"GRPC thread pool size: {threadCount}");
             GrpcEnvironment.SetThreadPoolSize(threadCount);
             GrpcEnvironment.SetCompletionQueueCount(threadCount);
-            // true is dangerous: if user block in async code, this can easily lead to deadlocks
+            // true is dangerous: if the code blocks in async code, this can lead to deadlocks
             GrpcEnvironment.SetHandlerInlining(false);
-        }
-
-        static void AdjustThreadPoolToOneThread()
-        {
-            ThreadPool.SetMinThreads(1, 1);
-            ThreadPool.SetMaxThreads(1, 1);
         }
     }
 }

@@ -36,8 +36,8 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
             st2.ShardStates.Count(x => x.OwnershipState.Value is not null).Should().Be(shardScheme.ShardCount / 2);
         }, TimeSpan.FromSeconds(20)); // May need more time on build agents
 
-        var isOwner1 = await sb1.IsOwned(key, CancellationToken.None);
-        var isOwner2 = await sb2.IsOwned(key, CancellationToken.None);
+        var isOwner1 = sb1.GetShardOwnershipState(key) is ShardOwnershipStatus.LockedByThisNode;
+        var isOwner2 = sb2.GetShardOwnershipState(key) is ShardOwnershipStatus.LockedByThisNode;
         isOwner2.Should().NotBe(isOwner1);
         var c2 = await Computed.Capture(() => s2.TryGetTime(key));
         if (isOwner2) {
@@ -81,16 +81,16 @@ public class TestShardComputeService(IServiceProvider services, ITestOutputHelpe
     private ShardOwner ShardOwner { get; } = services.ShardOwner(ShardScheme.TestBackend);
 
     [ComputeMethod]
-    public virtual async Task<CpuTimestamp?> TryGetTime(string key, CancellationToken cancellationToken = default)
-    {
-        var isLeased = await ShardOwner.IsOwned(key, cancellationToken).ConfigureAwait(false);
-        return isLeased ? CpuTimestamp.Now : null;
-    }
+    public virtual Task<CpuTimestamp?> TryGetTime(string key, CancellationToken cancellationToken = default)
+        => Task.FromResult<CpuTimestamp?>(
+            ShardOwner.GetShardOwnershipState(key) is ShardOwnershipStatus.LockedByThisNode
+                ? CpuTimestamp.Now
+                : null);
 
     [ComputeMethod]
     public virtual async Task<CpuTimestamp> GetTime(string key, CancellationToken cancellationToken = default)
     {
-        await ShardOwner.RequireOwnedOrReroute(key, cancellationToken).ConfigureAwait(false);
+        await ShardOwner.RequireOwnership(key, cancellationToken).ConfigureAwait(false);
         return CpuTimestamp.Now;
     }
 }

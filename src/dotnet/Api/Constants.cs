@@ -102,8 +102,7 @@ public static partial class Constants
     {
         public static class Admin
         {
-            // TODO: voxt.ai: voxt-admin:
-            public static readonly UserId UserId = UserId.Parse("actual-admin");
+            public static readonly UserId UserId = UserId.Parse("VoxtAdmin"); // Should have no dash in it!
             public static readonly string Name =  $"{CoreConstants.AppName} Admin";
             public static readonly string Picture = "https://api.dicebear.com/7.x/bottts/svg?seed=12333323132";
         }

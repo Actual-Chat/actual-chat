@@ -7,15 +7,18 @@ public sealed class MeshRpcPeerRefs
     private readonly ConcurrentDictionary<MeshRef, MeshRpcPeerRef> _peerRefs = new();
     private readonly Lock _lock = new ();
 
-    private ILogger Log { get; }
+    internal ILogger Log { get; }
 
+    public IServiceProvider Services { get; }
     public MeshWatcher MeshWatcher { get; }
     public IState<MeshState> MeshState { get; }
     public MeshNode ThisNode { get; }
+    public ShardOwners ShardOwners => field ??= MeshWatcher.Services.ShardOwners();
 
     public MeshRpcPeerRefs(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
+        Services = services;
         MeshWatcher = services.MeshWatcher();
         MeshState = MeshWatcher.State;
         ThisNode = MeshWatcher.ThisNode;
@@ -44,32 +47,10 @@ public sealed class MeshRpcPeerRefs
                 return peerRef;
 
             var version = (peerRef?.Version ?? 0) + 1;
-            peerRef = NewMeshPeerRef(meshRef, version);
+            var target = new ResolvedMeshRef(this, meshRef);
+            peerRef = new MeshRpcPeerRef(target, version);
             _peerRefs[meshRef] = peerRef;
             return peerRef;
         }
-    }
-
-    // Private methods
-
-    private MeshRpcPeerRef NewMeshPeerRef(MeshRef meshRef, int version)
-    {
-        var target = new ResolvedMeshRef(this, meshRef);
-        var peerRef = new MeshRpcPeerRef(target, version);
-        _ = MaybeRerouteEventually(peerRef, MeshWatcher.StopToken);
-        return peerRef;
-    }
-
-    private async Task MaybeRerouteEventually(MeshRpcPeerRef peerRef, CancellationToken cancellationToken)
-    {
-        var target = peerRef.Target;
-        if (target.ConnectionKind is RpcPeerConnectionKind.None)
-            return;
-
-        await target.WhenChanged(true, cancellationToken).ConfigureAwait(false);
-        Log.LogWarning(
-            "'{RpcPeerRef}': rerouting from {OldTarget} to {NewTarget}",
-            peerRef, target, target.Latest);
-        peerRef.MarkRerouted();
     }
 }

@@ -162,16 +162,17 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                     await Process(shardIndex, message, cancellationToken1).ConfigureAwait(false);
                     Interlocked.Increment(ref handledCount);
                 }
-                catch (ObjectDisposedException) {
+                catch (Exception e) when (e is ObjectDisposedException or TargetException) {
                     // NOTE(AY): NatsQueueProcessor is sometimes disposed ~ at the very end
                     // of container disposal, and thus it retries many times to process
                     // queued events, even though it's already impossible, coz the Commander
                     // can't create scope for any new command it runs, because the container
                     // is already disposed.
-                    // So here we detect this & instantly abort the message reader.
+                    // TargetException can be thrown by MethodCommandHandler on an attempt to
+                    // invoke a method of an already disposed service.
                     if (Services.IsDisposedOrDisposing())
                         // ReSharper disable once AccessToDisposedClosure
-                        processingStopCts.CancelAndDisposeSilently();
+                        processingStopCts.CancelAndDisposeSilently(); // Instantly abort the reader
                     throw;
                 }
                 finally {
