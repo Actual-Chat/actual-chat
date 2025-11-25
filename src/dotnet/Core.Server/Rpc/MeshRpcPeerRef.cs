@@ -4,9 +4,9 @@ namespace ActualChat.Rpc;
 public sealed class MeshRpcPeerRef : RpcPeerRef
 {
     private CancellationTokenSource? _routeChangedSource;
+    private readonly ShardOwner.ShardState? _shardState;
 
     public readonly ResolvedMeshRef Target;
-    public readonly ShardOwner.ShardState? ShardState;
     public readonly int Version;
 
     internal MeshRpcPeerRef(ResolvedMeshRef target, int version)
@@ -25,13 +25,13 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         else {
             _routeChangedSource = new();
             var routeChangedToken = _routeChangedSource.Token;
-            ShardState = Target.Owner.ShardOwners[shardRef.Scheme].GetShardState(shardRef.Key);
-            RouteState = ShardState.MustLock
+            _shardState = Target.Owner.ShardOwners[shardRef.Scheme].GetShardState(shardRef.Key);
+            RouteState = _shardState.MustLock
                 ? new RpcShardRouteState(ShardLockAwaiter, routeChangedToken)
                 : new RpcRouteState(routeChangedToken);
         }
         Initialize();
-        _ = ShardState?.WhenDisposed.ContinueWith(
+        _ = _shardState?.WhenDisposed.ContinueWith(
             _ => MarkRerouted(),
             CancellationToken.None, TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Default);
     }
@@ -41,7 +41,7 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
     private async ValueTask<CancellationToken> ShardLockAwaiter(CancellationToken cancellationToken)
     {
         try {
-            var shardOwnership = await ShardState!.RequireOwnership(cancellationToken).ConfigureAwait(false);
+            var shardOwnership = await _shardState!.RequireOwnership(cancellationToken).ConfigureAwait(false);
             return shardOwnership.LockToken;
         }
         catch (RpcRerouteException) {
