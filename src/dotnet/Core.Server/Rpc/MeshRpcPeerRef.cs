@@ -58,7 +58,7 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
 
         _routeChangedSource.CancelAndDisposeSilently();
         Target.Owner.Log.LogWarning(
-            "'{RpcPeerRef}': rerouting from {OldTarget} to {NewTarget}",
+            "'{RpcPeerRef}': rerouted from {OldTarget} to {NewTarget}",
             this, Target, Target.Latest);
     }
 }
