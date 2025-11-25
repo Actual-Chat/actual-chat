@@ -64,6 +64,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         var flowType = Registry.TypeByName[flowId.Name];
         DebugLog?.LogDebug("Start: `{FlowId}`", flowId);
         return await ResumeRetryPolicy.Run(async ct => {
+            using var _ = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
             var version = 0L;
             while (true) {
                 Flow? flow;
