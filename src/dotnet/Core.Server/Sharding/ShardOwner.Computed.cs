@@ -13,47 +13,25 @@ public sealed partial class ShardOwner
     }
 
     // [ComputeMethod] - alike
-    public Task<bool> IsOwned<T>(T shardKey, CancellationToken cancellationToken)
-        => IsOwned(shardKey, addDependency: true, cancellationToken);
-    public Task<bool> IsOwned<T>(T shardKey, bool addDependency, CancellationToken cancellationToken)
+    public ShardOwnershipState GetShardOwnershipState<T>(T shardKey, bool addDependency = true)
     {
+        var cCurrent = addDependency ? Computed.Current : null;
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cState = State.Computed;
-        var cCurrent = addDependency ? Computed.Current : null;
-        var ownershipState = cState.Value.ShardStates[shardIndex].OwnershipState;
+        var shardState = cState.Value.ShardStates[shardIndex];
+        var ownershipState = shardState.OwnershipState;
         var cOwnershipState = ownershipState.Computed;
-
-        Task<bool> resultTask;
-        if (cOwnershipState.Value is null) {
-            var waitTimeout = OwnershipWaitTimeout.Next() - cState.Value.Age;
-            if (waitTimeout > TimeSpan.Zero)
-                return CompleteAsync(waitTimeout);
-
-            resultTask = ActualLab.Async.TaskExt.FalseTask;
-        }
-        else
-            resultTask = ActualLab.Async.TaskExt.TrueTask;
-
-        if (cCurrent is not null)
-            ComputedImpl.AddDependency(cCurrent, cOwnershipState);
-        return resultTask;
-
-        async Task<bool> CompleteAsync(TimeSpan waitTimeout) {
-            try {
-                await cOwnershipState
-                    .When(x => x is not null, cancellationToken)
-                    .WaitAsync(waitTimeout, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (TimeoutException) {
-                // Intended
-            }
-
-            cOwnershipState = ownershipState.Computed; // cOwnershipState.Update, but faster
+        if (cOwnershipState.Value is not null) {
             if (cCurrent is not null)
                 ComputedImpl.AddDependency(cCurrent, cOwnershipState);
-            return cOwnershipState.Value is not null;
+            return ShardOwnershipState.Own;
         }
+
+        if (cCurrent is not null)
+            ComputedImpl.AddDependency(cCurrent, cState);
+        return shardState.MustLock
+            ? ShardOwnershipState.ToBeOwn
+            : ShardOwnershipState.NotOwn;
     }
 
     // [ComputeMethod] - alike
@@ -61,42 +39,50 @@ public sealed partial class ShardOwner
         => RequireOwnedOrReroute(shardKey, addDependency: true, cancellationToken);
     public Task<ShardOwnership> RequireOwnedOrReroute<T>(T shardKey, bool addDependency, CancellationToken cancellationToken)
     {
+        var cCurrent = addDependency ? Computed.Current : null;
         var shardIndex = ShardScheme.GetShardIndex(shardKey);
         var cState = State.Computed;
-        var cCurrent = addDependency ? Computed.Current : null;
-        var ownershipState = cState.Value.ShardStates[shardIndex].OwnershipState;
+        var shardState = cState.Value.ShardStates[shardIndex];
+        var ownershipState = shardState.OwnershipState;
         var cOwnershipState = ownershipState.Computed;
 
         Task<ShardOwnership> resultTask;
-        if (cOwnershipState.Value is null) {
-            var waitTimeout = OwnershipWaitTimeout.Next() - cState.Value.Age;
-            if (waitTimeout > TimeSpan.Zero)
-                return CompleteAsync(waitTimeout);
-
-            resultTask = Task.FromException<ShardOwnership>(new RpcRerouteException("No shard ownership."));
-        }
-        else
-            resultTask = (Task<ShardOwnership>)cOwnershipState.GetValuePromise();
-
-        if (cCurrent is not null)
-            ComputedImpl.AddDependency(cCurrent, cOwnershipState);
-        return resultTask;
-
-        async Task<ShardOwnership> CompleteAsync(TimeSpan waitTimeout) {
-            try {
-                await cOwnershipState
-                    .When(x => x is not null, cancellationToken)
-                    .WaitAsync(waitTimeout, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (TimeoutException) {
-                // Intended
-            }
-
-            cOwnershipState = ownershipState.Computed; // cOwnershipState.Update, but faster
+        if (cOwnershipState.Value is not null) {
+            // ShardOwnershipStatus.Own
             if (cCurrent is not null)
                 ComputedImpl.AddDependency(cCurrent, cOwnershipState);
-            return cOwnershipState.Value ?? throw new RpcRerouteException("No shard ownership.");
+            return (Task<ShardOwnership>)cOwnershipState.GetValuePromise();
+        }
+
+        if (shardState.MustLock) {
+            // ShardOwnershipStatus.ToBeOwn
+            if (cCurrent is not null)
+                ComputedImpl.AddDependency(cCurrent, cOwnershipState);
+            return CompleteAsync();
+        }
+
+        // ShardOwnershipStatus.NotOwn
+        if (cCurrent is not null)
+            ComputedImpl.AddDependency(cCurrent, cState);
+        throw RpcRerouteException.MustReroute();
+
+        async Task<ShardOwnership> CompleteAsync() {
+            var linkedCts = cancellationToken.LinkWith(shardState.CancelLockToken);
+            var linkedToken = linkedCts.Token;
+            try {
+                cOwnershipState = await cOwnershipState
+                    .When(x => x is not null, linkedToken)
+                    .ConfigureAwait(false);
+                return cOwnershipState.Value!;
+            }
+            catch (Exception e) when (e.IsCancellationOf(linkedToken) && !cancellationToken.IsCancellationRequested) {
+                // If we're here, CancellationToken was canceled while the ownership was being acquired,
+                // which means that at this point the shard isn't own already.
+                throw RpcRerouteException.MustReroute();
+            }
+            finally {
+                linkedCts.CancelAndDisposeSilently();
+            }
         }
     }
 }

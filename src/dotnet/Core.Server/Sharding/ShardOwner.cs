@@ -6,7 +6,6 @@ namespace ActualChat.Sharding;
 public sealed partial class ShardOwner : WorkerBase, IHasServices
 {
     private static bool DebugMode => Constants.DebugMode.ShardOwner;
-    private static readonly RandomTimeSpan OwnershipWaitTimeout = TimeSpan.FromSeconds(1.5).ToRandom(0.2);
     private static readonly TimeSpan PostReleaseInvalidationPeriod = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan Century = TimeSpan.FromDays(36_524);
 
@@ -40,10 +39,20 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
         OwnershipLocks = ownershipLocks;
         LockOptions = ownershipLocks.LockOptions;
 
-        var shardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
+        var shardStates = Enumerable.Range(0, shardScheme.ShardCount)
+            .Select(i => new ShardState(this, i))
+            .ToArray();
         State = StateFactory.NewMutable(
             initialValue: new OwnState(this, shardStates),
             category: StateCategories.Get(GetType(), nameof(State)));
+    }
+
+    public ShardState GetShardState(int shardIndex, bool addDependency = true)
+    {
+        var computed = State.Computed;
+        if (addDependency)
+            _ = computed.UseUntyped(allowInconsistent: true); // This call always completes synchronously
+        return computed.Value.ShardStates[shardIndex];
     }
 
     public IAsyncDisposable Use(string name, Func<ShardOwnership, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
@@ -195,11 +204,10 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
 
         public ShardOwner ShardOwner { get; }
         public int ShardIndex { get; }
-        // ReSharper disable once MemberHidesStaticFromOuterClass
+        public bool MustLock => _lockTask != null; // or !CancelLockToken.IsCancellationRequested
+        public CancellationToken CancelLockToken { get; }
         public IState<ShardOwnership?> OwnershipState => MutableOwnershipState;
         public IState<Moment> InvalidateUntilState => MutableInvalidateUntilState;
-        public CancellationToken CancelLockToken { get; }
-        public bool MustLock => _lockTask != null;
         public Task WhenDisposed { get; }
 
         internal ShardState(ShardOwner shardOwner, int shardIndex)
@@ -213,8 +221,8 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
                 category: StateCategories.Get(GetType(), nameof(InvalidateUntilState)));
             _cancelLockTokenSource = ShardOwner.StopToken.CreateLinkedTokenSource();
             CancelLockToken = _cancelLockTokenSource.Token;
+            _cancelLockTokenSource.CancelAndDisposeSilently(); // ~ MustLock = false
             WhenDisposed = Task.CompletedTask;
-            _cancelLockTokenSource.CancelAndDisposeSilently();
         }
 
         internal ShardState(ShardState prevState, bool mustLock)

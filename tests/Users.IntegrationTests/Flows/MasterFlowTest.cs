@@ -7,7 +7,7 @@ namespace ActualChat.Users.IntegrationTests.Flows;
 public class MasterFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(MasterFlowTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task ShouldStartDigestFlow()
     {
         using var h = await NewAppHost();
@@ -21,7 +21,7 @@ public class MasterFlowTest(ITestOutputHelper @out)
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task ShouldBeHangingOnReset()
     {
         using var h = await NewAppHost();

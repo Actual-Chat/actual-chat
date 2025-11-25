@@ -1,3 +1,4 @@
+using ActualChat.Flows.Internal;
 using ActualLab.Rpc;
 namespace ActualChat.Rpc;
 
@@ -24,6 +25,7 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
                 : new RpcShardRouteState(ShardLockAwaiter, routeChangedToken)
             : null;
         Initialize();
+        _ = CancelRouteChangedToken();
     }
 
     // Private and internal methods
@@ -34,10 +36,24 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
     private async ValueTask<CancellationToken> ShardLockAwaiter(CancellationToken cancellationToken)
     {
         var shardRef = Target.ShardRef;
+        if (shardRef.IsNone)
+            throw StandardError.Internal("Target.ShardRef is None.");
+
         var shardOwner = Target.Owner.ShardOwners[shardRef.Scheme];
         var shardOwnership = await shardOwner
             .RequireOwnedOrReroute(shardRef.Key, cancellationToken)
             .ConfigureAwait(false);
         return shardOwnership.LockToken;
+    }
+
+    private async Task CancelRouteChangedToken()
+    {
+        var shardRef = Target.ShardRef;
+        if (shardRef.IsNone)
+            return;
+
+        var shardState = Target.Owner.ShardOwners[shardRef.Scheme].GetShardState(shardRef.GetShardIndex());
+        await shardState.WhenDisposed.SilentAwait(false);
+        _routeChangedSource.CancelAndDisposeSilently();
     }
 }
