@@ -36,11 +36,13 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
 
     private async ValueTask<CancellationToken> ShardLockAwaiter(CancellationToken cancellationToken)
     {
+        var shardState = _shardState!;
         try {
-            var shardOwnership = await _shardState!.RequireOwnership(cancellationToken).ConfigureAwait(false);
+            var shardOwnership = await shardState.RequireOwnership(cancellationToken).ConfigureAwait(false);
             return shardOwnership.LockToken;
         }
         catch (RpcRerouteException) {
+            _ = shardState.MutableOwnershipState.Value; // Will throw an exception in case of disposal
             MarkRerouted();
             throw;
         }

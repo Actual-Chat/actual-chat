@@ -146,6 +146,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             }
         }
         finally {
+            State.SetError(new ObjectDisposedException(nameof(ShardState)));
             await Task.WhenAll(shardStates.Select(x => x.DisposeAsync().AsTask())).SilentAwait(false);
         }
     }
@@ -278,6 +279,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
         public ValueTask DisposeAsync()
         {
+            MutableOwnershipState.SetError(new ObjectDisposedException(nameof(ShardState)));
             _cancelLockTokenSource.CancelAndDisposeSilently();
             return WhenDisposed.ToValueTask();
         }
