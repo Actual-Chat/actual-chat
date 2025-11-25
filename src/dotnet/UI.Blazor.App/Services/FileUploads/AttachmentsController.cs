@@ -49,7 +49,17 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
     public async Task ResumeUpload(AttachmentList list, string attachmentId)
     {
         var attachment = DemandAttachment(list, attachmentId);
-        var uploadSession = await UploadSessions.ResumeSession(attachment.UploadSessionId).ConfigureAwait(false);
+        UploadSession uploadSession;
+        try {
+            uploadSession = await UploadSessions.ResumeSession(attachment.UploadSessionId).ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            Log.LogWarning(ex, "Failed to resume upload session '{SessionId}'", attachment.UploadSessionId);
+            _ = Dispatcher.InvokeAsync(() => {
+                list.UpdateAttachment(attachment.Id, c => c with { Failed = true });
+            });
+            return;
+        }
         AttachmentExt.ObserveUploadProgress(
             uploadSession.ProgressTracker,
             updater => {
