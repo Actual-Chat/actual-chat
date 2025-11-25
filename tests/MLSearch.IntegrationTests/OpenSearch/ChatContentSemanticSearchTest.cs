@@ -1,4 +1,5 @@
 using System.Text;
+using System.Web;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
@@ -7,6 +8,7 @@ using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.Testing.Host;
+using Microsoft.AspNetCore.WebUtilities;
 using OpenSearch.Client;
 using OpenSearch.Net;
 using OpenSearch.Net.Specification.HttpApi;
@@ -98,7 +100,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var chatInfoSink = AppHost.Services.GetRequiredService<ISink<ChatInfo, string>>();
         await chatInfoSink.ExecuteAsync([chatInfo1, chatInfo2], null);
 
-        await DumpStat();
+        await DumpStat(true);
 
         var documentSink = AppHost.Services.GetRequiredService<ISink<ChatSlice, string>>();
         try {
@@ -165,7 +167,7 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         Assert.True(query2Count > query3Count);
     }
 
-    private async Task DumpStat()
+    private async Task DumpStat(bool settings = false)
     {
         var openSearchClient = AppHost.Services.GetRequiredService<IOpenSearchClient>();
         var nodesStatsResponse = await openSearchClient.Nodes.StatsAsync();
@@ -198,26 +200,41 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         sb.AppendLine($"    Free: {fs.FreeInBytes} bytes");
         sb.AppendLine($"    Available: {fs.AvailableInBytes} bytes");
 
-        // var response = await openSearchClient.Cluster.AllocationExplainAsync(a => a
-        //     .IncludeYesDecisions(true)
-        //     .IncludeDiskInfo(true)
-        // );
         // var requestParameters = new HttpGetRequestParameters();
+        // requestParameters.
         // requestParameters.SetQueryString("include_yes_decisions", "true");
         // requestParameters.SetQueryString("include_disk_info", "true");
-        // var response = await openSearchClient.LowLevel.DoRequestAsync<StringResponse>(
-        //     HttpMethod.GET,
-        //     "_cluster/allocation/explain",
-        //     CancellationToken.None,
-        //     requestParameters: requestParameters);
-
-        // sb.AppendLine("  Allocation Explain:");
-        // if (!response.Success)
-        //     sb.AppendLine("  ERROR:" + response.DebugInformation);
-        // else
-        //     sb.AppendLine(response.Body);
+        // openSearchClient.LowLevel.Get<BytesResponse>("/_nodes/stats/process", requestParameters);
+        sb.AppendLine("  Allocation:");
+        await LogGetAsync(sb, openSearchClient, "/_cat/allocation?v");
+        sb.AppendLine("  Nodes disk usage:");
+        await LogGetAsync(sb, openSearchClient, "/_cat/nodes?v&h=name,disk.total,disk.used,disk.avail,disk.percent");
+        sb.AppendLine("  Indexes:");
+        await LogGetAsync(sb, openSearchClient, "/_cat/indices?v&s=store.size:desc");
+        if (settings) {
+            sb.AppendLine("  Settings:");
+            await LogGetAsync(sb, openSearchClient, "/_cluster/settings?include_defaults=true");
+        }
 
         Log.LogInformation(sb.ToString());
+    }
+
+    private async Task LogGetAsync(StringBuilder sb,  IOpenSearchClient client, string url)
+    {
+        var parts = url.Split('?');
+        var path = parts[0];
+        var query = parts.Length > 1 ? parts[1] : "";
+        var queryDict = QueryHelpers.ParseQuery(query);
+
+        var requestParameters = new HttpGetRequestParameters();
+        foreach (var kv in queryDict) {
+            requestParameters.SetQueryString(kv.Key, kv.Value);
+        }
+        var response = await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.GET,
+            path,
+            CancellationToken.None,
+            requestParameters: requestParameters);
+        sb.AppendLine(response.Body);
     }
 
     [Fact]
