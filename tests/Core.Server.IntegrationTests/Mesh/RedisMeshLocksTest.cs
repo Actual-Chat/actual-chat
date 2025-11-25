@@ -110,7 +110,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
 
         await using (await locks.Lock(key, "", lockOptions, ctsA.Token)) {
-            // The lock must be acquired after entering using block
+            // The lock must be acquired after entering the "using" block
             (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
 
             _ = BackgroundTask.Run(
@@ -122,7 +122,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
                     }, TaskScheduler.Default),
                 CancellationToken.None);
         }
-        // The lock must be released after leaving using block
+        // The lock must be released after leaving the "using" block
         (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
 
         await using (await locks.Lock(key, "", lockOptions, ctsB.Token))
