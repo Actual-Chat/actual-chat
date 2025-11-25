@@ -18,22 +18,18 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         HostInfo = $"{target.ToString()}-v{version.Format()}";
         UseReferentialEquality = true;
         var shardRef = Target.ShardRef;
-        if (shardRef.IsNone) {
-            _routeChangedSource = null;
-            RouteState = null;
-        }
-        else {
+        if (!shardRef.IsNone) {
             _routeChangedSource = new();
             var routeChangedToken = _routeChangedSource.Token;
             _shardState = Target.Owner.ShardOwners[shardRef.Scheme].GetShardState(shardRef.Key);
+            _ = _shardState.WhenDisposed.ContinueWith(
+                _ => MarkRerouted(),
+                CancellationToken.None, TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Default);
             RouteState = _shardState.MustLock
                 ? new RpcShardRouteState(ShardLockAwaiter, routeChangedToken)
                 : new RpcRouteState(routeChangedToken);
         }
         Initialize();
-        _ = _shardState?.WhenDisposed.ContinueWith(
-            _ => MarkRerouted(),
-            CancellationToken.None, TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Default);
     }
 
     // Private methods
