@@ -1,9 +1,13 @@
 using ActualLab.Diagnostics;
+using ActualLab.Fusion.Internal;
 using ActualLab.Resilience;
+using ActualLab.Rpc;
+using ActualLab.Versioning;
+using ActualLab.Versioning.Providers;
 
 namespace ActualChat.Sharding;
 
-public sealed partial class ShardOwner : WorkerBase, IHasServices
+public sealed class ShardOwner : WorkerBase, IHasServices
 {
     private static bool DebugMode => Constants.DebugMode.ShardOwner;
     private static readonly TimeSpan PostReleaseInvalidationPeriod = TimeSpan.FromSeconds(30);
@@ -40,19 +44,11 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
         LockOptions = ownershipLocks.LockOptions;
 
         var shardStates = Enumerable.Range(0, shardScheme.ShardCount)
-            .Select(i => new ShardState(this, i))
+            .Select(i => new ShardState(this, i, 0))
             .ToArray();
         State = StateFactory.NewMutable(
-            initialValue: new OwnState(this, shardStates),
+            initialValue: new OwnState(this, shardStates, 0),
             category: StateCategories.Get(GetType(), nameof(State)));
-    }
-
-    public ShardState GetShardState(int shardIndex, bool addDependency = true)
-    {
-        var computed = State.Computed;
-        if (addDependency)
-            _ = computed.UseUntyped(allowInconsistent: true); // This call always completes synchronously
-        return computed.Value.ShardStates[shardIndex];
     }
 
     public IAsyncDisposable Use(string name, Func<ShardOwnership, CancellationToken, Task> func, IRetryPolicy? retryPolicy)
@@ -66,6 +62,32 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
     public IAsyncDisposable Use(ShardRunnable shardRunnable)
         => Dispatcher.Use(shardRunnable);
 
+    public ShardState GetShardState(int shardIndex)
+    {
+        shardIndex = ShardScheme.GetShardIndex(shardIndex);
+        return State.Computed.Value.ShardStates[shardIndex];
+    }
+
+    public ShardState GetShardState<T>(T shardKey)
+    {
+        var shardIndex = ShardScheme.GetShardIndex(shardKey);
+        return State.Computed.Value.ShardStates[shardIndex];
+    }
+
+    public bool MustInvalidate<T>(T shardKey)
+    {
+        var invalidateUntil = GetShardState(shardKey).InvalidateUntilState.Value;
+        return invalidateUntil >= Clock.Now;
+    }
+
+    public ShardOwnershipStatus GetShardOwnershipState<T>(T shardKey, bool addDependency = true)
+        => GetShardState(shardKey).GetOwnershipStatus(addDependency);
+
+    public Task<ShardOwnership> RequireOwnership<T>(T shardKey, CancellationToken cancellationToken)
+        => GetShardState(shardKey).RequireOwnership(addDependency: true, cancellationToken);
+    public Task<ShardOwnership> RequireOwnership<T>(T shardKey, bool addDependency, CancellationToken cancellationToken)
+        => GetShardState(shardKey).RequireOwnership(addDependency, cancellationToken);
+
     // Protected methods
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -75,6 +97,7 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
         var removedShards = new List<int>();
         var disposeTasks = new List<Task>();
         var shardStates = State.Value.ShardStates; // Initial value
+        var version = 1;
         try {
             var changes = Host.MeshWatcher.State.Computed.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
             await foreach (var (meshState, error) in changes.ConfigureAwait(false)) {
@@ -103,15 +126,19 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
                     }
 
                     disposeTasks.Add(lockState.WhenDisposed);
-                    nextShardStates[shardIndex] = new ShardState(lockState, mustLock);
+                    nextShardStates[shardIndex] = new ShardState(lockState, mustLock, version);
                     (mustLock ? addedShards : removedShards).Add(shardIndex);
                     lockedShards[shardIndex] = mustLock;
                 }
                 if (addedShards.Count > 0 || removedShards.Count > 0) {
-                    State.Value = new OwnState(this, shardStates = nextShardStates);
-                    Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
-                        ThisNode.Ref,
-                        lockedShards.Format(), addedShards.ToDelimitedString(","), removedShards.ToDelimitedString(","));
+                    // ReSharper disable once HeapView.CanAvoidClosure
+                    State.Value = new OwnState(this, shardStates = nextShardStates, version);
+                    Log.LogInformation("Shards @ {ThisNodeId}, v{Version}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
+                        ThisNode.Ref, version,
+                        lockedShards.Format(),
+                        addedShards.ToDelimitedString(","),
+                        removedShards.ToDelimitedString(","));
+                    version++;
                 }
 
                 await Task.WhenAll(disposeTasks).SilentAwait(false);
@@ -185,10 +212,12 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
 
     public sealed class OwnState(
         ShardOwner shardOwner,
-        IReadOnlyList<ShardState> shardStates)
+        IReadOnlyList<ShardState> shardStates,
+        int version)
     {
         public ShardOwner ShardOwner { get; } = shardOwner;
         public IReadOnlyList<ShardState> ShardStates { get; } = shardStates;
+        public int Version { get; } = version;
         public Moment CreatedAt { get; } = shardOwner.Host.Clock.Now;
         public TimeSpan Age => ShardOwner.Host.Clock.Now - CreatedAt;
     }
@@ -204,16 +233,18 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
 
         public ShardOwner ShardOwner { get; }
         public int ShardIndex { get; }
+        public long ShardOwnerStateVersion { get; }
         public bool MustLock => _lockTask != null; // or !CancelLockToken.IsCancellationRequested
         public CancellationToken CancelLockToken { get; }
         public IState<ShardOwnership?> OwnershipState => MutableOwnershipState;
         public IState<Moment> InvalidateUntilState => MutableInvalidateUntilState;
         public Task WhenDisposed { get; }
 
-        internal ShardState(ShardOwner shardOwner, int shardIndex)
+        internal ShardState(ShardOwner shardOwner, int shardIndex, int shardOwnerStateVersion)
         {
             ShardOwner = shardOwner;
             ShardIndex = shardIndex;
+            ShardOwnerStateVersion = shardOwnerStateVersion;
             var stateFactory = ShardOwner.Host.StateFactory;
             MutableOwnershipState = stateFactory.NewMutable<ShardOwnership?>(
                 category: StateCategories.Get(GetType(), nameof(OwnershipState)));
@@ -225,11 +256,12 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
             WhenDisposed = Task.CompletedTask;
         }
 
-        internal ShardState(ShardState prevState, bool mustLock)
+        internal ShardState(ShardState prevState, bool mustLock, int shardOwnerStateVersion)
         {
             prevState._cancelLockTokenSource.CancelAndDisposeSilently();
             ShardOwner = prevState.ShardOwner;
             ShardIndex = prevState.ShardIndex;
+            ShardOwnerStateVersion = shardOwnerStateVersion;
             MutableOwnershipState = prevState.MutableOwnershipState;
             MutableInvalidateUntilState = prevState.MutableInvalidateUntilState;
             if (mustLock) {
@@ -248,6 +280,82 @@ public sealed partial class ShardOwner : WorkerBase, IHasServices
         {
             _cancelLockTokenSource.CancelAndDisposeSilently();
             return WhenDisposed.ToValueTask();
+        }
+
+        public ShardOwnershipStatus GetOwnershipStatus(bool addDependency = true)
+        {
+            var cCurrent = addDependency ? Computed.Current : null;
+            var cOwnershipState = OwnershipState.Computed;
+            if (cOwnershipState.Value is not null) {
+                if (cCurrent is not null)
+                    ComputedImpl.AddDependency(cCurrent, cOwnershipState);
+                return ShardOwnershipStatus.LockedByThisNode;
+            }
+
+            if (MustLock) {
+                if (cCurrent is not null)
+                    ComputedImpl.AddDependency(cCurrent, cOwnershipState);
+                return ShardOwnershipStatus.MappedToThisNode;
+            }
+
+            if (cCurrent is not null) {
+                var cState = ShardOwner.State.Computed;
+                if (cState.Value.Version != ShardOwnerStateVersion)
+                    cCurrent.Invalidate(immediately: true); // ShardOwner.State has changed
+                else
+                    ComputedImpl.AddDependency(cCurrent, cState);
+            }
+            return ShardOwnershipStatus.MappedToOtherNode;
+        }
+
+        public Task<ShardOwnership> RequireOwnership(CancellationToken cancellationToken)
+            => RequireOwnership(addDependency: true, cancellationToken);
+        public Task<ShardOwnership> RequireOwnership(bool addDependency, CancellationToken cancellationToken)
+        {
+            var cCurrent = addDependency ? Computed.Current : null;
+            var cOwnershipState = OwnershipState.Computed;
+            if (cOwnershipState.Value is not null) {
+                // ShardOwnershipStatus.LockedByThisNode
+                if (cCurrent is not null)
+                    ComputedImpl.AddDependency(cCurrent, cOwnershipState);
+                return (Task<ShardOwnership>)cOwnershipState.GetValuePromise();
+            }
+
+            if (MustLock) {
+                // ShardOwnershipStatus.MappedToThisNode
+                if (cCurrent is not null)
+                    ComputedImpl.AddDependency(cCurrent, cOwnershipState);
+                return CompleteAsync();
+            }
+
+            // ShardOwnershipStatus.MappedToOtherNode
+            if (cCurrent is not null) {
+                var cState = ShardOwner.State.Computed;
+                if (cState.Value.Version != ShardOwnerStateVersion)
+                    cCurrent.Invalidate(immediately: true); // ShardOwner.State has changed
+                else
+                    ComputedImpl.AddDependency(cCurrent, cState);
+            }
+            throw new RpcRerouteException("The shard isn't mapped to this node.");
+
+            async Task<ShardOwnership> CompleteAsync() {
+                var linkedCts = cancellationToken.LinkWith(CancelLockToken);
+                var linkedToken = linkedCts.Token;
+                try {
+                    cOwnershipState = await cOwnershipState
+                        .When(x => x is not null, linkedToken)
+                        .ConfigureAwait(false);
+                    return cOwnershipState.Value!;
+                }
+                catch (Exception e) when (e.IsCancellationOf(linkedToken) && !cancellationToken.IsCancellationRequested) {
+                    // If we're here, CancellationToken was canceled while the ownership was being acquired,
+                    // which means that at this point the shard isn't own already.
+                    throw new RpcRerouteException("The shard isn't mapped to this node anymore.");
+                }
+                finally {
+                    linkedCts.CancelAndDisposeSilently();
+                }
+            }
         }
     }
 }
