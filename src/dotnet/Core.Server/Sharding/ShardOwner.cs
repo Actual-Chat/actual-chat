@@ -2,8 +2,6 @@ using ActualLab.Diagnostics;
 using ActualLab.Fusion.Internal;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
-using ActualLab.Versioning;
-using ActualLab.Versioning.Providers;
 
 namespace ActualChat.Sharding;
 

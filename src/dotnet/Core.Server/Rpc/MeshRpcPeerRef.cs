@@ -42,7 +42,12 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
             return shardOwnership.LockToken;
         }
         catch (RpcRerouteException) {
-            _ = shardState.MutableOwnershipState.Value; // Will throw an exception in case of disposal
+            var shardOwners = shardState.ShardOwner.Host;
+            if (shardOwners.StopToken.IsCancellationRequested)
+                throw new ObjectDisposedException(nameof(ShardOwners));
+            if (shardOwners.Services.IsDisposedOrDisposing())
+                throw new ObjectDisposedException(nameof(IServiceProvider));
+
             MarkRerouted();
             throw;
         }
