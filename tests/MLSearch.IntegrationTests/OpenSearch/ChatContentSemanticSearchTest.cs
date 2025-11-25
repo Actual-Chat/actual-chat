@@ -9,6 +9,8 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.Testing.Host;
 using OpenSearch.Client;
 using OpenSearch.Net;
+using OpenSearch.Net.Specification.HttpApi;
+using HttpMethod = OpenSearch.Net.HttpMethod;
 
 namespace ActualChat.MLSearch.IntegrationTests.OpenSearch;
 
@@ -188,6 +190,33 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
             }
 
         }
+
+        var clusterStatsResponse = await openSearchClient.Cluster.StatsAsync();
+        var fs = clusterStatsResponse.Nodes.FileSystem;
+        sb.AppendLine( "  Filesystem:");
+        sb.AppendLine($"    Total: {fs.TotalInBytes} bytes");
+        sb.AppendLine($"    Free: {fs.FreeInBytes} bytes");
+        sb.AppendLine($"    Available: {fs.AvailableInBytes} bytes");
+
+        // var response = await openSearchClient.Cluster.AllocationExplainAsync(a => a
+        //     .IncludeYesDecisions(true)
+        //     .IncludeDiskInfo(true)
+        // );
+        // var requestParameters = new HttpGetRequestParameters();
+        // requestParameters.SetQueryString("include_yes_decisions", "true");
+        // requestParameters.SetQueryString("include_disk_info", "true");
+        // var response = await openSearchClient.LowLevel.DoRequestAsync<StringResponse>(
+        //     HttpMethod.GET,
+        //     "_cluster/allocation/explain",
+        //     CancellationToken.None,
+        //     requestParameters: requestParameters);
+
+        // sb.AppendLine("  Allocation Explain:");
+        // if (!response.Success)
+        //     sb.AppendLine("  ERROR:" + response.DebugInformation);
+        // else
+        //     sb.AppendLine(response.Body);
+
         Log.LogInformation(sb.ToString());
     }
 

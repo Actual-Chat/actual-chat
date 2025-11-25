@@ -62,7 +62,11 @@ internal sealed class SemanticIndexSink<TDocument> : ISink<TDocument, string>, I
             return;
         }
         var result = await _openSearch
+
             .BulkAsync(r => r
+                    .RequestConfiguration(r1 => r1
+                        .DisableDirectStreaming(true)
+                    )
                     .IndexMany(
                         updatedDocuments,
                         (op, document) =>
@@ -73,7 +77,8 @@ internal sealed class SemanticIndexSink<TDocument> : ISink<TDocument, string>, I
                     )
                     .DeleteMany<TDocument>(deletedDocuments, (op, _) => op.Index(IndexSettings.IndexName)),
                 cancellationToken
-            ).ConfigureAwait(false);
+            )
+            .ConfigureAwait(false);
         _log.LogErrors(result);
         result.AssertSuccess();
     }
