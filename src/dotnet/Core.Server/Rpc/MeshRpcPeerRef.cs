@@ -3,7 +3,7 @@ namespace ActualChat.Rpc;
 
 public sealed class MeshRpcPeerRef : RpcPeerRef
 {
-    private readonly CancellationTokenSource? _routeChangedSource;
+    private CancellationTokenSource? _routeChangedSource;
 
     public readonly ResolvedMeshRef Target;
     public readonly ShardOwner.ShardState? ShardState;
@@ -32,20 +32,33 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         }
         Initialize();
         _ = ShardState?.WhenDisposed.ContinueWith(
-            _ => _routeChangedSource.CancelAndDisposeSilently(),
+            _ => MarkRerouted(),
             CancellationToken.None, TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Default);
     }
 
-    // Private and internal methods
-
-    internal void MarkRerouted()
-        => _routeChangedSource.CancelAndDisposeSilently();
+    // Private methods
 
     private async ValueTask<CancellationToken> ShardLockAwaiter(CancellationToken cancellationToken)
     {
-        var shardOwnership = await ShardState!
-            .RequireOwnership(addDependency: true, cancellationToken)
-            .ConfigureAwait(false);
-        return shardOwnership.LockToken;
+        try {
+            var shardOwnership = await ShardState!.RequireOwnership(cancellationToken).ConfigureAwait(false);
+            return shardOwnership.LockToken;
+        }
+        catch (RpcRerouteException) {
+            MarkRerouted();
+            throw;
+        }
+    }
+
+    private void MarkRerouted()
+    {
+        var routeChangedSource = Interlocked.Exchange(ref _routeChangedSource, null);
+        if (routeChangedSource is null)
+            return;
+
+        _routeChangedSource.CancelAndDisposeSilently();
+        Target.Owner.Log.LogWarning(
+            "'{RpcPeerRef}': rerouting from {OldTarget} to {NewTarget}",
+            this, Target, Target.Latest);
     }
 }

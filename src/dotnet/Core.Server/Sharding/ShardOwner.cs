@@ -347,8 +347,8 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                         .ConfigureAwait(false);
                     return cOwnershipState.Value!;
                 }
-                catch (Exception e) when (e.IsCancellationOf(linkedToken) && !cancellationToken.IsCancellationRequested) {
-                    // If we're here, CancellationToken was canceled while the ownership was being acquired,
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                    // If we're here, CancelLockToken was canceled while the ownership was being acquired,
                     // which means that at this point the shard isn't own already.
                     throw new RpcRerouteException("The shard isn't mapped to this node anymore.");
                 }
