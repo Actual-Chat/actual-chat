@@ -109,24 +109,24 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         (await locks.ListKeys("", CancellationToken.None)).Should().BeEmpty();
         (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
 
-        await using var h1 = await locks.Lock(key, "", lockOptions, ctsA.Token);
-        (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
+        await using (await locks.Lock(key, "", lockOptions, ctsA.Token)) {
+            // The lock must be acquired after entering using block
+            (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
 
-        _ = BackgroundTask.Run(
-            () => Task.Delay(1000, CancellationToken.None)
-                .ContinueWith(_ => {
-                    ctsA.CancelAndDisposeSilently();
-                    // ReSharper disable once AccessToDisposedClosure
-                    // await h1.DisposeSilentlyAsync();
-                }, TaskScheduler.Default),
-            CancellationToken.None);
-
-        await Task.Delay(2000, CancellationToken.None);
-
+            _ = BackgroundTask.Run(
+                () => Task.Delay(1000, CancellationToken.None)
+                    .ContinueWith(_ => {
+                        ctsA.CancelAndDisposeSilently();
+                        // ReSharper disable once AccessToDisposedClosure
+                        // await h1.DisposeSilentlyAsync();
+                    }, TaskScheduler.Default),
+                CancellationToken.None);
+        }
+        // The lock must be released after leaving using block
         (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
-        await using var h2 = await locks.Lock(key, "", lockOptions, ctsB.Token);
 
-        (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
+        await using (await locks.Lock(key, "", lockOptions, ctsB.Token))
+            (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
     }
 
     [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
