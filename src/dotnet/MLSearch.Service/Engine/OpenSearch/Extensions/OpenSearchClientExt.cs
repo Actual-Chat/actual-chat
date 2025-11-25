@@ -77,6 +77,9 @@ internal static class OpenSearchClientExt
     public static T LogErrors<T>(this T log, BulkResponse response)
     where T: ILogger
     {
+        if (!response.IsValid)
+            log.LogWarning(response.DebugInformation);
+        
         foreach (var issue in response.ItemsWithErrors) {
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
             log.LogTrace(issue.ToString());
