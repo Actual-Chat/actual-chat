@@ -95,7 +95,7 @@ public readonly struct RpcHostBuilder
             throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
 
         if (IsApiHost)
-            AddServer(serviceType, implementationType, "");
+            AddServer(serviceType, implementationType, name);
         else if (makeLocal)
             AddLocal(serviceType, implementationType);
         return this;
