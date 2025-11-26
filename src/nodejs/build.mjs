@@ -14,12 +14,20 @@ const mauiOutputPath = path.normalize(path.resolve(import.meta.dirname, '../dotn
 
 await fs.promises.rm(outputPath, { recursive: true, force: true });
 await fs.promises.rm(mauiOutputPath, { recursive: true, force: true });
+
+// copy files
 await fs.promises.mkdir(`${outputPath}/config`, { recursive: true });
 if (fs.existsSync('../../firebase.config.json'))
     // only for local-dev build
     await fs.promises.copyFile('../../firebase.config.json', `${outputPath}/config/firebase.config.js`, );
 await fs.promises.cp('./images', `${outputPath}/images`, { recursive: true });
-await fs.promises.cp('./../dotnet/UI.Blazor/Services/TuneUI/sounds', `${outputPath}/sounds`, { recursive: true });
+await fs.promises.cp('../../resources/sounds/converted', `${outputPath}/sounds`, {
+    recursive: true,
+    filter: (src) => {
+        const ext = path.extname(src).toLowerCase();
+        return ext === '.webm' || ext === '.m4a' || fs.statSync(src).isDirectory();
+    },
+});
 
 const options = {
     entryPoints: [
@@ -85,6 +93,7 @@ const options = {
     ],
 };
 
+// build
 if (isWatch) {
     const ctx = await esbuild.context(options);
     await ctx.watch();
@@ -93,6 +102,8 @@ else {
     console.log('Building, mode:', isProduction ? 'production' : 'development');
     const result = await esbuild.build(options);
     await fs.promises.cp(outputPath, mauiOutputPath, { recursive: true });
+    // required sounds must be bundled explicitly
+    await fs.promises.rm(`${mauiOutputPath}/sounds`, { recursive: true, force: true });
     if (mustAnalyze)
         console.log(await esbuild.analyzeMetafile(result.metafile, {
             verbose: true,
