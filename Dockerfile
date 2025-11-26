@@ -74,6 +74,7 @@ COPY --from=dotnet-restore /src/nuget.config ./
 
 FROM nodejs-restore AS nodejs-build
 COPY src/dotnet/ /src/src/dotnet/
+COPY resources/sounds/converted /src/resources/sounds/converted
 RUN npm run build:Release
 
 FROM dotnet-restore AS base
