@@ -1,17 +1,16 @@
+@namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, ChatActivitySubHeader.Model?>
 @{
     var m = State.Value;
-    if (m is null || !ScreenSize.IsNarrow())
+    if (!ScreenSize.IsNarrow())
         return;
 
-    var isVisible = m.IsAnyoneTalking || m.AudioState.IsListening || IsRecordingHere;
-    if (!isVisible)
-        return;
+    var isVisible = (m?.IsAnyoneTalking ?? false) || (m?.AudioState.IsListening ?? false) || IsRecordingHere;
 }
 
-<div class="chat-activity-subheader subheader-item">
-    <ChatActivityPanel Chat="@m.Chat"/>
-</div>
+<SubHeader Class="chat-activity-subheader" IsVisible="@(m is not null && isVisible)">
+    <ChatActivityPanel Chat="@m?.Chat"/>
+</SubHeader>
 
 @code {
     private IChats Chats => Hub.Chats;

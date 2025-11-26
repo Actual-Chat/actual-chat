@@ -1,0 +1,68 @@
+@using ActualChat.UI.Blazor.App.Module
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+@if (_render) {
+    <sub-header @ref="Ref" class="subheader-item @Class @(_visible ? "enter" : "exit")">
+        @ChildContent
+    </sub-header>
+}
+
+@code {
+    private bool _render;
+    private bool _visible;
+    private bool _jsInitialized;
+
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.SubHeader.create";
+
+    private DotNetObjectReference<SubHeader> BlazorRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; }
+    private ElementReference Ref { get; set; }
+
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!_render)
+            return;
+
+        if (!_jsInitialized) {
+            _jsInitialized = true;
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        if (IsVisible) {
+            _render = true;
+            _visible = true;
+        } else {
+            if (JSRef is not null)
+                await JSRef.InvokeVoidAsync("setHeight");
+            _visible = false;
+        }
+    }
+
+    [JSInvokable]
+    public void OnAnimationEnd() {
+        if (!_visible) {
+            _render = false;
+            JSRef?.DisposeSilentlyAsync("dispose");
+            JSRef = null;
+
+            BlazorRef?.DisposeSilently();
+            BlazorRef = null!;
+            _jsInitialized = false;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+}

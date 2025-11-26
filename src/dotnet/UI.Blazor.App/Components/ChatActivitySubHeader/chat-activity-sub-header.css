@@ -1,0 +1,9 @@
+.chat-activity-subheader {
+    @apply w-screen;
+    @apply px-2 -mx-2;
+    @apply border-b border-separator;
+}
+.chat-activity-subheader .chat-activity-panel {
+    @apply h-12;
+    @apply px-1 md:px-0;
+}
