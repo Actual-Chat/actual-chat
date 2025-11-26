@@ -2,12 +2,10 @@ using ActualChat.Hosting;
 using ActualChat.Rpc.Internal;
 using ActualLab.Fusion.Server;
 using ActualLab.Fusion.Server.Middlewares;
-using ActualLab.Fusion.Server.Rpc;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
 using ActualLab.Rpc.Middlewares;
 using ActualLab.Rpc.Server;
-using ActualLab.Rpc.Testing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -225,7 +223,7 @@ public readonly struct RpcHostBuilder
         Fusion.AddWebServer();
 
         // Replace RpcWebSocketServerOptions
-        Services.AddSingleton(RpcWebSocketServerOptions.Default with {
+        Services.ReplaceFactory<RpcWebSocketServerOptions>((_, oldFactory) => oldFactory.Invoke() with {
             ExposeBackend = true,
             ConfigureWebSocket = () => new WebSocketAcceptContext() {
                 DangerousEnableCompression = Constants.Rpc.Compression.IsServerSideEnabled,
@@ -271,19 +269,18 @@ public readonly struct RpcHostBuilder
         Services.AddSingleton(c => new MeshRpcPeerRefs(c));
 
         // Replace RpcOutboundCallOptions
-        Services.AddSingleton<RpcOutboundCallOptions>(c => {
+        Services.ReplaceFactory<RpcOutboundCallOptions>((c, oldFactory) => {
             var helpers = c.GetRequiredService<RpcBackendHelpers>();
-            return RpcOutboundCallOptions.Default with {
+            return oldFactory.Invoke() with {
                 RouterFactory = helpers.RouterFactory,
             };
         });
 
-
         // Replace RpcWebSocketClientOptions
         var isApiHost = IsApiHost; // Can't use ApiHost directly in the lambda below
-        Services.AddSingleton(c => {
+        Services.ReplaceFactory<RpcWebSocketClientOptions>((c, oldFactory) => {
             var helpers = c.GetRequiredService<RpcBackendHelpers>();
-            return RpcWebSocketClientOptions.Default with {
+            return oldFactory.Invoke() with {
                 ConnectionUriResolver = helpers.GetConnectionUri,
                 UseAutoFrameDelayerFactory = isApiHost, // Only for API host!
             };
@@ -305,15 +302,14 @@ public readonly struct RpcHostBuilder
         var backendOutboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.BackendClient && isDevelopmentInstance
             ? LogLevel.Debug
             : LogLevel.None;
-        Services.ReplaceFactory<RpcPeerOptions>(
-            (_, oldFactory) => oldFactory.Invoke() with {
-                PeerFactory = (hub, peerRef) => peerRef.IsServer
-                    ? new RpcServerPeer(hub, peerRef) {
-                        CallLogLevel = peerRef.IsBackend ? backendInboundCallLogLevel : serverInboundCallLogLevel,
-                    }
-                    : new RpcClientPeer(hub, peerRef) {
-                        CallLogLevel = backendOutboundCallLogLevel,
-                    }
-            });
+        Services.ReplaceFactory<RpcPeerOptions>((_, oldFactory) => oldFactory.Invoke() with {
+            PeerFactory = (hub, peerRef) => peerRef.IsServer
+                ? new RpcServerPeer(hub, peerRef) {
+                    CallLogLevel = peerRef.IsBackend ? backendInboundCallLogLevel : serverInboundCallLogLevel,
+                }
+                : new RpcClientPeer(hub, peerRef) {
+                    CallLogLevel = backendOutboundCallLogLevel,
+                }
+        });
     }
 }

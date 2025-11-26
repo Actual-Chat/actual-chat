@@ -26,7 +26,7 @@ internal static class Program
                 // See https://github.com/xoofx/Blake3.NET?tab=readme-ov-file#results
                 var hash = Blake3.Hasher.Hash(data.Span);
                 return Convert.ToBase64String(hash.AsSpan()[..18]); // 18 bytes -> 24 chars
-            }
+            },
         };
         ComputedSynchronizer.Default = ComputedSynchronizer.None.Instance; // Server shouldn't use it
 
