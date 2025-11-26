@@ -36,6 +36,8 @@ export * from './Components/Onboarding/phone-verification-cat-svg.lit';
 export * from './Components/SearchPanel/search-panel';
 export * from './Components/Selection/selection-host';
 export * from './Components/TranslationSubHeader/translation-svg.lit';
+export * from './Components/SubHeader/sub-header';
+export * from './Components/SubHeader/sub-header.lit';
 export * from './Services/LanguageUI/language-ui';
 export * from './Services/SendingMessages/send-message-requests';
 export * from './Services/FileUploads/upload-sessions';

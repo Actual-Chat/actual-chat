@@ -1,0 +1,32 @@
+sub-header {
+    opacity: 0;
+    overflow: hidden;
+    max-width: 48rem;
+    max-height: 0;
+}
+sub-header.enter {
+    animation: showSubHeader 150ms ease-in forwards;
+}
+sub-header.exit {
+    animation: hideSubHeader 150ms ease-in forwards;
+}
+@keyframes showSubHeader {
+    from {
+        max-height: 0;
+        opacity: 0;
+    }
+    to {
+        max-height: var(--subheader-height, 3.5rem);
+        opacity: 1;
+    }
+}
+@keyframes hideSubHeader {
+    0% {
+        max-height: var(--subheader-height, 3.5rem);
+        opacity: 1;
+    }
+    100% {
+        max-height: 0;
+        opacity: 0;
+    }
+}

@@ -4,13 +4,10 @@
 @inherits ComputedStateComponent<AppUIHub, HistoricalPlaybackSubHeader.Model?>
 @{
     var m = State.Value;
-    if (m is null)
-        return;
-
     var size = ScreenSize.IsNarrow() ? SquareSize.Size8 : SquareSize.Size6;
 }
 
-<div class="historical-playback-subheader subheader-item">
+<SubHeader Class="historical-playback-subheader" IsVisible="@(m is not null)">
     <div class="c-content">
         <div class="c-buttons">
             @if (ScreenSize.IsWide()) {
@@ -18,7 +15,7 @@
                     <i class="icon-rewind-left-fill text-2xl"></i>
                 </ButtonRound>
             }
-            @if (m.IsPaused) {
+            @if (m?.IsPaused ?? false) {
                 <ButtonRound Title="Play" Click="@OnResume" Class="btn-xs btn-transparent primary-icon" MustKeepAwake="true">
                     <i class="icon-play-fill text-2xl"></i>
                 </ButtonRound>
@@ -38,14 +35,14 @@
         </div>
 
         <div class="c-info">
-            @if (m.ShowChatTitle) {
+            @if (m?.ShowChatTitle ?? false) {
                 <div class="c-title">
                     <a href="@Links.Chat(m.ChatId)">@m.ChatTitle</a>
                 </div>
             }
             @if (ScreenSize.IsWide()) {
                 <div class="c-text">
-                    @if (m.PlayingAt is { } playingAt) {
+                    @if (m?.PlayingAt is { } playingAt) {
                         var localTime = DateTimeConverter.ToLocalTime(playingAt);
                         var absoluteTime = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
                         var relativeTime = LiveTime.GetDeltaText(playingAt);
@@ -62,7 +59,7 @@
             Class="c-authors"
             MaxIconCount="4"
             Size="@size"
-            AuthorIds="@m.AuthorIds"
+            AuthorIds="@m?.AuthorIds"
             IsListening="true"/>
 
         @* Speed Selector *@
@@ -70,7 +67,7 @@
             <i class="icon-close-fill text-2xl"></i>
         </HeaderButton>
     </div>
-</div>
+</SubHeader>
 
 @code {
     private RewindDelayer? _rewindController;
