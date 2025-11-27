@@ -2,7 +2,7 @@ import {customElement, property} from "lit/decorators.js";
 import {css, html, LitElement} from "lit";
 
 @customElement('sub-header')
-class SubHeaderSvg extends LitElement {
+class SubHeaderLit extends LitElement {
     static styles = css`
         .subheader-item {
             flex: 1;

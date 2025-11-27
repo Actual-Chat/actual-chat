@@ -8,13 +8,10 @@ export class SubHeader {
     }
 
     constructor(
-        private readonly subHeaderLit: HTMLElement | null,
+        private readonly subHeaderLit: HTMLElement,
         private readonly blazorRef: DotNet.DotNetObject
     ) {
         this.subHeaderLit = subHeaderLit;
-        if (this.subHeaderLit == null)
-            return;
-
         if (!(this.subHeaderLit instanceof HTMLElement))
             return;
 
@@ -38,9 +35,6 @@ export class SubHeader {
     }
 
     public setHeight() {
-        if (this.subHeaderLit == null)
-            return;
-
         const h = this.subHeaderLit.offsetHeight;
         this.subHeaderLit.style.setProperty('--subheader-height', h + 'px');
     }

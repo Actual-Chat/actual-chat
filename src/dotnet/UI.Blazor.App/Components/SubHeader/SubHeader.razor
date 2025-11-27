@@ -54,15 +54,23 @@
 
     [JSInvokable]
     public void OnAnimationEnd() {
-        if (!_visible) {
-            _render = false;
-            JSRef?.DisposeSilentlyAsync("dispose");
+        if (_visible)
+            return;
+
+        _render = false;
+        _ = DisposeInternal().SuppressExceptions();
+        StateHasChanged();
+        return;
+
+        async Task DisposeInternal() {
+            if (JSRef is not null)
+                await JSRef.DisposeSilentlyAsync("dispose");
             JSRef = null;
 
             BlazorRef?.DisposeSilently();
             BlazorRef = null!;
             _jsInitialized = false;
+            StateHasChanged();
         }
-        InvokeAsync(StateHasChanged);
     }
 }
