@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using OpenSearch.Client;
 using OpenSearch.Net;
 using OpenSearch.Net.Specification.HttpApi;
-using HttpMethod = OpenSearch.Net.HttpMethod;
+
 
 namespace ActualChat.MLSearch.IntegrationTests.OpenSearch;
 
@@ -100,17 +100,13 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var chatInfoSink = AppHost.Services.GetRequiredService<ISink<ChatInfo, string>>();
         await chatInfoSink.ExecuteAsync([chatInfo1, chatInfo2], null);
 
-        await DumpStat(true);
-
+        //await DumpStat(true);
         var documentSink = AppHost.Services.GetRequiredService<ISink<ChatSlice, string>>();
         try {
             await documentSink.ExecuteAsync(documents.ToArray(), null);
         }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to ingest documents to the index.");
-        }
         finally {
-            await DumpStat();
+            //await DumpStat();
         }
 
         // Ensure all documents processed by the ingestion pipeline
@@ -165,76 +161,6 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var query3Count = queryResult3.Documents.Count;
         Assert.True(query3Count > 0);
         Assert.True(query2Count > query3Count);
-    }
-
-    private async Task DumpStat(bool settings = false)
-    {
-        var openSearchClient = AppHost.Services.GetRequiredService<IOpenSearchClient>();
-        var nodesStatsResponse = await openSearchClient.Nodes.StatsAsync();
-        //var clusterStatResponse = await openSearchClient.Cluster.StatsAsync();
-
-        var sb = new StringBuilder();
-        foreach (var node in nodesStatsResponse.Nodes) {
-            sb.AppendLine($"Node ID stat: {node.Key}");
-            var breakers = node.Value.Breakers;
-            if (breakers == null) {
-                sb.AppendLine("  No breakers info");
-                continue;
-            }
-            foreach (var br in breakers) {
-                var brKey = br.Key;
-                var breakerStats = br.Value;
-                sb.AppendLine($"  Breaker: {brKey}");
-                sb.AppendLine($"    Estimated Size: {breakerStats.EstimatedSizeInBytes}");
-                sb.AppendLine($"    Limit Size: {breakerStats.LimitSizeInBytes}");
-                sb.AppendLine($"    Overhead: {breakerStats.Overhead}");
-                sb.AppendLine($"    Tripped: {breakerStats.Tripped}");
-            }
-
-        }
-
-        var clusterStatsResponse = await openSearchClient.Cluster.StatsAsync();
-        var fs = clusterStatsResponse.Nodes.FileSystem;
-        sb.AppendLine( "  Filesystem:");
-        sb.AppendLine($"    Total: {fs.TotalInBytes} bytes");
-        sb.AppendLine($"    Free: {fs.FreeInBytes} bytes");
-        sb.AppendLine($"    Available: {fs.AvailableInBytes} bytes");
-
-        // var requestParameters = new HttpGetRequestParameters();
-        // requestParameters.
-        // requestParameters.SetQueryString("include_yes_decisions", "true");
-        // requestParameters.SetQueryString("include_disk_info", "true");
-        // openSearchClient.LowLevel.Get<BytesResponse>("/_nodes/stats/process", requestParameters);
-        sb.AppendLine("  Allocation:");
-        await LogGetAsync(sb, openSearchClient, "/_cat/allocation?v");
-        sb.AppendLine("  Nodes disk usage:");
-        await LogGetAsync(sb, openSearchClient, "/_cat/nodes?v&h=name,disk.total,disk.used,disk.avail,disk.percent");
-        sb.AppendLine("  Indexes:");
-        await LogGetAsync(sb, openSearchClient, "/_cat/indices?v&s=store.size:desc");
-        if (settings) {
-            sb.AppendLine("  Settings:");
-            await LogGetAsync(sb, openSearchClient, "/_cluster/settings?include_defaults=true");
-        }
-
-        Log.LogInformation(sb.ToString());
-    }
-
-    private async Task LogGetAsync(StringBuilder sb,  IOpenSearchClient client, string url)
-    {
-        var parts = url.Split('?');
-        var path = parts[0];
-        var query = parts.Length > 1 ? parts[1] : "";
-        var queryDict = QueryHelpers.ParseQuery(query);
-
-        var requestParameters = new HttpGetRequestParameters();
-        foreach (var kv in queryDict) {
-            requestParameters.SetQueryString(kv.Key, kv.Value);
-        }
-        var response = await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.GET,
-            path,
-            CancellationToken.None,
-            requestParameters: requestParameters);
-        sb.AppendLine(response.Body);
     }
 
     [Fact]
@@ -313,5 +239,13 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var encoding = new UTF8Encoding(false);
         using var stream = new MemoryStream(encoding.GetBytes(jsonString));
         return serializer.Deserialize<TDoc>(stream);
+    }
+
+    private async Task DumpStat(bool settings = false)
+    {
+        var openSearchClient = AppHost.Services.GetRequiredService<IOpenSearchClient>();
+        Log.LogInformation(await openSearchClient.Debug().DumpStat());
+        if (settings)
+            Log.LogInformation(await openSearchClient.Debug().DumpSettings());
     }
 }

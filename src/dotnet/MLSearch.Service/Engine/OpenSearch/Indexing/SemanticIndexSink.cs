@@ -64,9 +64,9 @@ internal sealed class SemanticIndexSink<TDocument> : ISink<TDocument, string>, I
         var result = await _openSearch
 
             .BulkAsync(r => r
-                    .RequestConfiguration(r1 => r1
-                        .DisableDirectStreaming(true)
-                    )
+                    // .RequestConfiguration(r1 => r1
+                    //     .DisableDirectStreaming(true)
+                    // )
                     .IndexMany(
                         updatedDocuments,
                         (op, document) =>
