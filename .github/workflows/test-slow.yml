@@ -123,6 +123,9 @@ jobs:
           docker-images: false
           tools-cache: false
 
+      - name: Show disk usage
+        run: df -h
+
       - name: Install dependencies
         run: |
           sudo apt-get update
