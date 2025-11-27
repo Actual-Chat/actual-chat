@@ -29,6 +29,19 @@ permissions:
   statuses: write
 
 jobs:
+  reclaim:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          android: true
+          dotnet: false
+          haskell: true
+          large-packages: false
+          swap-storage: false
+          docker-images: false
+          tools-cache: false
   slow-tests:
     name: Run Slow tests
     runs-on: ubuntu-latest
@@ -107,7 +120,7 @@ jobs:
         run: df -h
 
       - name: Top-level directories
-        run: du -h -d1 / | sort -hr | head -n 20
+        run: du -h -d1 / --exclude=/proc --exclude=/sys | sort -hr | head -n 20
 
       - name: Detailed file sizes
         run: find / -type f -exec du -h {} + 2>/dev/null | sort -hr | head -n 1000
@@ -171,6 +184,9 @@ jobs:
       - name: Debug Build for tests
         run: |
           dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
+
+      - name: Show disk usage
+        run: df -h
 
       - name: Run slow tests
         env:
