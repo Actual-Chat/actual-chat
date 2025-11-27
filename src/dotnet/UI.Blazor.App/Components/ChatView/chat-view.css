@@ -788,29 +788,25 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 
 .temporary-container {
     @apply absolute inset-0 z-minus;
-    animation: hide 1s ease-in-out forwards;
+    animation: smoothHide 0.5s ease-in forwards;
 }
 .playable-text-markup.smooth-show {
     opacity: 0;
-    animation: smoothShow 1s ease-in-out forwards;
+    animation: smoothShow 0.5s ease-in forwards;
 }
-@keyframes hide {
+@keyframes smoothHide {
     0% {
         opacity: 1;
-        filter: blur(0);
     }
     100% {
         opacity: 0;
-        filter: blur(4px);
     }
 }
 @keyframes smoothShow {
     0% {
         opacity: 0;
-        filter: blur(4px);
     }
     100% {
         opacity: 1;
-        filter: blur(0);
     }
 }
