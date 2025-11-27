@@ -103,15 +103,6 @@ jobs:
         volumes:
           - opensearch-data:/usr/share/opensearch/data
     steps:
-      - name: Show disk usage
-        run: df -h
-
-      - name: Top-level directories
-        run: du -h -d1 / --exclude=/proc --exclude=/sys | sort -hr | head -n 20
-
-      - name: Detailed file sizes
-        run: find / -type f -exec du -h {} + 2>/dev/null | sort -hr | head -n 1000
-
       - name: Free Disk Space (Ubuntu)
         uses: insightsengineering/disk-space-reclaimer@v1
         with:
@@ -122,9 +113,6 @@ jobs:
           swap-storage: false
           docker-images: false
           tools-cache: false
-
-      - name: Show disk usage
-        run: df -h
 
       - name: Install dependencies
         run: |
