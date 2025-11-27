@@ -29,19 +29,6 @@ permissions:
   statuses: write
 
 jobs:
-  reclaim:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: insightsengineering/disk-space-reclaimer@v1
-        with:
-          android: true
-          dotnet: false
-          haskell: true
-          large-packages: false
-          swap-storage: false
-          docker-images: false
-          tools-cache: false
   slow-tests:
     name: Run Slow tests
     runs-on: ubuntu-latest
@@ -124,6 +111,17 @@ jobs:
 
       - name: Detailed file sizes
         run: find / -type f -exec du -h {} + 2>/dev/null | sort -hr | head -n 1000
+
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          android: true
+          dotnet: false
+          haskell: true
+          large-packages: false
+          swap-storage: false
+          docker-images: false
+          tools-cache: false
 
       - name: Install dependencies
         run: |
