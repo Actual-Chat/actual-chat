@@ -103,6 +103,15 @@ jobs:
         volumes:
           - opensearch-data:/usr/share/opensearch/data
     steps:
+      - name: Show disk usage
+        run: df -h
+
+      - name: Top-level directories
+        run: du -h -d1 / | sort -hr | head -n 20
+
+      - name: Detailed file sizes
+        run: find / -type f -exec du -h {} + 2>/dev/null | sort -hr | head -n 1000
+
       - name: Install dependencies
         run: |
           sudo apt-get update
