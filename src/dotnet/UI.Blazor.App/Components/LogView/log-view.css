@@ -41,6 +41,7 @@
 .log-item .c-body {
     @apply ml-4;
     @apply text-01;
+    @apply break-all;
 }
 .log-item.trace .c-body,
 .log-item.debug .c-body {
