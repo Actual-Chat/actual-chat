@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Media.Flows;
 using ActualChat.Redis.Module;
+using ActualChat.Uploads;
 
 namespace ActualChat.Media.Module;
 
@@ -58,5 +59,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         // Uploads
         rpcHost.AddBackend<IUploadsBackend, UploadsBackend>();
         services.AddSingleton<UploadsStorage>();
+        services.AddSingleton<IMediaSaver>(c => new MediaSaver(c.Commander(), c.GetRequiredService<IContentSaver>()));
+        services.AddSingleton<IMediaProcessor, MediaProcessor>();
     }
 }

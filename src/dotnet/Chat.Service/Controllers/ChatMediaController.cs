@@ -10,9 +10,7 @@ namespace ActualChat.Chat.Controllers;
 public sealed class ChatMediaController(IServiceProvider services) : ControllerBase
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
-    private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
-        = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
+    private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
 
     [HttpPost("{chatId}/upload")]
     [DisableFormValueModelBinding]
@@ -49,15 +47,7 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             file.ContentType,
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
-        using var processedFile = await UploadProcessors.Process(uploadedFile, cancellationToken).ConfigureAwait(false);
-        var media = await MediaSaver.Save(chatId, processedFile.File, processedFile.Size, cancellationToken)
-            .ConfigureAwait(false);
-        if (processedFile.Thumbnail == null)
-            return Ok(new MediaContent(media.Id, media.ContentId));
-
-        var thumbnailMedia = await MediaSaver
-            .Save(chatId, processedFile.Thumbnail, processedFile.Size, cancellationToken)
-            .ConfigureAwait(false);
-        return Ok(new MediaContent(media.Id, media.ContentId, thumbnailMedia.Id, thumbnailMedia.ContentId));
+        var mediaContent = await MediaProcessor.ProcessAttachment(chatId, uploadedFile, cancellationToken).ConfigureAwait(false);
+        return Ok(mediaContent);
     }
 }

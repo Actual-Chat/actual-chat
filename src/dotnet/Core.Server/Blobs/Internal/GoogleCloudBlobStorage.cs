@@ -1,5 +1,6 @@
 using System.Net;
 using Google;
+using Google.Apis.Storage.v1.Data;
 using Google.Cloud.Storage.V1;
 using Microsoft.IO;
 
@@ -75,4 +76,51 @@ public class GoogleCloudBlobStorage(string bucket, RecyclableMemoryStreamManager
 
     public Task Delete(string path, CancellationToken cancellationToken)
         => _client.DeleteObjectAsync(bucket, path, cancellationToken: cancellationToken);
+
+    public async Task Append(string path, Stream stream, CancellationToken cancellationToken)
+    {
+        // Check if the file exists first
+        var storageObject = await _client
+            .GetObjectAsync(bucket, path, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        // Upload the new chunk to a temporary part file
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var partPath = $"{path}.part.{timestamp}";
+        var savedPart = false;
+
+        try {
+            await _client.UploadObjectAsync(bucket,
+                    partPath,
+                    storageObject.ContentType,
+                    stream,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            savedPart = true;
+
+            var composeRequest = new ComposeRequest {
+                SourceObjects = [
+                    new ComposeRequest.SourceObjectsData { Name = path },
+                    new ComposeRequest.SourceObjectsData { Name = partPath },
+                ],
+                Destination = new Google.Apis.Storage.v1.Data.Object {
+                    ContentType = storageObject.ContentType
+                },
+            };
+
+            var composeRequestExec = _client.Service.Objects.Compose(composeRequest, bucket, path);
+            await composeRequestExec.ExecuteAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            if (savedPart) {
+                try {
+                    await _client.DeleteObjectAsync(bucket, partPath, cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+    }
 }

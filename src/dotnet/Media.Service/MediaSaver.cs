@@ -1,19 +1,17 @@
-using ActualChat.Media;
 using ActualChat.Uploads;
 using SixLabors.ImageSharp;
 
-namespace ActualChat.Chat;
+namespace ActualChat.Media;
 
-// TODO(DF): to think where to put this.
 public sealed class MediaSaver(ICommander commander, IContentSaver contentSaver) : IMediaSaver
 {
-    public async Task<Media.Media> Save(
+    public async Task<Media> Save(
         MediaId mediaId,
         UploadedFile file,
         Size? size,
         CancellationToken cancellationToken)
     {
-        var media = new Media.Media(mediaId) {
+        var media = new Media(mediaId) {
             ContentId = mediaId.GetContentId(Path.GetExtension(file.FileName)),
             FileName = file.FileName,
             Length = file.Length,
@@ -29,7 +27,7 @@ public sealed class MediaSaver(ICommander commander, IContentSaver contentSaver)
 
         var changeCommand = new MediaBackend_Change(
             mediaId,
-            new Change<Media.Media> {
+            new Change<Media> {
                 Create = media,
             });
         return await commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false)!;

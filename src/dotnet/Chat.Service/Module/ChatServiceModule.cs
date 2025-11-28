@@ -34,7 +34,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
-        services.AddSingleton<IMediaSaver>(c => new MediaSaver(c.Commander(), c.GetRequiredService<IContentSaver>()));
 
         // Places
         rpcHost.AddLocalApi<IPlaces, Places>(); // Used by Chats
