@@ -21,6 +21,9 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IMediaBackend, MediaBackend>();
         rpcHost.AddBackend<IGrabStatusesBackend, GrabStatusesBackend>();
 
+        // Uploads
+        rpcHost.AddApi<IUploads, Uploads>();
+
         if (isBackendClient)
             return;
 
@@ -51,5 +54,9 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
 
         // Flows
         services.AddFlows().Add<LinkPreviewFlow>().Add<PreviewThumbnailUpdateFlow>();
+
+        // Uploads
+        rpcHost.AddBackend<IUploadsBackend, UploadsBackend>();
+        services.AddSingleton<UploadsStorage>();
     }
 }

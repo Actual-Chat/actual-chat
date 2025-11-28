@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -13,6 +14,7 @@ public partial class MauiFileProvider : IFileProvider
     public string FileRef { get; init; } = "";
 
     private FileUploader Uploader => _services.GetRequiredService<FileUploader>();
+    private ChunkedFileUploader ChunkedFileUploader => _services.GetRequiredService<ChunkedFileUploader>();
     private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().Create(FileRef);
     private ILogger Log => field ??= _services.LogFor<MauiFileProvider>();
 
@@ -32,6 +34,22 @@ public partial class MauiFileProvider : IFileProvider
         if (stream is null)
             throw new InvalidOperationException("No file access.");
         var fileUploadOperation = Uploader.CreateUploadOperation(chatId, stream, Metadata.FileType, Metadata.FileName);
+        var task = fileUploadOperation.ProgressTracker.Task;
+        _ = task.ContinueWith(async _ => {
+            await task.SilentAwait(false);
+            // NOTE: dispose stream when upload completed or canceled.
+            await stream.DisposeSilentlyAsync().ConfigureAwait(false);
+        }, TaskScheduler.Default);
+        return fileUploadOperation;
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
+    public async Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId)
+    {
+        var stream = await OpenRead().ConfigureAwait(false);
+        if (stream is null)
+            throw new InvalidOperationException("No file access.");
+        var fileUploadOperation = ChunkedFileUploader.CreateUploadOperation(uploadId, stream);
         var task = fileUploadOperation.ProgressTracker.Task;
         _ = task.ContinueWith(async _ => {
             await task.SilentAwait(false);

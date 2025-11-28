@@ -9,3 +9,8 @@ public interface IBlobStorage : IAsyncDisposable
     Task Copy(string oldPath, string newPath, CancellationToken cancellationToken);
     Task Delete(string path, CancellationToken cancellationToken);
 }
+
+public interface IBlobStorageV2 : IBlobStorage
+{
+    Task Append(string path, Stream stream, CancellationToken cancellationToken);
+}

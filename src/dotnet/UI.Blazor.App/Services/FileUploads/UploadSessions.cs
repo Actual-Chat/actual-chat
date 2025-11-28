@@ -1,3 +1,5 @@
+using ActualChat.Media;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 using System.Collections.Concurrent;
@@ -15,7 +17,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     public UploadSessions(AppUIHub hub) :base(hub)
     {
         _repo = new UploadSessionRepo(hub.Services);
-        _fileUploader = hub.Services.GetRequiredService<FileUploaderService>();
+        _fileUploader = new FileUploaderService(hub.Services);
 
         _fileUploader.ProgressChanged += OnProgressChanged;
         _fileUploader.Completed += OnCompleted;
@@ -72,6 +74,17 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     {
         if (session.Status is UploadStatus.Canceled)
             throw new InvalidOperationException("Cannot resume a canceled session");
+
+        if (session.UploadId is null) {
+            var tag = nameof(TextEntryAttachment) + "/v1/" + session.ChatId.Value;
+            var fileMetadata = session.FileProvider.Metadata;
+            var length = fileMetadata.Length;
+            var metadata = new PropertyBag()
+                .Set(nameof(Media.Media.FileName), fileMetadata.FileName)
+                .Set(nameof(Media.Media.ContentType), fileMetadata.FileType);
+            var uploadId = await Commander.Call(new Uploads_Create(Hub.Session, length, tag, metadata)).ConfigureAwait(false);
+            session.UploadId = uploadId;
+        }
 
         session.Status = UploadStatus.Uploading;
         session.LastUpdatedAt = Now;

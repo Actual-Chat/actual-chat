@@ -170,6 +170,11 @@ public static partial class Constants
         public static readonly Vector2 MaxAvatarResolution = new(MaxAvatarWidth, MaxAvatarHeight);
     }
 
+    public static class Uploads
+    {
+        public const int ChuckSizeLimit = 10 * 1024 * 1024;
+    }
+
     public static class Contacts
     {
         public static readonly int MinLoadLimit = 20;

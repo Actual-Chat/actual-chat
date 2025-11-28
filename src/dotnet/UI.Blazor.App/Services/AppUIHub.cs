@@ -1,6 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.Contacts;
 using ActualChat.Invite;
+using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.MLSearch;
 using ActualChat.Notification;
@@ -30,6 +31,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
     public SendingMessages SendingMessages => field ??= Services.GetRequiredService<SendingMessages>();
     public UploadSessions UploadSessions => field ??= Services.GetRequiredService<UploadSessions>();
+    public IUploads Uploads => field ??= Services.GetRequiredService<IUploads>();
     public ConversationUI ConversationUI => field ??= Services.GetRequiredService<ConversationUI>();
     public ActiveChatsUI ActiveChatsUI => field ??= Services.GetRequiredService<ActiveChatsUI>();
     public AuthorUI AuthorUI => field ??= Services.GetRequiredService<AuthorUI>();

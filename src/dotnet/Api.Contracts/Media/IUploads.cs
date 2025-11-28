@@ -1,0 +1,49 @@
+using MemoryPack;
+
+namespace ActualChat.Media;
+
+public interface IUploads : IComputeService
+{
+    // Non computed method
+    Task<long> GetOffset(Session session, UploadId uploadId, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<UploadId> OnCreate(Uploads_Create command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnRemove(Uploads_Remove command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<long> OnAppend(Uploads_Append command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<MediaContent> OnComplete(Uploads_Complete command, CancellationToken cancellationToken);
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Uploads_Create(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] long? Length,
+    [property: DataMember, MemoryPackOrder(2)] string Tag,
+    [property: DataMember, MemoryPackOrder(10)] PropertyBag Metadata
+) : ISessionCommand<UploadId>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Uploads_Append(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] UploadId UploadId,
+    [property: DataMember, MemoryPackOrder(2)] byte[] Chunk,
+    [property: DataMember, MemoryPackOrder(3)] long Offset
+) : ISessionCommand<long>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Uploads_Remove(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] UploadId UploadId
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Uploads_Complete(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] UploadId UploadId
+) : ISessionCommand<MediaContent>, IApiCommand;
