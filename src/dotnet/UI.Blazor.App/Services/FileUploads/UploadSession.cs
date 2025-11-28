@@ -20,6 +20,7 @@ public partial class UploadSession
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; set; } = Moment.EpochStart;
     [DataMember, MemoryPackOrder(4)] public Moment LastUpdatedAt { get; set; } = Moment.EpochStart;
     [DataMember, MemoryPackOrder(5)] public ChatId ChatId { get; set; } = null!;
+    [DataMember, MemoryPackOrder(6)] public UploadId? UploadId { get; set; }
 
     [IgnoreDataMember, MemoryPackIgnore] public string FileName => FileProvider.Metadata.FileName;
     [IgnoreDataMember, MemoryPackIgnore] public UploadProgressTracker ProgressTracker { get; set; } = new ();

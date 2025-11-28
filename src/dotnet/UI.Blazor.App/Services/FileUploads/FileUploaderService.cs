@@ -120,7 +120,11 @@ public class FileUploaderService
         {
             var chatId = Session.ChatId;
             var fileProvider = Session.FileProvider;
-            var uploadOperation = await fileProvider.CreateUploadOperation(chatId).ConfigureAwait(false);
+            IFileUploadOperation uploadOperation;
+            if (fileProvider is MauiFileProvider mauiFileProvider)
+                uploadOperation = await mauiFileProvider.CreateUploadOperation(Session.UploadId.Require()).ConfigureAwait(false);
+            else
+                uploadOperation = await fileProvider.CreateUploadOperation(chatId).ConfigureAwait(false);
             StartOperationProgressTracking(Session, uploadOperation, Owner);
             return uploadOperation;
         }
