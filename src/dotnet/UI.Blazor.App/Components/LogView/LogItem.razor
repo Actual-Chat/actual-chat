@@ -10,21 +10,28 @@
         LogLevel.Critical => "critical",
         _ => "",
     };
+    var sTime = Entry.Timestamp.ToString("HH:mm:ss.fff");
+    var text = $@"""
+                {sTime} {Entry.LogLevel} {Entry.CategoryName}:
+                {Entry.Message}
+                {Entry.Exception}
+                """;
 }
 
-<div class="log-item @levelCls">
-    <div class="c-header">
-        <div class="c-timestamp">@Entry.Timestamp.ToString("HH:mm:ss.fff")</div>
-        <div class="c-level" data-tooltip="@Entry.LogLevel">@Entry.LogLevel.ToString()[0]</div>
-        <div class="c-category" data-tooltip="@Entry.CategoryName">@Entry.CategoryName.OrdinalSuffix(".")</div>
-        <div class="c-id">#@Entry.Id</div>
+<CopyTrigger CopyText="@text" Tooltip="Copy to clipboard">
+    <div class="log-item @levelCls">
+        <div class="c-header">
+            <div class="c-timestamp">@sTime</div>
+            <div class="c-level" data-tooltip="@Entry.LogLevel">@Entry.LogLevel.ToString()[0]</div>
+            <div class="c-category" data-tooltip="@Entry.CategoryName">@Entry.CategoryName.OrdinalSuffix(".")</div>
+            <div class="c-id">#@Entry.Id</div>
+        </div>
+        <div class="c-body">
+            <div class="c-message">@Entry.Message</div>
+            <div class="c-exception">@Entry.Exception</div>
+        </div>
     </div>
-    <div class="c-body">
-        <div class="c-message">@Entry.Message</div>
-        <div class="c-exception">@Entry.Exception</div>
-    </div>
-</div>
-
+</CopyTrigger>
 @code {
     [Parameter] public LogEntry Entry { get; set; } = null!;
 }

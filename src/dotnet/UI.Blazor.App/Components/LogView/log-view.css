@@ -4,7 +4,18 @@
 .log-list {
     @apply font-mono;
     @apply select-text;
-    @apply break-all;
+}
+/* LogItem */
+@keyframes flash {
+    0%, 100% {
+        @apply opacity-100;
+    }
+    50% {
+        @apply opacity-50;
+    }
+}
+.copy-trigger.copied .log-item {
+    animation: flash 0.8s ease-in-out;
 }
 
 /* Header */
@@ -16,6 +27,7 @@
 }
 .log-item .c-category {
     @apply text-03;
+    @apply break-all;
 }
 .log-item .c-level {
     @apply flex justify-center font-bold min-w-3;
@@ -45,6 +57,7 @@
 .log-item .c-body {
     @apply ml-4;
     @apply text-01;
+    @apply break-all;
 }
 .log-item.trace .c-body,
 .log-item.debug .c-body {
