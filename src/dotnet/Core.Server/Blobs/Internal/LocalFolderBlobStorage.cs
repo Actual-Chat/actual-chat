@@ -108,6 +108,19 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
         return Task.CompletedTask;
     }
 
+    public async Task Append(string path, Stream stream, CancellationToken cancellationToken)
+    {
+        ValidatePath(path);
+
+        var fullPath = BaseDirectory & path;
+        if (!File.Exists(fullPath))
+            throw StandardError.Constraint($"Cannot append to non-existent file: '{path}'.");
+
+        var fileStream = new FileStream(fullPath, FileMode.Append, FileAccess.Write, FileShare.None);
+        await using var _ = fileStream.ConfigureAwait(false);
+        await stream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+    }
+
     // Private methods
 
     private void ValidatePath(string path)

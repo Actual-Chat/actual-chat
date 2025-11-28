@@ -9,28 +9,18 @@ public class UploadsStorage(IServiceProvider services)
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
     private IBlobStorage BlobStorage => Blobs[BlobScope.UploadTempRecord];
 
-    public async Task<bool> FileExistAsync(string fileId, CancellationToken cancellationToken)
-    {
-        var stream = await BlobStorage.Read(fileId, cancellationToken).ConfigureAwait(false);
-        return stream != null;
-    }
-
     public async Task<long> GetUploadOffset(UploadId uploadId, CancellationToken cancellationToken = default)
     {
         var stream = await BlobStorage.Read(GetDataFileId(uploadId), cancellationToken).ConfigureAwait(false);
         if (stream is null)
             return -1;
-        return stream.Length;
+
+        await using (stream.ConfigureAwait(false))
+            return stream.Length;
     }
 
-    public async Task<long> AppendDataAsync(
-        UploadId uploadId,
-        Stream stream,
-        CancellationToken cancellationToken
-    )
-    {
-        throw new NotImplementedException();
-    }
+    public async Task AppendDataAsync(UploadId uploadId, Stream stream, CancellationToken cancellationToken)
+        => await BlobStorage.Append(GetDataFileId(uploadId), stream, cancellationToken).ConfigureAwait(false);
 
     public Task CreateEmptyDataFile(UploadId uploadId, string contentType, CancellationToken cancellationToken)
         => CreateFile(GetDataFileId(uploadId), Stream.Null, contentType, cancellationToken);
@@ -57,6 +47,15 @@ public class UploadsStorage(IServiceProvider services)
         var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
         return json;
     }
+
+    public async Task DeleteFiles(UploadId uploadId, CancellationToken cancellationToken)
+    {
+        await BlobStorage.DeleteIfExists(GetDataFileId(uploadId), cancellationToken).ConfigureAwait(false);
+        await BlobStorage.DeleteIfExists(GetMetadataFileId(uploadId), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<Stream> GetDataFile(UploadId uploadId, CancellationToken cancellationToken)
+        => await BlobStorage.Read(GetDataFileId(uploadId), cancellationToken).Require().ConfigureAwait(false);
 
     private Task CreateFile(string fileId, Stream stream, string contentType, CancellationToken cancellationToken)
          => BlobStorage.Write(fileId, stream, contentType, cancellationToken);
@@ -90,11 +89,20 @@ public class UploadsBackend(IServiceProvider services) : IUploadsBackend
         await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);
         await UploadsStorage.CreateEmptyDataFile(uploadId,  contentType, cancellationToken).ConfigureAwait(false);
 
-        using (Invalidation.Begin())
-            _ = Get(uploadId, default);
+        InvalidateUpload(uploadId);
         return uploadId;
     }
 
-    public virtual Task<Unit> OnRemove(UploadsBackend_Remove command, CancellationToken cancellationToken)
-        => throw new NotImplementedException();
+    public virtual async Task OnRemove(UploadsBackend_Remove command, CancellationToken cancellationToken)
+    {
+        var uploadId = command.Id;
+        await UploadsStorage.DeleteFiles(uploadId, cancellationToken).ConfigureAwait(false);
+        InvalidateUpload(uploadId);
+    }
+
+    private void InvalidateUpload(UploadId uploadId)
+    {
+        using (Invalidation.Begin())
+            _ = Get(uploadId, default);
+    }
 }

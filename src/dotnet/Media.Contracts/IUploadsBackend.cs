@@ -10,7 +10,7 @@ public interface IUploadsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task<UploadId> OnCreate(UploadsBackend_Create command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<Unit> OnRemove(UploadsBackend_Remove command, CancellationToken cancellationToken);
+    Task OnRemove(UploadsBackend_Remove command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
