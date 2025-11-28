@@ -1,6 +1,10 @@
+.page-with-header-and-footer .layout-body-wrapper .layout-footer {
+    @apply hidden;
+}
 .log-list {
     @apply font-mono;
     @apply select-text;
+    @apply break-all;
 }
 
 /* Header */
@@ -41,7 +45,6 @@
 .log-item .c-body {
     @apply ml-4;
     @apply text-01;
-    @apply break-all;
 }
 .log-item.trace .c-body,
 .log-item.debug .c-body {
