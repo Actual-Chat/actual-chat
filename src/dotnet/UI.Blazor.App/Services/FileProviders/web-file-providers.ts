@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEditor/attachment-web-file-picker';
 
-const { errorLog } = Log.get('WebFileProvider');
+const { debugLog, errorLog } = Log.get('WebFileProvider');
 
 interface MediaContent {
     mediaId: string;
@@ -94,7 +94,7 @@ export class WebFileProviders
 
 export class WebFileProvider {
     private previewUrl: string | null = null;
-    private fileUpload: FileUpload | null;
+    private fileUpload: ChunkedFileUpload | null;
 
     constructor(
         private fileHandleDbKey: string,
@@ -144,15 +144,15 @@ export class WebFileProvider {
         return true;
     }
 
-    public start(chatId: string, blazorRef: DotNet.DotNetObject)
+    public start(uploadId: string, chunkSize: number, blazorRef: DotNet.DotNetObject)
     {
-        if (this.fileUpload) {
+        if (this.fileUpload)
             throw new Error('File upload already started');
-        }
+
         const reporter = new FileUploadProgressReporter(blazorRef);
-        this.fileUpload = new FileUpload(chatId, this.file, this.fileName, pct => reporter.reportProgress(pct));
+        this.fileUpload = new ChunkedFileUpload(uploadId, chunkSize, this.file, pct => reporter.reportProgress(pct));
         this.fileUpload.whenCompleted.then(x => {
-            void reporter.reportUploadSucceed(x.mediaId, x.thumbnailMediaId);
+            void reporter.reportUploadSucceed();
             this.fileUpload = null;
         }).catch(e => {
             if (!(e instanceof OperationCancelledError)) {
@@ -183,8 +183,8 @@ export class FileUploadProgressReporter {
         return this.blazorRef.invokeMethodAsync('OnUploadProgress', Math.trunc(progressPercent));
     }
 
-    public async reportUploadSucceed(mediaId: string, thumbnailMediaId?: string) {
-        return this.blazorRef.invokeMethodAsync('OnUploadSucceed', mediaId, thumbnailMediaId);
+    public async reportUploadSucceed() {
+        return this.blazorRef.invokeMethodAsync('OnUploadSucceed');
     }
 
     public async reportUploadFailed() {
@@ -192,50 +192,104 @@ export class FileUploadProgressReporter {
     }
 }
 
-class FileUpload {
-    private readonly xhr: XMLHttpRequest;
-    private readonly whenCompletedSource: PromiseSource<MediaContent> = new PromiseSource<MediaContent>();
+class ChunkedFileUpload {
+    private readonly whenCompletedSource: PromiseSource<void> = new PromiseSource<void>();
+    private readonly uploadUrl: string;
+    private readonly abortController: AbortController = new AbortController();
     private isCancelled = false;
 
     constructor(
-        private readonly chatId: string,
+        private readonly uploadId: string,
+        private readonly chunkSize: number,
         private readonly blob: Blob,
-        private readonly fileName: string,
-        private readonly progressReporter: ProgressReporter) {
-        this.xhr = new XMLHttpRequest();
-        if (!this.fileName)
-            this.fileName = 'upload';
+        private readonly progressReporter: ProgressReporter)
+    {
+        this.uploadUrl = BrowserInit.getUrl(`api/uploads/${this.uploadId}`);
     }
 
-    public get whenCompleted(): Promise<MediaContent> {
+    public get whenCompleted(): Promise<void> {
         return this.whenCompletedSource;
     }
 
-    public start() {
-        const formData = new FormData();
-        formData.append('file', this.blob, this.fileName);
-        this.xhr.upload.onprogress = (e) => {
-            const progress = Math.floor(e.loaded / e.total * 1000) / 10;
-            this.progressReporter(progress);
-        };
-        this.xhr.onreadystatechange = () => {
-            if (this.xhr.readyState === XMLHttpRequest.DONE) {
-                if (this.xhr.status === 200) {
-                    this.whenCompletedSource.resolve(JSON.parse(this.xhr.response));
-                } else if (this.isCancelled)
-                    this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled: ' + this.xhr.statusText));
-                else
-                    this.whenCompletedSource.reject(this.xhr.responseText);
-            }
-        };
-        const url = BrowserInit.getUrl(`api/chat-media/${this.chatId}/upload`);
-        this.xhr.open('post', url, true);
-        this.xhr.setRequestHeader(SessionTokens.headerName, SessionTokens.current);
-        this.xhr.send(formData);
+    public start()
+    {
+        void this.startInternal();
     }
 
     public cancel() {
         this.isCancelled = true;
-        this.xhr.abort();
+        this.abortController.abort();
+    }
+
+    private async startInternal() {
+        try {
+            let offset = await this.getOffset();
+            debugLog?.log(`Starting upload of ${this.uploadId} at offset ${offset}`);
+            const fileSize = this.blob.size;
+
+            // Upload chunks
+            while (offset < fileSize) {
+                if (this.isCancelled) {
+                    this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
+                    return;
+                }
+
+                const remainingBytes = fileSize - offset;
+                const currentChunkSize = Math.min(this.chunkSize, remainingBytes);
+
+                offset = await this.uploadChunk(offset, currentChunkSize);
+
+                const uploadProgress = (offset / fileSize) * 100;
+                this.progressReporter(uploadProgress);
+            }
+
+            this.whenCompletedSource.resolve();
+        } catch (error) {
+            if (!this.isCancelled) {
+                this.whenCompletedSource.reject(error);
+            }
+        }
+    }
+
+    private async getOffset(): Promise<number>
+    {
+        const response = await fetch(this.uploadUrl, {
+            method: 'HEAD',
+            headers: {
+                [SessionTokens.headerName]: SessionTokens.current
+            },
+            signal: this.abortController.signal
+        });
+        if (!response.ok)
+            throw new Error(`Failed to get upload status: ${response.statusText}`);
+        const header = response.headers.get('Upload-Offset');
+        if (!header)
+            throw new Error('Upload-Offset header not found in response');
+        return parseInt(header, 10);
+    }
+
+    private async uploadChunk(offset: number, chunkSize: number): Promise<number>
+    {
+        const contentType = 'application/offset+octet-stream';
+        const chunk = this.blob.slice(offset, offset + chunkSize, contentType);
+        const response = await fetch(this.uploadUrl, {
+            method: 'PATCH',
+            headers: {
+                [SessionTokens.headerName]: SessionTokens.current,
+                'Content-Type': contentType,
+                'Upload-Offset': offset.toString(),
+            },
+            body: chunk,
+            signal: this.abortController.signal
+        });
+
+        if (!response.ok)
+            throw new Error(`Failed to upload chunk: ${response.statusText}`);
+
+        const newOffsetHeader = response.headers.get('Upload-Offset');
+        if (!newOffsetHeader)
+            throw new Error('Upload-Offset header not found in response');
+
+        return parseInt(newOffsetHeader, 10);
     }
 }

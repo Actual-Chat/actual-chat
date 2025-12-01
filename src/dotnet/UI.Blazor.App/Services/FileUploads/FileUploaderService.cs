@@ -118,13 +118,8 @@ public class FileUploaderService
 
         private async Task<IFileUploadOperation> CreateUploadOperation()
         {
-            var chatId = Session.ChatId;
             var fileProvider = Session.FileProvider;
-            IFileUploadOperation uploadOperation;
-            if (fileProvider is MauiFileProvider mauiFileProvider)
-                uploadOperation = await mauiFileProvider.CreateUploadOperation(Session.UploadId.Require()).ConfigureAwait(false);
-            else
-                uploadOperation = await fileProvider.CreateUploadOperation(chatId).ConfigureAwait(false);
+            var uploadOperation = await fileProvider.CreateUploadOperation(Session.UploadId.Require()).ConfigureAwait(false);
             StartOperationProgressTracking(Session, uploadOperation, Owner);
             return uploadOperation;
         }

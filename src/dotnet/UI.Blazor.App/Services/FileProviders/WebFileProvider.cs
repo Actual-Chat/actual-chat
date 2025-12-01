@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Module;
 using MemoryPack;
 
@@ -47,7 +48,7 @@ public partial class WebFileProvider : IFileProvider
                 .ConfigureAwait(false);
             var jsRef = nullableRef.Value;
             if (jsRef is not null)
-                return new WebFileProviderInternal(jsRef, null, false);
+                return new WebFileProviderInternal(_services.Require().AppUIHub(), jsRef, null, false);
         }
         catch (Exception ex) {
             Log.LogWarning(ex, "Failed to create WebFileProviderInternal");
@@ -85,13 +86,13 @@ public partial class WebFileProvider : IFileProvider
         return @internal.CreatePreviewUrl().AsTask();
     }
 
-    public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
+    public Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId)
     {
         var @internal = WebFileProviderInternal;
         if (@internal is null)
             throw new InvalidOperationException("Upload can't be created.");
 
-        return @internal.CreateUploadOperation(chatId);
+        return @internal.CreateUploadOperation(uploadId);
     }
 }
 
@@ -101,11 +102,12 @@ public interface IWebFileProviderInternal
     ValueTask RevokePreviewUrl();
     ValueTask<string> SaveFileHandleToDb();
     ValueTask<bool> DeleteFileHandleFromDb();
-    Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId);
+    Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId);
 }
 
 public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposable
 {
+    private readonly AppUIHub _hub;
     private readonly IJSObjectReference _jsRef;
     private readonly List<IDisposable> _disposables = new ();
     private bool _disposed;
@@ -114,10 +116,12 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
     public bool IsOriginal { get; }
 
     public WebFileProviderInternal(
+        AppUIHub hub,
         IJSObjectReference jsRef,
         string? previewUrl,
         bool isOriginal)
     {
+        _hub = hub;
         _jsRef = jsRef;
         _previewUrl = previewUrl;
         IsOriginal = isOriginal;
@@ -144,7 +148,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
     public ValueTask<bool> DeleteFileHandleFromDb()
         => _jsRef.InvokeAsync<bool>("removeFileHandleFromDb");
 
-    public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
+    public Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId)
     {
         var fileUploaderBackend = new WebFileUploaderBackend();
         _disposables.Add(fileUploaderBackend.BlazorRef);
@@ -154,14 +158,19 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
                 tracker.SetCanceled();
                 _ = Cancel();
             });
-            await Start(chatId, fileUploaderBackend.BlazorRef).ConfigureAwait(false);
-            return await tracker.Task.ConfigureAwait(false);
+            // Upload data
+            await Start(uploadId, fileUploaderBackend.BlazorRef).ConfigureAwait(false);
+            await fileUploaderBackend.WhenUploadCompleted.WaitAsync(ct).ConfigureAwait(false);
+            // Convert uploaded file to media content
+            var mediaContent = await _hub.Commander.Call(new Uploads_Complete(_hub.Session, uploadId), ct).ConfigureAwait(false);
+            tracker.SetResult(mediaContent);
+            return mediaContent;
         }, tracker);
         return Task.FromResult<IFileUploadOperation>(uploadOperation);
     }
 
-    private ValueTask Start(ChatId chatId, DotNetObjectReference<IWebFileUploaderBackend> blazorRef)
-        => _jsRef.InvokeVoidAsync("start", chatId.Value, blazorRef);
+    private ValueTask Start(UploadId uploadId, DotNetObjectReference<IWebFileUploaderBackend> blazorRef)
+        => _jsRef.InvokeVoidAsync("start", uploadId.Value, Constants.Uploads.DefaultChunkSize, blazorRef);
 
     private ValueTask Cancel()
         => _jsRef.InvokeVoidAsync("cancel");
@@ -193,7 +202,7 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
     public ValueTask<bool> DeleteFileHandleFromDb()
         => WebFileProviders.DeleteFileHandleFromDb(jsRuntime, fileHandleDbKey);
 
-    public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
+    public Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId)
         => throw new NotSupportedException();
 }
 

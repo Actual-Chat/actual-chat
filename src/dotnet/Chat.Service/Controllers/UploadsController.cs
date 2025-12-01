@@ -38,12 +38,13 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
     }
 
     [HttpPatch("{uploadSid}")]
-    [DisableFormValueModelBinding]
-    [RequestSizeLimit(Constants.Uploads.ChuckSizeLimit + 200 /* extra size for headers and etc. */)]
+    [RequestSizeLimit(Constants.Uploads.ChuckSizeLimit + 10000 /* extra size for headers and etc. */)]
     [Consumes("application/offset+octet-stream")]
-    public async Task<ActionResult<MediaContent>> Upload(string uploadSid, [FromBody] byte[] data, CancellationToken cancellationToken)
+    public async Task<ActionResult> Upload(
+        string uploadSid,
+        [FromHeader(Name = Headers.UploadOffset)] long uploadOffset,
+        CancellationToken cancellationToken)
     {
-        var uploadId = UploadId.Parse(uploadSid);
         Session session;
         try {
             // NOTE(AY): Header is used by clients, cookie is used by SSB
@@ -55,12 +56,7 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
             return BadRequest(e.Message);
         }
 
-        var httpRequest = HttpContext.Request;
-        long.TryParse(httpRequest.Headers[Headers.UploadOffset], CultureInfo.InvariantCulture, out var uploadOffset);
-        if (uploadOffset < 0)
-            return BadRequest("Invalid or missing upload offset");
-
-        // TODO(DF): optimize memory usage
+        var uploadId = UploadId.Parse(uploadSid);
         var ms = new MemoryStream();
         await using (ms.ConfigureAwait(false)) {
             await Request.Body.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
