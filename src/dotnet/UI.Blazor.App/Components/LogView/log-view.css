@@ -1,4 +1,4 @@
-.page-with-header-and-footer .layout-body-wrapper .layout-footer {
+.page-with-header-and-footer .layout-body-wrapper:has(.log-list) .layout-footer {
     @apply hidden;
 }
 .log-list {
