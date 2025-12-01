@@ -6,6 +6,8 @@ namespace ActualChat.App.Maui;
 public static class MauiSettings
 {
     public static readonly string LocalHost = "0.0.0.1";
+    // NOTE: UseLocalhost is used only for development purposes. Do not commit it to the repo.
+    public const bool UseLocalhost = true;
 #if IS_DEV_MAUI
     public const bool IsDevApp = true;
     public const bool AreDevToolsEnabled = true;
@@ -17,8 +19,12 @@ public static class MauiSettings
     public const bool AreDevToolsEnabled = false;
 #endif
 #endif
-    public const string DefaultHost = Constants.Hosts.LocalVoxt;
-    //public const string DefaultHost = IsDevApp ? Constants.Hosts.DevVoxt : Constants.Hosts.Voxt;
+    public const string DefaultHost =
+        UseLocalhost
+            ? Constants.Hosts.LocalVoxt :
+            IsDevApp
+                ? Constants.Hosts.DevVoxt
+                : Constants.Hosts.Voxt;
     public static readonly string Host;
     public static bool IsHostOverriden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
     public static readonly Uri BaseUri;
