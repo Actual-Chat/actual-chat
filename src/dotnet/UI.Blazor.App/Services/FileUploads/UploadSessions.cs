@@ -131,6 +131,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session.Status is not UploadStatus.Canceled and not UploadStatus.Completed and not UploadStatus.Failed)
             throw new InvalidOperationException("Cannot delete a not canceled/completed/failed session");
 
+        if (session.UploadId is not null)
+            await Hub.Commander.Call(new Uploads_Remove(Hub.Session, session.UploadId), CancellationToken.None).ConfigureAwait(false);
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         Log.LogInformation("Deleted session {SessionId}", sessionId);
