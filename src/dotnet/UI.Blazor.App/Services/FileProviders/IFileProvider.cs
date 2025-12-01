@@ -7,7 +7,7 @@ public partial interface IFileProvider
 {
     FileMetadata Metadata { get; }
     Task PrepareForSaving();
-    Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId);
+    Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId);
     void Initialize(IServiceProvider services);
     Task<bool> CheckAccess();
     Task ClearForRemoving();

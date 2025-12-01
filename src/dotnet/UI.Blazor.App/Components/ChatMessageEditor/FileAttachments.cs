@@ -94,6 +94,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                 .InvokeAsync<CreateWebFileProviderResult>(JSCreateMethod, id)
                 .ConfigureAwait(true); // Continue on Blazor context.
             webFileProviderInternal = new WebFileProviderInternal(
+                Hub,
                 webFileAttachment.FileProvider,
                 webFileAttachment.PreviewUrl,
                 true);

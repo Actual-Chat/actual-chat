@@ -10,19 +10,19 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
     public FileUploadOperation CreateUploadOperation(UploadId uploadId, Stream file)
     {
         var progress = new UploadProgressTracker();
-        const long chunkSize = 512 * 1024;
         return new FileUploadOperation(async token => {
             var offset = await Uploads.GetOffset(Session, uploadId, token).ConfigureAwait(false);
             Log.LogDebug("Starting upload of {UploadId} at offset {Offset}", uploadId, offset);
 
             // Seek to offset if needed
+            // TODO(DF): implement what to do if seek is not possible
             if (file.CanSeek && file.Position != offset)
                 file.Seek(offset, SeekOrigin.Begin);
 
             // Upload chunks
             while (offset < file.Length) {
                 var remainingBytes = file.Length - offset;
-                var currentChunkSize = (int)Math.Min(chunkSize, remainingBytes);
+                var currentChunkSize = (int)Math.Min(Constants.Uploads.DefaultChunkSize, remainingBytes);
 
                 var chunkBuffer = new byte[currentChunkSize];
                 var bytesRead = await file.ReadAsync(chunkBuffer, 0, currentChunkSize, token).ConfigureAwait(false);

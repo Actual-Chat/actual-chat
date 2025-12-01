@@ -3,15 +3,17 @@ namespace ActualChat.UI.Blazor.App.Services;
 public interface IWebFileUploaderBackend
 {
     void OnUploadProgress(int progress);
-    void OnUploadSucceed(MediaId mediaId, MediaId thumbnailMediaId);
+    void OnUploadSucceed();
     void OnUploadFailed();
 }
 
 public sealed class WebFileUploaderBackend : IWebFileUploaderBackend, IDisposable
 {
     private bool _isDisposed;
+    private readonly TaskCompletionSource _tcs = TaskCompletionSourceExt.New();
 
     public UploadProgressTracker Tracker { get; } = new ();
+    public Task WhenUploadCompleted => _tcs.Task;
     public DotNetObjectReference<IWebFileUploaderBackend> BlazorRef { get; }
 
     public WebFileUploaderBackend()
@@ -22,8 +24,8 @@ public sealed class WebFileUploaderBackend : IWebFileUploaderBackend, IDisposabl
         => Tracker.ReportProgress(progress);
 
     [JSInvokable]
-    public void OnUploadSucceed(MediaId mediaId, MediaId thumbnailMediaId)
-        => Tracker.SetResult(new MediaContent(mediaId, "", thumbnailMediaId, ""));
+    public void OnUploadSucceed()
+        => _tcs.TrySetResult();
 
     [JSInvokable]
     public void OnUploadFailed()
