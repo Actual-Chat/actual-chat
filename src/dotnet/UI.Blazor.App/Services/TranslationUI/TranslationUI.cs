@@ -2,10 +2,12 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
+public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
 {
-    private const int MustSuggestTranslationChatListSizeLimit = 50;
-    private readonly List<ChatId> _mustSuggestTranslationChatList = new ();
+    private readonly ILruCache<ChatId, Unit> _mustSuggestCache;
+
+    public TranslationUI(AppUIHub hub) : base(hub)
+        => _mustSuggestCache = new ThreadSafeLruCache<ChatId, Unit>(50, evictionHandler: InvalidateMustSuggestCache);
 
     [field: AllowNull, MaybeNull]
     private ThrottledTranslations Translations => field ??= Hub.Services.GetRequiredService<ThrottledTranslations>();
@@ -140,10 +142,7 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
    [ComputeMethod]
    protected virtual Task<bool> GetStoredMustSuggest(ChatId chatId, CancellationToken cancellationToken)
-   {
-       lock (_mustSuggestTranslationChatList)
-           return Task.FromResult(_mustSuggestTranslationChatList.Contains(chatId));
-   }
+       => Task.FromResult(_mustSuggestCache.TryGetValue(chatId, out _));
 
    [ComputeMethod]
    protected virtual async Task<bool?> IsForeignEntry(TextEntryId entryId, bool useOnlyTargetLanguage, CancellationToken cancellationToken = default)
@@ -207,21 +206,15 @@ public class TranslationUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComput
 
    private void StoreMustSuggest(ChatId chatId)
    {
-       ChatId? removedChatId = null;
-       lock (_mustSuggestTranslationChatList) {
-           if (_mustSuggestTranslationChatList.Contains(chatId))
-               return;
+       if (!_mustSuggestCache.TryAdd(chatId, Unit.Default))
+           return;
 
-           if (_mustSuggestTranslationChatList.Count >= MustSuggestTranslationChatListSizeLimit) {
-               removedChatId = _mustSuggestTranslationChatList[0];
-               _mustSuggestTranslationChatList.RemoveAt(0);
-           }
-           _mustSuggestTranslationChatList.Add(chatId);
-       }
-       using (Invalidation.Begin()) {
+       InvalidateMustSuggestCache(chatId);
+   }
+
+   private void InvalidateMustSuggestCache(ChatId chatId, Unit _1 = default)
+   {
+       using (Invalidation.Begin())
            _ = GetStoredMustSuggest(chatId, default);
-           if (removedChatId is not null)
-               _ = GetStoredMustSuggest(removedChatId, default);
-       }
    }
 }
