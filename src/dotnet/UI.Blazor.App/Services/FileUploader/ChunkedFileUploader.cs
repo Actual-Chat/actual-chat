@@ -13,6 +13,7 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
         const long chunkSize = 512 * 1024;
         return new FileUploadOperation(async token => {
             var offset = await Uploads.GetOffset(Session, uploadId, token).ConfigureAwait(false);
+            Log.LogDebug("Starting upload of {UploadId} at offset {Offset}", uploadId, offset);
 
             // Seek to offset if needed
             if (file.CanSeek && file.Position != offset)
@@ -32,12 +33,11 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
                 if (bytesRead == 0)
                     break;
 
-                //chunkBuffer.AsSpan(0, bytesRead).CopyTo(chunkBuffer);
                 var appendCmd = new Uploads_Append(Session, uploadId, chunkBuffer, offset);
                 await UICommander.Run(appendCmd, token).ConfigureAwait(false);
 
                 offset += bytesRead;
-                var uploadProgress = (offset / (double)file.Length) * 100;
+                var uploadProgress = offset / (double)file.Length * 100;
                 progress.ReportProgress(uploadProgress);
             }
 
