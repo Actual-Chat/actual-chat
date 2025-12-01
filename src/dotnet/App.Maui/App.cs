@@ -31,7 +31,12 @@ public class App : Application
     {
 		var window = new Window(new MainPage());
         window.Destroying += (_, _) => FlushSentryData();
-        window.Title = MauiSettings.IsDevApp ? $"{CoreConstants.AppName} (Dev)" : CoreConstants.AppName;
+        window.Title =
+            MauiSettings.UseLocalhost
+                ? $"{CoreConstants.AppName} (Local)"
+                : MauiSettings.IsDevApp
+                    ? $"{CoreConstants.AppName} (Dev)"
+                    : CoreConstants.AppName;
         return window;
     }
 
