@@ -37,7 +37,8 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
                 await UICommander.Run(appendCmd, token).ConfigureAwait(false);
 
                 offset += bytesRead;
-                progress.ReportProgress(offset / (double)file.Length);
+                var uploadProgress = (offset / (double)file.Length) * 100;
+                progress.ReportProgress(uploadProgress);
             }
 
             // Convert uploaded file to media content
