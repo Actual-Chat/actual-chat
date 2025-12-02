@@ -78,12 +78,12 @@ public class FlowRuntime(Flow flow, IServiceProvider services, CancellationToken
         var console = sb.Length != 0 && sb[^1] == FlowConsole.NewLine
             ? sb.ToString(0, sb.Length - 1) // Remove the last new line
             : sb.ToString();
-        Flow.Console.Commit().LogSection("[>>]");
+        Flow.Console.Commit().LogSection("[Commit]");
 
         if (console.IsNullOrEmpty())
             Log.LogInformation("`{FlowId}` committed", Flow.Id.Value);
         else
-            Log.LogInformation("`{FlowId}` committed, console:\n{Console}", Flow.Id.Value, console);
+            Log.LogInformation("`{FlowId}` committed, console (new lines only):\n{Console}", Flow.Id.Value, console);
     }
 
     // Private methods

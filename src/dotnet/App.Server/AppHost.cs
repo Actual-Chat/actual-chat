@@ -47,21 +47,16 @@ public partial class AppHost : IDisposable
 #pragma warning restore VSTHRD002
     }
 
-    public async Task InvokeInitializers(CancellationToken cancellationToken = default)
+    public async Task RunInitializers(CancellationToken cancellationToken = default)
     {
+        var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix($"{nameof(AppHost)}");
         var initializers = new WorkerBase[] {
             new AggregateDbInitializer(Services),
             new AggregateModuleInitializer(Services),
         };
-        var mustLock = !Services.HostInfo().IsTested;
-        if (mustLock) {
-            var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix($"{nameof(AppHost)}");
-            await meshLocks
-                .LockAndRun(nameof(InvokeInitializers), InvokeInitializersImpl, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        else
-            await InvokeInitializersImpl(cancellationToken).ConfigureAwait(false);
+        await meshLocks
+            .LockAndRun(nameof(RunInitializers), RunInitializersImpl, cancellationToken)
+            .ConfigureAwait(false);
 
         // NOTE(AY):
         // Since InvokeInitializers is called before App.Run(), the host isn't listening yet.
@@ -75,7 +70,7 @@ public partial class AppHost : IDisposable
         rpcBackendHelpers.StartRouting();
         return;
 
-        Task InvokeInitializersImpl(CancellationToken ct)
+        Task RunInitializersImpl(CancellationToken ct)
             => Task.WhenAll(initializers.Select(x => x.Run(ct)));
     }
 

@@ -11,7 +11,7 @@ namespace ActualChat.Flows;
 public interface IFlows : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken);
+    Task<IFlowData?> TryGetData(FlowId flowId, CancellationToken cancellationToken);
     // Regular RPC method!
     Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken);
 

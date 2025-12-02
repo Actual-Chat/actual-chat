@@ -105,7 +105,7 @@ public static class TestAppHostFactory
         if (options.MustInitializeDb)
             // TODO: Improve initializers init code.
             // Issue: Not granular or too specific.
-            await appHost.InvokeInitializers();
+            await appHost.RunInitializers();
 
         if (options.MustStart)
             await appHost.Start();

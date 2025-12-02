@@ -14,7 +14,7 @@ namespace ActualChat.Flows;
 public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
 {
     private readonly AsyncLockSet<FlowId> _resumeLocks = new();
-    private readonly ILruCache<FlowId, Flow?> _cache = new ConcurrentLruCache<FlowId, Flow?>(1024);
+    private readonly ILruCache<FlowId, IFlowData?> _cache = new ConcurrentLruCache<FlowId, IFlowData?>(1024);
 
     // Services
     private FlowRegistry Registry { get; }
@@ -46,16 +46,18 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
     }
 
     // [ComputeMethod]
-    public virtual async Task<Flow?> TryGet(FlowId flowId, CancellationToken cancellationToken)
+    public virtual async Task<IFlowData?> TryGetData(FlowId flowId, CancellationToken cancellationToken)
     {
+        var flowType = Registry.TypeByName[flowId.Name];
+
         // Check cache
-        if (_cache.TryGetValue(flowId, out var flow))
-            return flow;
+        if (false && _cache.TryGetValue(flowId, out var flowData))
+            return flowData;
 
         // Read the ground truth
         var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
-        flow = dbFlow?.ToModel(flowId);
-        return _cache[flowId] = flow;  // Update cache
+        flowData = dbFlow?.ToFlowData(flowType, flowId);
+        return _cache[flowId] = flowData;  // Update cache
     }
 
     // Regular RPC method!
@@ -67,11 +69,12 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             using var _ = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
             var version = 0L;
             while (true) {
-                Flow? flow;
-                using (Computed.BeginIsolation())
-                    flow = await TryGet(flowId, ct).ConfigureAwait(false);
-                if (flow is not null && flow.Version >= version)
-                    return flow;
+                IFlowData? flowData;
+                using (Computed.BeginIsolation()) {
+                    flowData = await TryGetData(flowId, ct).ConfigureAwait(false);
+                }
+                if (flowData is not null && flowData.Version >= version)
+                    return flowData.Flow;
 
                 if (version > 0L) {
                     // We already executed Flows_Store command and it succeeded
@@ -80,7 +83,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                     continue;
                 }
 
-                flow = (Flow)flowType.CreateInstance();
+                var flow = (Flow)flowType.CreateInstance();
                 var legacyFlowImpl = flow as ILegacyFlowImpl;
                 var flowImpl = (IFlowImpl)flow;
                 var console = new FlowConsole();
@@ -151,6 +154,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
 
         flowId.Require();
         var flow = command.Flow;
+        var flowType = Registry.TypeByName[flowId.Name];
+        if (flow?.GetType() == typeof(Flow))
+            throw StandardError.Internal("Flow.GetType() == typeof(Flow), i.e., the command is routed to another host.");
         var legacyFlow = flow as LegacyFlow;
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -206,10 +212,10 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         context.Operation.MustStore(false);
         context.Operation.AddCompletionHandler(scope => {
             // Update cache to avoid the DB hit in TryGet
-            _cache[flowId] = dbFlow?.ToModel(flowId);
+            _cache[flowId] = dbFlow?.ToFlowData(flowType, flowId);
             // Invalidate TryGet cache
             using (Invalidation.Begin())
-                _ = TryGet(flowId, default);
+                _ = TryGetData(flowId, default);
             return Task.CompletedTask;
         });
 

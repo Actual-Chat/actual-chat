@@ -70,12 +70,16 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         var chaosMaker = Backend.ChaosMaker;
         if (chaosMaker.IsEnabled)
             _ = Task.Run(async () => {
-                await chaosMaker.Act(this, cancellationToken).SilentAwait();
-                if (cancellationToken.IsCancellationRequested)
-                    return;
+                try {
+                    await chaosMaker.Act(this, cancellationToken).ResultAwait();
+                }
+                catch (Exception e) {
+                    if (e.IsCancellationOf(cancellationToken))
+                        return;
 
-                Log.LogWarning("[!] {Key}: ChaosMaker-caused termination", FullKey);
-                _ = Stop();
+                    Log.LogWarning("[!] {Key}: ChaosMaker-caused termination", FullKey);
+                    _ = Stop();
+                }
             }, CancellationToken.None);
 
         var isHeld = true;

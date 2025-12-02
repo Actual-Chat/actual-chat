@@ -1,8 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using ActualChat.Db;
-using ActualChat.Flows.Infrastructure;
-using ActualLab.IO;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Flows.Db;
@@ -12,10 +9,8 @@ namespace ActualChat.Flows.Db;
 [Index(nameof(HardResumeAt), nameof(Step))]
 [Index(nameof(IsCompleted), nameof(Version))]
 [Index(nameof(Version), nameof(IsCompleted))]
-public sealed class DbFlow : IDbEntity<DbFlow, Flow>
+public sealed class DbFlow
 {
-    private static readonly IByteSerializer Serializer = TypeDecoratingByteSerializer.Default;
-
     [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public string Id { get; set; } = "";
     [ConcurrencyCheck]
@@ -41,51 +36,30 @@ public sealed class DbFlow : IDbEntity<DbFlow, Flow>
 
     public DbFlow(Flow flow)
         => UpdateFrom(flow);
+    public DbFlow(IFlowData flowData)
+        => UpdateFrom(flowData);
 
     public void UpdateFrom(Flow flow)
+        => UpdateFrom(FlowData.FromFlow(flow));
+    public void UpdateFrom(IFlowData flowData)
     {
-        Id = flow.Id;
-        Version = flow.Version;
-
-        using var buffer = new ArrayPoolBuffer<byte>(4096, false);
-        Serializer.Write(buffer, flow, typeof(Flow));
-        Data = buffer.WrittenSpan.ToArray();
-        Console = flow.Console.ToString();
-
-        if (flow.UntypedResult is not null) {
-            buffer.Reset();
-            Serializer.Write(buffer, flow.UntypedResult, typeof(IResult));
-            ResultData = buffer.WrittenSpan.ToArray();
-            IsCompleted = true;
-        }
-        else {
-            ResultData = null;
-            IsCompleted = false;
-        }
-
-        // LegacyFlow properties - to be removed eventually
-        var legacyFlow = flow as ILegacyFlowImpl;
-        Step = legacyFlow?.Step ?? "";
-        HardResumeAt = legacyFlow?.HardResumeAt;
+        Id = flowData.Id;
+        Version = flowData.Version;
+        ResultData = flowData.ResultData.Length == 0 ? null : flowData.ResultData;
+        Data = flowData.Data;
+        Console = flowData.Console;
+        IsCompleted = flowData.IsCompleted;
+        Step = flowData.Step;
+        HardResumeAt = flowData.HardResumeAt;
     }
 
-    public Flow? ToModel()
-        => ToModel(FlowId.ParseOrNone(Id));
-    public Flow? ToModel(FlowId flowId)
+    public IFlowData? ToFlowData(Type flowType)
+        => ToFlowData(flowType, FlowId.ParseOrNone(Id));
+    public IFlowData? ToFlowData(Type flowType, FlowId flowId)
     {
         if (flowId.IsNone || Data == null || Data.Length == 0)
             return null;
 
-        var flow = (Flow)Serializer.Read(Data, typeof(Flow), out _).Require();
-        var console = new FlowConsole(Console);
-        if (flow is ILegacyFlowImpl legacyFlowImpl) // LegacyFlow properties - to be removed eventually
-            legacyFlowImpl.SetProperties(flowId, Version, Step, HardResumeAt, console, null);
-        else {
-            var untypedResult = ResultData is { Length: > 0 }
-                ? (IResult?)Serializer.Read(ResultData, typeof(IResult), out _).Require()
-                : null;
-            ((IFlowImpl)flow).SetProperties(flowId, Version, untypedResult, console);
-        }
-        return flow;
+        return FlowData.FromData(flowType, flowId, Version, ResultData ?? [], Data, Console, Step, HardResumeAt);
     }
 }

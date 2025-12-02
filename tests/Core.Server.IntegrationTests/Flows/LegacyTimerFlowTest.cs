@@ -89,20 +89,19 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
 
     // Private methods
 
-    private async Task<TFlow?> GetFlow<TFlow>(
-        IFlows flows, TFlow exampleFlow, CancellationToken cancellationToken = default)
+    private Task<TFlow?> GetFlow<TFlow>(
+        IFlows flows,
+        TFlow exampleFlow,
+        CancellationToken cancellationToken = default)
         where TFlow : Flow
-    {
-        var flow = (TFlow?)await flows.TryGet(exampleFlow.Id, cancellationToken);
-        Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
-        return flow;
-    }
+        => GetFlow<TFlow>(flows, exampleFlow.Id, cancellationToken);
 
     private async Task<TFlow?> GetFlow<TFlow>(
         IFlows flows, FlowId flowId, CancellationToken cancellationToken = default)
         where TFlow : Flow
     {
-        var flow = (TFlow?)await flows.TryGet(flowId, cancellationToken);
+        var flowData = await flows.TryGetData(flowId, cancellationToken);
+        var flow = (TFlow?)flowData?.Flow;
         Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
         return flow;
     }

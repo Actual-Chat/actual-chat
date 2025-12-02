@@ -37,8 +37,8 @@ public static partial class FlowsExt
         where TFlow : Flow
     {
         var flowId = flows.NewId<TFlow>(arguments);
-        var flow = await flows.TryGet(flowId, cancellationToken).ConfigureAwait(false);
-        return (TFlow?)flow;
+        var flowData = await flows.TryGetData(flowId, cancellationToken).ConfigureAwait(false);
+        return (TFlow?)flowData?.Flow;
     }
 
     // Get
@@ -59,22 +59,22 @@ public static partial class FlowsExt
         FlowId flowId,
         CancellationToken cancellationToken = default)
     {
-        var cFlow = await Computed
-            .Capture(() => flows.TryGet(flowId, cancellationToken), cancellationToken)
+        var cFlowData = await Computed
+            .Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        if (cFlow.Value is not null)
+        if (cFlowData.Value is not null)
             goto exit;
 
         using (Computed.BeginIsolation()) {
             await flows.Start(flowId, cancellationToken).ConfigureAwait(false);
             // Await for the new flow to be visible via TryGet in the current process
-            cFlow = await cFlow.When(x => x is not null, cancellationToken).ConfigureAwait(false);
+            cFlowData = await cFlowData.When(x => x is not null, cancellationToken).ConfigureAwait(false);
         }
 
         exit:
         // Register a dependency
-        await cFlow.UseUntyped(allowInconsistent: true, cancellationToken).ConfigureAwait(false);
-        return cFlow.Value!;
+        _ = cFlowData.UseUntyped(allowInconsistent: true, cancellationToken);
+        return cFlowData.Value!.Flow;
     }
 
     // EnsureStarted - like Get, but w/o registering a dependency
@@ -93,17 +93,17 @@ public static partial class FlowsExt
         FlowId flowId,
         CancellationToken cancellationToken = default)
     {
-        var cFlow = await Computed
-            .Capture(() => flows.TryGet(flowId, cancellationToken), cancellationToken)
+        var cFlowData = await Computed
+            .Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        if (cFlow.Value is { } flow)
-            return flow;
+        if (cFlowData.Value is { } flowData)
+            return flowData.Flow;
 
         using (Computed.BeginIsolation()) {
             await flows.Start(flowId, cancellationToken).ConfigureAwait(false);
             // Await for the new flow to be visible via TryGet in the current process
-            cFlow = await cFlow.When(x => x is not null, cancellationToken).ConfigureAwait(false);
-            return cFlow.Value!;
+            cFlowData = await cFlowData.When(x => x is not null, cancellationToken).ConfigureAwait(false);
+            return cFlowData.Value!.Flow;
         }
     }
 

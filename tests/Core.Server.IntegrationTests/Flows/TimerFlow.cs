@@ -19,6 +19,7 @@ public partial class TimerFlow : Flow<Unit>
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
+        Console.Log($"Resuming @ {Runtime.Services.MeshWatcher().ThisNode.Ref.Value}");
         if (!IsInitialized) {
             IsInitialized = true;
             var args = Id.SplitArguments("", "1", "1");
@@ -41,7 +42,7 @@ public partial class TimerFlow : Flow<Unit>
                 await Task.Delay(50, cancellationToken).ConfigureAwait(false);
                 await Runtime.Commit(cancellationToken).ConfigureAwait(false);
                 await Task.Delay(50, cancellationToken).ConfigureAwait(false);
-                Console.Log("Post-commit message");
+                Console.Log("Post-commit message (should be visible due to AutoCommit)");
             }
         }
         else {
