@@ -132,16 +132,16 @@ public sealed class DbModule(IServiceProvider moduleServices)
                 // operations.AddNpgsqlOperationLogChangeTracking();
                 operations.AddRedisOperationLogWatcher();
                 // NOTE(DF):
-                // During tests execution for entire test fixture I often bump into situation when tests fail.
-                // Usually this happens on awaiting that computed value will match condition with using `ComputedTest.When`.
-                // But it fails when default timeout is used.
-                // During examining log files I found that events processing can be delayed more than 5 seconds.
-                // So it seems event log reader does not do its job.
-                // Apparently LocalDbLogWatcher does not signal than new event has been added.
-                // So let reduce check period so far.
+                // During tests execution for entire test fixture I often bump into a situation when tests fail.
+                // Usually this happens on awaiting that computed value will match the condition with using `ComputedTest.When`.
+                // But it fails when the default timeout is used.
+                // After examining log files, I found that events processing can be delayed for more than 5 seconds.
+                // So it seems that sometimes event log reader doesn't kick in on time sometimes,
+                // and that's because LocalDbLogWatcher does not signal a new event has been added.
+                // So as a temp. fix, I reduced the check period to 1s.
                 if (HostInfo.IsTested)
                     operations.ConfigureEventLogReader(_ => new DbEventLogReader<TDbContext>.Options() {
-                        CheckPeriod = TimeSpan.FromSeconds(1).ToRandom(0.1)
+                        CheckPeriod = TimeSpan.FromSeconds(1).ToRandom(0.1),
                     });
             });
 
