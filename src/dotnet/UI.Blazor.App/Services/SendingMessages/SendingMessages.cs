@@ -1,4 +1,3 @@
-using ActualChat.Hashing;
 using ActualChat.Media;
 using ActualChat.Messaging;
 using ActualChat.UI.Blazor.Services;
@@ -13,7 +12,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     }
 
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
-
     private readonly Dictionary<ChatId, ChatSendingMessages> _chatSendingMessages = new ();
     private readonly WeakValueTable<string, ChatEntry> _clientEntries = new ();
     private readonly MediaUploadsUI _mediaUploadsUI;
@@ -54,36 +52,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             .CycleForever()
             .RunIsolated(cancellationToken);
     }
-
-    public ChatSendingMessagesAccessor GetSendingMessages(ChatId chatId)
-    {
-        ChatSendingMessages chatSendingMessages;
-        lock (_chatSendingMessagesLock)
-            chatSendingMessages = GetChatSendingMessages(chatId);
-        DebugLog?.LogInformation("-> GetSendingMessages. ChatId='{ChatId}'", chatId);
-        return new ChatSendingMessagesAccessor(chatSendingMessages);
-    }
-
-    public void NotifyAttachmentsLoaded(ChatEntryId chatEntryId)
-        => _mediaUploadsUI.NotifyAttachmentsLoaded(chatEntryId);
-
-    public AttachmentUploads? GetMediaUploads(ChatEntry entry)
-        => _mediaUploadsUI.GetMediaUploads(entry);
-
-    public void RegisterEntryByClientId(ChatEntry chatEntry)
-    {
-        lock (_clientEntries.SyncObject)
-            _clientEntries.AddOrUpdate(chatEntry.ClientUid, chatEntry);
-    }
-
-    public ChatEntry? TryGetChatEntryByClientId(string clientId)
-    {
-        lock (_clientEntries.SyncObject)
-            return _clientEntries.TryGetValue(clientId, out var chatEntry) ? chatEntry : null;
-    }
-
-    public void Cancel(SendingMessage sendingMessage)
-        => sendingMessage.Cancel();
 
     public async Task<Task<ChatEntry?>> Post(SendMessageRequest cmd, CancellationToken cancellationToken)
     {
@@ -217,15 +185,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cancellationToken1 = cancellationTokenSource.Token;
             Result<ChatEntry> result;
-            ChatSendingMessages chatSendingMessages;
-            var sendingMessage = CreateSendingMessage(request, cancellationTokenSource);
-            lock (_chatSendingMessagesLock) {
-                chatSendingMessages = GetChatSendingMessages(request.ChatId);
-                chatSendingMessages.AddSendingMessage(sendingMessage);
-                if (request.AttachmentUploads is not null)
-                    _mediaUploadsUI.Add(sendingMessage, request.AttachmentUploads);
-            }
-
+            var sendingMessage = CreateAndRegisterSendingMessage(request, cancellationTokenSource);
             if (!request.NewChatEntryLocalId.HasValue) {
                 var queueMessageProcess = _messageProcessor.Enqueue(new PostMessageQueueItem(request), cancellationToken1);
                 try {
@@ -255,6 +215,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                     result = Result.NewError<ChatEntry>(StandardError.Internal($"Can't find chat entry with id '{chatEntryId}'."));
             }
 
+            var chatSendingMessages = GetChatSendingMessages(request.ChatId);
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
                 _mediaUploadsUI.Invalidate(sendingMessage);
@@ -316,24 +277,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         };
 
         handler.Invoke(afterSendMessageHandlerArgs, result);
-    }
-
-    private static SendingMessage CreateSendingMessage(
-        PostMessageRequestInternal request,
-        CancellationTokenSource cancellationTokenSource)
-    {
-        var isNewMessage = request.LocalId is null;
-        // NOTE(DF): we need to set the content hash to trigger ChatEntryMessageInternalView re-rendering for edited messages.
-        var textHash = isNewMessage ? HashString.None : request.Text.Hash().Blake2b().ToBase64HashString(HashAlgorithm.Blake2b);
-        var sendingMessage = new SendingMessage(request.Uuid,
-            request.ChatId,
-            request.LocalId,
-            request.Now,
-            request.Text,
-            textHash,
-            request.AttachmentUploads,
-            cancellationTokenSource);
-        return sendingMessage;
     }
 
     private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, CancellationToken cancellationToken)
@@ -436,35 +379,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 ThumbnailMediaId = x.ThumbnailMediaId,
             }).ToArray();
         return entryAttachments;
-    }
-
-    private ChatSendingMessages GetChatSendingMessages(ChatId chatId)
-    {
-        if (_chatSendingMessages.TryGetValue(chatId, out var chatSendingMessages))
-            return chatSendingMessages;
-
-        chatSendingMessages = new ChatSendingMessages(this, _triggers, chatId);
-        _chatSendingMessages.Add(chatId, chatSendingMessages);
-        return chatSendingMessages;
-    }
-
-    private Task PruneSendingMessages(CancellationToken cancellationToken)
-    {
-        lock (_chatSendingMessagesLock) {
-            var keys = _chatSendingMessages.Keys.ToArray();
-            foreach (var chatId in keys) {
-                if (!_chatSendingMessages.TryGetValue(chatId, out var chatSendingMessages))
-                    continue;
-
-                chatSendingMessages.PruneSentMessages(Now);
-                // NOTE(DF): do not remove empty, they will be recreated on GetSendingMessages again.
-                // if (chatSendingMessages.IsEmpty) {
-                //     _chatSendingMessages.Remove(chatId);
-                //     DebugLog?.LogInformation("Removed ChatSendingMessages for chat '{ChatId}'", chatId);
-                // }
-            }
-        }
-        return Task.CompletedTask;
     }
 
     // Nested types
