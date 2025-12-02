@@ -30,6 +30,6 @@ public sealed class MediaSaver(ICommander commander, IContentSaver contentSaver)
             new Change<Media> {
                 Create = media,
             });
-        return await commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false)!;
+        return (await commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false))!;
     }
 }

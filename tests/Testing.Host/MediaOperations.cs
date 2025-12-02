@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Uploads;
 
 namespace ActualChat.Testing.Host;
@@ -10,5 +9,5 @@ public static class MediaOperations
         ChatId chatId,
         UploadedFile file,
         CancellationToken cancellationToken = default)
-        => tester.AppServices.GetRequiredService<MediaStorage>().Save(chatId, file, null, cancellationToken).Require();
+        => tester.AppServices.GetRequiredService<IMediaSaver>().Save(chatId, file, null, cancellationToken);
 }
