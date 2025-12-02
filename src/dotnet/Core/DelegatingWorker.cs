@@ -2,7 +2,8 @@ namespace ActualChat;
 
 public class DelegatingWorker<TResult>(
     Func<CancellationToken, Task<TResult>> jobFactory,
-    CancellationTokenSource? stopTokenSource = null) : WorkerBase(stopTokenSource)
+    CancellationTokenSource? stopTokenSource = null
+    ) : WorkerBase(stopTokenSource)
 {
     public TResult? Result { get; private set; }
 
@@ -11,7 +12,9 @@ public class DelegatingWorker<TResult>(
 
     public new async Task<TResult> Run()
     {
+ #pragma warning disable MA0040
         await base.Run().ConfigureAwait(false);
+ #pragma warning restore MA0040
         return Result!;
     }
 }

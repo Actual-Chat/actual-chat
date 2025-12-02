@@ -1,7 +1,11 @@
+using ActualLab.Generators;
+
 namespace ActualChat.Mesh;
 
 public static partial class MeshLocksExt
 {
+    public static readonly Generator<string> DefaultValueGenerator = Alphabet.AlphaNumeric.Generator8;
+
     // WithXxx
 
     public static IMeshLocks WithKeyPrefix(this IMeshLocks meshLocks, string keyPrefix)
@@ -15,12 +19,12 @@ public static partial class MeshLocksExt
     public static Task<MeshLockHolder?> TryLock(this IMeshLocks meshLocks,
         string key,
         CancellationToken cancellationToken = default)
-        => meshLocks.TryLock(key, "", meshLocks.LockOptions, cancellationToken);
+        => meshLocks.TryLock(key, DefaultValueGenerator.Next(), meshLocks.LockOptions, cancellationToken);
 
     public static Task<MeshLockHolder?> TryLock(this IMeshLocks meshLocks,
         string key, MeshLockOptions lockOptions,
         CancellationToken cancellationToken = default)
-        => meshLocks.TryLock(key, "", lockOptions, cancellationToken);
+        => meshLocks.TryLock(key, DefaultValueGenerator.Next(), lockOptions, cancellationToken);
 
     // TryLock - with value
 
@@ -34,22 +38,22 @@ public static partial class MeshLocksExt
     public static Task<MeshLockHolder> Lock(this IMeshLocks meshLocks,
         string key,
         CancellationToken cancellationToken = default)
-        => meshLocks.Lock(key, "", meshLocks.LockOptions, cancellationToken);
+        => meshLocks.Lock(key, DefaultValueGenerator.Next(), meshLocks.LockOptions, cancellationToken);
 
     public static Task<MeshLockHolder> Lock(this IMeshLocks meshLocks,
         string key, MeshLockOptions lockOptions,
         CancellationToken cancellationToken = default)
-        => meshLocks.Lock(key, "", lockOptions, cancellationToken);
+        => meshLocks.Lock(key, DefaultValueGenerator.Next(), lockOptions, cancellationToken);
 
     public static Task<MeshLockHolder> Lock(this IMeshLocks meshLocks,
-        string key, TimeSpan timeout,
+        string key, TimeSpan lockTimeout,
         CancellationToken cancellationToken = default)
-        => meshLocks.Lock(key, "", meshLocks.LockOptions, timeout, cancellationToken);
+        => meshLocks.Lock(key, DefaultValueGenerator.Next(), meshLocks.LockOptions, lockTimeout, cancellationToken);
 
     public static Task<MeshLockHolder> Lock(this IMeshLocks meshLocks,
-        string key, MeshLockOptions lockOptions, TimeSpan timeout,
+        string key, MeshLockOptions lockOptions, TimeSpan lockTimeout,
         CancellationToken cancellationToken = default)
-        => meshLocks.Lock(key, "", lockOptions, timeout, cancellationToken);
+        => meshLocks.Lock(key, DefaultValueGenerator.Next(), lockOptions, lockTimeout, cancellationToken);
 
     // Lock - with value
 
@@ -59,18 +63,18 @@ public static partial class MeshLocksExt
         => meshLocks.Lock(key, value, meshLocks.LockOptions, cancellationToken);
 
     public static Task<MeshLockHolder> Lock(this IMeshLocks meshLocks,
-        string key, string value, TimeSpan timeout,
+        string key, string value, TimeSpan lockTimeout,
         CancellationToken cancellationToken = default)
-        => meshLocks.Lock(key, value, meshLocks.LockOptions, timeout, cancellationToken);
+        => meshLocks.Lock(key, value, meshLocks.LockOptions, lockTimeout, cancellationToken);
 
     public static async Task<MeshLockHolder> Lock(this IMeshLocks meshLocks,
-        string key, string value, MeshLockOptions lockOptions, TimeSpan timeout,
+        string key, string value, MeshLockOptions lockOptions, TimeSpan lockTimeout,
         CancellationToken cancellationToken = default)
     {
-        if (timeout == TimeSpan.MaxValue)
+        if (lockTimeout == TimeSpan.MaxValue)
             return await meshLocks.Lock(key, value, lockOptions, cancellationToken).ConfigureAwait(false);
 
-        var timeoutCts = new CancellationTokenSource(timeout);
+        var timeoutCts = new CancellationTokenSource(lockTimeout);
         var cts = timeoutCts.Token.LinkWith(cancellationToken);
         try {
             return await meshLocks.Lock(key, value, lockOptions, cts.Token).ConfigureAwait(false);

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using ActualChat.Flows;
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
+using ActualLab.Resilience;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
@@ -11,6 +12,9 @@ public class TimerFlowTest(ITestOutputHelper @out)
         ConfigureServices = (_, services) => {
             var flows = services.AddFlows(useMasterFlows: false, useLegacyFlows: false);
             flows.Add<TimerFlow>();
+            var chaosMaker = (0.9 * ChaosMaker.TransientError)
+                .Filtered("ShardOwners", x => x is MeshLockHolder h && h.Key.Contains("ShardOwner"));
+            services.AddSingleton(chaosMaker);
         },
     }, @out)
 {

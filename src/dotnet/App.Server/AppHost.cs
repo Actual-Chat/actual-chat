@@ -47,13 +47,21 @@ public partial class AppHost : IDisposable
 #pragma warning restore VSTHRD002
     }
 
-    public virtual async Task InvokeInitializers(CancellationToken cancellationToken = default)
+    public async Task InvokeInitializers(CancellationToken cancellationToken = default)
     {
-        var initializers = new IAggregateInitializer[] {
-            new ExecuteDbInitializers(Services),
-            new ExecuteModuleInitializers(Services),
+        var initializers = new WorkerBase[] {
+            new AggregateDbInitializer(Services),
+            new AggregateModuleInitializer(Services),
         };
-        await InvokeInitializers(initializers, cancellationToken).ConfigureAwait(false);
+        var mustLock = !Services.HostInfo().IsTested;
+        if (mustLock) {
+            var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix($"{nameof(AppHost)}");
+            await meshLocks
+                .LockAndRun(nameof(InvokeInitializers), InvokeInitializersImpl, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else
+            await InvokeInitializersImpl(cancellationToken).ConfigureAwait(false);
 
         // NOTE(AY):
         // Since InvokeInitializers is called before App.Run(), the host isn't listening yet.
@@ -65,6 +73,10 @@ public partial class AppHost : IDisposable
         // an RPC call in Hybrid or Client mode, so the initialization will stuck right there.
         var rpcBackendHelpers = Services.GetRequiredService<RpcBackendHelpers>();
         rpcBackendHelpers.StartRouting();
+        return;
+
+        Task InvokeInitializersImpl(CancellationToken ct)
+            => Task.WhenAll(initializers.Select(x => x.Run(ct)));
     }
 
     public Task Run(CancellationToken cancellationToken = default)
@@ -75,40 +87,4 @@ public partial class AppHost : IDisposable
 
     public Task Stop(CancellationToken cancellationToken = default)
         => App.StopAsync(cancellationToken);
-
-    // Private methods
-
-    private async Task InvokeInitializers(IEnumerable<IAggregateInitializer> initializers, CancellationToken cancellationToken = default)
-    {
-#if DEBUG
-        // See MeshLockBase.DefaultLockOptions - locks expire much longer in DEBUG
-        var mustLock = false;
-#else
-        var hostInfo = Services.HostInfo();
-        var mustLock = hostInfo.IsTested;
-#endif
-
-        var tasks = initializers.Select(initializer => mustLock
-            ? InvokeInitializersProtected(initializer, cancellationToken)
-            : InvokeInitializersUnsafe(initializer, cancellationToken));
-
-        await Task.WhenAll(tasks).ConfigureAwait(false);
-    }
-
-    private async Task InvokeInitializersProtected(IAggregateInitializer initializer, CancellationToken cancellationToken = default)
-    {
-        var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(AppHost));
-        var lockKey = initializer.GetType().Name;
-        const string lockValue = nameof(InvokeInitializersProtected);
-        var lockHolder = await meshLocks.Lock(lockKey, lockValue, cancellationToken).ConfigureAwait(false);
-        await using var _ = lockHolder.ConfigureAwait(false);
-        var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
-
-        await InvokeInitializersUnsafe(initializer, lockCts.Token).ConfigureAwait(false);
-    }
-
-    private static async Task InvokeInitializersUnsafe(IAggregateInitializer initializer, CancellationToken cancellationToken)
-        => await initializer
-            .InvokeAll(cancellationToken)
-            .ConfigureAwait(false);
 }

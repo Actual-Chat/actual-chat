@@ -61,24 +61,10 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
     }
 
     private Task EnsureTemplates(CancellationToken cancellationToken)
-    {
-        var runOptions = RunLockedOptions.Default with { Log = Log };
-        return MeshLocks.RunLocked(
-            nameof(EnsureTemplates),
-            runOptions,
-            EnsureTemplatesUnsafe,
-            cancellationToken);
-    }
+        => MeshLocks.LockAndRun(nameof(EnsureTemplates), EnsureTemplatesUnsafe, cancellationToken);
 
     private Task EnsureIndices(CancellationToken cancellationToken)
-    {
-        var runOptions = RunLockedOptions.Default with { Log = Log };
-        return MeshLocks.RunLocked(
-            nameof(EnsureIndices),
-            runOptions,
-            EnsureIndicesUnsafe,
-            cancellationToken);
-    }
+        => MeshLocks.LockAndRun(nameof(EnsureIndices), EnsureIndicesUnsafe, cancellationToken);
 
     private async Task EnsureTemplatesUnsafe(CancellationToken cancellationToken)
     {

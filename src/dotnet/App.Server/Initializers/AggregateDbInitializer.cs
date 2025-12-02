@@ -2,9 +2,9 @@ using ActualChat.Hosting;
 
 namespace ActualChat.App.Server.Initializers;
 
-public class ExecuteDbInitializers(IServiceProvider services): IAggregateInitializer
+public class AggregateDbInitializer(IServiceProvider services): WorkerBase
 {
-    public async Task InvokeAll(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var hostInfo = services.HostInfo();
         if (hostInfo.HasRole(HostRole.OneApiServer) && !hostInfo.HasRole(HostRole.OneServer))

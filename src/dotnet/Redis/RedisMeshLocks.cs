@@ -54,10 +54,10 @@ public class RedisMeshLocks : MeshLocksBase
         """
         local key, anyLockKey, value = KEYS[1], KEYS[2], ARGV[1]
         if redis.call('GET', key) ~= value then
-            return -2
+            return -1
         end
         if redis.call('DEL', key) <= 0 then
-            return -1
+            return -2
         end
         redis.call('PUBLISH', key, '')
         redis.call('PUBLISH', anyLockKey, key)
@@ -247,14 +247,17 @@ public class RedisMeshLocks : MeshLocksBase
         var r = (long)await database
             .ScriptEvaluateAsync(TryReleaseScript, [key, ""], [value], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
-        if (r != 0)
+        switch (r) {
+        case 0:
+            return MeshLockReleaseResult.Released;
+        case -1:
             DebugLog?.LogDebug("TryRelease: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
-        return r switch {
-            -2 => MeshLockReleaseResult.AcquiredBySomeoneElse,
-            -1 => MeshLockReleaseResult.NotAcquired,
-            0 => MeshLockReleaseResult.Released,
-            _ => MeshLockReleaseResult.Unknown,
-        };
+            return MeshLockReleaseResult.AcquiredBySomeoneElse;
+        default:
+            // Technically, we should never land here, coz -2 = something is off with Redis atomicity for LUA scripts
+            Log.LogError("TryRelease: {Key} = {Value} -> {Result}", $"{_fullKeyPrefix}{key}", value, r);
+            return MeshLockReleaseResult.UnknownError;
+        }
     }
 
     protected override async Task<bool> ForceRelease(string key, bool mustNotify, CancellationToken cancellationToken)

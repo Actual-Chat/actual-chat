@@ -1,3 +1,5 @@
+using ActualLab.Resilience;
+
 namespace ActualChat.Mesh;
 
 public interface IMeshLocks<TContext> : IMeshLocks;
@@ -22,6 +24,7 @@ public interface IMeshLocks : IHasServices
 
 public interface IMeshLocksBackend : IMeshLocks
 {
+    ChaosMaker ChaosMaker { get; }
     ILogger Log { get; }
     ILogger? DebugLog { get; }
 
@@ -29,6 +32,6 @@ public interface IMeshLocksBackend : IMeshLocks
     Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken = default);
     Task<MeshLockReleaseResult> TryRelease(string key, string value, CancellationToken cancellationToken = default);
 
-    // Methods below must be used only in tests
+    // The method below must be used only in tests
     Task<bool> ForceRelease(string key, bool mustNotify, CancellationToken cancellationToken = default);
 }

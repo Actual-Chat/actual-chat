@@ -10,7 +10,7 @@ public sealed class ShardOwnership : RunnableRunner
     public int ShardIndex { get; }
     public CancellationToken CancelLockToken { get; }
     public CancellationToken LockToken { get; }
-    public bool IsLockExpired => LockHolder.IsExpired;
+    public bool IsLockExpired => LockHolder.IsExpiredOnRenewal;
     public Moment AcquiredAt { get; }
 
     public ShardOwnership(ShardOwner.ShardState shardState, MeshLockHolder lockHolder)

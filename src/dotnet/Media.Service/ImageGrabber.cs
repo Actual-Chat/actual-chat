@@ -46,9 +46,8 @@ public class ImageGrabber(IServiceProvider services)
             return existingId;
         }
 
-        var (_, mediaId) = await MeshLocks.RunLocked(
+        var mediaId = await MeshLocks.LockAndRun(
             imageUrl.Hash().SHA256().AlphaNumeric(),
-            RunLockedOptions.Default,
             async ct => {
                 existingId = await GetExisting().ConfigureAwait(false);
                 return existingId ?? await GrabUnsafe(imageUrl, ct).ConfigureAwait(false);

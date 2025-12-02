@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ActualChat.App.Server;
 using ActualChat.App.Server.Initializers;
 using ActualChat.Chat.Module;
@@ -43,7 +44,10 @@ public record TestAppHostOptions
     public DbInitializeOptions DbInitializeOptions { get; init; } = DbInitializeOptions.Default;
     public ChatDbInitializer.Options ChatDbInitializerOptions { get; init; } = ChatDbInitializer.Options.None;
     public string MeshLockSubspace { get; init; } = Alphabet.AlphaNumeric.Generator8.Next();
-    public string MeshLockOptionsPreset { get; init; } = nameof(MeshLockOptions.TestFriendly);
+    public string MeshLockOptionsPreset { get; init; }
+        = Debugger.IsAttached
+            ? nameof(MeshLockOptions.Debug)
+            : nameof(MeshLockOptions.Test);
     public bool? UseNatsQueues { get; init; }
     public bool MustInitializeDb { get; init; }
     public bool MustStart { get; init; }

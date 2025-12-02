@@ -2,9 +2,9 @@ using ActualChat.Hosting;
 
 namespace ActualChat.App.Server.Initializers;
 
-public class ExecuteModuleInitializers(IServiceProvider services): IAggregateInitializer
+public class AggregateModuleInitializer(IServiceProvider services): WorkerBase
 {
-    public async Task InvokeAll(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var moduleInitializers = services.GetServices<IModuleInitializer>();
         var initializeTasks = moduleInitializers.Select(instance => instance.Initialize(cancellationToken)).ToArray();

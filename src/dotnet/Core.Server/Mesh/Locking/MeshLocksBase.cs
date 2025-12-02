@@ -1,5 +1,5 @@
 using ActualLab.Diagnostics;
-using Cysharp.Text;
+using ActualLab.Resilience;
 
 namespace ActualChat.Mesh;
 
@@ -21,7 +21,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
 
     public IServiceProvider Services { get; init; }
-    [field: AllowNull, MaybeNull]
+    public ChaosMaker ChaosMaker => field ??= Services.GetRequiredService<ChaosMaker>();
     public MomentClock Clock => field ??= Services.Clocks().SystemClock;
     public IMeshLocksBackend Backend => this;
 

@@ -26,7 +26,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             Mock.Of<IClusterSetupActions>(MockBehavior.Loose),
             Mock.Of<IOptions<OpenSearchSettings>>(MockBehavior.Loose),
             [],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
         _ = Assert.Throws<InvalidOperationException>(() => clusterSetup.Result);
@@ -44,7 +43,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -111,7 +109,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -142,7 +139,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -192,7 +188,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [settingChangeSource.Object],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
