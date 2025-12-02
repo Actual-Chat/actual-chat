@@ -256,7 +256,9 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
             while (!cancellationToken.IsCancellationRequested) {
                 try {
                     CheckTimeout();
-                    var holder = await NodeLocks.Lock(lockKey, "", cancellationToken).ConfigureAwait(false);
+                    var holder = await NodeLocks
+                        .Lock(lockKey, cancellationToken)
+                        .ConfigureAwait(false);
                     await using var _1 = holder.ConfigureAwait(false);
                     CheckTimeout();
                     timeout = null;

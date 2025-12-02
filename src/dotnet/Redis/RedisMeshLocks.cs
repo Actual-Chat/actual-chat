@@ -128,14 +128,11 @@ public class RedisMeshLocks : MeshLocksBase
         while (true) {
             try {
                 var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
-                var storedValue = (string?)await database
+                var id = (string?)await database
                     .StringGetAsync((RedisKey)key, CommandFlags.DemandMaster)
                     .ConfigureAwait(false);
-                if (storedValue == null)
-                    return null;
-
-                var (value, holderId) = MeshLockHolder.ParseStoredValue(storedValue);
-                return new MeshLockInfo(key, value, holderId);
+                return id == null ? null
+                    : new MeshLockInfo(key, id);
             }
             catch (RedisConnectionException) {
                 // Intended

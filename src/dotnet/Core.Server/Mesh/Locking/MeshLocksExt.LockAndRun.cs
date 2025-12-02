@@ -9,149 +9,57 @@ public static partial class MeshLocksExt
         string key,
         Func<CancellationToken, Task> taskFactory,
         CancellationToken cancellationToken = default)
-        => meshLocks.LockAndRun(key,
-            DefaultValueGenerator.Next(),
-            taskFactory,
-            meshLocks.LockOptions,
-            TimeSpan.MaxValue,
-            cancellationToken);
+        => meshLocks.LockAndRun(key, taskFactory, null, TimeSpan.MaxValue, cancellationToken);
 
     public static Task LockAndRun(
         this IMeshLocks meshLocks,
         string key,
         Func<CancellationToken, Task> taskFactory,
-        MeshLockOptions lockOptions,
+        MeshLockOptions? lockOptions,
         CancellationToken cancellationToken = default)
-        => meshLocks.LockAndRun(key,
-            DefaultValueGenerator.Next(),
-            taskFactory,
-            lockOptions,
-            TimeSpan.MaxValue,
-            cancellationToken);
+        => meshLocks.LockAndRun(key, taskFactory, lockOptions, TimeSpan.MaxValue, cancellationToken);
 
-    public static Task LockAndRun(
-        this IMeshLocks meshLocks,
+    public static async Task LockAndRun(this IMeshLocks meshLocks,
         string key,
-        string value,
         Func<CancellationToken, Task> taskFactory,
-        CancellationToken cancellationToken = default)
-        => meshLocks.LockAndRun(key,
-            value,
-            taskFactory,
-            meshLocks.LockOptions,
-            TimeSpan.MaxValue,
-            cancellationToken);
-
-    public static Task LockAndRun(
-        this IMeshLocks meshLocks,
-        string key,
-        string value,
-        Func<CancellationToken, Task> taskFactory,
-        MeshLockOptions lockOptions,
-        CancellationToken cancellationToken = default)
-        => meshLocks.LockAndRun(key,
-            value,
-            taskFactory,
-            lockOptions,
-            TimeSpan.MaxValue,
-            cancellationToken);
-
-    public static async Task LockAndRun(
-        this IMeshLocks meshLocks,
-        string key,
-        string value,
-        Func<CancellationToken, Task> taskFactory,
-        MeshLockOptions lockOptions,
+        MeshLockOptions? lockOptions,
         TimeSpan lockTimeout,
         CancellationToken cancellationToken = default)
     {
-        var lockHolder = await meshLocks
-            .Lock(key,
-                value,
-                lockOptions,
-                lockTimeout,
-                cancellationToken)
-            .ConfigureAwait(false);
-        var linkedCts = cancellationToken.LinkWith(lockHolder.StopToken);
+        var holder = await meshLocks.Lock(key, lockOptions, lockTimeout, cancellationToken).ConfigureAwait(false);
+        var linkedCts = cancellationToken.LinkWith(holder.StopToken);
         try {
             await taskFactory.Invoke(linkedCts.Token).ConfigureAwait(false);
         }
         finally {
             linkedCts.CancelAndDisposeSilently();
-            await lockHolder.DisposeAsync().ConfigureAwait(false);
+            await holder.DisposeAsync().ConfigureAwait(false);
         }
     }
 
     // LockAndRun - with Task<T>
 
-    public static Task<T> LockAndRun<T>(
-        this IMeshLocks meshLocks,
+    public static Task<T> LockAndRun<T>(this IMeshLocks meshLocks,
         string key,
         Func<CancellationToken, Task<T>> taskFactory,
         CancellationToken cancellationToken = default)
-        => meshLocks.LockAndRun(key,
-            DefaultValueGenerator.Next(),
-            taskFactory,
-            meshLocks.LockOptions,
-            TimeSpan.MaxValue,
-            cancellationToken);
+        => meshLocks.LockAndRun(key, taskFactory, null, TimeSpan.MaxValue, cancellationToken);
 
-    public static Task<T> LockAndRun<T>(
-        this IMeshLocks meshLocks,
+    public static Task<T> LockAndRun<T>(this IMeshLocks meshLocks,
         string key,
         Func<CancellationToken, Task<T>> taskFactory,
-        MeshLockOptions lockOptions,
+        MeshLockOptions? lockOptions,
         CancellationToken cancellationToken = default)
-        => meshLocks.LockAndRun(key,
-            DefaultValueGenerator.Next(),
-            taskFactory,
-            lockOptions,
-            TimeSpan.MaxValue,
-            cancellationToken);
+        => meshLocks.LockAndRun(key, taskFactory, lockOptions, TimeSpan.MaxValue, cancellationToken);
 
-    public static Task<T> LockAndRun<T>(
-        this IMeshLocks meshLocks,
+    public static async Task<T> LockAndRun<T>(this IMeshLocks meshLocks,
         string key,
-        string value,
         Func<CancellationToken, Task<T>> taskFactory,
-        CancellationToken cancellationToken = default)
-        => meshLocks.LockAndRun(key,
-            value,
-            taskFactory,
-            meshLocks.LockOptions,
-            TimeSpan.MaxValue,
-            cancellationToken);
-
-    public static Task<T> LockAndRun<T>(
-        this IMeshLocks meshLocks,
-        string key,
-        string value,
-        Func<CancellationToken, Task<T>> taskFactory,
-        MeshLockOptions lockOptions,
-        CancellationToken cancellationToken = default)
-        => meshLocks.LockAndRun(key,
-            value,
-            taskFactory,
-            lockOptions,
-            TimeSpan.MaxValue,
-            cancellationToken);
-
-    public static async Task<T> LockAndRun<T>(
-        this IMeshLocks meshLocks,
-        string key,
-        string value,
-        Func<CancellationToken, Task<T>> taskFactory,
-        MeshLockOptions lockOptions,
+        MeshLockOptions? lockOptions,
         TimeSpan lockTimeout,
         CancellationToken cancellationToken = default)
     {
-        var lockHolder = await meshLocks
-            .Lock(key,
-                value,
-                lockOptions,
-                lockTimeout,
-                cancellationToken)
-            .ConfigureAwait(false);
+        var lockHolder = await meshLocks.Lock(key, lockOptions, lockTimeout, cancellationToken).ConfigureAwait(false);
         var linkedCts = cancellationToken.LinkWith(lockHolder.StopToken);
         try {
             return await taskFactory.Invoke(linkedCts.Token).ConfigureAwait(false);

@@ -117,7 +117,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
 
         meshLocks.Verify(locks => locks.Lock(
                 It.IsAny<string>(),
-                It.IsAny<string>(),
                 It.IsAny<MeshLockOptions>(),
                 It.Is<CancellationToken>(t => t == cancellationSource.Token)
             ), Times.Once());
@@ -313,12 +312,11 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         meshLocks
             .Setup(locks => locks.Lock(
                 It.IsAny<string>(),
-                It.IsAny<string>(),
                 It.IsAny<MeshLockOptions>(),
                 It.IsAny<CancellationToken>()
             ))
-            .Returns<string, string, MeshLockOptions, CancellationToken>((key, value, options, ct)
-                => Task.FromResult(new MeshLockHolder(meshLocksBackend.Object, "id", key, value, options, ct)))
+            .Returns<string, MeshLockOptions, CancellationToken>((key, options, ct)
+                => Task.FromResult(new MeshLockHolder(meshLocksBackend.Object, "id", key, MeshLockOptions.Default, ct)))
             .Verifiable();
 
         return meshLocks;

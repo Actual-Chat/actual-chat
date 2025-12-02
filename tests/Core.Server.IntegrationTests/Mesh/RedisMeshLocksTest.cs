@@ -20,11 +20,11 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         (await locks.ListKeys("")).Should().BeEmpty();
 
         var expirationSafetyMargin = TimeSpan.FromSeconds(1);
-        await using (var h = await locks.Lock(key, "", lockOptions)) {
+        await using (var h = await locks.Lock(key, lockOptions)) {
             var now = CpuTimestamp.Now;
-            (await locks.TryLock(key, "")).Should().BeNull();
+            (await locks.TryLock(key)).Should().BeNull();
             (await locks.ListKeys("")).Should().Equal([key]);
-            while (now.Elapsed < (lockOptions.ExpirationPeriod - expirationSafetyMargin/2)) {
+            while (now.Elapsed < lockOptions.ExpirationPeriod - expirationSafetyMargin/2) {
                 info = await locks.GetInfo(key);
                 if (info == null)
                     Assert.Fail($"info == null (elapsed = {now.Elapsed})");
@@ -50,8 +50,8 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         (await locks.ListKeys("")).Should().BeEmpty();
         (await locks.GetInfo(key)).Should().BeNull();
 
-        await using var h = await locks.Lock(key, "", lockOptions);
-        (await locks.TryLock(key, "")).Should().BeNull();
+        await using var h = await locks.Lock(key, lockOptions);
+        (await locks.TryLock(key)).Should().BeNull();
         (await locks.ListKeys("")).Should().Equal([key]);
 
         await locks.Backend.ForceRelease(key, false);
@@ -77,11 +77,11 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         (await locks.ListKeys("")).Should().BeEmpty();
         (await locks.GetInfo(key)).Should().BeNull();
 
-        await using var h1 = await locks.Lock(key, "", lockOptions);
-        (await locks.TryLock(key, "")).Should().BeNull();
+        await using var h1 = await locks.Lock(key, lockOptions);
+        (await locks.TryLock(key)).Should().BeNull();
         (await locks.ListKeys("")).Should().Equal([key]);
 
-        var h2AcquireTask = locks.Lock(key, "", lockOptions);
+        var h2AcquireTask = locks.Lock(key, lockOptions);
         await Task.Delay(TimeSpan.FromSeconds(0.5)); // WhenChanged needs some time to subscribe
         h2AcquireTask.IsCompleted.Should().BeFalse();
 
@@ -109,7 +109,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         (await locks.ListKeys("", CancellationToken.None)).Should().BeEmpty();
         (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
 
-        await using (await locks.Lock(key, "", lockOptions, ctsA.Token)) {
+        await using (await locks.Lock(key, lockOptions, ctsA.Token)) {
             // The lock must be acquired after entering the "using" block
             (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
 
@@ -125,7 +125,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         // The lock must be released after leaving the "using" block
         (await locks.GetInfo(key, CancellationToken.None)).Should().BeNull();
 
-        await using (await locks.Lock(key, "", lockOptions, ctsB.Token))
+        await using (await locks.Lock(key, lockOptions, ctsB.Token))
             (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
     }
 
@@ -141,7 +141,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         while (true) {
             Out.WriteLine("Locking...");
             try {
-                await using (var h = await locks.Lock(key, "", lockOptions)) {
+                await using (var h = await locks.Lock(key, lockOptions)) {
                     Out.WriteLine("Locked.");
                     await TaskExt.NeverEnding(h.StopToken).SilentAwait();
                 }

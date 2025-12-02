@@ -3,6 +3,7 @@ using ActualChat.Performance;
 using ActualChat.Testing.Internal;
 using ActualLab.Testing.Output;
 using MartinCostello.Logging.XUnit;
+using Microsoft.EntityFrameworkCore; // For EF Core log filters
 using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Testing;

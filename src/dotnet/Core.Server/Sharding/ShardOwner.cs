@@ -7,7 +7,7 @@ namespace ActualChat.Sharding;
 
 public sealed class ShardOwner : WorkerBase, IHasServices
 {
-    private static bool DebugMode => Constants.DebugMode.ShardOwner;
+    private static bool DebugMode => Constants.DebugMode.ShardOwners;
     private static readonly TimeSpan PostReleaseInvalidationPeriod = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan Century = TimeSpan.FromDays(36_524);
 
@@ -164,7 +164,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         for (var index = 1; !cancelLockToken.IsCancellationRequested; index++) {
             // Acquire the lock
             DebugLog?.LogDebug("Shard #{ShardIndex}: ?++ {ThisNodeId} (#{Index})", shardIndex, ThisNode.Ref, index);
-            var lockHolder = await OwnershipLocks.Lock(shardIndex.Format(), "", cancelLockToken).ConfigureAwait(false);
+            var lockHolder = await OwnershipLocks.Lock(shardIndex.Format(), cancelLockToken).ConfigureAwait(false);
             await using var _1 = lockHolder.ConfigureAwait(false);
             var lockToken = lockHolder.StopToken;
             DebugLog?.LogDebug("Shard #{ShardIndex}: ++ {ThisNodeId} (#{Index})", shardIndex, ThisNode.Ref, index);

@@ -12,9 +12,11 @@ public class TimerFlowTest(ITestOutputHelper @out)
         ConfigureServices = (_, services) => {
             var flows = services.AddFlows(useMasterFlows: false, useLegacyFlows: false);
             flows.Add<TimerFlow>();
-            var chaosMaker = (0.9 * ChaosMaker.TransientError)
-                .Filtered("ShardOwners", x => x is MeshLockHolder h && h.Key.Contains("ShardOwner"));
-            services.AddSingleton(chaosMaker);
+            var chaosMaker = (0.99 * ChaosMaker.TransientError)
+                .Delayed(new RandomTimeSpan(2, 0.75))
+                .Filtered("ShardOwners", x => x is MeshLockHolder h && h.FullKey.OrdinalContains("ShardOwner"))
+                .Gated(true);
+            services.AddSingleton<ChaosMaker>(chaosMaker);
         },
     }, @out)
 {
@@ -96,7 +98,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
         return flow;
     }
 
-    private Task WhenCompleted(IFlows flows, FlowId flowId, double timeout = 15)
+    private Task WhenCompleted(IFlows flows, FlowId flowId, double timeout = 30)
         => ComputedTest.When(async ct => {
             var flow = await GetFlow<Flow>(flows, flowId, ct).Require();
             flow.UntypedResult.Should().NotBeNull();

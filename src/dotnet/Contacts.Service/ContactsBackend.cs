@@ -512,7 +512,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (account is null || account.IsGreetingCompleted)
             return;
 
-        var h = await GreetLocks.TryLock(account.Id.Value, cancellationToken).ConfigureAwait(false);
+        var h = await GreetLocks.TryLock(account.Id.Value, null, cancellationToken).ConfigureAwait(false);
         if (h == null)
             return; // Another host is already greeting
         await using var _ = h.ConfigureAwait(false);
