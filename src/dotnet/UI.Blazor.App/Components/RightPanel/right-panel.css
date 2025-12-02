@@ -55,10 +55,26 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
     @apply relative;
     @apply flex-y items-center gap-x-4;
     @apply min-h-44;
+    height: var(--collapsed-header-height);
+    transition: height .25s ease-in, min-height .25s ease-in;
+}
+.right-panel > .c-header.expanded-header {
+    height: var(--expanded-header-height);
+    min-height: var(--expanded-header-height);
+}
+.right-panel > .c-header.collapsed-header {
+    height: var(--collapsed-header-height);
+    min-height: var(--collapsed-header-height);
 }
 .right-panel > .c-header > .c-buttons {
     @apply absolute top-2 right-4 z-10;
     @apply flex-x items-center justify-center gap-x-3;
+    @apply opacity-100;
+    transition: opacity .25s ease-in .25s;
+}
+.right-panel > .c-header.expanded-header > .c-buttons {
+    @apply opacity-0;
+    transition: opacity .25s ease-in;
 }
 .right-panel > .c-header > .c-top {
     @apply relative;
@@ -72,6 +88,11 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
     @apply w-full;
     @apply px-4 pt-10;
     @apply bg-transparent;
+    @apply opacity-100;
+    transition: opacity .25s ease-in;
+}
+.right-panel > .c-header.expanded-header > .c-bottom {
+    @apply opacity-0;
 }
 .right-panel > .c-header > .c-bottom > .c-content {
     @apply flex-x gap-x-2;
@@ -103,9 +124,158 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
     @apply flex-x;
     @apply h-16 w-full;
     @apply px-4;
+    transition:
+        top .25s ease-in,
+        height .25s ease-in,
+        padding .25s ease-in;
 }
+.right-panel > .c-header.expanded-header > .c-center {
+    @apply top-0;
+    @apply px-0;
+    height: var(--expanded-header-height);
+}
+.right-panel > .c-header.collapsed-header > .c-center {
+    @apply top-18;
+    @apply h-16;
+    @apply px-4;
+}
+.right-panel > .c-header > .c-center .chat-avatar {
+    @apply relative;
+    width: 4rem;
+    background-color: var(--transparent);
+    transition:
+        width .25s ease-in,
+        height .25s ease-in,
+        background-color 0s ease-in;
+}
+.right-panel > .c-header.expanded-header > .c-center .chat-avatar {
+    width: var(--expanded-header-height);
+    height: var(--expanded-header-height);
+    background-color: var(--background-03);
+    transition:
+        width .25s ease-in,
+        height .25s ease-in,
+        background-color .15s ease-in 0.25s;
+}
+.right-panel > .c-header.collapsed-header > .c-center .chat-avatar {
+    width: 4rem;
+    height: 4rem;
+    background-color: var(--transparent);
+    transition:
+        width .25s ease-in,
+        height .25s ease-in,
+        background-color 0.1s ease-in;
+}
+.right-panel > .c-header > .c-center .chat-avatar .c-avatar {
+    border-radius: 9999px;
+}
+.right-panel > .c-header.expanded-header > .c-center .chat-avatar .c-avatar {
+    animation: removeBorderRadius .4s ease-in-out forwards;
+}
+.right-panel > .c-header.collapsed-header > .c-center .chat-avatar .c-avatar {
+    animation: addBorderRadius .4s ease-in-out forwards;
+}
+
+.right-panel > .c-header > .c-center .chat-avatar .clickable-avatar:hover {
+    @apply cursor-pointer;
+}
+.right-panel > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
+    @apply absolute top-0;
+    @apply max-w-none max-h-none;
+    animation:
+        expandFullSizeAvatar .25s ease-in forwards,
+        removeBorderRadius .4s ease-in-out forwards;
+}
+.right-panel > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
+    animation:
+        collapseFullSizeAvatar .25s ease-in forwards,
+        addBorderRadius .4s ease-in-out forwards;
+}
+@keyframes expandFullSizeAvatar {
+    0% {
+        width: 4rem;
+        height: 4rem;
+    }
+    100% {
+        width: var(--expanded-header-height);
+        height: var(--expanded-header-height);
+    }
+}
+@keyframes removeBorderRadius {
+    0% {
+        border-radius: 9999px;
+    }
+    50% {
+        border-radius: 50%;
+    }
+    100% {
+        border-radius: 0;
+    }
+}
+@keyframes collapseFullSizeAvatar {
+    0% {
+        width: var(--expanded-header-height);
+        height: var(--expanded-header-height);
+    }
+    100% {
+        width: 4rem;
+        height: 4rem;
+    }
+}
+@keyframes addBorderRadius {
+    0% {
+        border-radius: 0;
+    }
+    50% {
+        border-radius: 50%;
+    }
+    100% {
+        border-radius: 9999px;
+    }
+}
+.right-panel > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar .c-content {
+    @apply w-full h-full;
+}
+.right-panel > .c-header > .c-center .chat-avatar .clickable-avatar.small-avatar {
+    @apply opacity-100;
+    transition: opacity 0s ease-in;
+}
+.right-panel > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.small-avatar {
+    @apply opacity-0;
+    transition: opacity 0s ease-in;
+}
+.right-panel > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.small-avatar {
+    @apply opacity-100;
+    transition: opacity 0.05s ease-in 0.25s;
+}
+
 .right-panel > .c-header > .c-center > .c-buttons {
     @apply flex-1 flex-x items-center justify-end gap-x-3;
+    @apply max-w-160;
+    @apply overflow-hidden;
+    @apply opacity-100;
+    transition:
+        opacity .25s ease-in,
+        max-width .25s ease-in,
+        transform .25s ease-in;
+}
+.right-panel > .c-header.expanded-header > .c-center > .c-buttons {
+    @apply max-w-0;
+    @apply opacity-0;
+    transform: translateX(var(--expanded-header-height));
+    transition:
+        opacity 0.25s ease-in,
+        max-width .15s ease-in .25s,
+        transform .25s ease-in;
+}
+.right-panel > .c-header.collapsed-header > .c-center > .c-buttons {
+    @apply max-w-160;
+    @apply opacity-100;
+    transform: translateX(0);
+    transition:
+        opacity .15s ease-in 3s,
+        max-width .15s ease-in .15s,
+        transform .15s ease-in .3s;
 }
 .right-panel > .c-header > .c-center > .c-buttons .btn.btn-round {
     @apply bg-[var(--round-right-panel)];

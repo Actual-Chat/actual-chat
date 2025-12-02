@@ -15,9 +15,10 @@
         picClass += " pic-svg";
         _pictureUrl += "#svgView(preserveAspectRatio(none))";
     }
+    var clickableCls = hasPicture ? "clickable-avatar" : "";
 }
 
-<div class="pic @Class @picClass">
+<div class="pic @Class @picClass @clickableCls">
     @if (hasPicture) {
         <image-skeleton
             class="pic-image @ImageSkeletonClass"
@@ -51,7 +52,6 @@
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private UrlMapper UrlMapper => Hub.UrlMapper;
-    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ImageSkeletonClass { get; set; } = "";
@@ -66,10 +66,15 @@
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public bool ShowFullSizeImage { get; set; }
+    [Parameter] public bool ShowFullSizeAvatar { get; set; }
 
     protected override void OnParametersSet() {
         _avatarKey = AvatarKey ?? Picture?.AvatarKey ?? "";
-        _pictureUrl = !ShowFullSizeImage ? UrlMapper.PicturePreview128Url(Picture) : UrlMapper.PicturePreviewUrl(Picture);
+        _pictureUrl = !ShowFullSizeAvatar && !ShowFullSizeImage
+            ? UrlMapper.PicturePreview128Url(Picture)
+            : ShowFullSizeAvatar
+                ? UrlMapper.AvatarFullSizePreviewUrl(Picture)
+                : UrlMapper.PicturePreviewUrl(Picture);
     }
 
     private async Task OnPictureClick(MouseEventArgs arg) {

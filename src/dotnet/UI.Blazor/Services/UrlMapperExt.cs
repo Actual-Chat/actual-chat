@@ -26,6 +26,18 @@ public static class UrlMapperExt
         return mapper.ImagePreviewUrl(pictureUrl, (int?)Constants.Attachments.MaxResolution.X, (int?)Constants.Attachments.MaxResolution.Y);
     }
 
+    public static string AvatarFullSizePreviewUrl(this UrlMapper mapper, Picture? picture)
+    {
+        if (picture is null)
+            return "";
+
+        var pictureUrl = mapper.PictureUrl(picture);
+        if (pictureUrl.IsNullOrEmpty())
+            return "";
+
+        return mapper.ImagePreviewUrl(pictureUrl, (int?)Constants.Attachments.MaxAvatarResolution.X, (int?)Constants.Attachments.MaxAvatarResolution.Y);
+    }
+
     private static string PictureUrl(this UrlMapper mapper, Picture picture)
         => picture.MediaContent != null
             ? mapper.ContentUrl(picture.MediaContent.ContentId)

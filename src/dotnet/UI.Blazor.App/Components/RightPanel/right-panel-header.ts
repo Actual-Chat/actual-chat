@@ -1,0 +1,169 @@
+import {
+    Subject,
+    takeUntil,
+    fromEvent
+} from 'rxjs';
+import { fastRaf } from 'fast-raf';
+
+export class RightPanelHeader {
+    private blazorRef: DotNet.DotNetObject;
+    private readonly header: HTMLElement;
+    private avatarDiv: HTMLElement;
+    private collapsedHeaderHeight: number;
+    private headerWidth: number;
+    private centerDiv: HTMLElement;
+    private smallAvatar: HTMLElement;
+    private readonly rightSideNav: HTMLElement;
+    private mutationObserver: MutationObserver;
+    private resizeObserver: ResizeObserver;
+    private readonly disposed$: Subject<void> = new Subject<void>();
+
+    private resizeRaf = 0;
+
+    static create(header: HTMLDivElement, blazorRef: DotNet.DotNetObject): RightPanelHeader {
+        return new RightPanelHeader(header, blazorRef);
+    }
+
+    constructor(header: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+        this.header = header;
+        this.blazorRef = blazorRef;
+        this.rightSideNav = document.querySelector('.side-nav-right') as HTMLElement;
+        if (!this.rightSideNav)
+            return;
+
+        this.avatarDiv = this.header.querySelector('.chat-avatar') as HTMLElement;
+        if (!this.avatarDiv)
+            return;
+
+        this.smallAvatar = this.avatarDiv.querySelector('.small-avatar') as HTMLElement;
+        if (!this.smallAvatar)
+            return;
+
+        this.centerDiv = this.header.querySelector('.c-center') as HTMLElement;
+
+        this.collapsedHeaderHeight = this.header.offsetHeight;
+        this.header.style.setProperty('--collapsed-header-height', `${this.collapsedHeaderHeight}px`);
+        this.headerWidth = this.header.offsetWidth;
+        this.header.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
+
+        this.mutationObserver = new MutationObserver(this.stateHandler);
+        this.mutationObserver.observe(this.header, {
+            attributes: true,
+            attributeFilter: ['class'],
+            attributeOldValue: true,
+        });
+
+        this.resizeObserver = new ResizeObserver(this.resizeSideNavHandler);
+        this.resizeObserver.observe(this.rightSideNav);
+
+        fromEvent(this.avatarDiv, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => this.onAvatarClickHandler());
+
+        this.centerDiv.addEventListener('transitionend', this.onTransitionEndBound);
+    }
+
+    public dispose() {
+        if (this.disposed$.closed)
+            return;
+
+        this.disposed$.next();
+        this.disposed$.complete();
+        this.header.removeEventListener('transitionend', this.onTransitionEndBound);
+        this.resizeObserver?.disconnect();
+        this.mutationObserver?.disconnect();
+    }
+
+    // Public methods
+
+    private resizeSideNavHandler: ResizeObserverCallback = (entries) => {
+        const width = entries[0].contentRect.width;
+
+        if (!this.header.classList.contains('expanded-header'))
+            return;
+
+        if (Math.abs(width - this.headerWidth) < 2)
+            return;
+
+        this.headerWidth = width;
+
+        cancelAnimationFrame(this.resizeRaf);
+        this.resizeRaf = requestAnimationFrame(() => {
+            fastRaf(() => {
+                this.header.style.setProperty('--expanded-header-height', `${width}px`);
+            });
+        });
+    };
+
+    private stateHandler: MutationCallback = (mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type === "attributes" && mutation.attributeName === "class") {
+                const target = mutation.target as HTMLElement;
+                const oldClassList = mutation.oldValue?.split(/\s+/) ?? [];
+                const newClassList = target.classList;
+
+                const hadExpandedClass = oldClassList.includes("expanded-header");
+                const hasExpandedClass = newClassList.contains("expanded-header");
+                const hadCollapsedClass = oldClassList.includes("collapsed-header");
+                const hasCollapsedClass = newClassList.contains("collapsed-header");
+
+                if (!hadExpandedClass && hasExpandedClass) {
+                    // expand
+                    this.changeHeader(true);
+                }
+
+                if (!hadCollapsedClass && hasCollapsedClass) {
+                    // collapse
+                    this.changeHeader(false);
+                }
+            }
+        }
+    };
+
+    private changeHeader(openFullScreenAvatar: boolean = false) {
+        if (openFullScreenAvatar) {
+            this.collapsedHeaderHeight = this.header.offsetHeight;
+            this.headerWidth = this.header.offsetWidth;
+            this.header.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
+        }
+    }
+
+    private onAvatarClickHandler = () => {
+        const clickableAvatar = this.header.querySelector('.clickable-avatar');
+        if (!clickableAvatar)
+            return;
+
+        const isExpanded = this.header.classList.contains('expanded-header');
+
+        if (!isExpanded) {
+            // show avatar
+            this.header.classList.add('expanded-header');
+            this.blazorRef.invokeMethodAsync("FullSizeAvatarHandler", true);
+        } else {
+            // hide avatar
+            this.header.addEventListener('transitionend', this.onTransitionEndBound);
+            this.header.classList.add('collapsed-header');
+            this.header.classList.remove('expanded-header');
+        }
+    };
+
+    private onTransitionEndBound = (e: TransitionEvent) => this.onTransitionEnd(e);
+    private onTransitionEnd(e: TransitionEvent) {
+        if (e.target !== this.centerDiv)
+            return;
+
+        if (e.propertyName !== 'height')
+            return;
+
+        this.header.removeEventListener('transitionend', this.onTransitionEndBound);
+
+        if (this.header.classList.contains('collapsed-header')) {
+            this.header.classList.remove('collapsed-header');
+            void this.blazorRef.invokeMethodAsync("FullSizeAvatarHandler", false);
+        }
+    }
+
+    private async clearHeader() : Promise<void> {
+        this.header.classList.remove('expanded-header', 'collapsed-header');
+    }
+}
