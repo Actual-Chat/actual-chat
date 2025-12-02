@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
 @using ActualChat.Contacts
 @inherits ComputedStateComponent<AppUIHub, RightPanelHeader.Model>
 @{
@@ -7,7 +8,7 @@
     var shareModal = m.ShareModel;
 }
 
-<div class="c-header">
+<div @ref="Ref" class="c-header">
     <div class="c-buttons">
         <ButtonRound Click="@OnHideRightPanelClick" Class="right-panel-close-btn btn-sm close-btn">
             <i class="icon-close text-2xl"></i>
@@ -25,14 +26,18 @@
     </div>
 
     <div class="c-center">
-        <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false"/>
+        <div class="chat-avatar">
+            <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false" Class="small-avatar"/>
+            @if (_showFullSizeAvatar) {
+                <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false" ShowFullSizeAvatar="@true" Class="full-size-avatar"/>
+            }
+        </div>
         <div class="c-buttons">
             @if (m.PeerContact is not null) {
                 <ButtonRound Class="btn-sm" Click="@(() => OnEditPeerContactClick(m.PeerContact))">
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
-            }
-            else if (canEditProperties) {
+            } else if (canEditProperties) {
                 <ButtonRound Class="btn-sm" Click="@OnEditChatSettingsClick">
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
@@ -62,11 +67,48 @@
 </div>
 
 @code {
+    private bool _showFullSizeAvatar;
+    private ChatId? _previousChatId;
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.RightPanelHeader.create";
+
     private IChats Chats => Hub.Chats;
     private IContacts Contacts => Hub.Contacts;
 
+    private IJSObjectReference? JSRef { get; set; }
+    private DotNetObjectReference<RightPanelHeader> BlazorRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    public override ValueTask DisposeAsync() {
+        JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+        return base.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSCreateMethod,
+                Ref,
+                BlazorRef);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        var currentId = Chat.Id;
+        if (_previousChatId != currentId) {
+            _showFullSizeAvatar = false;
+            _previousChatId = currentId;
+
+            if (JSRef is not null)
+                await JSRef.InvokeVoidAsync("clearHeader");
+        }
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -102,6 +144,15 @@
 
     private void OnEditPeerContactClick(Contact peerContact)
         => _ = ModalUI.Show(new PeerContactEditorModal.Model(peerContact.Id));
+
+    [JSInvokable]
+    public void FullSizeAvatarHandler(bool show) {
+        if (_showFullSizeAvatar == show)
+            return;
+
+        _showFullSizeAvatar = show;
+        StateHasChanged();
+    }
 
     // Nested types
 

@@ -7,7 +7,6 @@
         : chat.Id.IsThread(out var threadChatId)
             ? threadChatId.ParentChatId.Kind
             : chat.Id.Kind;
-
 }
 
 @switch (chatKind) {
@@ -16,9 +15,11 @@ case ChatKind.Group or ChatKind.Place:
         Title="@chat!.Title"
         Picture="@chat.Picture.ToPicture()"
         Size="@Size"
+        Class="@Class"
         IsSquare="@IsSquare"
         HideTitle="@HideTitle"
         IsBlurred="@IsBlurred"
+        ShowFullSizeAvatar="@ShowFullSizeAvatar"
         AvatarKind="@AvatarKind.Marble"
         AvatarKey="@chat.Id.Value"/>
     break;
@@ -27,7 +28,9 @@ case ChatKind.Peer when _peerChatUserId is not null:
         ShowPresence="@ShowPresence"
         UserId="@_peerChatUserId"
         Size="@Size"
-        IsBlurred="@IsBlurred"/>
+        IsBlurred="@IsBlurred"
+        Class="@Class"
+        ShowFullSizeAvatar="@ShowFullSizeAvatar"/>
     break;
 default:
     <AvatarCircle
@@ -46,6 +49,8 @@ default:
     [Parameter] public bool IsSquare { get; set; }
     [Parameter] public bool HideTitle { get; set; }
     [Parameter] public bool IsBlurred { get; set; }
+    [Parameter] public bool ShowFullSizeAvatar { get; set; }
+    [Parameter] public string Class { get; set; } = "";
 
     protected override void OnParametersSet()
         => _peerChatUserId = GetPeerChatUserId();
