@@ -259,7 +259,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         services.AddBlazorCircuitActivitySuppressor();
 
         // Open Telemetry
-        ConfigureOpenTelemetry(services);
+        if (!HostInfo.IsTested)
+            ConfigureOpenTelemetry(services);
     }
 
     // Private methods
