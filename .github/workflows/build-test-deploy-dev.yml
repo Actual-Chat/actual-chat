@@ -223,7 +223,8 @@ jobs:
 
       - name: Run unit tests
         id: run-unit-tests
-        run: ./run-build.cmd unit-tests --configuration Debug --dumps
+        run: ./run-build.cmd unit-tests --configuration Debug
+#        run: ./run-build.cmd unit-tests --configuration Debug --dumps
 
       - name: Upload crash dumps (unit)
         if: failure() && steps.run-unit-tests.outcome == 'failure'
@@ -432,7 +433,8 @@ jobs:
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
-          ./run-build.cmd integration-tests --configuration Debug --dumps
+          ./run-build.cmd integration-tests --configuration Debug
+#          ./run-build.cmd integration-tests --configuration Debug --dumps
 
       - name: Upload crash dumps (integration)
         if: failure() && steps.run-integration-tests.outcome == 'failure'

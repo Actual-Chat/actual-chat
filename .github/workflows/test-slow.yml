@@ -197,7 +197,8 @@ jobs:
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
-          ./run-build.cmd slow-tests --configuration Debug --dumps
+          ./run-build.cmd slow-tests --configuration Debug
+#          ./run-build.cmd slow-tests --configuration Debug --dumps
 
       - name: Upload crash dumps (slow)
         if: always()
