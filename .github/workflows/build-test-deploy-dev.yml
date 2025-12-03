@@ -447,58 +447,58 @@ jobs:
           ./run-build.cmd integration-tests --configuration Debug
 #          ./run-build.cmd integration-tests --configuration Debug --dumps
 
-      - name: Upload crash dumps (integration)
-        if: failure() && steps.run-integration-tests.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: crash-dumps-integration
-          path: |
-            artifacts/tests/crash-dumps/**/*
-            **/TestResults/**/*.dmp
-            **/TestResults/**/*_crashdump*
-            **/TestResults/**/Sequence*.xml
-            **/TestResults/**/*sequence*.xml
-          if-no-files-found: ignore
-          retention-days: 7
-          include-hidden-files: 'true'
-          compression-level: '9'
+#      - name: Upload crash dumps (integration)
+#        if: failure() && steps.run-integration-tests.outcome == 'failure'
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: crash-dumps-integration
+#          path: |
+#            artifacts/tests/crash-dumps/**/*
+#            **/TestResults/**/*.dmp
+#            **/TestResults/**/*_crashdump*
+#            **/TestResults/**/Sequence*.xml
+#            **/TestResults/**/*sequence*.xml
+#          if-no-files-found: ignore
+#          retention-days: 7
+#          include-hidden-files: 'true'
+#          compression-level: '9'
 
-      - name: Dump opensearch
-        id: dump-opensearch
-        if: failure() && steps.run-integration-tests.outcome == 'failure'
-        run: |-
-          set -e
-          echo Creating snapshots repo
-          curl -X POST "http://localhost:9200/_snapshot/tests" -H 'Content-Type: application/json' -d'
-          {
-            "type": "fs",
-            "settings": {
-              "location": "/usr/share/opensearch/data/snapshots"
-            }
-          }'
+#      - name: Dump opensearch
+#        id: dump-opensearch
+#        if: failure() && steps.run-integration-tests.outcome == 'failure'
+#        run: |-
+#          set -e
+#          echo Creating snapshots repo
+#          curl -X POST "http://localhost:9200/_snapshot/tests" -H 'Content-Type: application/json' -d'
+#          {
+#            "type": "fs",
+#            "settings": {
+#              "location": "/usr/share/opensearch/data/snapshots"
+#            }
+#          }'
+#
+#          echo Creating snapshot
+#          curl -X PUT "http://localhost:9200/_snapshot/tests/snapshot_1?wait_for_completion=true" -H 'Content-Type: application/json' -d'
+#          {
+#            "indices": "test-*",
+#            "ignore_unavailable": true,
+#            "include_global_state": false
+#          }'
+#
+#
+#          echo Copy snapshot from docker
+#          cid=$(docker ps -q -f name=opensearch)
+#          mkdir opensearch-snapshots
+#          docker cp $cid:/usr/share/opensearch/data/snapshots ./opensearch-snapshots
 
-          echo Creating snapshot
-          curl -X PUT "http://localhost:9200/_snapshot/tests/snapshot_1?wait_for_completion=true" -H 'Content-Type: application/json' -d'
-          {
-            "indices": "test-*",
-            "ignore_unavailable": true,
-            "include_global_state": false
-          }'
-
-
-          echo Copy snapshot from docker
-          cid=$(docker ps -q -f name=opensearch)
-          mkdir opensearch-snapshots
-          docker cp $cid:/usr/share/opensearch/data/snapshots ./opensearch-snapshots
-
-      - uses: actions/upload-artifact@v4
-        if: failure() && steps.run-integration-tests.outcome == 'failure' && steps.dump-opensearch.outcome == 'success'
-        with:
-          name: opensearch-snapshot
-          path: ./opensearch-snapshots
-          retention-days: 3
-          include-hidden-files: 'true'
-          compression-level: '9'
+#      - uses: actions/upload-artifact@v4
+#        if: failure() && steps.run-integration-tests.outcome == 'failure' && steps.dump-opensearch.outcome == 'success'
+#        with:
+#          name: opensearch-snapshot
+#          path: ./opensearch-snapshots
+#          retention-days: 3
+#          include-hidden-files: 'true'
+#          compression-level: '9'
 
       - name: Report integration test results
         uses: phoenix-actions/test-reporting@v15

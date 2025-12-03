@@ -200,21 +200,21 @@ jobs:
           ./run-build.cmd slow-tests --configuration Debug
 #          ./run-build.cmd slow-tests --configuration Debug --dumps
 
-      - name: Upload crash dumps (slow)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: crash-dumps-slow
-          path: |
-            artifacts/tests/crash-dumps/**/*
-            **/TestResults/**/*.dmp
-            **/TestResults/**/*_crashdump*
-            **/TestResults/**/Sequence*.xml
-            **/TestResults/**/*sequence*.xml
-          if-no-files-found: ignore
-          retention-days: 7
-          include-hidden-files: 'true'
-          compression-level: '9'
+#      - name: Upload crash dumps (slow)
+#        if: always()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: crash-dumps-slow
+#          path: |
+#            artifacts/tests/crash-dumps/**/*
+#            **/TestResults/**/*.dmp
+#            **/TestResults/**/*_crashdump*
+#            **/TestResults/**/Sequence*.xml
+#            **/TestResults/**/*sequence*.xml
+#          if-no-files-found: ignore
+#          retention-days: 7
+#          include-hidden-files: 'true'
+#          compression-level: '9'
 
       - name: Report slow test results
         uses: phoenix-actions/test-reporting@v15
