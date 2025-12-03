@@ -5,6 +5,7 @@ using ActualLab.Locking;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
+// ReSharper disable PossiblyMistakenUseOfCancellationToken
 
 namespace ActualChat.Queues.Nats;
 
@@ -16,6 +17,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     private static readonly IByteSerializer TypeDecoratingSerializer
         = new TypeDecoratingByteSerializer(MemoryPackByteSerializer.Default);
 
+    private readonly bool _useSingleQueue;
     private readonly AsyncLockSet<int> _getStreamLocks = new();
     private readonly AsyncLockSet<int> _getConsumerLock = new();
     private readonly ConcurrentDictionary<int, INatsJSStream> _streams = new ();
@@ -40,11 +42,17 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     {
         ActionLocks = queues.ActionLocks.WithKeyPrefix(ShardScheme.Name);
         _instancePrefix = queues.NatsSettings.InstancePrefix;
+        _useSingleQueue = queues.Settings.UseSingleQueue;
     }
 
     public override async Task Enqueue(QueueShardRef queueShardRef, QueuedCommand queuedCommand, CancellationToken cancellationToken = default)
     {
-        RequireValid(queueShardRef.QueueRef);
+        if (_useSingleQueue)
+            queueShardRef = new QueueShardRef(QueueRef, queueShardRef.Key);
+        else if (queueShardRef.QueueRef != QueueRef)
+            throw new ArgumentOutOfRangeException(nameof(queueShardRef),
+                "Can't use provided QueueShardRef with the current IQueueProcessor.");
+
         var shardIndex = queueShardRef.GetShardIndex();
         await GetStream(shardIndex, cancellationToken).ConfigureAwait(false);
         var context = new NatsJSContext(Connection);
@@ -105,64 +113,71 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("OnRun: ShardScheme={ShardScheme}, ShardIndex={ShardIndex}", ShardScheme, shardIndex);
+        DebugLog?.LogDebug("[{ShardScheme}-S{ShardIndex}] OnRun started", ShardScheme.Name, shardIndex);
 
-        var expireIn = Settings.IdleTimeout.ToRandom(0.25);
-        using var stopCts = cancellationToken.CreateLinkedTokenSource();
-        var stopToken = stopCts.Token;
-        using var processingStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
+        var isSlowQueue = ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue);
+        var batchSize = isSlowQueue ? 16 : 8 * Settings.ConcurrencyLevel;
+        var degreeOfParallelism = isSlowQueue ? 2 : Settings.ConcurrencyLevel;
+        var batchProgress = 0;
+        var mustLogExit = true;
+
+        var processingStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
         var processingStopToken = processingStopCts.Token;
-
-        while (true) {
-            processingStopToken.ThrowIfCancellationRequested(); // HandleMessage cancels it on DI container disposal
-            var consumer = await GetConsumer(shardIndex, stopToken).ConfigureAwait(false);
+        var parallelOptions = new ParallelOptions {
+            MaxDegreeOfParallelism = degreeOfParallelism,
+            CancellationToken = processingStopToken,
+        };
+        try {
+            var consumer = await GetConsumer(shardIndex, cancellationToken).ConfigureAwait(false);
             DebugLog?.LogDebug(
-                "NATS: pulling messages from consumer='{Consumer}' stream='{Stream}' shard='{ShardIndex}'",
-                consumer.Info.Name,
-                consumer.Info.StreamName,
-                shardIndex);
-            var batchSize = ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue)
-                ? 2
-                : consumer.Info.Config.MaxBatch;
-            var fetchExpiration = expireIn.Next();
-            var messages = consumer.FetchAsync<IMemoryOwner<byte>>(
-                opts: new NatsJSFetchOpts {
-                    MaxMsgs = batchSize,
-                    Expires = fetchExpiration,
-                    IdleHeartbeat = fetchExpiration / 2,
-                },
-                cancellationToken: stopToken);
+                "[{ShardScheme}-S{ShardIndex}] Got consumer='{Consumer}', stream='{Stream}'",
+                ShardScheme.Name, shardIndex, consumer.Info.Name, consumer.Info.StreamName);
 
-            MarkStarted();
-            var degreeOfParallelism = ShardScheme.DegreeOfParallelism ?? Settings.ConcurrencyLevel;
-            var parallelOptions = new ParallelOptions {
-                MaxDegreeOfParallelism = degreeOfParallelism,
-                CancellationToken = processingStopToken,
-            };
-            var handledCount = 0;
+            while (!cancellationToken.IsCancellationRequested) {
+                var messages = consumer.FetchAsync<IMemoryOwner<byte>>(
+                    opts: new NatsJSFetchOpts {
+                        MaxMsgs = Math.Min(batchSize, consumer.Info.Config.MaxBatch),
+                        Expires = Settings.FetchTimeout,
+                        IdleHeartbeat = Settings.FetchTimeout / 3,
+                    },
+                    cancellationToken: cancellationToken);
+                MarkStarted();
 
-            // NOTE(AY): Trying to address "Unable to cast object of type
-            // 'NATS.Client.JetStream.Internal.NatsJSFetch1[System.Buffers.IMemoryOwner1[System.Byte]]'
-            // to type 'ActualLab.Fusion.Computed'" via execution context flow suppression.
-            // NOTE(AY): Ended up commenting out the "fix": it slows down the tests somehow.
-            // using var _ = ExecutionContextExt.TrySuppressFlow();
-            await Parallel
-                .ForEachAsync(messages, parallelOptions, HandleMessage)
-                .SilentAwait(false); // We swallow all exceptions here
-            DebugLog?.LogDebug(
-                "NATS: handled {Count} messages from consumer='{Consumer}' stream='{Stream}' shard='{ShardIndex}'",
-                handledCount,
-                consumer.Info.Name,
-                consumer.Info.StreamName,
-                shardIndex);
-            continue;
+                // NOTE(AY): Trying to address "Unable to cast object of type
+                // 'NATS.Client.JetStream.Internal.NatsJSFetch1[System.Buffers.IMemoryOwner1[System.Byte]]'
+                // to type 'ActualLab.Fusion.Computed'" via execution context flow suppression.
+                // NOTE(AY): Ended up commenting out the "fix": it slows down the tests somehow.
+                // using var _ = ExecutionContextExt.TrySuppressFlow();
+                await Parallel
+                    .ForEachAsync(messages, parallelOptions, HandleMessage)
+                    .SuppressCancellationAwait(false);
+                DebugLog?.LogDebug(
+                    "[{ShardScheme}-S{ShardIndex}] Processed {Count} messages",
+                    ShardScheme.Name, shardIndex, batchProgress);
+            }
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken) && !e.IsCancellationOf(processingStopToken)) {
+            Log.LogError(e, "[{ShardScheme}-S{ShardIndex}] OnRun failed", ShardScheme.Name, shardIndex);
+            mustLogExit = false;
+        }
+        finally {
+            processingStopCts.CancelAndDisposeSilently();
+            if (mustLogExit)
+                DebugLog?.LogDebug("[{ShardScheme}-S{ShardIndex}] OnRun completed", ShardScheme.Name, shardIndex);
+        }
+        return;
 
-            async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken cancellationToken1) {
-                try {
-                    await Process(shardIndex, message, cancellationToken1).ConfigureAwait(false);
-                    Interlocked.Increment(ref handledCount);
-                }
-                catch (Exception e) when (e is ObjectDisposedException or TargetException) {
+        async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken ct) {
+            try {
+                if (ct.IsCancellationRequested)
+                    return; // We want ForEachAsync to complete successfully
+
+                await Process(shardIndex, message, ct).ConfigureAwait(false);
+                // ReSharper disable once AccessToModifiedClosure
+                Interlocked.Increment(ref batchProgress);
+            }
+            catch (Exception e)  {
+                if (e is ObjectDisposedException or TargetException && Services.IsDisposedOrDisposing()) {
                     // NOTE(AY): NatsQueueProcessor is sometimes disposed ~ at the very end
                     // of container disposal, and thus it retries many times to process
                     // queued events, even though it's already impossible, coz the Commander
@@ -170,24 +185,17 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                     // is already disposed.
                     // TargetException can be thrown by MethodCommandHandler on an attempt to
                     // invoke a method of an already disposed service.
-                    if (Services.IsDisposedOrDisposing())
-                        // ReSharper disable once AccessToDisposedClosure
-                        processingStopCts.CancelAndDisposeSilently(); // Instantly abort the reader
-                    throw;
+                    processingStopCts.CancelAndDisposeSilently();
                 }
-                finally {
-                    message.Data.DisposeSilently();
-                }
+
+                // We want ForEachAsync to complete successfully, so we suppress all exceptions here.
+                // There is nothing to log here, coz Process logs its own errors.
+            }
+            finally {
+                message.Data.DisposeSilently();
             }
         }
     }
-
-    // Private methods
-
-    private QueueRef RequireValid(QueueRef queueRef)
-        => queueRef == QueueRef ? queueRef
-            : throw new ArgumentOutOfRangeException(nameof(queueRef),
-                "Can't use provided QueueRef with the current IQueueProcessor.");
 
     // MarkXxx
 
@@ -266,9 +274,9 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
             AckWait = ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue)
                 ? TimeSpan.FromMinutes(15)
-                : TimeSpan.FromSeconds(15),
+                : TimeSpan.FromSeconds(30),
             MaxAckPending = Settings.MaxPendingCount,
-            MaxBatch = 10,
+            MaxBatch = 64,
             SampleFreq = "20%",
         };
 
@@ -368,12 +376,14 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         CancellationToken cancellationToken)
     {
         var consumerName = GetConsumerName(shardIndex);
-        var lockHolder = await ActionLocks.Lock($"{nameof(CreateOrUpdateConsumer)}({consumerName})", cancellationToken).ConfigureAwait(false);
+        var lockHolder = await ActionLocks
+            .Lock($"{nameof(CreateOrUpdateConsumer)}({consumerName})", cancellationToken)
+            .ConfigureAwait(false);
         await using var _ = lockHolder.ConfigureAwait(false);
-        var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
+        var linkedCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
         var config = GetConsumerConfig(shardIndex, consumerName);
-        return await stream.CreateOrUpdateConsumerAsync(config, lockCts.Token).ConfigureAwait(false);
+        return await stream.CreateOrUpdateConsumerAsync(config, linkedCts.Token).ConfigureAwait(false);
     }
 
     // Serialization

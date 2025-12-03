@@ -6,17 +6,17 @@ namespace ActualChat.Queues.Internal;
 
 public abstract record QueueSettings
 {
+    public bool UseSingleQueue { get; init; } = true;
+    public QueueRef SingleQueueRef { get; init; } = ShardScheme.EventQueue;
     public int ConcurrencyLevel { get; init; } = HardwareInfo.GetProcessorCountFactor(8);
     public TimeSpan ProcessCancellationDelay { get; init; } = TimeSpan.FromSeconds(5);
-    public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromSeconds(30);
     public MomentClock? Clock { get; init; }
 }
 
 public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     where TSettings : QueueSettings
-    where TProcessor : IQueueProcessor
+    where TProcessor : class, IQueueProcessor
 {
-    private readonly ConcurrentDictionary<QueueRef, TProcessor> _processors = new();
     private ILogger Log { get; }
 
     public IServiceProvider Services { get; }
@@ -24,9 +24,10 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     public MomentClock Clock { get; }
 
     public TSettings Settings { get; }
-    public IReadOnlyDictionary<QueueRef, IQueueProcessor> Processors { get; protected init; } = null!;
+    public IReadOnlyDictionary<QueueRef, IQueueProcessor> Processors { get; protected set; } = null!;
+    public IQueueProcessor? SingleQueueProcessor { get; protected set; }
 
-    protected QueuesBase(TSettings settings, IServiceProvider services, bool initProcessors = true)
+    protected QueuesBase(TSettings settings, IServiceProvider services, bool createProcessors = true)
         : base(services.HostLifetimeIfExist().CreateStopTokenSource())
     {
         Settings = settings;
@@ -35,57 +36,58 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
 
         HostInfo = services.HostInfo();
         Clock = settings.Clock ?? services.Clocks().SystemClock;
-        if (initProcessors)
-            // ReSharper disable once VirtualMemberCallInConstructor
-            Processors = CreateProcessors();
+        if (createProcessors)
+            CreateProcessors();
     }
 
     public override string ToString()
         => $"{GetType().GetName()}(Processors: [{Processors.Keys.Select(x => x.Format()).ToDelimitedString()}])";
 
-    public virtual IQueueSender GetSender(QueueRef queueRef)
+    public IQueueSender GetSender(QueueRef queueRef)
     {
         queueRef.RequireValid();
-        return GetProcessor(queueRef);
+        return SingleQueueProcessor ?? Processors[queueRef];
     }
 
     public abstract Task Purge(CancellationToken cancellationToken = default);
 
     // Protected methods
 
-    protected abstract TProcessor CreateProcessor(QueueRef queueRef);
+    protected abstract IQueueProcessor CreateProcessor(QueueRef queueRef);
 
-    protected TProcessor GetProcessor(QueueRef queueRef)
-        => _processors.GetOrAdd(queueRef, static (queueRef1, self) => self.CreateProcessor(queueRef1), this);
-
-    protected virtual IReadOnlyDictionary<QueueRef, IQueueProcessor> CreateProcessors()
+    protected void CreateProcessors()
     {
-        var result = new HashSet<QueueRef>();
-        foreach (var shardScheme in ShardScheme.ById.Values) {
-            if (!(shardScheme.IsValid && HostInfo.HasRole(shardScheme.HostRole)))
-                continue;
+        var queueRefs = ShardScheme.ById.Values
+            .Where(x => x.IsValid)
+            .Select(x => new QueueRef(x))
+            .Distinct();
+        if (Settings.UseSingleQueue)
+            queueRefs = queueRefs.Where(x => x == Settings.SingleQueueRef);
 
-            result.Add(shardScheme);
-        }
-        return result.ToDictionary(x => x, x => (IQueueProcessor)GetProcessor(x));
+        Processors = queueRefs.ToDictionary(x => x, CreateProcessor);
+        if (Settings.UseSingleQueue)
+            SingleQueueProcessor = Processors[Settings.SingleQueueRef];
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         var queueProcessors = Processors
+            .Where(kv => HostInfo.HasRole(kv.Key.ShardScheme.HostRole))
+            .ToArray();
+       var sQueueProcessors = queueProcessors
             .Select(p => p.Key.ShardScheme.Name)
             .ToDelimitedString()
             .NullIfEmpty()
             ?? "(none)";
-        Log.LogInformation("Starting queue processors: {QueueProcessors}", queueProcessors);
-        foreach (var processor in Processors.Values)
+        Log.LogInformation("Starting queue processors: {QueueProcessors}", sQueueProcessors);
+        foreach (var (_, processor) in queueProcessors)
             processor.Start();
 
         // Waiting for the stop signal
         await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
 
         Log.LogInformation("Stopping queue processors...");
-        var disposeTasks = Processors.Values.Select(p => p.DisposeSilentlyAsync().AsTask()).ToArray();
+        var disposeTasks = queueProcessors.Select(kv => kv.Value.DisposeSilentlyAsync().AsTask()).ToArray();
         await Task.WhenAll(disposeTasks).ConfigureAwait(false);
     }
 }

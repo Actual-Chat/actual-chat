@@ -27,7 +27,6 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
             : TimeSpan.FromSeconds(15);
 
     public TSettings Settings { get; }
-    IQueues IQueueSender.Queues => Queues;
     public TQueues Queues { get; }
     public QueueRef QueueRef { get; }
 
@@ -80,7 +79,9 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
             queuedCommand = Deserialize(message);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-            Log.LogError(e, "[{ShardIndex}]: Couldn't deserialize the message", shardIndex);
+            Log.LogError(e,
+                "[{ShardScheme}-S{ShardIndex}] Couldn't deserialize the message",
+                ShardScheme.Name, shardIndex);
             await MarkFailed(shardIndex, message, null, e, cancellationToken).ConfigureAwait(false);
             return;
         }
@@ -108,8 +109,8 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
         var command = queuedCommand.UntypedCommand;
         var kind = command.GetKind();
         DebugLog?.LogDebug(
-            "[{ShardIndex}]: Running queued {Kind} #{Uuid}: {Command}",
-            shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
+            "[{ShardScheme}-S{ShardIndex}] Running queued {Kind} #{Uuid}: {Command}",
+            ShardScheme.Name, shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
         try {
             if (command.HasDelay(Clock.Now, out var delay)) {
                 activity?.SetStatus(ActivityStatusCode.Ok, $"Postponed for {delay.ToShortString()}");
@@ -117,8 +118,8 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
                 // ReSharper disable once PossiblyMistakenUseOfCancellationToken
                 await MarkPostponed(shardIndex, message, queuedCommand, delay, cancellationToken).ConfigureAwait(false);
                 DebugLog?.LogDebug(
-                    "Queued {Kind} #{Uuid} postponed: {Command} after {Time}",
-                    kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
+                    "[{ShardScheme}-S{ShardIndex}] Queued {Kind} #{Uuid} postponed: {Command} after {Time}",
+                    ShardScheme.Name, shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
             }
             else {
                 var processTask = kind switch {
@@ -129,8 +130,8 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
                 };
                 await processTask.ConfigureAwait(false);
                 DebugLog?.LogDebug(
-                    "Queued {Kind} #{Uuid} completed: {Command} in {Time}",
-                    kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
+                    "[{ShardScheme}-S{ShardIndex}] Queued {Kind} #{Uuid} completed: {Command} in {Time}",
+                    ShardScheme.Name, shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
                 // ReSharper disable once PossiblyMistakenUseOfCancellationToken
                 await MarkCompleted(shardIndex, message, queuedCommand, cancellationToken).ConfigureAwait(false);
                 activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
@@ -142,8 +143,8 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
             // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             await MarkPostponed(shardIndex, message, queuedCommand, pe.Delay, cancellationToken).ConfigureAwait(false);
             DebugLog?.LogDebug(e,
-                "Queued {Kind} #{Uuid} postponed: {Command} after {Time}",
-                kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
+                "[{ShardScheme}-S{ShardIndex}] Queued {Kind} #{Uuid} postponed: {Command} after {Time}",
+                ShardScheme.Name, shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
         }
         catch (Exception e) {
             // ReSharper disable once PossiblyMistakenUseOfCancellationToken
@@ -155,8 +156,8 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
             if (e.IsCancellationOf(timeoutToken))
                 e = StandardError.Timeout($"Queued {kind}");
             Log.LogError(e,
-                "[{ShardIndex}]: Queued {Kind} #{Uuid} failed: {Command}",
-                shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
+                "[{ShardScheme}-S{ShardIndex}] Queued {Kind} #{Uuid} failed: {Command}",
+                ShardScheme.Name, shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
 
             activity?.SetStatus(ActivityStatusCode.Error, e.Message);
             activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Failed);

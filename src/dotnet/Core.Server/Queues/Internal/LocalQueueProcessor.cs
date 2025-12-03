@@ -20,7 +20,6 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
     protected ILogger Log { get; }
 
     public TSettings Settings { get; }
-    IQueues IQueueSender.Queues => Queues;
     public TQueues Queues { get; }
 
     protected LocalQueueProcessor(TSettings settings, TQueues queues)

@@ -18,7 +18,7 @@ public sealed class ShardScheme(
 
     public static readonly ShardScheme None = new(nameof(None), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
     public static readonly ShardScheme Undefined = new(nameof(Undefined), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
-    public static readonly ShardScheme EventQueue = new(nameof(EventQueue), 1, HostRole.EventQueue, ShardSchemeFlags.Queue);
+    public static readonly ShardScheme EventQueue = new(nameof(EventQueue), N, HostRole.EventQueue, ShardSchemeFlags.Queue);
     public static readonly ShardScheme FlowsBackend = new(nameof(FlowsBackend), N, HostRole.FlowsBackend);
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), N, HostRole.MediaBackend);
     public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), N, HostRole.AudioBackend);
