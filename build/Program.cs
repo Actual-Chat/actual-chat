@@ -520,12 +520,12 @@ internal static class Program
                 "--logger \"trx;LogFileName=Results.trx\"",
                 Utils.GithubLogger(),
                 $"-c {configuration}",
+                "--blame-hang",
+                $"--blame-hang-timeout {timeoutSec}s",
+                $"--blame-hang-dump-type {(dumps ? "full" : "none")}",
             };
             if (dumps)
                 args.AddRange([
-                    "--blame-hang",
-                    $"--blame-hang-timeout {timeoutSec}s",
-                    "--blame-hang-dump-type full",
                     "--blame-crash",
                     "--blame-crash-dump-type full",
                 ]);
