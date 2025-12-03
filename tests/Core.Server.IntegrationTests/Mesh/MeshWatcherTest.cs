@@ -21,7 +21,7 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         Out.WriteLine(s.ToString());
         s.IsEmpty.Should().BeFalse();
 
-        using var h2 = await NewAppHost();
+        using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
         await w1.State.Computed.When(x => x.AllNodes.Count == 2).WaitAsync(syncTimeout);
         await w1.State.Computed.When(x => x.LiveNodes.Length == 2).WaitAsync(syncTimeout);
@@ -47,7 +47,7 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var c1 = h1.Services.GetRequiredService<MeshRpcPeerRefs>();
 
-        using var h2 = await NewAppHost();
+        using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
         var c2 = h2.Services.GetRequiredService<MeshRpcPeerRefs>();
 

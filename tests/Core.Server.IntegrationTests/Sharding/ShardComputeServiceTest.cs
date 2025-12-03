@@ -26,7 +26,7 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         var c1 = await Computed.Capture(() => s1.TryGetTime(key));
         c1.Value!.Value.Elapsed.Should().BeLessThan(maxRecentDelta);
 
-        using var h2 = await NewAppHost();
+        using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         var sb2 = h2.Services.ShardOwner(shardScheme);
         var s2 = h2.Services.GetRequiredService<TestShardComputeService>();
         await ComputedTest.When(async ct => {

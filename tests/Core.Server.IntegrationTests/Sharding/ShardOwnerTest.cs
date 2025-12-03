@@ -20,7 +20,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
         // w1b should use all shards as well
         await ToShardIndexSets(w1b.UsedShardIndexes).AnyAsync(x => x.Count == shardScheme.ShardCount);
 
-        using var h2 = await NewAppHost();
+        using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         await using var w2 = new TestChannelShardWorker(h2.Services, Out, "w2");
         w2.Start();
         // w2 workers should use half of the shards
