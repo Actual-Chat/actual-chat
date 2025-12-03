@@ -331,6 +331,17 @@ jobs:
         volumes:
           - opensearch-data:/usr/share/opensearch/data
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          android: false
+          dotnet: true
+          haskell: false
+          large-packages: false
+          swap-storage: true
+          docker-images: true
+          tools-cache: true
+
       - name: Install dependencies
         run: |
           sudo apt-get update
