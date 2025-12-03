@@ -145,7 +145,7 @@ public partial class AppHost
 
         ConfigureModuleServices?.Invoke(ctx, services);
 
-        // Notice that we create "partial" service provider here, which contains
+        // Notice that we create a "partial" service provider here, which contains
         // just the services registered above - i.e. logging + HostInfo
         var moduleServices = ctx.ModuleServices = services.BuildServiceProvider();
         var hostInfo = ctx.HostInfo;
@@ -194,6 +194,11 @@ public partial class AppHost
         // 4. Configure & build WebApplication (IHost)
         /////
 
+        builder.Host.ConfigureHostOptions(options => {
+            options.ServicesStartConcurrently = true;
+            options.ServicesStopConcurrently = true;
+            options.ShutdownTimeout = TimeSpan.FromSeconds(15);
+        });
         builder.WebHost
             .UseDefaultServiceProvider((_, options) => {
                 if (hostInfo.IsDevelopmentInstance) {
