@@ -12,8 +12,8 @@ public readonly struct QueueRef : ICanBeNone<QueueRef>, IEquatable<QueueRef>
 
     // Computed properties
     public bool IsNone => _shardScheme == null || _shardScheme.IsNone;
-    public bool IsUndefined => _shardScheme != null && _shardScheme.IsUndefined;
-    public bool IsValid => _shardScheme != null && _shardScheme.IsValid;
+    public bool IsUndefined => _shardScheme is { IsUndefined: true };
+    public bool IsValid => _shardScheme is { IsValid: true };
 
     // ReSharper disable once ConvertToPrimaryConstructor
     public QueueRef(ShardScheme shardScheme)
