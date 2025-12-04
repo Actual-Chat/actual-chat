@@ -21,10 +21,11 @@
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
             @if (attachment.IsImage) {
-                <img src="@attachment.PreviewUrl" alt="Image attachment" class="@plugClass"/>
+                <img src="@_previewUrl" alt="Image attachment" class="@plugClass"/>
             } else if (attachment.IsVideo) {
-                <video preload="metadata" class="@plugClass">
-                    <source src="@attachment.PreviewUrl#t=0.5"/>
+                _lastPreviewUrl = _previewUrl;
+                <video @key="_renderKey" preload="metadata" class="@plugClass" poster="@_posterUrl">
+                    <source src="@_previewUrl#t=0.5"/>
                 </video>
             }
             @if (!attachment.Uploaded) {
@@ -53,7 +54,44 @@
 </li>
 
 @code {
+    private long _index;
+    private string _renderKey = "";
+    private string _lastPreviewUrl = "";
+    private string _previewUrl = "";
+    private string _posterUrl = "";
+
     [Parameter] public Attachment Attachment { get; set; } = null!;
     [Parameter] public EventCallback RemoveClick { get; set; }
     [Parameter] public EventCallback RestartClick { get; set; }
+
+    protected override void OnParametersSet() {
+        _previewUrl = "";
+        _posterUrl = "";
+        var substituteUrl = "";
+        if (Attachment.GetPreviewUrl.IsCompleted) {
+            var previewUrl = Attachment.PreviewUrl;
+            if (!previewUrl.IsNullOrEmpty()) {
+                // Preview properly resolved.
+                _previewUrl = previewUrl;
+            } else {
+                // Did not get file permissions.
+                substituteUrl = "/dist/images/attachment-preview-broken.svg";
+            }
+        } else {
+            substituteUrl = "/dist/images/attachment-pending-consent.svg";
+        }
+
+        if (_previewUrl.IsNullOrEmpty()) {
+            if (Attachment.IsVideo)
+                _posterUrl = substituteUrl;
+            else if (Attachment.IsImage)
+                _previewUrl = ""; // substituteUrl; // Wait for real substitution images
+        }
+
+        if (Attachment.IsVideo && _previewUrl != _lastPreviewUrl) {
+            // Otherwise, video seems does not react on source change.
+            _index++;
+            _renderKey = _index.ToInvariantString();
+        }
+    }
 }

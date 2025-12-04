@@ -114,8 +114,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     private async Task CancelSessionIfNotCompleted(string sessionId, bool force)
     {
-        var session = await GetSession(sessionId).ConfigureAwait(false);
+        var session = await TryGetSession(sessionId).ConfigureAwait(false);
         await _fileUploader.CancelUpload(sessionId).ConfigureAwait(false);
+        if (session is null)
+            return;
+
         if (session.Status is not UploadStatus.Canceled) {
             if (force || session.Status is not (UploadStatus.Completed or UploadStatus.Failed)) {
                 session.LastUpdatedAt = Now;
@@ -127,7 +130,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     public async Task DeleteSession(string sessionId)
     {
-        var session = await GetSession(sessionId).ConfigureAwait(false);
+        var session = await TryGetSession(sessionId).ConfigureAwait(false);
+        if (session is null) {
+            Log.LogWarning("Got delete session '{SessionId}' request, but did not find the session", sessionId);
+            return;
+        }
         if (session.Status is not UploadStatus.Canceled and not UploadStatus.Completed and not UploadStatus.Failed)
             throw new InvalidOperationException("Cannot delete a not canceled/completed/failed session");
 
@@ -135,7 +142,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             await Hub.Commander.Call(new Uploads_Remove(Hub.Session, session.UploadId), CancellationToken.None).ConfigureAwait(false);
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repo.Delete(sessionId).ConfigureAwait(false);
-        Log.LogInformation("Deleted session {SessionId}", sessionId);
+        Log.LogInformation("Deleted session '{SessionId}'", sessionId);
     }
 
     public async Task<UploadSession> GetSession(string sessionId)

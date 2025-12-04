@@ -97,7 +97,8 @@ public class FileAttachments : UIServiceBase<AppUIHub>
                 Hub,
                 webFileAttachment.FileProvider,
                 webFileAttachment.PreviewUrl,
-                true);
+                true,
+                Task.FromResult(true));
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to create file provider");
@@ -153,9 +154,10 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             fileMetadata.FileName,
             fileMetadata.FileType,
             fileMetadata.Length,
-            previewUrl,
             width,
-            height) {
+            height,
+            Task.FromResult(true),
+            Task.FromResult(previewUrl)) {
             FileProvider = fileProvider,
         };
         attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));

@@ -33,6 +33,14 @@ public partial class WebFileProvider : IFileProvider
         return WebFileProviderInternal is WebFileProviderInternal;
     }
 
+    public Task<bool> WhenUserConsentGranted()
+    {
+        if (WebFileProviderInternal is null)
+            throw StandardError.Constraint("Can't call this method before CanAccessFile returns true.");
+
+        return WebFileProviderInternal.WhenUserConsentGranted;
+    }
+
     private async Task<IWebFileProviderInternal> CreateInternal()
     {
         var js = JS;
@@ -47,8 +55,10 @@ public partial class WebFileProvider : IFileProvider
                     FileHandleDbKey)
                 .ConfigureAwait(false);
             var jsRef = nullableRef.Value;
-            if (jsRef is not null)
-                return new WebFileProviderInternal(_services.Require().AppUIHub(), jsRef, null, false);
+            if (jsRef is not null) {
+                var whenUserConsentGranted = jsRef.InvokeAsync<bool>("whenUserConsentGranted", CancellationToken.None).AsTask();
+                return new WebFileProviderInternal(_services.Require().AppUIHub(), jsRef, null, false, whenUserConsentGranted);
+            }
         }
         catch (Exception ex) {
             Log.LogWarning(ex, "Failed to create WebFileProviderInternal");
@@ -103,6 +113,7 @@ public interface IWebFileProviderInternal
     ValueTask<string> SaveFileHandleToDb();
     ValueTask<bool> DeleteFileHandleFromDb();
     Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId);
+    Task<bool> WhenUserConsentGranted { get; }
 }
 
 public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposable
@@ -112,24 +123,31 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
     private readonly List<IDisposable> _disposables = new ();
     private bool _disposed;
     private string? _previewUrl;
+    private readonly CancellationTokenSource _cancellationTokenSource;
+    private readonly CancellationToken _cancellationToken;
 
     public bool IsOriginal { get; }
+    public Task<bool> WhenUserConsentGranted { get; }
 
     public WebFileProviderInternal(
         AppUIHub hub,
         IJSObjectReference jsRef,
         string? previewUrl,
-        bool isOriginal)
+        bool isOriginal,
+        Task<bool> whenUserConsentGranted)
     {
         _hub = hub;
         _jsRef = jsRef;
         _previewUrl = previewUrl;
+        _cancellationTokenSource = new CancellationTokenSource();
+        _cancellationToken = _cancellationTokenSource.Token;
+        WhenUserConsentGranted = whenUserConsentGranted;
         IsOriginal = isOriginal;
     }
 
     public async ValueTask<string> CreatePreviewUrl()
     {
-        _previewUrl ??= await _jsRef.InvokeAsync<string>("createPreviewUrl").ConfigureAwait(false);
+        _previewUrl ??= await _jsRef.InvokeAsync<string>("createPreviewUrl", _cancellationToken).ConfigureAwait(false);
         return _previewUrl;
     }
 
@@ -138,22 +156,22 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
         if (_previewUrl is null)
             return;
 
-        await _jsRef.InvokeVoidAsync("revokePreviewUrl").ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("revokePreviewUrl", _cancellationToken).ConfigureAwait(false);
         _previewUrl = null;
     }
 
     public ValueTask<string> SaveFileHandleToDb()
-        => _jsRef.InvokeAsync<string>("saveFileHandleToDb");
+        => _jsRef.InvokeAsync<string>("saveFileHandleToDb", _cancellationToken);
 
     public ValueTask<bool> DeleteFileHandleFromDb()
-        => _jsRef.InvokeAsync<bool>("removeFileHandleFromDb");
+        => _jsRef.InvokeAsync<bool>("removeFileHandleFromDb", _cancellationToken);
 
     public Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId)
     {
         var fileUploaderBackend = new WebFileUploaderBackend();
         _disposables.Add(fileUploaderBackend.BlazorRef);
         var tracker = fileUploaderBackend.Tracker;
-        var uploadOperation = new FileUploadOperation(async ct => {
+        var uploadOperation = new FileUploadOperation(WhenFileStreamReady(), async ct => {
             ct.Register(() => {
                 tracker.SetCanceled();
                 _ = Cancel();
@@ -167,13 +185,21 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
             return mediaContent;
         }, tracker);
         return Task.FromResult<IFileUploadOperation>(uploadOperation);
+
+        async Task WhenFileStreamReady()
+        {
+            var granted = await WhenUserConsentGranted.ConfigureAwait(false);
+            if (granted)
+                return;
+            await TaskExt.NeverEnding(_cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private ValueTask Start(UploadId uploadId, DotNetObjectReference<IWebFileUploaderBackend> blazorRef)
-        => _jsRef.InvokeVoidAsync("start", uploadId.Value, Constants.Uploads.DefaultChunkSize, blazorRef);
+        => _jsRef.InvokeVoidAsync("start", _cancellationToken, uploadId.Value, Constants.Uploads.DefaultChunkSize, blazorRef);
 
     private ValueTask Cancel()
-        => _jsRef.InvokeVoidAsync("cancel");
+        => _jsRef.InvokeVoidAsync("cancel", _cancellationToken);
 
     public async ValueTask DisposeAsync()
     {
@@ -181,6 +207,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
             return;
 
         _disposed = true;
+        _cancellationTokenSource.CancelAndDisposeSilently();
         await _jsRef.DisposeAsync().ConfigureAwait(false);
         foreach (var disposable in _disposables)
             disposable.Dispose();
@@ -204,6 +231,9 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
 
     public Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId)
         => throw new NotSupportedException();
+
+    public Task<bool> WhenUserConsentGranted
+        => Task.FromException<bool>(new InvalidOperationException("No file access."));
 }
 
 internal static class WebFileProviders

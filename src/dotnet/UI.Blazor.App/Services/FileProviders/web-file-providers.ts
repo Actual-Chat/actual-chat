@@ -35,7 +35,7 @@ export class WebFileProviders
         let previewUrl = "";
         try {
             const file = fileResult.file;
-            const provider = new WebFileProvider('', fileResult.fileHandle, file, file.name);
+            const provider = new WebFileProvider('', fileResult.fileHandle, file, file.name, null);
             previewUrl = provider.createPreviewUrl();
             // @ts-ignore
             const jsObjectReference = DotNet.createJSObjectReference(provider);
@@ -59,12 +59,8 @@ export class WebFileProviders
             return NullableJSObjectReference.create(null);
         }
 
-        const granted = await requestFileHandlePermission(fileHandle, 'read');
-        if (!granted) {
-            return NullableJSObjectReference.create(null);
-        }
-        const file = await fileHandle.getFile();
-        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, file, file.name);
+        const grantedReadPermissionPromise = requestFileHandlePermission(fileHandle, 'read');
+        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, null, fileHandle.name, grantedReadPermissionPromise);
         return NullableJSObjectReference.create(provider);
     }
 
@@ -95,20 +91,53 @@ export class WebFileProviders
 export class WebFileProvider {
     private previewUrl: string | null = null;
     private fileUpload: ChunkedFileUpload | null;
+    private userConsentGranted : boolean | null = null;
+    private resolvedFile: Blob | null;
+    private readonly whenUserConsentGrantedSource: PromiseSource<boolean>;
+
 
     constructor(
         private fileHandleDbKey: string,
         private readonly fileHandle: FileSystemFileHandle | null,
-        private readonly file: Blob,
-        private readonly fileName: string,
+        private readonly file: Blob | null,
+        fileName: string,
+        whenUserConsentGrantedPromise: Promise<boolean> | null,
     )
     {
+        if (!this.fileHandle && !this.file)
+            throw new Error('No file or file handle provided');
+        this.whenUserConsentGrantedSource = new PromiseSource<boolean>();
+        if (this.file) {
+            this.resolvedFile = this.file;
+            this.userConsentGranted = true;
+            this.whenUserConsentGrantedSource.resolve(true);
+        }
+        else if (whenUserConsentGrantedPromise) {
+            whenUserConsentGrantedPromise
+                .then(async x => {
+                    if (x)
+                        this.resolvedFile = this.file ?? await this.fileHandle!.getFile();
+                    this.userConsentGranted = x;
+                    this.whenUserConsentGrantedSource.resolve(x);
+                })
+                .catch(e => {
+                    this.userConsentGranted = false;
+                    this.whenUserConsentGrantedSource.resolve(false);
+                });
+        }
+        else
+            throw new Error('No file and no whenUserConsentGrantedPromise');
+    }
+
+    public whenUserConsentGranted() : Promise<boolean>
+    {
+        return this.whenUserConsentGrantedSource;
     }
 
     public createPreviewUrl() : string
     {
         if (!this.previewUrl)
-            this.previewUrl = URL.createObjectURL(this.file);
+            this.previewUrl = URL.createObjectURL(this.GetFile());
         return this.previewUrl;
     }
 
@@ -150,7 +179,7 @@ export class WebFileProvider {
             throw new Error('File upload already started');
 
         const reporter = new FileUploadProgressReporter(blazorRef);
-        this.fileUpload = new ChunkedFileUpload(uploadId, chunkSize, this.file, pct => reporter.reportProgress(pct));
+        this.fileUpload = new ChunkedFileUpload(uploadId, chunkSize, this.GetFile(), pct => reporter.reportProgress(pct));
         this.fileUpload.whenCompleted.then(x => {
             void reporter.reportUploadSucceed();
             this.fileUpload = null;
@@ -171,6 +200,13 @@ export class WebFileProvider {
 
         this.fileUpload.cancel();
         this.fileUpload = null;
+    }
+
+    private GetFile() : Blob
+    {
+        if (!this.userConsentGranted)
+            throw new Error('User consent not granted yet');
+        return this.resolvedFile!;
     }
 }
 
