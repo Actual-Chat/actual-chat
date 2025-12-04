@@ -14,9 +14,9 @@ public sealed class FileUploadOperation : IFileUploadOperation, IDisposable
     public FileUploadOperation(Task whenFileStreamReady, Func<CancellationToken, Task<MediaContent>> startFunc, UploadProgressTracker progressTracker)
     {
         _startFunc = startFunc;
+        _cts = new ();
         ProgressTracker = progressTracker;
         WhenReadyToStart = whenFileStreamReady;
-        _cts = new ();
         CancellationToken = _cts.Token;
     }
 

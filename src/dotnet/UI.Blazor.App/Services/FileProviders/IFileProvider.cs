@@ -7,12 +7,13 @@ public partial interface IFileProvider
 {
     FileMetadata Metadata { get; }
     Task PrepareForSaving();
-    Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId);
     void Initialize(IServiceProvider services);
     Task<bool> CheckAccess();
     Task<bool> WhenUserConsentGranted();
     Task ClearForRemoving();
     Task<string> GetPreviewUrl();
+    Task WhenFileStreamReady();
+    Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct);
 }
 
 // NOTE(DF): This is a workaround for the following issue:

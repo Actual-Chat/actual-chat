@@ -5,6 +5,7 @@ public interface IWebFileUploaderBackend
     void OnUploadProgress(int progress);
     void OnUploadSucceed();
     void OnUploadFailed();
+    void OnUploadCancelled();
 }
 
 public sealed class WebFileUploaderBackend : IWebFileUploaderBackend, IDisposable
@@ -12,16 +13,19 @@ public sealed class WebFileUploaderBackend : IWebFileUploaderBackend, IDisposabl
     private bool _isDisposed;
     private readonly TaskCompletionSource _tcs = TaskCompletionSourceExt.New();
 
-    public UploadProgressTracker Tracker { get; } = new ();
+    public IProgress<double> ProgressTracker { get; }
     public Task WhenUploadCompleted => _tcs.Task;
     public DotNetObjectReference<IWebFileUploaderBackend> BlazorRef { get; }
 
-    public WebFileUploaderBackend()
-        => BlazorRef = DotNetObjectReference.Create<IWebFileUploaderBackend>(this);
+    public WebFileUploaderBackend(IProgress<double> progressTracker)
+    {
+        ProgressTracker = progressTracker;
+        BlazorRef = DotNetObjectReference.Create<IWebFileUploaderBackend>(this);
+    }
 
     [JSInvokable]
     public void OnUploadProgress(int progress)
-        => Tracker.ReportProgress(progress);
+        => ProgressTracker.Report(progress);
 
     [JSInvokable]
     public void OnUploadSucceed()
@@ -29,7 +33,11 @@ public sealed class WebFileUploaderBackend : IWebFileUploaderBackend, IDisposabl
 
     [JSInvokable]
     public void OnUploadFailed()
-        => Tracker.SetException(StandardError.Internal("Upload failed."));
+        => _tcs.TrySetException(StandardError.Internal("Upload failed."));
+
+    [JSInvokable]
+    public void OnUploadCancelled()
+        => _tcs.TrySetCanceled();
 
     public void Dispose()
     {
