@@ -25,7 +25,7 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
                     "'{RpcPeerRef}': rerouted from {OldTarget} to {NewTarget}",
                     this, Target, Target.Latest),
                 CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            if (_shardState.MustLock) {
+            if (_shardState.MustOwn) {
                 RouteState.LocalExecutionAwaiter = LocalExecutionAwaiter;
                 _ = MarkChangedWhenShardOwnershipEnds(_shardState, RouteState.ChangedToken);
             }
@@ -38,12 +38,12 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
 
     private async ValueTask LocalExecutionAwaiter(CancellationToken cancellationToken)
     {
-        var shardState = _shardState!;
+        var cShardState = _shardState!;
         try {
-            await shardState.RequireOwnership(cancellationToken).ConfigureAwait(false);
+            await cShardState.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
         }
         catch (RpcRerouteException) {
-            var shardOwners = shardState.ShardOwner.Host;
+            var shardOwners = cShardState.ShardOwner.Host;
             if (shardOwners.StopToken.IsCancellationRequested)
                 throw new ObjectDisposedException(nameof(ShardOwners));
             if (shardOwners.Services.IsDisposedOrDisposing())
@@ -57,14 +57,10 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
     private async Task MarkChangedWhenShardOwnershipEnds(
         ShardOwner.ShardState shardState, CancellationToken cancellationToken)
     {
+        var asyncState = shardState.AsyncState;
         try {
-            var ownershipState = shardState.OwnershipState;
-            // Waiting for ownership
-            var computed = await ownershipState.Computed
-                .When(x => x is not null, FixedDelayer.NoneUnsafe, cancellationToken)
-                .ConfigureAwait(false);
-            // It's always set to null after that
-            await computed.WhenInvalidated(cancellationToken).SilentAwait(false);
+            asyncState = await asyncState.When(x => x.Ownership is not null, cancellationToken).ConfigureAwait(false);
+            await asyncState.WhenNext(cancellationToken).ConfigureAwait(false);
         }
         catch {
             // Intended
@@ -76,7 +72,7 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
 
     private async Task MarkChangedWhenShardStateChanged(ShardOwner.ShardState shardState)
     {
-        await shardState.WhenChanged.SilentAwait();
+        await shardState.AsyncState.WhenNext().SilentAwait();
         RouteState?.MarkChanged();
     }
 }

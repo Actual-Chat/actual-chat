@@ -8,11 +8,17 @@ public static partial class MeshLocksExt
 
     // WithXxx
 
+    public static IMeshLocks With(this IMeshLocks meshLocks, string keyPrefix, Func<MeshLockOptions, MeshLockOptions> lockOptionsBuilder)
+        => meshLocks.With(keyPrefix, lockOptionsBuilder.Invoke(meshLocks.LockOptions));
+
     public static IMeshLocks WithKeyPrefix(this IMeshLocks meshLocks, string keyPrefix)
         => meshLocks.With(keyPrefix, null);
 
     public static IMeshLocks WithLockOptions(this IMeshLocks meshLocks, MeshLockOptions lockOptions)
         => meshLocks.With("", lockOptions);
+
+    public static IMeshLocks WithLockOptions(this IMeshLocks meshLocks, Func<MeshLockOptions, MeshLockOptions> lockOptionsBuilder)
+        => meshLocks.With("", lockOptionsBuilder.Invoke(meshLocks.LockOptions));
 
     // TryLock
 

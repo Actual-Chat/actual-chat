@@ -30,7 +30,6 @@ public class TestAppHost : AppHost
 
     protected override async Task DisposeAsync(bool disposing)
     {
-        var output = OutputAccessor.Output;
         WriteLine("disposing");
         try {
             await base.DisposeAsync(disposing);

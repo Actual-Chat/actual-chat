@@ -27,22 +27,22 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         // RpcRerouteException is a special case: it's thrown when the shard is not owned by the current node
         RetryOn = (e, transiency) => e is not RpcRerouteException && transiency is not Transiency.Terminal,
     };
-    private IRetryPolicy ClearCacheRetryPolicy { get; init; } = new RetryPolicy(RetryDelaySeq.Fixed(0.1));
 
     public FlowBackend(IServiceProvider services) : base(services)
     {
         Registry = services.GetRequiredService<FlowRegistry>();
         Host = services.GetRequiredService<FlowHost>();
         EntityResolver = services.DbEntityResolver<string, DbFlow>();
-        _ = ClearCacheRetryPolicy
-            .Apply(async ct => {
-                // TODO(AY): Split cache to per-shard caches and make them track their own changes
-                var shardOwnershipChanges = ShardOwner.State.Computed.ChangesUntyped(FixedDelayer.YieldUnsafe, ct);
-                await foreach (var _ in shardOwnershipChanges.ConfigureAwait(false))
+        var stopToken = ShardOwner.StopToken;
+        foreach (var shardIndex in ShardScheme.ShardIndexes) {
+            var asyncState = ShardOwner.GetShardState(shardIndex).AsyncState;
+            _ = Task.Run(async () => {
+                while (true) {
+                    asyncState = await asyncState.WhenNext(stopToken).ConfigureAwait(false);
                     _cache.Clear();
-                // ReSharper disable once ExplicitCallerInfoArgument
-            }, new RetryLogger(Log, "ClearCache"), ShardOwner.StopToken)
-            .ConfigureAwait(false);
+                }
+            }, CancellationToken.None);
+        }
     }
 
     // [ComputeMethod]

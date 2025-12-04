@@ -149,7 +149,8 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         CancellationToken cancellationToken)
     {
         var holderId = NextHolderId();
-        return new (this, holderId, key, options, cancellationToken);
+        var lockToken = options.LinkCancellationToken ? cancellationToken : default;
+        return new (this, holderId, key, options, lockToken);
     }
 
     protected virtual string NextHolderId()
