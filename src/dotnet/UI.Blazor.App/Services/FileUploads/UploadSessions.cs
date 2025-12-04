@@ -231,5 +231,5 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken ct)
-        => UICommander.Call(new Uploads_Complete(Session, uploadId), ct);
+        => UICommander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), ct);
 }
