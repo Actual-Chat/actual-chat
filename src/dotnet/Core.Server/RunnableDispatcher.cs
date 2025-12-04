@@ -28,11 +28,13 @@ public sealed class RunnableDispatcher : ProcessorBase
 
     // Add
 
-    public bool Add(IRunnable runnable)
+    public bool Add(IRunnable runnable, bool throwIfDisposed = true)
     {
         lock (Lock) {
             if (WhenDisposed is not null)
-                throw Errors.AlreadyDisposed();
+                return throwIfDisposed
+                    ? throw Errors.AlreadyDisposed()
+                    : false;
 
             var runnables = Runnables.Add(runnable);
             if (runnables == Runnables)
@@ -45,11 +47,13 @@ public sealed class RunnableDispatcher : ProcessorBase
         }
     }
 
-    public bool Add(IRunnableRunner runner)
+    public bool Add(IRunnableRunner runner, bool throwIfDisposed = true)
     {
         lock (Lock) {
             if (WhenDisposed is not null)
-                throw Errors.AlreadyDisposed();
+                return throwIfDisposed
+                    ? throw Errors.AlreadyDisposed()
+                    : false;
 
             var runners = Runners.Add(runner);
             if (runners == Runners)

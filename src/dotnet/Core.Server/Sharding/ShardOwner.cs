@@ -138,7 +138,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         var addedOwnShards = new List<int>();
         var removedOwnShards = new List<int>();
         var updateShardStateTasks = ShardScheme.ShardIndexes
-            .Select(i => SyncShardState(i, cancellationToken))
+            .Select(i => PushShardState(i, cancellationToken))
             .ToArray();
         try {
             var changes = Host.MeshWatcher.State.Computed.Changes(FixedDelayer.YieldUnsafe, cancellationToken);
@@ -188,7 +188,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
     // Private methods
 
-    private async Task SyncShardState(int shardIndex, CancellationToken cancellationToken)
+    private async Task PushShardState(int shardIndex, CancellationToken cancellationToken)
     {
         var mutableState = _states[shardIndex];
         try {
@@ -216,7 +216,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                     var shardState = mutableState.Value;
                     if (shardState.OwnershipStatus is not ShardOwnershipStatus.MappedToThisNode)
                         mutableState.Value = new ShardState(shardState, true);
-                    await LockShard(shardIndex, linkedToken).SilentAwait(false);
+                    await LockAndUse(shardIndex, linkedToken).SilentAwait(false);
                 }
                 if (mutableState.Value.OwnershipStatus is not ShardOwnershipStatus.MappedToOtherNode)
                     mutableState.Value = new ShardState(mutableState.Value, false);
@@ -230,7 +230,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         }
     }
 
-    private async Task LockShard(int shardIndex, CancellationToken cancellationToken)
+    private async Task LockAndUse(int shardIndex, CancellationToken cancellationToken)
     {
         var mutableState = _states[shardIndex];
         DebugLog?.LogDebug("Shard #{ShardIndex}: ?++ {ThisNodeId}", shardIndex, ThisNode.Ref);
@@ -238,21 +238,20 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         var lockToken = lockHolder.StopToken;
 
         DebugLog?.LogDebug("Shard #{ShardIndex}: ++ {ThisNodeId}", shardIndex, ThisNode.Ref);
-        try {
-            var ownedShardState = new ShardState(mutableState.Value, true, lockHolder);
-            var ownership = ownedShardState.Ownership!;
-            mutableState.Value = ownedShardState;
-            Dispatcher.Add(ownership);
-            await TaskExt.NeverEnding(lockToken).SilentAwait(false);
+        var ownedShardState = new ShardState(mutableState.Value, true, lockHolder);
+        mutableState.Value = ownedShardState;
+        var ownership = ownedShardState.Ownership!;
+        var isAdded = Dispatcher.Add(ownership, throwIfDisposed: false);
+
+        await TaskExt.NeverEnding(lockToken).SilentAwait(false);
+
+        if (isAdded)
             await Dispatcher.Remove(ownership).SilentAwait(false);
-        }
-        finally {
-            if (lockToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-                Log.LogWarning("Shard #{ShardIndex}: -- {ThisNodeId} - lost the lock", shardIndex, ThisNode.Ref);
-            else
-                DebugLog?.LogDebug("Shard #{ShardIndex}: -- {ThisNodeId}", shardIndex, ThisNode.Ref);
-            await lockHolder.DisposeAsync().SilentAwait(false);
-        }
+        if (lockToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            Log.LogWarning("Shard #{ShardIndex}: -- {ThisNodeId} - lost the lock", shardIndex, ThisNode.Ref);
+        else
+            DebugLog?.LogDebug("Shard #{ShardIndex}: -- {ThisNodeId}", shardIndex, ThisNode.Ref);
+        await lockHolder.DisposeAsync().SilentAwait(false);
     }
 
     // Nested types
