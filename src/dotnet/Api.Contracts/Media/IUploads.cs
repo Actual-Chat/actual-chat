@@ -13,7 +13,7 @@ public interface IUploads : IComputeService
     [CommandHandler]
     Task<long> OnAppend(Uploads_Append command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<MediaContent> OnComplete(Uploads_Complete command, CancellationToken cancellationToken);
+    Task<MediaContent> OnConvertToMediaContent(Uploads_ConvertToMediaContent command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -43,7 +43,7 @@ public sealed partial record Uploads_Remove(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Uploads_Complete(
+public sealed partial record Uploads_ConvertToMediaContent(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] UploadId UploadId
 ) : ISessionCommand<MediaContent>, IApiCommand;
