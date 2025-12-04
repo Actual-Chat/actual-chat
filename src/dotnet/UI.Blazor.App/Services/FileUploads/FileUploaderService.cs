@@ -60,7 +60,7 @@ public class FileUploaderService
         }
     }
 
-    private void EnqueueFileUploadOperation(IFileUploadOperation fileUploadOperation)
+    private void EnqueueFileUploadOperation(FileUploadOperation fileUploadOperation)
         => _operationQueue.Enqueue(fileUploadOperation);
 
     private Task<UploadId> GetUploadId(string sessionId, CancellationToken cancellationToken)
@@ -76,7 +76,7 @@ public class FileUploaderService
         private readonly AsyncLock _asyncLock = new ();
         private bool _isCancelled;
         private bool _isResumed;
-        private IFileUploadOperation? _uploadOperation;
+        private FileUploadOperation? _uploadOperation;
 
         private ILogger Log => Owner.Log;
 
@@ -129,7 +129,7 @@ public class FileUploaderService
             return Task.CompletedTask;
         }
 
-        private IFileUploadOperation CreateUploadOperation()
+        private FileUploadOperation CreateUploadOperation()
         {
             var fileProvider = Session.FileProvider;
             var whenFileStreamReady = fileProvider.WhenFileStreamReady();
@@ -187,9 +187,9 @@ public class FileUploaderService
     {
         private const int MaxActiveCount = 2;
         private readonly Lock _lock = new();
-        private readonly List<IFileUploadOperation> _operations = new ();
+        private readonly List<FileUploadOperation> _operations = new ();
 
-        public void Enqueue(IFileUploadOperation operation)
+        public void Enqueue(FileUploadOperation operation)
         {
             lock (_lock) {
                 _operations.Add(operation);
@@ -198,7 +198,7 @@ public class FileUploaderService
             ReviewQueue();
         }
 
-        private void TrackOperation(IFileUploadOperation operation)
+        private void TrackOperation(FileUploadOperation operation)
         {
             var task = operation.ProgressTracker.Task;
             _ = task.ContinueWith(_ => OnOperationCompleted(operation), TaskScheduler.Default);
@@ -206,7 +206,7 @@ public class FileUploaderService
                 OnOperationCompleted(operation);
         }
 
-        private void OnOperationCompleted(IFileUploadOperation operation)
+        private void OnOperationCompleted(FileUploadOperation operation)
         {
             lock (_lock)
                 _operations.Remove(operation);
@@ -217,7 +217,7 @@ public class FileUploaderService
         {
             lock (_lock) {
                 int activeCount = 0;
-                var toStart = new List<IFileUploadOperation>();
+                var toStart = new List<FileUploadOperation>();
                 foreach (var operation in _operations)
                     if (operation.HasStarted)
                         activeCount++;
