@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class FileUploadOperation : IFileUploadOperation, IDisposable
+public sealed class FileUploadOperation : IDisposable
 {
     private readonly Func<CancellationToken, Task<MediaContent>> _startFunc;
     private readonly CancellationTokenSource _cts;
