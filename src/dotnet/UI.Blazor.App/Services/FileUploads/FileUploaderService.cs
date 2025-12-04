@@ -8,6 +8,8 @@ public class FileUploaderService
     private readonly Dictionary<string, UploadJob> _jobs = new (StringComparer.Ordinal);
     private readonly IServiceProvider _services;
     private readonly OperationQueue _operationQueue;
+    private readonly Func<string, CancellationToken, Task<UploadId>> _getUploadId;
+    private readonly Func<UploadId, CancellationToken, Task<MediaContent>> _convertUpload;
 
     private ILogger Log => _services.LogFor(GetType());
 
@@ -16,9 +18,14 @@ public class FileUploaderService
     public event Func<string, Exception, Task>? Failed;
     public event Func<string, Task>? Canceled;
 
-    public FileUploaderService(IServiceProvider services)
+    public FileUploaderService(
+        IServiceProvider services,
+        Func<string, CancellationToken, Task<UploadId>> getUploadId,
+        Func<UploadId, CancellationToken, Task<MediaContent>> convertUpload)
     {
         _services = services;
+        _getUploadId = getUploadId;
+        _convertUpload = convertUpload;
         // TODO: add queues with different priorities for small and big files.
         _operationQueue = new OperationQueue();
     }
@@ -56,6 +63,12 @@ public class FileUploaderService
     private void EnqueueFileUploadOperation(IFileUploadOperation fileUploadOperation)
         => _operationQueue.Enqueue(fileUploadOperation);
 
+    private Task<UploadId> GetUploadId(string sessionId, CancellationToken cancellationToken)
+        => _getUploadId(sessionId, cancellationToken);
+
+    private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken cancellationToken)
+        => _convertUpload(uploadId, cancellationToken);
+
     // Nested types
 
     private record UploadJob(FileUploaderService Owner, UploadSession Session)
@@ -92,7 +105,7 @@ public class FileUploaderService
             _isResumed = true;
 
             try {
-                _uploadOperation ??= await CreateUploadOperation().ConfigureAwait(false);
+                _uploadOperation ??= CreateUploadOperation();
                 Log.LogInformation("**** Started uploading file '{FileName}' for '{SessionId}'", Session.FileName, Session.SessionId);
             }
             catch (Exception ex) {
@@ -116,21 +129,30 @@ public class FileUploaderService
             return Task.CompletedTask;
         }
 
-        private async Task<IFileUploadOperation> CreateUploadOperation()
+        private IFileUploadOperation CreateUploadOperation()
         {
             var fileProvider = Session.FileProvider;
-            var uploadOperation = await fileProvider.CreateUploadOperation(Session.UploadId.Require()).ConfigureAwait(false);
-            StartOperationProgressTracking(Session, uploadOperation, Owner);
+            var whenFileStreamReady = fileProvider.WhenFileStreamReady();
+            var progress = new UploadProgressTracker();
+            var uploadOperation = new FileUploadOperation(whenFileStreamReady, StartFunc, progress);
+            PropagateFileUploadProgress(uploadOperation.ProgressTracker, Session, Owner);
             return uploadOperation;
+
+            async Task<MediaContent> StartFunc(CancellationToken ct)
+            {
+                var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
+                await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
+                var mediaContent = await Owner.ConvertUpload(uploadId, ct).ConfigureAwait(false);
+                return mediaContent;
+            }
         }
 
-        private void StartOperationProgressTracking(
+        private void PropagateFileUploadProgress(
+            UploadProgressTracker progressTracker,
             UploadSession session,
-            IFileUploadOperation uploadOperation,
             FileUploaderService owner)
         {
             var sessionId = session.SessionId;
-            var progressTracker = uploadOperation.ProgressTracker;
             var progressChangedThrottler = Throttler.New<double>(
                 TimeSpan.FromMilliseconds(500),
                 value => {

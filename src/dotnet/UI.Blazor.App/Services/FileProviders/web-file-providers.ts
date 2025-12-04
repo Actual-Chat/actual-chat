@@ -10,13 +10,6 @@ import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEdi
 
 const { debugLog, errorLog } = Log.get('WebFileProvider');
 
-interface MediaContent {
-    mediaId: string;
-    contentId: string;
-    thumbnailMediaId?: string;
-    thumbnailContentId?: string;
-}
-
 type ProgressReporter = (progressPercent: number) => void;
 
 interface CreateWebFileProviderResult {
@@ -94,7 +87,6 @@ export class WebFileProvider {
     private userConsentGranted : boolean | null = null;
     private resolvedFile: Blob | null;
     private readonly whenUserConsentGrantedSource: PromiseSource<boolean>;
-
 
     constructor(
         private fileHandleDbKey: string,
@@ -184,7 +176,11 @@ export class WebFileProvider {
             void reporter.reportUploadSucceed();
             this.fileUpload = null;
         }).catch(e => {
-            if (!(e instanceof OperationCancelledError)) {
+            if (e instanceof OperationCancelledError) {
+                debugLog?.log(`File upload '${uploadId}' cancelled`);
+                void reporter.reportUploadCancelled();
+            }
+            else {
                 errorLog?.log('Failed to upload file', e);
                 void reporter.reportUploadFailed();
             }
@@ -200,6 +196,12 @@ export class WebFileProvider {
 
         this.fileUpload.cancel();
         this.fileUpload = null;
+    }
+
+    public dispose()
+    {
+        this.cancel();
+        this.revokePreviewUrl();
     }
 
     private GetFile() : Blob
@@ -226,13 +228,16 @@ export class FileUploadProgressReporter {
     public async reportUploadFailed() {
         return this.blazorRef.invokeMethodAsync('OnUploadFailed');
     }
+
+    public async reportUploadCancelled() {
+        return this.blazorRef.invokeMethodAsync('OnUploadCancelled');
+    }
 }
 
 class ChunkedFileUpload {
     private readonly whenCompletedSource: PromiseSource<void> = new PromiseSource<void>();
     private readonly uploadUrl: string;
     private readonly abortController: AbortController = new AbortController();
-    private isCancelled = false;
 
     constructor(
         private readonly uploadId: string,
@@ -253,7 +258,6 @@ class ChunkedFileUpload {
     }
 
     public cancel() {
-        this.isCancelled = true;
         this.abortController.abort();
     }
 
@@ -262,28 +266,20 @@ class ChunkedFileUpload {
             let offset = await this.getOffset();
             debugLog?.log(`Starting upload of ${this.uploadId} at offset ${offset}`);
             const fileSize = this.blob.size;
-
+            this.progressReporter((offset / fileSize) * 100);
             // Upload chunks
             while (offset < fileSize) {
-                if (this.isCancelled) {
-                    this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
-                    return;
-                }
-
                 const remainingBytes = fileSize - offset;
                 const currentChunkSize = Math.min(this.chunkSize, remainingBytes);
-
                 offset = await this.uploadChunk(offset, currentChunkSize);
-
-                const uploadProgress = (offset / fileSize) * 100;
-                this.progressReporter(uploadProgress);
+                this.progressReporter((offset / fileSize) * 100);
             }
-
             this.whenCompletedSource.resolve();
         } catch (error) {
-            if (!this.isCancelled) {
+            if (this.isCancelled())
+                this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
+            else
                 this.whenCompletedSource.reject(error);
-            }
         }
     }
 
@@ -327,5 +323,9 @@ class ChunkedFileUpload {
             throw new Error('Upload-Offset header not found in response');
 
         return parseInt(newOffsetHeader, 10);
+    }
+
+    private isCancelled() : boolean {
+        return this.abortController.signal.aborted;
     }
 }

@@ -25,11 +25,9 @@ public partial class MauiFileProvider : IFileProvider
     public Task PrepareForSaving()
         => Impl.PrepareForSaving();
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
-    public Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId)
+    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
     {
-        var fileUploadOperation = ChunkedFileUploader.CreateUploadOperation(Task.CompletedTask, uploadId, GetFile());
-        return Task.FromResult<IFileUploadOperation>(fileUploadOperation);
+        return ChunkedFileUploader.UploadData(uploadId, GetFile(), progressTracker, ct);
 
         async Task<Stream> GetFile()
         {
@@ -53,6 +51,9 @@ public partial class MauiFileProvider : IFileProvider
             return false;
         }
     }
+
+    public Task WhenFileStreamReady()
+        => Task.CompletedTask;
 
     public Task<bool> WhenUserConsentGranted()
         => Task.FromResult(true);
