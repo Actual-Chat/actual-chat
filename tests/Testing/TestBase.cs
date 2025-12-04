@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualLab.IO;
-using ActualLab.Testing.Output;
 using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Testing;
@@ -11,6 +10,9 @@ public abstract class TestBase(ITestOutputHelper @out, ILogger? log = null) : IA
 
     [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= log ?? Out.ToLoggerFactory().CreateLogger(GetType());
+
+    protected virtual void WriteLine(string message)
+        => Out.WriteLine(message);
 
     Task IAsyncLifetime.InitializeAsync() => InitializeAsync();
     protected virtual Task InitializeAsync() => Task.CompletedTask;
@@ -33,15 +35,5 @@ public abstract class TestBase(ITestOutputHelper @out, ILogger? log = null) : IA
 
         static FilePath GetTestsBaseDirectory()
             => FilePath.New(typeof(DefaultStartup).Assembly.Location ?? Environment.CurrentDirectory).DirectoryPath;
-    }
-
-    protected Disposable<TestOutputCapture> CaptureOutput()
-    {
-        var testOutputCapture = new TestOutputCapture(Out);
-        var oldOut = Out;
-        Out = testOutputCapture;
-        return new Disposable<TestOutputCapture>(
-            testOutputCapture,
-            _ => Out = oldOut);
     }
 }

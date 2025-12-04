@@ -191,7 +191,7 @@ public class GoogleTranscriberTest : TestBase
         var transcripts = await transcriber.ProcessResponses(state, new (), responses).ToListAsync();
 
         var transcript = transcripts.Last();
-        Out.WriteLine(transcript.ToString());
+        WriteLine(transcript.ToString());
         transcript.TimeRange.End.Should().BeLessThan(23f);
     }
 
@@ -208,7 +208,7 @@ public class GoogleTranscriberTest : TestBase
         var diffs = memoizedTranscripts.Replay().ToTranscriptDiffs();
         var memoizedDiffs = diffs.Memoize();
         await foreach (var diff in memoizedDiffs.Replay())
-            Out.WriteLine(diff.ToString());
+            WriteLine(diff.ToString());
 
         var transcript = await memoizedTranscripts.Replay().LastAsync();
         var restoredTranscript = await memoizedDiffs.Replay().ToTranscripts().LastAsync();

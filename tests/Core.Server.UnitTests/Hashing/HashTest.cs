@@ -83,7 +83,7 @@ public class HashTest(ITestOutputHelper @out) : TestBase(@out)
             var buffer = new byte[size];
             Random.Shared.NextBytes(buffer);
             var h1 = syncHasher.Invoke(buffer);
-            Out.WriteLine($"'{Convert.ToHexString(buffer)}' -> {h1}");
+            WriteLine($"'{Convert.ToHexString(buffer)}' -> {h1}");
             h1.ToString().Should().Be(h1.Base16());
             h1.AsSpan<byte>().ToArray().Should().Equal(h1.Bytes.ToArray());
             h1.Base16(8).Should().Be(h1.Base16()[..16]);
@@ -119,7 +119,7 @@ public class HashTest(ITestOutputHelper @out) : TestBase(@out)
                         var hash = syncHasher.Invoke(s.Encode(e).ToArray());
                         return $"{hash.First4Bytes:x8}";
                     }).ToArray();
-                    Out.WriteLine($"  '{s}' -> {hashes.ToDelimitedString(" ")}");
+                    WriteLine($"  '{s}' -> {hashes.ToDelimitedString(" ")}");
                 }
             }
         }
@@ -139,7 +139,7 @@ public class HashTest(ITestOutputHelper @out) : TestBase(@out)
         var result2 = hashes.BitwiseXor().Base64();
 
         // assert
-        Out.WriteLine(result);
+        WriteLine(result);
         result.Should().NotBeEmpty().And.Be(result2);
     }
 

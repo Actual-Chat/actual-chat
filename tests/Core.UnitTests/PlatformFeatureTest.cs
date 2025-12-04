@@ -36,14 +36,14 @@ public class PlatformFeatureTest(ITestOutputHelper @out) : TestBase(@out)
                 var timeSpent = process.TotalProcessorTime;
                 var timePassed = clock.Now - clockZero;
                 var calcCpu = timeSpent / (processorCount * timePassed);
-                Out.WriteLine("CPU Mean: {0}; TimeSpent: {1}; Calculated: {2};", cpuMean, timeSpent, calcCpu);
+                WriteLine($"CPU Mean: {cpuMean}; TimeSpent: {timeSpent}; Calculated: {calcCpu};");
             }
         });
 
         _ = BackgroundTask.Run(async () => {
             await foreach (var cCpuMean in listener.CpuMean5.Computed.Changes()) {
                 var cpuMean = cCpuMean.Value;
-                Out.WriteLine("CPU Mean5: {0};", cpuMean);
+                WriteLine($"CPU Mean5: {cpuMean};");
             }
         });
 
@@ -51,7 +51,7 @@ public class PlatformFeatureTest(ITestOutputHelper @out) : TestBase(@out)
         _ = BackgroundTask.Run(async () => {
             await foreach (var cCpuMean in listener.CpuMean20.Computed.Changes()) {
                 var cpuMean = cCpuMean.Value;
-                Out.WriteLine("CPU Mean20: {0};", cpuMean);
+                WriteLine($"CPU Mean20: {cpuMean};");
             }
         });
 
@@ -66,6 +66,6 @@ public class PlatformFeatureTest(ITestOutputHelper @out) : TestBase(@out)
         }
         // ReSharper restore AccessToDisposedClosure
         await clock.Delay(5000);
-        Out.WriteLine("CPU Count: "+ Environment.ProcessorCount);
+        WriteLine("CPU Count: "+ Environment.ProcessorCount);
     }
 }

@@ -19,7 +19,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task BasicTest()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
 
         var f0 = await flows.Get<LegacyTimerFlow>("f0,3");
@@ -36,7 +36,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task KillTest()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
         var queues = h.Services.GetRequiredService<IQueues>();
 
@@ -66,7 +66,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ResetTest()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
         var queues = h.Services.GetRequiredService<IQueues>();
 
@@ -102,7 +102,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
     {
         var flowData = await flows.TryGetData(flowId, cancellationToken);
         var flow = (TFlow?)flowData?.Flow;
-        Out.WriteLine($"[*] {flow?.ToString() ?? "null"}");
+        WriteLine($"[*] {flow?.ToString() ?? "null"}");
         return flow;
     }
 

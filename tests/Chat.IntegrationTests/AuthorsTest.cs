@@ -30,13 +30,13 @@ public class AuthorsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelpe
     {
         var startedAt = CpuTimestamp.Now;
         var appHost = AppHost;
-        using var tester = appHost.NewWebClientTester(Out);
-        Out.WriteLine($"{startedAt}: app host init");
+        await using var tester = appHost.NewWebClientTester(Out);
+        WriteLine($"{startedAt}: app host init");
         var session = tester.Session;
 
         var authors = tester.ClientServices.GetRequiredService<IAuthors>();
         var author = await authors.GetOwn(session, Constants.Chat.DefaultChatId, default);
-        Out.WriteLine($"{startedAt}: get author");
+        WriteLine($"{startedAt}: get author");
         author.Should().BeNull();
     }
 

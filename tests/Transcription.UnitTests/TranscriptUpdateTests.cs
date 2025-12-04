@@ -13,7 +13,7 @@ public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
         transcript += diff;
         diff = new(new StringDiff(0, " вышел зайчик погулять Вдруг откуда"), new LinearMapDiff(new LinearMap(23, 4f, 58, 8.34f)));
         transcript += diff;
-        Out.WriteLine(transcript.ToString());
+        WriteLine(transcript.ToString());
 
         transcript.Text.Length.Should().Be(35);
         transcript.TimeMap.Data.Should()
@@ -21,7 +21,7 @@ public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
 
         diff = new(new StringDiff(35, "x"), new LinearMapDiff(new LinearMap(0, 1, 23, 4f, 58, 8.34f)));
         transcript += diff;
-        Out.WriteLine(transcript.ToString());
+        WriteLine(transcript.ToString());
 
         transcript.Text.Length.Should().Be(36);
         transcript.TimeMap.Data.Should()
@@ -95,5 +95,5 @@ public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
     }
 
     private void Dump(Transcript transcript)
-        => Out.WriteLine($"* {transcript}");
+        => WriteLine($"* {transcript}");
 }

@@ -9,7 +9,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
     public async Task BasicTest()
     {
         var shardScheme = ShardScheme.TestBackend;
-        using var h1 = await NewAppHost();
+        await using var h1 = await NewAppHost();
         await using var w1a = new TestChannelShardWorker(h1.Services, Out, "w1a");
         w1a.Start();
         // w1a should use all shards
@@ -20,7 +20,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
         // w1b should use all shards as well
         await ToShardIndexSets(w1b.UsedShardIndexes).AnyAsync(x => x.Count == shardScheme.ShardCount);
 
-        using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
+        await using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         await using var w2 = new TestChannelShardWorker(h2.Services, Out, "w2");
         w2.Start();
         // w2 workers should use half of the shards
@@ -36,7 +36,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
     [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
     public async Task RedisReconnectTest()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
         await using var w = new TestShardWorker(h.Services, Out, "w");
         w.Start();
         await Task.Delay(TimeSpan.FromMinutes(5));
@@ -104,7 +104,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
 
             async Task ShardRun(ShardOwnership shardOwnership, CancellationToken ct) {
                 var shardIndex = shardOwnership.ShardIndex;
-                Out.WriteLine($"-> {nameof(ShardRun)}({shardIndex} @ {this})");
+                @out.WriteLine($"-> {nameof(ShardRun)}({shardIndex} @ {this})");
                 lock (ShardOwners) {
                     var shardOwners = ShardOwners[shardIndex];
                     if (shardOwners.Any(x => x.ShardOwner != ShardOwner))
@@ -123,7 +123,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
                             UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
                                 $"Shard {shardIndex} must be used {this}!"));
                     }
-                    Out.WriteLine($"<- {nameof(ShardRun)}({shardIndex} @ {this})");
+                    @out.WriteLine($"<- {nameof(ShardRun)}({shardIndex} @ {this})");
                 }
             }
         }

@@ -10,7 +10,7 @@ public class MasterFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldStartDigestFlow()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
 
         var flows = h.Services.GetRequiredService<IFlows>();
 
@@ -24,7 +24,7 @@ public class MasterFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldBeHangingOnReset()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
 
         var flows = h.Services.GetRequiredService<IFlows>();
         await flows.Get<MasterFlow>("");

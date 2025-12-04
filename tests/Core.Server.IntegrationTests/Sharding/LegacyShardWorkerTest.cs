@@ -10,7 +10,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
     public async Task BasicTest()
     {
         var shardScheme = ShardScheme.TestBackend;
-        using var h1 = await NewAppHost();
+        await using var h1 = await NewAppHost();
         await using var w1a = new TestChannelShardWorker(h1.Services, Out, "w1a");
         w1a.Start();
         // w1a should use all shards
@@ -21,7 +21,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
         // w1b should use all shards as well
         await ToShardIndexSets("w1b", w1b.UsedShardIndexes).AnyAsync(x => x.Count == shardScheme.ShardCount);
 
-        using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
+        await using var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
         await using var w2 = new TestChannelShardWorker(h2.Services, Out, "w2");
         w2.Start();
         // w2 workers should use half of the shards
@@ -37,7 +37,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
     [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
     public async Task RedisReconnectTest()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
         await using var w = new TestShardWorker(h.Services, Out, "w");
         w.Start();
         await Task.Delay(TimeSpan.FromMinutes(5));
@@ -54,7 +54,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
             .Where(x => !shardIndexes.Contains(x))
             .Select(x => {
                 shardIndexes = shardIndexes.Add(x);
-                Out.WriteLine($"{name}: {shardIndexes.ToDelimitedString()}");
+                WriteLine($"{name}: {shardIndexes.ToDelimitedString()}");
                 return shardIndexes;
             });
     }
@@ -84,7 +84,6 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
                 .Select(_ => new HashSet<TestChannelShardWorker>())
                 .ToArray();
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
-        private ITestOutputHelper Out { get; } = @out;
 
         public Channel<int> UsedShardIndexes { get; } = ActualLab.Channels.ChannelExt.Create<int>(new UnboundedChannelOptions() {
             SingleReader = false,
@@ -99,7 +98,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
 
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
-            Out.WriteLine($"-> OnRun({shardIndex} @ {this})");
+            @out.WriteLine($"-> OnRun({shardIndex} @ {this})");
             lock (ShardOwners) {
                 var shardOwners = ShardOwners[shardIndex];
                 if (shardOwners.Any(x => x.ShardOwner != ShardOwner))
@@ -110,11 +109,11 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
             try {
                 var rnd = RandomShared.NextDouble();
                 if (rnd < 0.15) {
-                    Out.WriteLine($"<- OnRun({shardIndex} @ {this}) - fake failure");
+                    @out.WriteLine($"<- OnRun({shardIndex} @ {this}) - fake failure");
                     throw new InvalidOperationException("Something is off");
                 }
                 if (rnd < 0.3) {
-                    Out.WriteLine($"<- OnRun({shardIndex} @ {this}) - fake early termination");
+                    @out.WriteLine($"<- OnRun({shardIndex} @ {this}) - fake early termination");
                     return;
                 }
 
@@ -128,7 +127,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
                         UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
                             $"Shard {shardIndex} must be used {this}!"));
                 }
-                Out.WriteLine($"<- OnRun({shardIndex} @ {this})");
+                @out.WriteLine($"<- OnRun({shardIndex} @ {this})");
             }
         }
 

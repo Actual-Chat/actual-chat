@@ -1,6 +1,7 @@
 using System.Text;
 using ActualChat.Audio.WebM;
 using ActualChat.Module;
+using ActualChat.Rpc.Internal;
 using ActualLab.Fusion.Client;
 using ActualLab.Rpc;
 using Grpc.Core;
@@ -39,7 +40,8 @@ internal static class Program
         AdjustThreadPool();
         AdjustGrpcCoreThreadPool();
 
-        using var appHost = new AppHost();
+        var appHost = new AppHost();
+        await using var _ = appHost.ConfigureAwait(false);
         try {
             appHost.Build();
         }
@@ -50,14 +52,16 @@ internal static class Program
             return 1;
         }
 
-        Constants.HostInfo = appHost.Services.HostInfo();
-        StaticLog.Factory = appHost.Services.LoggerFactory();
+        var c = appHost.Services;
+        Constants.HostInfo = c.HostInfo();
+        StaticLog.Factory = c.LoggerFactory();
         if (Constants.DebugMode.WebMReader)
-            WebMReader.DebugLog = appHost.Services.LogFor(typeof(WebMReader));
+            WebMReader.DebugLog = c.LogFor(typeof(WebMReader));
         if (Constants.DebugMode.Npgsql)
-            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(),true);
+            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(c.GetRequiredService<ILoggerFactory>(),true);
 
         await appHost.RunInitializers().ConfigureAwait(false);
+
         await appHost.Run().ConfigureAwait(false);
         return 0;
 

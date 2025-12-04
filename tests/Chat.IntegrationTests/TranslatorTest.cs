@@ -60,7 +60,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
 
         // act
         var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
-        Out.WriteLine($"Translated text:\n {translated}");
+        WriteLine($"Translated text:\n {translated}");
 
         // assert
         translated.Should().BeSimilarTo(expected, minSimilarity);
@@ -91,7 +91,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
 
         // act
         var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [new TranslationResult( context, translatedContext)], cancellationToken);
-        Out.WriteLine($"Translated text: \n{translated}");
+        WriteLine($"Translated text: \n{translated}");
 
         // assert
         translated.Should().BeSimilarTo(expected, minSimilarity);
@@ -134,7 +134,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
 
         // act
         var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [ new TranslationResult(context, translatedContext)], cancellationToken);
-        Out.WriteLine($"Translated text: \n{translated}");
+        WriteLine($"Translated text: \n{translated}");
 
         // assert
         translated.Should().BeSimilarTo(expected, minSimilarity);

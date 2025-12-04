@@ -1,10 +1,9 @@
 using System.Diagnostics;
-using ActualChat.IO;
 using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.UnitTests;
 
-public class DebouncerTest(ITestOutputHelper @out)
+public class DebouncerTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
     public async Task DebounceTest()
@@ -12,8 +11,8 @@ public class DebouncerTest(ITestOutputHelper @out)
         var results = new List<int>();
         using var clock = new TestClock();
         var sw = Stopwatch.StartNew();
-        Action<string> log = msg => @out.WriteLine(sw.Elapsed.ToString("c") + " " + msg);
-        @out.WriteLine($"start: {sw.Elapsed}");
+        Action<string> log = msg => WriteLine(sw.Elapsed.ToString("c") + " " + msg);
+        WriteLine($"start: {sw.Elapsed}");
         var debouncer = Debouncer.New<int>(clock, TimeSpan.FromMilliseconds(1000), i => {
             log($"debounce invoked, value ='{i}'");
             lock (results)

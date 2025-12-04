@@ -10,11 +10,11 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     public void ParseTest()
     {
         var parsed = ValidIdentifiers.Select(x => TIdentifier.TryParse(x)).ToArray();
-        Out.WriteLine(parsed.ToDelimitedString());
+        WriteLine(parsed.ToDelimitedString());
         parsed.All(id => id != null).Should().BeTrue();
 
         parsed = InvalidIdentifiers.Select(x => TIdentifier.TryParse(x)).ToArray();
-        Out.WriteLine(parsed.ToDelimitedString());
+        WriteLine(parsed.ToDelimitedString());
         parsed.All(id => id == null).Should().BeTrue();
     }
 
@@ -24,10 +24,10 @@ public abstract class StringIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
         var identifiers = ValidIdentifiers.Select(TIdentifier.Parse).Concat([null]).ToArray();
         for (var i = 0; i < identifiers.Length; i++) {
             var id1 = identifiers[i];
-            Out.WriteLine($"{id1?.GetType().GetName()} '{id1}'");
+            WriteLine($"{id1?.GetType().GetName()} '{id1}'");
             for (var j = 0; j < identifiers.Length; j++) {
                 var id2 = identifiers[j];
-                Out.WriteLine($"== '{id2}' -> {Equals(id1, id2)}");
+                WriteLine($"== '{id2}' -> {Equals(id1, id2)}");
                 Equals(id1, id2).Should().Be(Equals(i, j));
             }
         }

@@ -25,7 +25,7 @@ public class RoleDiffTest(ITestOutputHelper @out) : TestBase(@out)
             });
         var change = createAnyoneRoleCmd.Change.Create.Value;
         var role2 = engine.Patch(role, change);
-        Out.WriteLine(change.ToString());
-        Out.WriteLine(role2.ToString());
+        WriteLine(change.ToString());
+        WriteLine(role2.ToString());
     }
 }

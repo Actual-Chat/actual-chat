@@ -29,17 +29,17 @@ public class TimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task BasicTest()
     {
-        using var h0 = await NewAppHost();
-        using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
+        await using var h0 = await NewAppHost();
+        await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
         var h0node = h0.Services.MeshWatcher().ThisNode;
         var h1node = h1.Services.MeshWatcher().ThisNode;
-        Out.WriteLine($"h0.ThisNode: {h0node}");
-        Out.WriteLine($"h1.ThisNode: {h1node}");
+        WriteLine($"h0.ThisNode: {h0node}");
+        WriteLine($"h1.ThisNode: {h1node}");
 
         var flows = h0.Services.GetRequiredService<IFlows>();
 
         var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},2");
-        Out.WriteLine($"f0.Id: {f.Id}");
+        WriteLine($"f0.Id: {f.Id}");
 
         await WhenCompleted(flows, f.Id);
     }
@@ -47,10 +47,10 @@ public class TimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task TwoFlowsTest()
     {
-        using var h0 = await NewAppHost();
-        using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
-        Out.WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
-        Out.WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
+        await using var h0 = await NewAppHost();
+        await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
+        WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
+        WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
 
         var flows = h0.Services.GetRequiredService<IFlows>();
 
@@ -67,10 +67,10 @@ public class TimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ResetTest()
     {
-        using var h0 = await NewAppHost();
-        using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
-        Out.WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
-        Out.WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
+        await using var h0 = await NewAppHost();
+        await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
+        WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
+        WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
 
         var flows = h0.Services.GetRequiredService<IFlows>();
         var queues = h0.Services.GetRequiredService<IQueues>();
@@ -145,7 +145,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
         var cFlowData =  await Computed
             .Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        Out.WriteLine($"[*] {cFlowData.Value?.Flow.ToString() ?? "null"} <- {cFlowData}");
+        WriteLine($"[*] {cFlowData.Value?.Flow.ToString() ?? "null"} <- {cFlowData}");
         return cFlowData;
     }
 

@@ -21,13 +21,14 @@ public class AsyncEnumerableExtTest(ITestOutputHelper @out) : TestBase(@out)
         var right = Right();
         var result = left.Merge(right);
         var resultList = await result.ToListAsync();
-        Out.WriteLine(resultList.ToDelimitedString(", "));
-        resultList.Should().BeEquivalentTo(new[] { 0, 1, 2, 10, 3, 4, 5, 20, 6, 30 }, options => options.WithStrictOrdering());
-
+        WriteLine(resultList.ToDelimitedString(", "));
+        resultList.Should().BeEquivalentTo(
+            new[] { 0, 1, 2, 10, 3, 4, 5, 20, 6, 30 },
+            options => options.WithStrictOrdering());
+        return;
 
         // ReSharper disable AccessToModifiedClosure
-        async IAsyncEnumerable<int> Left()
-        {
+        async IAsyncEnumerable<int> Left() {
             yield return 0;
 
             rightTcs1.SetResult();
@@ -157,7 +158,7 @@ public class AsyncEnumerableExtTest(ITestOutputHelper @out) : TestBase(@out)
         var sum = await source.Merge(otherSourceArray).SumAsync(i => i, cancellationToken: cts.Token);
         sum.Should().Be((otherSourceLength + 1) * (sequenceLength - 1) * sequenceLength / 2);
 
-        Out.WriteLine($"Count is {count}");
+        WriteLine($"Count is {count}");
     }
 
     private async IAsyncEnumerable<int> GenerateRandomShuffle(

@@ -21,7 +21,7 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
         };
 
         var diff = engine.Diff<Animal, AnimalDiff>(animal1, animal1);
-        Out.WriteLine($"Diff 1: {diff}");
+        WriteLine($"Diff 1: {diff}");
         diff.Name.Should().BeNull();
         diff.AltName.Should().Be(Option.None<string?>());
         diff.LegCount.Should().Be(null);
@@ -29,7 +29,7 @@ public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
         diff.Tags.RemovedItems.Length.Should().Be(0);
 
         diff = engine.Diff<Animal, AnimalDiff>(animal1, animal2);
-        Out.WriteLine($"Diff 2: {diff}");
+        WriteLine($"Diff 2: {diff}");
         var animal2a = engine.Patch(animal1, diff);
         animal2a.Should().NotBeSameAs(animal2);
         animal2a.Name.Should().Be(animal2.Name);

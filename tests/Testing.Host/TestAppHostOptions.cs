@@ -49,7 +49,7 @@ public record TestAppHostOptions
             ? nameof(MeshLockOptions.Debug)
             : nameof(MeshLockOptions.Test);
     public bool? UseNatsQueues { get; init; }
-    public bool MustInitializeDb { get; init; }
+    public bool MustInitializeDb { get; init; } // Runs DbInitializers and IModuleInitializers
     public bool MustStart { get; init; }
 
     public TestAppHostOptions With(string instanceName, ITestOutputHelper output)

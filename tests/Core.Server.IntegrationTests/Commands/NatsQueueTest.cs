@@ -11,7 +11,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
     [Fact]
     public async Task SmokeTest()
     {
-        using var host = await NewAppHost(options => options with {
+        await using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(SmokeTest)}",
             ConfigureServices = (ctx, services) => {
                 var rpcHost = services.AddRpcHost(ctx.HostInfo);
@@ -37,7 +37,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
     [Fact]
     public async Task MultipleCommandsCanBeScheduled()
     {
-        using var host = await NewAppHost(options => options with {
+        await using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(MultipleCommandsCanBeScheduled)}",
             ConfigureServices = (ctx, services) => {
                 var rpcHost = services.AddRpcHost(ctx.HostInfo);
@@ -70,14 +70,14 @@ public class NatsQueueTest(ITestOutputHelper @out)
 
         async Task DumpEventCount(string point) {
             countComputed = await countComputed.Update();
-            Out.WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count {point}: {testService.ProcessedEvents.Count} (computed: {countComputed.Value})");
+            WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count {point}: {testService.ProcessedEvents.Count} (computed: {countComputed.Value})");
         }
     }
 
     [Fact]
     public async Task CommandsWithCustomQueuesAreHandled()
     {
-        using var host = await NewAppHost(options => options with {
+        await using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(CommandsWithCustomQueuesAreHandled)}",
             ConfigureServices = (ctx, services) => {
                 var rpcHost = services.AddRpcHost(ctx.HostInfo);

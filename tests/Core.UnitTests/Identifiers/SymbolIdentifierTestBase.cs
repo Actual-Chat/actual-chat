@@ -22,11 +22,11 @@ public abstract class SymbolIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
     public void ParseTest()
     {
         var parsed = ValidIdentifiers.Select(s => TIdentifier.ParseOrNone(s)).ToArray();
-        Out.WriteLine(parsed.ToDelimitedString());
+        WriteLine(parsed.ToDelimitedString());
         parsed.All(id => id.IsNone).Should().BeFalse();
 
         parsed = InvalidIdentifiers.Select(s => TIdentifier.ParseOrNone(s)).ToArray();
-        Out.WriteLine(parsed.ToDelimitedString());
+        WriteLine(parsed.ToDelimitedString());
         parsed.All(id => id.IsNone).Should().BeTrue();
     }
 
@@ -36,10 +36,10 @@ public abstract class SymbolIdentifierTestBase<TIdentifier>(ITestOutputHelper @o
         var identifiers = ValidIdentifiers.Select(s => TIdentifier.Parse(s)).Concat(new[] { None }).ToArray();
         for (var i = 0; i < identifiers.Length; i++) {
             var id1 = identifiers[i];
-            Out.WriteLine($"{id1.GetType().GetName()} '{id1}'");
+            WriteLine($"{id1.GetType().GetName()} '{id1}'");
             for (var j = 0; j < identifiers.Length; j++) {
                 var id2 = identifiers[j];
-                Out.WriteLine($"== '{id2}' -> {Equals(id1, id2)}");
+                WriteLine($"== '{id2}' -> {Equals(id1, id2)}");
                 Equals(id1, id2).Should().Be(Equals(i, j));
             }
         }

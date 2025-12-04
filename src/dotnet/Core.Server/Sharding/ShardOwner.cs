@@ -78,7 +78,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         return invalidateUntil >= Clock.Now;
     }
 
-    public ShardOwnershipStatus GetShardOwnershipState<T>(T shardKey, bool addDependency = true)
+    public ShardOwnershipStatus GetShardOwnershipStatus<T>(T shardKey, bool addDependency = true)
         => GetShardState(shardKey).GetOwnershipStatus(addDependency);
 
     public Task<ShardOwnership> RequireOwnership<T>(T shardKey, CancellationToken cancellationToken)
@@ -90,11 +90,8 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var lockedShards = new BitArray(ShardScheme.ShardCount);
-        var addedShards = new List<int>();
-        var removedShards = new List<int>();
-        var waitList = new List<Task>();
         var shardStates = State.Value.ShardStates; // Initial value
+        var shardMap = new ShardMap(ShardScheme, []);
         var version = 1;
         try {
             var changes = Host.MeshWatcher.State.Computed.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
@@ -107,46 +104,54 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                     continue;
                 }
 
-                addedShards.Clear();
-                removedShards.Clear();
-                var shardMap = meshState.GetShardMap(ShardScheme);
-                var nodes = shardMap.Nodes;
-                var nodeIndexes = shardMap.NodeIndexes;
-                var nextShardStates = new ShardState[shardStates.Count];
-                foreach (var shardIndex in ShardScheme.ShardIndexes) {
-                    var nodeIndex = nodeIndexes[shardIndex];
-                    var node = nodeIndex.HasValue ? nodes[nodeIndex.GetValueOrDefault()] : null;
-                    var shardState = shardStates[shardIndex];
-                    var mustLock = node == ThisNode;
-                    if (shardState.MustLock == mustLock) {
-                        nextShardStates[shardIndex] = shardState;
-                        continue;
-                    }
-
-                    if (shardState.WhenLockAndUseRunning is { } whenLockAndUseRunning)
-                        waitList.Add(whenLockAndUseRunning);
-                    nextShardStates[shardIndex] = new ShardState(shardState, mustLock, version);
-                    (mustLock ? addedShards : removedShards).Add(shardIndex);
-                    lockedShards[shardIndex] = mustLock;
-                }
-                if (addedShards.Count > 0 || removedShards.Count > 0) {
-                    // ReSharper disable once HeapView.CanAvoidClosure
-                    State.Value = new OwnState(this, shardStates = nextShardStates, version);
-                    Log.LogInformation("Shards @ {ThisNodeId}, v{Version}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
-                        ThisNode.Ref, version,
-                        lockedShards.Format(),
-                        addedShards.ToDelimitedString(","),
-                        removedShards.ToDelimitedString(","));
-                    version++;
-                }
-
-                await Task.WhenAll(waitList).SilentAwait(false);
-                waitList.Clear();
+                shardMap = meshState.GetShardMap(ShardScheme);
+                await Update(shardMap, false).SilentAwait(false);
             }
         }
         finally {
-            State.SetError(new ObjectDisposedException(nameof(ShardState)));
-            await Task.WhenAll(shardStates.Select(x => x.MarkFinal())).SilentAwait(false);
+            await Update(shardMap, true).SilentAwait(false);
+        }
+        return;
+
+        // ReSharper disable once VariableHidesOuterVariable
+        Task Update(ShardMap shardMap, bool isFinal) {
+            if (isFinal)
+                version = -1;
+
+            var addedShards = new List<int>();
+            var removedShards = new List<int>();
+            var lockedShards = new BitArray(ShardScheme.ShardCount);
+            var waitList = new List<Task>();
+            var nodes = shardMap.Nodes;
+            var nodeIndexes = shardMap.NodeIndexes;
+            var nextShardStates = new ShardState[shardStates.Count];
+            foreach (var shardIndex in ShardScheme.ShardIndexes) {
+                var nodeIndex = nodeIndexes[shardIndex];
+                var node = nodeIndex.HasValue ? nodes[nodeIndex.GetValueOrDefault()] : null;
+                var shardState = shardStates[shardIndex];
+                var mustLock = !isFinal && node == ThisNode;
+                if (shardState.MustLock == mustLock) {
+                    nextShardStates[shardIndex] = shardState;
+                    continue;
+                }
+
+                waitList.Add(shardState.WhenLockAndUseRunning);
+                nextShardStates[shardIndex] = new ShardState(shardState, mustLock, version);
+                (mustLock ? addedShards : removedShards).Add(shardIndex);
+                lockedShards[shardIndex] = mustLock;
+            }
+            if (addedShards.Count > 0 || removedShards.Count > 0 || isFinal) {
+                // ReSharper disable once HeapView.CanAvoidClosure
+                State.Value = new OwnState(this, shardStates = nextShardStates, version);
+                Log.LogInformation("Shards @ {ThisNodeId}, v{Version}: {UsedShards} +[{AddedShards}] -[{RemovedShards}]",
+                    ThisNode.Ref,
+                    isFinal ? $"{version.Format()} (final)" : version.Format(),
+                    lockedShards.Format(),
+                    addedShards.ToDelimitedString(","),
+                    removedShards.ToDelimitedString(","));
+                version++;
+            }
+            return Task.WhenAll(waitList);
         }
     }
 
@@ -221,6 +226,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         public int Version { get; } = version;
         public Moment CreatedAt { get; } = shardOwner.Host.Clock.Now;
         public TimeSpan Age => ShardOwner.Host.Clock.Now - CreatedAt;
+        public bool IsFinal => Version < 0;
     }
 
     public sealed class ShardState
@@ -236,10 +242,10 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         public int ShardIndex { get; }
         public long ShardOwnerStateVersion { get; }
         public CancellationToken CancelLockToken { get; }
-        public bool MustLock => WhenLockAndUseRunning is not null;
+        public bool MustLock { get; }
         public IState<ShardOwnership?> OwnershipState => MutableOwnershipState;
         public IState<Moment> InvalidateUntilState => MutableInvalidateUntilState;
-        public Task? WhenLockAndUseRunning { get; }
+        public Task WhenLockAndUseRunning { get; }
         public Task<ShardState> WhenChanged => _nextState.Task;
 
         internal ShardState(ShardOwner shardOwner, int shardIndex, int shardOwnerStateVersion)
@@ -258,7 +264,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                 category: StateCategories.Get(GetType(), nameof(OwnershipState)));
             MutableInvalidateUntilState = stateFactory.NewMutable<Moment>(
                 category: StateCategories.Get(GetType(), nameof(InvalidateUntilState)));
-            WhenLockAndUseRunning = null;
+            WhenLockAndUseRunning = Task.CompletedTask;
         }
 
         internal ShardState(ShardState prevState, bool mustLock, int shardOwnerStateVersion)
@@ -270,6 +276,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             ShardOwnerStateVersion = shardOwnerStateVersion;
             MutableOwnershipState = prevState.MutableOwnershipState;
             MutableInvalidateUntilState = prevState.MutableInvalidateUntilState;
+            MustLock = mustLock;
             if (mustLock) {
                 _cancelLockTokenSource = ShardOwner.StopToken.CreateLinkedTokenSource();
                 CancelLockToken = _cancelLockTokenSource.Token;
@@ -278,18 +285,9 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             else {
                 _cancelLockTokenSource = prevState._cancelLockTokenSource;
                 CancelLockToken = prevState.CancelLockToken;
-                WhenLockAndUseRunning = null;
+                WhenLockAndUseRunning = prevState.WhenLockAndUseRunning;
             }
             prevState._nextState.SetResult(this);
-        }
-
-        public Task MarkFinal()
-        {
-            var error = new ObjectDisposedException(nameof(ShardState));
-            _nextState.SetException(error);
-            MutableOwnershipState.SetError(error);
-            _cancelLockTokenSource.CancelAndDisposeSilently();
-            return WhenLockAndUseRunning ?? Task.CompletedTask;
         }
 
         public ShardOwnershipStatus GetOwnershipStatus(bool addDependency = true)

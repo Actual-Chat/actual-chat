@@ -329,8 +329,8 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var length = 0;
         await foreach (var diff in diffs) {
             transcript += diff;
-            Out.WriteLine($"TextDiff: {diff.TextDiff}");
-            Out.WriteLine($"Transcript: {transcript}");
+            WriteLine($"TextDiff: {diff.TextDiff}");
+            WriteLine($"Transcript: {transcript}");
             length = transcript.Length;
         }
         return length;

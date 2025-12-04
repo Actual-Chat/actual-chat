@@ -447,14 +447,14 @@ code
     private TResult Parse<TResult>(string text, bool validateFormat = true)
         where TResult : Markup
     {
-        Out.WriteLine($"Input:");
-        Out.WriteLine($"  \"{text}\"");
-        ParserExt.DebugOutput = line => Out.WriteLine(line);
+        WriteLine($"Input:");
+        WriteLine($"  \"{text}\"");
+        ParserExt.DebugOutput = line => WriteLine(line);
         var parsed = MarkupParser.ParseRaw(text, true);
         var simplified = parsed.Simplify();
-        Out.WriteLine("Output:");
-        Out.WriteLine($"  {simplified}");
-        Out.WriteLine($"  Raw: {parsed}");
+        WriteLine("Output:");
+        WriteLine($"  {simplified}");
+        WriteLine($"  Raw: {parsed}");
         var result = simplified.Should().BeOfType<TResult>().Subject;
         if (validateFormat) {
             var expectedMarkupText = text.OrdinalReplace("\r\n", "\n");

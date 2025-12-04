@@ -49,7 +49,7 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTra
 
         var transcripts = await transcriber.Transcribe("test", audio, options).ToListAsync();
         foreach (var t in transcripts)
-            Out.WriteLine(t.ToString());
+            WriteLine(t.ToString());
     }
 
     private async Task<AudioSource> GetAudio(FilePath fileName, bool? webMStream = null, bool withDelay = false)

@@ -1,15 +1,10 @@
 using ActualChat.Chat.ML;
-using ActualChat.MLSearch.Indexing.ChatContent;
-using ActualChat.MLSearch.Module;
-using Cysharp.Text;
 
 namespace ActualChat.MLSearch.IntegrationTests.Indexing.ChatContent;
 
-public class EmbeddingsTest(ITestOutputHelper @out)
+public class EmbeddingsTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private readonly EmbeddingsCalculator _embeddingCalculator = new (new EmbeddingSettings());
-
-    protected ITestOutputHelper Out { get; } = @out.ToSafe();
 
     [Fact(Skip = "Run explicitly")]
     public async Task CompareVectors()
@@ -42,7 +37,7 @@ public class EmbeddingsTest(ITestOutputHelper @out)
         for (var i = 0; i < vectors2.Length - 1; i++) {
             for (int j = i + 1; j < vectors2.Length; j++) {
                 var similarity1 = _embeddingCalculator.CosineSimilarity(_embeddingCalculator.Normalize(vectors2[i]), _embeddingCalculator.Normalize(vectors2[j]));
-                Out.WriteLine($"Similarity('{docs[i]}' vs. '{docs[j]}'): " + similarity1);
+                WriteLine($"Similarity('{docs[i]}' vs. '{docs[j]}'): " + similarity1);
             }
         }
     }
@@ -73,21 +68,21 @@ public class EmbeddingsTest(ITestOutputHelper @out)
         int windowSize = 5;
         for (int i = 0; i < entries.Length + windowSize - 1; i++) {
             if (i > 0)
-                Out.WriteLine("");
+                WriteLine("");
             var range = Enumerable.Range(i - windowSize + 1, windowSize).ToArray();
             var fragmentEntries = range
                 .Where(c => c >= 0 && c < entries.Length)
                 .Select(c => entries[c])
                 .ToArray();
             var fragment = EntriesToText(fragmentEntries, addAuthor);
-            Out.WriteLine("Iteration " + i);
-            Out.WriteLine("Fragment:");
-            Out.WriteLine(fragment);
+            WriteLine("Iteration " + i);
+            WriteLine("Fragment:");
+            WriteLine(fragment);
             var vector = await _embeddingCalculator.CalculateVector(fragment, CancellationToken.None);
             vector = _embeddingCalculator.Normalize(vector);
             // if (prevVector.Length > 0) {
             //     var similarity1 = CosineSimilarity(prevVector, vector);
-            //     Out.WriteLine("Similarity with prev:" + similarity1);
+            //     WriteLine("Similarity with prev:" + similarity1);
             // }
             if (prevVectors.Count > 0) {
                 var similarities = new List<double>();
@@ -96,8 +91,8 @@ public class EmbeddingsTest(ITestOutputHelper @out)
                     var similarity = _embeddingCalculator.CosineSimilarity(prevVector, vector);
                     similarities.Add(similarity);
                 }
-                Out.WriteLine("Similarity with prevs:");
-                Out.WriteLine(string.Join(" ", similarities.Select((c, i) => new { Index = i, Value = c }).Reverse().Select(c => $"{c.Value} [{c.Index}]")));
+                WriteLine("Similarity with prevs:");
+                WriteLine(string.Join(" ", similarities.Select((c, i) => new { Index = i, Value = c }).Reverse().Select(c => $"{c.Value} [{c.Index}]")));
             }
             prevVectors.Add(vector);
         }

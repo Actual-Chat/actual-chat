@@ -103,8 +103,6 @@ public static class TestAppHostFactory
         await appHost.Services.Queues().Purge();
 
         if (options.MustInitializeDb)
-            // TODO: Improve initializers init code.
-            // Issue: Not granular or too specific.
             await appHost.RunInitializers();
 
         if (options.MustStart)

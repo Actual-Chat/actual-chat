@@ -1,9 +1,7 @@
 namespace ActualChat.Core.UnitTests;
 
-public class TaskExtTest(ITestOutputHelper @out)
+public class TaskExtTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public ITestOutputHelper Out { get; } = @out;
-
     [Fact]
     public async Task CollectWithConcurrencyKeepsTasksLimited()
     {
@@ -14,13 +12,10 @@ public class TaskExtTest(ITestOutputHelper @out)
             .Select(_ => IncrementWhileRunning())
             .Collect(limit);
         parallelismInTime.Should().Contain(10);
-
-        Out.WriteLine(parallelismInTime.ToDelimitedString(", "));
-
+        WriteLine(parallelismInTime.ToDelimitedString(", "));
         return;
 
-        async Task<int> IncrementWhileRunning()
-        {
+        async Task<int> IncrementWhileRunning() {
             try {
                 var result = Interlocked.Increment(ref activeTaskCount);
                 result.Should().BeLessThanOrEqualTo(limit + 1);

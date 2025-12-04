@@ -8,96 +8,46 @@ namespace ActualChat.Testing.Host;
 
 public class TestAppHost : AppHost
 {
-    private static long _hostIdSeed;
-    private readonly long _hostId;
-    private readonly Timer _timer;
+    private static long _lastId;
+
+    private readonly Timer _heartbeatTimer;
+
+    public TestAppHostOptions Options { get; }
+    public long Id { get; }
+    public CpuTimestamp StartedAt { get; } = CpuTimestamp.Now;
+    public TestOutputHelperAccessor OutputAccessor { get; }
+    public ITestOutputHelper? Output { get => OutputAccessor.Output; set => OutputAccessor.Output = value; }
 
     public TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor outputAccessor)
     {
         Options = options;
         OutputAccessor = outputAccessor;
-        _hostId = Interlocked.Increment(ref _hostIdSeed);
+        Id = Interlocked.Increment(ref _lastId);
 
-        var startedAt = CpuTimestamp.Now;
-        var testOutputHelper = outputAccessor.Output;
-        _timer = new Timer(1000);
-        _timer.Elapsed += (_, _) => LogElapsed();
-        _timer.Start();
-        LogElapsed();
-        return;
-
-        void LogElapsed()
-            => testOutputHelper?.WriteLine(
-                $"<> AppHost['{Options.InstanceName}', {_hostId}]: {startedAt.Elapsed.ToShortString()}");
+        WriteLine("created");
+        _heartbeatTimer = new Timer(1000);
+        _heartbeatTimer.Elapsed += (_, _) => WriteLine("alive");
+        _heartbeatTimer.Start();
     }
 
-    public TestAppHostOptions Options { get; }
-    public TestOutputHelperAccessor OutputAccessor { get; }
-
-    public ITestOutputHelper? Output {
-        get => OutputAccessor.Output;
-        set => OutputAccessor.Output = value;
-    }
-
-    protected override void Dispose(bool disposing)
+    protected override async Task DisposeAsync(bool disposing)
     {
-        var log = Services.LogFor(GetType());
-        log.LogInformation("-> TestAppHost.Dispose, id={Id}, instance={InstanceName}", _hostId, Options.InstanceName);
-        if (disposing) {
-            // NOTE(AY): These types were heavily rewritten, so let's try to disable this for now.
-            // DisposeDbOperationCompletionNotifiers();
-            _ = Services.Queues().Purge();
-        }
-        base.Dispose(disposing);
-        _timer.Stop();
-        _timer.Dispose();
-        log.LogInformation("<- TestAppHost.Dispose, id={Id}, instance={InstanceName}", _hostId, Options.InstanceName);
-    }
-
-    private void DisposeDbOperationCompletionNotifiers()
-    {
-        // During usual AppHost disposing it dispose inner Host which in turn disposed owned services collection.
-        // Microsoft.Extensions.DependencyInjection service provider disposes services sequentially even if them
-        // implements IAsyncDisposable.
-        // See https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.DependencyInjection/src/ServiceLookup/ServiceProviderEngineScope.cs#L156
-        // DbOperationCompletionNotifierBase disposing takes at least MaxCommitDuration specified in its Options.
-        // See https://github.com/servicetitan/ActualLab.Fusion/blob/master/src/ActualLab.Fusion.EntityFramework/Operations/DbOperationCompletionNotifierBase.cs#L54
-        // In our case we MaxCommitDuration is 1 seconds and we have 7 instances
-        // of RedisOperationLogChangeNotifier<TDbContext> for each DbContext respectively.
-        // Hence AppHost disposing takes at least 7 seconds.
-        // To work around this I dispose all instances of DbOperationCompletionNotifiers at once without awaiting
-        // their completion during TestAppHost disposing.
-        // Apparently it would be better if DbOperationCompletionNotifierBase can bind to host lifetime and
-        // stop notifications on host stopping. Then it would be easier to dispose app host faster by stopping it first.
-
-        IEnumerable<IOperationCompletionListener> completionListeners;
+        var output = OutputAccessor.Output;
+        WriteLine("disposing");
         try {
-            completionListeners = Services.GetRequiredService<IEnumerable<IOperationCompletionListener>>();
+            await base.DisposeAsync(disposing);
+            if (disposing)
+                _ = Services.Queues().Purge();
         }
-        catch (ObjectDisposedException) {
-            // Container has been disposed already. Do nothing.
-            return;
+        catch (Exception) {
+            // Intended
         }
-
-        foreach (var listener in completionListeners) {
-            if (!IsGenericTypeImplementation(listener, typeof(DbOperationCompletionListener<>)))
-                continue;
-            if (listener is IAsyncDisposable asyncDisposable)
-                _ = asyncDisposable.DisposeAsync();
-            else if (listener is IDisposable disposable)
-                disposable.Dispose();
-        }
-
-        bool IsGenericTypeImplementation(object? inst, Type genericTypeDef) {
-            if (inst == null)
-                return false;
-            var type = inst.GetType();
-            while (type != null) {
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == genericTypeDef)
-                    return true;
-                type = type.BaseType;
-            }
-            return false;
-        }
+        _heartbeatTimer.Stop();
+        _heartbeatTimer.Dispose();
+        WriteLine("disposed");
     }
+
+    public void WriteLine(string message)
+        => Output?.WriteLine(
+            $"<{StartedAt.Elapsed.ToShortString()}> AppHost[{Id}, '{Options.InstanceName}']: {message}");
 }

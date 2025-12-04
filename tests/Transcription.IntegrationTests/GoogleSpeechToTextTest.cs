@@ -80,11 +80,11 @@ public class GoogleSpeechToTextTest(ITestOutputHelper @out, ILogger<GoogleSpeech
         await foreach (var streamingRecognizeResponse in recognizeResponses) {
             if (!first) {
                 first = true;
-                Out.WriteLine($"First transcription received in: {startedAt}");
-                Out.WriteLine(streamingRecognizeResponse.ToString());
+                WriteLine($"First transcription received in: {startedAt}");
+                WriteLine(streamingRecognizeResponse.ToString());
             }
 
-            Out.WriteLine(streamingRecognizeResponse.ToString());
+            WriteLine(streamingRecognizeResponse.ToString());
         }
     }
 

@@ -139,16 +139,16 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
         while (true) {
-            Out.WriteLine("Locking...");
+            WriteLine("Locking...");
             try {
                 await using (var h = await locks.Lock(key, lockOptions)) {
-                    Out.WriteLine("Locked.");
+                    WriteLine("Locked.");
                     await TaskExt.NeverEnding(h.StopToken).SilentAwait();
                 }
-                Out.WriteLine("Unlocked.");
+                WriteLine("Unlocked.");
             }
             catch (Exception e) {
-                Out.WriteLine($"Locking failed: {e}");
+                WriteLine($"Locking failed: {e}");
             }
         }
     }

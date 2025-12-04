@@ -11,7 +11,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldStopFlowIfUserHasNoTimeZone()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
 
         var flows = h.Services.GetRequiredService<IFlows>();
         var userId = Constants.User.Admin.UserId.Value;
@@ -27,7 +27,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldRunDigestFlowOnTimeZoneUpdate()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
 
         var commander = h.Services.Commander();
         var flows = h.Services.GetRequiredService<IFlows>();
@@ -54,7 +54,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ShouldWaitTillDigestTime()
     {
-        using var h = await NewAppHost();
+        await using var h = await NewAppHost();
 
         var commander = h.Services.Commander();
         var flows = h.Services.GetRequiredService<IFlows>();
@@ -83,7 +83,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
     {
         var emailsBackend = new Mock<IEmailsBackend>(MockBehavior.Loose);
 
-        using var h = await NewAppHost(options => options with  {
+        await using var h = await NewAppHost(options => options with  {
             ConfigureServices = (_, services) => {
                 services.AddSingleton(emailsBackend.Object);
             },

@@ -8,15 +8,15 @@ public class SearchPhraseTest(ITestOutputHelper @out) : TestBase(@out)
     public void BasicTest()
     {
         var sp = "дм фил".ToSearchPhrase(true, false);
-        Out.WriteLine(sp.ToString());
+        WriteLine(sp.ToString());
         var m = sp.GetMatch("Дмитрий Филиппов");
-        Out.WriteLine(m.ToString());
+        WriteLine(m.ToString());
         m.Parts.Length.Should().Be(2);
 
         sp = "dodd".ToSearchPhrase(true, false);
-        Out.WriteLine(sp.ToString());
+        WriteLine(sp.ToString());
         m = sp.GetMatch("Admiral Dodd Rancit");
-        Out.WriteLine(m.ToString());
+        WriteLine(m.ToString());
         m.Parts.Length.Should().Be(2);
 
         SearchPhrase.None.IsEmpty.Should().BeTrue();
