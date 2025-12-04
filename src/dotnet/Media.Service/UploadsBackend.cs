@@ -1,78 +1,14 @@
-using System.Text;
+using ActualChat.Chat;
+using ActualChat.Media.Db;
+using ActualChat.Uploads;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
 
-public class UploadsStorage(IServiceProvider services)
-{
-    protected IServiceProvider Services { get; } = services;
-    [field:AllowNull, MaybeNull]
-    private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
-    private IBlobStorage BlobStorage => Blobs[BlobScope.UploadTempRecord];
-
-    public async Task<long> GetUploadOffset(UploadId uploadId, CancellationToken cancellationToken = default)
-    {
-        var stream = await BlobStorage.Read(GetDataFileId(uploadId), cancellationToken).ConfigureAwait(false);
-        if (stream is null)
-            return -1;
-
-        await using (stream.ConfigureAwait(false))
-            return stream.Length;
-    }
-
-    public async Task AppendDataAsync(UploadId uploadId, Stream stream, CancellationToken cancellationToken)
-        => await BlobStorage.Append(GetDataFileId(uploadId), stream, cancellationToken).ConfigureAwait(false);
-
-    public Task CreateEmptyDataFile(UploadId uploadId, string contentType, CancellationToken cancellationToken)
-        => CreateFile(GetDataFileId(uploadId), Stream.Null, contentType, cancellationToken);
-
-    public async Task CreateMetadataFile(UploadId uploadId, string json, CancellationToken cancellationToken)
-    {
-        var bytes = Encoding.UTF8.GetBytes(json);
-        var stream = MemoryStreamManager.Default.GetStream(nameof(Uploads), bytes.Length);
-        await using (stream.ConfigureAwait(false)) {
-            stream.Write(bytes);
-            stream.Position = 0;
-            await CreateFile(GetMetadataFileId(uploadId), stream, "application/json", cancellationToken)
-                .ConfigureAwait(false);
-        }
-    }
-
-    public async Task<string?> GetMetadataFile(UploadId uploadId, CancellationToken cancellationToken)
-    {
-        var stream = await BlobStorage.Read(GetMetadataFileId(uploadId), cancellationToken).ConfigureAwait(false);
-        if (stream == null)
-            return null;
-
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        return json;
-    }
-
-    public async Task DeleteFiles(UploadId uploadId, CancellationToken cancellationToken)
-    {
-        await BlobStorage.DeleteIfExists(GetDataFileId(uploadId), cancellationToken).ConfigureAwait(false);
-        await BlobStorage.DeleteIfExists(GetMetadataFileId(uploadId), cancellationToken).ConfigureAwait(false);
-    }
-
-    public async Task<Stream> GetDataFile(UploadId uploadId, CancellationToken cancellationToken)
-        => await BlobStorage.Read(GetDataFileId(uploadId), cancellationToken).Require().ConfigureAwait(false);
-
-    private Task CreateFile(string fileId, Stream stream, string contentType, CancellationToken cancellationToken)
-         => BlobStorage.Write(fileId, stream, contentType, cancellationToken);
-
-    private static string GetDataFileId(UploadId uploadId)
-        => GetPath(uploadId.Value);
-
-    private static string GetMetadataFileId(UploadId uploadId)
-        => GetPath(uploadId.Value + ".metadata");
-
-    private static string GetPath(string localFieldId)
-        => "upload-temp/" + localFieldId;
-}
-
-public class UploadsBackend(IServiceProvider services) : IUploadsBackend
+public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbContext>(services), IUploadsBackend
 {
     private UploadsStorage UploadsStorage { get; } = services.GetRequiredService<UploadsStorage>();
+    private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
 
     public virtual async Task<Upload?> Get(UploadId uploadId, CancellationToken cancellationToken)
     {
@@ -80,29 +16,90 @@ public class UploadsBackend(IServiceProvider services) : IUploadsBackend
         return json.IsNullOrEmpty() ? null : JsonSerializer.Deserialize<Upload>(json);
     }
 
-    public virtual async Task<UploadId> OnCreate(UploadsBackend_Create command, CancellationToken cancellationToken)
+    public virtual async Task<long> GetOffset(UploadId uploadId, CancellationToken cancellationToken)
     {
-        var uploadId = UploadId.New();
+        var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
+        return offset;
+    }
+
+    public virtual async Task OnCreate(UploadsBackend_Create command, CancellationToken cancellationToken)
+    {
+        var uploadId = command.UploadId;
+        if (Invalidation.IsActive) {
+            _ = Get(uploadId, default);
+            return;
+        }
         var upload = new Upload(uploadId, command.UserId, command.Length, command.Tag, command.Metadata);
         var contentType = upload.ContentType.NullIfEmpty() ?? "application/octet-stream";
         var json = JsonSerializer.Serialize(upload);
         await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);
         await UploadsStorage.CreateEmptyDataFile(uploadId,  contentType, cancellationToken).ConfigureAwait(false);
-
-        InvalidateUpload(uploadId);
-        return uploadId;
+        await EnsureDbOperationCreated(cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task OnRemove(UploadsBackend_Remove command, CancellationToken cancellationToken)
     {
         var uploadId = command.Id;
+        if (Invalidation.IsActive) {
+            _ = Get(uploadId, default);
+            return;
+        }
         await UploadsStorage.DeleteFiles(uploadId, cancellationToken).ConfigureAwait(false);
-        InvalidateUpload(uploadId);
+        await EnsureDbOperationCreated(cancellationToken).ConfigureAwait(false);
     }
 
-    private void InvalidateUpload(UploadId uploadId)
+    public virtual async Task<long> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken)
     {
-        using (Invalidation.Begin())
-            _ = Get(uploadId, default);
+        var (uploadId, data, offset) = command;
+        var currentOffset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
+        if (offset != currentOffset)
+            throw StandardError.Constraint("Offset mismatch.");
+
+        var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
+        if (offset + data.Length > upload.Length)
+            throw StandardError.Constraint("Upload length mismatch.");
+
+        var stream = MemoryStreamManager.Default.GetStream(nameof(Uploads), data.Length);
+        await using (stream.ConfigureAwait(false)) {
+            stream.Write(data);
+            stream.Position = 0;
+            await UploadsStorage.AppendDataAsync(uploadId, stream, cancellationToken).ConfigureAwait(false);
+        }
+        return currentOffset + data.Length;
+    }
+
+    public virtual async Task<MediaContent> OnConvertToMediaContent(UploadsBackend_ConvertToMediaContent command, CancellationToken cancellationToken)
+    {
+        var uploadId = command.UploadId;
+        var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
+        var chatId = GetChatIdFromUploadTag(upload.Tag);
+        var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
+        if (offset != upload.Length)
+            throw StandardError.Constraint("Upload length mismatch.");
+
+        var uploadedStreamFile = new UploadedStreamFile(
+            upload.FileName,
+            upload.ContentType,
+            upload.Length!.Value,
+            () => UploadsStorage.GetDataFile(uploadId, cancellationToken));
+        return await MediaProcessor.ProcessAttachment(chatId, uploadedStreamFile, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task EnsureDbOperationCreated(CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+    }
+
+    private ChatId GetChatIdFromUploadTag(string uploadTag)
+    {
+        var parts = uploadTag.Split('/');
+        if (parts.Length == 3
+            && OrdinalEquals(parts[0], nameof(TextEntryAttachment))
+            && OrdinalEquals(parts[1], "v1")
+            && ChatId.TryParse(parts[2], out var chatId))
+            return chatId;
+
+        throw StandardError.Constraint("Invalid upload tag.");
     }
 }
