@@ -3,12 +3,12 @@ namespace ActualChat.Users.Module;
 public sealed class UsersSettings
 {
     // Auth provider settings
-    public string GoogleClientId { get; set; } = "";
+    public string GoogleClientId { get; set; } = "CannotBeEmptyString";
     public string GoogleClientSecret { get; set; } = "";
     public string GoogleRecaptchaSiteKey { get; set; } = "";
-    public string MicrosoftAccountClientId { get; set; } = "";
+    public string MicrosoftAccountClientId { get; set; } = "CannotBeEmptyString";
     public string MicrosoftAccountClientSecret { get; set; } = "";
-    public string AppleClientId { get; set; } = "";
+    public string AppleClientId { get; set; } = "CannotBeEmptyString";
     public string AppleAppId { get; set; } = "";
     public string? AppleKeyId { get; set; } = "";
     public string AppleTeamId { get; set; } = "";
