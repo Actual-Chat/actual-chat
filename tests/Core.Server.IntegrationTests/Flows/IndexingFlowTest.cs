@@ -6,6 +6,7 @@ using ActualLab.Generators;
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Collection(nameof(ServerCollection))]
+[Trait("Category", "Slow")]
 public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

@@ -6,6 +6,7 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 // [Collection(nameof(ServerCollection))]
+[Trait("Category", "Slow")]
 public class LegacyTimerFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(LegacyTimerFlowTest)}", TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {

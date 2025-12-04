@@ -7,6 +7,7 @@ using ActualLab.Resilience;
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 // [Collection(nameof(ServerCollection))]
+[Trait("Category", "Slow")]
 public class TimerFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(TimerFlowTest)}", TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
