@@ -45,9 +45,9 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         var (cOwned, cNotOwned) = isOwner1 ? (c1, c2) : (c2, c1);
 
         // cOwned must become non-null, cNotOwned must become null
+        await Task.Delay(500);
         cOwned = await cOwned.When(x => x is not null).WaitAsync(timeout);
         cNotOwned = await cNotOwned.When(x => x is null).WaitAsync(timeout);
-        await Task.Delay(500);
         cOwned.IsConsistent().Should().BeTrue();
         cNotOwned.IsConsistent().Should().BeTrue();
 
@@ -64,9 +64,9 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         await hOwner.DisposeAsync();
 
         // cOwned must become null, cNotOwned must become non-null
+        await Task.Delay(500);
         cOwned = await cOwned.When(x => x is null).WaitAsync(timeout);
         cNotOwned = await cNotOwned.When(x => x is not null).WaitAsync(timeout);
-        await Task.Delay(500);
         cOwned.IsConsistent().Should().BeTrue();
         cNotOwned.IsConsistent().Should().BeTrue();
     }
