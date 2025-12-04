@@ -149,7 +149,8 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                     lockedShards.Format(),
                     addedShards.ToDelimitedString(","),
                     removedShards.ToDelimitedString(","));
-                version++;
+                if (!isFinal)
+                    version++;
             }
             return Task.WhenAll(waitList);
         }
@@ -295,23 +296,27 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             var cCurrent = addDependency ? Computed.Current : null;
             var cOwnershipState = OwnershipState.Computed;
             if (cOwnershipState.Value is not null) {
+                // ShardOwnershipStatus.LockedByThisNode
                 if (cCurrent is not null)
                     ComputedImpl.AddDependency(cCurrent, cOwnershipState);
                 return ShardOwnershipStatus.LockedByThisNode;
             }
 
             if (MustLock) {
+                // ShardOwnershipStatus.MappedToThisNode
                 if (cCurrent is not null)
                     ComputedImpl.AddDependency(cCurrent, cOwnershipState);
                 return ShardOwnershipStatus.MappedToThisNode;
             }
 
+            // ShardOwnershipStatus.MappedToOtherNode
             if (cCurrent is not null) {
-                var cState = ShardOwner.State.Computed;
-                if (cState.Value.Version != ShardOwnerStateVersion)
+                var cShardOwnerState = ShardOwner.State.Computed;
+                var shardOwnerState = cShardOwnerState.Value;
+                if (shardOwnerState.Version != ShardOwnerStateVersion)
                     cCurrent.Invalidate(immediately: true); // ShardOwner.State has changed
-                else
-                    ComputedImpl.AddDependency(cCurrent, cState);
+                else if (!shardOwnerState.IsFinal)
+                    ComputedImpl.AddDependency(cCurrent, cShardOwnerState);
             }
             return ShardOwnershipStatus.MappedToOtherNode;
         }
@@ -338,11 +343,12 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
             // ShardOwnershipStatus.MappedToOtherNode
             if (cCurrent is not null) {
-                var cState = ShardOwner.State.Computed;
-                if (cState.Value.Version != ShardOwnerStateVersion)
+                var cShardOwnerState = ShardOwner.State.Computed;
+                var shardOwnerState = cShardOwnerState.Value;
+                if (shardOwnerState.Version != ShardOwnerStateVersion)
                     cCurrent.Invalidate(immediately: true); // ShardOwner.State has changed
-                else
-                    ComputedImpl.AddDependency(cCurrent, cState);
+                else if (!shardOwnerState.IsFinal)
+                    ComputedImpl.AddDependency(cCurrent, cShardOwnerState);
             }
             throw RpcRerouteException.MustReroute("the shard isn't mapped to this node");
 

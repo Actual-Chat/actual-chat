@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ActualChat.Testing.Host;
 using ActualLab.Rpc;
 
@@ -44,12 +45,7 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         var c2 = await Computed.Capture(() => s2.TryGetTime(key));
         var (cOwned, cNotOwned) = isOwner1 ? (c1, c2) : (c2, c1);
 
-        // cOwned must become non-null, cNotOwned must become null
-        await Task.Delay(500);
-        cOwned = await cOwned.When(x => x is not null).WaitAsync(timeout);
-        cNotOwned = await cNotOwned.When(x => x is null).WaitAsync(timeout);
-        cOwned.IsConsistent().Should().BeTrue();
-        cNotOwned.IsConsistent().Should().BeTrue();
+        await Check(false);
 
         // RpcRerouteException is OperationCanceledException,
         // so Computed.Capture shouldn't capture a computed that "stores" it
@@ -63,12 +59,25 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         var hOwner = isOwner1 ? h1 : h2;
         await hOwner.DisposeAsync();
 
-        // cOwned must become null, cNotOwned must become non-null
-        await Task.Delay(500);
-        cOwned = await cOwned.When(x => x is null).WaitAsync(timeout);
-        cNotOwned = await cNotOwned.When(x => x is not null).WaitAsync(timeout);
-        cOwned.IsConsistent().Should().BeTrue();
-        cNotOwned.IsConsistent().Should().BeTrue();
+        await Check(true);
+        return;
+
+        async Task Check(bool mustInvert) {
+            for (var i = 0; i < 3; i++) {
+                cOwned = await cOwned.When(x => x.HasValue ^ mustInvert).WaitAsync(timeout);
+                cNotOwned = await cNotOwned.When(x => !x.HasValue ^ mustInvert).WaitAsync(timeout);
+                var maxWait = Task.Delay(500);
+                var completedTask = await Task.WhenAny(maxWait, cOwned.WhenInvalidated(), cNotOwned.WhenInvalidated());
+                if (completedTask == maxWait)
+                    break;
+            }
+            WriteLine($"cOwned:    {cOwned.Value}");
+            WriteLine($"cNotOwned: {cNotOwned.Value}");
+            cOwned.IsConsistent().Should().BeTrue();
+            if (!cNotOwned.IsConsistent())
+                Debugger.Break();
+            cNotOwned.IsConsistent().Should().BeTrue();
+        }
     }
 }
 
