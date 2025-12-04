@@ -71,11 +71,9 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
                 if (completedTask == maxWait)
                     break;
             }
-            WriteLine($"cOwned:    {cOwned.Value}");
-            WriteLine($"cNotOwned: {cNotOwned.Value}");
+            WriteLine($"cOwned:    {cOwned.ToString(InvalidationSourceFormat.Origin)}");
+            WriteLine($"cNotOwned: {cNotOwned.ToString(InvalidationSourceFormat.Origin)}");
             cOwned.IsConsistent().Should().BeTrue();
-            if (!cNotOwned.IsConsistent())
-                Debugger.Break();
             cNotOwned.IsConsistent().Should().BeTrue();
         }
     }
