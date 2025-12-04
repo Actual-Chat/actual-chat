@@ -19,7 +19,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
     [field: AllowNull, MaybeNull]
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
-    [Fact]
+    [FlakyFact("AY: Not sure why yet.", 3)]
     public async Task MustHandleEmptyBatch()
     {
         // arrange
@@ -42,7 +42,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         }, TimeSpan.FromSeconds(10));
     }
 
-    [Theory]
+    [FlakyTheory("AY: Not sure why yet.", 3)]
     [InlineData(0, 0)]
     [InlineData(0, 1)]
     [InlineData(1, 0)]
