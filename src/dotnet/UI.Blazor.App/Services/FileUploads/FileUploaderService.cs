@@ -196,16 +196,30 @@ public class FileUploaderService
             lock (_lock) {
                 int activeCount = 0;
                 var toStart = new List<IFileUploadOperation>();
-                foreach (var operation in _operations) {
+                foreach (var operation in _operations)
                     if (operation.HasStarted)
                         activeCount++;
-                    else if (activeCount < MaxActiveCount) {
-                        toStart.Add(operation);
-                        activeCount++;
+
+                var operationsToAwaitToBeReady = new List<Task>();
+                foreach (var operation in _operations) {
+                    if (activeCount >= MaxActiveCount)
+                        break;
+                    if (operation.HasStarted)
+                        continue;
+                    if (!operation.WhenReadyToStart.IsCompleted) {
+                        operationsToAwaitToBeReady.Add(operation.WhenReadyToStart);
+                        continue;
                     }
+                    toStart.Add(operation);
+                    activeCount++;
                 }
                 foreach (var operation in toStart)
                     operation.Start();
+
+                if (operationsToAwaitToBeReady.Count > 0) {
+                    _ = Task.WhenAny(operationsToAwaitToBeReady)
+                        .ContinueWith(_ => ReviewQueue(), TaskScheduler.Default);
+                }
             }
         }
     }

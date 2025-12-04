@@ -10,6 +10,7 @@ public partial interface IFileProvider
     Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId);
     void Initialize(IServiceProvider services);
     Task<bool> CheckAccess();
+    Task<bool> WhenUserConsentGranted();
     Task ClearForRemoving();
     Task<string> GetPreviewUrl();
 }

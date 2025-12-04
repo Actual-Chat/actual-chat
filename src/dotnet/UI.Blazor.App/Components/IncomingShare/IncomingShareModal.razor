@@ -174,7 +174,14 @@
                 width = dimensions.width;
                 height = dimensions.height;
             }
-            var attachment = new Attachment(fileMetadata.FileName, fileMetadata.FileType, fileMetadata.Length, previewUrl, width, height) {
+            var attachment = new Attachment(
+                fileMetadata.FileName,
+                fileMetadata.FileType,
+                fileMetadata.Length,
+                width,
+                height,
+                Task.FromResult(true),
+                Task.FromResult(previewUrl)) {
                 FileProvider = fileProvider,
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));

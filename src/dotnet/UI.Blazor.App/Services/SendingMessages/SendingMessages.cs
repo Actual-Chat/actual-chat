@@ -17,7 +17,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     private readonly MediaUploadsUI _mediaUploadsUI;
     private readonly Lock _chatSendingMessagesLock = new (); // This lock is used add/remove ChatSendingMessages and add/remove items inside.
     private readonly SendMessageRequestsRepo _requestsRepo;
-    private readonly Task _whenReady;
+    private readonly Task _whenStoredRequestsProcessed;
     private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly MessageProcessor<PostMessageQueueItem> _messageProcessor;
     // ReSharper disable once NotAccessedField.Local
@@ -29,7 +29,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     private IChats Chats => Hub.Chats;
     private Moment Now => Clocks.SystemClock.Now;
 
-    public Task WhenReady => _whenReady;
+    public Task WhenStoredRequestsProcessed => _whenStoredRequestsProcessed;
 
     public SendingMessages(AppUIHub hub) : base(hub)
     {
@@ -37,7 +37,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         _requestsRepo = new SendMessageRequestsRepo(hub);
         _triggers = Services.GetRequiredService<ChatSendingMessagesTriggers>();
         _mediaUploadsUI = new MediaUploadsUI(_triggers);
-        _whenReady = BackgroundTask.Run(StartStoredPostRequests);
+        _whenStoredRequestsProcessed = BackgroundTask.Run(StartStoredPostRequests);
         var cancellationToken = hub.BlazorAppLifecycle.StopToken;
         _cancellationTokenSource = cancellationToken.CreateLinkedTokenSource();
         _messageProcessor = new MessageProcessor<PostMessageQueueItem>(ProcessQueueItem, _cancellationTokenSource) {
@@ -58,7 +58,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         DebugLog?.LogInformation("Post '{Text}'", cmd.Text);
         var now = Clocks.SystemClock.Now;
         var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
-        await _whenReady.ConfigureAwait(false);
+        await _whenStoredRequestsProcessed.ConfigureAwait(false);
         var uuid = Ulid.NewUlid().ToString();
         var entry = await CreateStoredSendRequest(uuid, now, cmd).ConfigureAwait(false);
         DebugLog?.LogInformation("About to store post request '{Text}'", cmd.Text);
@@ -109,17 +109,32 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var attachEntry = attachEntries[i];
             var sourceAttachment = sourceAttachmentsCopy?[i];
             var previewUrl = sourceAttachment?.PreviewUrl ?? "";
+            Task<string> getPreviewUrl = Task.FromResult("");
             var uploadSessionId = attachEntry.UploadSessionId;
             // TODO: to think what to do with this. For now UploadApp is responsible for resuming stored sessions.
             var attachmentIsOk = false;
+            Task<bool>? whenFilePermissionGranted = null;
             try {
                 var session = await UploadSessions.TryGetSession(uploadSessionId).ConfigureAwait(false);
                 if (session is not null) {
                     var fileProvider = session.FileProvider;
                     var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
                     if (canAccess) {
-                        if (previewUrl.IsNullOrEmpty() && MediaTypeExt.IsVisualMedia(session.FileProvider.Metadata.FileType))
-                            previewUrl = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
+                        var whenUserConsentGrantedTask = fileProvider.WhenUserConsentGranted();
+                        if (!previewUrl.IsNullOrEmpty())
+                            getPreviewUrl = Task.FromResult(previewUrl);
+                        else if (MediaTypeExt.IsVisualMedia(session.FileProvider.Metadata.FileType)) {
+                            getPreviewUrl = GetPreviewUrl();
+                            async Task<string> GetPreviewUrl() {
+                                var consentGranted = await whenUserConsentGrantedTask.ConfigureAwait(false);
+                                if (!consentGranted)
+                                    return "";
+
+                                var preview2 = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
+                                return preview2;
+                            }
+                        }
+                        whenFilePermissionGranted = whenUserConsentGrantedTask;
                         attachmentIsOk = true;
                     }
                 }
@@ -133,7 +148,14 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
             }
 
-            var attachment = new Attachment(attachEntry.FileName, attachEntry.FileType, attachEntry.FileLength, previewUrl, attachEntry.Width, attachEntry.Height) {
+            var attachment = new Attachment(
+                attachEntry.FileName,
+                attachEntry.FileType,
+                attachEntry.FileLength,
+                attachEntry.Width,
+                attachEntry.Height,
+                whenFilePermissionGranted ?? Task.FromResult(false),
+                getPreviewUrl) {
                 UploadSessionId = uploadSessionId,
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
@@ -156,8 +178,42 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             if (!attachment.Failed)
                 await attachmentsController.ResumeUpload(attachmentList, attachment.Id).ConfigureAwait(false);
         }
+
+        foreach (var attachment in attachments) {
+            SubscribeFilePermissionsGranted(attachmentList, attachment);
+            SubscribePreviewResolved(attachment, attachmentList);
+        }
+
         return new AttachmentUploads(attachmentList);
     }
+
+    private void SubscribePreviewResolved(Attachment attachment, AttachmentList attachmentList)
+    {
+        if (attachment.GetPreviewUrl.IsCompleted)
+            return;
+
+        _ = attachment.GetPreviewUrl.ContinueWith(t => {
+            // Preview resolved.
+            _ = Dispatcher.InvokeAsync(() => {
+                attachmentList.UpdateAttachment(attachment.Id, a => a);
+            });
+        }, TaskScheduler.Default);
+    }
+
+    private void SubscribeFilePermissionsGranted(AttachmentList attachmentList, Attachment attachment)
+        => _ = attachment.WhenFilePermissionGranted.ContinueWith(t => {
+            if (t.Result)
+                return;
+
+            // File permission was denied.
+            _ = Dispatcher.InvokeAsync(() => {
+                attachmentList.UpdateAttachment(attachment.Id,
+                    a => a with {
+                        Failed = true,
+                        NoAccess = true,
+                    });
+            });
+        }, TaskScheduler.Default);
 
     private async Task CleanupAttachments(string postRequestUuid, IEnumerable<Attachment> attachments)
     {

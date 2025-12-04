@@ -26,19 +26,16 @@ public partial class MauiFileProvider : IFileProvider
         => Impl.PrepareForSaving();
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
-    public async Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId)
+    public Task<IFileUploadOperation> CreateUploadOperation(UploadId uploadId)
     {
-        var stream = await OpenRead().ConfigureAwait(false);
-        if (stream is null)
-            throw new InvalidOperationException("No file access.");
-        var fileUploadOperation = ChunkedFileUploader.CreateUploadOperation(uploadId, stream);
-        var task = fileUploadOperation.ProgressTracker.Task;
-        _ = task.ContinueWith(async _ => {
-            await task.SilentAwait(false);
-            // NOTE: dispose stream when upload completed or canceled.
-            await stream.DisposeSilentlyAsync().ConfigureAwait(false);
-        }, TaskScheduler.Default);
-        return fileUploadOperation;
+        var fileUploadOperation = ChunkedFileUploader.CreateUploadOperation(Task.CompletedTask, uploadId, GetFile());
+        return Task.FromResult<IFileUploadOperation>(fileUploadOperation);
+
+        async Task<Stream> GetFile()
+        {
+            var stream = await OpenRead().ConfigureAwait(false);
+            return stream ?? throw new InvalidOperationException("No file access.");
+        }
     }
 
     public async Task<bool> CheckAccess()
@@ -56,6 +53,9 @@ public partial class MauiFileProvider : IFileProvider
             return false;
         }
     }
+
+    public Task<bool> WhenUserConsentGranted()
+        => Task.FromResult(true);
 
     public Task ClearForRemoving()
         => Impl.ClearBeforeRemoving();

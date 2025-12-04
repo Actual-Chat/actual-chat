@@ -6,20 +6,25 @@ public sealed class FileUploadOperation : IFileUploadOperation, IDisposable
     private readonly CancellationTokenSource _cts;
     private long _state;
 
+    public Task WhenReadyToStart { get; }
     public UploadProgressTracker ProgressTracker { get; }
     public bool HasStarted => Interlocked.Read(ref _state) != 0;
     public CancellationToken CancellationToken { get; }
 
-    public FileUploadOperation(Func<CancellationToken, Task<MediaContent>> startFunc, UploadProgressTracker progressTracker)
+    public FileUploadOperation(Task whenFileStreamReady, Func<CancellationToken, Task<MediaContent>> startFunc, UploadProgressTracker progressTracker)
     {
         _startFunc = startFunc;
         ProgressTracker = progressTracker;
+        WhenReadyToStart = whenFileStreamReady;
         _cts = new ();
         CancellationToken = _cts.Token;
     }
 
     public void Start()
     {
+        if (!WhenReadyToStart.IsCompletedSuccessfully)
+            throw new InvalidOperationException("File stream is not ready yet.");
+
         if (Interlocked.CompareExchange(ref _state, 1, 0) != 0)
             throw new InvalidOperationException("Already started or cancelled.");
 
