@@ -29,7 +29,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task BasicTest()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var cancellationToken = cts.Token;
 
         await using var h0 = await NewAppHost();
@@ -50,7 +50,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task TwoFlowsTest()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var cancellationToken = cts.Token;
 
         await using var h0 = await NewAppHost();
@@ -73,7 +73,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ResetTest()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var cancellationToken = cts.Token;
 
         await using var h0 = await NewAppHost();

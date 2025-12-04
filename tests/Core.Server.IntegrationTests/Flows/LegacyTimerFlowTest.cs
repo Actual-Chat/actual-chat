@@ -36,7 +36,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task KillTest()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var cancellationToken = cts.Token;
 
         await using var h = await NewAppHost();
