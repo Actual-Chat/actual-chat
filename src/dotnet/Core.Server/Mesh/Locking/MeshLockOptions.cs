@@ -8,7 +8,10 @@ public sealed record MeshLockOptions(
 ) {
     public static readonly MeshLockOptions Release = new(11);
     public static readonly MeshLockOptions Debug = new(61);
-    public static readonly MeshLockOptions Test = new(11) { UnconditionalCheckPeriod = TimeSpan.FromSeconds(3) };
+    public static readonly MeshLockOptions Test =  new (21) { // GitHub build agents make huge pauses sometimes
+        RenewalPeriodRatio = 0.24f,
+        UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),
+    };
     public static readonly MeshLockOptions Default = Debugger.IsAttached ? Debug : Release;
 
     public static readonly IReadOnlyDictionary<string, MeshLockOptions> Presets

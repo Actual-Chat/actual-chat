@@ -10,6 +10,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
     public async Task BasicTest()
     {
         var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
+        WriteLine($"{locks.LockOptions}");
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(5),
         };
