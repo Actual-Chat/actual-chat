@@ -10,8 +10,8 @@ public sealed class UsersSettings
     public string MicrosoftAccountClientSecret { get; set; } = "";
     public string AppleClientId { get; set; } = "CannotBeEmptyString";
     public string AppleAppId { get; set; } = "";
-    public string? AppleKeyId { get; set; } = "";
-    public string AppleTeamId { get; set; } = "";
+    public string? AppleKeyId { get; set; } = "CannotBeEmptyString";
+    public string AppleTeamId { get; set; } = "CannotBeEmptyString";
     public string ApplePrivateKeyPath { get; set; } = "";
     public string SmtpFrom { get; set; } = "";
     public string SmtpHost { get; set; } = "";
