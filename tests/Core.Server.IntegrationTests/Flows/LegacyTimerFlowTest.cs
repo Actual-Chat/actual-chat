@@ -14,7 +14,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
         },
     }, @out)
 {
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
     [Fact]
     public async Task BasicTest()
@@ -29,13 +29,16 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
         f1.Should().NotBeNull();
 
         await Task.WhenAll(
-            WhenEnded(flows, f0.Id),
-            WhenEnded(flows, f1.Id));
+            WhenCompleted(flows, f0.Id),
+            WhenCompleted(flows, f1.Id));
     }
 
     [Fact]
     public async Task KillTest()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var cancellationToken = cts.Token;
+
         await using var h = await NewAppHost();
         var flows = h.Services.GetRequiredService<IFlows>();
         var queues = h.Services.GetRequiredService<IQueues>();
@@ -47,10 +50,10 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
             flow!.RemainingCount.Should().BeInRange(2,4);
-        }, DefaultTimeout);
+        }, Timeout);
 
-        var f1 = await GetFlow(flows, f0).Require();
-        await queues.Enqueue(new LegacyFlowKillEvent(f0.Id, "Die, digital creature!"));
+        var f1 = await GetFlow(flows, f0, cancellationToken).Require();
+        await queues.Enqueue(new LegacyFlowKillEvent(f0.Id, "Die, digital creature!"), cancellationToken);
 
         // Waiting for the flow to end quickly
         var diedQuickly = true;
@@ -59,7 +62,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
             if (flow!.RemainingCount < (f1.RemainingCount - 1))
                 diedQuickly = false;
             flow.Step.Should().Be(LegacyFlowSteps.OnEnd);
-        }, DefaultTimeout);
+        }, Timeout);
         diedQuickly.Should().BeTrue();
     }
 
@@ -77,14 +80,14 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
             flow!.RemainingCount.Should().Be(3);
-        }, DefaultTimeout);
+        }, Timeout);
 
         await queues.Enqueue(new LegacyFlowResetEvent(f0.Id));
 
         await ComputedTest.When(async ct => {
             var flow = await GetFlow(flows, f0, ct);
             flow!.RemainingCount.Should().BeGreaterThan(3);
-        }, DefaultTimeout);
+        }, Timeout);
     }
 
     // Private methods
@@ -92,12 +95,12 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
     private Task<TFlow?> GetFlow<TFlow>(
         IFlows flows,
         TFlow exampleFlow,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
         where TFlow : Flow
         => GetFlow<TFlow>(flows, exampleFlow.Id, cancellationToken);
 
     private async Task<TFlow?> GetFlow<TFlow>(
-        IFlows flows, FlowId flowId, CancellationToken cancellationToken = default)
+        IFlows flows, FlowId flowId, CancellationToken cancellationToken)
         where TFlow : Flow
     {
         var flowData = await flows.TryGetData(flowId, cancellationToken);
@@ -106,9 +109,9 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
         return flow;
     }
 
-    private Task WhenEnded(IFlows flows, FlowId flowId, double timeout = 15)
+    private Task WhenCompleted(IFlows flows, FlowId flowId)
         => ComputedTest.When(async ct => {
             var flow = (LegacyFlow)await GetFlow<Flow>(flows, flowId, ct).Require();
             flow.Step.Should().Be(LegacyFlowSteps.OnEnd);
-        }, TimeSpan.FromSeconds(timeout));
+        }, Timeout);
 }

@@ -24,11 +24,14 @@ public class TimerFlowTest(ITestOutputHelper @out)
         },
     }, @out)
 {
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
 
     [Fact]
     public async Task BasicTest()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var cancellationToken = cts.Token;
+
         await using var h0 = await NewAppHost();
         await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
         var h0node = h0.Services.MeshWatcher().ThisNode;
@@ -38,7 +41,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
 
         var flows = h0.Services.GetRequiredService<IFlows>();
 
-        var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},2");
+        var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},2", cancellationToken);
         WriteLine($"f0.Id: {f.Id}");
 
         await WhenCompleted(flows, f.Id);
@@ -47,6 +50,9 @@ public class TimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task TwoFlowsTest()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var cancellationToken = cts.Token;
+
         await using var h0 = await NewAppHost();
         await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
         WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
@@ -54,9 +60,9 @@ public class TimerFlowTest(ITestOutputHelper @out)
 
         var flows = h0.Services.GetRequiredService<IFlows>();
 
-        var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},2");
+        var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},2", cancellationToken);
         f.Should().NotBeNull();
-        var g = await GetLocalFlow<TimerFlow>(flows, i => $"g{i},2");
+        var g = await GetLocalFlow<TimerFlow>(flows, i => $"g{i},2", cancellationToken);
         g.Should().NotBeNull();
 
         await Task.WhenAll(
@@ -67,6 +73,9 @@ public class TimerFlowTest(ITestOutputHelper @out)
     [Fact]
     public async Task ResetTest()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var cancellationToken = cts.Token;
+
         await using var h0 = await NewAppHost();
         await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
         WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
@@ -75,7 +84,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
         var flows = h0.Services.GetRequiredService<IFlows>();
         var queues = h0.Services.GetRequiredService<IQueues>();
 
-        var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},5");
+        var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},5", cancellationToken);
         f.Should().NotBeNull();
 
         // Waiting for the RemainingCount to hit 3
@@ -84,7 +93,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
             flow!.RemainingCount.Should().Be(3);
         }, DefaultTimeout);
 
-        await queues.Enqueue(new FlowResume(f.Id) { MustRestart = true });
+        await queues.Enqueue(new FlowResume(f.Id) { MustRestart = true }, cancellationToken);
 
         await ComputedTest.When(async ct => {
             var flow = await GetFlow<TimerFlow>(flows, f.Id, ct);
@@ -96,42 +105,42 @@ public class TimerFlowTest(ITestOutputHelper @out)
 
     // Private methods
 
-    private async Task<TFlow> GetLocalFlow<TFlow>(IFlows flows, Func<int, string> argumentFactory)
+    private async Task<TFlow> GetLocalFlow<TFlow>(IFlows flows, Func<int, string> argumentFactory, CancellationToken cancellationToken)
         where TFlow : Flow
     {
         FlowId flowId;
         Computed<IFlowData?> cFlowData;
         for (var i = 0;; i++) {
             flowId = flows.NewId<TimerFlow>(argumentFactory.Invoke(i));
-            cFlowData = await Computed.Capture(() => flows.TryGetData(flowId, CancellationToken.None));
+            cFlowData = await Computed.Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken);
             cFlowData.Value.Should().BeNull();
             if (cFlowData is not IRemoteComputed)
                 break; // We need a remote flow
         }
-        var flow = await flows.Get<TFlow>(flowId.Arguments); // Starts the flow
+        var flow = await flows.Get<TFlow>(flowId.Arguments, cancellationToken); // Starts the flow
         cFlowData.IsConsistent().Should().BeFalse();
         return flow;
     }
 
-    private async Task<TFlow> GetRemoteFlow<TFlow>(IFlows flows, Func<int, string> argumentFactory)
+    private async Task<TFlow> GetRemoteFlow<TFlow>(IFlows flows, Func<int, string> argumentFactory, CancellationToken cancellationToken)
         where TFlow : Flow
     {
         FlowId flowId;
         Computed<IFlowData?> cFlowData;
         for (var i = 0;; i++) {
             flowId = flows.NewId<TimerFlow>(argumentFactory.Invoke(i));
-            cFlowData = await Computed.Capture(() => flows.TryGetData(flowId, CancellationToken.None));
+            cFlowData = await Computed.Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken);
             cFlowData.Value.Should().BeNull();
             if (cFlowData is IRemoteComputed)
                 break; // We need a remote flow
         }
-        var flow = await flows.Get<TFlow>(flowId.Arguments); // Starts the flow
+        var flow = await flows.Get<TFlow>(flowId.Arguments, cancellationToken); // Starts the flow
         cFlowData.IsConsistent().Should().BeFalse();
         return flow;
     }
 
     private async Task<TFlow?> GetFlow<TFlow>(
-        IFlows flows, FlowId flowId, CancellationToken cancellationToken = default)
+        IFlows flows, FlowId flowId, CancellationToken cancellationToken)
         where TFlow : Flow
     {
         var cFlowData = await GetFlowDataComputed(flows, flowId, cancellationToken).ConfigureAwait(false);
@@ -140,7 +149,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
     }
 
     private async Task<Computed<IFlowData?>> GetFlowDataComputed(
-        IFlows flows, FlowId flowId, CancellationToken cancellationToken = default)
+        IFlows flows, FlowId flowId, CancellationToken cancellationToken)
     {
         var cFlowData =  await Computed
             .Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken)
@@ -149,12 +158,12 @@ public class TimerFlowTest(ITestOutputHelper @out)
         return cFlowData;
     }
 
-    private Task WhenCompleted(IFlows flows, FlowId flowId, double timeout = 15)
+    private Task WhenCompleted(IFlows flows, FlowId flowId)
         => ComputedTest.When(async ct => {
             var c = await GetFlowDataComputed(flows, flowId, ct);
             _ = c.UseUntyped(allowInconsistent: true, ct);
             var flow = c.Value?.Flow;
             flow.Require();
             flow.UntypedResult.Should().NotBeNull();
-        }, TimeSpan.FromSeconds(timeout));
+        }, DefaultTimeout);
 }

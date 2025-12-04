@@ -5,6 +5,7 @@ using MartinCostello.Logging.XUnit;
 using Microsoft.EntityFrameworkCore; // For EF Core log filters
 using Microsoft.Extensions.Hosting;
 using Xunit.DependencyInjection;
+using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Testing;
 
@@ -47,40 +48,36 @@ public static class ServiceCollectionExt
                 logging.AddFilter("ActualChat.Redis", LogLevel.Information);
                 logging.AddFilter("ActualChat.Mesh", LogLevel.Information);
             }
+            logging.AddFilter("ActualChat.Sharding", LogLevel.Debug);
             // logging.AddFilter("ActualLab.Fusion.EntityFramework", LogLevel.Debug);
             // logging.AddFilter("ActualLab.Fusion.EntityFramework.Operations", LogLevel.Debug);
-            // logging.AddFilter(LogFilter);
-            ConfigureTestLogging(logging, outputAccessor);
+            logging.AddTestLoggingProviders(outputAccessor);
         });
         return services;
     }
 
     public static ILoggerFactory CreateTestLoggerFactory(this TestOutputHelperAccessor outputAccessor)
-    {
-        var services = new ServiceCollection();
-        services.AddLogging(logging => {
-            logging.ClearProviders();
-            logging.SetMinimumLevel(LogLevel.Debug);
-            logging.ConfigureTestLogging(outputAccessor);
-        });
-        return services.BuildServiceProvider().GetRequiredService<ILoggerFactory>();
-    }
+        => new ServiceCollection()
+            .AddTestLogging(outputAccessor)
+            .BuildServiceProvider()
+            .GetRequiredService<ILoggerFactory>();
 
-    private static void ConfigureTestLogging(this ILoggingBuilder logging, TestOutputHelperAccessor outputAccessor)
+    // Private methods
+
+    private static void AddTestLoggingProviders(this ILoggingBuilder logging, TestOutputHelperAccessor outputAccessor)
     {
         logging.AddDebug();
         if (!TestRunnerInfo.IsBuildAgent())
             logging.AddSeq();
+
         // XUnit logging requires weird setup b/c otherwise it filters out
         // everything below LogLevel.Information
-        logging.AddProvider(
-#pragma warning disable CS0618
-            new XUnitLoggerProvider(
-                new TestOutputHelperAdaptor(outputAccessor),
-                new XUnitLoggerOptions() {
-                    Filter = (_, _) => true,
-                    TimestampFormat = "HH:mm:ss.fff",
-                }));
-#pragma warning restore CS0618
+ #pragma warning disable CS0618 // Type or member is obsolete
+        logging.AddProvider(new XUnitLoggerProvider(
+            outputAccessor.Output,
+            new XUnitLoggerOptions() {
+                Filter = (_, _) => true,
+            }));
+ #pragma warning restore CS0618 // Type or member is obsolete
     }
 }

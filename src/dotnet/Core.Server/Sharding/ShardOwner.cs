@@ -7,13 +7,12 @@ namespace ActualChat.Sharding;
 
 public sealed class ShardOwner : WorkerBase, IHasServices
 {
-    private static bool DebugMode => Constants.DebugMode.ShardOwners;
     private static readonly TimeSpan PostReleaseInvalidationPeriod = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan Century = TimeSpan.FromDays(36_524);
 
     [field: AllowNull, MaybeNull]
     internal ILogger Log => field ??= Services.LoggerFactory().CreateLogger(GetType(), $"@{ShardScheme.Name}");
-    private ILogger? DebugLog => DebugMode ? Log.IfEnabled(LogLevel.Debug) : null;
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.ShardOwners);
 
     private IMeshLocks OwnershipLocks { get; }
     private MeshWatcher MeshWatcher => Host.MeshWatcher;
@@ -21,7 +20,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
     private StateFactory StateFactory => Host.StateFactory;
     private MomentClock Clock => Host.Clock;
     private RunnableDispatcher Dispatcher { get; } = new();
-    private MutableState<bool>[] MutableMustOwnStates { get; }
+    private MutableState<bool?>[] MutableMustOwnStates { get; }
     private MutableState<ShardState>[] MutableShardStates { get; }
     private MutableState<BitArray> MutableBitmapState { get; }
 
@@ -29,7 +28,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
     public IServiceProvider Services { get; }
     public ShardScheme ShardScheme { get; }
     public MeshLockOptions LockOptions { get; }
-    public IReadOnlyList<IState<bool>> MustOwnStates { get; }
+    public IReadOnlyList<IState<bool?>> MustOwnStates { get; }
     public IReadOnlyList<IState<ShardState>> ShardStates { get; }
     public IState<BitArray> BitmapState { get; }
 
@@ -48,7 +47,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         MustOwnStates = MutableMustOwnStates = Enumerable
             .Range(0, shardScheme.ShardCount)
             .Select(_ => StateFactory.NewMutable(
-                initialValue: false,
+                initialValue: (bool?)null,
                 category: StateCategories.Get(GetType(), nameof(MustOwnStates))))
             .ToArray();
         ShardStates = MutableShardStates = Enumerable
@@ -58,7 +57,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                 category: StateCategories.Get(GetType(), nameof(ShardStates))))
             .ToArray();
         BitmapState = MutableBitmapState = StateFactory.NewMutable(
-            initialValue: new BitArray(ShardScheme.ShardCount, false),
+            initialValue: new BitArray(ShardScheme.ShardCount, true),
             category: StateCategories.Get(GetType(), nameof(BitmapState)));
     }
 
@@ -119,13 +118,11 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
         async ValueTask<ShardOwnership> CompleteAsync() {
             cShardState = await cShardState
-                .When(x => x.Ownership is not null && x is { MustOwn: true, IsFinal: false },
-                    FixedDelayer.YieldUnsafe,
-                    cancellationToken)
+                .When(x => x.Ownership is not null || !x.MustOwn, FixedDelayer.YieldUnsafe, cancellationToken)
                 .ConfigureAwait(false);
             if (cCurrent is not null)
                 ComputedImpl.AddDependency(cCurrent, cShardState);
-            if (shardState.Ownership is { } ownership)
+            if (cShardState.Value.Ownership is { } ownership)
                 return ownership;
             throw RpcRerouteException.MustReroute("the shard isn't mapped to this node");
         }
@@ -135,14 +132,14 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var bitmap = new BitArray(ShardScheme.ShardCount);
+        var bitmap = new BitArray(BitmapState.Value);
         var addedOwnShards = new List<int>();
         var removedOwnShards = new List<int>();
         var updateShardStateTasks = ShardScheme.ShardIndexes
             .Select(i => SyncShardState(i, cancellationToken))
             .ToArray();
         try {
-            var changes = Host.MeshWatcher.State.Computed.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
+            var changes = Host.MeshWatcher.State.Computed.Changes(FixedDelayer.YieldUnsafe, cancellationToken);
             await foreach (var (meshState, error) in changes.ConfigureAwait(false)) {
                 if (error != null) {
                     if (error is ObjectDisposedException)
@@ -191,11 +188,11 @@ public sealed class ShardOwner : WorkerBase, IHasServices
 
     private async Task SyncShardState(int shardIndex, CancellationToken cancellationToken)
     {
+        var mutableState = MutableShardStates[shardIndex];
         try {
-            var mutableState = MutableShardStates[shardIndex];
-            var changes = MustOwnStates[shardIndex].Computed.Changes(FixedDelayer.NoneUnsafe, cancellationToken);
+            var changes = MustOwnStates[shardIndex].Computed.Changes(FixedDelayer.YieldUnsafe, cancellationToken);
             await foreach (var computed in changes.ConfigureAwait(false)) {
-                var isOwn = computed.ValueOrDefault;
+                var isOwn = computed.ValueOrDefault ?? false;
                 if (computed.Error is { } error) {
                     if (error is ObjectDisposedException)
                         return;
@@ -203,8 +200,11 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                     Log.LogError(error, "IsOwnShardStates[{ShardIndex}] returned an error, skipping", shardIndex);
                     continue;
                 }
-                if (!isOwn)
+                if (!isOwn) {
+                    if (mutableState.Value.Version == 0)
+                        mutableState.Value = new ShardState(mutableState.Value, false);
                     continue;
+                }
 
                 var linkedCts = cancellationToken.CreateLinkedTokenSource();
                 var linkedToken = linkedCts.Token;
@@ -216,7 +216,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                         mutableState.Value = new ShardState(shardState, true);
                     await LockShard(shardIndex, linkedToken).SilentAwait(false);
                 }
-                if (mutableState.Value.OwnershipStatus != ShardOwnershipStatus.MappedToOtherNode)
+                if (mutableState.Value.OwnershipStatus is not ShardOwnershipStatus.MappedToOtherNode)
                     mutableState.Value = new ShardState(mutableState.Value, false);
             }
         }
@@ -224,8 +224,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             Log.LogError(e, "SyncShardState({ShardIndex}) failed", shardIndex);
         }
         finally {
-            var shardState = MutableShardStates[shardIndex];
-            shardState.Value = new ShardState(shardState.Value); // Final shard state
+            mutableState.Value = new ShardState(mutableState.Value); // Final shard state
         }
     }
 
@@ -265,14 +264,15 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         public ShardOwnership? Ownership { get; }
         public ShardOwnershipStatus OwnershipStatus { get; }
         public AsyncState<ShardState> AsyncState { get; }
+        public int Version { get; }
 
         internal ShardState(ShardOwner shardOwner, int shardIndex)
         {
             ShardOwner = shardOwner;
             ShardIndex = shardIndex;
-            MustOwn = false;
+            MustOwn = true;
             Ownership = null;
-            OwnershipStatus = ShardOwnershipStatus.MappedToOtherNode;
+            OwnershipStatus = ShardOwnershipStatus.MappedToThisNode;
             AsyncState = new AsyncState<ShardState>(this);
         }
 
@@ -290,6 +290,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                 OwnershipStatus = ShardOwnershipStatus.OwnedByThisNode;
                 Ownership = new ShardOwnership(this, lockHolder);
             }
+            Version = prevState.Version + 1;
             AsyncState = prevState.AsyncState.TrySetNext(this);
         }
 
@@ -302,6 +303,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             OwnershipStatus = MustOwn
                 ? ShardOwnershipStatus.MappedToThisNode
                 : ShardOwnershipStatus.MappedToOtherNode;
+            Version = prevState.Version + 1;
             AsyncState = prevState.AsyncState.TrySetNext(this);
         }
 
@@ -319,10 +321,10 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             }
 
             async ValueTask<ShardOwnership> CompleteAsync() {
-                var state = await AsyncState
-                    .When(x => x is { MustOwn: true, IsFinal: false } && x.Ownership is not null, cancellationToken)
+                var asyncState = await AsyncState
+                    .When(x => x.Ownership is not null || !x.MustOwn, cancellationToken)
                     .ConfigureAwait(false);
-                if (state.Value?.Ownership is { } ownership)
+                if (asyncState.Value.Ownership is { } ownership)
                     return ownership;
                 throw RpcRerouteException.MustReroute("the shard isn't mapped to this node");
             }

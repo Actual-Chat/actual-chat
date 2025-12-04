@@ -1,3 +1,4 @@
+using ActualLab.Diagnostics;
 using ActualLab.Rpc;
 
 namespace ActualChat.Flows.Infrastructure;
@@ -5,6 +6,7 @@ namespace ActualChat.Flows.Infrastructure;
 public sealed class FlowHost : LegacyShardWorker, IHasServices
 {
     private readonly FlowHostShard?[] _shards;
+    private new ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     public new IServiceProvider Services => base.Services;
     public FlowRegistry Registry { get; }
@@ -69,9 +71,9 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
             _shards[shardIndex] = shard;
 
         // Await for the stop signal
-        Log.LogInformation("+ FlowHost.OnRun({ShardIndex})", shardIndex);
+        DebugLog?.LogDebug("+ FlowHost.OnRun({ShardIndex})", shardIndex);
         await TaskExt.NeverEnding(cancellationToken).SilentAwait(false);
-        Log.LogInformation("- FlowHost.OnRun({ShardIndex})", shardIndex);
+        DebugLog?.LogDebug("- FlowHost.OnRun({ShardIndex})", shardIndex);
 
         // Hide shard
         lock (_shards)
@@ -88,7 +90,7 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
 
             await Task.WhenAll(disposeTasks).ConfigureAwait(false);
         }
-        Log.LogInformation("-- FlowHost.OnRun({ShardIndex})", shardIndex);
+        DebugLog?.LogDebug("-- FlowHost.OnRun({ShardIndex})", shardIndex);
     }
 
     // Private methods
