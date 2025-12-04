@@ -1,10 +1,10 @@
 using ActualChat.Hosting;
 using ActualChat.Performance;
 using ActualChat.Testing.Internal;
-using ActualLab.Testing.Output;
 using MartinCostello.Logging.XUnit;
 using Microsoft.EntityFrameworkCore; // For EF Core log filters
 using Microsoft.Extensions.Hosting;
+using Xunit.DependencyInjection;
 
 namespace ActualChat.Testing;
 
@@ -26,7 +26,7 @@ public static class ServiceCollectionExt
     }
 
     public static IServiceCollection AddTestLogging(this IServiceCollection services, ITestOutputHelper output)
-        => AddTestLogging(services, new TestOutputHelperAccessor(output.ToSafe()));
+        => AddTestLogging(services, new TestOutputHelperAccessor() { Output = output.ToSafe() });
     public static IServiceCollection AddTestLogging(this IServiceCollection services, TestOutputHelperAccessor outputAccessor)
     {
         services.AddTracers(c => c.LoggerFactory().NewTracer(), useScopedTracers: true);
@@ -76,7 +76,7 @@ public static class ServiceCollectionExt
         logging.AddProvider(
 #pragma warning disable CS0618
             new XUnitLoggerProvider(
-                new TestOutputHelperAccessorWrapper(outputAccessor),
+                new TestOutputHelperAdaptor(outputAccessor),
                 new XUnitLoggerOptions() {
                     Filter = (_, _) => true,
                     TimestampFormat = "HH:mm:ss.fff",

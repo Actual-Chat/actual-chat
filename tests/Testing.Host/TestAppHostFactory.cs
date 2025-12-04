@@ -4,13 +4,14 @@ using ActualChat.MLSearch.Engine;
 using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualLab.IO;
-using ActualLab.Testing.Output;
+using ActualLab.Testing.Web;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Xunit.DependencyInjection;
 
 namespace ActualChat.Testing.Host;
 
@@ -20,13 +21,13 @@ public static class TestAppHostFactory
     {
         var instanceName = options.InstanceName.RequireNonEmpty();
         var testOutputHelper = options.Output.ToSafe();
-        var outputAccessor = new TestOutputHelperAccessor(testOutputHelper);
+        var outputAccessor = new TestOutputHelperAccessor() { Output = testOutputHelper };
         var log = outputAccessor.CreateTestLoggerFactory().CreateLogger(nameof(TestAppHostFactory));
         log.LogInformation("-> NewAppHost, instance '{InstanceName}'", instanceName);
         var manifestPath = GetManifestPath();
 
         var appHost = new TestAppHost(options, outputAccessor) {
-            ServerUrls = options.ServerUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
+            ServerUrls = options.ServerUrls ?? WebTestHelpers.GetUnusedLocalUri().ToString(),
             HostOptions = new() {
                 EnvironmentName = Environments.Development,
             },

@@ -6,8 +6,6 @@ using ActualChat.Streaming;
 using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.Extensions.Configuration;
 using ActualLab.IO;
-using ActualLab.Testing.Output;
-using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
@@ -115,18 +113,6 @@ public class GoogleTranscriberTest(
         => new ServiceCollection()
             .AddSingleton(CoreServerSettings)
             .AddSingleton(MomentClockSet.Default)
-            .AddLogging(logging => {
-                logging.ClearProviders();
-                logging.SetMinimumLevel(LogLevel.Debug);
-                logging.AddDebug();
-                // XUnit logging requires weird setup b/c otherwise it filters out
-                // everything below LogLevel.Information
-                logging.AddProvider(
-#pragma warning disable CS0618
-                    new XunitTestOutputLoggerProvider(
-                        new TestOutputHelperAccessor(Out),
-                        (_, _) => true));
-#pragma warning restore CS0618
-            })
+            .AddTestLogging(Out)
             .BuildServiceProvider();
 }

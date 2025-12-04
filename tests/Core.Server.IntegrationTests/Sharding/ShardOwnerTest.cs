@@ -104,7 +104,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
 
             async Task ShardRun(ShardOwnership shardOwnership, CancellationToken ct) {
                 var shardIndex = shardOwnership.ShardIndex;
-                @out.WriteLine($"-> {nameof(ShardRun)}({shardIndex} @ {this})");
+                Out.WriteLine($"-> {nameof(ShardRun)}({shardIndex} @ {this})");
                 lock (ShardOwners) {
                     var shardOwners = ShardOwners[shardIndex];
                     if (shardOwners.Any(x => x.ShardOwner != ShardOwner))
@@ -123,7 +123,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
                             UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
                                 $"Shard {shardIndex} must be used {this}!"));
                     }
-                    @out.WriteLine($"<- {nameof(ShardRun)}({shardIndex} @ {this})");
+                    Out.WriteLine($"<- {nameof(ShardRun)}({shardIndex} @ {this})");
                 }
             }
         }
