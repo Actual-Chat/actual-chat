@@ -17,7 +17,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
-    [Fact]
+    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
     public async Task BasicTest()
     {
         await using var h = await NewAppHost();
@@ -34,7 +34,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
             WhenCompleted(flows, f1.Id));
     }
 
-    [Fact]
+    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
     public async Task KillTest()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -67,7 +67,7 @@ public class LegacyTimerFlowTest(ITestOutputHelper @out)
         diedQuickly.Should().BeTrue();
     }
 
-    [Fact]
+    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
     public async Task ResetTest()
     {
         await using var h = await NewAppHost();

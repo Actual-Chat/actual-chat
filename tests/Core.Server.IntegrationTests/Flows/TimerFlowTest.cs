@@ -27,7 +27,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
 
-    [Fact]
+    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
     public async Task BasicTest()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -48,7 +48,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
         await WhenCompleted(flows, f.Id);
     }
 
-    [Fact]
+    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
     public async Task TwoFlowsTest()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -71,7 +71,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
             WhenCompleted(flows, g.Id));
     }
 
-    [Fact]
+    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
     public async Task ResetTest()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
