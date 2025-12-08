@@ -32,7 +32,7 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
                 if (bytesRead == 0)
                     break;
 
-                var appendCmd = new Uploads_Append(Session, uploadId, chunkBuffer, offset);
+                var appendCmd = new Uploads_Append(Session, uploadId, offset, chunkBuffer);
                 await UICommander.Run(appendCmd, ct).ConfigureAwait(false);
 
                 offset += bytesRead;

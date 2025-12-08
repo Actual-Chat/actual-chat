@@ -1,4 +1,5 @@
 using ActualChat.Controllers;
+using ActualChat.Hashing;
 using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Users;
@@ -61,7 +62,7 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
         await using (ms.ConfigureAwait(false)) {
             await Request.Body.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
             byte[] chunk = ms.ToArray();
-            var command = new Uploads_Append(session, uploadId, chunk, uploadOffset);
+            var command = new Uploads_Append(session, uploadId, uploadOffset, chunk);
             var newOffset = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             Response.Headers[Headers.UploadOffset] = newOffset.ToInvariantString();
             return NoContent();

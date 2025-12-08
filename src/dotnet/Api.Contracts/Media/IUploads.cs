@@ -1,3 +1,4 @@
+using ActualChat.Hashing;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -31,8 +32,8 @@ public sealed partial record Uploads_Create(
 public sealed partial record Uploads_Append(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] UploadId UploadId,
-    [property: DataMember, MemoryPackOrder(2)] byte[] Chunk,
-    [property: DataMember, MemoryPackOrder(3)] long Offset
+    [property: DataMember, MemoryPackOrder(2)] long Offset,
+    [property: DataMember, MemoryPackOrder(3)] byte[] Chunk
 ) : ISessionCommand<long>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
