@@ -50,7 +50,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
     public virtual async Task<long> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken)
     {
-        var (uploadId, data, offset) = command;
+        var (uploadId, offset, data) = command;
         var currentOffset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
         if (offset != currentOffset)
             throw StandardError.Constraint("Offset mismatch.");

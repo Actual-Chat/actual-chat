@@ -48,11 +48,11 @@ public class Uploads(IServiceProvider services) : IUploads
     // [CommandHandler]
     public virtual async Task<long> OnAppend(Uploads_Append command, CancellationToken cancellationToken)
     {
-        var (session, uploadId, data, offset) = command;
+        var (session, uploadId, offset, data) = command;
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
         EnsureCanAccessUpload(upload, user);
-        return await Commander.Call(new UploadsBackend_Append(uploadId, data, offset), cancellationToken).ConfigureAwait(false);
+        return await Commander.Call(new UploadsBackend_Append(uploadId, offset, data), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

@@ -48,8 +48,8 @@ public sealed partial record UploadsBackend_Remove(
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_Append(
     [property: DataMember, MemoryPackOrder(0)] UploadId UploadId,
-    [property: DataMember, MemoryPackOrder(1)] byte[] Chunk,
-    [property: DataMember, MemoryPackOrder(2)] long Offset
+    [property: DataMember, MemoryPackOrder(1)] long Offset,
+    [property: DataMember, MemoryPackOrder(2)] byte[] Chunk
 ) : ICommand<long>, IBackendCommand, IHasShardKey<UploadId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
