@@ -672,6 +672,7 @@ public class Chats(IServiceProvider services) : IChats
                         ThumbnailMediaId = x.ThumbnailMediaId,
                     }).ToArray(),
                 };
+                // NOTE: may stick due to infinite connect timeout for the command
                 await Commander.Run(cmd, CancellationToken.None).ConfigureAwait(false);
             }
         }

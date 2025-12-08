@@ -1,3 +1,4 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Media;
@@ -6,13 +7,13 @@ public interface IUploads : IComputeService
 {
     // Non computed method
     Task<long> GetOffset(Session session, UploadId uploadId, CancellationToken cancellationToken);
-    [CommandHandler]
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<UploadId> OnCreate(Uploads_Create command, CancellationToken cancellationToken);
-    [CommandHandler]
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task OnRemove(Uploads_Remove command, CancellationToken cancellationToken);
-    [CommandHandler]
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<long> OnAppend(Uploads_Append command, CancellationToken cancellationToken);
-    [CommandHandler]
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<MediaContent> OnConvertToMediaContent(Uploads_ConvertToMediaContent command, CancellationToken cancellationToken);
 }
 
