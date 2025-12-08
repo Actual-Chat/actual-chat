@@ -1,6 +1,6 @@
 .banner {
     @apply flex-x gap-x-2 items-center justify-center;
-    @apply w-full lg:max-w-192 h-14;
+    @apply w-full max-w-192 h-14;
     @apply px-2;
     @apply rounded-lg border-banner-default border-2;
     @apply bg-banner-default;

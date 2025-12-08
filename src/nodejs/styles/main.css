@@ -159,6 +159,9 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply w-full;
     @apply mt-1;
 }
+.layout-subheader > :last-child:not(.date-visor-wrapper) {
+    @apply mb-0.5;
+}
 
 .layout-body {
     @apply flex-1 flex-y flex-nowrap;
