@@ -4,7 +4,7 @@
 }
 .image-line {
     @apply flex-x gap-x-px;
-    @apply h-full w-full min-w-full;
+    @apply h-full w-full min-w-full max-w-full;
     @apply overflow-hidden;
 }
 .wide .image-line {

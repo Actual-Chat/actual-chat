@@ -52,7 +52,7 @@ body.hoverable .system-entry.message-wrapper:hover,
 
 .chat-message > .c-content {
     @apply flex-1 flex-y;
-    @apply mr-4 md:mr-8 ml-12;
+    @apply mr-4 md:mr-8 ml-12 lg:mr-2;
     @apply overflow-hidden;
 }
 
@@ -377,7 +377,7 @@ body.hoverable .chat-message-quote:hover,
     @apply relative;
     @apply flex-y gap-y-1;
     @apply w-full;
-    @apply pr-2;
+    @apply pr-4;
     @apply overflow-hidden;
 }
 .conversation-message .message-attachments {

@@ -27,6 +27,19 @@
         } else {
             <i class="icon-file text-xl"></i>
         }
+        @if (!attachment.Uploaded) {
+            @if (attachment.IsUploading) {
+                <span class="spinner-icon-wrapper">
+                    <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
+                </span>
+            } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
+                <span class="reload-icon-wrapper">
+                    <ButtonRound Click="@RestartClick" Class="btn-sm">
+                        <i class="icon-sync text-2xl"></i>
+                    </ButtonRound>
+                </span>
+            }
+        }
     </div>
     @if (!IconOnly) {
         <div class="c-file-info">
