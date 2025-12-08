@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.UnitTests.Channels;

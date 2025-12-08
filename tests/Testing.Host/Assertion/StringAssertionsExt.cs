@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using AwesomeAssertions.Primitives;
 
 namespace ActualChat.Testing.Host.Assertion;
