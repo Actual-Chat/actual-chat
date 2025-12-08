@@ -56,8 +56,9 @@
             _class += " cursor-pointer";
 
         if (Avatar?.Picture != null) {
-            // _pictureUrl = UrlMapper.PicturePreview128Url(Avatar.Picture);
-            _pictureUrl = UrlMapper.AvatarFullSizePreviewUrl(Avatar.Picture);
+            _pictureUrl = ShowFullSizeAvatar
+                ? UrlMapper.AvatarFullSizePreviewUrl(Avatar.Picture)
+                : UrlMapper.PicturePreview128Url(Avatar.Picture);
             _avatarKey = _pictureUrl.IsNullOrEmpty() ? Avatar.Picture.AvatarKey ?? "" : "";
         } else {
             _avatarKey = DefaultUserPicture.GetAvatarKey(Avatar?.Id.Value ?? "");
