@@ -31,12 +31,9 @@
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private AccountUI AccountUI => Hub.AccountUI;
-    [field: AllowNull, MaybeNull]
     private BubbleUI BubbleUI => field ??= Hub.BubbleUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    [field: AllowNull, MaybeNull]
     private IJSRuntime JS => field ??= Hub.JS;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]

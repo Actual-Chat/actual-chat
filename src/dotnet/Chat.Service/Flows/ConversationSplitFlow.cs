@@ -17,19 +17,14 @@ public partial class ConversationSplitFlow : LegacyFlow, IHasLastRunAt
 
     private const int BatchSize = 100;
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
-    [field: AllowNull, MaybeNull]
     private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
 
-    [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Host.Services.GetRequiredService<ChatSettings>();
 
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
 
-    [field: AllowNull, MaybeNull]
     private IConversationsBackend ConversationsBackend => field ??= Host.Services.GetRequiredService<IConversationsBackend>();
 
-    [field: AllowNull, MaybeNull]
     private IEntryGroupExtractor EntryGroupExtractor => field ??= Host.Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
 
     // Flow state

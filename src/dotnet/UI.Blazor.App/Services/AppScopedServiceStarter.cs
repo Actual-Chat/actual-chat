@@ -14,7 +14,6 @@ public sealed class AppScopedServiceStarter
     private History History => Hub.History;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public AppScopedServiceStarter(AppUIHub hub)

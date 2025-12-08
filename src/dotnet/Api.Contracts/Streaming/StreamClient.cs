@@ -11,11 +11,8 @@ public class StreamClient(IServiceProvider services) : IStreamClient
 
     private IServiceProvider Services { get; } = services;
 
-    [field: AllowNull, MaybeNull]
     private IStreamServer StreamServer => field ??= Services.GetRequiredService<IStreamServer>();
-    [field: AllowNull, MaybeNull]
     private ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<AudioSource> GetAudio(

@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using ActualChat.Kvas;
 using ActualChat.Testing.Host;
@@ -13,13 +12,9 @@ namespace ActualChat.UI.Blazor.IntegrationTests;
 public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [field: AllowNull, MaybeNull]
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
-    [field: AllowNull, MaybeNull]
     private LogUI LogUI => field ??= Tester.ScopedAppServices.GetRequiredService<LogUI>();
-    [field: AllowNull, MaybeNull]
     private LocalSettings LocalSettings => field ??= Tester.Services.LocalSettings();
-    [field: AllowNull, MaybeNull]
     private ILogger ScopedLog => field ??= Tester.ScopedAppServices.LogFor(GetType());
 
     protected override Task InitializeAsync()

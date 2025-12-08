@@ -13,15 +13,10 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
 
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbChatEntryLanguage> EntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatEntryLanguage>>();
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    [field: AllowNull, MaybeNull]
     private LanguageDetector LanguageDetector => field ??= Services.GetRequiredService<LanguageDetector>();
-    [field: AllowNull, MaybeNull]
     private IQueues Queues => field ??= Services.Queues();
-    [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
     // [ComputeMethod]

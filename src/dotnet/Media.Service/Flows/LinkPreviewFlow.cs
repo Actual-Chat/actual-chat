@@ -9,11 +9,8 @@ namespace ActualChat.Media.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class LinkPreviewFlow : LegacyFlow
 {
-    [field: AllowNull, MaybeNull]
     private MediaSettings Settings => field ??= Host.Services.GetRequiredService<MediaSettings>();
-    [field: AllowNull, MaybeNull]
     private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Host.Services.GetRequiredService<ILinkPreviewsBackend>();
-    [field: AllowNull, MaybeNull]
     private Crawler Crawler => field ??= Host.Services.GetRequiredService<Crawler>();
 
     public static string GetArguments(string url)

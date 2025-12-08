@@ -5,9 +5,7 @@ namespace ActualChat.App.Maui.Audio;
 
 public class IosTuneUI(UIHub hub) : MauiTunes(hub)
 {
-    [field: AllowNull, MaybeNull]
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
-    [field: AllowNull, MaybeNull]
     private Haptics Haptics => field ??= Hub.Services.GetRequiredService<Haptics>();
 
     public override Task Play(Tune tune, CancellationToken cancellationToken = default)

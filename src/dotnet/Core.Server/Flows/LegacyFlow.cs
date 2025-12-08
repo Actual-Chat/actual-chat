@@ -30,7 +30,6 @@ public abstract class LegacyFlow : Flow, ILegacyFlowImpl
     // Most useful service shortcuts
     protected IServiceProvider Services => Host.Services;
     protected MomentClockSet Clocks => Host.Clocks;
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 

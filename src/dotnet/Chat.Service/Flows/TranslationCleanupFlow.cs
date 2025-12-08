@@ -9,11 +9,8 @@ namespace ActualChat.Chat.Flows;
 public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
 {
     private const int BatchSize = 50;
-    [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Host.Services.GetRequiredService<ChatSettings>();
-    [field: AllowNull, MaybeNull]
     private ITranslationsBackend TranslationsBackend => field ??= Host.Services.GetRequiredService<ITranslationsBackend>();
-    [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= Host.Services.Commander();
 
     protected override Task<string?> Update(CancellationToken cancellationToken)

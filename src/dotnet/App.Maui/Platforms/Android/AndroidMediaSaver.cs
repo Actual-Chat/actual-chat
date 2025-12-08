@@ -19,11 +19,8 @@ public class AndroidMediaSaver(IServiceProvider services)
 {
     private const string AppSubFolder = CoreConstants.AppName;
 
-    [field: AllowNull, MaybeNull]
     private ToastUI ToastUI => field ??= services.GetRequiredService<ToastUI>();
-    [field: AllowNull, MaybeNull]
     private IHttpClientFactory HttpClientFactory => field ??= services.GetRequiredService<IHttpClientFactory>();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
     public async Task Save(string sUri, string contentType)

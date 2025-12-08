@@ -11,7 +11,6 @@ public class Chats(IServiceProvider services) : IChats
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
-    [field: AllowNull, MaybeNull]
     private IPlaces Places => field ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
     private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
 

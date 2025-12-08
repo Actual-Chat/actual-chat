@@ -11,7 +11,6 @@ public sealed class RedisModule(IServiceProvider moduleServices)
 {
     private readonly Lock _lock = new();
 
-    [field: AllowNull, MaybeNull]
     public string MeshLockSubspace {
         get {
             if (field != null)

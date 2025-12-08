@@ -73,7 +73,6 @@
     private ThemeUI ThemeUI => Hub.ThemeUI;
     private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     protected override void OnInitialized() {

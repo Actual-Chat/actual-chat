@@ -12,7 +12,6 @@ public class RedisTokenBucketRateLimiter(RedisDb redisDb, RedisTokenBucketRateLi
     }
 
     private RedisDb RedisDb { get; } = redisDb;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services?.LogFor(GetType()) ?? NullLogger.Instance;
 
     // Lua Script (Token Bucket):

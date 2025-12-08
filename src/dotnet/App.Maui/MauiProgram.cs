@@ -28,9 +28,7 @@ namespace ActualChat.App.Maui;
 public static partial class MauiProgram
 {
     private static HostInfo HostInfo => Constants.HostInfo;
-    [field: AllowNull, MaybeNull]
     private static ILogger Log => field ??= StaticLog.For(typeof(MauiProgram));
-    [field: AllowNull, MaybeNull]
     private static Tracer Tracer => field ??= Tracer.Default[nameof(MauiProgram)];
 
     static MauiProgram()

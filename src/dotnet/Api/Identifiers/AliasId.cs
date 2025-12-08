@@ -23,7 +23,7 @@ public sealed partial class AliasId : StringIdentifier, IStringIdentifier<AliasI
 
     public static readonly Alphabet Alphabet = Alphabet.AlphaNumeric.Symbols + "_-";
 
-    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    [IgnoreDataMember]
     public string NormalizedValue => field ??= Value.ToLowerInvariant();
 
     // Factories and constructors

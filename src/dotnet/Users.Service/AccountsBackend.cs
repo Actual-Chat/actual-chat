@@ -18,17 +18,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         "ustinovas@gmail.com",
     };
 
-    [field: AllowNull, MaybeNull]
     private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
-    [field: AllowNull, MaybeNull]
     private IAvatarsBackend AvatarsBackend => field ??= Services.GetRequiredService<IAvatarsBackend>();
-    [field: AllowNull, MaybeNull]
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
-    [field: AllowNull, MaybeNull]
     private ContactGreeter ContactGreeter => field ??= Services.GetRequiredService<ContactGreeter>();
-    [field: AllowNull, MaybeNull]
     private FlowRegistry FlowRegistry => field ??= Services.GetRequiredService<FlowRegistry>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
 
     // [ComputeMethod]

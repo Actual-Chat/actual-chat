@@ -16,14 +16,12 @@ public readonly partial struct SetDiff<TItem>(
     public bool IsEmpty => AddedItems.Length == 0 && RemovedItems.Length == 0;
 
     [DataMember(Order = 0), MemoryPackOrder(0), MemoryPackAllowSerialize]
-    [field: AllowNull, MaybeNull]
     public TItem[] AddedItems {
         get => field ?? [];
         init;
     } = addedItems!;
 
     [DataMember(Order = 1), MemoryPackOrder(1), MemoryPackAllowSerialize]
-    [field: AllowNull, MaybeNull]
     public TItem[] RemovedItems {
         get => field ?? [];
         init;
@@ -59,14 +57,12 @@ public readonly partial struct SetDiff<TCollection, TItem>(
     public bool IsEmpty => AddedItems.Length == 0 && RemovedItems.Length == 0;
 
     [DataMember(Order = 0), MemoryPackOrder(0), MemoryPackAllowSerialize]
-    [field: AllowNull, MaybeNull]
     public TItem[] AddedItems {
         get => field ?? [];
         init;
     } = addedItems!;
 
     [DataMember(Order = 1), MemoryPackOrder(1), MemoryPackAllowSerialize]
-    [field: AllowNull, MaybeNull]
     public TItem[] RemovedItems {
         get => field ?? [];
         init;

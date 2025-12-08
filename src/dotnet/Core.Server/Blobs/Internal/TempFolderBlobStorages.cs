@@ -9,9 +9,7 @@ public class TempFolderBlobStorages(IServiceProvider services) : IBlobStorages
     private FilePath? _blobsDir;
 
     private IServiceProvider Services { get; } = services;
-    [field: AllowNull, MaybeNull]
     private CoreSettings Settings => field ??= Services.GetRequiredService<CoreSettings>();
-    [field: AllowNull, MaybeNull]
     private HostInfo HostInfo => field ??= Services.GetRequiredService<HostInfo>();
     private FilePath BlobsDir => _blobsDir ??= BuildBlobsDir();
 

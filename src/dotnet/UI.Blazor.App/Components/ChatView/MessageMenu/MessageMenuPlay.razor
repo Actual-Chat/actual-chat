@@ -50,7 +50,6 @@
     [Parameter] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool IsMenu { get; set; }
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override ComputedState<Model>.Options GetStateOptions()

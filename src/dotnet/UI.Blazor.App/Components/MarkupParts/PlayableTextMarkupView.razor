@@ -55,7 +55,6 @@
 
     private Model? _rendered;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     private ChatPlayers ChatPlayers => Hub.ChatPlayers;

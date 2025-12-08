@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Flows;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
@@ -16,7 +15,6 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
     private const int Quota = SimpleBatchedIndexingFlow.QuotaOverride;
     private static readonly TimeSpan RecheckInterval = SimpleBatchedIndexingFlow.RecheckIntervalOverride;
     private BatchedIndexingFlowTestContext<SimpleItem, ChatId> Context { get; } = fixture.AppHost.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
-    [field: AllowNull, MaybeNull]
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
     [FlakyFact("AY: Not sure why yet.", 3)]

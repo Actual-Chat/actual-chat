@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using ActualChat.Testing.Host;
+﻿using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -7,9 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class AuthorsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [field: AllowNull, MaybeNull]
     private WebClientTester Alice => field ??= fixture.AppHost.NewWebClientTester(Out);
-    [field: AllowNull, MaybeNull]
     private WebClientTester Anonymous => field ??= fixture.AppHost.NewWebClientTester(Out);
 
     protected override async Task InitializeAsync()

@@ -22,11 +22,8 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     private TotpSecrets TotpSecrets { get; }
     private RedisDb<UsersDbContext> RedisDb { get; }
     private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
-    [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
-    [field: AllowNull, MaybeNull]
     private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityConverter<DbUser, User> UserConverter => field ??= Services.DbEntityConverter<DbUser, User>();
 
     public PhoneAuth(IServiceProvider services) : base(services)

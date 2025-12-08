@@ -10,13 +10,10 @@ public class EgressGuard(HostInfo hostInfo, MediaSettings settings, ILogger<Egre
 {
     private ILogger? DebugLog => log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
 
-    [field: AllowNull, MaybeNull]
     private HostWildcard[] AllowedHostWildcards => field ??= [..settings.CrawlingHostAllowList.Select(x => new HostWildcard(x))];
 
-    [field: AllowNull, MaybeNull]
     private IPNetwork[] SpecialSubnets => field ??= [..SpecialAddresses.Subnets.Union(settings.CrawlingCidrDenylist, StringComparer.Ordinal).Select(IPNetwork.Parse)];
 
-    [field: AllowNull, MaybeNull]
     private string[] DomainDenyList => field ??= [
         ..new[] { ".local" }.Union(settings.CrawlingCidrDenylist, StringComparer.OrdinalIgnoreCase),
     ];

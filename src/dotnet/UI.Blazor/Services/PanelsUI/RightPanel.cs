@@ -9,7 +9,6 @@ public class RightPanel
     private UIHub Hub { get; }
     private History History => Hub.History;
     private Dispatcher Dispatcher => Hub.Dispatcher;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public PanelsUI Owner { get; }

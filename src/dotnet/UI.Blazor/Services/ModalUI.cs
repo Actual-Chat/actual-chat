@@ -7,7 +7,6 @@ public sealed class ModalUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 
     public TaskCompletionSource<ModalHost> HostAcceptor { get; } = TaskCompletionSourceExt.New<ModalHost>();
     public Task WhenReady => HostAcceptor.Task;
-    [field: AllowNull, MaybeNull]
     public ModalHost Host => field ??= HostAcceptor.Task.RequireResult();
 
     public Task<ModalRef> Show<

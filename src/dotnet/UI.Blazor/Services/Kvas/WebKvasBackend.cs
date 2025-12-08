@@ -13,7 +13,6 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
 
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.WebKvasBackend ? Log.IfEnabled(LogLevel.Debug) : null;
 

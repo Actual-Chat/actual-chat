@@ -34,10 +34,8 @@ public class ChatAttentionService
     private static Context Context => Platform.AppContext;
     private static DateTime UtcNow => DateTime.UtcNow;
 
-    [field: AllowNull, MaybeNull]
     private AlarmManager AlarmManager => field ??= (AlarmManager)Context.GetSystemService(Context.AlarmService)!;
 
-    [field: AllowNull, MaybeNull]
     public static ChatAttentionService Instance {
         get {
             lock (ClassSyncObject) {

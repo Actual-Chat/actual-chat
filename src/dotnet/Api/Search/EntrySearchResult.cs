@@ -9,7 +9,6 @@ public partial class EntrySearchResult : SearchResult
     public ApiSet<string> HighlightedWords { get; init; } = [];
 
     [IgnoreDataMember, MemoryPackIgnore]
-    [field: AllowNull, MaybeNull]
     public TextEntryId EntryId => field ??= TextEntryId.Parse(Id);
 
     public EntrySearchResult(TextEntryId id, SearchMatch searchMatch)

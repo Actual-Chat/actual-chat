@@ -16,7 +16,6 @@ public class RobotsFiles(
         new (10_000, comparer: StringComparer.OrdinalIgnoreCase);
 
     private ILogger? DebugLog { get; } = log.IfEnabled(LogLevel.Debug, Constants.DebugMode.RobotsFiles);
-    [field: AllowNull, MaybeNull]
     private RobotsFileParser RobotsParser => field ??= new (httpClientFactory.CreateClient(Crawler.HttpClientName));
 
     public async Task<RobotsFile> Get(Uri uri, CancellationToken cancellationToken)

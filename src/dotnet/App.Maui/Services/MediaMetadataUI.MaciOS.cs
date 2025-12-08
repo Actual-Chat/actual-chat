@@ -6,7 +6,6 @@ namespace ActualChat.App.Maui.Services;
 
 public partial class MediaMetadataUI
 {
-    [field: AllowNull, MaybeNull]
     private static UIImage DefaultUIImage => field ??= new ();
 
     public partial Task SetPlayback(MediaMetadata metadata, bool isStreaming)

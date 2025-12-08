@@ -5,7 +5,6 @@ namespace ActualChat.Sharding;
 public abstract class LegacyShardWorker(IServiceProvider services, ShardScheme shardScheme)
     : WorkerBase, IHasServices
 {
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 

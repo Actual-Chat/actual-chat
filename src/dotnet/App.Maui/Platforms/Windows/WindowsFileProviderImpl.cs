@@ -4,7 +4,6 @@ namespace ActualChat.App.Maui;
 
 public class WindowsFileProviderImpl(string filePath) : IMauiFileProviderImpl
 {
-    [field: AllowNull, MaybeNull]
     private FileInfo FileInfo => field ??= new FileInfo(filePath);
 
     public Task<string> GetPreviewUrl()

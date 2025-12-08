@@ -27,7 +27,6 @@ public sealed partial record AccountFull(
         new(() => StandardError.Account.Inactive()));
 
     [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require ...")]
-    [field: AllowNull, MaybeNull]
     private static Action<AccountFull, Phone> PhoneSetter
         => field ??= typeof(AccountFull).GetProperty(nameof(Phone))!.GetSetter<AccountFull, Phone>();
 
@@ -44,7 +43,6 @@ public sealed partial record AccountFull(
     [DataMember, MemoryPackOrder(17)] public AliasId? AliasId { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    [field: AllowNull, MaybeNull]
     public AliasInfo<UserId> AliasInfo => field ??= new(Id, AliasId);
 
     // This record relies on referential equality

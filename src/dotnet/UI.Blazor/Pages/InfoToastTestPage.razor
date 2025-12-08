@@ -77,7 +77,6 @@
 </div>
 
 @code {
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private void OnClick(int count) {

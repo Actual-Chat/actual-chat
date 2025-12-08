@@ -71,7 +71,6 @@
     [Inject] private UIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session;
     private Features Features => Hub.Features;
-    [field: AllowNull, MaybeNull]
     private IAuthors Authors => field ??= Hub.Services.GetRequiredService<IAuthors>();
     private IChats Chats => Hub.Services.GetRequiredService<IChats>();
     private IUIActionHandler? SaveMediaActionHandler { get; set; }

@@ -20,7 +20,6 @@
 @code {
     private IChats Chats => Hub.Chats;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 

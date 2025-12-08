@@ -6,7 +6,6 @@ public class NonLazyServiceAccessor : IServiceProvider
 {
     private readonly Lock _lock = new();
 
-    [field: AllowNull, MaybeNull]
     public IServiceProvider NonLazyServices {
         get => field ?? throw Errors.NotInitialized(nameof(NonLazyServices));
         set {

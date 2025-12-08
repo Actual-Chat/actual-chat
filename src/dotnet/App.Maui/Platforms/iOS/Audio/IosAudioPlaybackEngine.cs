@@ -16,7 +16,6 @@ public class IosAudioPlaybackEngine(
     private FuncWorker _processFeederWorker = null!;
     private OpusDecoder _decoder = null!;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
 

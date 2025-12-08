@@ -10,7 +10,6 @@ public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
     private AudioFocusHolder? _lastAudioFocusHolder;
 
     protected AppUIHub Hub => hub;
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     public override async Task<IAudioFocusActivation?> TryGainAudioFocus(AudioFocusConsumer consumer)

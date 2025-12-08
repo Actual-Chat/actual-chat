@@ -6,11 +6,8 @@ internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(
 {
     private readonly ConcurrentDictionary<Type, Unit> _flowTypesToStart = new();
 
-    [field: AllowNull, MaybeNull]
     private FlowRegistry FlowRegistry => field ??= Services.GetRequiredService<FlowRegistry>();
-    [field: AllowNull, MaybeNull]
     private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
-    [field: AllowNull, MaybeNull]
     private ShardKeyResolver<FlowId> FlowIdShardKeyResolver => field ??= ShardKeyResolvers.Get<FlowId>();
 
     protected override Task OnStart(CancellationToken cancellationToken)

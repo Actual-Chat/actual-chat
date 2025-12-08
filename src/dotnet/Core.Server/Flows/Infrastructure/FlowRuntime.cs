@@ -11,12 +11,9 @@ public class FlowRuntime(Flow flow, IServiceProvider services, CancellationToken
     public CancellationToken CancellationToken { get; } = cancellationToken;
 
     // Services, service shortcuts
-    [field: AllowNull, MaybeNull]
     public ICommander Commander => field ??= Services.Commander();
-    [field: AllowNull, MaybeNull]
     public MomentClockSet Clocks => field ??= Services.Clocks();
     public Moment Now => Clocks.SystemClock.Now;
-    [field: AllowNull, MaybeNull]
     public ILogger Log => field ??= Services.LogFor(Flow.GetType());
     public ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 

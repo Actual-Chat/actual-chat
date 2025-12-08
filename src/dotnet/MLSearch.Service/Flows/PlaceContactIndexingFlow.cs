@@ -15,13 +15,9 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlowBase<Contact,
     protected override int CurrentFlowSetVersion => 1;
     protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
 
-    [field: AllowNull, MaybeNull]
     private IContactsBackend ContactsBackend => field ??= Host.Services.GetRequiredService<IContactsBackend>();
-    [field: AllowNull, MaybeNull]
     private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
-    [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
-    [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
     protected override async Task<IReadOnlyList<Contact>> GetBatch(

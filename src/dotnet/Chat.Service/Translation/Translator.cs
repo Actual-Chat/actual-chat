@@ -18,13 +18,10 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
 
     private string ServiceKey { get; } = serviceKey;
 
-    [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
-    [field: AllowNull, MaybeNull]
     private CoreServerSettings CoreServerSettings => field ??= Services.GetRequiredService<CoreServerSettings>();
 
-    [field: AllowNull, MaybeNull]
     private string PromptTemplateString => field
         ??= File.ReadAllText(
             OrdinalEquals(ServiceKey, Constants.Translation.RealtimeServiceKey) && !Settings.Translation.RealtimePromptFile.IsEmpty
@@ -32,17 +29,13 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                 : CoreServerSettings.PromptsDir | Settings.Translation.PromptFile
         ).RequireNonEmpty();
 
-    [field: AllowNull, MaybeNull]
     private Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();
 
-    [field: AllowNull, MaybeNull]
     private IChatCompletionService Completion
         => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
 
-    [field: AllowNull, MaybeNull]
     private IPromptTemplate PromptTemplate => field ??= BuildPromptTemplate();
 
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.TranscriptionTranslation);
 

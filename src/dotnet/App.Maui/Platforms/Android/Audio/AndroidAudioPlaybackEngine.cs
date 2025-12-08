@@ -40,10 +40,8 @@ internal sealed class AndroidAudioPlaybackEngine(
     private int _feedSamples;
     private int _endedReported;
 
-    [field: AllowNull, MaybeNull]
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor<AndroidAudioPlaybackEngine>();
 
     public async Task Play(CancellationToken cancellationToken)

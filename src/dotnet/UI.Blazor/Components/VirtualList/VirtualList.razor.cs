@@ -16,7 +16,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
 {
     private VirtualListData<TItem>? _initialData;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private ElementReference Ref { get; set; }

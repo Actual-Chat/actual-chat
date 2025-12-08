@@ -12,27 +12,16 @@ namespace ActualChat.Media;
 
 public class ImageGrabber(IServiceProvider services)
 {
-    [field: AllowNull, MaybeNull]
     private MediaSettings Settings => field ??= services.GetRequiredService<MediaSettings>();
-    [field: AllowNull, MaybeNull]
     private IMediaBackend MediaBackend => field ??= services.GetRequiredService<IMediaBackend>();
-    [field: AllowNull, MaybeNull]
     private IGrabStatusesBackend GrabStatusesBackend => field ??= services.GetRequiredService<IGrabStatusesBackend>();
-    [field: AllowNull, MaybeNull]
     private IContentSaver ContentSaver => field ??= services.GetRequiredService<IContentSaver>();
-    [field: AllowNull, MaybeNull]
     private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient(Crawler.HttpClientName);
-    [field: AllowNull, MaybeNull]
     private IReadOnlyList<IUploadProcessor> UploadProcessors => field ??= services.GetServices<IUploadProcessor>().ToList();
-    [field: AllowNull, MaybeNull]
     private IFlows Flows => field ??= services.GetRequiredService<IFlows>();
-    [field: AllowNull, MaybeNull]
     private IMeshLocks MeshLocks => field ??= services.MeshLocks<MediaDbContext>().WithKeyPrefix(nameof(ImageGrabber));
-    [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= services.Commander();
-    [field: AllowNull, MaybeNull]
     private MomentClockSet Clocks => field ??= services.Clocks();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
     public async Task<MediaId?> GetOrGrab(string imageUrl, CancellationToken cancellationToken)

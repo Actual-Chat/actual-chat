@@ -26,7 +26,6 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     private IMeshLocks ActionLocks { get; }
 
-    [field: AllowNull, MaybeNull]
     private NatsConnection Connection {
         get {
             if (field != null)

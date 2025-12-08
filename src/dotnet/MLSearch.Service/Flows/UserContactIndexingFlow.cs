@@ -12,13 +12,9 @@ namespace ActualChat.MLSearch.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class UserContactIndexingFlow : BatchedIndexingFlowBase<Contact, ContactId>, IMasterFlow
 {
-    [field: AllowNull, MaybeNull]
     private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
-    [field: AllowNull, MaybeNull]
     private IContactsBackend ContactsBackend => field ??= Host.Services.GetRequiredService<IContactsBackend>();
-    [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
-    [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
     protected override int CurrentFlowSetVersion => 2;

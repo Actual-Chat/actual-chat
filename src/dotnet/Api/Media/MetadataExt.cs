@@ -8,7 +8,6 @@ public interface IHasMetadata
 internal static class MetadataExt
 {
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Ok here")]
-    [field: AllowNull, MaybeNull]
     private static Action<IHasMetadata, PropertyBag> MetadataSetter
         => field ??= typeof(IHasMetadata).GetProperty("Metadata")!.GetSetter<IHasMetadata, PropertyBag>();
 

@@ -12,7 +12,6 @@
 @code {
     private string[] _children = [];
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string Name { get; set; } = "";

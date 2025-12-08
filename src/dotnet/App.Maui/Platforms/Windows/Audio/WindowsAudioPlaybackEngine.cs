@@ -46,13 +46,10 @@ internal sealed class WindowsAudioPlaybackEngine(
     private DateTime _lastReportAt = DateTime.MinValue;
     private int _endedReported;
 
-    [field: AllowNull, MaybeNull]
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
 
-    [field: AllowNull, MaybeNull]
     private MomentClockSet Clocks => field ??= services.GetRequiredService<MomentClockSet>();
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor<WindowsAudioPlaybackEngine>();
 
     public async Task Play(CancellationToken cancellationToken)

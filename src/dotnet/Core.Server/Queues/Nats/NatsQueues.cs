@@ -29,7 +29,6 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
     internal IMeshLocks ActionLocks { get; }
         = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ActionLocks));
 
-    [field: AllowNull, MaybeNull]
     private NatsConnection Connection {
         get {
             if (field != null)
@@ -40,7 +39,6 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
         }
     }
 
-    [field: AllowNull, MaybeNull]
     public NatsSettings NatsSettings => field ??= Services.GetRequiredService<NatsSettings>();
 
     public override async Task Purge(CancellationToken cancellationToken = default)

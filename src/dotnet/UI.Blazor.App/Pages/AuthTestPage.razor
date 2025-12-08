@@ -122,7 +122,6 @@
 }
 
 @code {
-    [field: AllowNull, MaybeNull]
     private IAuth Auth => field ??= Hub.Services.GetRequiredService<IAuth>();
     private IAccounts Accounts => Hub.Accounts;
     private LiveTime LiveTime => Hub.LiveTime;

@@ -9,7 +9,6 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     public TranslationUI(AppUIHub hub) : base(hub)
         => _mustSuggestCache = new ThreadSafeLruCache<ChatId, Unit>(50, evictionHandler: InvalidateMustSuggestCache);
 
-    [field: AllowNull, MaybeNull]
     private ThrottledTranslations Translations => field ??= Hub.Services.GetRequiredService<ThrottledTranslations>();
     private ChatUI ChatUI => Hub.ChatUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;

@@ -2,7 +2,6 @@ namespace ActualChat.Logging;
 
 public class TailLogger(IServiceProvider services, string categoryName) : ILogger
 {
-    [field: AllowNull, MaybeNull]
     private LogSinks Sinks => field ??= services.GetRequiredService<LogSinks>();
 
     public void Log<TState>(

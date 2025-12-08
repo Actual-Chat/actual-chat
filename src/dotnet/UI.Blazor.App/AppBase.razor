@@ -55,17 +55,13 @@
     private readonly AsyncTaskMethodBuilder _whenFirstRendered = AsyncTaskMethodBuilderExt.New();
     private BlazorAppLifecycle _appLifecycle = null!;
 
-    [field: AllowNull, MaybeNull]
     protected INavigationInterception NavigationInterception
         => field ??= Hub.Services.GetRequiredService<INavigationInterception>();
     protected ISessionResolver SessionResolver => Hub.SessionResolver;
 
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
-    [field: AllowNull, MaybeNull]
     protected AppScopedServiceStarter AppScopedServiceStarter => field ??= Services.GetRequiredService<AppScopedServiceStarter>();
-    [field: AllowNull, MaybeNull]
     protected Tracer Tracer => field ??= Hub.Tracer[GetType()];
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string SessionHash { get; set; } = "";

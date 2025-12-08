@@ -11,15 +11,10 @@ namespace ActualChat.Media;
 public class LinkPreviewsBackend(IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {
-    [field: AllowNull, MaybeNull]
     private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
-    [field: AllowNull, MaybeNull]
     private MediaSettings Settings => field ??= Services.GetRequiredService<MediaSettings>();
-    [field: AllowNull, MaybeNull]
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
-    [field: AllowNull, MaybeNull]
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbLinkPreview> EntityResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbLinkPreview>>();
     private Moment SystemNow => Clocks.SystemClock.Now;

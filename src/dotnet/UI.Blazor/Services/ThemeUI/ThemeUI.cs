@@ -5,9 +5,7 @@ public class ThemeUI(UIHub hub) : UIWorkerBase<UIHub>(hub)
     private static readonly string JSThemeClassName = "window.Theme";
     private static readonly string JSSetMethod = $"{JSThemeClassName}.set";
 
-    [field: AllowNull, MaybeNull]
     private BrowserInfo BrowserInfo => field ??= Services.GetRequiredService<BrowserInfo>();
-    [field: AllowNull, MaybeNull]
     private IEnumerable<Action<ThemeInfo>> ThemeHandlers =>
         field ??= Services.GetRequiredService<IEnumerable<Action<ThemeInfo>>>();
 

@@ -64,9 +64,7 @@
     private string _comment = "";
 
     private SendingMessages SendingMessages => Hub.SendingMessages;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
-    [field: AllowNull, MaybeNull]
     private VisualMediaDimensions VisualMediaDimensions => field ??= new VisualMediaDimensions(Hub.JS);
 
     private ImmutableHashSet<ChatId> SelectedChatIds

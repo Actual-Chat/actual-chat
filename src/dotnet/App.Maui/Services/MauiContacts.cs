@@ -19,16 +19,11 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
     private StrongBox<Symbol>? _deviceId;
 
     public override Symbol DeviceId => GetDeviceId();
-    [field: AllowNull, MaybeNull]
     private Session Session => field ??= services.Session();
-    [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
-    [field: AllowNull, MaybeNull]
     private ContactsPermissionHandler Permissions => field ??= services.GetRequiredService<ContactsPermissionHandler>();
-    [field: AllowNull, MaybeNull]
     private ExternalContactHasher ExternalContactHasher => field ??= services.GetRequiredService<ExternalContactHasher>();
     private IDeviceIdProvider DeviceIdProvider { get; } = services.GetRequiredService<IDeviceIdProvider>();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor<MauiContacts>();
 
     public override async Task<ExternalContactFull[]> List(CancellationToken cancellationToken)

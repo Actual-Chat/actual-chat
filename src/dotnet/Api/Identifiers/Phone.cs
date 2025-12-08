@@ -28,9 +28,9 @@ public sealed partial class Phone : StringIdentifier, IStringIdentifier<Phone>
     public string Code { get; }
     [IgnoreDataMember]
     public string Number { get; }
-    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    [IgnoreDataMember]
     public string Hash => field ??= ContactIdExt.Hash(Value);
-    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    [IgnoreDataMember]
     public string E164Value => field ??= $"+{Code}{Number}";
 
     // Factories and constructors

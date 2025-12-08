@@ -14,7 +14,6 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
     : DbEventProcessor<TDbContext>(services)
     where TDbContext : DbContext
 {
-    [field: AllowNull, MaybeNull]
     private string ProcessActivityName => field ??= $"{nameof(Process)}@{GetType().GetName()}>";
     private IQueues Queues { get; } = services.Queues();
 

@@ -14,9 +14,7 @@ public class IosPushNotifications : UIServiceBase<AppUIHub>, IDeviceTokenRetriev
 {
     private IFirebaseCloudMessaging Messaging { get; }
 
-    [field: AllowNull, MaybeNull]
     private NotificationUI NotificationUI => field ??= Hub.Services.GetRequiredService<NotificationUI>();
-    [field: AllowNull, MaybeNull]
     private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
     private static UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
 

@@ -70,6 +70,8 @@
     <Using Include="ActualChat.Testing" />
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Immutable" />
+    <Using Include="System.Diagnostics" />
+    <Using Include="System.Diagnostics.CodeAnalysis" />
     <Using Include="System.Linq" />
     <Using Include="System.Reflection" />
     <Using Include="System.Reactive" /> <!-- Mainly for Unit type -->

@@ -12,7 +12,6 @@ public class RedisSlidingWindowRateLimiter(RedisDb redisDb, RedisSlidingWindowRa
     }
 
     private RedisDb RedisDb { get; } = redisDb;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services?.LogFor(GetType()) ?? NullLogger.Instance;
 
     // Lua Script (Sliding Window):

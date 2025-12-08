@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Flows;
 using MemoryPack;
 
@@ -11,7 +10,6 @@ public partial class SimpleIndexingFlow : IndexingFlowBase<long>
     protected override int CurrentFlowSetVersion => Context.GetCurrentFlowSetVersionOverride(Id.Arguments) ?? 1;
     protected override TimeSpan RecheckInterval => RecheckIntervalOverride;
     protected override TimeSpan TimerRescheduleThreshold => TimeSpan.FromSeconds(0.5);
-    [field: AllowNull, MaybeNull]
     private IndexingFlowTestContext Context => field ??= Host.Services.GetRequiredService<IndexingFlowTestContext>();
 
     protected override async Task<BatchIndexingResult<long>> Process(long cursor, CancellationToken cancellationToken)

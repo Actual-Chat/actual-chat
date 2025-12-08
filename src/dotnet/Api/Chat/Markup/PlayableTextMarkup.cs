@@ -14,7 +14,6 @@ public sealed partial class PlayableTextMarkup : TextMarkup
     public LinearMap TimeMap { get; }
     public Range<float> TextRange => (0, Text.Length);
     public Range<float> TimeRange => (TimeMap.TryMap(0f) ?? InfTime, TimeMap.TryMap(Text.Length) ?? InfTime);
-    [field: AllowNull, MaybeNull]
     public Word[] Words => field ??= GetWords();
 
     // ReSharper disable once ConvertToPrimaryConstructor

@@ -15,34 +15,22 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
-    [field: AllowNull, MaybeNull]
     private ILogger OpenAudioSegmentLog => field ??= Services.LogFor<OpenAudioSegment>();
-    [field: AllowNull, MaybeNull]
     private ILogger AudioSourceLog  => field ??= Services.LogFor<AudioSource>();
     private static bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private IServiceProvider Services { get; }
     private AudioSettings AudioSettings { get; }
-    [field: AllowNull, MaybeNull]
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
-    [field: AllowNull, MaybeNull]
     private AudioSegmentSaver AudioSegmentSaver => field ??= Services.GetRequiredService<AudioSegmentSaver>();
-    [field: AllowNull, MaybeNull]
     private ITranscriberFactory TranscriberFactory => field ??= Services.GetRequiredService<ITranscriberFactory>();
-    [field: AllowNull, MaybeNull]
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
-    [field: AllowNull, MaybeNull]
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
-    [field: AllowNull, MaybeNull]
     private IServerKvas ServerKvas => field ??= Services.GetRequiredService<IServerKvas>();
-    [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= Services.Commander();
-    [field: AllowNull, MaybeNull]
     private MomentClockSet Clocks => field ??= Services.Clocks();
-    [field: AllowNull, MaybeNull]
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
 
     public StreamingBackend(IServiceProvider services)

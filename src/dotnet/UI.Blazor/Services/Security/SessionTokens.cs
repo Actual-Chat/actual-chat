@@ -13,11 +13,8 @@ public sealed class SessionTokens(UIHub hub) : UIWorkerBase<UIHub>(hub), IComput
     private readonly AsyncLock _asyncLock = new(LockReentryMode.CheckedFail);
     private volatile SecureToken? _current;
 
-    [field: AllowNull, MaybeNull]
     private ISecureTokens SecureTokens => field ??= Services.GetRequiredService<ISecureTokens>();
-    [field: AllowNull, MaybeNull]
     private DeviceAwakeUI DeviceAwakeUI => field ??= Services.GetRequiredService<DeviceAwakeUI>();
-    [field: AllowNull, MaybeNull]
     private MomentClock ServerClock => field ??= Clocks.ServerClock;
 
     public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(60);

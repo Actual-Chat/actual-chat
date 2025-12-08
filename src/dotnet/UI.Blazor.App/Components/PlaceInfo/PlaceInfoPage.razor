@@ -28,7 +28,6 @@
     private Model? _rendered;
 
     private IPlaces Places => Hub.Places;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string? PlaceSid { get; set; }

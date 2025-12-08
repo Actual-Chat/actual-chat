@@ -20,7 +20,6 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
     private readonly SimpleConcurrentPool<SQLiteConnection>? _connectionPool;
 
     private IServiceProvider Services { get; }
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SQLiteBatchingKvasBackend))]

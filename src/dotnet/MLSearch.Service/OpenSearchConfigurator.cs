@@ -14,15 +14,10 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
 {
     private readonly TaskCompletionSource _whenCompleted = TaskCompletionSourceExt.New();
 
-    [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= services.GetRequiredService<MLSearchSettings>();
-    [field: AllowNull, MaybeNull]
     private OpenSearchNames OpenSearchNames => field ??= services.GetRequiredService<OpenSearchNames>();
-    [field: AllowNull, MaybeNull]
     private IOpenSearchClient OpenSearchClient => field ??= services.GetRequiredService<IOpenSearchClient>();
-    [field: AllowNull, MaybeNull]
     private IMeshLocks MeshLocks => field ??= services.MeshLocks<MLSearchDbContext>().WithKeyPrefix(nameof(OpenSearchConfigurator));
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
     private readonly int _numberOfReplicas = services.GetRequiredService<HostInfo>().IsDevelopmentInstance ? 0 : 1;

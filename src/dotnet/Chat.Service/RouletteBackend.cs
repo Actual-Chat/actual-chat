@@ -7,12 +7,9 @@ namespace ActualChat.Chat;
 
 public class RouletteBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IRouletteBackend
 {
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbChatRoulette> DbChatRouletteResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatRoulette>>();
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    [field: AllowNull, MaybeNull]
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
 

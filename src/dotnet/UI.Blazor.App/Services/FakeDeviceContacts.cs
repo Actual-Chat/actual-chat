@@ -7,9 +7,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class FakeDeviceContacts(IServiceProvider services) : DeviceContacts
 {
-    [field: AllowNull, MaybeNull]
     private AccountUI AccountUI => field ??= services.GetRequiredService<AccountUI>();
-    [field: AllowNull, MaybeNull]
     private ExternalContactHasher ExternalContactHasher => field ??= services.GetRequiredService<ExternalContactHasher>();
 
     private IKvas LocalSettings { get; } = services.LocalSettings().WithPrefix<FakeDeviceContacts>();

@@ -32,7 +32,6 @@
     private int _counter;
     private ImmutableList<string> _output = ImmutableList<string>.Empty;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Inject] private IWebViewCrasher WebViewCrasher { get; init; } = null!;

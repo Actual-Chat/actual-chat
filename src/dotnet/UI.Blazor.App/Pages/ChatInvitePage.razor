@@ -24,7 +24,6 @@
     private IPlaces Places => Hub.Places;
     private ICommander Commander => Hub.Commander;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string InviteId { get; set; } = "";

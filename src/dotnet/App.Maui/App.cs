@@ -11,7 +11,6 @@ public class App : Application
     public static bool MustMinimizeOnQuit { get; private set; } = true;
 
     private IServiceProvider Services { get; }
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public App(IServiceProvider services)

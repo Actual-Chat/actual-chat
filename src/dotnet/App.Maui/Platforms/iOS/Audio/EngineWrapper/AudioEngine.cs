@@ -14,11 +14,9 @@ public class AudioEngine : IDisposable
     private readonly ComputedState<bool> _isRunning;
     private AudioMode Mode { get; }
     private AppUIHub Hub { get;  }
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     public IState<bool> IsRunning => _isRunning;
 
-    [field: AllowNull, MaybeNull]
     public InputNode Input {
         get {
             lock (_lock)

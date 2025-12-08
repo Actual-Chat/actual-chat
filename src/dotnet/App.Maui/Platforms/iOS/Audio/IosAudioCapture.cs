@@ -8,12 +8,9 @@ namespace ActualChat.App.Maui.Recording;
 
 public class IosAudioCapture(AppUIHub hub) : IAudioCapture
 {
-    [field: AllowNull, MaybeNull]
     public ResamplerFactory ResamplerFactory => field ??= hub.Services.GetRequiredService<ResamplerFactory>();
 
-    [field: AllowNull, MaybeNull]
     private AudioEngines AudioEngines => field ??= hub.Services.GetRequiredService<AudioEngines>();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
 
     public Task<IAsyncEnumerable<IMemoryOwner<float>>?> Capture(CancellationToken cancellationToken)

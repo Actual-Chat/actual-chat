@@ -12,7 +12,6 @@ namespace ActualChat.App.Maui;
 public class AndroidNotificationsPermission(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), INotificationsPermission
 {
     private NotificationUI NotificationUI => Hub.NotificationUI;
-    [field: AllowNull, MaybeNull]
     private SystemSettingsUI SystemSettingsUI => field ??= Hub.Services.GetRequiredService<SystemSettingsUI>();
 
     public Task<bool?> IsGranted(CancellationToken cancellationToken = default)

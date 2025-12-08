@@ -20,9 +20,7 @@ public partial class WebFileProvider : IFileProvider
     private bool IsOriginal => WebFileProviderInternal is WebFileProviderInternal provider && provider.IsOriginal;
     [IgnoreDataMember, MemoryPackIgnore]
     private IServiceProvider Services => _services ?? throw new InvalidOperationException("Initialize must be called first.");
-    [field: AllowNull, MaybeNull]
     private IJSRuntime JS => field ??= Services.JSRuntime();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor<WebFileProvider>();
 
     public void Initialize(IServiceProvider services)

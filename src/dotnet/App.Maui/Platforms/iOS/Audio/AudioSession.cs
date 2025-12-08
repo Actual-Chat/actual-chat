@@ -5,7 +5,6 @@ namespace ActualChat.App.Maui.Audio;
 
 public class AudioSession(AppUIHub hub) : IAsyncDisposable
 {
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public ValueTask DisposeAsync()

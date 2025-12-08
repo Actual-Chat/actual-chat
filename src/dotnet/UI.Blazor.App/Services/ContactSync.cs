@@ -10,15 +10,10 @@ public class ContactSync(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService
     private const int BatchSize = 100;
     private static readonly RandomTimeSpan BatchInterval = TimeSpan.FromSeconds(1).ToRandom(0.1);
 
-    [field: AllowNull, MaybeNull]
     private IExternalContacts ExternalContacts => field ??= Services.GetRequiredService<IExternalContacts>();
-    [field: AllowNull, MaybeNull]
     private IExternalContactHashes ExternalContactHashes => field ??= Services.GetRequiredService<IExternalContactHashes>();
-    [field: AllowNull, MaybeNull]
     private ExternalContactHasher ExternalContactHasher => field ??= Services.GetRequiredService<ExternalContactHasher>();
-    [field: AllowNull, MaybeNull]
     private DeviceContacts DeviceContacts => field ??= Services.GetRequiredService<DeviceContacts>();
-    [field: AllowNull, MaybeNull]
     private ContactsPermissionHandler ContactsPermission => field ??= Services.GetRequiredService<ContactsPermissionHandler>();
 
     protected override Task OnRun(CancellationToken cancellationToken)

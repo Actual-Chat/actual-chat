@@ -35,21 +35,13 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
 
     private Options Settings { get; } = settings;
 
-    [field: AllowNull, MaybeNull]
     private IChatEntryLanguagesBackend ChatEntryLanguagesBackend => field ??= services.GetRequiredService<IChatEntryLanguagesBackend>();
-    [field: AllowNull, MaybeNull]
     private Kernel Kernel => field ??= services.GetRequiredService<Kernel>();
-    [field: AllowNull, MaybeNull]
     private IChatCompletionService Completion => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
-    [field: AllowNull, MaybeNull]
     private IChatDialogFormatter ChatDialogFormatter => field ??= services.GetRequiredService<IChatDialogFormatter>();
-    [field: AllowNull, MaybeNull]
     private IAuthorNameRetriever AuthorNameRetriever => field ??= services.GetRequiredService<IAuthorNameRetriever>();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
-    [field: AllowNull, MaybeNull]
     private string PromptTemplateString => field ??= File.ReadAllText(Settings.PromptFile).Trim();
-    [field: AllowNull, MaybeNull]
     private IPromptTemplate PromptTemplate => field ??= BuildPromptTemplate();
 
     public async Task<ConversationSummarizerResult> Summarize(

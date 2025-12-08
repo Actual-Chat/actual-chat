@@ -21,10 +21,8 @@ public sealed class WebAudioPlaybackEngine(
     private IJSObjectReference? _jsRef;
     private Task? _whenPlayerCreated;
 
-    [field: AllowNull, MaybeNull]
     private Dispatcher Dispatcher => field ??= services.GetRequiredService<Dispatcher>();
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor<WebAudioPlaybackEngine>();
 
     public async Task Play(CancellationToken cancellationToken)

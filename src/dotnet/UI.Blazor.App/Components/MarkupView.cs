@@ -5,7 +5,6 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public sealed class MarkupView : MarkupViewBase<Markup>
 {
-    [field: AllowNull, MaybeNull]
     private TypeMapper<IMarkupView> ViewResolver => field ??= Hub.Services.GetRequiredService<TypeMapper<IMarkupView>>();
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupViewBase<>))]

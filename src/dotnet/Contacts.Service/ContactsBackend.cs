@@ -17,23 +17,14 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
     private const string RedisKeyPrefix = ".ContactGreetingLocks.";
 
-    [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
-    [field: AllowNull, MaybeNull]
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    [field: AllowNull, MaybeNull]
     private IExternalContactsBackend ExternalContactsBackend => field ??= Services.GetRequiredService<IExternalContactsBackend>();
-    [field: AllowNull, MaybeNull]
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbContact> DbContactResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
-    [field: AllowNull, MaybeNull]
     private IMeshLocks GreetLocks => field ??= Services.MeshLocks<ContactsDbContext>().WithKeyPrefix(nameof(GreetLocks));
-    [field: AllowNull, MaybeNull]
     public RedisDb<ContactsDbContext> RedisDb => field ??= Services.GetRequiredService<RedisDb<ContactsDbContext>>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbThreadContact> DbThreadContactResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbThreadContact>>();
 
     // [ComputeMethod]

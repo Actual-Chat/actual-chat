@@ -5,7 +5,6 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
     public ChatSendingMessages ChatSendingMessages { get; } = chatSendingMessages;
     public ChatId ChatId => ChatSendingMessages.ChatId;
     public SendingMessages Owner => ChatSendingMessages.Owner;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Owner.Hub.LogFor<ChatSendingMessagesAccessor>();
 
     public async Task<ChatEntry> GetSelfOrEdited(ChatEntry chatEntry)

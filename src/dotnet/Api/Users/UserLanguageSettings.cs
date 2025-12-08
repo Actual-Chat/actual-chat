@@ -10,7 +10,6 @@ public sealed partial record UserLanguageSettings : IHasOrigin, IHasKvasKey<User
     public static string KvasKey => nameof(UserLanguageSettings);
 
     [DataMember, MemoryPackOrder(0), LegacyLanguageFormatter(false)]
-    [field: AllowNull, MaybeNull]
     public Language Primary {
         get => field ?? Languages.Main;
         init;

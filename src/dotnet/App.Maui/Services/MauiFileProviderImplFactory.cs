@@ -5,7 +5,6 @@ namespace ActualChat.App.Maui.Services;
 public class MauiFileProviderImplFactory(IServiceProvider services) : IMauiFileProviderImplFactory
 {
 #if ANDROID
-    [field: AllowNull, MaybeNull]
     private AndroidContentDownloader Downloader => field ??= services.GetRequiredService<AndroidContentDownloader>();
 #endif
 

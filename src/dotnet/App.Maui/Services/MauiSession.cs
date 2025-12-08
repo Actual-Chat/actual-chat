@@ -18,7 +18,6 @@ public sealed class MauiSession(IServiceProvider services)
 
     private IServiceProvider Services { get; } = services;
     private TrueSessionResolver TrueSessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
-    [field: AllowNull, MaybeNull]
     private IMobileSessions MobileSessions => field ??= Services.GetRequiredService<IMobileSessions>();
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiSession))]

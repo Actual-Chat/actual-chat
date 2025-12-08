@@ -16,7 +16,6 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
     private IAccounts Accounts => Hub.Accounts;
 
-    [field: AllowNull, MaybeNull]
     private IClientAuth ClientAuth => field ??= Services.GetRequiredService<IClientAuth>();
     private IOnboardingUI OnboardingUI => Hub.OnboardingUI;
     private INotificationUI NotificationUI => Hub.NotificationUI;

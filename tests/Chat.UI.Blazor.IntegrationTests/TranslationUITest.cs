@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
@@ -14,11 +13,8 @@ namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<TranslationAppHostFixture>(fixture, @out)
 {
-    [field: AllowNull, MaybeNull]
     private BlazorTester BobTester => field ??= AppHost.NewBlazorTester(Out);
-    [field: AllowNull, MaybeNull]
     private BlazorTester AliceTester => field ??= AppHost.NewBlazorTester(Out);
-    [field: AllowNull, MaybeNull]
     private AppUIHub Hub => field ??= BobTester.ScopedAppServices.AppUIHub();
     private IStreamClient StreamClient => Hub.StreamClient;
     private TranslationUI TranslationUI => Hub.TranslationUI;

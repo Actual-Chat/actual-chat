@@ -17,9 +17,7 @@ public class IosAudioFocusService : MauiAudioFocusService
     private int _id;
     private AudioFocusHandle? _handle;
 
-    [field: AllowNull, MaybeNull]
     private AudioSession AudioSession => field ??= Hub.Services.GetRequiredService<AudioSession>();
-    [field: AllowNull, MaybeNull]
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
 
     public IosAudioFocusService(AppUIHub hub) : base(hub)

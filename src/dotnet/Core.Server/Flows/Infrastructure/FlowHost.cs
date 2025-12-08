@@ -11,7 +11,6 @@ public sealed class FlowHost : LegacyShardWorker, IHasServices
     public new IServiceProvider Services => base.Services;
     public FlowRegistry Registry { get; }
 
-    [field: AllowNull, MaybeNull]
     public IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
     public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }

@@ -19,10 +19,8 @@ public sealed class Crawler(
     ];
 
     private ILogger? DebugLog { get; } = log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Crawler);
-    [field: AllowNull, MaybeNull]
     private HttpClient HttpClient => field ??= httpClientFactory.CreateClient(HttpClientName);
 
-    [field: AllowNull, MaybeNull]
     private IReadOnlyList<ICrawlingHandler> Handlers => field ??= handlers.ToList();
 
     public async Task<CrawledLink> Crawl(string url, CancellationToken cancellationToken)

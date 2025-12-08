@@ -15,13 +15,9 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
     protected override int CurrentFlowSetVersion => 2;
     protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
 
-    [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Host.Services.GetRequiredService<IAccountsBackend>();
-    [field: AllowNull, MaybeNull]
     private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
-    [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
-    [field: AllowNull, MaybeNull]
     private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
 
     protected override async Task<IReadOnlyList<AccountFull>> GetBatch(

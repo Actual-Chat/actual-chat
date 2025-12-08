@@ -7,7 +7,6 @@ public sealed class UIEventHub : IHasServices
     private ILogger Log { get; }
 
     public IServiceProvider Services { get; }
-    [field: AllowNull, MaybeNull]
     public Dispatcher Dispatcher => field ??= Services.GetRequiredService<Dispatcher>();
 
     public UIEventHub(IServiceProvider services)

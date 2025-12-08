@@ -15,7 +15,6 @@ public class VoicePlayer : IDisposable
     private AppUIHub Hub { get; }
     private AudioEngine Engine { get; }
     public IState<State> PlaybackState => _state;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
 

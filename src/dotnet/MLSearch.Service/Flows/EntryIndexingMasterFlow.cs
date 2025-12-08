@@ -8,7 +8,6 @@ namespace ActualChat.MLSearch.Flows;
 public partial class EntryIndexingMasterFlow
     : IndexingMasterFlowBase<EntryIndexingFlow, Chat.Chat, ChatId>, IMasterFlow
 {
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
 
     [DataMember(Order = 0), MemoryPackOrder(0)]

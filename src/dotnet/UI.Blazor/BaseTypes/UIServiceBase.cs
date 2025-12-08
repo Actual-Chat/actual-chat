@@ -22,7 +22,6 @@ public abstract class UIServiceBase<THub>(THub hub) : IHasDisposeStatus
     // Core UI service shortcuts
     protected HostInfo HostInfo => Hub.HostInfo;
     protected UrlMapper UrlMapper => Hub.UrlMapper;
-    [field: AllowNull, MaybeNull]
     protected MomentClockSet Clocks => field ??= Hub.Clocks;
     protected DateTimeConverter DateTimeConverter => Hub.DateTimeConverter;
     protected Temporals Temporals => Hub.Temporals;
@@ -46,9 +45,7 @@ public abstract class UIServiceBase<THub>(THub hub) : IHasDisposeStatus
     protected bool IsPrerendering => Hub.IsPrerendering;
     protected bool IsInteractive => Hub.IsInteractive;
 
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Hub.LoggerFactory.CreateLogger(GetType().NonProxyType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
-    [field: AllowNull, MaybeNull]
     protected Tracer Tracer => field ??= Hub.Tracer[GetType()];
 }

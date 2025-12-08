@@ -285,9 +285,7 @@ public partial class AppHost
         public IServiceProvider ModuleServices { get; set; } = null!;
         public ModuleHostBuilder ModuleHostBuilder { get; set; } = new();
         public ModuleHost ModuleHost { get; set; } = null!;
-        [field: AllowNull, MaybeNull]
         public HostInfo HostInfo => field ??= ModuleServices.GetRequiredService<HostInfo>();
-        [field: AllowNull, MaybeNull]
         public ILogger Log => field ??= ModuleServices.LogFor<BuildContext>();
         public WebApplication App { get; set; } = null!;
     }

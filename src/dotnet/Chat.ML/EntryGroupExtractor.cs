@@ -4,7 +4,6 @@ namespace ActualChat.Chat.ML;
 
 public record EntryGroup(IReadOnlyList<TextEntry> Entries, int WordCount = 0, bool IsCompleted = false)
 {
-    [field: AllowNull, MaybeNull]
     public IReadOnlyList<Range<long>> LocalIdRanges => field ??= GetLocalIdRanges();
 
     private IReadOnlyList<Range<long>> GetLocalIdRanges()

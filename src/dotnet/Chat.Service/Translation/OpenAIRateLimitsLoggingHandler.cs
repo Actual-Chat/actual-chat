@@ -7,7 +7,6 @@ public class OpenAIRateLimitsLoggingHandler(OpenAIRateLimitsLoggingHandler.Optio
 {
     private const string Prefix = "x-ratelimit-";
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services?.LogFor(GetType()) ?? StaticLog.For(GetType());
 
     protected override async Task<HttpResponseMessage> SendAsync(

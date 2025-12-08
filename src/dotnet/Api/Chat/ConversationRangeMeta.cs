@@ -10,7 +10,6 @@ public sealed partial record ConversationRangeMeta(
     [property: DataMember, MemoryPackOrder(3)] Range<long>? NextConversationRange)
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    [field: AllowNull, MaybeNull]
     public ConversationId[] ConversationIds
         => field ??= ConversationRanges.Select(r => ConversationId.New(ChatId, r.Start)).ToArray();
 }

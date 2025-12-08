@@ -34,7 +34,6 @@ namespace ActualChat.App.Server.Module;
 public sealed class AppServerModule(IServiceProvider moduleServices)
     : HostModule<HostSettings>(moduleServices), IWebServerModule
 {
-    [field: AllowNull, MaybeNull]
     public IWebHostEnvironment Env => field ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
 
     public void ConfigureApp(WebApplication app)

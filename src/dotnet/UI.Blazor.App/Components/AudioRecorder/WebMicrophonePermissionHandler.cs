@@ -8,7 +8,6 @@ public class WebMicrophonePermissionHandler : MicrophonePermissionHandler
     private static readonly string JSCheckPermission = $"{BlazorUIAppModule.ImportName}.{nameof(WebMicrophonePermissionHandler)}.checkPermission";
     private static readonly string JSRequestPermission = $"{BlazorUIAppModule.ImportName}.{nameof(WebMicrophonePermissionHandler)}.requestPermission";
 
-    [field: AllowNull, MaybeNull]
     protected AudioRecorder AudioRecorder => field ??= Hub.Services.GetRequiredService<AudioRecorder>();
 
     public WebMicrophonePermissionHandler(UIHub hub, bool mustStart = true) : base(hub, false)

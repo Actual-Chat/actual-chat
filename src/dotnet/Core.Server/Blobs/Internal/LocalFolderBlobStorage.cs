@@ -14,7 +14,6 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
     private FilePath BaseDirectory { get; } = options.BaseDirectory.FullPath;
     private IServiceProvider Services { get; } = services;
     private ILogger Log { get; } = services.LogFor<LocalFolderBlobStorage>();
-    [field: AllowNull, MaybeNull]
     private IContentTypeProvider ContentTypeProvider => field ??= Services.GetRequiredService<IContentTypeProvider>();
 
     public ValueTask DisposeAsync()

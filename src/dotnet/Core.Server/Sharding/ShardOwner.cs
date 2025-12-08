@@ -11,7 +11,6 @@ public sealed class ShardOwner : WorkerBase, IHasServices
     private static readonly TimeSpan PostReleaseInvalidationPeriod = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan Century = TimeSpan.FromDays(36_524);
 
-    [field: AllowNull, MaybeNull]
     internal ILogger Log => field ??= Services.LoggerFactory().CreateLogger(GetType(), $"@{ShardScheme.Name}");
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.ShardOwners);
 

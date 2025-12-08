@@ -2,9 +2,7 @@ namespace ActualChat.Chat;
 
 public class ChatThreadsBackend(IServiceProvider services) : IChatThreadsBackend
 {
-    [field: AllowNull, MaybeNull]
     private IRolesBackend RolesBackend => field ??= services.GetRequiredService<IRolesBackend>();
-    [field: AllowNull, MaybeNull]
     private IAuthorsBackend AuthorsBackend => field ??= services.GetRequiredService<IAuthorsBackend>();
 
     // [ComputeMethod]

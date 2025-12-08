@@ -13,9 +13,7 @@ public partial class MauiFileProvider : IFileProvider
     public string FileRef { get; init; } = "";
 
     private FileUploader Uploader => _services.GetRequiredService<FileUploader>();
-    [field: AllowNull, MaybeNull]
     private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().Create(FileRef);
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= _services.LogFor<MauiFileProvider>();
 
     public void Initialize(IServiceProvider services)

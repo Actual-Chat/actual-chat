@@ -8,7 +8,6 @@ public sealed class AndroidContentDownloader(IServiceProvider services)
 {
     private const string Prefix = "/in/content/";
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
     public static bool CanHandleWebRequestUri(string? relativeUrl)

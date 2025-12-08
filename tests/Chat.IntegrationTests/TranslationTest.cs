@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
@@ -10,9 +9,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<TranslationCollection.AppHostFixture>(fixture, @out)
 {
-    [field: AllowNull, MaybeNull]
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbChatEntryLanguage> LanguageEntityResolver => field ??= Tester.AppServices.DbEntityResolver<string, DbChatEntryLanguage>();
     private ITranslations Translations => Tester.Translations;
 

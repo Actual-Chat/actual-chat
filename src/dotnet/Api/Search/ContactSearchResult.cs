@@ -6,7 +6,6 @@ namespace ActualChat.Search;
 public partial class ContactSearchResult : SearchResult
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    [field: AllowNull, MaybeNull]
     public ContactId ContactId => field ??= ContactId.Parse(Id);
 
     public ContactSearchResult(ContactId id, SearchMatch searchMatch)

@@ -53,4 +53,13 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Update="Audio\WebM\Models\MatroskaModels.cs">
+      <DependentUpon>MatroskaModels.tt</DependentUpon>
+    </Compile>
+    <Compile Update="Audio\WebM\MatroskaSpecification.cs">
+      <DependentUpon>MatroskaSpecification.tt</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
 </Project>

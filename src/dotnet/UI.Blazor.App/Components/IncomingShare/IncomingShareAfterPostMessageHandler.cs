@@ -6,7 +6,6 @@ namespace ActualChat.UI.Blazor.App.Components;
 public class IncomingShareAfterSendMessageHandler(AppUIHub hub) : IAfterSendMessageHandler
 {
     private ToastUI ToastUI => hub.ToastUI;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor<IncomingShareAfterSendMessageHandler>();
 
     public void Invoke(string args, Result<ChatEntry?> result)

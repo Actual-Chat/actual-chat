@@ -22,7 +22,6 @@ public sealed record MeshNode(
     private string DebugValue
         => $"{ToString()}{(State is MeshNodeState.Offline ? $", dies in: {(DeadAt - Moment.Now)?.ToShortString() ?? "null"}" : "")}";
 
-    [field: AllowNull, MaybeNull]
     public string LockKey
         => field ??= Formatter.Format(Ref.Value, Endpoint, Roles.ToDelimitedString(","));
 

@@ -34,49 +34,27 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // all backend services should be requested lazily to avoid circular references!
 
-    [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
-    [field: AllowNull, MaybeNull]
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
-    [field: AllowNull, MaybeNull]
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
-    [field: AllowNull, MaybeNull]
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
-    [field: AllowNull, MaybeNull]
     private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Services.GetRequiredService<ILinkPreviewsBackend>();
-    [field: AllowNull, MaybeNull]
     private IInvitesBackend InvitesBackend => field ??= Services.GetRequiredService<IInvitesBackend>();
-    [field: AllowNull, MaybeNull]
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
-    [field: AllowNull, MaybeNull]
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
-    [field: AllowNull, MaybeNull]
     private IRouletteBackend RouletteBackend => field ??= Services.GetRequiredService<IRouletteBackend>();
-    [field: AllowNull, MaybeNull]
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
-    [field: AllowNull, MaybeNull]
     private HostInfo HostInfo => field ??= Services.HostInfo();
-    [field: AllowNull, MaybeNull]
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
-    [field: AllowNull, MaybeNull]
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory => field ??= Services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbChat> DbChatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbChatCopyState> DbChatCopyStateResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatCopyState>>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
-    [field: AllowNull, MaybeNull]
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
-    [field: AllowNull, MaybeNull]
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
-    [field: AllowNull, MaybeNull]
     private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
-    [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-    [field: AllowNull, MaybeNull]
     private AudioSourceDownloader AudioSourceDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
-    [field: AllowNull, MaybeNull]
     private OpenAITranscriber OpenAITranscriber => field ??= Services.GetRequiredService<OpenAITranscriber>();
 
     // [ComputeMethod]

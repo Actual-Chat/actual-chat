@@ -10,13 +10,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
 
-    [field: AllowNull, MaybeNull]
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbConversation> DbConversationResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
-    [field: AllowNull, MaybeNull]
     private IConversationSummarizer ConversationSummarizer { get; } = services.GetRequiredService<IConversationSummarizer>();
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
 
     // [ComputeMethod]

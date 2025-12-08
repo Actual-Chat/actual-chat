@@ -10,10 +10,8 @@ namespace ActualChat.App.Maui;
 
 public class IosMediaSaver(UIHub hub) : UIServiceBase<UIHub>(hub), IMediaSaver
 {
-    [field: AllowNull, MaybeNull]
     private HttpClient HttpClient
         => field ??= Hub.Services.HttpClientFactory().CreateClient(GetType().Name);
-    [field: AllowNull, MaybeNull]
     private AddPhotoPermissionHandler PermissionHandler
         => field ??= Hub.Services.GetRequiredService<AddPhotoPermissionHandler>();
 

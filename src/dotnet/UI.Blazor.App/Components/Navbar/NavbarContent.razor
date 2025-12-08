@@ -67,7 +67,6 @@
 @code {
     private EventHandler<NavbarGroupChangedEventArgs> _navbarUIOnSelectedGroupChanged = null!;
 
-    [field: AllowNull, MaybeNull]
     private NavbarUI NavbarUI => field ??= Hub.Services.GetRequiredService<NavbarUI>();
 
     protected override void OnInitialized() {

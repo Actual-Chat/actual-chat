@@ -60,10 +60,8 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
     }
 
 #if ANDROID
-    [field: AllowNull, MaybeNull]
     private VisualMediaFileChooser VisualMediaFileChooser => field ??= new VisualMediaFileChooser(MainActivity.Current);
 
-    [field: AllowNull, MaybeNull]
     private AndroidContentDownloader Downloader => field ??= services.GetRequiredService<AndroidContentDownloader>();
 
     private async Task<AttachFileInfo[]?> TryPickVisualMediaFiles(string acceptTypes)

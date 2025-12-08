@@ -4,7 +4,6 @@ namespace ActualChat.Users;
 
 public class ServerKvasBackendClient(IServerKvasBackend serverKvasBackend, string prefix) : IKvas
 {
-    [field: AllowNull, MaybeNull]
     public IServiceProvider Services => field ??= ServerKvasBackend.GetServices();
 
     private string Prefix { get; } = prefix;

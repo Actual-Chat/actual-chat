@@ -21,10 +21,8 @@ public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCach
     protected new Options Settings { get; }
     protected HashSet<Symbol> ForceFlushFor { get; }
     protected RpcHub Hub { get; }
-    [field: AllowNull, MaybeNull]
     protected RpcArgumentSerializer ArgumentSerializer
         => field ??= Hub.SerializationFormats.DefaultFormat.ArgumentSerializer;
-    [field: AllowNull, MaybeNull]
     protected RpcMethodResolver AnyMethodResolver
         => field ??= Hub.ServiceRegistry.AnyMethodResolver;
     protected ILogger? DebugLog

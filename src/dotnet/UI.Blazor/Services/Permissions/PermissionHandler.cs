@@ -6,11 +6,8 @@ public abstract class PermissionHandler : UIWorkerBase<UIHub>
 {
     private readonly MutableState<bool?> _cached;
 
-    [field: AllowNull, MaybeNull]
     protected SystemSettingsUI SystemSettingsUI => field ??= Services.GetRequiredService<SystemSettingsUI>();
-    [field: AllowNull, MaybeNull]
     protected IDispatcherResolver DispatcherResolver => field ??= Services.GetRequiredService<IDispatcherResolver>();
-    [field: AllowNull, MaybeNull]
     protected MomentClock Clock => field ??= Services.Clocks().CpuClock;
     protected AsyncLock AsyncLock { get; } = new(LockReentryMode.CheckedPass);
     protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
