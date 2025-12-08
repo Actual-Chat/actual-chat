@@ -27,25 +27,12 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private bool _isVoiceActive;
     private readonly UIHub _hub;
 
-    [field: AllowNull] [field: MaybeNull]
     private MicrophonePermissionHandler MicrophonePermissionHandler => field ??= _hub.Services.GetRequiredService<MicrophonePermissionHandler>();
-
-    [field: AllowNull] [field: MaybeNull]
     private IAudioCapture AudioCapture => field ??= _hub.Services.GetRequiredService<IAudioCapture>();
-
-    [field: AllowNull] [field: MaybeNull]
     private VoiceActivityDetector VoiceActivityDetector => field ??= _hub.Services.GetRequiredService<VoiceActivityDetector>();
-
-    [field: AllowNull] [field: MaybeNull]
     private IAudioRecorderBackend AudioRecorderBackend => field ??= _hub.Services.GetRequiredService<IAudioRecorderBackend>();
-
-    [field: AllowNull] [field: MaybeNull]
     private IAudioCodec AudioCodec => field ??= _hub.Services.GetRequiredService<IAudioCodec>();
-
-    [field: AllowNull] [field: MaybeNull]
     private ILogger Log => field ??= _hub.LogFor<MauiRecorderEngine>();
-
-    [field: AllowNull] [field: MaybeNull]
     private RecorderStateHub RecorderStateHub => field ??= _hub.Services.GetRequiredService<RecorderStateHub>();
 
     public MauiRecorderEngine(UIHub hub)

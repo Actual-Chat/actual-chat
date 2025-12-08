@@ -279,8 +279,6 @@
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-
-    [field: AllowNull] [field: MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 

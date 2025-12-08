@@ -37,8 +37,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private History History => Hub.History;
     private StateFactory StateFactory => Hub.StateFactory;
     private CancellationToken DisposeToken { get; }
-
-    [field: AllowNull] [field: MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
