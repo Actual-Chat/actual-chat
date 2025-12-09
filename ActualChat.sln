@@ -219,8 +219,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-9
 		docs\SmallTasks.md = docs\SmallTasks.md
 		docs\CODING_STYLE.md = docs\CODING_STYLE.md
 		docs\AGENTS.md = docs\AGENTS.md
-		docs\FileUploadCurrentState.md = docs\FileUploadCurrentState.md
-		docs\MediaProcessing.md = docs\MediaProcessing.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
