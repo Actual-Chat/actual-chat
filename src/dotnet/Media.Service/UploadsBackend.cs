@@ -56,7 +56,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             throw StandardError.NotFound<Upload>();
 
         if (offset != currentOffset)
-            throw StandardError.Constraint("Offset mismatch.");
+            throw StandardError.OffsetConflict();
 
         var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
         if (offset + data.Length > upload.Length)

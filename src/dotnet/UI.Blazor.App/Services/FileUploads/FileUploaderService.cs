@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -147,10 +148,9 @@ public class FileUploaderService
                 try {
                     var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
                     await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
-                    var mediaContent = await Owner.ConvertUpload(uploadId, ct).ConfigureAwait(false);
-                    return mediaContent;
+                    return await Owner.ConvertUpload(uploadId, ct).ConfigureAwait(false);
                 }
-                catch (NotFoundException<UploadId>) {
+                catch (NotFoundException<Upload>) {
                     await Owner.ClearUploadId(Session.SessionId, ct).ConfigureAwait(false);
                     throw;
                 }
