@@ -34,7 +34,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         var json = JsonSerializer.Serialize(upload);
         await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);
         await UploadsStorage.CreateEmptyDataFile(uploadId,  contentType, cancellationToken).ConfigureAwait(false);
-        await EnsureDbOperationCreated(cancellationToken).ConfigureAwait(false);
+        await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task OnRemove(UploadsBackend_Remove command, CancellationToken cancellationToken)
@@ -45,7 +45,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             return;
         }
         await UploadsStorage.DeleteFiles(uploadId, cancellationToken).ConfigureAwait(false);
-        await EnsureDbOperationCreated(cancellationToken).ConfigureAwait(false);
+        await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<Result<long>> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken)
@@ -61,9 +61,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
         var expectedNewOffset = currentOffset.Value + data.Length;
         if (expectedNewOffset > upload.Length)
-            throw StandardError.Constraint("Upload length mismatch.");
+            throw StandardError.Constraint( $"Stream contains more data than the file's upload length. Stream data: {upload.Length}, upload length: {expectedNewOffset}.");
 
-        var stream = MemoryStreamManager.Default.GetStream(nameof(Uploads), data.Length);
+        using var stream = new MemoryStream(data, writable: false);
         await using (stream.ConfigureAwait(false)) {
             stream.Write(data);
             stream.Position = 0;
@@ -92,7 +92,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         return await MediaProcessor.ProcessAttachment(chatId, uploadedStreamFile, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task EnsureDbOperationCreated(CancellationToken cancellationToken)
+    private async Task TriggerDistributedInvalidation(CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
