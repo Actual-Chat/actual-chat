@@ -51,6 +51,13 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     public virtual async Task<Result<long>> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken)
     {
         var (uploadId, uploadOffset, data) = command;
+        // NOTE(DF): In production environment UploadsStorage is backed with gcp blob storage.
+        // It means that the last chunk of data is always reliably appended.
+        // We don't need to check manually where the last chunk starts and if the append operation was successfully completed.
+        // If it's not the case, we'll bump into the offset conflict scenario and the client will restart upload from the actual offset.
+        // Nothing to do from our side.
+        // In the local environment UploadsStorage uses the local file system,
+        // but for simplicity we skip the check whether the last chunk was reliably appended.
         var currentOffset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
         if (currentOffset is null)
             return Result.NewError<long>(NotFoundUpload());
