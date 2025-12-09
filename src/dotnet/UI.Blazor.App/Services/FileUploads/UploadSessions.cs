@@ -232,7 +232,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         return session.UploadId;
     }
 
-    private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken ct)
+    private Task<Result<MediaContent>> ConvertUpload(UploadId uploadId, CancellationToken ct)
         => Commander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), ct);
 
     private async Task ClearUploadId(string sessionId, CancellationToken cancellationToken)

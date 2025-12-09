@@ -13,7 +13,7 @@ public partial interface IFileProvider
     Task ClearForRemoving();
     Task<string> GetPreviewUrl();
     Task WhenFileStreamReady();
-    Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct);
+    Task<Result<Unit>> UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct);
 }
 
 // NOTE(DF): This is a workaround for the following issue:
