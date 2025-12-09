@@ -13,6 +13,7 @@
     @apply relative;
     @apply justify-evenly;
     @apply w-full;
+    @apply overflow-hidden;
 }
 .tab-panel-tabs.carousel .btn-group {
     @apply gap-x-2;

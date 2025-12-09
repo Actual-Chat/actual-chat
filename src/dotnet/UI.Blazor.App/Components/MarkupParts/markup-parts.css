@@ -184,14 +184,19 @@ body.hoverable .playable-text-markup > span:hover {
 }
 
 .code-block-markup {
-    @apply flex-y items-stretch overflow-hidden;
+    @apply flex-y items-stretch;
     @apply mr-2;
+    @apply rounded border-2 border-separator;
+    @apply overflow-hidden;
+    max-height: 75vh;
 }
 .code-block-markup code {
     @apply block;
-    @apply p-2;
-    @apply rounded border-2 bg-02;
-    @apply overflow-y-hidden overflow-x-auto custom-scrollbar-x;
+    @apply h-full;
+    @apply p-1;
+    @apply rounded border-none;
+    @apply bg-02;
+    @apply overflow-auto custom-scrollbar-x;
     @apply text-sm;
     /*@apply whitespace-pre-wrap;*/
 }
