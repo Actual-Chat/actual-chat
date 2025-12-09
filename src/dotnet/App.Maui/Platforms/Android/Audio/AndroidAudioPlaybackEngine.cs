@@ -409,7 +409,7 @@ internal sealed class AndroidAudioPlaybackEngine(
                 head = parent._lastPlayedSamples;
             else
                 head = parent.GetSafePlayedSamples(track);
-            parent.ReportPlaying(head);
+            _ = parent.ReportPlaying(head);
         }
 
         public void OnPeriodicNotification(AudioTrack? track)
@@ -422,12 +422,12 @@ internal sealed class AndroidAudioPlaybackEngine(
             if (track is null) {
                 _whenCompletedSource.TrySetResult(false);
                 var fallback = parent.GetSafePlayedSamples(null);
-                parent.ReportPlaying(fallback);
+                _ = parent.ReportPlaying(fallback);
                 return;
             }
 
             var head = parent.GetSafePlayedSamples(track);
-            parent.ReportPlaying(head);
+            _ = parent.ReportPlaying(head);
         }
     }
 }

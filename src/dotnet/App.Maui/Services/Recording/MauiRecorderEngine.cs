@@ -49,7 +49,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         ChatId chatId,
         ChatEntryId? repliedChatEntryId,
         string sessionToken,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         // Stop any existing recording first
         await Stop(cancellationToken).ConfigureAwait(false);
@@ -117,7 +117,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
     public async Task<AudioRecorder.AudioDiagnosticsState> RunDiagnostics(CancellationToken cancellationToken)
     {
-        var permissionStatus = await MicrophonePermissionHandler.Check(cancellationToken);
+        var permissionStatus = await MicrophonePermissionHandler.Check(cancellationToken).ConfigureAwait(true);
         var lastVadEvent = VoiceActivityDetector.LastActivityEvent;
 
         bool isSignalDetected, isConnected;

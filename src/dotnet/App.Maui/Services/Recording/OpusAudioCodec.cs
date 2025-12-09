@@ -14,7 +14,7 @@ public sealed class OpusAudioCodec : IAudioCodec
         CancellationToken cancellationToken = default)
     {
 #if IOS
-        return ThrowingAsyncEnumerable<byte>("Audio encoding is not implemented on iOS.");
+        return NotSupportedAsyncEnumerable<byte>("Audio encoding is not supported on iOS.");
 #else
         var channel = Channel.CreateUnbounded<IMemoryOwner<byte>>(new UnboundedChannelOptions {
             SingleReader = true,
@@ -99,7 +99,7 @@ public sealed class OpusAudioCodec : IAudioCodec
         CancellationToken cancellationToken = default)
     {
 #if IOS
-        return ThrowingAsyncEnumerable<float>("Audio decoding is not implemented on iOS.");
+        return NotSupportedAsyncEnumerable<byte>("Audio decoding is not supported on iOS.");
 #else
         var channel = Channel.CreateUnbounded<IMemoryOwner<float>>(new UnboundedChannelOptions {
             SingleReader = true,
@@ -166,10 +166,10 @@ public sealed class OpusAudioCodec : IAudioCodec
 #endif
     }
 
-    private static async IAsyncEnumerable<IMemoryOwner<T>> ThrowingAsyncEnumerable<T>(string message)
+    private static async IAsyncEnumerable<IMemoryOwner<T>> NotSupportedAsyncEnumerable<T>(string message)
     {
-        await Task.Yield();
-        throw new NotImplementedException(message);
+        await Task.Yield(); // Just to suppress the warning
+        throw new NotSupportedException(message);
 #pragma warning disable CS0162
         yield break;
 #pragma warning restore CS0162

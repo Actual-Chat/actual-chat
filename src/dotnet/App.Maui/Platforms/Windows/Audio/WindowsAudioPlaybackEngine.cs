@@ -73,13 +73,13 @@ internal sealed class WindowsAudioPlaybackEngine(
             DesiredSamplesPerQuantum = Constants.Audio.RecordingSampleRate / 1000 * Constants.Audio.OpusFrameDurationMs,
         };
 
-        var graphCreate = await AudioGraph.CreateAsync(settings).AsTask(cancellationToken);
+        var graphCreate = await AudioGraph.CreateAsync(settings).AsTask(cancellationToken).ConfigureAwait(true);
         if (graphCreate.Status != AudioGraphCreationStatus.Success || graphCreate.Graph is null)
             throw new InvalidOperationException($"AudioGraph creation failed: {graphCreate.Status}");
 
         _graph = graphCreate.Graph;
 
-        var deviceOutputResult = await _graph.CreateDeviceOutputNodeAsync().AsTask(cancellationToken);
+        var deviceOutputResult = await _graph.CreateDeviceOutputNodeAsync().AsTask(cancellationToken).ConfigureAwait(true);
         if (deviceOutputResult.Status != AudioDeviceNodeCreationStatus.Success || deviceOutputResult.DeviceOutputNode is null)
             throw new InvalidOperationException($"AudioGraph device output creation failed: {deviceOutputResult.Status}");
         _deviceOutput = deviceOutputResult.DeviceOutputNode;
@@ -184,7 +184,6 @@ internal sealed class WindowsAudioPlaybackEngine(
         return ValueTask.CompletedTask;
     }
 
-
     // Private methods
 
     private async Task StartWhenBuffered(CancellationToken cancellationToken)
@@ -197,9 +196,11 @@ internal sealed class WindowsAudioPlaybackEngine(
                     try {
                         if (_decodedSamples.WhenPushed.IsCompleted) {
                             var remaining = minSamples - _decodedSamples.Count;
-                            await Clocks.CoarseSystemClock.Delay(remaining * 1000 / Constants.Audio.PlaybackSampleRate, cancellationToken);
+                            await Clocks.CoarseSystemClock
+                                .Delay(remaining * 1000 / Constants.Audio.PlaybackSampleRate, cancellationToken)
+                                .ConfigureAwait(true);
                         }
-                        await _decodedSamples.WhenPushed.WaitAsync(cancellationToken);
+                        await _decodedSamples.WhenPushed.WaitAsync(cancellationToken).ConfigureAwait(true);
                     }
                     catch (OperationCanceledException) {
                         // Respect cancellation and skip Start
@@ -245,11 +246,11 @@ internal sealed class WindowsAudioPlaybackEngine(
                 var playSamples = samples - skip;
                 while (!_decodedSamples.TryPush(pcm.Span.Slice(skip, playSamples))) {
                     // Report buffer full
-                    await ReportPlaying();
-                    await _decodedSamples.WhenPulled.WaitAsync(cancellationToken);
+                    await ReportPlaying().ConfigureAwait(true);
+                    await _decodedSamples.WhenPulled.WaitAsync(cancellationToken).ConfigureAwait(true);
                 }
 
-                // Update played samples and periodically report playing state
+                // Update played samples and periodically report the playing state
                 _remainingPreSkip -= skip;
                 if (_remainingPreSkip < 0)
                     _remainingPreSkip = 0;
@@ -270,7 +271,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         if (!_decodedSamples.TryPull(playSamples, out var pcmOwner)) {
             var isCompleted = _packetChannel.Reader.Completion.IsCompleted;
             if (isCompleted) {
-                End(true, CancellationToken.None);
+                _ = End(true, CancellationToken.None);
                 return;
             }
         }
@@ -339,7 +340,7 @@ internal sealed class WindowsAudioPlaybackEngine(
     private async Task SafeOnEnded(string? message)
     {
         try {
-            await playerBackend.OnEnded(message);
+            await playerBackend.OnEnded(message).ConfigureAwait(false);
         }
         catch {
             // ignore
