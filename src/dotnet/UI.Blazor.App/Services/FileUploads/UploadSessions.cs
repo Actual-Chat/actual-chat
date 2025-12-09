@@ -17,13 +17,15 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     public UploadSessions(AppUIHub hub) :base(hub)
     {
         _repo = new UploadSessionRepo(hub.Services);
-        _fileUploader = new FileUploaderService(hub.Services, GetOrRegisterUpload, ConvertUpload);
-
+        _fileUploader = new FileUploaderService(
+            hub.LogFor<FileUploaderService>(),
+            GetOrRegisterUpload,
+            ConvertUpload,
+            ClearUploadId);
         _fileUploader.ProgressChanged += OnProgressChanged;
         _fileUploader.Completed += OnCompleted;
         _fileUploader.Failed += OnFailed;
         _fileUploader.Canceled += OnCanceled;
-
         _cleanupTask = BackgroundTask.Run(Cleanup);
     }
 
@@ -128,7 +130,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             throw new InvalidOperationException("Cannot delete a not canceled/completed/failed session");
 
         if (session.UploadId is not null)
-            await Hub.Commander.Call(new Uploads_Remove(Hub.Session, session.UploadId), CancellationToken.None).ConfigureAwait(false);
+            await Commander.Call(new Uploads_Remove(Hub.Session, session.UploadId), CancellationToken.None).ConfigureAwait(false);
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         Log.LogInformation("Deleted session '{SessionId}'", sessionId);
@@ -171,6 +173,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.Status = UploadStatus.Pending;
         session.ProgressTracker = new UploadProgressTracker();
         session.LastUpdatedAt = Now;
+        session.UploadId = null;
         await _repo.Save(session).ConfigureAwait(false);
         return session;
     }
@@ -231,5 +234,15 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken ct)
-        => UICommander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), ct);
+        => Commander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), ct);
+
+    private async Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
+    {
+        var session = await GetSession(sessionId).ConfigureAwait(false);
+        if (session.UploadId is null)
+            return;
+        session.UploadId = null;
+        session.LastUpdatedAt = Now;
+        await _repo.Save(session).ConfigureAwait(false);
+    }
 }

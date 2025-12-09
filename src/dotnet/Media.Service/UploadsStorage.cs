@@ -9,11 +9,11 @@ public class UploadsStorage(IServiceProvider services)
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
     private IBlobStorage BlobStorage => Blobs[BlobScope.UploadTempRecord];
 
-    public async Task<long> GetUploadOffset(UploadId uploadId, CancellationToken cancellationToken = default)
+    public async Task<long?> GetUploadOffset(UploadId uploadId, CancellationToken cancellationToken = default)
     {
         var stream = await BlobStorage.Read(GetDataFileId(uploadId), cancellationToken).ConfigureAwait(false);
         if (stream is null)
-            return -1;
+            return null;
 
         await using (stream.ConfigureAwait(false))
             return stream.Length;

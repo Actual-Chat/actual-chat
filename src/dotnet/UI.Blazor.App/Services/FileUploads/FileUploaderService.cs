@@ -6,12 +6,11 @@ public class FileUploaderService
 {
     private readonly Lock _lock = new ();
     private readonly Dictionary<string, UploadJob> _jobs = new (StringComparer.Ordinal);
-    private readonly IServiceProvider _services;
     private readonly OperationQueue _operationQueue;
     private readonly Func<string, CancellationToken, Task<UploadId>> _getUploadId;
     private readonly Func<UploadId, CancellationToken, Task<MediaContent>> _convertUpload;
-
-    private ILogger Log => _services.LogFor(GetType());
+    private readonly Func<string, CancellationToken, Task> _clearUploadId;
+    private ILogger Log { get; }
 
     public event Func<string, double, Task>? ProgressChanged;
     public event Func<string, MediaContent, Task>? Completed;
@@ -19,15 +18,17 @@ public class FileUploaderService
     public event Func<string, Task>? Canceled;
 
     public FileUploaderService(
-        IServiceProvider services,
+        ILogger log,
         Func<string, CancellationToken, Task<UploadId>> getUploadId,
-        Func<UploadId, CancellationToken, Task<MediaContent>> convertUpload)
+        Func<UploadId, CancellationToken, Task<MediaContent>> convertUpload,
+        Func<string, CancellationToken, Task> clearUploadId)
     {
-        _services = services;
         _getUploadId = getUploadId;
         _convertUpload = convertUpload;
+        _clearUploadId = clearUploadId;
         // TODO: add queues with different priorities for small and big files.
         _operationQueue = new OperationQueue();
+        Log = log;
     }
 
     public async Task StartOrResumeUpload(UploadSession session)
@@ -68,6 +69,9 @@ public class FileUploaderService
 
     private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken cancellationToken)
         => _convertUpload(uploadId, cancellationToken);
+
+    private Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
+        => _clearUploadId(sessionId, cancellationToken);
 
     // Nested types
 
@@ -140,10 +144,16 @@ public class FileUploaderService
 
             async Task<MediaContent> StartFunc(CancellationToken ct)
             {
-                var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
-                await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
-                var mediaContent = await Owner.ConvertUpload(uploadId, ct).ConfigureAwait(false);
-                return mediaContent;
+                try {
+                    var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
+                    await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
+                    var mediaContent = await Owner.ConvertUpload(uploadId, ct).ConfigureAwait(false);
+                    return mediaContent;
+                }
+                catch (NotFoundException<UploadId>) {
+                    await Owner.ClearUploadId(Session.SessionId, ct).ConfigureAwait(false);
+                    throw;
+                }
             }
         }
 
@@ -168,7 +178,7 @@ public class FileUploaderService
                 }
                 else if (t.IsFaulted) {
                     foreach (var ex in t.Exception.Flatten().InnerExceptions)
-                        Log.LogError(ex, "**** Failed to upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
+                        Log.LogError(ex, "**** Failed to upload file '{FileName}' for '{SessionId}'('{UploadId}')", session.FileName, sessionId, session.UploadId);
                     await RaiseUploadFailed(t.Exception).ConfigureAwait(false);
                 }
                 else if (t.IsCanceled) {

@@ -19,7 +19,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     public virtual async Task<long> GetOffset(UploadId uploadId, CancellationToken cancellationToken)
     {
         var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
-        return offset;
+        return offset ?? throw StandardError.NotFound<Upload>();
     }
 
     public virtual async Task OnCreate(UploadsBackend_Create command, CancellationToken cancellationToken)
@@ -52,6 +52,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     {
         var (uploadId, offset, data) = command;
         var currentOffset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
+        if (currentOffset is null)
+            throw StandardError.NotFound<Upload>();
+
         if (offset != currentOffset)
             throw StandardError.Constraint("Offset mismatch.");
 
@@ -65,7 +68,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             stream.Position = 0;
             await UploadsStorage.AppendDataAsync(uploadId, stream, cancellationToken).ConfigureAwait(false);
         }
-        return currentOffset + data.Length;
+        return currentOffset.Value + data.Length;
     }
 
     public virtual async Task<MediaContent> OnConvertToMediaContent(UploadsBackend_ConvertToMediaContent command, CancellationToken cancellationToken)

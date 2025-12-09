@@ -67,8 +67,8 @@ public class Uploads(IServiceProvider services) : IUploads
 
     private static void EnsureCanAccessUpload([NotNull] Upload? upload, Account user)
     {
-        if (upload is null|| upload.UserId != user.Id)
-            throw StandardError.Constraint("Upload not found.");
+        if (upload is null || upload.UserId != user.Id)
+            throw StandardError.NotFound<Upload>();
     }
 
     private void EnsureCanCreate(AccountFull user, long length, string tag, PropertyBag metadata)

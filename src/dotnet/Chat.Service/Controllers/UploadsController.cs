@@ -1,5 +1,3 @@
-using ActualChat.Controllers;
-using ActualChat.Hashing;
 using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Users;
@@ -13,6 +11,7 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IUploads Uploads { get; } = services.GetRequiredService<IUploads>();
     private ICommander Commander { get; } = services.Commander();
+    private ILogger Log { get; } = services.LogFor<UploadsController>();
 
     private static class Headers
     {
@@ -22,7 +21,8 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
     [HttpHead("{uploadSid}")]
     public async Task<IActionResult> Status(string uploadSid, CancellationToken cancellationToken)
     {
-        var uploadId = UploadId.Parse(uploadSid);
+        if (!UploadId.TryParse(uploadSid, out var uploadId))
+            return BadRequest("Invalid upload id.");
         Session session;
         try {
             // NOTE(AY): Header is used by clients, cookie is used by SSB
@@ -33,9 +33,15 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
         catch (Exception e) {
             return BadRequest(e.Message);
         }
-        var offset = await Uploads.GetOffset(session, uploadId, cancellationToken).ConfigureAwait(false);
-        Response.Headers[Headers.UploadOffset] = offset.ToInvariantString();
-        return Ok();
+
+        try {
+            var offset = await Uploads.GetOffset(session, uploadId, cancellationToken).ConfigureAwait(false);
+            Response.Headers[Headers.UploadOffset] = offset.ToInvariantString();
+            return Ok();
+        }
+        catch (NotFoundException<Upload>) {
+            return NotFound();
+        }
     }
 
     [HttpPatch("{uploadSid}")]
@@ -57,15 +63,25 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
             return BadRequest(e.Message);
         }
 
-        var uploadId = UploadId.Parse(uploadSid);
-        var ms = new MemoryStream();
-        await using (ms.ConfigureAwait(false)) {
-            await Request.Body.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
-            byte[] chunk = ms.ToArray();
-            var command = new Uploads_Append(session, uploadId, uploadOffset, chunk);
-            var newOffset = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-            Response.Headers[Headers.UploadOffset] = newOffset.ToInvariantString();
-            return NoContent();
+        if (!UploadId.TryParse(uploadSid, out var uploadId))
+            return BadRequest("Invalid upload id.");
+
+        try {
+            var ms = new MemoryStream();
+            await using (ms.ConfigureAwait(false)) {
+                await Request.Body.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+                byte[] chunk = ms.ToArray();
+                var command = new Uploads_Append(session, uploadId, uploadOffset, chunk);
+                var newOffset = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+                Response.Headers[Headers.UploadOffset] = newOffset.ToInvariantString();
+                return NoContent();
+            }
+        }
+        catch (NotFoundException<Upload>) {
+            return NotFound();
+        }
+        catch (OffsetConflictException) {
+            return Conflict();
         }
     }
 }
