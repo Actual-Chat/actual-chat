@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEditor/attachment-web-file-picker';
 
-const { debugLog, errorLog } = Log.get('WebFileProvider');
+const { debugLog, warnLog, errorLog } = Log.get('WebFileProvider');
 
 type ProgressReporter = (progressPercent: number) => void;
 
@@ -180,6 +180,10 @@ export class WebFileProvider {
                 debugLog?.log(`File upload '${uploadId}' cancelled`);
                 void reporter.reportUploadCancelled();
             }
+            else if (e instanceof UploadNotFoundError) {
+                errorLog?.log(`File upload '${uploadId}' not found`);
+                void reporter.reportUploadNotFound();
+            }
             else {
                 errorLog?.log('Failed to upload file', e);
                 void reporter.reportUploadFailed();
@@ -232,6 +236,10 @@ export class FileUploadProgressReporter {
     public async reportUploadCancelled() {
         return this.blazorRef.invokeMethodAsync('OnUploadCancelled');
     }
+
+    public async reportUploadNotFound() {
+        return this.blazorRef.invokeMethodAsync('OnUploadNotFound');
+    }
 }
 
 class ChunkedFileUpload {
@@ -262,24 +270,49 @@ class ChunkedFileUpload {
     }
 
     private async startInternal() {
-        try {
-            let offset = await this.getOffset();
-            debugLog?.log(`Starting upload of ${this.uploadId} at offset ${offset}`);
-            const fileSize = this.blob.size;
-            this.progressReporter((offset / fileSize) * 100);
-            // Upload chunks
-            while (offset < fileSize) {
-                const remainingBytes = fileSize - offset;
-                const currentChunkSize = Math.min(this.chunkSize, remainingBytes);
-                offset = await this.uploadChunk(offset, currentChunkSize);
+        let retryIndex = 0;
+        const maxRetries = 3;
+        let run = true;
+        while (run) {
+            run = false;
+            try {
+                let offset = await this.getOffset();
+                debugLog?.log(`Starting upload of ${this.uploadId} at offset ${offset}`);
+                const fileSize = this.blob.size;
                 this.progressReporter((offset / fileSize) * 100);
+                // Upload chunks
+                while (offset < fileSize) {
+                    const remainingBytes = fileSize - offset;
+                    const currentChunkSize = Math.min(this.chunkSize, remainingBytes);
+                    const newOffset = await this.uploadChunk(offset, currentChunkSize);
+                    const expectedNewOffset = offset + currentChunkSize;
+                    if (newOffset !== expectedNewOffset)
+                        warnLog?.log(`Offset mismatch detected: ${expectedNewOffset} != ${newOffset}`);
+                    offset = newOffset;
+                    // Reset retry counter on successful chunk upload
+                    retryIndex = 0;
+                    this.progressReporter((offset / fileSize) * 100);
+                }
+                this.whenCompletedSource.resolve();
+                return;
+            } catch (error) {
+                if (error instanceof OffsetConflictError) {
+                    if (retryIndex >= maxRetries) {
+                        this.whenCompletedSource.reject(error);
+                        return;
+                    }
+                    warnLog?.log('Offset conflict detected. Retrying...');
+                    retryIndex++;
+                    run = true;
+                    continue;
+                }
+                if (this.isCancelled()) {
+                    this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
+                } else {
+                    this.whenCompletedSource.reject(error);
+                }
+                return;
             }
-            this.whenCompletedSource.resolve();
-        } catch (error) {
-            if (this.isCancelled())
-                this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
-            else
-                this.whenCompletedSource.reject(error);
         }
     }
 
@@ -292,8 +325,11 @@ class ChunkedFileUpload {
             },
             signal: this.abortController.signal
         });
-        if (!response.ok)
+        if (!response.ok) {
+            if (response.status == 404)
+                throw new UploadNotFoundError(`Upload ${this.uploadId} not found`);
             throw new Error(`Failed to get upload status: ${response.statusText}`);
+        }
         const header = response.headers.get('Upload-Offset');
         if (!header)
             throw new Error('Upload-Offset header not found in response');
@@ -303,7 +339,8 @@ class ChunkedFileUpload {
     private async uploadChunk(offset: number, chunkSize: number): Promise<number>
     {
         const contentType = 'application/offset+octet-stream';
-        const chunk = this.blob.slice(offset, offset + chunkSize, contentType);
+        const expectedNewOffset = offset + chunkSize;
+        const chunk = this.blob.slice(offset, expectedNewOffset, contentType);
         const response = await fetch(this.uploadUrl, {
             method: 'PATCH',
             headers: {
@@ -315,17 +352,33 @@ class ChunkedFileUpload {
             signal: this.abortController.signal
         });
 
-        if (!response.ok)
+        if (!response.ok) {
+            if (response.status == 404)
+                throw new UploadNotFoundError(`Upload ${this.uploadId} not found`);
+            if (response.status == 409)
+                throw new OffsetConflictError('Upload offset conflict');
             throw new Error(`Failed to upload chunk: ${response.statusText}`);
+        }
 
         const newOffsetHeader = response.headers.get('Upload-Offset');
         if (!newOffsetHeader)
             throw new Error('Upload-Offset header not found in response');
-
         return parseInt(newOffsetHeader, 10);
     }
 
     private isCancelled() : boolean {
         return this.abortController.signal.aborted;
+    }
+}
+
+class UploadNotFoundError extends Error {
+    constructor(message: string) {
+        super(message);
+    }
+}
+
+class OffsetConflictError extends Error {
+    constructor(message?: string) {
+        super(message);
     }
 }

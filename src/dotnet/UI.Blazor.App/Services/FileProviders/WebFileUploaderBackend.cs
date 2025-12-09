@@ -1,3 +1,5 @@
+using ActualChat.Media;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public interface IWebFileUploaderBackend
@@ -30,6 +32,10 @@ public sealed class WebFileUploaderBackend : IWebFileUploaderBackend, IDisposabl
     [JSInvokable]
     public void OnUploadSucceed()
         => _tcs.TrySetResult();
+
+    [JSInvokable]
+    public void OnUploadNotFound()
+        => _tcs.TrySetException(StandardError.NotFound<Upload>());
 
     [JSInvokable]
     public void OnUploadFailed()

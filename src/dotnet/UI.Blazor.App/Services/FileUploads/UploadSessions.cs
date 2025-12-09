@@ -173,7 +173,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.Status = UploadStatus.Pending;
         session.ProgressTracker = new UploadProgressTracker();
         session.LastUpdatedAt = Now;
-        session.UploadId = null;
         await _repo.Save(session).ConfigureAwait(false);
         return session;
     }
