@@ -32,7 +32,7 @@ public partial class MauiFileProvider : IFileProvider
         async Task<Stream> GetFile()
         {
             var stream = await OpenRead().ConfigureAwait(false);
-            return stream ?? throw new InvalidOperationException("No file access.");
+            return stream ?? throw StandardError.Internal("No file access.");
         }
     }
 
