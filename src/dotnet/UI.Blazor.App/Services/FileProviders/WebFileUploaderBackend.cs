@@ -13,10 +13,10 @@ public interface IWebFileUploaderBackend
 public sealed class WebFileUploaderBackend : IWebFileUploaderBackend, IDisposable
 {
     private bool _isDisposed;
-    private readonly TaskCompletionSource _tcs = TaskCompletionSourceExt.New();
+    private readonly TaskCompletionSource<Result<Unit>> _tcs = TaskCompletionSourceExt.New<Result<Unit>>();
 
     public IProgress<double> ProgressTracker { get; }
-    public Task WhenUploadCompleted => _tcs.Task;
+    public Task<Result<Unit>> WhenUploadCompleted => _tcs.Task;
     public DotNetObjectReference<IWebFileUploaderBackend> BlazorRef { get; }
 
     public WebFileUploaderBackend(IProgress<double> progressTracker)
@@ -31,11 +31,11 @@ public sealed class WebFileUploaderBackend : IWebFileUploaderBackend, IDisposabl
 
     [JSInvokable]
     public void OnUploadSucceed()
-        => _tcs.TrySetResult();
+        => _tcs.TrySetResult(Unit.Default);
 
     [JSInvokable]
     public void OnUploadNotFound()
-        => _tcs.TrySetException(StandardError.NotFound<Upload>());
+        => _tcs.TrySetResult(Result.NewError<Unit>(StandardError.NotFound<Upload>()));
 
     [JSInvokable]
     public void OnUploadFailed()

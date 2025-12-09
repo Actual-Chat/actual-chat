@@ -34,14 +34,12 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
             return BadRequest(e.Message);
         }
 
-        try {
-            var offset = await Uploads.GetOffset(session, uploadId, cancellationToken).ConfigureAwait(false);
-            Response.Headers[Headers.UploadOffset] = offset.ToInvariantString();
-            return Ok();
-        }
-        catch (NotFoundException<Upload>) {
+        var result = await Uploads.GetOffset(session, uploadId, cancellationToken).ConfigureAwait(false);
+        if (result.Error is NotFoundException<Upload>)
             return NotFound();
-        }
+
+        Response.Headers[Headers.UploadOffset] = result.Value.ToInvariantString();
+        return Ok();
     }
 
     [HttpPatch("{uploadSid}")]
@@ -66,22 +64,20 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
         if (!UploadId.TryParse(uploadSid, out var uploadId))
             return BadRequest("Invalid upload id.");
 
-        try {
-            var ms = new MemoryStream();
-            await using (ms.ConfigureAwait(false)) {
-                await Request.Body.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
-                byte[] chunk = ms.ToArray();
-                var command = new Uploads_Append(session, uploadId, uploadOffset, chunk);
-                var newOffset = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-                Response.Headers[Headers.UploadOffset] = newOffset.ToInvariantString();
-                return NoContent();
-            }
-        }
-        catch (NotFoundException<Upload>) {
-            return NotFound();
-        }
-        catch (OffsetConflictException) {
-            return Conflict();
+        var ms = new MemoryStream();
+        await using (ms.ConfigureAwait(false)) {
+            await Request.Body.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+            byte[] chunk = ms.ToArray();
+            var command = new Uploads_Append(session, uploadId, uploadOffset, chunk);
+            var result = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            if (result.Error is NotFoundException<Upload>)
+                return NotFound();
+
+            if (result.Error is OffsetConflictException)
+                return Conflict();
+
+            Response.Headers[Headers.UploadOffset] = result.Value.ToInvariantString();
+            return NoContent();
         }
     }
 }
