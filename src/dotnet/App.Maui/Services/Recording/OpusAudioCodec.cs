@@ -99,7 +99,7 @@ public sealed class OpusAudioCodec : IAudioCodec
         CancellationToken cancellationToken = default)
     {
 #if IOS
-        return NotSupportedAsyncEnumerable<byte>("Audio decoding is not supported on iOS.");
+        return NotSupportedAsyncEnumerable<float>("Audio decoding is not supported on iOS.");
 #else
         var channel = Channel.CreateUnbounded<IMemoryOwner<float>>(new UnboundedChannelOptions {
             SingleReader = true,
