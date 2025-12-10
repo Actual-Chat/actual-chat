@@ -322,9 +322,12 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         _audioFocusActivation = null;
     }
 
-    private RestoreFocusHandler? OnLostFocus(bool mayRecover)
+    private RestoreFocusHandler? OnLostFocus(bool mayRecover, bool canDuck)
     {
-        Log.LogInformation("Audio focus lost event. May recover: {MayRecover}", mayRecover);
+        Log.LogInformation("Audio focus lost event. May recover: {MayRecover}, Can duck: {CanDuck}", mayRecover, canDuck);
+        if (canDuck)
+            return null; // Do not stop players. We don't support ducking so far, so just let it play, do nothing.
+
         if (!mayRecover)
             _audioFocusActivation = null;
         var restoreFocusHandler = HandleLostAudioFocus(PlaybackState.Value, mayRecover);

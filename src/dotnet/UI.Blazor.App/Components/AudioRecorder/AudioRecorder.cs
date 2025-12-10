@@ -283,7 +283,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         _audioFocusActivation = null;
     }
 
-    private RestoreFocusHandler? LostFocusCallback(bool mayRecover)
+    private RestoreFocusHandler? LostFocusCallback(bool mayRecover, bool canDuck)
         // Do nothing even app lost the audio focus.
         => null;
 

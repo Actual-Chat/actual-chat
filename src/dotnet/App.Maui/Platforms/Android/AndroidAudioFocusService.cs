@@ -58,9 +58,9 @@ public class AndroidAudioFocusService : MauiAudioFocusService
             return;
 
         if (af is AudioFocus.LossTransient or AudioFocus.LossTransientCanDuck)
-            _handle.RaiseLostFocus(true);
+            _handle.RaiseLostFocus(true, af is AudioFocus.LossTransientCanDuck);
         else if (af is AudioFocus.Loss)
-            _handle.RaiseLostFocus(false);
+            _handle.RaiseLostFocus(false, false);
         if (af is AudioFocus.Gain or AudioFocus.GainTransient or AudioFocus.GainTransientExclusive)
             _handle.RaiseRecoverFocus();
     }

@@ -95,7 +95,8 @@ public class IosAudioFocusService : MauiAudioFocusService
         using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
         switch (type) {
         case AVAudioSessionInterruptionType.Began:
-            _handle?.RaiseLostFocus(true);
+            // TODO(FROL): please check how canDuck parameter should be set.
+            _handle?.RaiseLostFocus(true, false);
             break;
         case AVAudioSessionInterruptionType.Ended:
             if (option == AVAudioSessionInterruptionOptions.ShouldResume)

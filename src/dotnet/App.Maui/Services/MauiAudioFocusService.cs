@@ -72,7 +72,7 @@ public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
             Log.LogInformation("Failed to get/update audio focus");
             _restoreFocusHandlers.Clear();
             _lastAudioFocusHolder = null;
-            InvokeLostFocus(temp, false);
+            InvokeLostFocus(temp, false, false);
             return null;
         }
 
@@ -87,9 +87,9 @@ public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
             var focusActivation = new AudioFocusActivation(this, consumer);
             holder.Activations.Add(consumer, focusActivation);
         }
-        audioFocusHandle.LostFocus += mayRecover => {
+        audioFocusHandle.LostFocus += (mayRecover, canDuck) => {
             holder.Suspend(true);
-            InvokeLostFocus(holder, mayRecover);
+            InvokeLostFocus(holder, mayRecover, canDuck);
         };
         audioFocusHandle.RecoverFocus += () => {
             holder.Suspend(false);
@@ -101,14 +101,14 @@ public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
         return holder;
     }
 
-    private void InvokeLostFocus(AudioFocusHolder? holder, bool mayRecover)
+    private void InvokeLostFocus(AudioFocusHolder? holder, bool mayRecover, bool canDuck)
     {
         if (holder is null)
             return;
 
         foreach (var (consumer, activation) in holder.Activations) {
             activation.Suspend(true);
-            var restoreFocusHandler = consumer.LostFocusCallback(mayRecover);
+            var restoreFocusHandler = consumer.LostFocusCallback(mayRecover, canDuck);
             if (restoreFocusHandler is not null) {
                 _restoreFocusHandlers.Add(() => {
                     activation.Suspend(false);
@@ -185,11 +185,11 @@ public class AudioFocusHandle(long id, Action<AudioFocusHandle>? release = null)
     public long Id => id;
     private readonly Action<AudioFocusHandle> _onRelease = release ?? (_ => { });
 
-    public event Action<bool>? LostFocus;
+    public event Action<bool, bool>? LostFocus;
     public event Action? RecoverFocus;
 
-    public void RaiseLostFocus(bool mayRestore)
-        => LostFocus?.Invoke(mayRestore);
+    public void RaiseLostFocus(bool mayRestore, bool canDuck)
+        => LostFocus?.Invoke(mayRestore, canDuck);
 
     public void RaiseRecoverFocus()
         => RecoverFocus?.Invoke();
