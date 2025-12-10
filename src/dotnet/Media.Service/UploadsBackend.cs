@@ -70,12 +70,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (expectedNewOffset > upload.Length)
             throw StandardError.Constraint( $"Stream contains more data than the file's upload length. Stream data: {upload.Length}, upload length: {expectedNewOffset}.");
 
-        using var stream = new MemoryStream(data, writable: false);
-        await using (stream.ConfigureAwait(false)) {
-            stream.Write(data);
-            stream.Position = 0;
+        var stream = new MemoryStream(data, writable: false);
+        await using (stream.ConfigureAwait(false))
             await UploadsStorage.AppendDataAsync(uploadId, stream, cancellationToken).ConfigureAwait(false);
-        }
         return Result.New(expectedNewOffset);
     }
 

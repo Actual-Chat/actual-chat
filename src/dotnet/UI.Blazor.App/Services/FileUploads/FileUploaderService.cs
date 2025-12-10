@@ -170,7 +170,7 @@ public class FileUploaderService
             var progressChangedThrottler = Throttler.New<double>(
                 TimeSpan.FromMilliseconds(500),
                 value => {
-                    Log.LogInformation("**** Uploading file  '{FileName}' for '{SessionId}' - '{Progress:P}'", session.FileName, sessionId, value / 100.0);
+                    Log.LogDebug("**** Uploading file  '{FileName}' for '{SessionId}' - '{Progress:P}'", session.FileName, sessionId, value / 100.0);
                     _ = owner.ProgressChanged?.Invoke(sessionId, value);
                 });
             progressTracker.ProgressChanged += (_, value) => progressChangedThrottler.Throttle(value);
