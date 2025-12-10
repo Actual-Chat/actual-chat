@@ -5,6 +5,8 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat.Flows;
 
+#pragma warning disable CA2254 // The logging message template should not vary between calls
+
 public static partial class FlowsExt
 {
     // NewId
@@ -27,7 +29,7 @@ public static partial class FlowsExt
         return flowId;
     }
 
-    // TryGet
+    // TryGet - must be used mainly in tests
 
     // [ComputeMethod] - behaves exactly like a compute method
     public static async ValueTask<TFlow?> TryGet<TFlow>(this IFlows flows,
@@ -37,7 +39,7 @@ public static partial class FlowsExt
     {
         var flowId = flows.NewId<TFlow>(arguments);
         var flowData = await flows.TryGetData(flowId, cancellationToken).ConfigureAwait(false);
-        return (TFlow?)flowData?.Flow;
+        return (TFlow?)flowData?.Flow; // Notice it doesn't check for deserialization errors here!
     }
 
     // Get
@@ -76,20 +78,32 @@ public static partial class FlowsExt
         var cFlowData = await Computed
             .Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        if (cFlowData.Value is not null)
-            goto exit;
+        var flowData = cFlowData.Value;
+        if (flowData is not null) {
+            if (flowData.DeserializationError is null) {
+                if (addDependency)
+                    _ = cFlowData.UseUntyped(allowInconsistent: true, cancellationToken);
+                return flowData.Flow;
+            }
 
-        using (Computed.BeginIsolation()) {
-            await flows.Start(flowId, cancellationToken).ConfigureAwait(false);
-            // Await for the new flow to be visible via TryGet in the current process
-            cFlowData = await cFlowData.When(x => x is not null, cancellationToken).ConfigureAwait(false);
+            var log = flows.GetServices().LogFor<IFlows>();
+            log.LogError(flowData.DeserializationError,
+                "`{FlowId}`: deserialization failed for version {Version}, trying to restart it",
+                flowData.Id, flowData.Version);
         }
 
-        exit:
-        // Register a dependency
+        var expectedVersion = flowData?.Version ?? 0L;
+        flowData = await flows.Start(flowId, expectedVersion, cancellationToken).ConfigureAwait(false);
+        using (Computed.BeginIsolation()) // Just in case
+            cFlowData = await cFlowData
+                // ReSharper disable once AccessToModifiedClosure
+                .When(x => x is not null && x.Version >= flowData.Version, cancellationToken)
+                .ConfigureAwait(false);
+
+        flowData = cFlowData.Value!;
         if (addDependency)
             _ = cFlowData.UseUntyped(allowInconsistent: true, cancellationToken);
-        return cFlowData.Value!.Flow;
+        return flowData.Flow;
     }
 
     // Notify

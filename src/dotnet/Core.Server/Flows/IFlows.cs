@@ -13,7 +13,7 @@ public interface IFlows : IComputeService, IBackendService
     [ComputeMethod]
     Task<IFlowData?> TryGetData(FlowId flowId, CancellationToken cancellationToken);
     // Regular RPC method!
-    Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken);
+    Task<IFlowData> Start(FlowId flowId, long? expectedVersion, CancellationToken cancellationToken);
 
     // The `long` result in any of the methods below return is DbFlow/FlowData.Version
     [CommandHandler]

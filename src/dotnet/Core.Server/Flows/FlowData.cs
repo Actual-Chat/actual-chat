@@ -16,6 +16,7 @@ public interface IFlowData
     string Console { get; }
     string Step { get; }
     Moment? HardResumeAt { get; }
+    Exception? DeserializationError { get; }
 }
 
 public static class FlowData
@@ -118,6 +119,22 @@ public partial class FlowData<TFlow> : IFlowData
             _resultData = null;
             _data = null;
             _console = null;
+        }
+    }
+
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Exception? DeserializationError {
+        get {
+            if (field is { } value)
+                return value;
+
+            try {
+                _ = Flow;
+                return null;
+            }
+            catch (Exception ex) {
+                return field = ex;
+            }
         }
     }
 

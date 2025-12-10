@@ -62,43 +62,40 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
     }
 
     // Regular RPC method!
-    public virtual async Task<Flow> Start(FlowId flowId, CancellationToken cancellationToken)
+    public virtual async Task<IFlowData> Start(FlowId flowId, long? expectedVersion, CancellationToken cancellationToken)
     {
         var flowType = Registry.TypeByName[flowId.Name];
         DebugLog?.LogDebug("Start: `{FlowId}`", flowId);
         return await ResumeRetryPolicy.Run(async ct => {
             using var _ = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
-            var version = 0L;
-            while (true) {
-                IFlowData? flowData;
-                using (Computed.BeginIsolation()) {
-                    flowData = await TryGetData(flowId, ct).ConfigureAwait(false);
-                }
-                if (flowData is not null && flowData.Version >= version)
-                    return flowData.Flow;
+            var cFlowData = await Computed.Capture(() => TryGetData(flowId, ct), ct).ConfigureAwait(false);
+            var flowData = cFlowData.Value;
+            var existingVersion = flowData?.Version ?? 0L;
+            if (flowData is { DeserializationError: null } && !VersionChecker.IsExpected(existingVersion, expectedVersion))
+                return flowData;
 
-                if (version > 0L) {
-                    // We already executed Flows_Store command and it succeeded
-                    await TickSource.Default.WhenNextTick().ConfigureAwait(false);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    continue;
-                }
+            var flow = (Flow)flowType.CreateInstance();
+            var legacyFlowImpl = flow as ILegacyFlowImpl;
+            var flowImpl = (IFlowImpl)flow;
+            var console = new FlowConsole();
+            if (legacyFlowImpl is not null)
+                legacyFlowImpl.SetProperties(flowId, 0, LegacyFlowSteps.Starting, null, console, null);
+            else
+                flowImpl.SetProperties(flowId, 0, null, console);
 
-                var flow = (Flow)flowType.CreateInstance();
-                var legacyFlowImpl = flow as ILegacyFlowImpl;
-                var flowImpl = (IFlowImpl)flow;
-                var console = new FlowConsole();
-                if (legacyFlowImpl is not null)
-                    legacyFlowImpl.SetProperties(flowId, 0, LegacyFlowSteps.Starting, null, console, null);
-                else
-                    flowImpl.SetProperties(flowId, 0, null, console);
-
-                // Flow_Store is guaranteed to run locally
-                var storeCommand = new Flows_Store(flow.Id, 0) {
+            do {
+                var storeCommand = new Flows_Store(flow.Id, existingVersion) {
                     Flow = flow,
                 };
-                version = await Commander.Call(storeCommand, ct).ConfigureAwait(false);
+                existingVersion = await Commander.Call(storeCommand, ct).ConfigureAwait(false);
             }
+            while (existingVersion == 0L); // 0L means the flow is removed, but we need it to be started
+
+            using (Computed.BeginIsolation()) // Just in case
+                cFlowData = await cFlowData
+                    .When(x => x is not null && x.Version >= existingVersion, ct)
+                    .ConfigureAwait(false);
+            return cFlowData.Value!;
         }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
     }
 
@@ -172,6 +169,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         var isLegacyRemoval = legacyFlow?.Step == LegacyFlowSteps.Removed;
         if (flow is not null && !isLegacyRemoval) {
             if (dbFlow is null) { // Create
+                if (!VersionChecker.IsExpected(0L, expectedVersion))
+                    return 0L;
+
                 dbFlow = new DbFlow(flow);
                 dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
                 dbContext.Add(dbFlow);
@@ -187,7 +187,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                     context.Operation.AddEvent(new FlowResume(flowId));
             }
             else { // Update
-                VersionChecker.RequireExpected(dbFlow.Version, expectedVersion);
+                if (!VersionChecker.IsExpected(dbFlow.Version, expectedVersion))
+                    return dbFlow.Version;
+
                 dbFlow.UpdateFrom(flow);
                 dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
             }
@@ -196,10 +198,13 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             // Remove
             if (dbFlow is null) {
                 // Nothing to remove, but maybe a version check is needed?
-                VersionChecker.RequireExpected(0L, expectedVersion);
+                if (!VersionChecker.IsExpected(0L, expectedVersion))
+                    return 0L;
             }
             else {
-                VersionChecker.RequireExpected(dbFlow.Version, expectedVersion);
+                if (!VersionChecker.IsExpected(dbFlow.Version, expectedVersion))
+                    return dbFlow.Version;
+
                 dbContext.Remove(dbFlow);
                 dbFlow = null;
             }
