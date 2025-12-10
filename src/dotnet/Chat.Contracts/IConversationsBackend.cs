@@ -1,4 +1,5 @@
 using ActualChat.Attributes;
+using ActualChat.Sharding;
 using ActualChat.Time;
 using ActualLab.Rpc;
 using MemoryPack;
@@ -43,7 +44,7 @@ public sealed partial record ConversationBackend_Change(
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
-[Queue("SummarizeQueue")]
+[Queue(nameof(ShardScheme.SummarizeQueue))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
@@ -58,7 +59,7 @@ public sealed partial record ConversationBackend_Summarize(
     public Moment DelayUntil { get; init; }
 }
 
-[Queue("SummarizeQueue")]
+[Queue(nameof(ShardScheme.SummarizeQueue))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_AppendReply(
