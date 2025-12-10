@@ -321,7 +321,8 @@ class ChunkedFileUpload {
         const response = await fetch(this.uploadUrl, {
             method: 'HEAD',
             headers: {
-                [SessionTokens.headerName]: SessionTokens.current
+                [SessionTokens.headerName]: SessionTokens.current,
+                'Tus-Resumable' : '1.0.0',
             },
             signal: this.abortController.signal
         });
@@ -347,6 +348,7 @@ class ChunkedFileUpload {
                 [SessionTokens.headerName]: SessionTokens.current,
                 'Content-Type': contentType,
                 'Upload-Offset': offset.toString(),
+                'Tus-Resumable' : '1.0.0',
             },
             body: chunk,
             signal: this.abortController.signal
