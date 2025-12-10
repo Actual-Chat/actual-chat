@@ -1,7 +1,6 @@
 using ActualChat.Flows.Infrastructure;
 using ActualChat.Queues;
 using ActualChat.Time;
-using ActualLab.CommandR.Operations;
 using ActualLab.Diagnostics;
 
 namespace ActualChat.Flows;
@@ -44,19 +43,34 @@ public static partial class FlowsExt
     // Get
 
     // [ComputeMethod] - behaves exactly like a compute method
+    public static ValueTask<TFlow> Get<TFlow>(this IFlows flows,
+        string arguments,
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+        => flows.Get<TFlow>(arguments, addDependency: true, cancellationToken);
+
+    // [ComputeMethod] - behaves exactly like a compute method
+    public static ValueTask<Flow> Get(this IFlows flows,
+        FlowId flowId,
+        CancellationToken cancellationToken = default)
+        => flows.Get(flowId, addDependency: true, cancellationToken);
+
+    // [ComputeMethod] - behaves exactly like a compute method when addDependency=true
     public static async ValueTask<TFlow> Get<TFlow>(this IFlows flows,
         string arguments,
+        bool addDependency,
         CancellationToken cancellationToken = default)
         where TFlow : Flow
     {
         var flowId = flows.NewId<TFlow>(arguments);
-        var flow = await flows.Get(flowId, cancellationToken).ConfigureAwait(false);
+        var flow = await flows.Get(flowId, addDependency, cancellationToken).ConfigureAwait(false);
         return (TFlow)flow;
     }
 
-    // [ComputeMethod] - behaves exactly like a compute method
+    // [ComputeMethod] - behaves exactly like a compute method when addDependency=true
     public static async ValueTask<Flow> Get(this IFlows flows,
         FlowId flowId,
+        bool addDependency,
         CancellationToken cancellationToken = default)
     {
         var cFlowData = await Computed
@@ -73,38 +87,9 @@ public static partial class FlowsExt
 
         exit:
         // Register a dependency
-        _ = cFlowData.UseUntyped(allowInconsistent: true, cancellationToken);
+        if (addDependency)
+            _ = cFlowData.UseUntyped(allowInconsistent: true, cancellationToken);
         return cFlowData.Value!.Flow;
-    }
-
-    // EnsureStarted - like Get, but w/o registering a dependency
-
-    public static async ValueTask<TFlow> EnsureStarted<TFlow>(this IFlows flows,
-        string arguments,
-        CancellationToken cancellationToken = default)
-        where TFlow : Flow
-    {
-        var flowId = flows.NewId<TFlow>(arguments);
-        var flow = await flows.EnsureStarted(flowId, cancellationToken).ConfigureAwait(false);
-        return (TFlow)flow;
-    }
-
-    public static async ValueTask<Flow> EnsureStarted(this IFlows flows,
-        FlowId flowId,
-        CancellationToken cancellationToken = default)
-    {
-        var cFlowData = await Computed
-            .Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        if (cFlowData.Value is { } flowData)
-            return flowData.Flow;
-
-        using (Computed.BeginIsolation()) {
-            await flows.Start(flowId, cancellationToken).ConfigureAwait(false);
-            // Await for the new flow to be visible via TryGet in the current process
-            cFlowData = await cFlowData.When(x => x is not null, cancellationToken).ConfigureAwait(false);
-            return cFlowData.Value!.Flow;
-        }
     }
 
     // Notify
@@ -140,7 +125,7 @@ public static partial class FlowsExt
         var services = flows.GetServices();
         var queues = services.Queues();
         if (ensureStarted)
-            await flows.EnsureStarted(flowId, cancellationToken).ConfigureAwait(false);
+            await flows.Get(flowId, addDependency: false, cancellationToken).ConfigureAwait(false);
         await queues.Enqueue(@event, cancellationToken).ConfigureAwait(false);
 
         var log = services.LogFor<IFlows>();

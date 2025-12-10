@@ -15,7 +15,7 @@ public abstract class IndexingMasterFlowBase<TIndexingFlow, TItem, TId>
     }
 
     protected Task Reset(TItem item, CancellationToken cancellationToken)
-        => Host.Flows.Reset<TIndexingFlow>(item.Id.Value, null, GetType().Name, cancellationToken);
+        => Host.Flows.LegacyReset<TIndexingFlow>(item.Id.Value, null, GetType().Name, cancellationToken);
 
     protected override Task<IndexingFlowTransitionKind> HandleTail(
         bool hasProcessedAnyItems,

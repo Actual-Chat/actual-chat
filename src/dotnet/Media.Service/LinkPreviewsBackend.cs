@@ -38,7 +38,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         Task ScheduleRefreshIfRequired()
             => mustScheduleRefreshIfRequired && linkPreview != null && NeedsUpdate(linkPreview.ModifiedAt)
-                ? Flows.Reset<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(linkPreview.Url),
+                ? Flows.LegacyReset<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(linkPreview.Url),
                     Settings.LinkPreviewUpdatePeriod,
                     "Get link preview",
                     cancellationToken)

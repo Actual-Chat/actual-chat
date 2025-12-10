@@ -86,7 +86,7 @@ public class ImageGrabber(IServiceProvider services)
             return;
 
         await Flows
-            .Reset<PreviewThumbnailUpdateFlow>(
+            .LegacyReset<PreviewThumbnailUpdateFlow>(
                 PreviewThumbnailUpdateFlow.GetArguments(imageUrl),
                 GetUpdatePeriod(grabStatus),
                 "Schedule update",

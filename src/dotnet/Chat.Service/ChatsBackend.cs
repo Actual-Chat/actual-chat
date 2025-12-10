@@ -2034,7 +2034,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var endsAt = entry.GetEndsAt();
             var timeSinceEnded = Clocks.SystemClock.Now - endsAt;
             await Flows
-                .Resume<ConversationSplitFlow>(chat.Id.Value,
+                .LegacyResume<ConversationSplitFlow>(chat.Id.Value,
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,
                     $"{nameof(OnTextEntryChangedEvent)} #{entry.Id}",
                     timeSinceEnded + Settings.ChatEntrySummarizationDelay,

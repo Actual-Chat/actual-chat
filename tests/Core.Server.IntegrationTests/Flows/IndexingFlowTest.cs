@@ -116,7 +116,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // act
         Context.SetCurrentFlowSetVersionOverride(id, 2);
-        await Flows.Resume<SimpleIndexingFlow>(id);
+        await Flows.LegacyResume<SimpleIndexingFlow>(id);
 
         // assert
         await TestExt.When(async () => {

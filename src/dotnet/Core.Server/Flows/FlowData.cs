@@ -71,7 +71,7 @@ public partial class FlowData<TFlow> : IFlowData
     [DataMember(Order = 2), MemoryPackOrder(2)]
     public byte[] ResultData {
         get => _resultData ?? Serialize().ResultData;
-        init {
+        private init {
             _resultData = value;
             _flow = null;
         }
@@ -80,7 +80,7 @@ public partial class FlowData<TFlow> : IFlowData
     [DataMember(Order = 3), MemoryPackOrder(3)]
     public byte[] Data {
         get => _data ?? Serialize().Data;
-        init {
+        private init {
             _data = value;
             _flow = null;
         }
@@ -89,7 +89,7 @@ public partial class FlowData<TFlow> : IFlowData
     [DataMember(Order = 4), MemoryPackOrder(4)]
     public string Console {
         get => _console ?? Serialize().Console;
-        init {
+        private init {
             _console = value;
             _flow = null;
         }
@@ -113,7 +113,7 @@ public partial class FlowData<TFlow> : IFlowData
     [IgnoreDataMember, MemoryPackIgnore]
     public TFlow Flow {
         get => _flow ?? Deserialize().Flow;
-        init {
+        private init {
             _flow = value;
             _resultData = null;
             _data = null;

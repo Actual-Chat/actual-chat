@@ -42,7 +42,7 @@ internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(
     private async Task StartMasterFlow(Type flowType, CancellationToken cancellationToken)
     {
         await Flows
-            .Reset(GetFlowId(flowType), null, nameof(MasterFlowStarter), cancellationToken)
+            .LegacyReset(GetFlowId(flowType), null, nameof(MasterFlowStarter), cancellationToken)
             .ConfigureAwait(false);
         _flowTypesToStart.TryRemove(flowType, out _);
     }

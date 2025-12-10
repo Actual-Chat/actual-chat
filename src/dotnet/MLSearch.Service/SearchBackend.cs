@@ -498,7 +498,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         string arguments,
         string? tag = null,
         CancellationToken cancellationToken = default) where TFlow : Flow
-        => Flows.Resume<TFlow>(arguments,
+        => Flows.LegacyResume<TFlow>(arguments,
             Settings.ChangedEntityIndexingDelay,
             tag,
             Settings.ChangedEntityIndexingDelay + Settings.IndexingFlowResumeDelay, // to avoid too many flow executions
