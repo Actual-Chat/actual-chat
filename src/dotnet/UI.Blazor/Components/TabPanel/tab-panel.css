@@ -5,6 +5,7 @@
     @apply hidden;
 }
 .tab-panel-tabs {
+    @apply relative;
     @apply flex-none flex-x items-center;
     @apply mb-2.5 pb-1.5;
     @apply overflow-hidden;
@@ -42,32 +43,20 @@
     @apply border-0;
     @apply text-02 text-caption-1 tracking-wider;
 }
-.tab-panel-tabs .btn.tab-btn.bottom-border-btn {
-    @apply border-transparent border-b-2;
-}
-.tab-panel-tabs .btn.tab-btn.bottom-border-btn.on {
-    @apply border-primary;
-}
 .tab-panel-tabs .btn.tab-btn.on {
     @apply text-primary;
 }
-.tab-panel-tabs .btn.tab-btn.on + .c-bottom-hill {
-    @apply bottom-0;
-    @apply opacity-100;
-    transition-delay: 0.15s;
-
-}
 
 /* Bottom hill */
-.tab-panel-tabs .c-bottom-hill {
-    @apply absolute -bottom-1.5;
+.tab-panel .bottom-hill {
+    @apply absolute bottom-0;
     @apply self-center;
     @apply h-1;
     @apply rounded-t;
     @apply bg-primary;
-    @apply opacity-0;
-    width: calc(100% - 0.75rem);
-    transition: bottom 0.25s ease, opacity 0.25s ease;
+    transition:
+        left 0.3s ease-in,
+        width 0.3s ease-in;
 }
 
 /* Tab */
