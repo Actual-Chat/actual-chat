@@ -36,6 +36,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         var stopToken = ShardOwner.StopToken;
         foreach (var shardIndex in ShardScheme.ShardIndexes) {
             var asyncState = ShardOwner.GetShardState(shardIndex).AsyncState;
+            // Start the cleaner task for shardIndex, which cleans it on any ownership state change
             _ = Task.Run(async () => {
                 while (true) {
                     asyncState = await asyncState.WhenNext(stopToken).ConfigureAwait(false);
@@ -50,14 +51,14 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
     {
         var flowType = Registry.TypeByName[flowId.Name];
 
-        // Check cache
-        if (false && _cache.TryGetValue(flowId, out var flowData))
+        // Check the in-memory cache first
+        if (_cache.TryGetValue(flowId, out var flowData))
             return flowData;
 
         // Read the ground truth
         var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
         flowData = dbFlow?.ToFlowData(flowType, flowId);
-        return _cache[flowId] = flowData;  // Update cache
+        return _cache[flowId] = flowData;  // Update the in-memory cache
     }
 
     // Regular RPC method!
@@ -213,7 +214,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         context.Operation.AddCompletionHandler(scope => {
             // Update cache to avoid the DB hit in TryGet
             _cache[flowId] = dbFlow?.ToFlowData(flowType, flowId);
-            // Invalidate TryGet cache
+            // Invalidate TryGetData cache
             using (Invalidation.Begin())
                 _ = TryGetData(flowId, default);
             return Task.CompletedTask;
