@@ -54,17 +54,13 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
 .right-panel > .c-header {
     @apply relative;
     @apply flex-y items-center gap-x-4;
-    @apply min-h-44;
-    height: var(--collapsed-header-height);
+    @apply min-h-44 h-auto;
+    height: auto;
     transition: height .25s ease-in, min-height .25s ease-in;
 }
 .right-panel > .c-header.expanded-header {
     height: var(--expanded-header-height);
     min-height: var(--expanded-header-height);
-}
-.right-panel > .c-header.collapsed-header {
-    height: var(--collapsed-header-height);
-    min-height: var(--collapsed-header-height);
 }
 .right-panel > .c-header > .c-buttons {
     @apply absolute top-2 right-4 z-10;
@@ -166,13 +162,22 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
         height .25s ease-in,
         background-color 0.1s ease-in;
 }
-.right-panel > .c-header > .c-center .chat-avatar .c-avatar {
-    border-radius: 9999px;
+.right-panel > .c-header > .c-center .chat-avatar .c-wrapper {
+    @apply w-full h-full;
 }
-.right-panel > .c-header.expanded-header > .c-center .chat-avatar .c-avatar {
+.right-panel > .c-header > .c-center .chat-avatar > div,
+.right-panel > .c-header > .c-center .chat-avatar > div image-skeleton {
+    border-radius: 9999px;
+    overflow: hidden;
+}
+.right-panel > .c-header.expanded-header > .c-center .chat-avatar > div,
+.right-panel > .c-header.expanded-header > .c-center .chat-avatar > div image-skeleton,
+.right-panel > .c-header.expanded-header > .c-center .chat-avatar > div div {
     animation: removeBorderRadius .4s ease-in-out forwards;
 }
-.right-panel > .c-header.collapsed-header > .c-center .chat-avatar .c-avatar {
+.right-panel > .c-header.collapsed-header > .c-center .chat-avatar > div,
+.right-panel > .c-header.collapsed-header > .c-center .chat-avatar > div image-skeleton,
+.right-panel > .c-header.collapsed-header > .c-center .chat-avatar > div div {
     animation: addBorderRadius .4s ease-in-out forwards;
 }
 
@@ -181,25 +186,17 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
 }
 .right-panel > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
     @apply absolute top-0;
-    @apply max-w-none max-h-none;
-    animation:
-        expandFullSizeAvatar .25s ease-in forwards,
-        removeBorderRadius .4s ease-in-out forwards;
+    @apply w-16 h-16 max-w-none max-h-none;
+    @apply opacity-0;
+    transition: width 0.25s ease-in, height 0.25s ease-in;
 }
 .right-panel > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
-    animation:
-        collapseFullSizeAvatar .25s ease-in forwards,
-        addBorderRadius .4s ease-in-out forwards;
+    @apply hidden;
+    @apply opacity-0;
 }
-@keyframes expandFullSizeAvatar {
-    0% {
-        width: 4rem;
-        height: 4rem;
-    }
-    100% {
-        width: var(--expanded-header-height);
-        height: var(--expanded-header-height);
-    }
+.right-panel > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
+    width: var(--expanded-header-height);
+    height: var(--expanded-header-height);
 }
 @keyframes removeBorderRadius {
     0% {
@@ -210,16 +207,6 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
     }
     100% {
         border-radius: 0;
-    }
-}
-@keyframes collapseFullSizeAvatar {
-    0% {
-        width: var(--expanded-header-height);
-        height: var(--expanded-header-height);
-    }
-    100% {
-        width: 4rem;
-        height: 4rem;
     }
 }
 @keyframes addBorderRadius {
@@ -236,17 +223,16 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
 .right-panel > .c-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar .c-content {
     @apply w-full h-full;
 }
-.right-panel > .c-header > .c-center .chat-avatar .clickable-avatar.small-avatar {
-    @apply opacity-100;
-    transition: opacity 0s ease-in;
+.right-panel > .c-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
+    @apply w-16 h-16;
+    transition: width 0.25s ease-in, height 0.25s ease-in;
 }
-.right-panel > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.small-avatar {
-    @apply opacity-0;
-    transition: opacity 0s ease-in;
+.right-panel > .c-header.expanded-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
+    width: var(--expanded-header-height);
+    height: var(--expanded-header-height);
 }
-.right-panel > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.small-avatar {
-    @apply opacity-100;
-    transition: opacity 0.05s ease-in 0.25s;
+.right-panel > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.small-avatar .c-content {
+    @apply w-16 h-16;
 }
 
 .right-panel > .c-header > .c-center > .c-buttons {

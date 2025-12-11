@@ -27,10 +27,12 @@
 
     <div class="c-center">
         <div class="chat-avatar">
-            <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false" Class="small-avatar"/>
-            @if (_showFullSizeAvatar) {
-                <ChatIcon Chat="Chat" Size="SquareSize.Size16" ShowPresence="@false" ShowFullSizeAvatar="@true" Class="full-size-avatar"/>
-            }
+            <div class="c-wrapper">
+                <ChatIcon Chat="Chat" Size="SquareSize.SizeFull" ShowPresence="@false" Class="small-avatar"/>
+                @if (_showFullSizeAvatar) {
+                    <ChatIcon Chat="Chat" Size="SquareSize.SizeFull" ShowPresence="@false" ShowFullSizeAvatar="@true" Class="full-size-avatar"/>
+                }
+            </div>
         </div>
         <div class="c-buttons">
             @if (m.PeerContact is not null) {
