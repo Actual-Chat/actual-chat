@@ -299,7 +299,7 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
     background-image: none;
 }
 .reload-icon-wrapper {
-    @apply absolute inset-0 z-20;
+    @apply absolute inset-0 z-10;
     @apply bg-[var(--black-50)];
     backdrop-filter: blur(2px);
 }
