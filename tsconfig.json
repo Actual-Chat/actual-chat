@@ -12,6 +12,8 @@
     "src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/audio-vad-worker.ts",
     "src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/opus-encoder-worker.ts",
     "src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/resampler-loader.ts",
+    "src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker.ts",
+    "src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts",
     "src/dotnet/UI.Blazor/Layouts/base-layout.ts",
     "src/dotnet/UI.Blazor/Components/Skeleton/",
     "src/dotnet/UI.Blazor/ServiceWorkers/service-worker.ts",
