@@ -1,14 +1,20 @@
+using ActualChat.Blobs.Internal;
 using ActualChat.Chat;
 using ActualChat.Media.Db;
 using ActualChat.Uploads;
 using ActualLab.Fusion.EntityFramework;
+using Google.Cloud.Storage.V1;
 
 namespace ActualChat.Media;
 
 public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbContext>(services), IUploadsBackend
 {
+    private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
     private UploadsStorage UploadsStorage { get; } = services.GetRequiredService<UploadsStorage>();
     private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
+    private StorageClient GoogleStorageClient => field ??= StorageClient.Create();
+
+    private bool IsGoogleStorage => Blobs is GoogleCloudBlobStorages;
 
     public virtual async Task<Upload?> Get(UploadId uploadId, CancellationToken cancellationToken)
     {
@@ -18,8 +24,17 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
     public virtual async Task<Result<long>> GetOffset(UploadId uploadId, CancellationToken cancellationToken)
     {
-        var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
-        return offset is not null ? Result.New(offset.Value) : Result.NewError<long>(NotFoundUpload());
+        if (IsGoogleStorage) {
+            var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
+            var sessionUri = upload.SessionUri.Require();
+            var helper = new GoogleResumableUploads(GoogleStorageClient);
+            var offset = await helper.GetUploadStatusAsync(sessionUri).ConfigureAwait(false);
+            return Result.New(offset ?? upload.Length!.Value);
+        }
+        else {
+            var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
+            return offset is not null ? Result.New(offset.Value) : Result.NewError<long>(NotFoundUpload());
+        }
     }
 
     public virtual async Task OnCreate(UploadsBackend_Create command, CancellationToken cancellationToken)
@@ -29,11 +44,35 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             _ = Get(uploadId, default);
             return;
         }
-        var upload = new Upload(uploadId, command.UserId, command.Length, command.Tag, command.Metadata);
+        var upload = new Upload(uploadId,
+            command.UserId,
+            command.Length,
+            command.Tag,
+            command.Metadata);
         var contentType = upload.ContentType.NullIfEmpty() ?? "application/octet-stream";
-        var json = JsonSerializer.Serialize(upload);
-        await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);
-        await UploadsStorage.CreateEmptyDataFile(uploadId,  contentType, cancellationToken).ConfigureAwait(false);
+        if (IsGoogleStorage) {
+            var objectName = UploadsStorage.GetDataFileId(uploadId);
+            var bucketName = ((GoogleCloudBlobStorages)Blobs).BucketName;
+            var location = await GoogleStorageClient.InitiateUploadSessionAsync(
+                    bucketName,
+                    objectName,
+                    upload.ContentType,
+                    upload.Length,
+                    null,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+            upload = upload with {
+                SessionUri = location.AbsoluteUri
+            };
+            var json = JsonSerializer.Serialize(upload);
+            await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            var json = JsonSerializer.Serialize(upload);
+            await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);
+            await UploadsStorage.CreateEmptyDataFile(uploadId, contentType, cancellationToken).ConfigureAwait(false);
+        }
         await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
     }
 
@@ -44,6 +83,12 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             _ = Get(uploadId, default);
             return;
         }
+        if (IsGoogleStorage) {
+            var helper = new GoogleResumableUploads(GoogleStorageClient);
+            var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
+            if (upload is not null)
+                await helper.CancelUpload(upload.SessionUri.Require(), cancellationToken).ConfigureAwait(false);
+        }
         await UploadsStorage.DeleteFiles(uploadId, cancellationToken).ConfigureAwait(false);
         await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
     }
@@ -51,6 +96,19 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     public virtual async Task<Result<long>> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken)
     {
         var (uploadId, uploadOffset, data) = command;
+        if (IsGoogleStorage) {
+            var upload1 = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
+            var sessionUri = upload1.SessionUri.Require();
+            var helper = new GoogleResumableUploads(GoogleStorageClient);
+            try {
+                var uploadCompleted = await helper.UploadChunk(sessionUri, data, uploadOffset, upload1.Length!.Value).ConfigureAwait(false);
+                return Result.New(uploadOffset + data.Length);
+            }
+            catch (Exception e) {
+                return Result.NewError<long>(NotFoundUpload());
+            }
+        }
+
         // NOTE(DF): In production environment UploadsStorage is backed with gcp blob storage.
         // It means that the last chunk of data is always reliably appended.
         // We don't need to check manually where the last chunk starts and if the append operation was successfully completed.

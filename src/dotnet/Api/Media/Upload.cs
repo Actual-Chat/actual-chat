@@ -13,6 +13,7 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
     [DataMember, MemoryPackOrder(1)] public UserId UserId { get; init; }
     [DataMember, MemoryPackOrder(2)] public long? Length { get; init; }
     [DataMember, MemoryPackOrder(3)] public string Tag { get; init; } = "";
+    [DataMember, MemoryPackOrder(4)] public string SessionUri { get; init; } = "";
     [DataMember, MemoryPackOrder(10)] public PropertyBag Metadata { get; init; }
 
     // Computed properties

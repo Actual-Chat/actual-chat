@@ -5,9 +5,8 @@ namespace ActualChat.Media;
 public class UploadsStorage(IServiceProvider services)
 {
     protected IServiceProvider Services { get; } = services;
-    [field:AllowNull, MaybeNull]
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
-    private IBlobStorage BlobStorage => Blobs[BlobScope.UploadTempRecord];
+    internal IBlobStorage BlobStorage => Blobs[BlobScope.UploadTempRecord];
 
     public async Task<long?> GetUploadOffset(UploadId uploadId, CancellationToken cancellationToken = default)
     {
@@ -57,11 +56,11 @@ public class UploadsStorage(IServiceProvider services)
     public async Task<Stream> GetDataFile(UploadId uploadId, CancellationToken cancellationToken)
         => await BlobStorage.Read(GetDataFileId(uploadId), cancellationToken).Require().ConfigureAwait(false);
 
+    internal static string GetDataFileId(UploadId uploadId)
+        => GetPath(uploadId.Value);
+
     private Task CreateFile(string fileId, Stream stream, string contentType, CancellationToken cancellationToken)
         => BlobStorage.Write(fileId, stream, contentType, cancellationToken);
-
-    private static string GetDataFileId(UploadId uploadId)
-        => GetPath(uploadId.Value);
 
     private static string GetMetadataFileId(UploadId uploadId)
         => GetPath(uploadId.Value + ".metadata");
