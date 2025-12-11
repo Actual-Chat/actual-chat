@@ -12,7 +12,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
     private UploadsStorage UploadsStorage { get; } = services.GetRequiredService<UploadsStorage>();
     private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
-    private StorageClient GoogleStorageClient => field ??= StorageClient.Create();
+    private GoogleResumableUploads GoogleResumableUploads => field ??= new GoogleResumableUploads(StorageClient.Create());
 
     private bool IsGoogleStorage => Blobs is GoogleCloudBlobStorages;
 
@@ -27,8 +27,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (IsGoogleStorage) {
             var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload.SessionUri.Require();
-            var helper = new GoogleResumableUploads(GoogleStorageClient);
-            var offset = await helper.GetUploadStatusAsync(sessionUri).ConfigureAwait(false);
+            var offset = await GoogleResumableUploads.GetUploadStatusAsync(sessionUri).ConfigureAwait(false);
             return Result.New(offset ?? upload.Length!.Value);
         }
         else {
@@ -44,27 +43,11 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             _ = Get(uploadId, default);
             return;
         }
-        var upload = new Upload(uploadId,
-            command.UserId,
-            command.Length,
-            command.Tag,
-            command.Metadata);
+        var upload = new Upload(uploadId, command.UserId, command.Length, command.Tag, command.Metadata);
         var contentType = upload.ContentType.NullIfEmpty() ?? "application/octet-stream";
         if (IsGoogleStorage) {
-            var objectName = UploadsStorage.GetDataFileId(uploadId);
-            var bucketName = ((GoogleCloudBlobStorages)Blobs).BucketName;
-            var location = await GoogleStorageClient.InitiateUploadSessionAsync(
-                    bucketName,
-                    objectName,
-                    upload.ContentType,
-                    upload.Length,
-                    null,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
-            upload = upload with {
-                SessionUri = location.AbsoluteUri
-            };
+            var location = await InitiateUploadSession(upload, cancellationToken).ConfigureAwait(false);
+            upload = upload with { SessionUri = location.AbsoluteUri };
             var json = JsonSerializer.Serialize(upload);
             await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);
         }
@@ -84,10 +67,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             return;
         }
         if (IsGoogleStorage) {
-            var helper = new GoogleResumableUploads(GoogleStorageClient);
             var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
             if (upload is not null)
-                await helper.CancelUpload(upload.SessionUri.Require(), cancellationToken).ConfigureAwait(false);
+                await GoogleResumableUploads.CancelUpload(upload.SessionUri.Require(), cancellationToken).ConfigureAwait(false);
         }
         await UploadsStorage.DeleteFiles(uploadId, cancellationToken).ConfigureAwait(false);
         await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
@@ -99,9 +81,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (IsGoogleStorage) {
             var upload1 = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload1.SessionUri.Require();
-            var helper = new GoogleResumableUploads(GoogleStorageClient);
             try {
-                var uploadCompleted = await helper.UploadChunk(sessionUri, data, uploadOffset, upload1.Length!.Value).ConfigureAwait(false);
+                _ = await GoogleResumableUploads.UploadChunk(sessionUri, data, uploadOffset, upload1.Length!.Value).ConfigureAwait(false);
                 return Result.New(uploadOffset + data.Length);
             }
             catch (Exception e) {
@@ -152,6 +133,22 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             upload.Length!.Value,
             () => UploadsStorage.GetDataFile(uploadId, cancellationToken));
         return await MediaProcessor.ProcessAttachment(chatId, uploadedStreamFile, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Uri> InitiateUploadSession(Upload upload, CancellationToken cancellationToken)
+    {
+        var objectName = UploadsStorage.GetDataFileId(upload.Id);
+        var bucketName = ((GoogleCloudBlobStorages)Blobs).BucketName;
+        var location = await GoogleResumableUploads.StorageClient.InitiateUploadSessionAsync(
+                bucketName,
+                objectName,
+                upload.ContentType,
+                upload.Length,
+                null,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        return location;
     }
 
     private async Task TriggerDistributedInvalidation(CancellationToken cancellationToken)
