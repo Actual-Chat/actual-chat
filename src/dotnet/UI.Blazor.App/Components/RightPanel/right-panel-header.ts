@@ -9,10 +9,10 @@ export class RightPanelHeader {
     private blazorRef: DotNet.DotNetObject;
     private readonly header: HTMLElement;
     private avatarDiv: HTMLElement;
-    private collapsedHeaderHeight: number;
     private headerWidth: number;
     private centerDiv: HTMLElement;
     private smallAvatar: HTMLElement;
+    private smallAvatarContent: HTMLElement;
     private readonly rightSideNav: HTMLElement;
     private mutationObserver: MutationObserver;
     private resizeObserver: ResizeObserver;
@@ -39,10 +39,21 @@ export class RightPanelHeader {
         if (!this.smallAvatar)
             return;
 
+        this.smallAvatarContent = this.smallAvatar.querySelector('.c-content') as HTMLElement;
+        if (!this.smallAvatarContent)
+            return;
+
+        fromEvent(this.smallAvatarContent, 'transitionend')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((e: TransitionEvent) => {
+                if (e.propertyName !== 'height')
+                    return;
+
+                this.fullSizeAvatarOpacityHandler();
+            });
+
         this.centerDiv = this.header.querySelector('.c-center') as HTMLElement;
 
-        this.collapsedHeaderHeight = this.header.offsetHeight;
-        this.header.style.setProperty('--collapsed-header-height', `${this.collapsedHeaderHeight}px`);
         this.headerWidth = this.header.offsetWidth;
         this.header.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
 
@@ -75,6 +86,15 @@ export class RightPanelHeader {
     }
 
     // Public methods
+
+    private fullSizeAvatarOpacityHandler() {
+        const fullSizeAvatar = this.header.querySelector('.full-size-avatar') as HTMLElement;
+        if (!fullSizeAvatar)
+            return;
+
+        const opacity = parseFloat(getComputedStyle(fullSizeAvatar).opacity || "0");
+        fullSizeAvatar.style.opacity = opacity === 0 ? "1" : "0";
+    }
 
     private resizeSideNavHandler: ResizeObserverCallback = (entries) => {
         const width = entries[0].contentRect.width;
@@ -122,7 +142,6 @@ export class RightPanelHeader {
 
     private changeHeader(openFullScreenAvatar: boolean = false) {
         if (openFullScreenAvatar) {
-            this.collapsedHeaderHeight = this.header.offsetHeight;
             this.headerWidth = this.header.offsetWidth;
             this.header.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
         }
