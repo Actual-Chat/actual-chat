@@ -22,17 +22,17 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         return json.IsNullOrEmpty() ? null : JsonSerializer.Deserialize<Upload>(json);
     }
 
-    public virtual async Task<Result<long>> GetOffset(UploadId uploadId, CancellationToken cancellationToken)
+    public virtual async Task<long> GetOffset(UploadId uploadId, CancellationToken cancellationToken)
     {
         if (IsGoogleStorage) {
             var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload.SessionUri.Require();
             var offset = await GoogleResumableUploads.GetUploadStatusAsync(sessionUri).ConfigureAwait(false);
-            return Result.New(offset ?? upload.Length!.Value);
+            return offset ?? upload.Length!.Value;
         }
         else {
             var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
-            return offset is not null ? Result.New(offset.Value) : Result.NewError<long>(NotFoundUpload());
+            return offset ?? throw UploadNotFound();
         }
     }
 
@@ -75,18 +75,20 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<Result<long>> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken)
+    public virtual async Task<long> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken)
     {
         var (uploadId, uploadOffset, data) = command;
         if (IsGoogleStorage) {
             var upload1 = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload1.SessionUri.Require();
             try {
+                if (uploadOffset > 0)
+                    uploadOffset += 100;
                 _ = await GoogleResumableUploads.UploadChunk(sessionUri, data, uploadOffset, upload1.Length!.Value).ConfigureAwait(false);
-                return Result.New(uploadOffset + data.Length);
+                return uploadOffset + data.Length;
             }
             catch (Exception e) {
-                return Result.NewError<long>(NotFoundUpload());
+                throw UploadNotFound();
             }
         }
 
@@ -99,10 +101,10 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         // but for simplicity we skip the check whether the last chunk was reliably appended.
         var currentOffset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
         if (currentOffset is null)
-            return Result.NewError<long>(NotFoundUpload());
+            throw UploadNotFound();
 
         if (uploadOffset != currentOffset)
-            return Result.NewError<long>(StandardError.OffsetConflict());
+            throw StandardError.Upload.OffsetConflict();
 
         var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
         var expectedNewOffset = currentOffset.Value + data.Length;
@@ -112,15 +114,15 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         var stream = new MemoryStream(data, writable: false);
         await using (stream.ConfigureAwait(false))
             await UploadsStorage.AppendDataAsync(uploadId, stream, cancellationToken).ConfigureAwait(false);
-        return Result.New(expectedNewOffset);
+        return expectedNewOffset;
     }
 
-    public virtual async Task<Result<MediaContent>> OnConvertToMediaContent(UploadsBackend_ConvertToMediaContent command, CancellationToken cancellationToken)
+    public virtual async Task<MediaContent> OnConvertToMediaContent(UploadsBackend_ConvertToMediaContent command, CancellationToken cancellationToken)
     {
         var uploadId = command.UploadId;
         var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
         if (upload is null)
-            return Result.NewError<MediaContent>(NotFoundUpload());
+            throw UploadNotFound();
 
         var chatId = GetChatIdFromUploadTag(upload.Tag);
         var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
@@ -169,6 +171,6 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         throw StandardError.Constraint("Invalid upload tag.");
     }
 
-    private static Exception NotFoundUpload()
-        => StandardError.NotFound<Upload>();
+    private static Exception UploadNotFound()
+        => StandardError.Upload.NotFound();
 }

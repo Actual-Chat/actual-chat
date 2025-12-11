@@ -82,7 +82,4 @@ public static partial class StandardError
         => new InternalError(message);
     public static Exception External(string message, Exception? innerException = null)
         => new ExternalError(message, innerException);
-
-    public static Exception OffsetConflict()
-        => new OffsetConflictException();
 }

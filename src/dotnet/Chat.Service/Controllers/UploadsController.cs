@@ -34,12 +34,14 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
             return BadRequest(e.Message);
         }
 
-        var result = await Uploads.GetOffset(session, uploadId, cancellationToken).ConfigureAwait(false);
-        if (result.Error is NotFoundException<Upload>)
+        try {
+            var offset = await Uploads.GetOffset(session, uploadId, cancellationToken).ConfigureAwait(false);
+            Response.Headers[Headers.UploadOffset] = offset.ToInvariantString();
+            return Ok();
+        }
+        catch (UploadNotFoundException) {
             return NotFound();
-
-        Response.Headers[Headers.UploadOffset] = result.Value.ToInvariantString();
-        return Ok();
+        }
     }
 
     [HttpPatch("{uploadSid}")]
@@ -69,15 +71,17 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
             await Request.Body.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
             byte[] chunk = ms.ToArray();
             var command = new Uploads_Append(session, uploadId, uploadOffset, chunk);
-            var result = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
-            if (result.Error is NotFoundException<Upload>)
+            try {
+                var newOffset = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+                Response.Headers[Headers.UploadOffset] = newOffset.ToInvariantString();
+                return NoContent();
+            }
+            catch (UploadNotFoundException) {
                 return NotFound();
-
-            if (result.Error is OffsetConflictException)
+            }
+            catch (OffsetConflictException) {
                 return Conflict();
-
-            Response.Headers[Headers.UploadOffset] = result.Value.ToInvariantString();
-            return NoContent();
+            }
         }
     }
 }

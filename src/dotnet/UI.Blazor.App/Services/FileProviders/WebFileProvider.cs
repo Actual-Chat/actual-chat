@@ -93,7 +93,7 @@ public partial class WebFileProvider : IFileProvider
     public Task WhenFileStreamReady()
         => DemandWebFileProviderInternal().WhenFileStreamReady();
 
-    public Task<Result<Unit>> UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
+    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
         => DemandWebFileProviderInternal().UploadData(uploadId, progressTracker, ct);
 
     private IWebFileProviderInternal DemandWebFileProviderInternal()
@@ -111,7 +111,7 @@ public interface IWebFileProviderInternal
     ValueTask RevokePreviewUrl();
     ValueTask<string> SaveFileHandleToDb();
     ValueTask<bool> DeleteFileHandleFromDb();
-    Task<Result<Unit>> UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct);
+    Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct);
     Task<bool> WhenUserConsentGranted();
     Task WhenFileStreamReady();
 }
@@ -164,7 +164,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
     public ValueTask<bool> DeleteFileHandleFromDb()
         => _jsRef.InvokeAsync<bool>("removeFileHandleFromDb", _cancellationToken);
 
-    public async Task<Result<Unit>> UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
+    public async Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
     {
         var cts = _cancellationToken.LinkWith(ct);
         var ct2 = cts.Token;
@@ -176,7 +176,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
             });
             // Upload data
             await Start(uploadId, blazorRef, ct2).ConfigureAwait(false);
-            return await backend.WhenUploadCompleted.WaitAsync(ct2).ConfigureAwait(false);
+            await backend.WhenUploadCompleted.WaitAsync(ct2).ConfigureAwait(false);
         }
         finally {
             blazorRef.Dispose();
@@ -224,7 +224,7 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
     public ValueTask<bool> DeleteFileHandleFromDb()
         => WebFileProviders.DeleteFileHandleFromDb(jsRuntime, fileHandleDbKey);
 
-    public Task<Result<Unit>> UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
+    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
         => throw new NotSupportedException();
 
     Task<bool> IWebFileProviderInternal.WhenUserConsentGranted()
