@@ -9,7 +9,7 @@ public class FileUploaderService
     private readonly Dictionary<string, UploadJob> _jobs = new (StringComparer.Ordinal);
     private readonly OperationQueue _operationQueue;
     private readonly Func<string, CancellationToken, Task<UploadId>> _getUploadId;
-    private readonly Func<UploadId, CancellationToken, Task<Result<MediaContent>>> _convertUpload;
+    private readonly Func<UploadId, CancellationToken, Task<MediaContent>> _convertUpload;
     private readonly Func<string, CancellationToken, Task> _clearUploadId;
     private ILogger Log { get; }
 
@@ -21,7 +21,7 @@ public class FileUploaderService
     public FileUploaderService(
         ILogger log,
         Func<string, CancellationToken, Task<UploadId>> getUploadId,
-        Func<UploadId, CancellationToken, Task<Result<MediaContent>>> convertUpload,
+        Func<UploadId, CancellationToken, Task<MediaContent>> convertUpload,
         Func<string, CancellationToken, Task> clearUploadId)
     {
         _getUploadId = getUploadId;
@@ -68,7 +68,7 @@ public class FileUploaderService
     private Task<UploadId> GetUploadId(string sessionId, CancellationToken cancellationToken)
         => _getUploadId(sessionId, cancellationToken);
 
-    private Task<Result<MediaContent>> ConvertUpload(UploadId uploadId, CancellationToken cancellationToken)
+    private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken cancellationToken)
         => _convertUpload(uploadId, cancellationToken);
 
     private Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
@@ -145,19 +145,20 @@ public class FileUploaderService
 
             async Task<MediaContent> StartFunc(CancellationToken ct)
             {
-                var convertUploadResult = await UploadAndConvert(ct, fileProvider, progress).ConfigureAwait(false);
-                if (convertUploadResult.Error is NotFoundException<Upload>)
+                try {
+                    return await UploadAndConvert(ct, fileProvider, progress).ConfigureAwait(false);
+                }
+                catch (UploadNotFoundException) {
                     await Owner.ClearUploadId(Session.SessionId, ct).ConfigureAwait(false);
-                return convertUploadResult.Value;
+                    throw;
+                }
             }
         }
 
-        private async Task<Result<MediaContent>> UploadAndConvert(CancellationToken ct, IFileProvider fileProvider, UploadProgressTracker progress)
+        private async Task<MediaContent> UploadAndConvert(CancellationToken ct, IFileProvider fileProvider, UploadProgressTracker progress)
         {
             var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
-            var uploadResult = await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
-            if (uploadResult.Error is not null)
-                return Result.NewError<MediaContent>(uploadResult.Error);
+            await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
             return await Owner.ConvertUpload(uploadId, ct).ConfigureAwait(false);
         }
 

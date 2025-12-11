@@ -25,7 +25,7 @@ public partial class MauiFileProvider : IFileProvider
     public Task PrepareForSaving()
         => Impl.PrepareForSaving();
 
-    public Task<Result<Unit>> UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
+    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
     {
         return ChunkedFileUploader.UploadData(uploadId, GetFile(), progressTracker, ct);
 

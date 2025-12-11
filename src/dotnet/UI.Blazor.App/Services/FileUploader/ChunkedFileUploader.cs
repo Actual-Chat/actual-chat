@@ -1,4 +1,3 @@
-using System.Runtime.ExceptionServices;
 using ActualChat.Media;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -7,7 +6,7 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
 {
     private IUploads Uploads => Hub.Uploads;
 
-    public async Task<Result<Unit>> UploadData(
+    public async Task UploadData(
         UploadId uploadId,
         Task<Stream> getStream,
         IProgress<double> progressTracker,
@@ -20,40 +19,32 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
             bool run = true;
             while (run) {
                 run = false;
-                var uploadResult = await UploadDataInternal(
-                    uploadId,
-                    file,
-                    progressTracker,
-                    () => retryIndex = 0,
-                    ct).ConfigureAwait(false);
-                switch (uploadResult.Error) {
-                    case NotFoundException<Upload> e1:
-                        return Result.NewError<Unit>(e1);
-                    case OffsetConflictException e2 when retryIndex <= maxRetries:
-                        Log.LogWarning(e2, "Offset conflict detected. Retrying...");
-                        retryIndex++;
-                        run = true;
-                        continue;
+                try {
+                    await UploadDataInternal(
+                            uploadId,
+                            file,
+                            progressTracker,
+                            () => retryIndex = 0,
+                            ct)
+                        .ConfigureAwait(false);
                 }
-                if (uploadResult.Error is not null)
-                    ExceptionDispatchInfo.Capture(uploadResult.Error).Throw();
+                catch (OffsetConflictException e) when (retryIndex <= maxRetries) {
+                    Log.LogWarning(e, "Offset conflict detected. Retrying...");
+                    retryIndex++;
+                    run = true;
+                }
             }
         }
-        return Result.New(Unit.Default);
     }
 
-    private async Task<Result<Unit>> UploadDataInternal(
+    private async Task UploadDataInternal(
         UploadId uploadId,
         Stream file,
         IProgress<double> progressTracker,
         Action onChunkUploadSucceeded,
         CancellationToken ct)
     {
-        var offsetResult = await Uploads.GetOffset(Session, uploadId, ct).ConfigureAwait(false);
-        if (offsetResult.Error is not null)
-            return Result.NewError<Unit>(offsetResult.Error);
-
-        var offset = offsetResult.Value;
+        var offset = await Uploads.GetOffset(Session, uploadId, ct).ConfigureAwait(false);
         Log.LogDebug("Starting upload of {UploadId} at offset {Offset}", uploadId, offset);
 
         if (offset > 0) {
@@ -78,11 +69,7 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
                 break;
 
             var appendCmd = new Uploads_Append(Session, uploadId, offset, chunkBuffer);
-            var appendResult = await Commander.Call(appendCmd, ct).ConfigureAwait(false);
-            if (appendResult.Error is not null)
-                return Result.NewError<Unit>(appendResult.Error);
-
-            var newOffset = appendResult.Value;
+            var newOffset = await Commander.Call(appendCmd, ct).ConfigureAwait(false);
             offset += bytesRead;
             if (offset != newOffset)
                 Log.LogWarning("Offset mismatch detected: {Offset} != {NewOffset}", offset, newOffset);
@@ -90,7 +77,5 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
             var uploadProgress = offset / (double)file.Length * 100;
             progressTracker.Report(uploadProgress);
         }
-
-        return Result.New(Unit.Default);
     }
 }
