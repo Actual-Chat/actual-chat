@@ -22,6 +22,7 @@
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
     "@typescript/lib-dom": "npm:@types/web@^0.0.265",
+    "@webgpu/types": "^0.1.67",
     "autoprefixer": "^10.4.21",
     "cssnano": "^7.1.1",
     "esbuild": "^0.25.9",
