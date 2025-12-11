@@ -4,7 +4,9 @@ namespace ActualChat.Media;
 
 internal class GoogleResumableUploads(StorageClient client)
 {
-    private HttpClient HttpClient => client.Service.HttpClient;
+    private HttpClient HttpClient => StorageClient.Service.HttpClient;
+
+    public StorageClient StorageClient { get; } = client;
 
     public async Task<long?> GetUploadStatusAsync(string sessionUrl)
     {
@@ -16,21 +18,19 @@ internal class GoogleResumableUploads(StorageClient client)
         var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
         // Not finished
-        if ((int)response.StatusCode == 308)
-        {
-            if (response.Headers.TryGetValues("Range", out var values))
-            {
-                string range = values.First(); // "bytes=0-524287"
+        if ((int)response.StatusCode == 308) {
+            if (response.Headers.TryGetValues("Range", out var values)) {
+                string range = values.First();
                 var parts = range.Replace("bytes=", "").Split('-');
-                long lastByte = long.Parse(parts[1]);
-                return lastByte + 1; // кол-во загруженных байт
+                long lastByte = long.Parse(parts[1], CultureInfo.InvariantCulture);
+                return lastByte + 1;
             }
             return 0;
         }
 
         // Finished (200 / 201)
         if (response.IsSuccessStatusCode)
-            return null; // null = объект полностью загружен
+            return null;
 
         throw new Exception($"Unexpected status: {response.StatusCode}");
     }
@@ -43,8 +43,7 @@ internal class GoogleResumableUploads(StorageClient client)
     {
         // https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#resume-upload
         var content = new ByteArrayContent(buffer);
-
-        // Пример: bytes 0-262143/104857600
+        // Example: bytes 0-262143/104857600
         content.Headers.ContentRange =
             new System.Net.Http.Headers.ContentRangeHeaderValue(
                 offset,
@@ -52,12 +51,9 @@ internal class GoogleResumableUploads(StorageClient client)
                 totalSize);
 
         var response = await HttpClient.PutAsync(sessionUrl, content).ConfigureAwait(false);
-
-        // Google возвращает 308 если загрузка не завершена
         if ((int)response.StatusCode == 308)
             return false;
 
-        // 200 OK или 201 Created = файл полностью загружен
         response.EnsureSuccessStatusCode();
         return true;
     }
