@@ -22,21 +22,21 @@
    data-tooltip="@tooltipTitle"
    data-tooltip-position="@FloatingPosition.Top.ToPositionString()">
     <div class="c-file-icon @fileCls">
-        @if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
-            <i class="icon-play-fill text-2xl"></i>
+        @if (_showWaitingPlug) {
+            <i class="icon-file-blocked text-2xl text-02"></i>
+        } else if (_showBrokenPlug) {
+            <i class="icon-file-broken text-2xl text-02"></i>
         } else {
-            <i class="icon-file text-xl"></i>
+            if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
+                <i class="icon-play-fill text-2xl"></i>
+            } else {
+                <i class="icon-file text-xl"></i>
+            }
         }
-        @if (!attachment.Uploaded) {
+        @if (!attachment.Uploaded && !(_showBrokenPlug || _showWaitingPlug)) {
             @if (attachment.IsUploading) {
                 <span class="spinner-icon-wrapper">
                     <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                </span>
-            } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
-                <span class="reload-icon-wrapper">
-                    <ButtonRound Click="@RestartClick" Class="btn-sm">
-                        <i class="icon-sync text-2xl"></i>
-                    </ButtonRound>
                 </span>
             }
         }
@@ -67,10 +67,23 @@
 </div>
 
 @code {
+    private bool _showBrokenPlug;
+    private bool _showWaitingPlug;
+
     [Parameter, EditorRequired] public Attachment Attachment { get; set; } = null!;
     [Parameter] public bool IconOnly { get; set; }
     [Parameter] public EventCallback RemoveClick { get; set; }
     [Parameter] public EventCallback RestartClick { get; set; }
+
+    protected override void OnParametersSet() {
+        _showBrokenPlug = false;
+        _showWaitingPlug = false;
+        if (!Attachment.GetPreviewUrl.IsCompleted) {
+            _showBrokenPlug = true;
+        } else if (Attachment.GetPreviewUrl.IsCompleted && !Attachment.WhenFilePermissionGranted.IsCompleted) {
+            _showWaitingPlug = true;
+        }
+    }
 
     private string GetTooltipTitle() {
         var name = Attachment.FileName;

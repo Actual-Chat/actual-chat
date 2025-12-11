@@ -22,13 +22,35 @@
             </ButtonSquare>
             @if (attachment.IsImage) {
                 <img src="@_previewUrl" alt="Image attachment" class="@plugClass"/>
+                @if (_showBrokenPlug || _showWaitingPlug) {
+                    <div class="c-plug">
+                        <div class="c-wrapper">
+                            @if (_showWaitingPlug) {
+                                <i class="icon-file-blocked text-2xl"></i>
+                            } else if (_showBrokenPlug) {
+                                <i class="icon-file-broken text-2xl"></i>
+                            }
+                        </div>
+                    </div>
+                }
             } else if (attachment.IsVideo) {
                 _lastPreviewUrl = _previewUrl;
-                <video @key="_renderKey" preload="metadata" class="@plugClass" poster="@_posterUrl">
+                <video @key="_renderKey" preload="metadata" class="@plugClass">
                     <source src="@_previewUrl#t=0.5"/>
                 </video>
+                @if (_showBrokenPlug || _showWaitingPlug) {
+                    <div class="c-plug">
+                        <div class="c-wrapper">
+                            @if (_showWaitingPlug) {
+                                <i class="icon-file-blocked text-2xl"></i>
+                            } else if (_showBrokenPlug) {
+                                <i class="icon-file-broken text-2xl"></i>
+                            }
+                        </div>
+                    </div>
+                }
             }
-            @if (!attachment.Uploaded) {
+            @if (!attachment.Uploaded && !(_showBrokenPlug || _showWaitingPlug)) {
                 @if (attachment.IsUploading) {
                     <span class="spinner-icon-wrapper">
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
@@ -58,7 +80,8 @@
     private string _renderKey = "";
     private string _lastPreviewUrl = "";
     private string _previewUrl = "";
-    private string _posterUrl = "";
+    private bool _showBrokenPlug;
+    private bool _showWaitingPlug;
 
     [Parameter] public Attachment Attachment { get; set; } = null!;
     [Parameter] public EventCallback RemoveClick { get; set; }
@@ -66,8 +89,8 @@
 
     protected override void OnParametersSet() {
         _previewUrl = "";
-        _posterUrl = "";
-        var substituteUrl = "";
+        _showBrokenPlug = false;
+        _showWaitingPlug = false;
         if (Attachment.GetPreviewUrl.IsCompleted) {
             var previewUrl = Attachment.PreviewUrl;
             if (!previewUrl.IsNullOrEmpty()) {
@@ -75,18 +98,14 @@
                 _previewUrl = previewUrl;
             } else {
                 // Did not get file permissions.
-                substituteUrl = "/dist/images/attachment-preview-broken.svg";
+                _showBrokenPlug = true;
             }
         } else {
-            substituteUrl = "/dist/images/attachment-pending-consent.svg";
+            _showWaitingPlug = true;
         }
 
-        if (_previewUrl.IsNullOrEmpty()) {
-            if (Attachment.IsVideo)
-                _posterUrl = substituteUrl;
-            else if (Attachment.IsImage)
-                _previewUrl = ""; // substituteUrl; // Wait for real substitution images
-        }
+        if (_previewUrl.IsNullOrEmpty() && Attachment.IsImage)
+            _previewUrl = ""; // substituteUrl; // Wait for real substitution images
 
         if (Attachment.IsVideo && _previewUrl != _lastPreviewUrl) {
             // Otherwise, video seems does not react on source change.

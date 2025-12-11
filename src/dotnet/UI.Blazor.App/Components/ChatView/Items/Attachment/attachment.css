@@ -281,3 +281,17 @@ body.hoverable .message-image-attachments.media-attachment-uploads .image-item:h
 .message-image-attachments.media-attachment-uploads .attachment-item > video {
     @apply h-full;
 }
+
+.attachment-item .c-plug {
+    @apply absolute inset-0 z-10;
+    @apply flex items-center justify-center;
+    @apply bg-02;
+}
+.attachment-item .c-plug > .c-wrapper {
+    @apply flex items-center justify-center;
+    @apply w-12 h-12;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-03;
+    @apply text-01;
+}
