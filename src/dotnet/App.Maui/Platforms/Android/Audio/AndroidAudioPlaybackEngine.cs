@@ -69,8 +69,10 @@ internal sealed class AndroidAudioPlaybackEngine(
         // Minimum buffer size to keep Feed blocked on track.WriteAsync
         var bufferBytes = Math.Max(minBufferBytes, Constants.Audio.PcmFrameLength * 4);
         try {
+            // Use media usage to favor external playback routes (Bluetooth A2DP/headset) and speakerphone
+            // instead of defaulting to the earpiece, while keeping speech content type.
             var attributes = new AudioAttributes.Builder()
-                .SetUsage(AudioUsageKind.VoiceCommunication)!
+                .SetUsage(AudioUsageKind.Media)!
                 .SetContentType(AudioContentType.Speech)!
                 .Build();
 
