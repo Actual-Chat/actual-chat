@@ -67,7 +67,8 @@ internal class GoogleResumableUploads(StorageClient client)
         // https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#cancel-upload
         var request = new HttpRequestMessage(HttpMethod.Delete, sessionUrl);
         var response = await HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
+        var isSuccess = response.IsSuccessStatusCode || (int)response.StatusCode == 499;
+        if (!isSuccess)
             throw new Exception($"Failed to cancel upload. Status: {response.StatusCode}");
     }
 }
