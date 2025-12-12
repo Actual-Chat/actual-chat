@@ -4,6 +4,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 {
+    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5d, 3);
     private IUploads Uploads => Hub.Uploads;
 
     public async Task UploadData(
@@ -27,6 +28,12 @@ public sealed class ChunkedFileUploader(AppUIHub hub) : UIServiceBase<AppUIHub>(
                             () => retryIndex = 0,
                             ct)
                         .ConfigureAwait(false);
+                }
+                catch (UploadTransientException e) when (retryIndex <= maxRetries) {
+                    Log.LogWarning(e, "Upload transient failure. Retrying...");
+                    retryIndex++;
+                    await Task.Delay(RetryDelays.GetDelay(retryIndex), ct).ConfigureAwait(false);
+                    run = true;
                 }
                 catch (OffsetConflictException e) when (retryIndex <= maxRetries) {
                     Log.LogWarning(e, "Offset conflict detected. Retrying...");

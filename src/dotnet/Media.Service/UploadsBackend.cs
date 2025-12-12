@@ -11,8 +11,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 {
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
     private UploadsStorage UploadsStorage { get; } = services.GetRequiredService<UploadsStorage>();
-    private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
     private GoogleResumableUploads GoogleResumableUploads => field ??= new GoogleResumableUploads(StorageClient.Create());
+    private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
 
     private bool IsGoogleStorage => Blobs is GoogleCloudBlobStorages;
 
@@ -27,7 +27,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (IsGoogleStorage) {
             var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload.SessionUri.Require();
-            var offset = await GoogleResumableUploads.GetUploadStatusAsync(sessionUri).ConfigureAwait(false);
+            var offset = await GoogleResumableUploads.GetUploadStatusAsync(sessionUri, cancellationToken).ConfigureAwait(false);
             return offset ?? upload.Length!.Value;
         }
         else {
@@ -81,15 +81,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (IsGoogleStorage) {
             var upload1 = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload1.SessionUri.Require();
-            try {
-                if (uploadOffset > 0)
-                    uploadOffset += 100;
-                _ = await GoogleResumableUploads.UploadChunk(sessionUri, data, uploadOffset, upload1.Length!.Value).ConfigureAwait(false);
-                return uploadOffset + data.Length;
-            }
-            catch (Exception e) {
-                throw UploadNotFound();
-            }
+            _ = await GoogleResumableUploads.UploadChunk(sessionUri, data, uploadOffset, upload1.Length!.Value, cancellationToken).ConfigureAwait(false);
+            return uploadOffset + data.Length;
         }
 
         // NOTE(DF): In production environment UploadsStorage is backed with gcp blob storage.
