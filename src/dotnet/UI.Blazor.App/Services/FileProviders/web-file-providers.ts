@@ -7,6 +7,7 @@ import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-toke
 import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEditor/attachment-web-file-picker';
+import { Connectivity } from 'connectivity';
 
 const { debugLog, warnLog, errorLog } = Log.get('WebFileProvider');
 
@@ -297,25 +298,30 @@ class ChunkedFileUpload {
                 return;
             } catch (error) {
                 if (error instanceof OffsetConflictError) {
-                    if (retryIndex >= maxRetries) {
-                        this.whenCompletedSource.reject(error);
-                        return;
+                    if (retryIndex < maxRetries) {
+                        warnLog?.log('Offset conflict detected. Retrying...');
+                        retryIndex++;
+                        run = true;
+                        continue;
                     }
-                    warnLog?.log('Offset conflict detected. Retrying...');
-                    retryIndex++;
-                    run = true;
-                    continue;
                 }
-                if (error instanceof UploadTransientFailure) {
-                    if (retryIndex >= maxRetries) {
-                        this.whenCompletedSource.reject(error);
-                        return;
+                else if (error instanceof UploadTransientFailure) {
+                    if (retryIndex < maxRetries) {
+                        warnLog?.log('Upload transient failure. Retrying...');
+                        await delayAsync(500);
+                        retryIndex++;
+                        run = true;
+                        continue;
                     }
-                    warnLog?.log('Upload transient failure. Retrying...');
-                    await delayAsync(500);
-                    retryIndex++;
-                    run = true;
-                    continue;
+                }
+                else if (error instanceof TypeError) {
+                    // Network-level error (no connection, timeout, offline, etc.)
+                    if (retryIndex < maxRetries) {
+                        retryIndex++;
+                        run = true;
+                        await Connectivity.whenOnline();
+                        continue;
+                    }
                 }
                 if (this.isCancelled()) {
                     this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
