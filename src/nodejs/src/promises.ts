@@ -15,8 +15,8 @@ export function isPromise<T, S>(obj: PromiseLike<T> | S): obj is PromiseLike<T> 
 }
 
 export class PromiseSource<T> implements Promise<T> {
-    public resolve: (arg: T) => void;
-    public reject: (arg: any) => void;
+    public resolve: (value?: T) => void;
+    public reject: (reason?: string | Error) => void;
 
     private readonly _promise: Promise<T>;
     private _isCompleted = false;
@@ -32,14 +32,15 @@ export class PromiseSource<T> implements Promise<T> {
                 if (resolve)
                     resolve(value);
             };
-            this.reject = (reason?: string) => {
+            this.reject = (reason?: string | Error) => {
                 if (this._isCompleted)
                     return;
 
                 this._isCompleted = true;
-                reject1(new Error(reason));
+                const error = reason instanceof Error ? reason : new Error(reason);
+                reject1(error);
                 if (reject)
-                    reject(reason);
+                    reject(error);
             };
         })
         this[Symbol.toStringTag] = this._promise[Symbol.toStringTag];
