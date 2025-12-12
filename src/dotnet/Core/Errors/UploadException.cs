@@ -8,6 +8,8 @@ public static partial class StandardError
             => new UploadNotFoundException(message);
         public static Exception OffsetConflict(string? message = null)
             => new OffsetConflictException(message);
+        public static Exception TransientFailure(string? message = null)
+            => new UploadTransientException(message);
     }
 }
 
@@ -33,4 +35,12 @@ public class OffsetConflictException : UploadException
     public OffsetConflictException() : base() { }
     public OffsetConflictException(string? message) : base(message) { }
     public OffsetConflictException(string? message, Exception? innerException) : base(message, innerException) { }
+}
+
+[Serializable]
+public class UploadTransientException : UploadException
+{
+    public UploadTransientException() : base() { }
+    public UploadTransientException(string? message) : base(message) { }
+    public UploadTransientException(string? message, Exception? innerException) : base(message, innerException) { }
 }

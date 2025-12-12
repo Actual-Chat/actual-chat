@@ -6,7 +6,7 @@ public class UploadsStorage(IServiceProvider services)
 {
     protected IServiceProvider Services { get; } = services;
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
-    internal IBlobStorage BlobStorage => Blobs[BlobScope.UploadTempRecord];
+    private IBlobStorage BlobStorage => field ??= Blobs[BlobScope.UploadTempRecord];
 
     public async Task<long?> GetUploadOffset(UploadId uploadId, CancellationToken cancellationToken = default)
     {

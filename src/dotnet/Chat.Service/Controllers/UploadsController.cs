@@ -1,3 +1,4 @@
+using System.Net;
 using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Users;
@@ -81,6 +82,9 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
             }
             catch (OffsetConflictException) {
                 return Conflict();
+            }
+            catch (UploadTransientException) {
+                return StatusCode((int)HttpStatusCode.ServiceUnavailable);
             }
         }
     }

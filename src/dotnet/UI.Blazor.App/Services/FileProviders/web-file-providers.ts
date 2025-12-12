@@ -1,7 +1,7 @@
 import { deleteFileHandle, getFileHandle, saveFileHandle } from './file-handle-storage';
 import { grantFileUploadPermissionsInvoker, requestFileHandlePermission } from './file-handle-permissions';
 import { Log } from 'logging';
-import { OperationCancelledError, PromiseSource } from 'promises';
+import { delayAsync, OperationCancelledError, PromiseSource } from 'promises';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 import { v4 as uuidv4 } from 'uuid';
@@ -306,6 +306,17 @@ class ChunkedFileUpload {
                     run = true;
                     continue;
                 }
+                if (error instanceof UploadTransientFailure) {
+                    if (retryIndex >= maxRetries) {
+                        this.whenCompletedSource.reject(error);
+                        return;
+                    }
+                    warnLog?.log('Upload transient failure. Retrying...');
+                    await delayAsync(500);
+                    retryIndex++;
+                    run = true;
+                    continue;
+                }
                 if (this.isCancelled()) {
                     this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
                 } else {
@@ -329,6 +340,8 @@ class ChunkedFileUpload {
         if (!response.ok) {
             if (response.status == 404)
                 throw new UploadNotFoundError(`Upload ${this.uploadId} not found`);
+            if (response.status == 503)
+                throw new UploadTransientFailure(`Upload transient failure`);
             throw new Error(`Failed to get upload status: ${response.statusText}`);
         }
         const header = response.headers.get('Upload-Offset');
@@ -357,6 +370,8 @@ class ChunkedFileUpload {
         if (!response.ok) {
             if (response.status == 404)
                 throw new UploadNotFoundError(`Upload ${this.uploadId} not found`);
+            if (response.status == 503)
+                throw new UploadTransientFailure(`Upload transient failure`);
             if (response.status == 409)
                 throw new OffsetConflictError('Upload offset conflict');
             throw new Error(`Failed to upload chunk: ${response.statusText}`);
@@ -374,6 +389,12 @@ class ChunkedFileUpload {
 }
 
 class UploadNotFoundError extends Error {
+    constructor(message: string) {
+        super(message);
+    }
+}
+
+class UploadTransientFailure extends Error {
     constructor(message: string) {
         super(message);
     }
