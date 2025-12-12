@@ -30,14 +30,6 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
         init => this.SetMetadataValue(value);
     }
 
-    public Upload(UploadId id, UserId userId, string tag)
-    {
-        Id = id;
-        UserId = userId;
-        Tag = tag;
-    }
-
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public Upload(UploadId id, UserId userId, long? length, string tag, PropertyBag metadata)
     {
         Id = id;
@@ -46,6 +38,11 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
         Tag = tag;
         Metadata = metadata;
     }
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    public Upload(UploadId id, UserId userId, long? length, string tag, string sessionUri, PropertyBag metadata)
+        : this(id, userId, length, tag, metadata)
+        => SessionUri = sessionUri;
 
     // This record relies on referential equality
     public bool Equals(Upload? other) => ReferenceEquals(this, other);

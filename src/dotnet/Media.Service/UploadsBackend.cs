@@ -19,7 +19,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     public virtual async Task<Upload?> Get(UploadId uploadId, CancellationToken cancellationToken)
     {
         var json = await UploadsStorage.GetMetadataFile(uploadId, cancellationToken).ConfigureAwait(false);
-        return json.IsNullOrEmpty() ? null : JsonSerializer.Deserialize<Upload>(json);
+        var upload = json.IsNullOrEmpty() ? null : JsonSerializer.Deserialize<Upload>(json);
+        return upload;
     }
 
     public virtual async Task<long> GetOffset(UploadId uploadId, CancellationToken cancellationToken)
@@ -47,6 +48,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         var contentType = upload.ContentType.NullIfEmpty() ?? "application/octet-stream";
         if (IsGoogleStorage) {
             var location = await InitiateUploadSession(upload, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("Upload session for upload '{UploadId}' initiated: '{Location}'", uploadId, location.AbsoluteUri);
             upload = upload with { SessionUri = location.AbsoluteUri };
             var json = JsonSerializer.Serialize(upload);
             await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);

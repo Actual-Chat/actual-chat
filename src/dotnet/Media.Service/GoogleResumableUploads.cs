@@ -14,7 +14,7 @@ internal class GoogleResumableUploads(StorageClient client, ILogger<GoogleResuma
     {
         // https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#status-check
         if (sessionUrl.IsNullOrEmpty())
-            throw new ArgumentNullException(nameof(sessionUrl));
+            throw new ArgumentException("Value should not be null or empty string", nameof(sessionUrl));
 
         Log.LogInformation("Checking upload status: {SessionUrl}", sessionUrl);
         var request = new HttpRequestMessage(HttpMethod.Put, sessionUrl);
@@ -36,6 +36,7 @@ internal class GoogleResumableUploads(StorageClient client, ILogger<GoogleResuma
             return 0;
         }
 
+        // Finished
         response.EnsureSuccessStatusCode();
         return null;
     }
