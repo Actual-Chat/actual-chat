@@ -3,15 +3,20 @@ using Google.Cloud.Storage.V1;
 
 namespace ActualChat.Media;
 
-internal class GoogleResumableUploads(StorageClient client)
+internal class GoogleResumableUploads(StorageClient client, ILogger<GoogleResumableUploads> log)
 {
     private HttpClient HttpClient => StorageClient.Service.HttpClient;
 
+    private ILogger Log { get; } = log;
     public StorageClient StorageClient { get; } = client;
 
     public async Task<long?> GetUploadStatusAsync(string sessionUrl, CancellationToken cancellationToken)
     {
         // https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#status-check
+        if (sessionUrl.IsNullOrEmpty())
+            throw new ArgumentNullException(nameof(sessionUrl));
+
+        Log.LogInformation("Checking upload status: {SessionUrl}", sessionUrl);
         var request = new HttpRequestMessage(HttpMethod.Put, sessionUrl);
         request.Headers.TryAddWithoutValidation("Content-Length", "0");
         request.Headers.TryAddWithoutValidation("Content-Range", "bytes */*");

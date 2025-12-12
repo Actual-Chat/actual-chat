@@ -43,6 +43,10 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
         catch (UploadNotFoundException) {
             return NotFound();
         }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to get upload offset for upload '{UploadId}'.", uploadId);
+            return StatusCode((int)HttpStatusCode.InternalServerError);
+        }
     }
 
     [HttpPatch("{uploadSid}")]
@@ -85,6 +89,10 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
             }
             catch (UploadTransientException) {
                 return StatusCode((int)HttpStatusCode.ServiceUnavailable);
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to append chunk to upload '{UploadId}' at offset '{Offset}'", uploadId, uploadOffset);
+                return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
     }

@@ -11,7 +11,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 {
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
     private UploadsStorage UploadsStorage { get; } = services.GetRequiredService<UploadsStorage>();
-    private GoogleResumableUploads GoogleResumableUploads => field ??= new GoogleResumableUploads(StorageClient.Create());
+    private GoogleResumableUploads GoogleResumableUploads => field ??= new GoogleResumableUploads(StorageClient.Create(), Services.LogFor<GoogleResumableUploads>());
     private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
 
     private bool IsGoogleStorage => Blobs is GoogleCloudBlobStorages;
