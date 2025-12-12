@@ -10,7 +10,7 @@
     @apply mx-6;
 }
 .right-panel > .c-panel-content {
-    @apply flex-y;
+    @apply flex-1 flex-y;
     @apply overflow-y-hidden;
 }
 .right-panel > .c-panel-content > .c-chat-info {
@@ -376,4 +376,26 @@ body.hoverable .thread-list-item:hover,
     @apply min-w-8;
     @apply truncate;
     @apply pointer-events-none;
+}
+
+.media-list-tab {
+    @apply h-full;
+    @apply custom-scrollbar overflow-y-auto;
+}
+.media-list-tab > .c-content {
+    @apply grid gap-px;
+    grid-template-columns: repeat(3, 1fr);
+}
+@media (min-width: 820px) and (max-width: 1279.8px) {
+    .media-list-tab > .c-content {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+.media-list-tab > .c-content .image-attachment {
+    @apply w-full;
+    @apply object-cover;
+    aspect-ratio: 1 / 1;
+}
+.media-list-tab > .c-content .image-attachment .c-content {
+    @apply w-full;
 }
