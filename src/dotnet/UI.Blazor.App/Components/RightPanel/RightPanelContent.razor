@@ -37,7 +37,7 @@
                         }
                         @if (m.EnableIncompleteUI) {
                             <Tab @key="@("media")" Id="media" Title="Media" Order="3">
-                                <ToBeDone/>
+                                <MediaList ChatId="@chat.Id"/>
                             </Tab>
                             <Tab @key="@("files")" Id="files" Title="Files" Order="6">
                                 <ToBeDone/>
