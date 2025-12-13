@@ -158,8 +158,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 getPreviewUrl) {
                 UploadSessionId = uploadSessionId,
             };
-            attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
             attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
+            attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
             if (!attachmentIsOk) {
                 attachment = attachment with {
                     Failed = true,
