@@ -8,13 +8,13 @@
     @apply outline-0;
     backdrop-filter: blur(2px) opacity(0.8) brightness(0.8);
     background-color: rgba(0,0,0,0.5);
-    animation: modal-blur-on 200ms ease-in-out;
+    animation: modal-blur-on 250ms ease-in-out;
 }
 .modal-overlay.hide {
     @apply flex;
     background-color: rgba(0,0,0,0);
     backdrop-filter: blur(0) opacity(1) brightness(1);
-    animation: modal-blur-off 200ms ease-in-out;
+    animation: modal-blur-off 250ms ease-in-out;
 }
 @keyframes modal-blur-on {
     0% {

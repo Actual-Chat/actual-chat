@@ -541,10 +541,11 @@ body.hoverable .language-btn-group > .c-title > .c-edit:hover {
     @apply flex-1 flex items-center justify-center;
     @apply h-8;
     @apply rounded-lg;
-    @apply bg-modal;
+    @apply bg-transparent;
     @apply text-02;
 }
 .language-btn-group > .c-languages > button.active {
+    @apply bg-modal;
     @apply text-primary;
     @apply cursor-default;
 }
