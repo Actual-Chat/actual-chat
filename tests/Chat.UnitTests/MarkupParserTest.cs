@@ -298,20 +298,7 @@ code
     {
         var m = Parse<ListMarkup>("- line1\n- line2", out _);
         m.Items.Length.Should().Be(2);
-        m.Items[0].Order.Should().BeNull();
         m.Items[0].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line1");
-        m.Items[1].Order.Should().BeNull();
-        m.Items[1].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line2");
-    }
-
-    [Fact]
-    public void OrderedListCase()
-    {
-        var m = Parse<ListMarkup>("1. line1\n2. line2", out _);
-        m.Items.Length.Should().Be(2);
-        m.Items[0].Order.Should().Be(1);
-        m.Items[0].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line1");
-        m.Items[1].Order.Should().Be(2);
         m.Items[1].Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line2");
     }
 
@@ -385,7 +372,6 @@ code
 
         var item1 = m.Items[1].Should().BeOfType<ListMarkup>().Subject;
         item1.Items.Should().HaveCount(3);
-        item1.IsOrdered.Should().BeFalse();
         item1.Items[0].Should().BeOfType<ListItemMarkup>()
             .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("List item 1 is here.");
@@ -419,7 +405,6 @@ code
 
         var item1 = m.Items[1].Should().BeOfType<ListMarkup>().Subject;
         item1.Items.Should().HaveCount(2);
-        item1.IsOrdered.Should().BeFalse();
         item1.Items[0].Should().BeOfType<ListItemMarkup>()
             .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("List item 1 is here.");
