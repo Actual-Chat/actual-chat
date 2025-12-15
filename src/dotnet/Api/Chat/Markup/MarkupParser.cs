@@ -231,14 +231,8 @@ public partial class MarkupParser : IMarkupParser
         from _1 in EndOfLine.Optional()
         select (Markup)new ListItemMarkup(content);
 
-    private static readonly Parser<char, Markup> OrderedListItem =
-        from number in Digit.AtLeastOnceString().Before(Char('.')).Before(WhitespaceChar)
-        from content in TextBlock.ManyMarkup()
-        from _ in EndOfLine.Optional()
-        select (Markup)new ListItemMarkup(content, int.Parse(number, CultureInfo.InvariantCulture));
-
     private static readonly Parser<char, Markup> ListBlock =
-        SafeTryOneOf(UnorderedListItem, OrderedListItem)
+        Try(UnorderedListItem)
             .AtLeastOnce()
             .Select(items => (Markup)new ListMarkup(items.Select(c => (ListItemMarkup)c).ToArray()))
             .Debug("<List>");

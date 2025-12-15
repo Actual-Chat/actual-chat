@@ -49,7 +49,7 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
 
         var newContent = Visit(markup.Content, ref state);
         return newContent == markup.Content ? markup
-            : new ListItemMarkup(newContent, markup.Order);
+            : new ListItemMarkup(newContent);
     }
 
     protected override Markup VisitSeq(MarkupSeq markup, ref State state)
