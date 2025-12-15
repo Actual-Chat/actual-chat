@@ -107,10 +107,8 @@ public class ChatSendingMessages
             if (toRemove.Count == 0)
                 return;
 
-            foreach (var sendingMessage in toRemove) {
+            foreach (var sendingMessage in toRemove)
                 messages.Remove(sendingMessage);
-                sendingMessage.Free();
-            }
         }
     }
 

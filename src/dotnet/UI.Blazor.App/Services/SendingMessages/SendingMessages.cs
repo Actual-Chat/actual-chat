@@ -235,74 +235,43 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private async Task PostInternal(PostMessageRequestInternal request, TaskCompletionSource<ChatEntry?> resultSource, CancellationToken cancellationToken)
     {
+        var discardSendRequest = false;
+        TextEntryId? textEntryId = null;
         try {
             DebugLog?.LogInformation("Sending message: LocalId={LocalId}, Content='{Content}', ClientId='{ClientId}', NewChatEntryLocalId={NewChatEntryLocalId}",
                 request.LocalId, request.Text, request.ClientId, request.NewChatEntryLocalId);
             var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cancellationToken1 = cancellationTokenSource.Token;
-            Result<ChatEntry> result;
-            Action cancelSendRequested = () => {
+            var sendingMessage = CreateAndRegisterSendingMessage(request, () => {
+                discardSendRequest = true;
                 cancellationTokenSource.Cancel();
-            };
-            var sendingMessage = CreateAndRegisterSendingMessage(request, cancelSendRequested);
-            if (!request.NewChatEntryLocalId.HasValue) {
-                var queueMessageProcess = _messageProcessor.Enqueue(new PostMessageQueueItem(request), cancellationToken1);
-                try {
-                    // NOTE: wait on the cancellation token to fail fast on send message request cancellation
-                    // (not await when the command will be processed by queue processor)
-                    var postResult = await queueMessageProcess.WhenCompleted.WaitAsync(cancellationToken1)
-                        .ConfigureAwait(false);
-                    var chatEntry = (ChatEntry)postResult!;
-                    result = new Result<ChatEntry>(chatEntry);
-                    DebugLog?.LogInformation("Sent message: LocalId={LocalId}, Content='{Content}'",
-                        chatEntry.LocalId,
-                        chatEntry.Content);
-                }
-                catch (Exception e) {
-                    // NOTE(DF): react on critical errors like have no longer have permissions to send a message to the chat.
-                    // Then we should discard this request and inform the user.
-                    Log.LogError(e, "Failed to sent message. UUID={Uuid}, Text='{Text}'", request.Uuid, request.Text);
-                    result = Result.NewError<ChatEntry>(e);
-                }
-            }
-            else {
-                var chatEntryId = ChatEntryId.New(request.ChatId, ChatEntryKind.Text, request.NewChatEntryLocalId.Value);
-                var chatEntry = await Hub.Chats.GetEntry(Hub.Session, chatEntryId, cancellationToken1).ConfigureAwait(false);
-                if (chatEntry is not null)
-                    result = Result.New(chatEntry);
-                else
-                    result = Result.NewError<ChatEntry>(StandardError.Internal($"Can't find chat entry with id '{chatEntryId}'."));
-            }
+            });
+            if (request.NewChatEntryLocalId.HasValue)
+                textEntryId = TextEntryId.New(request.ChatId, request.NewChatEntryLocalId.Value);
+            var result = textEntryId is null
+                ? await ExecutePostRequestViaQueue(request, cancellationToken1).ConfigureAwait(false)
+                : await TryGetExistentPostMessage(textEntryId, cancellationToken1).ConfigureAwait(false);
 
             var chatSendingMessages = GetChatSendingMessages(request.ChatId);
             if (result.IsValue(out var chatEntry1, out var exception)) {
+                textEntryId = (TextEntryId)chatEntry1.Id;
                 chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now, !chatEntry1.HasAttachmentUploads);
                 _mediaUploadsUI.Invalidate(sendingMessage);
-                if (chatEntry1.HasAttachmentUploads) {
-                    if (request.AttachmentUploads is not null) {
-                        if (!request.NewChatEntryLocalId.HasValue)
-                            // Persist that the message has been sent before we continue further processing with attachments.
-                            await _requestsRepo
-                                .MarkMessageHasCreated(request.Uuid, chatEntry1.LocalId, cancellationToken1)
-                                .ConfigureAwait(false);
-                        var chatEntry2 = await CreateAttachments(chatEntry1, request.AttachmentUploads, default)
+                try {
+                    if (chatEntry1.HasAttachmentUploads)
+                        chatEntry1 = await CompleteAttachmentUploads(
+                                chatEntry1,
+                                request,
+                                chatSendingMessages,
+                                sendingMessage,
+                                cancellationToken1)
                             .ConfigureAwait(false);
-                        chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry2, Now);
-                        // Delete upload info with delay to avoid flickering in the UI.
-                        chatEntry1 = chatEntry2;
-                        _ = BackgroundTask.Run(async () => {
-                                await Task.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
-                                _mediaUploadsUI.Delete(sendingMessage);
-                            },
-                            CancellationToken.None);
-                    }
-                    else {
-                        // NOTE(DF): this should never happen.
-                        Log.LogError("Attachment uploads are not set for message with local id '{LocalId}'", chatEntry1.LocalId);
-                        chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now, true);
-                    }
+                    resultSource.SetResult(chatEntry1);
                 }
-                resultSource.SetResult(chatEntry1);
+                catch (OperationCanceledException exception1) {
+                    chatSendingMessages.ConfirmMessageFailedToSend(sendingMessage, exception1);
+                    resultSource.TrySetCanceled();
+                }
             }
             else if (cancellationToken1.IsCancellationRequested) {
                 chatSendingMessages.ConfirmMessageFailedToSend(sendingMessage, exception);
@@ -322,9 +291,17 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         }
 
         // Everything is completed. We can forget about this request and cleanup attachment resources.
-        await DiscardStoredPostRequest(request.Uuid, cancellationToken).ConfigureAwait(false);
-        if (request.AttachmentUploads is not null)
-            await CleanupAttachments(request.Uuid, request.AttachmentUploads.Attachments.Items).ConfigureAwait(false);
+        if (!resultSource.Task.IsCompleted)
+            throw StandardError.Internal("Result source is not completed."); // Never should happen.
+
+        if (discardSendRequest || !resultSource.Task.IsCanceled) {
+            await DiscardStoredPostRequest(request.Uuid, cancellationToken).ConfigureAwait(false);
+            if (request.AttachmentUploads is not null)
+                await CleanupAttachments(request.Uuid, request.AttachmentUploads.Attachments.Items)
+                    .ConfigureAwait(false);
+            if (discardSendRequest && textEntryId is not null)
+                await RemoveChatEntry(textEntryId, cancellationToken).ConfigureAwait(false);
+        }
 
         var task = resultSource.Task;
         Result<ChatEntry?> result2 =
@@ -336,6 +313,74 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             request.AfterSendMessageHandlerKey,
             request.AfterSendMessageHandlerArgs,
             result2);
+    }
+
+    private async Task<Result<ChatEntry>> ExecutePostRequestViaQueue(PostMessageRequestInternal request, CancellationToken cancellationToken1)
+    {
+        Result<ChatEntry> result;
+        var queueMessageProcess = _messageProcessor.Enqueue(new PostMessageQueueItem(request), cancellationToken1);
+        try {
+            // NOTE: wait on the cancellation token to fail fast on send message request cancellation
+            // (not await when the command will be processed by queue processor)
+            var postResult = await queueMessageProcess.WhenCompleted.WaitAsync(cancellationToken1)
+                .ConfigureAwait(false);
+            var chatEntry = (ChatEntry)postResult!;
+            result = new Result<ChatEntry>(chatEntry);
+            DebugLog?.LogInformation("Sent message: LocalId={LocalId}, Content='{Content}'",
+                chatEntry.LocalId,
+                chatEntry.Content);
+        }
+        catch (Exception e) {
+            // NOTE(DF): react on critical errors like have no longer have permissions to send a message to the chat.
+            // Then we should discard this request and inform the user.
+            Log.LogError(e, "Failed to sent message. UUID={Uuid}, Text='{Text}'", request.Uuid, request.Text);
+            result = Result.NewError<ChatEntry>(e);
+        }
+
+        return result;
+    }
+
+    private async Task<Result<ChatEntry>> TryGetExistentPostMessage(TextEntryId chatEntryId, CancellationToken cancellationToken1)
+    {
+        Result<ChatEntry> result;
+        var chatEntry = await Hub.Chats.GetEntry(Hub.Session, chatEntryId, cancellationToken1).ConfigureAwait(false);
+        if (chatEntry is not null)
+            result = Result.New(chatEntry);
+        else
+            result = Result.NewError<ChatEntry>(StandardError.Internal($"Can't find chat entry with id '{chatEntryId}'."));
+        return result;
+    }
+
+    private async Task<ChatEntry?> CompleteAttachmentUploads(
+        ChatEntry chatEntry,
+        PostMessageRequestInternal request,
+        ChatSendingMessages chatSendingMessages,
+        SendingMessage sendingMessage,
+        CancellationToken cancellationToken)
+    {
+        if (request.AttachmentUploads is null) {
+            // NOTE(DF): this should never happen.
+            Log.LogError("Attachment uploads are not set for message with local id '{LocalId}'", chatEntry.LocalId);
+            chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry, Now, true);
+            return chatEntry;
+        }
+
+        if (!request.NewChatEntryLocalId.HasValue)
+            // Persist that the message has been sent before we continue further processing with attachments.
+            await _requestsRepo
+                .MarkMessageHasCreated(request.Uuid, chatEntry.LocalId, cancellationToken)
+                .ConfigureAwait(false);
+
+        var chatEntry2 = await CreateAttachments(chatEntry, request.AttachmentUploads, cancellationToken)
+            .ConfigureAwait(false);
+        chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry2, Now);
+        // Delete upload info with delay to avoid flickering in the UI.
+        _ = BackgroundTask.Run(async () => {
+                await Task.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
+                _mediaUploadsUI.Delete(sendingMessage);
+            },
+            CancellationToken.None);
+        return chatEntry2;
     }
 
     private void InvokeAfterSendMessageHandler(string afterSendMessageHandlerKey, string afterSendMessageHandlerArgs, Result<ChatEntry?> result)
@@ -422,14 +467,13 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     {
         // An attachment should have several states: loading, loading error, canceled (removed), loaded.
         // When an attachment has entered the `loading error` state, you can repeat the loading or cancel it entirely.
-        await attachmentUploads.WhenUploaded.ConfigureAwait(false);
+        await attachmentUploads.WhenUploaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         // When all attachments are loaded, we can continue execution.
         var entryAttachments = CreateTextEntryAttachments(attachmentUploads);
         if (entryAttachments.Length == 0 && chatEntry.Content.IsNullOrEmpty()) {
             // If there are no loaded attachments and the ChatEntry Content is empty,
             // then we delete this ChatEntry altogether.
-            var cmd1 = new Chats_RemoveTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId);
-            await UICommander.Run(cmd1, cancellationToken).ConfigureAwait(false);
+            await RemoveChatEntry((TextEntryId)chatEntry.Id, cancellationToken).ConfigureAwait(false);
             return null;
         }
         // If there are loaded attachments,
@@ -439,7 +483,13 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             HasAttachmentUploads = false,
             EntryAttachments = entryAttachments,
         };
-        return await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RemoveChatEntry(TextEntryId chatEntryId, CancellationToken cancellationToken)
+    {
+        var cmd1 = new Chats_RemoveTextEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
+        await Commander.Run(cmd1, cancellationToken).ConfigureAwait(false);
     }
 
     private static TextEntryAttachment[] CreateTextEntryAttachments(AttachmentUploads attachmentUploads)

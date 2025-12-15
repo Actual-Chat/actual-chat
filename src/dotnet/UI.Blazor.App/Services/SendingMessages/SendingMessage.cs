@@ -12,8 +12,6 @@ public record SendingMessage(
     AttachmentUploads? AttachmentUploads,
     Action CancelSendRequested)
 {
-    private bool _isFreed;
-
     public ChatEntry? PostedChatEntry { get; private set; }
     public Exception? Error { get; private set; }
     public Moment? SentMoment { get; private set; }
@@ -53,12 +51,4 @@ public record SendingMessage(
 
     public void MarkLoadedForDisplay()
         => LoadedForDisplay = true;
-
-    public void Free()
-    {
-        if (_isFreed)
-            return;
-
-        _isFreed = true;
-    }
 }
