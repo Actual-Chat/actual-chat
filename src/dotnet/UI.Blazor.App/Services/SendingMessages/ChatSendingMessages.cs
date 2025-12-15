@@ -45,15 +45,24 @@ public class ChatSendingMessages
         InvalidateCollection(sendingMessage);
     }
 
-    public void ConfirmMessageHasSent(SendingMessage sendingMessage, ChatEntry chatEntry, Moment now)
+    public void ConfirmMessageHasSent(SendingMessage sendingMessage, ChatEntry chatEntry, Moment now, bool complete)
     {
-        lock (_lock)
-            sendingMessage.Complete(chatEntry, now);
+        lock (_lock) {
+            sendingMessage.Posted(chatEntry, now);
+            if (complete)
+                sendingMessage.Complete(now);
+        }
+        OnMessageSent(sendingMessage);
+    }
 
-        if (sendingMessage.LocalId.HasValue)
-            InvalidateCollection(sendingMessage);
-        using (Invalidation.Begin())
-            _ = _triggers.IsSending(sendingMessage);
+    public void ConfirmMessageAttachmentsHaveSent(SendingMessage sendingMessage, ChatEntry? chatEntry, Moment now)
+    {
+        lock (_lock) {
+            if (chatEntry is not null)
+                sendingMessage.Posted(chatEntry, now);
+            sendingMessage.Complete(now);
+        }
+        OnMessageSent(sendingMessage);
     }
 
     public void ConfirmMessageFailedToSend(SendingMessage sendingMessage, Exception error)
@@ -65,14 +74,18 @@ public class ChatSendingMessages
             _ = _triggers.IsSending(sendingMessage);
     }
 
-    public void RemoveSentNewMessages(long rangeEnd)
+    public void ProcessLoadedEntriesRange(long rangeEnd)
     {
         lock (_lock) {
             if (_newMessages.Count == 0)
                 return;
 
-            foreach (var sendingMessage in _newMessages.Where(m => m.PostedChatEntry is not null && m.PostedChatEntry.LocalId < rangeEnd))
-                sendingMessage.MarkToRemove();
+            foreach (var sendingMessage in _newMessages.Where(m => m.PostedChatEntry is not null && m.PostedChatEntry.LocalId < rangeEnd)) {
+                if (sendingMessage.IsCompleted)
+                    sendingMessage.MarkToRemove();
+                else
+                    sendingMessage.MarkLoadedForDisplay();
+            }
         }
     }
 
@@ -90,10 +103,13 @@ public class ChatSendingMessages
 
         static void Prune(List<SendingMessage> messages, Moment threshold)
         {
-            var toRemove = messages.FindAll(c => c.ToBeRemoved || (c.SentMoment.HasValue && c.SentMoment < threshold));
+            var toRemove = messages.FindAll(c => c.ToBeRemoved || (c.CompleteMoment.HasValue && c.CompleteMoment < threshold));
+            if (toRemove.Count == 0)
+                return;
+
             foreach (var sendingMessage in toRemove) {
                 messages.Remove(sendingMessage);
-                sendingMessage.Dispose();
+                sendingMessage.Free();
             }
         }
     }
@@ -112,4 +128,12 @@ public class ChatSendingMessages
 
     public Task<bool> IsSending(SendingMessage sendingMessage)
         => _triggers.IsSending(sendingMessage);
+
+    private void OnMessageSent(SendingMessage sendingMessage)
+    {
+        if (sendingMessage.LocalId.HasValue)
+            InvalidateCollection(sendingMessage);
+        using (Invalidation.Begin())
+            _ = _triggers.IsSending(sendingMessage);
+    }
 }

@@ -241,7 +241,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cancellationToken1 = cancellationTokenSource.Token;
             Result<ChatEntry> result;
-            var sendingMessage = CreateAndRegisterSendingMessage(request, cancellationTokenSource);
+            Action cancelSendRequested = () => {
+                cancellationTokenSource.Cancel();
+            };
+            var sendingMessage = CreateAndRegisterSendingMessage(request, cancelSendRequested);
             if (!request.NewChatEntryLocalId.HasValue) {
                 var queueMessageProcess = _messageProcessor.Enqueue(new PostMessageQueueItem(request), cancellationToken1);
                 try {
@@ -273,18 +276,31 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
             var chatSendingMessages = GetChatSendingMessages(request.ChatId);
             if (result.IsValue(out var chatEntry1, out var exception)) {
-                chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now);
+                chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now, !chatEntry1.HasAttachmentUploads);
                 _mediaUploadsUI.Invalidate(sendingMessage);
-                if (chatEntry1.HasAttachmentUploads && request.AttachmentUploads is not null) {
-                    if (!request.NewChatEntryLocalId.HasValue)
-                        await _requestsRepo.MarkMessageHasCreated(request.Uuid, chatEntry1.LocalId, cancellationToken1).ConfigureAwait(false);
-                    var chatEntry2 = await CreateAttachments(chatEntry1, request.AttachmentUploads, default).ConfigureAwait(false);
-                    // Delete upload info with delay to avoid flickering in the UI.
-                    chatEntry1 = chatEntry2;
-                    _ = BackgroundTask.Run(async () => {
-                        await Task.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
-                        _mediaUploadsUI.Delete(sendingMessage);
-                    }, CancellationToken.None);
+                if (chatEntry1.HasAttachmentUploads) {
+                    if (request.AttachmentUploads is not null) {
+                        if (!request.NewChatEntryLocalId.HasValue)
+                            // Persist that the message has been sent before we continue further processing with attachments.
+                            await _requestsRepo
+                                .MarkMessageHasCreated(request.Uuid, chatEntry1.LocalId, cancellationToken1)
+                                .ConfigureAwait(false);
+                        var chatEntry2 = await CreateAttachments(chatEntry1, request.AttachmentUploads, default)
+                            .ConfigureAwait(false);
+                        chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry2, Now);
+                        // Delete upload info with delay to avoid flickering in the UI.
+                        chatEntry1 = chatEntry2;
+                        _ = BackgroundTask.Run(async () => {
+                                await Task.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
+                                _mediaUploadsUI.Delete(sendingMessage);
+                            },
+                            CancellationToken.None);
+                    }
+                    else {
+                        // NOTE(DF): this should never happen.
+                        Log.LogError("Attachment uploads are not set for message with local id '{LocalId}'", chatEntry1.LocalId);
+                        chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now, true);
+                    }
                 }
                 resultSource.SetResult(chatEntry1);
             }
