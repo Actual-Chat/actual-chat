@@ -7,6 +7,24 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
     public SendingMessages Owner => ChatSendingMessages.Owner;
     private ILogger Log => field ??= Owner.Hub.LogFor<ChatSendingMessagesAccessor>();
 
+    public async Task<ChatEntry> GetSelfOrSending(ChatEntry chatEntry)
+    {
+        if (chatEntry.HasAttachmentUploads) {
+            var newMessages = await ChatSendingMessages.GetNewMessages().ConfigureAwait(false);
+            var sendingMessage = newMessages.FirstOrDefault(c => c.PostedChatEntry?.LocalId == chatEntry.LocalId);
+            if (sendingMessage is not null) {
+                chatEntry = chatEntry with {
+                    Version = chatEntry.Version + 1,
+                    SendingTag = sendingMessage,
+                    ClientUid = Guid.NewGuid().ToString(),
+                };
+                Owner.RegisterEntryByClientId(chatEntry);
+                return chatEntry;
+            }
+        }
+        return await GetSelfOrEdited(chatEntry).ConfigureAwait(false);
+    }
+
     public async Task<ChatEntry> GetSelfOrEdited(ChatEntry chatEntry)
     {
         var sendingMessage = await ChatSendingMessages.GetEditedMessage(chatEntry.Id).ConfigureAwait(false);
@@ -41,6 +59,9 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
         var entries = new List<ChatEntry>();
         var localId = rangeEnd;
         foreach (var sendingMessage in newMessages) {
+            if (sendingMessage.LoadedForDisplay)
+                continue;
+
             var entryId = TextEntryId.New(ChatId, localId);
             var chatEntry = new ChatEntry(entryId, 0) {
                 AuthorId = ownAuthorId,
@@ -57,8 +78,8 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
         return entries.ToArray();
     }
 
-    public void RemoveSentNewMessages(long rangeEnd)
-        => ChatSendingMessages.RemoveSentNewMessages(rangeEnd);
+    public void ProcessLoadedEntriesRange(long rangeEnd)
+        => ChatSendingMessages.ProcessLoadedEntriesRange(rangeEnd);
 
     public Task<bool> IsSending(SendingMessage sendingMessage)
         => ChatSendingMessages.IsSending(sendingMessage);

@@ -412,14 +412,14 @@ public partial class ChatUI
                 if (idRangesToSkip.Any(range => range.Contains(e.Id.LocalId)))
                     continue;
 
-                var e2 = await chatSendingMessages.GetSelfOrEdited(e).ConfigureAwait(false);
+                var e2 = await chatSendingMessages.GetSelfOrSending(e).ConfigureAwait(false);
                 entries.Add(e2);
             }
         }
 
         if (rangeEnd.HasValue) {
             // processing last tile
-            chatSendingMessages.RemoveSentNewMessages(rangeEnd.Value);
+            chatSendingMessages.ProcessLoadedEntriesRange(rangeEnd.Value);
             var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!, rangeEnd.Value).ConfigureAwait(false);
             entries.AddRange(newMessages);
         }

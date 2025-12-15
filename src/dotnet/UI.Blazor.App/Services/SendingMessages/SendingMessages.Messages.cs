@@ -34,9 +34,9 @@ partial class SendingMessages
 
     private SendingMessage CreateAndRegisterSendingMessage(
         PostMessageRequestInternal request,
-        CancellationTokenSource cancellationTokenSource)
+        Action cancelSendRequested)
     {
-        var sendingMessage = CreateSendingMessage(request, cancellationTokenSource);
+        var sendingMessage = CreateSendingMessage(request, cancelSendRequested);
         lock (_chatSendingMessagesLock) {
             var chatSendingMessages = GetChatSendingMessages(request.ChatId);
             chatSendingMessages.AddSendingMessage(sendingMessage);
@@ -48,7 +48,7 @@ partial class SendingMessages
 
     private static SendingMessage CreateSendingMessage(
         PostMessageRequestInternal request,
-        CancellationTokenSource cancellationTokenSource)
+        Action cancelSendRequested)
     {
         var isNewMessage = request.LocalId is null;
         // NOTE(DF): we need to set the content hash to trigger ChatEntryMessageInternalView re-rendering for edited messages.
@@ -60,7 +60,7 @@ partial class SendingMessages
             request.Text,
             textHash,
             request.AttachmentUploads,
-            cancellationTokenSource);
+            cancelSendRequested);
         return sendingMessage;
     }
 

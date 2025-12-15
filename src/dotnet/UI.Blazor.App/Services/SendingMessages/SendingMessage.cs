@@ -10,21 +10,28 @@ public record SendingMessage(
     string Content,
     HashString ContentHash,
     AttachmentUploads? AttachmentUploads,
-    CancellationTokenSource CancellationTokenSource) : IDisposable
+    Action CancelSendRequested)
 {
-    private bool _isDisposed;
+    private bool _isFreed;
 
     public ChatEntry? PostedChatEntry { get; private set; }
     public Exception? Error { get; private set; }
     public Moment? SentMoment { get; private set; }
+    public Moment? CompleteMoment { get; private set; }
     public bool IsCompleted { get; private set; }
     public bool ToBeRemoved { get; private set; }
+    public bool LoadedForDisplay { get; private set; }
 
-    public void Complete(ChatEntry chatEntry, Moment now)
+    public void Posted(ChatEntry chatEntry, Moment now)
     {
         PostedChatEntry = chatEntry;
         SentMoment = now;
+    }
+
+    public void Complete(Moment now)
+    {
         IsCompleted = true;
+        CompleteMoment = now;
     }
 
     public void Complete(Exception error)
@@ -38,18 +45,20 @@ public record SendingMessage(
         if (IsCompleted)
             return;
 
-        CancellationTokenSource.Cancel();
+        CancelSendRequested();
     }
 
     public void MarkToRemove()
         => ToBeRemoved = true;
 
-    public void Dispose()
+    public void MarkLoadedForDisplay()
+        => LoadedForDisplay = true;
+
+    public void Free()
     {
-        if (_isDisposed)
+        if (_isFreed)
             return;
 
-        _isDisposed = true;
-        CancellationTokenSource.DisposeSilently();
+        _isFreed = true;
     }
 }

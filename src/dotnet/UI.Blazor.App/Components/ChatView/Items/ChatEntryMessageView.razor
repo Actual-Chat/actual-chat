@@ -69,7 +69,7 @@
 
 @if (isSystem) {
     <div class="@cls"
-         data-menu="@(MenuRef.New<MessageMenu>(entry.GetClientId(), bool.TrueString, "", ""))"
+         data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.TrueString, "", ""))"
          @onmouseenter="@ShowHoverMenu"
          @onmouseleave="@HideHoverMenu">
         <div class="chat-message">
@@ -90,10 +90,9 @@
     </div>
     return;
 }
-
 <div class="@cls"
      data-chat-entry-id="@(entry.Id)"
-     data-menu="@(MenuRef.New<MessageMenu>(entry.GetClientId(), bool.FalseString, "", ""))"
+     data-menu="@(MenuRef.New<MessageMenu>(entry.GetClientId(m.IsOwnMessage), bool.FalseString, "", ""))"
      @onmouseenter="@ShowHoverMenu"
      @onmouseleave="@HideHoverMenu">
     <div class="chat-message group">
