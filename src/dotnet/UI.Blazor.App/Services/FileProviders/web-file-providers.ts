@@ -166,13 +166,13 @@ export class WebFileProvider {
         return true;
     }
 
-    public start(uploadId: string, chunkSize: number, blazorRef: DotNet.DotNetObject)
+    public start(uploadId: string, blazorRef: DotNet.DotNetObject)
     {
         if (this.fileUpload)
             throw new Error('File upload already started');
 
         const reporter = new FileUploadProgressReporter(blazorRef);
-        this.fileUpload = new ChunkedFileUpload(uploadId, chunkSize, this.GetFile(), pct => reporter.reportProgress(pct));
+        this.fileUpload = new ChunkedFileUpload(uploadId, this.GetFile(), pct => reporter.reportProgress(pct));
         this.fileUpload.whenCompleted.then(x => {
             void reporter.reportUploadSucceed();
             this.fileUpload = null;
@@ -250,7 +250,6 @@ class ChunkedFileUpload {
 
     constructor(
         private readonly uploadId: string,
-        private readonly chunkSize: number,
         private readonly blob: Blob,
         private readonly progressReporter: ProgressReporter)
     {
@@ -274,6 +273,7 @@ class ChunkedFileUpload {
         let retryIndex = 0;
         const maxRetries = 3;
         let run = true;
+        const chunkSizeSelector = new ChunkSizeSelector();
         while (run) {
             run = false;
             try {
@@ -284,19 +284,25 @@ class ChunkedFileUpload {
                 // Upload chunks
                 while (offset < fileSize) {
                     const remainingBytes = fileSize - offset;
-                    const currentChunkSize = Math.min(this.chunkSize, remainingBytes);
+                    const chunkSize = chunkSizeSelector.getChunkSize();
+                    const currentChunkSize = Math.min(chunkSize, remainingBytes);
+                    const t0 = chunkSizeSelector.getTimestamp();
                     const newOffset = await this.uploadChunk(offset, currentChunkSize);
+                    const dt = chunkSizeSelector.getElapsedTime(t0);
                     const expectedNewOffset = offset + currentChunkSize;
                     if (newOffset !== expectedNewOffset)
                         warnLog?.log(`Offset mismatch detected: ${expectedNewOffset} != ${newOffset}`);
                     offset = newOffset;
                     // Reset retry counter on successful chunk upload
                     retryIndex = 0;
+                    chunkSizeSelector.adaptChunkSizeOnSucceedUpload(dt);
                     this.progressReporter((offset / fileSize) * 100);
                 }
+                chunkSizeSelector.updateRecommendation();
                 this.whenCompletedSource.resolve();
                 return;
             } catch (error) {
+                chunkSizeSelector.adaptOnUploadIssue(error instanceof TypeError);
                 if (error instanceof OffsetConflictError) {
                     if (retryIndex < maxRetries) {
                         warnLog?.log('Offset conflict detected. Retrying...');
@@ -310,6 +316,7 @@ class ChunkedFileUpload {
                         warnLog?.log('Upload transient failure. Retrying...');
                         await delayAsync(500);
                         retryIndex++;
+                        // on transient server-side problems try to reduce chunk size for stability
                         run = true;
                         continue;
                     }
@@ -391,6 +398,105 @@ class ChunkedFileUpload {
 
     private isCancelled() : boolean {
         return this.abortController.signal.aborted;
+    }
+}
+
+type Stat = { multiplier: number; ms: number; };
+
+class ChunkSizeSelector
+{
+    private static minChunkSize : number = 256 * 1024; // 256 KB
+    private static defaultChunkSizeMultiplier: number = 8; // 4 Mb
+    private static maxChunkSizeMultiplier: number = 16; // 8 Mb
+    private static recommendedChunkSizeMultiplier: number = 8; // 4 Mb
+    private static maxChunkUploadDurationMs: number = 5000; // 5 seconds
+
+    private currentMultiplier: number;
+    private lastStats: Stat[] = [];
+
+    constructor(){
+        this.currentMultiplier = ChunkSizeSelector.recommendedChunkSizeMultiplier;
+    }
+
+    public adaptChunkSizeOnSucceedUpload(duration : number)
+    {
+        // track stats (limit to last 5)
+        this.lastStats.push({ multiplier: this.currentMultiplier, ms: duration });
+        if (this.lastStats.length > 5)
+            this.lastStats.shift();
+
+        const isSlowUpload = duration > ChunkSizeSelector.maxChunkUploadDurationMs;
+        if (isSlowUpload) {
+            // Slow upload
+            if (this.currentMultiplier === 1)
+                return;
+        }
+        else {
+            // Fast upload
+            if (this.currentMultiplier === ChunkSizeSelector.maxChunkSizeMultiplier)
+                return;
+        }
+
+        let averagePerf = 0.5;
+        if (this.lastStats.length > 1) {
+            const minWeight = 0.2; // 20%
+            const lastIndex = this.lastStats.length - 1;
+            let step = 0;
+            let totalPerf = 0;
+            let totalWeights = 0;
+            for (let i = lastIndex; i >= 0; i--) {
+                const stat = this.lastStats[i];
+                const perf = stat.multiplier / stat.ms;
+                const z = step / lastIndex;
+                const weight = Math.pow(minWeight, z);
+                totalPerf += perf * weight;
+                totalWeights += weight;
+                step++;
+            }
+            averagePerf = totalPerf / totalWeights;
+        }
+        else {
+            averagePerf = this.lastStats[0].multiplier / this.lastStats[0].ms;
+        }
+
+        const averageMultiplier = averagePerf * ChunkSizeSelector.maxChunkUploadDurationMs;
+        let newMultiplier = Math.round(averageMultiplier);
+        if (isNaN(newMultiplier))
+            newMultiplier = 8;
+        else
+            newMultiplier = Math.min(Math.max(newMultiplier, 1), ChunkSizeSelector.maxChunkSizeMultiplier);
+        this.currentMultiplier = newMultiplier;
+        debugLog?.log(`Adapted chunkSizeMultiplier=${this.currentMultiplier}`);
+    }
+
+    public getChunkSize() : number {
+        return this.currentMultiplier * ChunkSizeSelector.minChunkSize;
+    }
+
+    public adaptOnUploadIssue(isConnectionIssue: boolean) {
+        if (this.currentMultiplier === 1)
+            return;
+
+        if (isConnectionIssue && this.currentMultiplier > ChunkSizeSelector.defaultChunkSizeMultiplier)
+            this.currentMultiplier = ChunkSizeSelector.defaultChunkSizeMultiplier;
+        else
+            this.currentMultiplier--;
+        debugLog?.log(`Adapted chunkSizeMultiplier=${this.currentMultiplier} on error`);
+    }
+
+    public getTimestamp() : number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
+
+    public getElapsedTime(timestamp: number) : number {
+        const now = this.getTimestamp();
+        return Math.max(0, now - timestamp);
+    }
+
+    public updateRecommendation()
+    {
+        ChunkSizeSelector.recommendedChunkSizeMultiplier = this.currentMultiplier;
+        debugLog?.log(`Set recommendedChunkSizeMultiplier=${this.currentMultiplier}`);
     }
 }
 
