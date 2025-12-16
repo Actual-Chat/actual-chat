@@ -35,13 +35,13 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
         async ValueTask<FlowReadiness> PrepareOnce() {
             var chat = await ChatsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
             if (chat is null)
-                return $"Chat #{ChatId} doesn't exist";
+                return "Chat doesn't exist";
 
             Place? place = null;
             if (chat.Id is PlaceChatId placeChatId) {
                 place = await PlacesBackend.Get(placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
                 if (place is null)
-                    return $"Place #{placeChatId.PlaceId} doesn't exist";
+                    return "Chat's Place doesn't exist";
             }
 
             var indexedChat = chat.ToIndexedChat(place);
@@ -54,7 +54,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)
     {
-        var maxVersion = Hub.SystemNow.ToVersion(-Settings.ChangedEntityIndexingDelay);
+        var maxVersion = ResumedAt.ToVersion(-Settings.ChangedEntityIndexingDelay);
         cursor ??= new(TextEntryId.New(ChatId, 0), 0);
         var batch = await ChatsBackend.ListChangedEntries(new ChangedEntriesQuery {
                     ChatId = ChatId,

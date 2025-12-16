@@ -21,7 +21,7 @@ public partial class PlaceContactIndexingFlow : BatchedIndexingFlow<Contact, Con
         IndexingFlowCursor<ContactId>? cursor,
         CancellationToken cancellationToken)
     {
-        var maxVersion = Hub.SystemNow.ToVersion(-Settings.ChangedEntityIndexingDelay);
+        var maxVersion = ResumedAt.ToVersion(-Settings.ChangedEntityIndexingDelay);
         cursor ??= new(null, 0);
         var query = new ChangedContactsQuery {
             LastId = cursor.LastUpdatedId,

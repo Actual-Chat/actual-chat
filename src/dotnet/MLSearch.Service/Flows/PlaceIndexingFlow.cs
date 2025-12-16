@@ -20,7 +20,7 @@ public partial class PlaceIndexingFlow : BatchedIndexingFlow<Place, PlaceId>, IM
         IndexingFlowCursor<PlaceId>? cursor,
         CancellationToken cancellationToken)
     {
-        var maxVersion = Hub.SystemNow.ToVersion(-Settings.ChangedEntityIndexingDelay);
+        var maxVersion = ResumedAt.ToVersion(-Settings.ChangedEntityIndexingDelay);
         cursor ??= new (null, 0);
         var batch = await PlacesBackend.ListChanged(
                 cursor.LastUpdatedVersion,

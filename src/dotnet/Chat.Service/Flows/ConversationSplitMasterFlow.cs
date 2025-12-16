@@ -15,7 +15,7 @@ public partial class ConversationSplitMasterFlow
     protected override ValueTask Init(CancellationToken cancellationToken)
     {
         // TODO(AY): Check why we don't want to go too far to past w/ AK
-        MaxVersion = Hub.SystemNow.ToVersion(-TimeSpan.FromSeconds(10));
+        MaxVersion = ResumedAt.ToVersion(-TimeSpan.FromSeconds(10));
         return default;
     }
 

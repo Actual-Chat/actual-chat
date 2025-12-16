@@ -46,9 +46,9 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             chat = await ChatsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
         }
         if (chat is null)
-            return $"Chat #{ChatId} does not exist";
+            return "Chat does not exist";
         if (!(chat.IsSummarized ?? false))
-            return $"Chat #{ChatId} doesn't have summarization enabled";
+            return "Chat doesn't have summarization enabled";
 
         return FlowReadiness.Ready;
     }
@@ -68,7 +68,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
     private async Task Process(CancellationToken cancellationToken)
     {
-        var now = Hub.SystemNow;
+        var now = ResumedAt;
         LastRunAt = now;
         Console.Log($"Process: started at {LastLid}");
 
@@ -181,8 +181,8 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         long lastId,
         CancellationToken cancellationToken)
     {
+        var now = ResumedAt;
         var chatId = ChatId;
-        var now = Hub.SystemNow;
         var immatureMoment = now - Settings.ChatEntrySummarizationDelay;
 
         // Fetch up to (BatchSize + 1) items

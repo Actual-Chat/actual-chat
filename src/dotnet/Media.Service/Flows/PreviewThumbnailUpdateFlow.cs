@@ -13,12 +13,12 @@ public sealed partial class PreviewThumbnailUpdateFlow : PeriodicFlow
     public static string GetArguments(string url)
         => url.ToBase64();
 
+    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
+        => new(LastRunAt + Settings.LinkPreviewUpdatePeriod);
+
     protected override async Task Run(CancellationToken cancellationToken)
     {
         var url = Id.Arguments.FromBase64();
         await ImageGrabber.UpdateExisting(url, cancellationToken).ConfigureAwait(false);
     }
-
-    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
-        => new(Hub.SystemNow + Settings.LinkPreviewUpdatePeriod);
 }

@@ -41,5 +41,5 @@ public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
     }
 
     protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
-        => new(Hub.SystemNow + Settings.Translation.CleanupInterval);
+        => new(LastRunAt + Settings.Translation.CleanupInterval);
 }

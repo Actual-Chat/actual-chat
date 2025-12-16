@@ -17,14 +17,19 @@ public sealed partial class LinkPreviewFlow : PeriodicFlow
     public static string GetArguments(string url)
         => url.ToBase64();
 
+    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
+        => new(LastRunAt + Settings.LinkPreviewUpdatePeriod);
+
     protected override async Task Run(CancellationToken cancellationToken)
     {
         var url = Id.Arguments.FromBase64();
         var id = LinkPreview.ComposeId(url);
 
         var linkPreview = await LinkPreviewsBackend.Get(id, false, cancellationToken).ConfigureAwait(false);
-        if (linkPreview != null && !NeedsUpdate(linkPreview.ModifiedAt))
+        if (linkPreview != null && !NeedsUpdate(linkPreview.ModifiedAt)) {
+            Console.Log("No update needed");
             return;
+        }
 
         using var activity = CoreServerInstruments.ActivitySource.StartActivity(typeof(Crawler), nameof(Crawler.Crawl), ActivityKind.Client);
         var linkMeta = await Crawler.Crawl(url, cancellationToken)
@@ -50,11 +55,11 @@ public sealed partial class LinkPreviewFlow : PeriodicFlow
             };
         var cmd = new LinkPreviewsBackend_Change(id, null, Change.Upsert(linkPreview));
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        Console.Log("Link preview updated");
     }
 
-    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
-        => new(Hub.SystemNow + Settings.LinkPreviewUpdatePeriod);
+    // Private methods
 
     private bool NeedsUpdate(Moment modifiedAt)
-        => modifiedAt + Settings.LinkPreviewUpdatePeriod < Hub.SystemNow;
+        => modifiedAt + Settings.LinkPreviewUpdatePeriod < ResumedAt;
 }

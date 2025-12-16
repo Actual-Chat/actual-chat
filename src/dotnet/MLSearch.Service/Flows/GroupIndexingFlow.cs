@@ -20,7 +20,7 @@ public partial class GroupIndexingFlow : BatchedIndexingFlow<Chat.Chat, ChatId>,
         CancellationToken cancellationToken)
     {
         var chatsBackend = Services.GetRequiredService<IChatsBackend>();
-        var maxVersion = Hub.SystemNow.ToVersion(-Settings.ChangedEntityIndexingDelay);
+        var maxVersion = ResumedAt.ToVersion(-Settings.ChangedEntityIndexingDelay);
         cursor ??= new(null, 0);
         var query = new ChangedChatsQuery() {
             LastId = cursor.LastUpdatedId,
