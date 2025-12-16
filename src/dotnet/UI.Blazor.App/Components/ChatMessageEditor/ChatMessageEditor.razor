@@ -25,7 +25,7 @@
 <OnUIEvent TEvent="@AttachButtonClickEvent" Handler="OnAttachButtonClickEvent" />
 <OnUIEvent TEvent="@MentionButtonClickEvent" Handler="OnMentionButtonClickEvent" />
 <div @ref="Ref" class="chat-message-editor">
-    <input class="attachment-web-file-picker" type="file" hidden multiple/>
+    <input class="attachment-web-file-picker" type="file" multiple/>
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         @if (ScreenSize.IsWide()) {
             @RenderAttachmentListView()

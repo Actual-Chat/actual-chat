@@ -635,3 +635,11 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply bg-mobile-landscape-audio-panel-button-text;
     width: calc(100% - 2rem);
 }
+
+.attachment-web-file-picker {
+    @apply block absolute;
+    left: -10000px;
+    top: 0;
+    opacity: 1;
+    z-index: -999;
+}
