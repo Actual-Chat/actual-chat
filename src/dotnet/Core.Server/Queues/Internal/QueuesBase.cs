@@ -6,7 +6,7 @@ namespace ActualChat.Queues.Internal;
 
 public abstract record QueueSettings
 {
-    public bool UseSingleQueue { get; init; } = true;
+    public bool UseSingleQueue { get; init; } = false;
     public QueueRef SingleQueueRef { get; init; } = ShardScheme.EventQueue;
     public int ConcurrencyLevel { get; init; } = HardwareInfo.GetProcessorCountFactor(8);
     public TimeSpan ProcessCancellationDelay { get; init; } = TimeSpan.FromSeconds(5);
