@@ -42,15 +42,14 @@ public sealed class ChunkedFileUploader : UIServiceBase<AppUIHub>
                 }
                 catch (UploadTransientException e) when (retryIndex <= maxRetries) {
                     Log.LogWarning(e, "Upload transient failure. Retrying...");
-                    // Treat as connection issue
-                    chunkSizeSelector.AdaptOnUploadIssue(isConnectionIssue: true);
+                    chunkSizeSelector.AdaptOnUploadIssue(false);
                     retryIndex++;
                     await Task.Delay(RetryDelays.GetDelay(retryIndex), ct).ConfigureAwait(false);
                     run = true;
                 }
                 catch (OffsetConflictException e) when (retryIndex <= maxRetries) {
                     Log.LogWarning(e, "Offset conflict detected. Retrying...");
-                    chunkSizeSelector.AdaptOnUploadIssue(isConnectionIssue: false);
+                    chunkSizeSelector.AdaptOnUploadIssue(false);
                     retryIndex++;
                     run = true;
                 }
