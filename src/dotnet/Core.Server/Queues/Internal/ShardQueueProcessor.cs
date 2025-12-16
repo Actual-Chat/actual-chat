@@ -1,5 +1,6 @@
 using ActualChat.Concurrency;
 using ActualChat.Diagnostics;
+using ActualChat.Time;
 using ActualLab.Diagnostics;
 using ActualLab.Resilience;
 using OpenTelemetry;
@@ -112,7 +113,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : Legacy
             "[{ShardScheme}-S{ShardIndex}] Running queued {Kind} #{Uuid}: {Command}",
             ShardScheme.Name, shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
         try {
-            if (command.HasDelay(Clock.Now, out var delay)) {
+            if (command is IHasDelayUntil du && du.DelayUntil - Clock.Now is var delay && delay > TimeSpan.Zero) {
                 activity?.SetStatus(ActivityStatusCode.Ok, $"Postponed for {delay.ToShortString()}");
                 activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
                 // ReSharper disable once PossiblyMistakenUseOfCancellationToken

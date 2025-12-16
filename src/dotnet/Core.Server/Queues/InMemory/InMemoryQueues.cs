@@ -2,7 +2,7 @@ using ActualChat.Queues.Internal;
 
 namespace ActualChat.Queues.InMemory;
 
-public sealed class InMemoryQueues : QueuesBase<InMemoryQueues.Options, InMemoryQueueProcessor>
+public sealed class InMemoryQueues : QueuesBase<InMemoryQueues.Options>
 {
     public sealed record Options : QueueSettings
     {

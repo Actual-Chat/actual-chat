@@ -11,8 +11,8 @@ namespace ActualChat.Queues.Nats;
 
 public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options, NatsQueues, NatsJSMsg<IMemoryOwner<byte>>>
 {
-    private const byte Version = 2;
-    private static readonly byte[] VersionBytes = [Version];
+    private const byte FormatVersion = 2;
+    private static readonly byte[] FormatVersionBytes = [FormatVersion];
     private static readonly IByteSerializer Serializer = MemoryPackByteSerializer.Default;
     private static readonly IByteSerializer TypeDecoratingSerializer
         = new TypeDecoratingByteSerializer(MemoryPackByteSerializer.Default);
@@ -395,28 +395,23 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
         var dataMemory = data.Memory;
         var dataSpan = dataMemory.Span;
-        var version = dataSpan[0];
+        var formatVersion = dataSpan[0];
 
-        switch (version) {
-        case 1: {
-            var id = new Ulid(dataSpan[1..17]);
-            var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[17..], typeof(ICommand), out _)!;
-            return QueuedCommand.NewUntyped(command, id.ToString(), message.Headers?.AsReadOnly());
-        }
+        switch (formatVersion) {
         case 2: {
-            var ulid = (string)Serializer.Read(dataMemory[1..], typeof(string), out var ulidLength)!;
+            var uuid = (string)Serializer.Read(dataMemory[1..], typeof(string), out var ulidLength)!;
             var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[(1 + ulidLength)..], typeof(ICommand), out _)!;
-            return QueuedCommand.NewUntyped(command, ulid, message.Headers?.AsReadOnly());
+            return QueuedCommand.NewUntyped(command, uuid, message.Headers?.AsReadOnly());
         }
         default:
-            throw StandardError.Internal($"Unsupported command version: {version}.");
+            throw StandardError.Internal($"Unsupported format version: {formatVersion}.");
         }
     }
 
     private static void Serialize(ArrayPoolBuffer<byte> buffer, QueuedCommand queuedCommand)
     {
         var command = queuedCommand.UntypedCommand;
-        buffer.Write(VersionBytes);
+        buffer.Write(FormatVersionBytes);
         Serializer.Write(buffer, queuedCommand.Uuid, typeof(string));
         TypeDecoratingSerializer.Write(buffer, command, command.GetType()); // Command itself
     }
