@@ -62,7 +62,7 @@ public static class ShardKeyResolvers
         Register<FlowId>(static x => ForString(x.Arguments));
 
         // Classes
-        Register<string>(ForString); // Todo: likely, we should get rid of this kind of shard key
+        Register<string>(ForString); // TODO(AY): String shard keys are likely a mistake -> remove this in future
         Register<Session>(x => ForString(x.Id));
         Register<ISessionCommand>(x => ForString(x.Session.Id));
         Register<FlowResumeEvent>(static x => ForString(x.FlowId.Arguments));
