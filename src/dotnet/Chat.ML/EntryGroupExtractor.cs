@@ -36,23 +36,17 @@ public record ReplySequence(IReadOnlyList<TextEntry> Entries);
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ExtractorState(
-    [property: DataMember, MemoryPackOrder(0)]
-    EntryGroupBuilder? CurrentGroup,
-    [property: DataMember, MemoryPackOrder(1)]
-    EntryGroupBuilder? CurrentChunk)
+    [property: DataMember, MemoryPackOrder(0)] EntryGroupBuilder? CurrentGroup,
+    [property: DataMember, MemoryPackOrder(1)] EntryGroupBuilder? CurrentChunk)
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public long MinLid => CurrentGroup?.MinLid ?? (CurrentChunk?.MinLid ?? 0);
-
     [IgnoreDataMember, MemoryPackIgnore]
     public long MaxLid => Math.Max(CurrentChunk?.MaxLid ?? 0, CurrentGroup?.MaxLid ?? 0);
-
     [IgnoreDataMember, MemoryPackIgnore]
     public TextEntry? LastEntry => CurrentChunk?.Entries.LastOrDefault() ?? CurrentGroup?.Entries.LastOrDefault();
-
     [IgnoreDataMember, MemoryPackIgnore]
     public int WordCount => (CurrentGroup?.WordCount ?? 0) + (CurrentChunk?.WordCount ?? 0);
-
     [IgnoreDataMember, MemoryPackIgnore]
     public int EntryCount => (CurrentGroup?.Entries.Count ?? 0) + (CurrentChunk?.Entries.Count ?? 0);
 }

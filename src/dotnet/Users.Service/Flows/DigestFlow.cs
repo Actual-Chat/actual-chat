@@ -10,23 +10,19 @@ namespace ActualChat.Users.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class DigestFlow : PeriodicFlow
 {
+    protected override TimeSpan MaxResumeDelay => TimeSpan.FromDays(2);
+
     [IgnoreDataMember, MemoryPackIgnore]
-    private UserId UserId { get; set; } = null!;
+    private Account Account { get; set; } = null!;
     [IgnoreDataMember, MemoryPackIgnore]
     private TimeZoneInfo TimeZoneInfo { get; set; } = null!;
     [IgnoreDataMember, MemoryPackIgnore]
     private TimeSpan DigestTime { get; set; }
 
-    protected override Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
-    {
-        MaxDelay = TimeSpan.FromDays(2);
-        return base.OnReset(cancellationToken);
-    }
-
-    protected override async Task<string?> Update(CancellationToken cancellationToken)
+    protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {
         var userId = UserId.Parse(Id.Arguments);
-        var accounts = Host.Services.GetRequiredService<IAccountsBackend>();
+        var accounts = Services.GetRequiredService<IAccountsBackend>();
         var account = await accounts.Get(userId, cancellationToken).ConfigureAwait(false);
         if (account?.IsGuestOrNull() != false)
             return "No account";
@@ -39,25 +35,25 @@ public partial class DigestFlow : PeriodicFlow
         if (!TZConvert.TryGetTimeZoneInfo(account.TimeZone, out var timeZoneInfo))
             return $"Can't find TimeZoneInfo for time zone: {account.TimeZone}";
 
-        var serverKvasBackend = Host.Services.GetRequiredService<IServerKvasBackend>();
+        var serverKvasBackend = Services.GetRequiredService<IServerKvasBackend>();
         var kvas = serverKvasBackend.GetUserClient(userId);
         var userEmailsSettings = await kvas.UserEmailsSettings().Get(cancellationToken).ConfigureAwait(false);
         if (!userEmailsSettings.IsDigestEnabled)
             return "Digest is disabled for this account";
 
-        UserId = userId;
+        Account = account;
         TimeZoneInfo = timeZoneInfo;
         DigestTime = userEmailsSettings.DigestTime;
-        return null;
+        return FlowReadiness.Ready;
     }
+
+    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
+        => new(TimeZoneInfo.NextTimeOfDay(DigestTime, LastRunAt));
 
     protected override Task Run(CancellationToken cancellationToken)
     {
-        var sendDigestCommand = new EmailsBackend_SendDigest(UserId);
-        var queues = Host.Services.Queues();
+        var sendDigestCommand = new EmailsBackend_SendDigest(Account.Id);
+        var queues = Services.Queues();
         return queues.Enqueue(sendDigestCommand, cancellationToken);
     }
-
-    protected override Moment ComputeNextRunAt(Moment now, CancellationToken cancellationToken)
-        => TimeZoneInfo.NextTimeOfDay(DigestTime, LastRunAt);
 }

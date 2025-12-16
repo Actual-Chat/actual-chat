@@ -7,29 +7,29 @@ using MemoryPack;
 namespace ActualChat.Media.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class LinkPreviewFlow : LegacyFlow
+public sealed partial class LinkPreviewFlow : PeriodicFlow
 {
-    private MediaSettings Settings => field ??= Host.Services.GetRequiredService<MediaSettings>();
-    private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Host.Services.GetRequiredService<ILinkPreviewsBackend>();
-    private Crawler Crawler => field ??= Host.Services.GetRequiredService<Crawler>();
+    private MediaSettings Settings => field ??= Services.GetRequiredService<MediaSettings>();
+    private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Services.GetRequiredService<ILinkPreviewsBackend>();
+    private Crawler Crawler => field ??= Services.GetRequiredService<Crawler>();
+    private ICommander Commander => field ??= Services.Commander();
 
     public static string GetArguments(string url)
         => url.ToBase64();
 
-    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
-    {
-        await Run(cancellationToken).ConfigureAwait(false);
-        return WaitForEvent(nameof(OnReset), Settings.LinkPreviewUpdatePeriod);
-    }
+    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
+        => new(LastRunAt + Settings.LinkPreviewUpdatePeriod);
 
-    private async Task Run(CancellationToken cancellationToken)
+    protected override async Task Run(CancellationToken cancellationToken)
     {
         var url = Id.Arguments.FromBase64();
         var id = LinkPreview.ComposeId(url);
 
         var linkPreview = await LinkPreviewsBackend.Get(id, false, cancellationToken).ConfigureAwait(false);
-        if (linkPreview != null && !NeedsUpdate(linkPreview.ModifiedAt))
+        if (linkPreview != null && !NeedsUpdate(linkPreview.ModifiedAt)) {
+            Console.Log("No update needed");
             return;
+        }
 
         using var activity = CoreServerInstruments.ActivitySource.StartActivity(typeof(Crawler), nameof(Crawler.Crawl), ActivityKind.Client);
         var linkMeta = await Crawler.Crawl(url, cancellationToken)
@@ -54,9 +54,12 @@ public sealed partial class LinkPreviewFlow : LegacyFlow
                 VideoHeight = linkMeta.OpenGraph.Video.Height,
             };
         var cmd = new LinkPreviewsBackend_Change(id, null, Change.Upsert(linkPreview));
-        await Host.Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        Console.Log("Link preview updated");
     }
 
+    // Private methods
+
     private bool NeedsUpdate(Moment modifiedAt)
-        => modifiedAt + Settings.LinkPreviewUpdatePeriod < Host.Clocks.SystemClock.Now;
+        => modifiedAt + Settings.LinkPreviewUpdatePeriod < ResumedAt;
 }

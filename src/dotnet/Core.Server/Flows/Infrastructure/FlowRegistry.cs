@@ -2,23 +2,23 @@ using System.Collections.Frozen;
 
 namespace ActualChat.Flows.Infrastructure;
 
-public class FlowRegistry : IHasServices
+public sealed class FlowRegistry
 {
-    public IServiceProvider Services { get; }
     public IReadOnlyDictionary<Symbol, Type> TypeByName { get; }
     public IReadOnlyDictionary<Type, Symbol> NameByType { get; }
+    public IReadOnlyDictionary<Type, int> DataVersions { get; }
     public bool UseMasterFlows { get; }
-    public bool UseLegacyFlows { get; }
 
     public FlowRegistry(IServiceProvider services)
     {
-        Services = services;
         var flowRegistryBuilder = services.GetRequiredService<FlowRegistryBuilder>();
         var flows = flowRegistryBuilder.Flows;
         TypeByName = flows.ToFrozenDictionary();
         NameByType = flows.ToFrozenDictionary(kv => kv.Value, kv => kv.Key);
+        DataVersions = flows.ToDictionary(
+            kv => kv.Value,
+            kv => kv.Value.GetCustomAttribute<FlowAttribute>(inherit: true)?.DataVersion ?? 1);
         UseMasterFlows = flowRegistryBuilder.UseMasterFlows;
-        UseLegacyFlows = flowRegistryBuilder.UseLegacyFlows;
     }
 
     public FlowId NewId<TFlow>(string arguments)

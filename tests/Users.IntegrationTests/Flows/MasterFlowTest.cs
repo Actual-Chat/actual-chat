@@ -1,4 +1,3 @@
-using ActualChat.Flows;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Flows;
 
@@ -12,11 +11,11 @@ public class MasterFlowTest(ITestOutputHelper @out)
     {
         await using var h = await NewAppHost();
 
-        var flows = h.Services.GetRequiredService<IFlows>();
+        var flowHub = h.Services.FlowHub();
 
         await ComputedTest.When(async ct => {
             var userId = Constants.User.Admin.UserId.Value;
-            var flow = await flows.TryGet<DigestFlow>(userId, ct);
+            var flow = await flowHub.TryGet<DigestFlow>(userId, ct);
             flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
     }
@@ -26,13 +25,13 @@ public class MasterFlowTest(ITestOutputHelper @out)
     {
         await using var h = await NewAppHost();
 
-        var flows = h.Services.GetRequiredService<IFlows>();
-        await flows.Get<MasterFlow>("");
+        var flowHub = h.Services.FlowHub();
+        await flowHub.Get<MasterFlow>("");
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.TryGet<MasterFlow>("", ct);
-            flow!.Step.Should().Be("OnReset");
-            flow.HardResumeAt!.Value.ToDateTime().Year.Should().Be(2100);
+            var flow = await flowHub.TryGet<MasterFlow>("", ct);
+            flow.Should().NotBeNull();
+            flow.AppliedMigrations.Contains("StartDigestFlows").Should().BeTrue();
         }, TimeSpan.FromSeconds(30));
     }
 }

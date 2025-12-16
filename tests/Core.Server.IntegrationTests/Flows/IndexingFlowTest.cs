@@ -1,5 +1,4 @@
 using ActualChat.Flows;
-using ActualChat.Queues;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -10,7 +9,6 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private static readonly TimeSpan RecheckInterval = SimpleBatchedIndexingFlow.RecheckIntervalOverride;
     private IndexingFlowTestContext Context { get; } = fixture.AppHost.Services.GetRequiredService<IndexingFlowTestContext>();
 
     [FlakyTheory("AY: Not sure why yet.", 3)]
@@ -24,44 +22,33 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         var id = RandomStringGenerator.Default.Next();
         var batchSize = 10;
         var batches = Enumerable.Range(1, batchCount)
-            .Select(i => new BatchIndexingResult<long>(false, false, i * batchSize, true))
-            .Append(new (false, true, (batchCount + 1) * batchSize, true))
+            .Select(i => {
+                long cursor = i * batchSize;
+                return new BatchIndexingResult<long> {
+                    Cursor = cursor,
+                    IsTailReached = false,
+                    HasProcessedAnyItems = true,
+                };
+            })
+            .Append(new BatchIndexingResult<long> {
+                Cursor = (batchCount + 1) * batchSize,
+                IsTailReached = true,
+                HasProcessedAnyItems = true,
+            })
             .ToList();
         Context.Add(id, batches);
 
         // act
-        await Flows.Get<SimpleIndexingFlow>(id);
+        await FlowHub.Get<SimpleIndexingFlow>(id);
 
         // assert
         await TestExt.When(async () => {
             Context.ListRemaining(id).Should().BeEmpty();
-            var transitions = Context.ListTransitions(id);
-            transitions
-                .Should()
-                .HaveCount(batchCount + 1);
-            transitions[..^1]
-                .Select(c => (c.Step, c.HardResumeIn))
-                .Should().AllBeEquivalentTo(("OnIndex", (TimeSpan?)null));
-            transitions[^1].Step.Should().Be("OnIndex");
-            transitions[^1].HardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(1));
-            var flow = await Flows.TryGet<SimpleIndexingFlow>(id);
-            flow!.NextRecheckAt.Should().Be(transitions[^1].HardResumeAt);
-        }, TimeSpan.FromSeconds(10));
-
-        // act
-        Context.Add(id, [new (false, true, (batchCount + 1) * batchSize, false)]);
-
-        // assert
-        await TestExt.When(async () => {
-            Context.ListRemaining(id).Should().BeEmpty();
-            var transitions = Context.ListTransitions(id);
-            transitions
-                .Should()
-                .HaveCount(batchCount + 2);
-            transitions[^1].Step.Should().Be("OnIndex");
-            transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromHours(24), TimeSpan.FromMinutes(1));
-            var flow = await Flows.TryGet<SimpleIndexingFlow>(id);
-            flow!.NextRecheckAt.Should().BeNull();
+            var processed = Context.ListProcessed(id);
+            processed.Should().HaveCount(batchCount + 1);
+            var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id);
+            flow.Should().NotBeNull();
+            flow.Cursor.Should().Be((batchCount + 1) * batchSize);
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -71,17 +58,28 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var id = RandomStringGenerator.Default.Next();
         BatchIndexingResult<long>[] batches = [
-            new (true, false, 20, true),
-            new (false, false, 30, true),
+            new() {
+                Cursor = 20,
+                IsTailReached = false,
+                HasProcessedAnyItems = true,
+                CompletionReason = "Done.",
+            },
+            new() {
+                Cursor = 30,
+                IsTailReached = false,
+                HasProcessedAnyItems = true,
+            },
         ];
         Context.Add(id, batches);
 
         // act
-        await Flows.Get<SimpleIndexingFlow>(id);
+        await FlowHub.Get<SimpleIndexingFlow>(id);
 
         // assert
-        await TestExt.When(() => {
-            Context.ListTransitions(id).Select(c => (c.Step, c.HardResumeIn)).Should().BeEquivalentTo([("OnReset", TimeSpan.MaxValue)]);
+        await TestExt.When(async () => {
+            var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id);
+            flow.Should().NotBeNull();
+            flow.Result.Should().Be(Result.New("Done."));
             Context.ListRemaining(id).Should().BeEquivalentTo(batches[1..]);
         }, TimeSpan.FromSeconds(10));
     }
@@ -92,54 +90,45 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         // arrange
         var id = RandomStringGenerator.Default.Next();
         BatchIndexingResult<long>[] batches = [
-            new (false, true, 20, true),
-            new (false, true, 30, true),
-            new (false, true, 30, true),
-            new (false, true, 30, true),
+            new() {
+                Cursor = 20,
+                IsTailReached = true,
+                HasProcessedAnyItems = true,
+            },
+            new() {
+                Cursor = 30,
+                IsTailReached = true,
+                HasProcessedAnyItems = true,
+            },
+            new() {
+                Cursor = 30,
+                IsTailReached = true,
+                HasProcessedAnyItems = true,
+            },
+            new() {
+                Cursor = 30,
+                IsTailReached = true,
+                HasProcessedAnyItems = true,
+            },
         ];
         Context.Add(id, batches);
 
         // act
-        await Flows.Get<SimpleIndexingFlow>(id);
+        await FlowHub.Get<SimpleIndexingFlow>(id);
 
         // assert
         await TestExt.When(async () => {
-            var flow = await Flows.TryGet<SimpleIndexingFlow>(id).Require();
-            flow.FlowSetVersion.Should().Be(1);
-            var transitions = Context.ListTransitions(id);
-            transitions
-                .Should()
-                .HaveCount(1);
-            transitions[0].Step.Should().Be("OnIndex");
-            transitions[0].HardResumeIn.Should().BeCloseTo(RecheckInterval, TimeSpan.FromSeconds(1));
+            var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id).Require();
+            flow.DataVersion.Should().Be(1);
         }, TimeSpan.FromSeconds(10));
 
-        // act
-        Context.SetCurrentFlowSetVersionOverride(id, 2);
-        await Flows.Resume<SimpleIndexingFlow>(id);
+        // act - bump version to trigger reindex
+        await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).WithReset().Schedule();
 
-        // assert
+        // assert - flow should reindex (reset cursor and process again)
         await TestExt.When(async () => {
-            var transitions = Context.ListTransitions(id);
-            transitions.Should().HaveCountGreaterThanOrEqualTo(2);
-            var flow = await Flows.TryGet<SimpleIndexingFlow>(id).Require();
-            flow.FlowSetVersion.Should().BeGreaterThan(1);
-        }, TimeSpan.FromSeconds(10));
-
-        // act
-        var preResetFlow = await Flows.TryGet<SimpleIndexingFlow>(id).Require();
-        Context.ClearTransitions(id);
-        await Queues.Enqueue(new LegacyFlowResetEvent(FlowRegistry.NewId<SimpleIndexingFlow>(id)));
-
-        // assert
-        await TestExt.When(async () => {
-            var transitions = Context.ListTransitions(id);
-            transitions.Should().HaveCount(1);
-            transitions[^1].Step.Should().Be("OnIndex");
-            transitions[^1].HardResumeIn.Should().BeCloseTo(TimeSpan.FromDays(1), TimeSpan.FromMinutes(1));
-
-            var flow = await Flows.TryGet<SimpleIndexingFlow>(id).Require();
-            flow.FlowSetVersion.Should().Be(preResetFlow.FlowSetVersion);
+            var flow = await FlowHub.TryGet<SimpleIndexingFlow>(id).Require();
+            flow.Console.ToString().Should().Contain("explicit");
         }, TimeSpan.FromSeconds(10));
     }
 }

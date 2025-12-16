@@ -19,7 +19,6 @@ public class FlowsDbContext(DbContextOptions<FlowsDbContext> options) : DbContex
 
         var contact = model.Entity<DbFlow>();
         contact.Property(e => e.Id).UseCollation("C");
-        contact.Property(e => e.Step).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");

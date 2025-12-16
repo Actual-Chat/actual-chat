@@ -9,28 +9,55 @@ using MemoryPack;
 namespace ActualChat.MLSearch.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, ChatEntryId>
+public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, ChatEntryId>
 {
-    protected override int CurrentFlowSetVersion => 3;
+    private MLSearchSettings Settings => field ??= Services.GetRequiredService<MLSearchSettings>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
+    private IndexedDocuments IndexedDocuments => field ??= Services.GetRequiredService<IndexedDocuments>();
+    private Task WhenOpenSearchReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;
 
-    private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
-    private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
-    private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
-    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+    [IgnoreDataMember, MemoryPackIgnore]
+    private ChatId ChatId { get; set; } = null!;
 
-    protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
-        => await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false)
-            && await EnsureChatInfo(ChatId.Parse(Id.Arguments), cancellationToken).ConfigureAwait(false);
+    protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
+    {
+        ChatId = ChatId.Parse(Id.Arguments);
+        await WhenOpenSearchReady.ConfigureAwait(false);
+        var readiness = await PrepareOnce().ConfigureAwait(false);
+        if (readiness.IsSuspended) {
+            // Let's wait a bit for chat to appear & retry
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+            readiness = await PrepareOnce().ConfigureAwait(false);
+        }
+        return readiness;
+
+        async ValueTask<FlowReadiness> PrepareOnce() {
+            var chat = await ChatsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
+            if (chat is null)
+                return "Chat doesn't exist";
+
+            Place? place = null;
+            if (chat.Id is PlaceChatId placeChatId) {
+                place = await PlacesBackend.Get(placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+                if (place is null)
+                    return "Chat's Place doesn't exist";
+            }
+
+            var indexedChat = chat.ToIndexedChat(place);
+            await IndexedDocuments.SaveChats([indexedChat], cancellationToken).ConfigureAwait(false);
+            return FlowReadiness.Ready;
+        }
+    }
 
     protected override async Task<IReadOnlyList<ChatEntry>> GetBatch(
         IndexingFlowCursor<ChatEntryId>? cursor,
         CancellationToken cancellationToken)
     {
-        var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
-        var chatId = ChatId.Parse(Id.Arguments);
-        cursor ??= new(TextEntryId.New(chatId, 0), 0);
+        var maxVersion = ResumedAt.ToVersion(-Settings.ChangedEntityIndexingDelay);
+        cursor ??= new(TextEntryId.New(ChatId, 0), 0);
         var batch = await ChatsBackend.ListChangedEntries(new ChangedEntriesQuery {
-                    ChatId = chatId,
+                    ChatId = ChatId,
                     LastLocalId = cursor.LastUpdatedId?.LocalId ?? 0,
                     MinVersion = cursor.LastUpdatedVersion,
                     MaxVersion = maxVersion,
@@ -38,15 +65,12 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
                 },
                 cancellationToken)
             .ConfigureAwait(false);
-        Log.LogDebug(
-            "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
-            Id, batch.Length, maxVersion, cursor);
         return batch;
     }
 
     protected override async Task ProcessBatch(IReadOnlyList<ChatEntry> batch, CancellationToken cancellationToken)
     {
-        await WhenReady.ConfigureAwait(false);
+        await WhenOpenSearchReady.ConfigureAwait(false);
 
         var updated = batch
             .Where(x => x is { IsRemoved: false, IsSystemEntry: false })
@@ -59,45 +83,14 @@ public partial class EntryIndexingFlow : BatchedIndexingFlowBase<ChatEntry, Chat
         await IndexedDocuments.SaveEntries(updated, removed, cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task<IndexingFlowTransitionKind> HandleTail(
-        bool hasProcessedAnyItems,
-        CancellationToken cancellationToken)
+    protected override async ValueTask TailReached(bool hasProcessedAnyItems, CancellationToken cancellationToken)
     {
-        var transitionKind = await base.HandleTail(hasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
+        await base.TailReached(hasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
         if (hasProcessedAnyItems) {
-            Log.LogInformation("`{Id}`.OnTailReached: requesting entry index refresh", Id);
-            await Host.Services.Queues()
+            Console.Log("Requesting entry index refresh");
+            await Services.Queues()
                 .Enqueue(new SearchBackend_Refresh(RefreshEntries: true), cancellationToken)
                 .ConfigureAwait(false);
         }
-        return transitionKind;
-    }
-
-    // Private methods
-
-    private async Task<bool> EnsureChatInfo(ChatId chatId, CancellationToken cancellationToken)
-    {
-        await WhenReady.ConfigureAwait(false);
-        var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
-        var placesBackend = Host.Services.GetRequiredService<IPlacesBackend>();
-        var indexedDocuments = Host.Services.GetRequiredService<IndexedDocuments>();
-        var chat = await chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat is null) {
-            Log.LogWarning("Unable to create chat info: chat #{ChatId} doesn't exist", chatId);
-            return false;
-        }
-
-        Place? place = null;
-        if (chat.Id is PlaceChatId placeChatId) {
-            place = await placesBackend.Get(placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
-            if (place is null) {
-                Log.LogWarning("Unable to create chat info: place #{PlaceId} doesn't exist", placeChatId.PlaceId);
-                return false;
-            }
-        }
-
-        var indexedChat = chat.ToIndexedChat(place);
-        await indexedDocuments.SaveChats([indexedChat], cancellationToken).ConfigureAwait(false);
-        return true;
     }
 }

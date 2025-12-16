@@ -1,3 +1,4 @@
+using ActualChat.Flows;
 using ActualChat.Queues;
 using Microsoft.Extensions.Hosting;
 
@@ -42,4 +43,8 @@ public static class ServiceProviderExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IQueues Queues(this IServiceProvider services)
         => services.GetRequiredService<IQueues>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static FlowHub FlowHub(this IServiceProvider services)
+        => services.GetRequiredService<FlowHub>();
 }

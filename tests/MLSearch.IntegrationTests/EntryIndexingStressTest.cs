@@ -39,7 +39,7 @@ public class EntryIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelp
         var (chatId, _) = await Tester.CreateChat(false);
         var portion1 = await CreateEntries(chatId, portionSize, "The first portion:");
         var portion2 = await CreateEntries(chatId, 50, "The second portion:");
-        await Task.Delay(Settings.ChangedEntityIndexingDelay + Settings.IndexingFlowResumeDelay);
+        await Task.Delay(Settings.ChangedEntityIndexingDelay + Settings.IndexingFlowResumeDelayQuanta);
 
         // act
         var searchResults = await Find("first");

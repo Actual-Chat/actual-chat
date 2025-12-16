@@ -13,11 +13,12 @@ public sealed class FlowsServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IFlows>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IFlowBackend>().IsClient();
 
         // Flows
-        rpcHost.AddBackend<IFlows, FlowBackend>();
+        rpcHost.AddBackend<IFlowBackend, FlowBackend>();
         services.AddSingleton(c => new FlowRegistry(c));
+        services.AddSingleton(c => new FlowHub(c));
         services.AddFlows();
 
         if (isBackendClient)
@@ -26,8 +27,6 @@ public sealed class FlowsServiceModule(IServiceProvider moduleServices)
         // The services below are used only when this module operates in non-client mode
 
         // Internal services
-        services.AddSingleton(c => new FlowHost(c))
-            .AddHostedService(c => c.GetRequiredService<FlowHost>());
         services.AddSingleton<MasterFlowStarter>()
             .AddHostedService(c => c.GetRequiredService<MasterFlowStarter>());
 

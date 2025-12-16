@@ -1,6 +1,5 @@
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
-using ActualChat.Sharding;
 using MemoryPack;
 
 namespace ActualChat.Chat.Flows;
@@ -9,12 +8,9 @@ namespace ActualChat.Chat.Flows;
 public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
 {
     private const int BatchSize = 50;
-    private ChatSettings Settings => field ??= Host.Services.GetRequiredService<ChatSettings>();
-    private ITranslationsBackend TranslationsBackend => field ??= Host.Services.GetRequiredService<ITranslationsBackend>();
-    private ICommander Commander => field ??= Host.Services.Commander();
-
-    protected override Task<string?> Update(CancellationToken cancellationToken)
-        => Task.FromResult<string?>(null);
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    private ITranslationsBackend TranslationsBackend => field ??= Services.GetRequiredService<ITranslationsBackend>();
+    private ICommander Commander => field ??= Services.Commander();
 
     protected override async Task Run(CancellationToken cancellationToken)
     {
@@ -23,25 +19,27 @@ public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
             if (translations.Count == 0)
                 return;
 
-            Log.LogInformation("Finalizing {Count} hanging translations", translations.Count);
+            Console.Log($"Finalizing {translations.Count} hanging translations");
             var results = await translations.Select(FinalizeTranslation).CollectResults(cancellationToken).ConfigureAwait(false);
             var failedCount = results.Count(x => x.HasError);
             if (failedCount > 0) {
-                Log.LogError("Failed to finalize {FailedCount} of {Count} hanging translations", failedCount, translations.Count);
+                Console.LogError($"Failed to finalize {failedCount} of {translations.Count} hanging translations");
                 return; // intentional to break error loop
             }
         }
         return;
 
         Task<Translation> FinalizeTranslation(Translation translation)
-            => Commander.Call(new TranslationsBackend_Change(translation.Id,
-                        translation.Version,
-                        Change.Remove<TranslationDiff>()),
-                    true,
-                    cancellationToken)
-                .WithErrorLog(Log, "Failed to clean up translation #{Id}", translation.Id);
+        {
+            var cmd = new TranslationsBackend_Change(translation.Id,
+                translation.Version,
+                Change.Remove<TranslationDiff>());
+            return Commander
+                .Call(cmd, isOutermost: true, cancellationToken)
+                .WithErrorLog(cancellationToken, Runtime.Log, "Failed to clean up translation #{Id}", translation.Id);
+        }
     }
 
-    protected override Moment ComputeNextRunAt(Moment now, CancellationToken cancellationToken)
-        => now + Settings.Translation.CleanupInterval;
+    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
+        => new(LastRunAt + Settings.Translation.CleanupInterval);
 }

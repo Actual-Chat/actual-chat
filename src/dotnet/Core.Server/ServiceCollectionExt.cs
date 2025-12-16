@@ -38,15 +38,12 @@ public static class ServiceCollectionExt
 
     public static FlowRegistryBuilder AddFlows(
         this IServiceCollection services,
-        bool? useMasterFlows = null,
-        bool? useLegacyFlows = null)
+        bool? useMasterFlows = null)
     {
-        var flows = services.FindOrAddInstance(() => new FlowRegistryBuilder(), addInFront: true);
+        var flowRegistryBuilder = services.FindOrAddInstance(() => new FlowRegistryBuilder(), addInFront: true);
         if (useMasterFlows.HasValue)
-            flows.UseMasterFlows = useMasterFlows.Value;
-        if (useLegacyFlows.HasValue)
-            flows.UseLegacyFlows = useLegacyFlows.Value;
-        return flows;
+            flowRegistryBuilder.UseMasterFlows = useMasterFlows.Value;
+        return flowRegistryBuilder;
     }
 
     // AddNats

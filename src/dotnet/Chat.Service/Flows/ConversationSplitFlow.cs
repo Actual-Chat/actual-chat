@@ -7,82 +7,88 @@ using MemoryPack;
 namespace ActualChat.Chat.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class ConversationSplitFlow : LegacyFlow, IHasLastRunAt
+public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 {
-    public static class FlowSteps
-    {
-        public static readonly Symbol OnReset = nameof(ConversationSplitFlow.OnReset);
-        public static readonly Symbol OnIndex = nameof(ConversationSplitFlow.OnIndex);
-    }
-
     private const int BatchSize = 100;
+    private TimeSpan MaxDelay => TimeSpan.FromDays(7);
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
-    private ChatId ChatId => field ??= ChatId.Parse(Id.Arguments);
+    private ChatId ChatId { get; set; } = null!;
 
-    private ChatSettings Settings => field ??= Host.Services.GetRequiredService<ChatSettings>();
-
-    private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
-
-    private IConversationsBackend ConversationsBackend => field ??= Host.Services.GetRequiredService<IConversationsBackend>();
-
-    private IEntryGroupExtractor EntryGroupExtractor => field ??= Host.Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
+    private IEntryGroupExtractor EntryGroupExtractor => field ??= Services.GetRequiredKeyedService<IEntryGroupExtractor>(EntryGroupLimit.None);
 
     // Flow state
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public ExtractorState? ExtractorState { get; protected set; }
+    public ExtractorState? ExtractorState { get; private set; }
+    [DataMember(Order = 1), MemoryPackOrder(1)]
+    public long LastLid { get; private set; }
+    [DataMember(Order = 2), MemoryPackOrder(2)]
+    public Moment LastRunAt { get; private set; }
+    [DataMember(Order = 3), MemoryPackOrder(3)]
+    public Moment LastSummaryAt { get; private set; }
+    [DataMember(Order = 4), MemoryPackOrder(4)]
+    public Range<long>[] LastSummaryRanges { get; private set; } = [];
+    [DataMember(Order = 5), MemoryPackOrder(5)]
+    public FlowReadiness LastReadiness { get; private set; }
 
-    [DataMember(Order = 100), MemoryPackOrder(100)]
-    public long Cursor { get; protected set; }
+    protected override ValueTask Init(CancellationToken cancellationToken)
+        => default;
 
-    [DataMember(Order = 104), MemoryPackOrder(104)]
-    public Moment LastRunAt { get; protected set; }
-
-    [DataMember(Order = 105), MemoryPackOrder(105), Obsolete("Deprecated.")]
-    public Moment? NextRecheckAt { get; protected set; }
-
-    [DataMember(Order = 106), MemoryPackOrder(106)]
-    public Moment LastSummaryAt { get; protected set; }
-
-    [DataMember(Order = 107), MemoryPackOrder(107)]
-    public Range<long>[] LastSummaryRanges { get; protected set; } = [];
-
-    // Flow transitions
-
-    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
+    private async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {
-        var chat = await ChatsBackend.Get(ChatId, cancellationToken).Require().ConfigureAwait(false);
-        if (chat.IsSummarized ?? false) // Only process summarized chats
-            return Resume(nameof(OnIndex));
+        ChatId = ChatId.Parse(Id.Arguments);
+        var chat = await ChatsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null) {
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+            chat = await ChatsBackend.Get(ChatId, cancellationToken).ConfigureAwait(false);
+        }
+        if (chat is null)
+            return "Chat does not exist";
+        if (!(chat.IsSummarized ?? false))
+            return "Chat doesn't have summarization enabled";
 
-        return WaitForEvent(FlowSteps.OnReset);
+        return FlowReadiness.Ready;
     }
 
-    protected virtual async Task<LegacyFlowTransition> OnIndex(CancellationToken cancellationToken)
+    protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        var now = Clocks.CoarseSystemClock.Now;
-        LastRunAt = now;
-        var lastLid = Cursor;
-        var chatId = ChatId;
-        Log.LogDebug("`{Id}`.OnIndex: Started at cursor {LastLid}", Id, lastLid);
+        LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
+        if (LastReadiness is { IsSuspended: true } readiness) {
+            var resumeDelay = ResumedAt + (readiness.ResumeDelay ?? MaxDelay);
+            Console.Log($"Prepare -> {readiness}, will resume at {resumeDelay}");
+            Runtime.StageResumeAt(resumeDelay);
+            return;
+        }
 
-        var (entries, hasMore, hasImmature) = await GetEntries(lastLid, cancellationToken).ConfigureAwait(false);
+        await Process(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task Process(CancellationToken cancellationToken)
+    {
+        var now = ResumedAt;
+        LastRunAt = now;
+        Console.Log($"Process: started at {LastLid}");
+
+        var (entries, hasMore, hasImmature) = await GetEntries(LastLid, cancellationToken).ConfigureAwait(false);
         var (state, groups, replySequences) = EntryGroupExtractor.ExtractGroups(ExtractorState ?? new ExtractorState(null, null), entries);
         ExtractorState = state;
         var hasEntries = entries.Count > 0;
 
-        // process replies
+        // Process replies
         foreach (var replySequence in replySequences) {
             var firstEntry = replySequence.Entries[0];
             if (firstEntry.RepliedEntryLid is not { } entryLid)
-                continue; // First entry in the sequence is not a reply!
+                continue; // The first entry in the sequence must be not a reply!
 
             var lastEntry = replySequence.Entries[^1];
             var idTileRange = IdTileStack.LastLayer.GetTile(entryLid).Range;
-            var conversationTile = await ConversationsBackend.GetRangeMeta(chatId, idTileRange.Start, cancellationToken).ConfigureAwait(false);
+            var conversationTile = await ConversationsBackend.GetRangeMeta(ChatId, idTileRange.Start, cancellationToken).ConfigureAwait(false);
             var existingConversationIds = conversationTile.ConversationIds;
             var appendReply = new ConversationBackend_AppendReply(
-                chatId,
+                ChatId,
                 entryLid,
                 new Range<long>(firstEntry.LocalId, lastEntry.LocalId + 1)
             ) {
@@ -90,17 +96,17 @@ public partial class ConversationSplitFlow : LegacyFlow, IHasLastRunAt
                     ? now + (2 * Settings.ChatEntrySummarizationDelay)
                     : default,
             };
-            await Host.Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
+            await Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
         }
 
         if (groups.Count == 0 && hasMore) {
             // No groups found, but we have more entries to process
-            Event.MarkHandled();
             if (entries.Count > 0)
-                Cursor = entries[^1].LocalId;
+                LastLid = entries[^1].LocalId;
 
             // Continue immediately to process the next batch
-            return StoreAndResume(FlowSteps.OnIndex, "Continue processing next batch");
+            Runtime.StageResume();
+            return;
         }
 
         foreach (var group in groups) {
@@ -111,8 +117,8 @@ public partial class ConversationSplitFlow : LegacyFlow, IHasLastRunAt
                 continue;
 
             var idRanges = group.LocalIdRanges;
-            var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
-            await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+            var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
+            await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
             LastSummaryAt = now;
             LastSummaryRanges = idRanges.ToArray();
         }
@@ -134,18 +140,16 @@ public partial class ConversationSplitFlow : LegacyFlow, IHasLastRunAt
                 && !rangesAreEqual;
 
             if (hasEntries)
-                Cursor = entries[^1].LocalId;
-            Event.MarkHandled();
+                LastLid = entries[^1].LocalId;
 
             if (readyToSummarize && !tooOften) {
                 // Summarize the current group
                 var groupBuilder = state.CurrentGroup!.AddRange(state.CurrentChunk?.Entries ?? []);
                 var group = groupBuilder.Build();
 
-
                 var idRanges = group.LocalIdRanges;
-                var summarize = new ConversationBackend_Summarize(chatId, [.. idRanges]);
-                await Host.Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+                var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
+                await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
 
                 // Keep the group if there are immature items, otherwise clear the chunk
                 ExtractorState = new ExtractorState(
@@ -156,20 +160,19 @@ public partial class ConversationSplitFlow : LegacyFlow, IHasLastRunAt
                 LastSummaryRanges = idRanges.ToArray();
             }
 
-            // Important: if there are immature entries in the current window, schedule a timer instead of waiting for an external event
-            return hasImmature || (tooOften && !rangesAreEqual && hasCurrentRanges)
-                ? WaitForTimer(FlowSteps.OnIndex, Settings.ChatEntrySummarizationDelay)
-                : WaitForEvent(FlowSteps.OnIndex);
+            // Schedule next resume
+            if (hasImmature || (tooOften && !rangesAreEqual && hasCurrentRanges))
+                Runtime.StageResumeIn(Settings.ChatEntrySummarizationDelay);
+            return;
         }
 
         if (hasEntries)
-            Cursor = entries[^1].LocalId;
-        Event.MarkHandled();
-        return hasMore
-            ? StoreAndResume(FlowSteps.OnIndex, "Continue processing next batch")
-            : hasImmature
-                ? WaitForTimer(FlowSteps.OnIndex, Settings.ChatEntrySummarizationDelay)
-                : WaitForEvent(FlowSteps.OnIndex);
+            LastLid = entries[^1].LocalId;
+
+        if (hasMore)
+            Runtime.StageResume(); // Continue immediately
+        else if (hasImmature)
+            Runtime.StageResumeIn(Settings.ChatEntrySummarizationDelay);
     }
 
     // Private methods
@@ -178,11 +181,11 @@ public partial class ConversationSplitFlow : LegacyFlow, IHasLastRunAt
         long lastId,
         CancellationToken cancellationToken)
     {
+        var now = ResumedAt;
         var chatId = ChatId;
-        var now = Clocks.CoarseSystemClock.Now;
         var immatureMoment = now - Settings.ChatEntrySummarizationDelay;
 
-        // Fetch up to BatchSize + 1 items
+        // Fetch up to (BatchSize + 1) items
         var entries = await ChatsBackend.ListNewEntries(chatId, lastId, BatchSize + 1, cancellationToken).ConfigureAwait(false);
 
         // Detect the first immature entry index within the fetched window

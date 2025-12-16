@@ -5,27 +5,19 @@ using MemoryPack;
 namespace ActualChat.Media.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class PreviewThumbnailUpdateFlow : LegacyFlow, IHasLastRunAt
+public sealed partial class PreviewThumbnailUpdateFlow : PeriodicFlow
 {
-    private MediaSettings Settings => field ??= Host.Services.GetRequiredService<MediaSettings>();
-    private IMediaBackend MediaBackend => field ??= Host.Services.GetRequiredService<IMediaBackend>();
-    private ImageGrabber ImageGrabber => field ??= Host.Services.GetRequiredService<ImageGrabber>();
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Moment LastRunAt { get; private set; }
+    private MediaSettings Settings => field ??= Services.GetRequiredService<MediaSettings>();
+    private ImageGrabber ImageGrabber => field ??= Services.GetRequiredService<ImageGrabber>();
 
     public static string GetArguments(string url)
         => url.ToBase64();
 
-    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
-    {
-        await Run(cancellationToken).ConfigureAwait(false);
-        return WaitForEvent(nameof(OnReset), Settings.LinkPreviewUpdatePeriod);
-    }
+    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
+        => new(LastRunAt + Settings.LinkPreviewUpdatePeriod);
 
-    private async Task Run(CancellationToken cancellationToken)
+    protected override async Task Run(CancellationToken cancellationToken)
     {
-        LastRunAt = Host.Clocks.SystemClock.Now;
         var url = Id.Arguments.FromBase64();
         await ImageGrabber.UpdateExisting(url, cancellationToken).ConfigureAwait(false);
     }
