@@ -194,7 +194,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
     }
 
     private ValueTask Start(UploadId uploadId, DotNetObjectReference<IWebFileUploaderBackend> blazorRef, CancellationToken ct)
-        => _jsRef.InvokeVoidAsync("start", ct, uploadId.Value, Constants.Uploads.DefaultChunkSize, blazorRef);
+        => _jsRef.InvokeVoidAsync("start", ct, uploadId.Value, blazorRef);
 
     private ValueTask Cancel()
         => _jsRef.InvokeVoidAsync("cancel", _cancellationToken);
