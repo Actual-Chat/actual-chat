@@ -110,7 +110,7 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
                     // in this case we assume the rest of the processing will
                     // be done later, but the processor can move on to the
                     // next message.
-                    if (IsTerminator(message)) {
+                    if (IsTerminalMessage(message)) {
                         result = await resultTask.ConfigureAwait(false);
                         process.MarkCompleted(result);
                         break;
@@ -119,7 +119,7 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
                 }
                 else {
                     process.MarkCompleted(result);
-                    if (IsTerminator(message))
+                    if (IsTerminalMessage(message))
                         break;
                 }
             }
@@ -127,19 +127,19 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
                 if (processTask != null)
                     process.MarkCompletedAfter(processTask); // Notice we don't await here!
 
-                if (IsTerminator(message))
+                if (IsTerminalMessage(message))
                     break;
             }
             catch (Exception e) {
                 process.MarkFailed(e);
-                if (IsTerminator(message) || e.IsCancellationOf(cancellationToken))
+                if (IsTerminalMessage(message) || e.IsCancellationOf(cancellationToken))
                     break;
             }
         }
+        return;
 
-        bool IsTerminator(object message)
-        {
-            if (message is not (ITerminatorMessage or IMaybeTerminatorMessage { IsTerminator: true }))
+        bool IsTerminalMessage(object message) {
+            if (message is not ITerminalMessage)
                 return false;
 
             Queue.Writer.TryComplete();
@@ -148,16 +148,13 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
     }
 }
 
-public sealed class MessageProcessor<TMessage> : MessageProcessorBase<TMessage>
+public sealed class MessageProcessor<TMessage>(
+    Func<TMessage, CancellationToken, Task<object?>> processor,
+    CancellationTokenSource? stopTokenSource = null
+    ) : MessageProcessorBase<TMessage>(stopTokenSource)
     where TMessage : class
 {
-    private Func<TMessage, CancellationToken, Task<object?>> Processor { get; }
-
-    public MessageProcessor(
-        Func<TMessage, CancellationToken, Task<object?>> processor,
-        CancellationTokenSource? stopTokenSource = null)
-        : base(stopTokenSource)
-        => Processor = processor;
+    private Func<TMessage, CancellationToken, Task<object?>> Processor { get; } = processor;
 
     protected override Task<object?> Process(TMessage message, CancellationToken cancellationToken)
         => Processor.Invoke(message, cancellationToken);
