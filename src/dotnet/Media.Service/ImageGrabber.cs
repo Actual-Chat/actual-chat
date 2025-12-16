@@ -18,9 +18,9 @@ public class ImageGrabber(IServiceProvider services)
     private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
     private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient(Crawler.HttpClientName);
     private IReadOnlyList<IUploadProcessor> UploadProcessors => field ??= services.GetServices<IUploadProcessor>().ToList();
-    private IFlows Flows => field ??= services.GetRequiredService<IFlows>();
     private IMeshLocks MeshLocks => field ??= services.MeshLocks<MediaDbContext>().WithKeyPrefix(nameof(ImageGrabber));
     private ICommander Commander => field ??= services.Commander();
+    private FlowHub FlowHub => field ??= services.FlowHub();
     private MomentClockSet Clocks => field ??= services.Clocks();
     private ILogger Log => field ??= services.LogFor(GetType());
 
@@ -85,12 +85,11 @@ public class ImageGrabber(IServiceProvider services)
         if (!NeedsUpdate(grabStatus))
             return;
 
-        await Flows
-            .LegacyReset<PreviewThumbnailUpdateFlow>(
-                PreviewThumbnailUpdateFlow.GetArguments(imageUrl),
-                GetUpdatePeriod(grabStatus),
-                "Schedule update",
-                cancellationToken)
+        await FlowHub
+            .NewResumeEvent<PreviewThumbnailUpdateFlow>(PreviewThumbnailUpdateFlow.GetArguments(imageUrl))
+            .WithDelay(Clocks.SystemClock.Now + GetUpdatePeriod(grabStatus))
+            .WithReset()
+            .Schedule(cancellationToken)
             .ConfigureAwait(false);
     }
 

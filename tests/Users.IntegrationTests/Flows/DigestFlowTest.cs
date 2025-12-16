@@ -1,5 +1,3 @@
-using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Flows;
 
@@ -13,14 +11,14 @@ public class DigestFlowTest(ITestOutputHelper @out)
     {
         await using var h = await NewAppHost();
 
-        var flows = h.Services.GetRequiredService<IFlows>();
+        var flowHub = h.Services.FlowHub();
         var userId = Constants.User.Admin.UserId.Value;
-        var f0 = await flows.Get<DigestFlow>(userId);
+        var f0 = await flowHub.Get<DigestFlow>(userId);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.TryGet<DigestFlow>(f0.Id.Arguments, ct);
+            var flow = await flowHub.TryGet<DigestFlow>(f0.Id.Arguments, ct);
             flow.Should().NotBeNull();
-            flow.Step.Should().Be(LegacyFlowSteps.OnEnd);
+            flow.LastReadiness.IsSuspended.Should().BeTrue();
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -30,7 +28,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await using var h = await NewAppHost();
 
         var commander = h.Services.Commander();
-        var flows = h.Services.GetRequiredService<IFlows>();
+        var flowHub = h.Services.FlowHub();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = Constants.User.Admin.UserId;
@@ -45,9 +43,9 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.TryGet<DigestFlow>(userId.Value, ct);
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
-            flow.Step.Should().Be("OnCheck");
+            flow.LastReadiness.IsSuspended.Should().BeFalse();
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -57,7 +55,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await using var h = await NewAppHost();
 
         var commander = h.Services.Commander();
-        var flows = h.Services.GetRequiredService<IFlows>();
+        var flowHub = h.Services.FlowHub();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
 
         var userId = Constants.User.Admin.UserId;
@@ -72,9 +70,9 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.TryGet<DigestFlow>(userId.Value, ct);
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
-            flow.Step.Should().Be("OnCheck");
+            flow.LastReadiness.IsSuspended.Should().BeFalse();
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -90,7 +88,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         });
 
         var commander = h.Services.Commander();
-        var flows = h.Services.GetRequiredService<IFlows>();
+        var flowHub = h.Services.FlowHub();
         var accountsBackend = h.Services.GetRequiredService<IAccountsBackend>();
         var serverKvasBackend = h.Services.GetRequiredService<IServerKvasBackend>();
 
@@ -111,7 +109,7 @@ public class DigestFlowTest(ITestOutputHelper @out)
         await commander.Call(updateCmd, true);
 
         await ComputedTest.When(async ct => {
-            var flow = await flows.TryGet<DigestFlow>(userId.Value, ct);
+            var flow = await flowHub.TryGet<DigestFlow>(userId.Value, ct);
             flow.Should().NotBeNull();
             flow.RunCount.Should().BeGreaterThan(0);
         }, TimeSpan.FromSeconds(30));

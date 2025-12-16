@@ -1,4 +1,4 @@
-using ActualChat.Chat.Db;
+﻿using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
@@ -52,7 +52,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
-    private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private AudioSourceDownloader AudioSourceDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
     private OpenAITranscriber OpenAITranscriber => field ??= Services.GetRequiredService<OpenAITranscriber>();
@@ -1999,7 +1999,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         if (NeedsSummarization())
-            await Flows.Get<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
+            await FlowHub.Get<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
         return;
 
         bool NeedsSummarization()
@@ -2031,17 +2031,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chat.IsSummarized == false || kind == ChangeKind.Remove)
                 return;
 
-            var endsAt = entry.GetEndsAt();
-            var timeSinceEnded = Clocks.SystemClock.Now - endsAt;
-            await Flows
-                .LegacyResume<ConversationSplitFlow>(chat.Id.Value,
-                    timeSinceEnded + Settings.ChatEntrySummarizationDelay,
-                    $"{nameof(OnTextEntryChangedEvent)} #{entry.Id}",
-                    timeSinceEnded + Settings.ChatEntrySummarizationDelay,
-                    cancellationToken)
+            var endsAt = Moment.Max(entry.GetEndsAt(), Clocks.SystemClock.Now);
+            await FlowHub
+                .NewResumeEvent<ConversationSplitFlow>(chat.Id.Value)
+                .WithDelay(endsAt + Settings.ChatEntrySummarizationDelay, Settings.ChatEntrySummarizationDelayQuanta)
+                .Schedule(cancellationToken)
                 .ConfigureAwait(false);
         }
     }
+
 
     // Protected methods
 

@@ -9,7 +9,6 @@ public class FlowRegistryBuilder
 
     public IReadOnlyDictionary<Symbol, Type> Flows => _flows;
     public bool UseMasterFlows { get; set; } = true;
-    public bool UseLegacyFlows { get; set; } = true;
 
     public FlowRegistryBuilder Add<TFlow>(Symbol name = default)
         where TFlow : Flow

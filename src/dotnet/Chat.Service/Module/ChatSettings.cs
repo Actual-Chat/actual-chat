@@ -13,6 +13,7 @@ public sealed class ChatSettings
     public bool IsSummarizationEnabled { get; set; }
     public FilePath SummarizeConversationPromptFile { get; set; } = "summarize-conversation.md";
     public TimeSpan ChatEntrySummarizationDelay { get; set; } = TimeSpan.FromMinutes(2);
+    public TimeSpan ChatEntrySummarizationDelayQuanta { get; set; } = TimeSpan.FromMinutes(1);
     public int MinConversationWords { get; set; } = 1200;
     public int MinConversationEntries { get; set; } = 10;
     public FilePath SummarizeChatDigestPromptFile { get; set; } = "summarize-chat-digest.md";

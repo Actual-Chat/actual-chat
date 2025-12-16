@@ -1,4 +1,5 @@
 using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualLab.Caching;
 
 namespace ActualChat.Sharding;
@@ -64,7 +65,7 @@ public static class ShardKeyResolvers
         Register<string>(ForString); // Todo: likely, we should get rid of this kind of shard key
         Register<Session>(x => ForString(x.Id));
         Register<ISessionCommand>(x => ForString(x.Session.Id));
-        Register<IFlowEvent>(static x => ForString(x.FlowId.Arguments));
+        Register<FlowResumeEvent>(static x => ForString(x.FlowId.Arguments));
     }
 
     public static void Register<T>(ShardKeyResolver<T> resolver)

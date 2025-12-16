@@ -12,7 +12,7 @@ namespace ActualChat.MLSearch;
 // TODO: merge with cluster setup actions or cluster setup
 public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBase
 {
-    private readonly TaskCompletionSource _whenCompleted = TaskCompletionSourceExt.New();
+    private readonly TaskCompletionSource _whenReady = TaskCompletionSourceExt.New();
 
     private MLSearchSettings Settings => field ??= services.GetRequiredService<MLSearchSettings>();
     private OpenSearchNames OpenSearchNames => field ??= services.GetRequiredService<OpenSearchNames>();
@@ -22,22 +22,22 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
 
     private readonly int _numberOfReplicas = services.GetRequiredService<HostInfo>().IsDevelopmentInstance ? 0 : 1;
 
-    public Task WhenCompleted => _whenCompleted.Task;
+    public Task WhenReady => _whenReady.Task;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         if (!Settings.IsEnabled) {
-            _whenCompleted.SetException(StandardError.Unavailable("Search feature is turned off."));
+            _whenReady.SetException(StandardError.Unavailable("Search feature is turned off."));
             return;
         }
 
         try {
             await Run(cancellationToken).ConfigureAwait(false);
-            _whenCompleted.SetResult();
+            _whenReady.SetResult();
         }
         catch (Exception e)
         {
-            _whenCompleted.SetException(e);
+            _whenReady.SetException(e);
             throw;
         }
     }

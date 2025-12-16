@@ -9,21 +9,18 @@ using MemoryPack;
 namespace ActualChat.MLSearch.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, ChatId>, IMasterFlow
+public partial class GroupIndexingFlow : BatchedIndexingFlow<Chat.Chat, ChatId>, IMasterFlow
 {
-    protected override int CurrentFlowSetVersion => 1;
-    protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
-
-    private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
-    private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
-    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+    private IndexedDocuments IndexedDocuments => field ??= Services.GetRequiredService<IndexedDocuments>();
+    private MLSearchSettings Settings => field ??= Services.GetRequiredService<MLSearchSettings>();
+    private Task WhenReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;
 
     protected override async Task<IReadOnlyList<Chat.Chat>> GetBatch(
         IndexingFlowCursor<ChatId>? cursor,
         CancellationToken cancellationToken)
     {
-        var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
-        var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
+        var chatsBackend = Services.GetRequiredService<IChatsBackend>();
+        var maxVersion = Hub.SystemNow.ToVersion(-Settings.ChangedEntityIndexingDelay);
         cursor ??= new(null, 0);
         var query = new ChangedChatsQuery() {
             LastId = cursor.LastUpdatedId,
@@ -34,9 +31,6 @@ public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, Chat
             ExcludePlaceRootChats = true,
         };
         var batch = await chatsBackend.ListChanged(query, cancellationToken).ConfigureAwait(false);
-        Log.LogDebug(
-            "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
-            Id, batch.Length, maxVersion, cursor);
         return batch;
     }
 
@@ -55,22 +49,19 @@ public partial class GroupIndexingFlow : BatchedIndexingFlowBase<Chat.Chat, Chat
         await IndexedDocuments.SaveGroups(updated, [], cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task<IndexingFlowTransitionKind> HandleTail(
-        bool hasProcessedAnyItems,
-        CancellationToken cancellationToken)
+    protected override async ValueTask TailReached(bool hasProcessedAnyItems, CancellationToken cancellationToken)
     {
-        var transition = await base.HandleTail(hasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
+        await base.TailReached(hasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
         if (hasProcessedAnyItems) {
-            Log.LogInformation("`{Id}`.OnTailReached: requesting group index refresh", Id);
-            await Host.Services.Queues()
+            Console.Log("Requesting group index refresh");
+            await Services.Queues()
                 .Enqueue(new SearchBackend_Refresh(RefreshGroups: true), cancellationToken)
                 .ConfigureAwait(false);
         }
-        return transition;
     }
 
     private async Task<Dictionary<PlaceId, Place>> GetPlaceMap(IReadOnlyList<Chat.Chat> chats, CancellationToken cancellationToken) {
-        var placesBackend = Host.Services.GetRequiredService<IPlacesBackend>();
+        var placesBackend = Services.GetRequiredService<IPlacesBackend>();
         var places = await chats
             .Select(c => (c.Id as PlaceChatId)?.PlaceId)
             .SkipNullItems()

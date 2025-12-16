@@ -14,6 +14,6 @@ public class SearchAppHostFixture(IMessageSink messageSink) : AppHostFixture(
             cfg.AddInMemory<MLSearchSettings>((x => x.IsEnabled, "true"),
                 (x => x.IsInitialIndexingDisabled, "true"),
                 (x => x.ChangedEntityIndexingDelay, "00:00:03"),
-                (x => x.IndexingFlowResumeDelay, "00:00:01"));
+                (x => x.IndexingFlowResumeDelayQuanta, "00:00:01"));
         },
     });

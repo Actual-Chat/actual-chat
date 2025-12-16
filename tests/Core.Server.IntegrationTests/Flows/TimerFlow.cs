@@ -11,22 +11,23 @@ public partial class TimerFlow : Flow<Unit>
     private static bool _threwRerouteException;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public bool IsInitialized { get; private set; }
-    [DataMember(Order = 1), MemoryPackOrder(1)]
     public int RemainingCount { get; private set; }
-    [DataMember(Order = 2), MemoryPackOrder(2)]
+    [DataMember(Order = 1), MemoryPackOrder(1)]
     public TimeSpan Period { get; private set; }
+
+    protected override ValueTask Init(CancellationToken cancellationToken)
+    {
+        Console.Log($"Reset @ {Runtime.Services.MeshWatcher().ThisNode.Ref.Value}");
+        var args = Id.SplitArguments("", "1", "1");
+        RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
+        Period = TimeSpan.FromSeconds(double.Parse(args[2], CultureInfo.InvariantCulture));
+        Console.Log($"Reset: RemainingCount={RemainingCount}, Period={Period.ToShortString()}");
+        return default;
+    }
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        Console.Log($"Resuming @ {Runtime.Services.MeshWatcher().ThisNode.Ref.Value}");
-        if (!IsInitialized) {
-            IsInitialized = true;
-            var args = Id.SplitArguments("", "1", "1");
-            RemainingCount = int.Parse(args[1], CultureInfo.InvariantCulture);
-            Period = TimeSpan.FromSeconds(double.Parse(args[2], CultureInfo.InvariantCulture));
-            Console.Log($"Initialized: RemainingCount={RemainingCount}, Period={Period.ToShortString()}");
-        }
+        Console.Log($"Resume @ {Runtime.Services.MeshWatcher().ThisNode.Ref.Value}");
         Runtime.DefaultResumeDelayQuanta = Period / 2;
 
         if (RemainingCount > 0) {
@@ -36,7 +37,7 @@ public partial class TimerFlow : Flow<Unit>
             }
 
             RemainingCount--;
-            Runtime.ScheduleResumeIn(Period);
+            Runtime.StageResumeIn(Period);
             Console.Log($"Will resume in {Period.ToShortString()}, RemainingCount={RemainingCount}");
             if (RemainingCount == 1) {
                 await Task.Delay(50, cancellationToken).ConfigureAwait(false);

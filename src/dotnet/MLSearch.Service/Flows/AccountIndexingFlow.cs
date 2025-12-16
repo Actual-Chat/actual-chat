@@ -10,21 +10,18 @@ using MemoryPack;
 namespace ActualChat.MLSearch.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, UserId>, IMasterFlow
+public partial class AccountIndexingFlow : BatchedIndexingFlow<AccountFull, UserId>, IMasterFlow
 {
-    protected override int CurrentFlowSetVersion => 2;
-    protected override TimeSpan RecheckInterval => Settings.IndexingTailRecheckInterval;
-
-    private IAccountsBackend AccountsBackend => field ??= Host.Services.GetRequiredService<IAccountsBackend>();
-    private IndexedDocuments IndexedDocuments => field ??= Host.Services.GetRequiredService<IndexedDocuments>();
-    private MLSearchSettings Settings => field ??= Host.Services.GetRequiredService<MLSearchSettings>();
-    private Task WhenReady => field ??= Host.Services.GetRequiredService<OpenSearchConfigurator>().WhenCompleted;
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
+    private IndexedDocuments IndexedDocuments => field ??= Services.GetRequiredService<IndexedDocuments>();
+    private MLSearchSettings Settings => field ??= Services.GetRequiredService<MLSearchSettings>();
+    private Task WhenReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;
 
     protected override async Task<IReadOnlyList<AccountFull>> GetBatch(
         IndexingFlowCursor<UserId>? cursor,
         CancellationToken cancellationToken)
     {
-        var maxVersion = Clocks.GetMaxVersion(Settings.ChangedEntityIndexingDelay);
+        var maxVersion = Hub.SystemNow.ToVersion(-Settings.ChangedEntityIndexingDelay);
         cursor ??= new(null, 0);
         var batch = await AccountsBackend.ListChangedFull(
                 cursor.LastUpdatedVersion,
@@ -33,9 +30,6 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
                 BatchSize,
                 cancellationToken)
             .ConfigureAwait(false);
-        DebugLog?.LogDebug(
-            "`{Id}`.GetBatch: retrieved {Count} items with maxVersion={MaxVersion}, cursor={Cursor}",
-            Id, batch.Length, maxVersion, cursor);
         return batch;
     }
 
@@ -51,17 +45,14 @@ public partial class AccountIndexingFlow : BatchedIndexingFlowBase<AccountFull, 
             .ConfigureAwait(false);
     }
 
-    protected override async Task<IndexingFlowTransitionKind> HandleTail(
-        bool hasProcessedAnyItems,
-        CancellationToken cancellationToken)
+    protected override async ValueTask TailReached(bool hasProcessedAnyItems, CancellationToken cancellationToken)
     {
-        var transition = await base.HandleTail(hasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
+        await base.TailReached(hasProcessedAnyItems, cancellationToken).ConfigureAwait(false);
         if (hasProcessedAnyItems) {
-            Log.LogInformation("`{Id}`.OnTailReached: requesting user index refresh", Id);
-            await Host.Services.Queues()
+            Console.Log("Requesting user index refresh");
+            await Services.Queues()
                 .Enqueue(new SearchBackend_Refresh(RefreshUsers: true), cancellationToken)
                 .ConfigureAwait(false);
         }
-        return transition;
     }
 }

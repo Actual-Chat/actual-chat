@@ -1,4 +1,5 @@
 using ActualChat.Flows;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
 using ActualLab.Fusion.Client;
@@ -11,7 +12,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public class TimerFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(TimerFlowTest)}", TestAppHostOptions.Default with {
         ConfigureServices = (_, services) => {
-            var flows = services.AddFlows(useMasterFlows: false, useLegacyFlows: false);
+            var flows = services.AddFlows(useMasterFlows: false);
             flows.Add<TimerFlow>();
             var chaosMakerStopsAt = CpuTimestamp.Now + TimeSpan.FromSeconds(15);
             var chaosMaker = (0.75 * ChaosMaker.TransientError)
@@ -40,12 +41,12 @@ public class TimerFlowTest(ITestOutputHelper @out)
         WriteLine($"h0.ThisNode: {h0node}");
         WriteLine($"h1.ThisNode: {h1node}");
 
-        var flows = h0.Services.GetRequiredService<IFlows>();
+        var flowHub = h0.Services.FlowHub();
 
-        var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},2", cancellationToken);
+        var f = await GetRemoteFlow<TimerFlow>(flowHub, i => $"f{i},2", cancellationToken);
         WriteLine($"f0.Id: {f.Id}");
 
-        await WhenCompleted(flows, f.Id);
+        await WhenCompleted(flowHub, f.Id);
     }
 
     [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
@@ -59,16 +60,16 @@ public class TimerFlowTest(ITestOutputHelper @out)
         WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
         WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
 
-        var flows = h0.Services.GetRequiredService<IFlows>();
+        var flowHub = h0.Services.FlowHub();
 
-        var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},2", cancellationToken);
+        var f = await GetRemoteFlow<TimerFlow>(flowHub, i => $"f{i},2", cancellationToken);
         f.Should().NotBeNull();
-        var g = await GetLocalFlow<TimerFlow>(flows, i => $"g{i},2", cancellationToken);
+        var g = await GetLocalFlow<TimerFlow>(flowHub, i => $"g{i},2", cancellationToken);
         g.Should().NotBeNull();
 
         await Task.WhenAll(
-            WhenCompleted(flows, f.Id),
-            WhenCompleted(flows, g.Id));
+            WhenCompleted(flowHub, f.Id),
+            WhenCompleted(flowHub, g.Id));
     }
 
     [FlakyFact("AY: Slow on GitHub", 3, Timeout = 60_000)]
@@ -82,88 +83,89 @@ public class TimerFlowTest(ITestOutputHelper @out)
         WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
         WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
 
-        var flows = h0.Services.GetRequiredService<IFlows>();
-        var queues = h0.Services.GetRequiredService<IQueues>();
+        var flowHub = h0.Services.FlowHub();
+        var queues = h0.Services.Queues();
 
-        var f = await GetRemoteFlow<TimerFlow>(flows, i => $"f{i},5", cancellationToken);
+        var f = await GetRemoteFlow<TimerFlow>(flowHub, i => $"f{i},5", cancellationToken);
         f.Should().NotBeNull();
 
         // Waiting for the RemainingCount to hit 3
         await ComputedTest.When(async ct => {
-            var flow = await GetFlow<TimerFlow>(flows, f.Id, ct);
+            var flow = await GetFlow<TimerFlow>(flowHub, f.Id, ct);
             flow!.RemainingCount.Should().Be(3);
         }, DefaultTimeout);
 
-        await queues.Enqueue(new FlowResume(f.Id) { MustRestart = true }, cancellationToken);
+        await queues.Enqueue(new FlowResumeEvent(f.Id).WithReset(), cancellationToken);
 
         await ComputedTest.When(async ct => {
-            var flow = await GetFlow<TimerFlow>(flows, f.Id, ct);
+            var flow = await GetFlow<TimerFlow>(flowHub, f.Id, ct);
             flow!.RemainingCount.Should().BeGreaterThan(3);
         }, DefaultTimeout);
 
-        await WhenCompleted(flows, f.Id);
+        await WhenCompleted(flowHub, f.Id);
     }
 
     // Private methods
 
-    private async Task<TFlow> GetLocalFlow<TFlow>(IFlows flows, Func<int, string> argumentFactory, CancellationToken cancellationToken)
+    private async Task<TFlow> GetLocalFlow<TFlow>(FlowHub hub, Func<int, string> argumentFactory, CancellationToken cancellationToken)
         where TFlow : Flow
     {
         FlowId flowId;
         Computed<IFlowData?> cFlowData;
         for (var i = 0;; i++) {
-            flowId = flows.NewId<TimerFlow>(argumentFactory.Invoke(i));
-            cFlowData = await Computed.Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken);
+            flowId = hub.NewId<TimerFlow>(argumentFactory.Invoke(i));
+            cFlowData = await Computed.Capture(() => hub.Backend.TryGetData(flowId, cancellationToken), cancellationToken);
             cFlowData.Value.Should().BeNull();
             if (cFlowData is not IRemoteComputed)
                 break; // We need a remote flow
         }
-        var flow = await flows.Get<TFlow>(flowId.Arguments, cancellationToken); // Starts the flow
+        var flow = await hub.Get<TFlow>(flowId.Arguments, cancellationToken); // Starts the flow
         cFlowData.IsConsistent().Should().BeFalse();
         return flow;
     }
 
-    private async Task<TFlow> GetRemoteFlow<TFlow>(IFlows flows, Func<int, string> argumentFactory, CancellationToken cancellationToken)
+    private async Task<TFlow> GetRemoteFlow<TFlow>(FlowHub hub, Func<int, string> argumentFactory, CancellationToken cancellationToken)
         where TFlow : Flow
     {
         FlowId flowId;
         Computed<IFlowData?> cFlowData;
         for (var i = 0;; i++) {
-            flowId = flows.NewId<TimerFlow>(argumentFactory.Invoke(i));
-            cFlowData = await Computed.Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken);
+            flowId = hub.NewId<TimerFlow>(argumentFactory.Invoke(i));
+            cFlowData = await Computed.Capture(() => hub.Backend.TryGetData(flowId, cancellationToken), cancellationToken);
             cFlowData.Value.Should().BeNull();
             if (cFlowData is IRemoteComputed)
                 break; // We need a remote flow
         }
-        var flow = await flows.Get<TFlow>(flowId.Arguments, cancellationToken); // Starts the flow
+        var flow = await hub.Get<TFlow>(flowId.Arguments, cancellationToken); // Starts the flow
         cFlowData.IsConsistent().Should().BeFalse();
         return flow;
     }
 
     private async Task<TFlow?> GetFlow<TFlow>(
-        IFlows flows, FlowId flowId, CancellationToken cancellationToken)
+        FlowHub hub, FlowId flowId, CancellationToken cancellationToken)
         where TFlow : Flow
     {
-        var cFlowData = await GetFlowDataComputed(flows, flowId, cancellationToken).ConfigureAwait(false);
+        var cFlowData = await GetFlowDataComputed(hub, flowId, cancellationToken).ConfigureAwait(false);
         var flowData = await cFlowData.Use(allowInconsistent: true, cancellationToken).ConfigureAwait(false);
-        return (TFlow?)flowData?.Flow;
+        return (TFlow?)flowData?.GetFlow(hub);
     }
 
     private async Task<Computed<IFlowData?>> GetFlowDataComputed(
-        IFlows flows, FlowId flowId, CancellationToken cancellationToken)
+        FlowHub hub, FlowId flowId, CancellationToken cancellationToken)
     {
         var cFlowData =  await Computed
-            .Capture(() => flows.TryGetData(flowId, cancellationToken), cancellationToken)
+            .Capture(() => hub.Backend.TryGetData(flowId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        WriteLine($"[*] {cFlowData.Value?.Flow.ToString() ?? "null"} <- {cFlowData}");
+        var flow = cFlowData.Value?.GetFlow(hub);
+        WriteLine($"[*] {flow?.ToString() ?? "null"} <- {cFlowData}");
         return cFlowData;
     }
 
-    private Task WhenCompleted(IFlows flows, FlowId flowId)
+    private Task WhenCompleted(FlowHub hub, FlowId flowId)
         => ComputedTest.When(async ct => {
-            var c = await GetFlowDataComputed(flows, flowId, ct);
+            var c = await GetFlowDataComputed(hub, flowId, ct);
             _ = c.UseUntyped(allowInconsistent: true, ct);
-            var flow = c.Value?.Flow;
+            var flow = c.Value?.GetFlow(hub);
             flow.Require();
             flow.UntypedResult.Should().NotBeNull();
         }, DefaultTimeout);

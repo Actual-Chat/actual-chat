@@ -5,23 +5,18 @@ namespace ActualChat.Chat.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class ConversationSplitMasterFlow
-    : IndexingMasterFlowBase<ConversationSplitFlow, Chat, ChatId>, IMasterFlow
+    : IndexingMasterFlow<ConversationSplitFlow, Chat, ChatId>, IMasterFlow
 {
-    private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 5), MemoryPackOrder(5)]
     public long MaxVersion { get; private set; }
 
-    protected override int CurrentFlowSetVersion => 1;
-    protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
+    protected override ValueTask Init(CancellationToken cancellationToken)
     {
-        var mustContinue = await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false);
-        if (mustContinue)
-            // Only created before now + 10sec. New chats are handled from events
-            // Note: intentionally sets it to a negative number
-            MaxVersion = Clocks.GetMaxVersion(TimeSpan.FromSeconds(-10));
-
-        return mustContinue;
+        // TODO(AY): Check why we don't want to go too far to past w/ AK
+        MaxVersion = Hub.SystemNow.ToVersion(-TimeSpan.FromSeconds(10));
+        return default;
     }
 
     protected override async Task<IReadOnlyList<Chat>> GetBatch(IndexingFlowCursor<ChatId>? cursor, CancellationToken cancellationToken)
@@ -39,6 +34,6 @@ public partial class ConversationSplitMasterFlow
     protected override async Task ProcessBatch(IReadOnlyList<Chat> batch, CancellationToken cancellationToken)
     {
         foreach (var item in batch.Where(x => x.IsSummarized ?? false))
-            await Reset(item, cancellationToken).ConfigureAwait(false);
+            await ScheduleReset(item, cancellationToken).ConfigureAwait(false);
     }
 }

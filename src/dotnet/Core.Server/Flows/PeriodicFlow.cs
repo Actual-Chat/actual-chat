@@ -2,68 +2,70 @@ using MemoryPack;
 
 namespace ActualChat.Flows;
 
-public abstract partial class PeriodicFlow : LegacyFlow
+// Base class for flows that run periodically.
+// Implements a simple pattern where Run is called at scheduled intervals.
+public abstract class PeriodicFlow : Flow<string>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    protected TimeSpan MaxDelay { get; set; } = TimeSpan.FromDays(7);
+    protected virtual TimeSpan MaxResumeDelay => TimeSpan.FromDays(7);
     [IgnoreDataMember, MemoryPackIgnore]
-    protected string? EndReason { get; set; }
+    protected Moment NextRunAt { get; set; }
 
-    [DataMember(Order = 100), MemoryPackOrder(100)]
-    public Moment LastRunAt { get; protected set; }
-    [DataMember(Order = 101), MemoryPackOrder(101)]
-    public Moment? NextRunAt { get; protected set; }
-    [DataMember(Order = 110), MemoryPackOrder(110)]
+    // Persisted state
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public int RunCount { get; protected set; }
+    [DataMember(Order = 1), MemoryPackOrder(1)]
+    public Moment LastRunAt { get; protected set; }
+    [DataMember(Order = 2), MemoryPackOrder(2)]
+    public FlowReadiness LastReadiness { get; protected set; }
 
-    // Not a step!
-    protected abstract Task<string?> Update(CancellationToken cancellationToken);
+    // Overridable methods
+
+    protected virtual ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
+        => new(FlowReadiness.Ready);
+
+    protected abstract ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken);
+
     protected abstract Task Run(CancellationToken cancellationToken);
 
-    protected override Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
+    // Implementation
+
+    protected override ValueTask Init(CancellationToken cancellationToken)
     {
-        LastRunAt = Clocks.SystemClock.Now;
-        NextRunAt = null;
-        return GetTransition(cancellationToken);
+        LastRunAt = default;
+        return default;
     }
 
-    protected async Task<LegacyFlowTransition> OnCheck(CancellationToken cancellationToken)
+    protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        Log.LogInformation("`{Id}`: OnCheck, Event: {Event}", Id, Event.Event);
-        if (!Event.IsHandled)
-            Event.Require<LegacyFlowTimerEvent>();
-
-        var transition = await GetTransition(cancellationToken).ConfigureAwait(false);
-        if (transition.Step != nameof(OnCheck) || transition.HardResumeAt.HasValue)
-            return transition;
-
-        Log.LogInformation("`{Id}`: Run #{RunIndex}", Id, RunCount);
-        await Run(cancellationToken).ConfigureAwait(false);
-        LastRunAt = Clocks.SystemClock.Now;
-        NextRunAt = null;
-        RunCount++;
-        return await GetTransition(cancellationToken).ConfigureAwait(false);
-    }
-
-    protected virtual async Task<LegacyFlowTransition> GetTransition(CancellationToken cancellationToken)
-    {
-        EndReason = await Update(cancellationToken).ConfigureAwait(false);
-        if (!EndReason.IsNullOrEmpty()) {
-            Log.LogWarning("`{Id}`: {EndReason}, will end", Id, EndReason);
-            return End();
+        LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
+        if (LastReadiness is { IsSuspended: true } readiness) {
+            var resumeDelay = ResumedAt + (readiness.ResumeDelay ?? MaxResumeDelay);
+            Console.Log($"Prepare -> {readiness}, will resume at {resumeDelay}");
+            Runtime.StageResumeAt(resumeDelay);
+            return;
         }
 
-        var now = Clocks.SystemClock.Now;
-        if (NextRunAt is { } lastNextRunAt)
-            return lastNextRunAt <= now
-                ? Resume(nameof(OnCheck))
-                : WaitForEvent(nameof(OnCheck), lastNextRunAt);
+        // Compute the next run time
+        var nextRunAt = await GetNextRunAt(cancellationToken).ConfigureAwait(false);
+        var nextRunIn = (nextRunAt - ResumedAt).Clamp(TimeSpan.Zero, MaxResumeDelay);
+        NextRunAt = ResumedAt + nextRunIn;
+        if (NextRunAt > ResumedAt) {
+            Console.Log($"ComputeNextRunAt -> {NextRunAt} (in {nextRunIn.ToShortString()}), scheduling resume for that time");
+            Runtime.StageResumeAt(nextRunAt);
+            return;
+        }
 
-        var nextRunAt = now + (ComputeNextRunAt(now, cancellationToken) - now).Clamp(TimeSpan.Zero, MaxDelay);
-        NextRunAt = nextRunAt;
-        Log.LogInformation("`{Id}`: Next run in: {Delay}", Id, (nextRunAt - now).ToShortString());
-        return WaitForTimer(nameof(OnCheck), nextRunAt);
+        // Run
+        var startedAt = CpuTimestamp.Now;
+        Console.Log($"Run() #{RunCount + 1} started");
+        await Run(cancellationToken).ConfigureAwait(false);
+        RunCount++;
+        LastRunAt = Hub.SystemNow;
+        Console.Log($"Run() #{RunCount} completed in {startedAt.Elapsed.ToShortString()}");
+
+        // Schedule the next resume
+        Console.Log("Scheduling immediate resume");
+        Runtime.StageResume();
     }
-
-    protected abstract Moment ComputeNextRunAt(Moment now, CancellationToken cancellationToken);
 }

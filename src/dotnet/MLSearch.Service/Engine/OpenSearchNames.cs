@@ -17,7 +17,7 @@ internal sealed class OpenSearchNames
     public const string ChatCursor = "v2-chat-cursor";
     public string UniquePart { get; init; } = ""; // for testing purpose only
     public string Env { get; init; } = "";
-    private string Prefix => ToPrefix(Env, "sm", UniquePart); // sm == "Search Module"
+    private string Prefix => ComposePrefix(Env, "sm", UniquePart); // sm == "Search Module"
     public string CommonIndexTemplateName => $"{Prefix}common";
     public string CommonIndexPattern => $"{Prefix}*";
     public string UserIndexName => $"{Prefix}users-{UserIndexVersion}";
@@ -32,12 +32,12 @@ internal sealed class OpenSearchNames
         => GetFull(Prefix, id, IngestPipelineNameSuffix, modelProps.UniqueKey);
 
     private static string GetFull(params IEnumerable<string> parts)
-        => string.Join("", parts.Select(ToPrefix)).TrimEnd('-');
+        => string.Join("", parts.Select(ComposePrefix)).TrimEnd('-');
 
-    private static string ToPrefix(params IEnumerable<string> parts)
-        => string.Join("", parts.Select(ToPrefix));
+    private static string ComposePrefix(params IEnumerable<string> parts)
+        => string.Join("", parts.Select(ComposePrefix));
 
-    private static string ToPrefix(string s)
+    private static string ComposePrefix(string s)
     {
         s = s.Trim('-');
         return s.IsNullOrEmpty() ? "" : $"{s}-";

@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Flows;
 
-public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
+public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 {
     private readonly AsyncLockSet<FlowId> _resumeLocks = new();
     private readonly ILruCache<FlowId, IFlowData?> _cache = new ConcurrentLruCache<FlowId, IFlowData?>(1024);
 
     // Services
-    private FlowRegistry Registry { get; }
-    private FlowHost Host { get; }
+    private FlowHub Hub => field ??= Services.FlowHub();
+    private FlowRegistry Registry => field ??= Hub.Registry;
     private IDbEntityResolver<string, DbFlow> EntityResolver { get; }
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
@@ -30,8 +30,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
 
     public FlowBackend(IServiceProvider services) : base(services)
     {
-        Registry = services.GetRequiredService<FlowRegistry>();
-        Host = services.GetRequiredService<FlowHost>();
         EntityResolver = services.DbEntityResolver<string, DbFlow>();
         var stopToken = ShardOwner.StopToken;
         foreach (var shardIndex in ShardScheme.ShardIndexes) {
@@ -71,21 +69,15 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             var cFlowData = await Computed.Capture(() => TryGetData(flowId, ct), ct).ConfigureAwait(false);
             var flowData = cFlowData.Value;
             var existingVersion = flowData?.Version ?? 0L;
-            if (flowData is { DeserializationError: null } && !VersionChecker.IsExpected(existingVersion, expectedVersion))
+            if (flowData is not null && !VersionChecker.IsExpected(existingVersion, expectedVersion))
                 return flowData;
 
-            var flow = (Flow)flowType.CreateInstance();
-            var legacyFlowImpl = flow as ILegacyFlowImpl;
-            var flowImpl = (IFlowImpl)flow;
-            var console = new FlowConsole();
-            if (legacyFlowImpl is not null)
-                legacyFlowImpl.SetProperties(flowId, 0, LegacyFlowSteps.Starting, null, console, null);
-            else
-                flowImpl.SetProperties(flowId, 0, null, console);
-
+            var flow = (IFlowImpl)flowType.CreateInstance();
+            var console = new FlowConsole(flow);
+            flow.SetProperties(flowId, 0, 0, null, console);
             do {
                 var storeCommand = new Flows_Store(flow.Id, existingVersion) {
-                    Flow = flow,
+                    Flow = (Flow)flow,
                 };
                 existingVersion = await Commander.Call(storeCommand, ct).ConfigureAwait(false);
             }
@@ -101,39 +93,31 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
 
     // The `long` it returns is DbFlow/FlowData.Version
     // [CommandHandler]
-    public virtual async Task<long> OnEvent(IFlowEvent command, CancellationToken cancellationToken)
+    public virtual async Task<long> OnResume(FlowResumeEvent resumeEvent, CancellationToken cancellationToken)
     {
-        var flowId = command.FlowId;
+        var flowId = resumeEvent.FlowId;
         var flowType = Registry.TypeByName[flowId.Name];
-        DebugLog?.LogDebug("OnEvent: `{FlowId}` <- {Event}", flowId, command);
-        if (flowType.IsAssignableTo(typeof(LegacyFlow))) // The Host handles legacy flows
-            return await Host.ProcessEvent(flowId, command, cancellationToken).ConfigureAwait(false);
-
-        if (command is not FlowResume flowResume)
-            throw StandardError.Internal($"Unsupported event type: {command.GetType()}.");
+        DebugLog?.LogDebug("OnResume: `{FlowId}` <- {Event}", flowId, resumeEvent);
 
         return await ResumeRetryPolicy.Run(async ct => {
             using var _ = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
             Flow originalFlow;
             using (Computed.BeginIsolation()) // Not needed inside a command handler, but let's be safe
-                originalFlow = await this.Get(flowId, ct).ConfigureAwait(false);
-            if (originalFlow.UntypedResult is not null)
+                originalFlow = await Hub.Get(flowId, ct).ConfigureAwait(false);
+            if (originalFlow.UntypedResult is not null && !resumeEvent.MustReset)
                 return originalFlow.Version; // The flow has already completed, so all subsequent events are ignored
 
             IFlowImpl flow;
-            if (flowResume.MustRestart) {
-                var console = new FlowConsole(originalFlow.Console.Prefix);
-                console.LogSection("[0>]");
-                flow = (Flow)flowType.CreateInstance();
-                flow.SetProperties(flowId, originalFlow.Version, null, console);
+            if (resumeEvent.MustReset) {
+                flow = (IFlowImpl)flowType.CreateInstance();
+                var console = new FlowConsole(flow, originalFlow.Console.Prefix);
+                flow.SetProperties(flowId, originalFlow.Version, 0, null, console);
             }
-            else {
+            else
                 flow = originalFlow.Clone();
-                flow.Console.LogSection("[>]");
-            }
 
             // Run the HandleResume method
-            await flow.OnResume(Services, ct).ConfigureAwait(false);
+            await flow.HandleResume(Hub, resumeEvent.MustReset, ct).ConfigureAwait(false);
             return flow.Version;
         }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
     }
@@ -155,7 +139,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
         var flowType = Registry.TypeByName[flowId.Name];
         if (flow?.GetType() == typeof(Flow))
             throw StandardError.Internal("Flow.GetType() == typeof(Flow), i.e., the command is routed to another host.");
-        var legacyFlow = flow as LegacyFlow;
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
@@ -166,8 +149,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
             .FirstOrDefaultAsync(x => Equals(x.Id, flowId.Value), cancellationToken)
             .ConfigureAwait(false);
 
-        var isLegacyRemoval = legacyFlow?.Step == LegacyFlowSteps.Removed;
-        if (flow is not null && !isLegacyRemoval) {
+        if (flow is not null) {
             if (dbFlow is null) { // Create
                 if (!VersionChecker.IsExpected(0L, expectedVersion))
                     return 0L;
@@ -176,15 +158,8 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                 dbFlow.Version = VersionGenerator.NextVersion(dbFlow.Version);
                 dbContext.Add(dbFlow);
 
-                // Any new flow requires a resume or start event
-                if (legacyFlow is not null) {
-                    if (legacyFlow.Step != LegacyFlowSteps.Starting)
-                        throw StandardError.Internal("LegacyFlow.Step should be 'Starting' for a new LegacyFlow.");
-
-                    context.Operation.AddEvent(new LegacyFlowStartEvent(flowId));
-                }
-                else
-                    context.Operation.AddEvent(new FlowResume(flowId));
+                // Any new flow requires a resume event
+                context.Operation.AddEvent(new FlowResumeEvent(flowId));
             }
             else { // Update
                 if (!VersionChecker.IsExpected(dbFlow.Version, expectedVersion))
@@ -209,8 +184,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
                 dbFlow = null;
             }
         }
-        foreach (var e in command.Events ?? [])
-            context.Operation.AddEvent(e);
+        if (command.Events is { } events)
+            foreach (var e in events)
+                context.Operation.AddEvent(e);
 
         // We don't store DbOperation entries for flow updates,
         // coz invalidation must be handled by the local node only.
@@ -227,5 +203,25 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlows
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbFlow?.Version ?? 0L;
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnScheduleResume(Flows_ScheduleResume command, CancellationToken cancellationToken)
+    {
+        // NOTE(AY): this command handler:
+        // - Is guaranteed to always run locally (see `IHasNodeRef` in Flows_Store).
+        // - Doesn't run in the invalidation mode (it's an `IDelegatingCommand`).
+        // Nevertheless, it has the invalidation logic - see the `AddCompletionHandler` call below.
+
+        var context = CommandContext.GetCurrent();
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+
+        context.Operation.AddEvent(command.Item);
+        if (command.Items is { } items)
+            foreach (var item in items)
+                context.Operation.AddEvent(item);
+
+        context.Operation.MustStore(false);
     }
 }

@@ -9,14 +9,13 @@ public interface IFlowData
 {
     FlowId Id { get; }
     long Version { get; }
+    int DataVersion { get; }
     byte[] ResultData { get; }
     bool IsCompleted { get; }
     byte[] Data { get; }
-    Flow Flow { get; }
     string Console { get; }
-    string Step { get; }
-    Moment? HardResumeAt { get; }
-    Exception? DeserializationError { get; }
+
+    Flow GetFlow(FlowHub hub);
 }
 
 public static class FlowData
@@ -30,12 +29,11 @@ public static class FlowData
             .Invoke(flow);
 
     public static IFlowData FromData(
-        Type flowType, FlowId id, long version,
-        byte[] resultData, byte[] flowData, string console,
-        string step, Moment? hardResumeAt)
+        Type flowType, FlowId id, long version, int dataVersion,
+        byte[] resultData, byte[] flowData, string console)
         => GenericInstanceCache
-            .GetUnsafe<Func<FlowId, long, byte[], byte[], string, string, Moment?, IFlowData>>(typeof(FromDataFactory<>), flowType)
-            .Invoke(id, version, resultData, flowData, console, step, hardResumeAt);
+            .GetUnsafe<Func<FlowId, long, int, byte[], byte[], string, IFlowData>>(typeof(FromDataFactory<>), flowType)
+            .Invoke(id, version, dataVersion, resultData, flowData, console);
 
     // Nested types
 
@@ -50,8 +48,8 @@ public static class FlowData
         where TFlow : Flow
     {
         public override object Generate()
-            => static (FlowId id, long version, byte[] resultData, byte[] data, string console, string step, Moment? hardResumeAt)
-                => FlowData<TFlow>.FromData(id, version, resultData, data, console, step, hardResumeAt);
+            => static (FlowId id, long version, int dataVersion, byte[] resultData, byte[] data, string console)
+                => FlowData<TFlow>.FromData(id, version, dataVersion, resultData, data, console);
     }
 }
 
@@ -59,6 +57,7 @@ public static class FlowData
 public partial class FlowData<TFlow> : IFlowData
     where TFlow : Flow
 {
+    private readonly Lock _lock = new();
     private byte[]? _resultData;
     private byte[]? _data;
     private string? _console;
@@ -68,8 +67,10 @@ public partial class FlowData<TFlow> : IFlowData
     public FlowId Id { get; init; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public long Version { get; init; }
-
     [DataMember(Order = 2), MemoryPackOrder(2)]
+    public int DataVersion { get; init; }
+
+    [DataMember(Order = 3), MemoryPackOrder(3)]
     public byte[] ResultData {
         get => _resultData ?? Serialize().ResultData;
         private init {
@@ -78,7 +79,7 @@ public partial class FlowData<TFlow> : IFlowData
         }
     }
 
-    [DataMember(Order = 3), MemoryPackOrder(3)]
+    [DataMember(Order = 4), MemoryPackOrder(4)]
     public byte[] Data {
         get => _data ?? Serialize().Data;
         private init {
@@ -87,7 +88,7 @@ public partial class FlowData<TFlow> : IFlowData
         }
     }
 
-    [DataMember(Order = 4), MemoryPackOrder(4)]
+    [DataMember(Order = 5), MemoryPackOrder(5)]
     public string Console {
         get => _console ?? Serialize().Console;
         private init {
@@ -96,79 +97,72 @@ public partial class FlowData<TFlow> : IFlowData
         }
     }
 
-    [DataMember(Order = 5), MemoryPackOrder(5)]
-    public string Step { get; init; } = "";
-    [DataMember(Order = 6), MemoryPackOrder(6)]
-    public Moment? HardResumeAt { get; init; }
-
     // Computed properties
-
-    [IgnoreDataMember, MemoryPackIgnore]
-    Flow IFlowData.Flow => Flow;
 
     [IgnoreDataMember, MemoryPackIgnore]
     public bool IsCompleted => _flow is { } flow
         ? flow.UntypedResult is not null
         : ResultData.Length != 0;
 
-    [IgnoreDataMember, MemoryPackIgnore]
-    public TFlow Flow {
-        get => _flow ?? Deserialize().Flow;
-        private init {
-            _flow = value;
-            _resultData = null;
-            _data = null;
-            _console = null;
-        }
-    }
-
-    [IgnoreDataMember, MemoryPackIgnore]
-    public Exception? DeserializationError {
-        get {
-            if (field is { } value)
-                return value;
-
-            try {
-                _ = Flow;
-                return null;
-            }
-            catch (Exception ex) {
-                return field = ex;
-            }
-        }
-    }
-
     public static FlowData<TFlow> FromFlow(TFlow flow)
-    {
-        var legacyFlowImpl = flow as ILegacyFlowImpl;
-        return new FlowData<TFlow> {
+        => new FlowData<TFlow>() {
             Id = flow.Id,
             Version = flow.Version,
-            Step = legacyFlowImpl?.Step.Value ?? "",
-            HardResumeAt = legacyFlowImpl?.HardResumeAt,
-            Flow = flow, // Flow must be set at the very end
-        };
-    }
+            DataVersion = flow.DataVersion,
+        }.SetFlow(flow);
 
     public static object FromData(
         FlowId id,
         long version,
+        int dataVersion,
         byte[] resultData,
         byte[] data,
-        string console,
-        string step,
-        Moment? hardResumeAt)
+        string console)
         => new FlowData<TFlow> {
             Id = id,
             Version = version,
+            DataVersion = dataVersion,
             ResultData = resultData,
             Data = data,
             Console = console,
-            Step = step,
-            HardResumeAt = hardResumeAt,
         };
 
+    public Flow GetFlow(FlowHub hub)
+    {
+        if (_flow is not null) return _flow;
+        lock (_lock) { // Double-check locking
+            if (_flow is not null) return _flow;
+
+            var expectedDataVersion = hub.Registry.DataVersions[typeof(TFlow)];
+            if (DataVersion < expectedDataVersion) {
+                _flow = DeserializeWithoutData();
+                hub.Log.LogInformation(
+                    "`{FlowId}`: reset due to data version mismatch ({DataVersion} < {ExpectedDataVersion})",
+                    Id, DataVersion, expectedDataVersion);
+                return _flow;
+            }
+
+            try {
+                return _flow = Deserialize();
+            }
+            catch (Exception e) {
+                hub.Log.LogError(e, "`{FlowId}`: reset due to deserialization error", Id);
+                return _flow = DeserializeWithoutData();
+            }
+        }
+    }
+
     // Private methods
+
+    private FlowData<TFlow> SetFlow(TFlow flow)
+    {
+        _flow = flow;
+
+        _resultData = null;
+        _data = null;
+        _console = null;
+        return this;
+    }
 
     private FlowData<TFlow> Serialize()
     {
@@ -188,21 +182,35 @@ public partial class FlowData<TFlow> : IFlowData
         return this;
     }
 
-    private FlowData<TFlow> Deserialize()
+    private TFlow Deserialize()
     {
         // Data, ResultData, Console -> Flow
-        var (data, resultData, console) = (_data.Require(), _resultData.Require(), new FlowConsole(_console.Require()));
-        using var buffer = new ArrayPoolBuffer<byte>(4096, false);
+        var (dataVersion, data, resultData) = (DataVersion, _data.Require(), _resultData.Require());
         var flow = (TFlow)FlowData.FlowSerializer.Read(data, typeof(Flow), out _).Require();
-        if (flow is ILegacyFlowImpl legacyFlowImpl) // LegacyFlow properties - to be removed eventually
-            legacyFlowImpl.SetProperties(Id, Version, Step, HardResumeAt, console, null);
-        else {
-            var untypedResult = resultData is { Length: > 0 }
+        var untypedResult = resultData is { Length: > 0 }
+            ? (IResult?)FlowData.ResultSerializer.Read(resultData, typeof(IResult), out _).Require()
+            : null;
+        var console = new FlowConsole(flow, _console.Require());
+        ((IFlowImpl)flow).SetProperties(Id, Version, dataVersion, untypedResult, console);
+        return flow;
+    }
+
+    private TFlow DeserializeWithoutData()
+    {
+        // Data, ResultData, Console -> Flow
+        var flow = (TFlow)typeof(TFlow).CreateInstance();
+        IResult? untypedResult;
+        try {
+            var resultData = _resultData.Require();
+            untypedResult = resultData is { Length: > 0 }
                 ? (IResult?)FlowData.ResultSerializer.Read(resultData, typeof(IResult), out _).Require()
                 : null;
-            ((IFlowImpl)flow).SetProperties(Id, Version, untypedResult, console);
         }
-        _flow = flow;
-        return this;
+        catch (Exception e) {
+            untypedResult = Result.NewUntypedError(e);
+        }
+        var console = new FlowConsole(flow, _console.Require());
+        ((IFlowImpl)flow).SetProperties(Id, Version, 0, untypedResult, console);
+        return flow;
     }
 }

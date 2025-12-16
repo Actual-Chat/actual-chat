@@ -1,14 +1,14 @@
 using ActualChat.Attributes;
+using ActualChat.Flows.Infrastructure;
 using ActualLab.CommandR.Operations;
 using ActualChat.Hosting;
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Flows;
 
 [BackendService(nameof(HostRole.FlowsBackend), ServiceMode.Distributed)]
 [BackendClient(nameof(HostRole.FlowsBackend))]
-public interface IFlows : IComputeService, IBackendService
+public interface IFlowBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<IFlowData?> TryGetData(FlowId flowId, CancellationToken cancellationToken);
@@ -17,9 +17,12 @@ public interface IFlows : IComputeService, IBackendService
 
     // The `long` result in any of the methods below return is DbFlow/FlowData.Version
     [CommandHandler]
-    Task<long> OnEvent(IFlowEvent command, CancellationToken cancellationToken);
+    Task<long> OnResume(FlowResumeEvent resumeEvent, CancellationToken cancellationToken);
     [CommandHandler]
     Task<long> OnStore(Flows_Store command, CancellationToken cancellationToken);
+    [CommandHandler]
+    [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
+    Task OnScheduleResume(Flows_ScheduleResume command, CancellationToken cancellationToken);
 }
 
 // This command:
@@ -27,19 +30,24 @@ public interface IFlows : IComputeService, IBackendService
 //   that's why a part of fields there are non-serializable.
 // - Doesn't run invalidation block (it's an `IDelegatingCommand`).
 // ReSharper disable once InconsistentNaming
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-public partial record Flows_Store(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] FlowId FlowId,
-    [property: DataMember(Order = 1), MemoryPackOrder(1)] long? ExpectedVersion = null
-) : IDelegatingCommand<long>, IBackendCommand, IHasNodeRef, INotLogged
+public sealed record Flows_Store(FlowId FlowId, long? ExpectedVersion = null)
+    : IDelegatingCommand<long>, IBackendCommand, IHasNodeRef, INotLogged
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Flow? Flow { get; init; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public OperationEvent[]? Events { get; init; }
 
     // IHasNodeRef implementation - always routes the command to the local node
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    NodeRef IHasNodeRef.NodeRef => NodeRef.ThisNodeAlias;
+}
+
+// This command:
+// - Is guaranteed to always run locally (see the `IHasNodeRef` implementation),
+//   that's why a part of fields there are non-serializable.
+// - Doesn't run invalidation block (it's an `IDelegatingCommand`).
+// ReSharper disable once InconsistentNaming
+public sealed record Flows_ScheduleResume(FlowResumeEvent Item, FlowResumeEvent[]? Items = null)
+    : IDelegatingCommand<long>, IBackendCommand, IHasNodeRef, INotLogged
+{
+    // IHasNodeRef implementation - always routes the command to the local node
     NodeRef IHasNodeRef.NodeRef => NodeRef.ThisNodeAlias;
 }

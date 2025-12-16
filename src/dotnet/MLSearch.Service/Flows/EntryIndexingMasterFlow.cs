@@ -6,23 +6,18 @@ namespace ActualChat.MLSearch.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class EntryIndexingMasterFlow
-    : IndexingMasterFlowBase<EntryIndexingFlow, Chat.Chat, ChatId>, IMasterFlow
+    : IndexingMasterFlow<EntryIndexingFlow, Chat.Chat, ChatId>, IMasterFlow
 {
-    private IChatsBackend ChatsBackend => field ??= Host.Services.GetRequiredService<IChatsBackend>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 5), MemoryPackOrder(5)]
     public long MaxVersion { get; private set; }
 
-    protected override int CurrentFlowSetVersion => 5;
-    protected override async Task<bool> OnBeforeFirstIndexAfterReset(CancellationToken cancellationToken)
+    protected override ValueTask Init(CancellationToken cancellationToken)
     {
-        var mustContinue = await base.OnBeforeFirstIndexAfterReset(cancellationToken).ConfigureAwait(false);
-        if (mustContinue)
-            // only created before now + 10sec. New chats are handled from events
-            // Note: intentionally set negative number
-            MaxVersion = Clocks.GetMaxVersion(TimeSpan.FromSeconds(-10));
-
-        return mustContinue;
+        // TODO(AY): Check why we don't want to go too far to past w/ Frol
+        MaxVersion = Hub.SystemNow.ToVersion(TimeSpan.FromSeconds(-10));
+        return base.Init(cancellationToken);
     }
 
     protected override async Task<IReadOnlyList<Chat.Chat>> GetBatch(IndexingFlowCursor<ChatId>? cursor, CancellationToken cancellationToken)
