@@ -114,28 +114,49 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             // TODO: to think what to do with this. For now UploadApp is responsible for resuming stored sessions.
             var attachmentIsOk = false;
             Task<bool>? whenFilePermissionGranted = null;
+            MediaContent? mediaContent = null;
             try {
                 var session = await UploadSessions.TryGetSession(uploadSessionId).ConfigureAwait(false);
                 if (session is not null) {
-                    var fileProvider = session.FileProvider;
-                    var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
-                    if (canAccess) {
-                        var whenUserConsentGrantedTask = fileProvider.WhenUserConsentGranted();
+                    if (session.Status is UploadStatus.Completed && session.MediaContent is not null) {
+                        // If media was already uploaded, use it directly to display a preview.
+                        // Do not try to access the file.
+                        mediaContent = session.MediaContent;
+                        whenFilePermissionGranted = NeverGetFilePermission();
+                        async Task<bool> NeverGetFilePermission() {
+                            await TaskExt.NeverEnding(CancellationToken.None).ConfigureAwait(false);
+                            return false;
+                        }
+                        if (previewUrl.IsNullOrEmpty()) {
+                            var contentType = session.FileProvider.Metadata.FileType;
+                            if (MediaTypeExt.IsVisualMedia(contentType))
+                                previewUrl = UrlMapper.ContentUrl(session.MediaContent.ContentId);
+                        }
                         if (!previewUrl.IsNullOrEmpty())
                             getPreviewUrl = Task.FromResult(previewUrl);
-                        else if (MediaTypeExt.IsVisualMedia(session.FileProvider.Metadata.FileType)) {
-                            getPreviewUrl = GetPreviewUrl();
-                            async Task<string> GetPreviewUrl() {
-                                var consentGranted = await whenUserConsentGrantedTask.ConfigureAwait(false);
-                                if (!consentGranted)
-                                    return "";
-
-                                var preview2 = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
-                                return preview2;
-                            }
-                        }
-                        whenFilePermissionGranted = whenUserConsentGrantedTask;
                         attachmentIsOk = true;
+                    }
+                    else {
+                        var fileProvider = session.FileProvider;
+                        var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
+                        if (canAccess) {
+                            var whenUserConsentGrantedTask = fileProvider.WhenUserConsentGranted();
+                            if (!previewUrl.IsNullOrEmpty())
+                                getPreviewUrl = Task.FromResult(previewUrl);
+                            else if (MediaTypeExt.IsVisualMedia(fileProvider.Metadata.FileType)) {
+                                getPreviewUrl = GetPreviewUrl();
+                                async Task<string> GetPreviewUrl() {
+                                    var consentGranted = await whenUserConsentGrantedTask.ConfigureAwait(false);
+                                    if (!consentGranted)
+                                        return "";
+
+                                    var preview2 = await fileProvider.GetPreviewUrl().ConfigureAwait(false);
+                                    return preview2;
+                                }
+                            }
+                            whenFilePermissionGranted = whenUserConsentGrantedTask;
+                            attachmentIsOk = true;
+                        }
                     }
                 }
             }
@@ -144,9 +165,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 // Intended
             }
 
-            async Task CleanupRequest() {
-                await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
-            }
+            async Task CleanupRequest()
+                => await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
 
             var attachment = new Attachment(
                 attachEntry.FileName,
@@ -160,12 +180,17 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             };
             attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
-            if (!attachmentIsOk) {
+            if (!attachmentIsOk)
                 attachment = attachment with {
                     Failed = true,
                     NoAccess = true,
                 };
-            }
+            else if (mediaContent is not null)
+                attachment = attachment with {
+                    Progress = 100,
+                    MediaId = mediaContent.MediaId,
+                    ThumbnailMediaId = mediaContent.ThumbnailMediaId,
+                };
             attachments.Add(attachment);
         }
         if (attachments.Count == 0)
@@ -175,12 +200,13 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         var attachmentList = new AttachmentList();
         foreach (var attachment in attachments) {
             await attachmentsController.AddAttachment(attachmentList, attachment).ConfigureAwait(false);
-            if (!attachment.Failed)
+            if (!attachment.Uploaded && !attachment.Failed)
                 await attachmentsController.ResumeUpload(attachmentList, attachment.Id).ConfigureAwait(false);
         }
 
         foreach (var attachment in attachments) {
-            SubscribeFilePermissionsGranted(attachmentList, attachment);
+            if (!attachment.Uploaded)
+                SubscribeFilePermissionsGranted(attachmentList, attachment);
             SubscribePreviewResolved(attachment, attachmentList);
         }
 

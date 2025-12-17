@@ -161,6 +161,18 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             return null;
 
         session.FileProvider.Initialize(Hub.Services);
+        switch (session.Status) {
+            case UploadStatus.Completed when session.MediaContent is not null:
+                session.ProgressTracker.ReportProgress(100);
+                session.ProgressTracker.SetResult(session.MediaContent);
+                break;
+            case UploadStatus.Canceled:
+                session.ProgressTracker.SetCanceled();
+                break;
+            case UploadStatus.Failed:
+                session.ProgressTracker.SetException(new Exception("Upload failed"));
+                break;
+        }
         _sessions[sessionId] = session;
         return session;
     }
@@ -190,6 +202,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.ProgressTracker.SetResult(mediaContent);
         session.Status = UploadStatus.Completed;
         session.LastUpdatedAt = Now;
+        session.MediaContent = mediaContent;
         await _repo.Save(session).ConfigureAwait(false);
     }
 
