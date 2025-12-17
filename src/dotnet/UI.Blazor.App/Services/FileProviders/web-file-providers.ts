@@ -1,5 +1,5 @@
 import { deleteFileHandle, getFileHandle, saveFileHandle } from './file-handle-storage';
-import { grantFileUploadPermissionsInvoker, requestFileHandlePermission } from './file-handle-permissions';
+import { grantFileUploadPermissionsInvoker, requestFileHandlePermission, GetFilePermissionsRequest } from './file-handle-permissions';
 import { Log } from 'logging';
 import { delayAsync, OperationCancelledError, PromiseSource } from 'promises';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
@@ -29,7 +29,7 @@ export class WebFileProviders
         let previewUrl = "";
         try {
             const file = fileResult.file;
-            const provider = new WebFileProvider('', fileResult.fileHandle, file, file.name, null);
+            const provider = new WebFileProvider('', fileResult.fileHandle, file, null);
             previewUrl = provider.createPreviewUrl();
             // @ts-ignore
             const jsObjectReference = DotNet.createJSObjectReference(provider);
@@ -53,8 +53,8 @@ export class WebFileProviders
             return NullableJSObjectReference.create(null);
         }
 
-        const grantedReadPermissionPromise = requestFileHandlePermission(fileHandle, 'read');
-        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, null, fileHandle.name, grantedReadPermissionPromise);
+        const grantedReadPermissionRequest = await requestFileHandlePermission(fileHandle, 'read');
+        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, null, grantedReadPermissionRequest);
         return NullableJSObjectReference.create(provider);
     }
 
@@ -83,30 +83,31 @@ export class WebFileProviders
 
 
 export class WebFileProvider {
+    private readonly userConsentRequest: GetFilePermissionsRequest | null;
+    private readonly whenUserConsentGrantedSource: PromiseSource<boolean>;
     private previewUrl: string | null = null;
     private fileUpload: ChunkedFileUpload | null;
     private userConsentGranted : boolean | null = null;
     private resolvedFile: Blob | null;
-    private readonly whenUserConsentGrantedSource: PromiseSource<boolean>;
 
     constructor(
         private fileHandleDbKey: string,
         private readonly fileHandle: FileSystemFileHandle | null,
         private readonly file: Blob | null,
-        fileName: string,
-        whenUserConsentGrantedPromise: Promise<boolean> | null,
+        userConsentRequest: GetFilePermissionsRequest | null,
     )
     {
         if (!this.fileHandle && !this.file)
             throw new Error('No file or file handle provided');
+        this.userConsentRequest = userConsentRequest;
         this.whenUserConsentGrantedSource = new PromiseSource<boolean>();
         if (this.file) {
             this.resolvedFile = this.file;
             this.userConsentGranted = true;
             this.whenUserConsentGrantedSource.resolve(true);
         }
-        else if (whenUserConsentGrantedPromise) {
-            whenUserConsentGrantedPromise
+        else if (userConsentRequest) {
+            userConsentRequest.granted
                 .then(async x => {
                     if (x)
                         this.resolvedFile = this.file ?? await this.fileHandle!.getFile();
@@ -134,14 +135,6 @@ export class WebFileProvider {
         return this.previewUrl;
     }
 
-    public revokePreviewUrl() : void
-    {
-        if (!this.previewUrl)
-            return;
-        URL.revokeObjectURL(this.previewUrl);
-        this.previewUrl = null;
-    }
-
     public async saveFileHandleToDb() : Promise<string>
     {
         if (!this.fileHandle)
@@ -154,16 +147,6 @@ export class WebFileProvider {
         await saveFileHandle(fileHandleDbKey, this.fileHandle);
         this.fileHandleDbKey = fileHandleDbKey;
         return fileHandleDbKey;
-    }
-
-    public async removeFileHandleFromDb(): Promise<boolean>
-    {
-        if (this.fileHandleDbKey.length == 0)
-            return false;
-
-        await deleteFileHandle(this.fileHandleDbKey);
-        this.fileHandleDbKey = '';
-        return true;
     }
 
     public start(uploadId: string, blazorRef: DotNet.DotNetObject)
@@ -203,10 +186,31 @@ export class WebFileProvider {
         this.fileUpload = null;
     }
 
-    public dispose()
+    public async clearForRemoving() : Promise<void>
     {
         this.cancel();
         this.revokePreviewUrl();
+        if (this.userConsentRequest)
+            this.userConsentRequest.cancel();
+        await this.removeFileHandleFromDb();
+    }
+
+    private async removeFileHandleFromDb(): Promise<boolean>
+    {
+        if (this.fileHandleDbKey.length == 0)
+            return false;
+
+        await deleteFileHandle(this.fileHandleDbKey);
+        this.fileHandleDbKey = '';
+        return true;
+    }
+
+    private revokePreviewUrl() : void
+    {
+        if (!this.previewUrl)
+            return;
+        URL.revokeObjectURL(this.previewUrl);
+        this.previewUrl = null;
     }
 
     private GetFile() : Blob
