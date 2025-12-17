@@ -79,12 +79,11 @@ public partial class WebFileProvider : IFileProvider
     public async Task ClearForRemoving()
     {
         if (WebFileProviderInternal is not null) {
-            await WebFileProviderInternal.RevokePreviewUrl().ConfigureAwait(false);
-            await WebFileProviderInternal.DeleteFileHandleFromDb().ConfigureAwait(false);
-            return;
+            await WebFileProviderInternal.ClearForRemoving().ConfigureAwait(false);
+            await WebFileProviderInternal.DisposeAsync().ConfigureAwait(false);
         }
-
-        await WebFileProviders.DeleteFileHandleFromDb(JS, FileHandleDbKey).ConfigureAwait(false);
+        else
+            await WebFileProviders.DeleteFileHandleFromDb(JS, FileHandleDbKey).ConfigureAwait(false);
     }
 
     public Task<string> GetPreviewUrl()
@@ -105,18 +104,17 @@ public partial class WebFileProvider : IFileProvider
     }
 }
 
-public interface IWebFileProviderInternal
+public interface IWebFileProviderInternal : IAsyncDisposable
 {
     ValueTask<string> CreatePreviewUrl();
-    ValueTask RevokePreviewUrl();
     ValueTask<string> SaveFileHandleToDb();
-    ValueTask<bool> DeleteFileHandleFromDb();
     Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct);
     Task<bool> WhenUserConsentGranted();
     Task WhenFileStreamReady();
+    Task ClearForRemoving();
 }
 
-public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposable
+public class WebFileProviderInternal : IWebFileProviderInternal
 {
     private readonly IJSObjectReference _jsRef;
     private bool _disposed;
@@ -149,20 +147,14 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
         return _previewUrl;
     }
 
-    public async ValueTask RevokePreviewUrl()
+    public async Task ClearForRemoving()
     {
-        if (_previewUrl is null)
-            return;
-
-        await _jsRef.InvokeVoidAsync("revokePreviewUrl", _cancellationToken).ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("clearForRemoving", _cancellationToken).ConfigureAwait(false);
         _previewUrl = null;
     }
 
     public ValueTask<string> SaveFileHandleToDb()
         => _jsRef.InvokeAsync<string>("saveFileHandleToDb", _cancellationToken);
-
-    public ValueTask<bool> DeleteFileHandleFromDb()
-        => _jsRef.InvokeAsync<bool>("removeFileHandleFromDb", _cancellationToken);
 
     public async Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
     {
@@ -206,7 +198,7 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
 
         _disposed = true;
         _cancellationTokenSource.CancelAndDisposeSilently();
-        await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
+        await _jsRef.DisposeSilentlyAsync().ConfigureAwait(false);
     }
 }
 
@@ -215,14 +207,11 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
     public ValueTask<string> CreatePreviewUrl()
         => throw new NotSupportedException();
 
-    public ValueTask RevokePreviewUrl()
-        => ValueTask.CompletedTask;
-
     public ValueTask<string> SaveFileHandleToDb()
         => throw new NotSupportedException();
 
-    public ValueTask<bool> DeleteFileHandleFromDb()
-        => WebFileProviders.DeleteFileHandleFromDb(jsRuntime, fileHandleDbKey);
+    public Task ClearForRemoving()
+        => WebFileProviders.DeleteFileHandleFromDb(jsRuntime, fileHandleDbKey).AsTask();
 
     public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
         => throw new NotSupportedException();
@@ -232,6 +221,9 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
 
     public Task WhenFileStreamReady()
         => throw new NotSupportedException();
+
+    public ValueTask DisposeAsync()
+        => ValueTask.CompletedTask;
 }
 
 internal static class WebFileProviders
