@@ -11,8 +11,6 @@
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
-
-    var uploadStyle = $"width: {progress}%;";
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -20,48 +18,34 @@
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
-            @if (attachment.IsImage) {
-                <img src="@_previewUrl" alt="Image attachment" class="@plugClass"/>
-                @if (_showBrokenPlug || _showWaitingPlug) {
-                    <div class="c-plug">
-                        <div class="c-wrapper">
-                            @if (_showWaitingPlug) {
-                                <i class="icon-file-blocked text-2xl"></i>
-                            } else if (_showBrokenPlug) {
-                                <i class="icon-file-broken text-2xl"></i>
-                            }
-                        </div>
+            @if (_state is PreviewAccessState.Ok) {
+                @if (attachment.IsImage) {
+                    <img src="@_previewUrl" alt="Image attachment" class="@plugClass"/>
+                } else if (attachment.IsVideo) {
+                    <video preload="metadata" class="@plugClass">
+                        <source src="@_previewUrl#t=0.5"/>
+                    </video>
+                }
+                @if (!attachment.Uploaded) {
+                    @if (attachment.IsUploading) {
+                        <span class="spinner-icon-wrapper">
+                            <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
+                        </span>
+                    } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
+                        <span class="reload-icon-wrapper">
+                            <ButtonRound Click="@RestartClick" Class="btn-sm">
+                                <i class="icon-sync text-2xl"></i>
+                            </ButtonRound>
+                        </span>
+                    }
+                }
+            } else {
+                var iconCls = _state is PreviewAccessState.PendingGetAccessRequest ? "icon-file-blocked" : "icon-file-broken";
+                <div class="c-plug">
+                    <div class="c-wrapper">
+                        <i class="@iconCls text-2xl"></i>
                     </div>
-                }
-            } else if (attachment.IsVideo) {
-                _lastPreviewUrl = _previewUrl;
-                <video @key="_renderKey" preload="metadata" class="@plugClass">
-                    <source src="@_previewUrl#t=0.5"/>
-                </video>
-                @if (_showBrokenPlug || _showWaitingPlug) {
-                    <div class="c-plug">
-                        <div class="c-wrapper">
-                            @if (_showWaitingPlug) {
-                                <i class="icon-file-blocked text-2xl"></i>
-                            } else if (_showBrokenPlug) {
-                                <i class="icon-file-broken text-2xl"></i>
-                            }
-                        </div>
-                    </div>
-                }
-            }
-            @if (!attachment.Uploaded && !(_showBrokenPlug || _showWaitingPlug)) {
-                @if (attachment.IsUploading) {
-                    <span class="spinner-icon-wrapper">
-                        <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                    </span>
-                } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
-                    <span class="reload-icon-wrapper">
-                        <ButtonRound Click="@RestartClick" Class="btn-sm">
-                            <i class="icon-sync text-2xl"></i>
-                        </ButtonRound>
-                    </span>
-                }
+                </div>
             }
         </div>
         <div class="attachment-filename" title="@attachment.FileName">
@@ -71,17 +55,13 @@
                 <span>&nbsp;</span>
             }
         </div>
-        <div class="@uploadProgressClass" style="@uploadStyle"></div>
+        <div class="@uploadProgressClass" style="@($"width: {progress}%;")"></div>
     </div>
 </li>
 
 @code {
-    private long _index;
-    private string _renderKey = "";
-    private string _lastPreviewUrl = "";
+    private PreviewAccessState _state;
     private string _previewUrl = "";
-    private bool _showBrokenPlug;
-    private bool _showWaitingPlug;
 
     [Parameter] public Attachment Attachment { get; set; } = null!;
     [Parameter] public EventCallback RemoveClick { get; set; }
@@ -89,28 +69,23 @@
 
     protected override void OnParametersSet() {
         _previewUrl = "";
-        _showBrokenPlug = false;
-        _showWaitingPlug = false;
         if (Attachment.GetPreviewUrl.IsCompleted) {
             var previewUrl = Attachment.PreviewUrl;
             if (!previewUrl.IsNullOrEmpty()) {
                 // Preview properly resolved.
+                _state = PreviewAccessState.Ok;
                 _previewUrl = previewUrl;
             } else {
                 // Did not get file permissions.
-                _showBrokenPlug = true;
+                _state = PreviewAccessState.NoFileAccess;
             }
         } else {
-            _showWaitingPlug = true;
+            _state = PreviewAccessState.PendingGetAccessRequest;
         }
+    }
 
-        if (_previewUrl.IsNullOrEmpty() && Attachment.IsImage)
-            _previewUrl = ""; // substituteUrl; // Wait for real substitution images
-
-        if (Attachment.IsVideo && _previewUrl != _lastPreviewUrl) {
-            // Otherwise, video seems does not react on source change.
-            _index++;
-            _renderKey = _index.ToInvariantString();
-        }
+    // Nested types
+    private enum PreviewAccessState {
+        Ok, NoFileAccess, PendingGetAccessRequest
     }
 }
