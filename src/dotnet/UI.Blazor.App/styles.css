@@ -31,6 +31,7 @@
 @import './Components/ChatMessageEditor/chat-message-editor.css';
 @import './Components/DateVisor/date-visor.css';
 @import './Components/Discover/discover.css';
+@import './Components/FontSizeSlider/font-size-slider.css';
 @import './Components/ForwardMessage/forward-message-modal.css';
 @import './Components/GrantFileUploadsSubHeader/grant-file-uploads-subheader.css';
 @import './Components/HistoricalPlaybackSubHeader/historical-playback-subheader.css';

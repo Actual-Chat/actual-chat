@@ -1,5 +1,13 @@
+@inherits ComponentBase<AppUIHub>
 @{
 #pragma warning disable IL2091
+}
+@if (ScreenSize.IsNarrow()) {
+    <Tile Class="font-size-tile">
+        <div class="ui-settings">
+            <FontSizeSlider/>
+        </div>
+    </Tile>
 }
 
 <TileTopic Topic="Theme"/>
@@ -7,76 +15,8 @@
     <ThemeSettings/>
 </Tile>
 
-<TileTopic Topic="Font"/>
-<Tile>
-    <div class="ui-settings">
-        <Form Model="@_formModel">
-            <DataAnnotationsValidator/>
-
-            <FormBlock>
-                <FormSection
-                    For="() => _formModel.UserFontSizeFormId"
-                    InputId="@_formModel.UserFontSizeFormId"
-                    IsLabelInsideInput="true"
-                    HideValidationMessage="true"
-                    Label="Font size">
-                    <InputSelect
-                        Value="_formModel.UserFontSizeFormId"
-                        ValueExpression="@(() => _fontSize)"
-                        ValueChanged="@(async (string fontTitle) => await OnFontSizeChanged(fontTitle))">
-                        @if (_fontSizes != null) {
-                            foreach (var size in _fontSizes) {
-                                if (size == _fontSize) {
-                                    <option selected value="@size">@size</option>
-                                } else {
-                                    <option value="@size">@size</option>
-                                }
-                            }
-                        }
-                    </InputSelect>
-                </FormSection>
-            </FormBlock>
-        </Form>
-    </div>
-</Tile>
-
 @code {
-    private FormModel _formModel = null!;
-    private string[]? _fontSizes;
-    private string? _fontSize;
-
-    [Inject] private UIHub Hub { get; init; } = null!;
-    private FontSizeUI FontSizeUI => Hub.FontSizeUI;
-    private ComponentIdGenerator ComponentIdGenerator => Hub.ComponentIdGenerator;
     private ILogger<UserInterface> Log => field ??= Hub.LogFor<UserInterface>();
 
-    protected override void OnInitialized() {
-        _formModel = new (ComponentIdGenerator);
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            await FontSizeUI.FontSize.WhenFirstTimeRead;
-            _fontSizes = await FontSizeUI.List(CancellationToken.None);
-            _fontSize = FontSizeUI.FontSize.Value;
-            StateHasChanged();
-        }
-    }
-
-    private async ValueTask OnFontSizeChanged(string fontSize) {
-        FontSizeUI.FontSize.Value = fontSize;
-        await FontSizeUI.FontSize.WhenWritten(CancellationToken.None);
-        _fontSize = FontSizeUI.FontSize.Value;
-        StateHasChanged();
-    }
-
-    public sealed class FormModel {
-        private string FormId { get; }
-        public string UserFontSizeFormId { get; }
-
-        public FormModel(ComponentIdGenerator componentIdGenerator) {
-            FormId = componentIdGenerator.Next("font-size-form");
-            UserFontSizeFormId = $"{FormId}-user-font-size";
-        }
-    }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 }
