@@ -1833,6 +1833,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (transcription is null)
             return;
 
+        if (ShouldSkipTranscriptUpdate(textEntry, transcription)) {
+            Log.LogDebug("Skip updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
+            return;
+        }
+
         Log.LogDebug("Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
         var timeMap = transcription.TimeMap;
         if (timeMap.IsDegenerate && !textEntry.TimeMap.IsDegenerate) {
@@ -1848,7 +1853,23 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 Content = transcription.Text,
                 TimeMap = timeMap,
             })), cancellationToken).ConfigureAwait(false);
-    }      // Event handlers
+        return;
+
+        static bool ShouldSkipTranscriptUpdate(ChatEntry textEntry, Transcript transcription)
+        {
+            var text = textEntry.Content;
+            var newText = transcription.Text;
+            if (newText.Length >= text.Length)
+                return false;
+            if (text.Length < 25)
+                return false;
+            if (text.Length > 50)
+                return newText.Length < 0.9 * text.Length;
+            return newText.Length < 0.8 * text.Length;
+        }
+    }
+
+    // Event handlers
 
     // [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
