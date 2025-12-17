@@ -123,23 +123,23 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
 
         if (Settings.IsSummarizationEnabled) {
-            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.OpenAIChatModel, Settings.OpenAIApiKey);
+            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.Summarization.OpenAIModel, Settings.Summarization.OpenAIKey, Settings.Summarization.HttpTimeout);
             services.AddSingleton<IConversationSummarizer>(
                 c => new ConversationSummarizer(
                     new ConversationSummarizer.Options {
-                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.SummarizeConversationPromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Summarization.SummarizeConversationPromptFile,
                     },
                     c));
             services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>(
                 c => new ThreadInsightExtractor(
                     new ThreadInsightExtractor.Options {
-                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.SuggestChatThreadTitlePromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Summarization.SuggestChatThreadTitlePromptFile,
                     },
                     c));
             services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizer>(
                 c => new ChatDigestSummarizer(
                     new ChatDigestSummarizer.Options {
-                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.SummarizeChatDigestPromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Summarization.SummarizeChatDigestPromptFile,
                     },
                     c));
         }
@@ -237,9 +237,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         };
         services.AddKeyedSingleton(serviceKey, httpClient); // for disposal
         if (openAIKey.IsNullOrEmpty())
-            openAIKey = Settings.OpenAIApiKey;
+            openAIKey = Settings.OpenAIKey;
         if (openAIModel.IsNullOrEmpty())
-            openAIModel = Settings.OpenAIChatModel;
+            openAIModel = Settings.OpenAIModel;
 
         // unlimited
         var unlimitedServiceKey = serviceKey + "_Unlimited";

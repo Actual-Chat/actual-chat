@@ -93,7 +93,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 new Range<long>(firstEntry.LocalId, lastEntry.LocalId + 1)
             ) {
                 DelayUntil = existingConversationIds.Length == 0
-                    ? now + (2 * Settings.ChatEntrySummarizationDelay)
+                    ? now + (2 * Settings.Summarization.ChatEntrySummarizationDelay)
                     : default,
             };
             await Services.Queues().Enqueue(appendReply, cancellationToken).ConfigureAwait(false);
@@ -110,10 +110,10 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         }
 
         foreach (var group in groups) {
-            if (group.WordCount < Settings.MinConversationWords)
+            if (group.WordCount < Settings.Summarization.MinConversationWords)
                 continue;
 
-            if (group.Entries.Count < Settings.MinConversationEntries)
+            if (group.Entries.Count < Settings.Summarization.MinConversationEntries)
                 continue;
 
             var idRanges = group.LocalIdRanges;
@@ -132,11 +132,11 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             var rangesAreEqual = lastRanges.SequenceEqual(currentRanges);
             var hasCurrentRanges = currentRanges.Count > 0;
 
-            var tooOften = LastSummaryAt + Settings.ChatEntrySummarizationDelay >= now;
+            var tooOften = LastSummaryAt + Settings.Summarization.ChatEntrySummarizationDelay >= now;
             var readyToSummarize =
                 state.CurrentGroup != null
-                && state.WordCount >= Settings.MinConversationWords
-                && state.EntryCount >= Settings.MinConversationEntries
+                && state.WordCount >= Settings.Summarization.MinConversationWords
+                && state.EntryCount >= Settings.Summarization.MinConversationEntries
                 && !rangesAreEqual;
 
             if (hasEntries)
@@ -162,7 +162,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
             // Schedule next resume
             if (hasImmature || (tooOften && !rangesAreEqual && hasCurrentRanges))
-                Runtime.StageResumeIn(Settings.ChatEntrySummarizationDelay);
+                Runtime.StageResumeIn(Settings.Summarization.ChatEntrySummarizationDelay);
             return;
         }
 
@@ -172,7 +172,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         if (hasMore)
             Runtime.StageResume(); // Continue immediately
         else if (hasImmature)
-            Runtime.StageResumeIn(Settings.ChatEntrySummarizationDelay);
+            Runtime.StageResumeIn(Settings.Summarization.ChatEntrySummarizationDelay);
     }
 
     // Private methods
@@ -183,7 +183,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
     {
         var now = ResumedAt;
         var chatId = ChatId;
-        var immatureMoment = now - Settings.ChatEntrySummarizationDelay;
+        var immatureMoment = now - Settings.Summarization.ChatEntrySummarizationDelay;
 
         // Fetch up to (BatchSize + 1) items
         var entries = await ChatsBackend.ListNewEntries(chatId, lastId, BatchSize + 1, cancellationToken).ConfigureAwait(false);

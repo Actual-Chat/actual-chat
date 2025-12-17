@@ -2055,7 +2055,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var endsAt = Moment.Max(entry.GetEndsAt(), Clocks.SystemClock.Now);
             await FlowHub
                 .NewResumeEvent<ConversationSplitFlow>(chat.Id.Value)
-                .WithDelay(endsAt + Settings.ChatEntrySummarizationDelay, Settings.ChatEntrySummarizationDelayQuanta)
+                .WithDelay(endsAt + Settings.Summarization.ChatEntrySummarizationDelay, Settings.Summarization.ChatEntrySummarizationDelayQuanta)
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
         }
