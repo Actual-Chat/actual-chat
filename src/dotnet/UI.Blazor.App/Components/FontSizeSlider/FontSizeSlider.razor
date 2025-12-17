@@ -1,0 +1,62 @@
+@using ActualChat.UI.Blazor.App.Module
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<div @ref="Ref" class="font-size-slider">
+    <label>
+        <span class="slider-text">Font size: @_fontSize</span>
+        <input
+            class="slider-input"
+            type="range"
+            id="fontSizeSlider"
+        />
+    </label>
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.FontSizeSlider.create";
+
+    private DotNetObjectReference<FontSizeSlider> BlazorRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; }
+    private ElementReference Ref { get; set; }
+
+    private string[]? _fontSizes;
+    private string? _fontSize;
+
+    private FontSizeUI FontSizeUI => Hub.FontSizeUI;
+
+    protected override async Task OnInitializedAsync() {
+        await FontSizeUI.FontSize.WhenFirstTimeRead;
+        _fontSizes = await FontSizeUI.List(CancellationToken.None);
+        _fontSize = FontSizeUI.FontSize.Value;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSCreateMethod,
+                Ref,
+                BlazorRef,
+                _fontSizes,
+                _fontSize
+            );
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnFontSizeChangedFromJs(int index) {
+        if (_fontSizes == null)
+            return;
+
+        var newValue = _fontSizes[index];
+        if (newValue == FontSizeUI.FontSize.Value)
+            return;
+
+        FontSizeUI.FontSize.Value = newValue;
+        await FontSizeUI.FontSize.WhenWritten(CancellationToken.None);
+
+        _fontSize = newValue;
+        await InvokeAsync(StateHasChanged);
+    }
+}
