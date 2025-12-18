@@ -67,6 +67,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
 
         await DumpEventCount($"after awaiting {eventCount} events");
         countComputed.Value.Should().BeGreaterThanOrEqualTo(eventCount);
+        return;
 
         async Task DumpEventCount(string point) {
             countComputed = await countComputed.Update();
@@ -93,7 +94,11 @@ public class NatsQueueTest(ITestOutputHelper @out)
         var testService = (ScheduledCommandTestService)services.GetRequiredService<IScheduledCommandTestService>();
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await queues.Enqueue(new AddBothTestEventsCommandWithShardKey { ShardKey = 7 });
+        var command = new AddBothTestEventsCommandWithShardKey { ShardKey = 7 };
+        var queueRef = QueueRef.For(command, services);
+        queueRef.ShardScheme.Should().Be(ShardScheme.SlowQueue);
+
+        await queues.Enqueue(command);
         await queues.WhenProcessing();
 
         testService.ProcessedEvents.Count.Should().Be(2);

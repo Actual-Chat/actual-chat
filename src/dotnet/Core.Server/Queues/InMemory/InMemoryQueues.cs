@@ -2,16 +2,13 @@ using ActualChat.Queues.Internal;
 
 namespace ActualChat.Queues.InMemory;
 
-public sealed class InMemoryQueues : QueuesBase<InMemoryQueues.Options, InMemoryQueueProcessor>
+public sealed class InMemoryQueues : QueuesBase<InMemoryQueues.Options>
 {
     public sealed record Options : QueueSettings
     {
         public int MaxQueueSize { get; init; } = 1024;
         public int MaxKnownCommandCount { get; init; } = 10_000;
         public TimeSpan MaxKnownCommandAge { get; init; } = TimeSpan.FromHours(1);
-
-        public Options()
-            => UseSingleQueue = true;
     }
 
     private readonly InMemoryQueueProcessor _processor;

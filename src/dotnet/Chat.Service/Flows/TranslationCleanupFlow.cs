@@ -8,9 +8,13 @@ namespace ActualChat.Chat.Flows;
 public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
 {
     private const int BatchSize = 50;
+
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private ITranslationsBackend TranslationsBackend => field ??= Services.GetRequiredService<ITranslationsBackend>();
     private ICommander Commander => field ??= Services.Commander();
+
+    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
+        => new(LastRunAt + Settings.Translation.CleanupInterval);
 
     protected override async Task Run(CancellationToken cancellationToken)
     {
@@ -39,7 +43,4 @@ public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
                 .WithErrorLog(cancellationToken, Runtime.Log, "Failed to clean up translation #{Id}", translation.Id);
         }
     }
-
-    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
-        => new(LastRunAt + Settings.Translation.CleanupInterval);
 }

@@ -133,7 +133,7 @@ public partial class FlowData<TFlow> : IFlowData
         lock (_lock) { // Double-check locking
             if (_flow is not null) return _flow;
 
-            var expectedDataVersion = hub.Registry.DataVersions[typeof(TFlow)];
+            var expectedDataVersion = hub.Defs.Get(typeof(TFlow)).DataVersion;
             if (DataVersion < expectedDataVersion) {
                 _flow = DeserializeWithoutData();
                 hub.Log.LogInformation(

@@ -74,7 +74,7 @@ public abstract class Flow : IFlowImpl
 
     // Overridable methods
 
-    protected abstract ValueTask Init(CancellationToken cancellationToken);
+    protected virtual ValueTask Init(CancellationToken cancellationToken) => default;
     protected abstract ValueTask Resume(CancellationToken cancellationToken);
 
     // Protected methods
@@ -100,13 +100,13 @@ public abstract class Flow : IFlowImpl
         var runtime = Runtime = CreateRuntime(hub, cancellationToken);
         ResumedAt = runtime.Hub.Clocks.SystemClock.Now;
         try {
-            var expectedDataVersion = hub.Registry.DataVersions[GetType()];
+            var flowDef = hub.Defs.Get(GetType());
             var exitReason = (string?)null;
-            if (mustReset || DataVersion < expectedDataVersion) {
+            if (mustReset || DataVersion < flowDef.DataVersion) {
                 var initReason = mustReset ? "explicit reset" : "new flow or data version mismatch";
                 Console.Log($"[Init] - {initReason}");
                 await Init(cancellationToken).ConfigureAwait(false);
-                DataVersion = expectedDataVersion;
+                DataVersion = flowDef.DataVersion;
             }
             if (UntypedResult is not null) {
                 exitReason = "result is set";

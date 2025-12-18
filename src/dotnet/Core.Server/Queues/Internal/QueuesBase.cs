@@ -6,16 +6,13 @@ namespace ActualChat.Queues.Internal;
 
 public abstract record QueueSettings
 {
-    public bool UseSingleQueue { get; init; } = false;
-    public QueueRef SingleQueueRef { get; init; } = ShardScheme.EventQueue;
     public int ConcurrencyLevel { get; init; } = HardwareInfo.GetProcessorCountFactor(8);
-    public TimeSpan ProcessCancellationDelay { get; init; } = TimeSpan.FromSeconds(5);
+    public TimeSpan GracefulStopDelay { get; init; } = TimeSpan.FromSeconds(5);
     public MomentClock? Clock { get; init; }
 }
 
-public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
+public abstract class QueuesBase<TSettings> : WorkerBase, IQueues
     where TSettings : QueueSettings
-    where TProcessor : class, IQueueProcessor
 {
     private ILogger Log { get; }
 
@@ -25,7 +22,6 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
 
     public TSettings Settings { get; }
     public IReadOnlyDictionary<QueueRef, IQueueProcessor> Processors { get; protected set; } = null!;
-    public IQueueProcessor? SingleQueueProcessor { get; protected set; }
 
     protected QueuesBase(TSettings settings, IServiceProvider services, bool createProcessors = true)
         : base(services.HostLifetimeIfExist().CreateStopTokenSource())
@@ -46,7 +42,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     public IQueueSender GetSender(QueueRef queueRef)
     {
         queueRef.RequireValid();
-        return SingleQueueProcessor ?? Processors[queueRef];
+        return Processors[queueRef];
     }
 
     public abstract Task Purge(CancellationToken cancellationToken = default);
@@ -58,15 +54,11 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
     protected void CreateProcessors()
     {
         var queueRefs = ShardScheme.ById.Values
-            .Where(x => x.IsValid)
+            .Where(x => x.IsValid && x.Flags.HasFlag(ShardSchemeFlags.Queue))
             .Select(x => new QueueRef(x))
             .Distinct();
-        if (Settings.UseSingleQueue)
-            queueRefs = queueRefs.Where(x => x == Settings.SingleQueueRef);
 
         Processors = queueRefs.ToDictionary(x => x, CreateProcessor);
-        if (Settings.UseSingleQueue)
-            SingleQueueProcessor = Processors[Settings.SingleQueueRef];
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -74,7 +66,7 @@ public abstract class QueuesBase<TSettings, TProcessor> : WorkerBase, IQueues
         var queueProcessors = Processors
             .Where(kv => HostInfo.HasRole(kv.Key.ShardScheme.HostRole))
             .ToArray();
-       var sQueueProcessors = queueProcessors
+        var sQueueProcessors = queueProcessors
             .Select(p => p.Key.ShardScheme.Name)
             .ToDelimitedString()
             .NullIfEmpty()

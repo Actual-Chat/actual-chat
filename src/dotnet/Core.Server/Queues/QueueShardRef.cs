@@ -14,6 +14,14 @@ public readonly struct QueueShardRef : ICanBeNone<QueueShardRef>, IEquatable<Que
     public bool IsUndefined => QueueRef.IsUndefined;
     public bool IsValid => QueueRef.IsValid;
 
+    public static QueueShardRef For(ICommand command, IServiceProvider services)
+    {
+        var queueRef = QueueRef.For(command, services);
+        var shardKeyResolver = ShardKeyResolvers.GetUntyped(command.GetType());
+        var shardKey = shardKeyResolver.Invoke(command);
+        return new QueueShardRef(queueRef, shardKey);
+    }
+
     public QueueShardRef(int key)
         : this(QueueRef.Undefined, key) { }
     public QueueShardRef(long key)

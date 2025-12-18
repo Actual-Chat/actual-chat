@@ -1,4 +1,5 @@
 using ActualChat.Diagnostics;
+using ActualLab.Resilience;
 using Microsoft.Extensions.Primitives;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
@@ -7,6 +8,10 @@ namespace ActualChat.Queues;
 
 public static class QueuesExt
 {
+    public static readonly TimeSpan QueueTimeout = TimeSpan.FromSeconds(15);
+    public static readonly TimeSpan SlowQueueTimeout = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan DefaultTimeout = QueueTimeout;
+
     // Enqueue
 
     public static async Task Enqueue<TCommand>(this IQueues queues,
@@ -30,11 +35,9 @@ public static class QueuesExt
         QueuedCommand queuedCommand,
         CancellationToken cancellationToken = default)
     {
-        var queueRefResolver = queues.Services.GetRequiredService<IQueueRefResolver>();
-        var command = queuedCommand.UntypedCommand;
-        var queueShardRef = queueRefResolver.GetQueueShardRef(command);
-        var queueProcessor = queues.GetSender(queueShardRef.QueueRef);
-        return queueProcessor.Enqueue(queueShardRef, queuedCommand, cancellationToken);
+        var queueShardRef = QueueShardRef.For(queuedCommand.UntypedCommand, queues.Services);
+        var sender = queues.GetSender(queueShardRef.QueueRef);
+        return sender.Enqueue(queueShardRef, queuedCommand, cancellationToken);
     }
 
     // WhenProcessing
@@ -46,5 +49,15 @@ public static class QueuesExt
     {
         var tasks = queues.Processors.Values.Select(x => x.WhenProcessing(maxCommandGap, cancellationToken));
         return Task.WhenAll(tasks);
+    }
+
+    // Internal methods
+
+    internal static TimeSpan GetTimeout(ICommand command, IServiceProvider services)
+    {
+        if (command is IComputesTimeout computeTimeout)
+            return computeTimeout.ComputeTimeout(services);
+
+        return (command as IHasTimeout)?.Timeout ?? DefaultTimeout;
     }
 }

@@ -3,8 +3,8 @@ using ActualLab.Generators;
 
 namespace ActualChat.Core.Server.IntegrationTests.Sharding;
 
-public class LegacyShardWorkerTest(ITestOutputHelper @out)
-    : AppHostTestBase($"x-{nameof(LegacyShardWorkerTest)}", TestAppHostOptions.None, @out)
+public class ShardWorkerTest(ITestOutputHelper @out)
+    : AppHostTestBase($"x-{nameof(ShardWorkerTest)}", TestAppHostOptions.None, @out)
 {
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
@@ -105,12 +105,13 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
     // Nested types
 
     private class SimpleShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
-        : LegacyShardWorker(services, ShardScheme.TestBackend)
+        : ShardWorker(services, ShardScheme.TestBackend)
     {
         private ITestOutputHelper Out { get; } = @out;
 
-        protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
+        protected override async Task OnRun(ShardOwnership shardOwnership, CancellationToken cancellationToken)
         {
+            var shardIndex = shardOwnership.ShardIndex;
             var thisNode = ShardOwner.Host.ThisNode;
             Out.WriteLine($"-> OnRun({shardIndex} @ {thisNode.Ref}-{name})");
             await TaskExt.NeverEnding(cancellationToken).SilentAwait();
@@ -119,7 +120,7 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
     }
 
     private class ChannelShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
-        : LegacyShardWorker(services, ShardScheme.TestBackend)
+        : ShardWorker(services, ShardScheme.TestBackend)
     {
         private static readonly HashSet<ChannelShardWorker>[] ShardOwners
             = Enumerable
@@ -139,8 +140,9 @@ public class LegacyShardWorkerTest(ITestOutputHelper @out)
             return $"{thisNode.Ref}-{name}";
         }
 
-        protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
+        protected override async Task OnRun(ShardOwnership shardOwnership, CancellationToken cancellationToken)
         {
+            var shardIndex = shardOwnership.ShardIndex;
             @out.WriteLine($"-> OnRun({shardIndex} @ {this})");
             lock (ShardOwners) {
                 var shardOwners = ShardOwners[shardIndex];

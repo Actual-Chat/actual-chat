@@ -7,7 +7,7 @@ using NATS.Client.JetStream.Models;
 namespace ActualChat.Queues.Nats;
 
 public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProvider services)
-    : QueuesBase<NatsQueues.Options, NatsQueueProcessor>(settings, services)
+    : QueuesBase<NatsQueues.Options>(settings, services)
 {
     public sealed record Options : QueueSettings
     {

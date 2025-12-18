@@ -8,8 +8,9 @@ namespace ActualChat.Queues.Internal;
 
 public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQueueProcessor
     where TQueues : IQueues
+    where TSettings : QueueSettings
 {
-    private static bool DebugMode => Constants.DebugMode.QueueProcessor;
+    private static bool DebugMode => Constants.DebugMode.QueueProcessors;
 
     private long _lastCommandCompletedAt;
 
@@ -50,10 +51,19 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
     protected abstract bool MarkKnown(QueuedCommand command);
     protected abstract void MarkUnknown(QueuedCommand command);
 
-    protected virtual async ValueTask Process(QueuedCommand queuedCommand, CancellationToken cancellationToken)
+    protected async ValueTask Process(QueuedCommand queuedCommand, CancellationToken cancellationToken)
     {
         if (!MarkKnown(queuedCommand))
             return;
+
+        var command = queuedCommand.UntypedCommand;
+        var kind = command.GetKind();
+        var timeout = QueuesExt.GetTimeout(queuedCommand.UntypedCommand, Services);
+        DebugLog?.LogDebug("Running queued {Kind}: {Command}", kind, queuedCommand);
+
+        using var timeoutCts = cancellationToken.CreateLinkedTokenSource();
+        var timeoutToken = timeoutCts.Token;
+        timeoutCts.CancelAfter(timeout);
 
         ActivityContext senderContext = default;
         IEnumerable<ActivityLink>? links = null;
@@ -69,12 +79,15 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
         using var activity = CoreServerInstruments.ActivitySource
             .StartActivity(operationName, ActivityKind.Consumer, senderContext, links: links);
 
-        var command = queuedCommand.UntypedCommand;
-        var kind = command.GetKind();
-        DebugLog?.LogDebug("Running queued {Kind}: {Command}", kind, queuedCommand);
         try {
-            // This call takes care of reprocessing
-            await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+            try {
+                // This call takes care of reprocessing
+                await Commander.Call(command, true, timeoutToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e.IsCancellationOfTimeoutToken(timeoutToken, cancellationToken)) {
+                throw StandardError.Timeout($"Queued {kind}");
+            }
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             await MarkCompleted(queuedCommand, cancellationToken).ConfigureAwait(false);
             activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
         }
@@ -83,10 +96,12 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
                 activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
                 activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
                 DebugLog?.LogDebug(e, "Queued {Kind} postponed: {Command}", kind, queuedCommand);
+                // ReSharper disable once PossiblyMistakenUseOfCancellationToken
                 await MarkPostponed(queuedCommand, pe.Delay, cancellationToken).ConfigureAwait(false);
                 return;
             }
             Log.LogError(e, "Queued {Kind} failed: {Command}", kind, queuedCommand);
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             await MarkFailed(queuedCommand, e, cancellationToken).ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested) {
                 activity?.SetStatus(ActivityStatusCode.Ok, e.Message);

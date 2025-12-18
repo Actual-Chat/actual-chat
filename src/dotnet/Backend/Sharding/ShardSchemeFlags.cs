@@ -7,6 +7,6 @@ public enum ShardSchemeFlags
 {
     Queue = 0x1,
     SlowQueue = 0x2 + Queue,
-    Backend = 0x10 + Queue,
+    Backend = 0x10,
     Special = 0x100,
 }

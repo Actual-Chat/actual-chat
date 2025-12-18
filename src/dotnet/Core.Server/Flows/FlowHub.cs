@@ -10,7 +10,7 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
     internal ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
     public IServiceProvider Services { get; } = services;
-    public FlowRegistry Registry { get; } = services.GetRequiredService<FlowRegistry>();
+    public FlowDefs Defs { get; } = services.GetRequiredService<FlowDefs>();
     public IFlowBackend Backend => field ??= Services.GetRequiredService<IFlowBackend>();
     public ICommander Commander { get; } = services.Commander();
     public IQueues Queues { get; } = services.Queues();
@@ -21,19 +21,22 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
 
     public FlowId NewId<TFlow>(string arguments)
         where TFlow : Flow
-        => new (Registry.NameByType[typeof(TFlow)], arguments);
+        => new (Defs.ByType[typeof(TFlow)].Name, arguments);
 
     public FlowId NewId<TFlow>(params ReadOnlySpan<string> arguments)
         where TFlow : Flow
-        => new (Registry.NameByType[typeof(TFlow)], FlowId.CombineArguments(arguments));
+        => new (Defs.ByType[typeof(TFlow)].Name, FlowId.CombineArguments(arguments));
 
     public FlowId NewId(Type flowType, string arguments)
-        => new (Registry.NameByType[flowType], arguments);
+        => new (Defs.ByType[flowType].Name, arguments);
 
     public FlowId NewId(Type flowType, params ReadOnlySpan<string> arguments)
-        => new (Registry.NameByType[flowType], FlowId.CombineArguments(arguments));
+        => new (Defs.ByType[flowType].Name, FlowId.CombineArguments(arguments));
 
     // NewResumeEvent
+
+    public FlowResumeEvent NewResumeEvent(FlowId flowId)
+        => new(flowId, this);
 
     public FlowResumeEvent NewResumeEvent<TFlow>(string arguments)
         where TFlow : Flow

@@ -12,12 +12,6 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public HashSet<string> AppliedMigrations { get; set; } = new (StringComparer.Ordinal);
 
-    protected override ValueTask Init(CancellationToken cancellationToken)
-    {
-        AppliedMigrations = new (StringComparer.Ordinal);
-        return default;
-    }
-
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         if (!AppliedMigrations.Contains(nameof(StartDigestFlows))) {
