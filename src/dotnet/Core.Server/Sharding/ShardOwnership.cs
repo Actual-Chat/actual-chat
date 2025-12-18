@@ -18,7 +18,10 @@ public sealed class ShardOwnership : RunnableRunner
         LockHolder = lockHolder;
         ShardOwner = shardState.ShardOwner;
         ShardIndex = shardState.ShardIndex;
-        LockToken = lockHolder.StopToken;
-        AcquiredAt = ShardOwner.Host.Clock.Now;
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (lockHolder is not null) { // lockHolder can be null in tests
+            LockToken = lockHolder.StopToken;
+            AcquiredAt = ShardOwner.Host.Clock.Now;
+        }
     }
 }
