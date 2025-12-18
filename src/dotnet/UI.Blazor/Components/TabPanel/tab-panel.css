@@ -14,7 +14,8 @@
     @apply relative;
     @apply justify-evenly;
     @apply w-full;
-    @apply overflow-hidden;
+    @apply overflow-y-hidden overflow-x-auto;
+    scrollbar-width: none;
 }
 .tab-panel-tabs.carousel .btn-group {
     @apply gap-x-2;

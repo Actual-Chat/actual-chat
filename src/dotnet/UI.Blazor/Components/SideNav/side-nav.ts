@@ -186,6 +186,12 @@ class SideNavPullDetectGesture extends Gesture {
             if (editor && editor.contains(event.target as Node))
                 return;
 
+            const tabs = document.querySelectorAll('.tab-panel-tabs');
+            for (const tab of tabs) {
+                if (tab && tab.contains(event.target as Node))
+                    return;
+            }
+
             const prePullDistance = getPrePullDistance(event.target);
             if (!prePullDistance)
                 return;
