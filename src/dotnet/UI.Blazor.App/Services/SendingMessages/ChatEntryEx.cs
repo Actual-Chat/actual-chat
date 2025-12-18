@@ -10,8 +10,6 @@ public static class ChatEntryEx
             return chatEntry.Id.Value;
 
         var useClientId = chatEntry.IsSending || chatEntry.HasAttachmentUploads && isOwnMessage;
-        Log.LogInformation("GetClientId for '{ChatEntryId}' isOwnMessage={IsOwnMessage} -> useClientId={UseClientId}, clientId='{ClientId}'",
-            chatEntry.Id, isOwnMessage, useClientId, chatEntry.ClientUid);
         if (useClientId)
             return chatEntry.ClientUid;
 
