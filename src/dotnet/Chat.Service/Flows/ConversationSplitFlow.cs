@@ -115,11 +115,17 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 continue;
 
             var idRanges = group.LocalIdRanges;
+            if (LastSummaryRanges.SequenceEqual(idRanges))
+                continue;
+
             var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
             await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
             LastSummaryAt = now;
             LastSummaryRanges = idRanges.ToArray();
         }
+
+        if (hasEntries)
+            LastLid = entries[^1].LocalId;
 
         // If we reached the end of the entries, we might want to summarize the last group
         if (!hasMore) {
@@ -137,25 +143,24 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 && state.EntryCount >= Settings.Summarization.MinConversationEntries
                 && !rangesAreEqual;
 
-            if (hasEntries)
-                LastLid = entries[^1].LocalId;
-
             if (readyToSummarize && !tooOften) {
                 // Summarize the current group
                 var groupBuilder = state.CurrentGroup!.AddRange(state.CurrentChunk?.Entries ?? []);
                 var group = groupBuilder.Build();
 
                 var idRanges = group.LocalIdRanges;
-                var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
-                await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+                if (!LastSummaryRanges.SequenceEqual(idRanges)) {
+                    var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
+                    await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
+                    LastSummaryAt = now;
+                    LastSummaryRanges = idRanges.ToArray();
+                }
 
                 // Keep the group if there are immature items, otherwise clear the chunk
                 ExtractorState = new ExtractorState(
                     hasImmature ? groupBuilder : new EntryGroupBuilder(),
                     new EntryGroupBuilder()
                 );
-                LastSummaryAt = now;
-                LastSummaryRanges = idRanges.ToArray();
             }
 
             // Schedule next resume
@@ -163,9 +168,6 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 Runtime.StageResumeIn(Settings.Summarization.ChatEntrySummarizationDelay);
             return;
         }
-
-        if (hasEntries)
-            LastLid = entries[^1].LocalId;
 
         if (hasMore)
             Runtime.StageResume(); // Continue immediately
