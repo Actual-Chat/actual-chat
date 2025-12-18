@@ -181,26 +181,28 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-markup.empty {
     @apply hidden;
 }
-.chat-message-markup.translating .plain-text-markup,
-.chat-message-markup.translating .playable-text-markup {
-    animation: translatingBlur 5s steps(25, end);
+.playable-text-markup,
+.plain-text-markup {
+    animation: var(--text-animation, none);
 }
-.chat-message-markup.to-translated .plain-text-markup,
-.chat-message-markup.to-translated .playable-text-markup {
-    animation: toTranslatedBlur 1.25s steps(10, end) forwards;
+/* Translating */
+.chat-message-markup.translating {
+    --text-animation: translatingBlur 5s steps(25, end);
 }
-.chat-message-markup.to-translated.from-streaming .plain-text-markup,
-.chat-message-markup.to-translated.from-streaming .playable-text-markup {
-    animation: none;
+/* To translated */
+.chat-message-markup.to-translated {
+    --text-animation: toTranslatedBlur 1.25s steps(10, end) forwards;
 }
-.chat-message-markup.from-translated .plain-text-markup,
-.chat-message-markup.from-translated .playable-text-markup {
-    animation: fromTranslatedBlur 1.25s steps(10, end) forwards;
+/* From translated */
+.chat-message-markup.from-translated {
+    --text-animation: fromTranslatedBlur 1.25s steps(10, end) forwards;
 }
-.chat-message-markup.from-translated.from-streaming .plain-text-markup,
-.chat-message-markup.from-translated.from-streaming .playable-text-markup {
-    animation: none;
+/* From streaming */
+.chat-message-markup.to-translated.from-streaming,
+.chat-message-markup.from-translated.from-streaming {
+    --text-animation: none;
 }
+
 .chat-message-markup.translating .changes {
     animation: toTranslatedBlur 1.25s steps(10, end) forwards;
 }
@@ -790,9 +792,13 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply absolute inset-0 z-minus;
     animation: smoothHide 0.5s ease-in forwards;
 }
+
+/* Smooth show */
 .playable-text-markup.smooth-show {
-    opacity: 0;
-    animation: smoothShow 0.5s ease-in forwards;
+    opacity: 1;
+    --text-animation:
+        var(--text-animation),
+        smoothShow 0.5s ease-in forwards;
 }
 @keyframes smoothHide {
     0% {
