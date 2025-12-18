@@ -10,8 +10,7 @@ public sealed class FlowDefs
 
     public FlowDefs(IServiceProvider services)
     {
-        var flowRegistryBuilder = services.GetRequiredService<FlowDefsBuilder>();
-        var flowDefs = flowRegistryBuilder.Flows
+        var flowDefs = services.GetRequiredService<FlowRegistry>().ByName
             .Select(kv => {
                 var (name, type) = kv;
                 var attr = type.GetCustomAttribute<FlowAttribute>(inherit: true);

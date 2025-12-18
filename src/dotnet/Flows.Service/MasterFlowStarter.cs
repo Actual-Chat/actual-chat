@@ -11,7 +11,7 @@ internal class MasterFlowStarter(IServiceProvider services) : ShardWorker(servic
 
     protected override Task OnStart(CancellationToken cancellationToken)
     {
-        if (!Services.GetRequiredService<FlowDefsBuilder>().UseMasterFlows)
+        if (!Services.GetRequiredService<FlowRegistry>().UseMasterFlows)
             return Task.CompletedTask;
 
         var masterFlowTypes = Hub.Defs.ByType.Keys.Where(x => x.IsAssignableTo(typeof(IMasterFlow)));

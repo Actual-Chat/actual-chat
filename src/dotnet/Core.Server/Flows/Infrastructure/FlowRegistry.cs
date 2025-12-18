@@ -2,28 +2,28 @@ using ActualLab.Internal;
 
 namespace ActualChat.Flows.Infrastructure;
 
-public class FlowDefsBuilder
+public class FlowRegistry
 {
-    private readonly Dictionary<Symbol, Type> _flows = new(64);
-    private readonly Dictionary<Type, Symbol> _flowNameByType = new(64);
+    private readonly Dictionary<Symbol, Type> _byName = new(64);
+    private readonly Dictionary<Type, Symbol> _nameByType = new(64);
 
-    public IReadOnlyDictionary<Symbol, Type> Flows => _flows;
+    public IReadOnlyDictionary<Symbol, Type> ByName => _byName;
     public bool UseMasterFlows { get; set; } = true;
 
-    public FlowDefsBuilder Add<TFlow>(Symbol name = default)
+    public FlowRegistry Add<TFlow>(Symbol name = default)
         where TFlow : Flow
         => Add(typeof(TFlow), name);
 
-    public FlowDefsBuilder Add(Type flowType, Symbol name = default)
+    public FlowRegistry Add(Type flowType, Symbol name = default)
     {
         RequireFlowType(flowType);
-        if (_flowNameByType.ContainsKey(flowType))
+        if (_nameByType.ContainsKey(flowType))
             throw Errors.KeyAlreadyExists();
 
         if (name.IsEmpty)
             name = flowType.GetName();
-        _flows.Add(name, flowType);
-        _flowNameByType.Add(flowType, name);
+        _byName.Add(name, flowType);
+        _nameByType.Add(flowType, name);
         return this;
     }
 
