@@ -43,6 +43,8 @@ public class AttachmentList : IAttachmentList
 
     public async Task Clear()
     {
+        if (_attachments.IsEmpty)
+            return;
         var clone = _attachments.ToArray();
         _attachments = _attachments.Clear();
         await RaiseAttachmentsRemoved(clone);
