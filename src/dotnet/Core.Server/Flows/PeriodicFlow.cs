@@ -27,12 +27,6 @@ public abstract class PeriodicFlow : Flow<string>
 
     // Implementation
 
-    protected override ValueTask Init(CancellationToken cancellationToken)
-    {
-        LastRunAt = default;
-        return default;
-    }
-
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);

@@ -35,9 +35,6 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
     [DataMember(Order = 5), MemoryPackOrder(5)]
     public FlowReadiness LastReadiness { get; private set; }
 
-    protected override ValueTask Init(CancellationToken cancellationToken)
-        => default;
-
     private async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {
         ChatId = ChatId.Parse(Id.Arguments);

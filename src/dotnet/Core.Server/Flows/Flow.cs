@@ -95,18 +95,15 @@ public abstract class Flow : IFlowImpl
 
     // IFlowImpl methods
 
-    async Task IFlowImpl.HandleResume(FlowHub hub, bool mustReset, CancellationToken cancellationToken)
+    async Task IFlowImpl.HandleResume(FlowHub hub, string? initReason, CancellationToken cancellationToken)
     {
         var runtime = Runtime = CreateRuntime(hub, cancellationToken);
         ResumedAt = runtime.Hub.Clocks.SystemClock.Now;
         try {
-            var flowDef = hub.Defs.Get(GetType());
             var exitReason = (string?)null;
-            if (mustReset || DataVersion < flowDef.DataVersion) {
-                var initReason = mustReset ? "explicit reset" : "new flow or data version mismatch";
+            if (initReason is not null) {
                 Console.Log($"[Init] - {initReason}");
                 await Init(cancellationToken).ConfigureAwait(false);
-                DataVersion = flowDef.DataVersion;
             }
             if (UntypedResult is not null) {
                 exitReason = "result is set";

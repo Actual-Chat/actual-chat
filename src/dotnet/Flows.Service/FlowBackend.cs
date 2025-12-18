@@ -107,16 +107,19 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 return originalFlow.Version; // The flow has already completed, so all subsequent events are ignored
 
             IFlowImpl flow;
-            if (resumeEvent.MustReset) {
+            var initReason = resumeEvent.MustReset ? "must reset"
+                : originalFlow.DataVersion < flowDef.DataVersion ? $"data version mismatch ({originalFlow.DataVersion} < {flowDef.DataVersion})"
+                : null;
+            if (initReason is not null) {
                 flow = (IFlowImpl)flowDef.Type.CreateInstance();
                 var console = new FlowConsole(flow, originalFlow.Console.Prefix);
-                flow.SetProperties(flowId, originalFlow.Version, 0, null, console);
+                flow.SetProperties(flowId, originalFlow.Version, flowDef.DataVersion, null, console);
             }
             else
                 flow = originalFlow.Clone();
 
             // Run the HandleResume method
-            await flow.HandleResume(Hub, resumeEvent.MustReset, ct).ConfigureAwait(false);
+            await flow.HandleResume(Hub, initReason, ct).ConfigureAwait(false);
             return flow.Version;
         }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
     }

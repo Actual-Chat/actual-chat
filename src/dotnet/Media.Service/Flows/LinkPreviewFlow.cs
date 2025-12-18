@@ -18,7 +18,7 @@ public sealed partial class LinkPreviewFlow : PeriodicFlow
         => url.ToBase64();
 
     protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
-        => new(LastRunAt = default ? ResumedAt : Moment.MaxValue);
+        => new(LastRunAt == default ? ResumedAt : Moment.MaxValue);
 
     protected override async Task Run(CancellationToken cancellationToken)
     {

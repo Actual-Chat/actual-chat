@@ -24,12 +24,6 @@ public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt
 
     // Implementation
 
-    protected override ValueTask Init(CancellationToken cancellationToken)
-    {
-        Cursor = default;
-        return default;
-    }
-
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
