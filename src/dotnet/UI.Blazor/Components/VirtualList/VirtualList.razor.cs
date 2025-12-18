@@ -119,7 +119,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, V
 
     protected override bool ShouldRender()
     {
-        var shouldRender = !Data.IsSimilarTo(LastData) // Data changed
+        var shouldRender = !ReferenceEquals(Data, LastData) // Data changed
             || RenderIndex == 0 // OR very first sync render without data loaded
             || (LastReportedItemVisibility.VisibleKeys.Count == 0 && !Data.HasAllItems);
         if (JSRef != null! && !shouldRender)
