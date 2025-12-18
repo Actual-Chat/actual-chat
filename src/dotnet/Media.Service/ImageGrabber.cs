@@ -88,7 +88,7 @@ public class ImageGrabber(IServiceProvider services)
         await FlowHub
             .NewResumeEvent<PreviewThumbnailUpdateFlow>(PreviewThumbnailUpdateFlow.GetArguments(imageUrl))
             .WithDelay(Clocks.SystemClock.Now + GetUpdatePeriod(grabStatus))
-            .WithReset()
+            .WithReset() // Intended, this flow runs just once unless it's reset
             .Schedule(cancellationToken)
             .ConfigureAwait(false);
     }

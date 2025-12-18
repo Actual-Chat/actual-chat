@@ -500,7 +500,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         where TFlow : Flow
     {
         var delay = Clocks.SystemClock.Now + Settings.ChangedEntityIndexingDelay;
-        var flowResume = FlowHub.NewResumeEvent<TFlow>(arguments).WithDelay(delay, Settings.IndexingFlowResumeDelayQuanta);
-        return flowResume.Schedule(cancellationToken);
+        var resumeEvent = FlowHub.NewResumeEvent<TFlow>(arguments).WithDelay(delay, Settings.IndexingFlowResumeDelayQuanta);
+        return resumeEvent.Schedule(cancellationToken);
     }
 }

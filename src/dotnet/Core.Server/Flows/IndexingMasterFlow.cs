@@ -12,7 +12,7 @@ public abstract class IndexingMasterFlow<TIndexingFlow, TItem, TId> : BatchedInd
     protected override async Task ProcessBatch(IReadOnlyList<TItem> batch, CancellationToken cancellationToken)
     {
         foreach (var item in batch)
-            await ScheduleReset(item, cancellationToken).ConfigureAwait(false);
+            await ScheduleResume(item, cancellationToken).ConfigureAwait(false);
     }
 
     protected override ValueTask TailReached(bool hasProcessedAnyItems, CancellationToken cancellationToken)
@@ -21,6 +21,11 @@ public abstract class IndexingMasterFlow<TIndexingFlow, TItem, TId> : BatchedInd
         return default;
     }
 
-    protected Task ScheduleReset(TItem item, CancellationToken cancellationToken)
-        => Hub.NewResumeEvent<TIndexingFlow>(item.Id.Value).WithReset().Schedule(cancellationToken);
+    protected Task ScheduleResume(TItem item, CancellationToken cancellationToken)
+        => ScheduleResume(item, mustReset: false, cancellationToken);
+    protected Task ScheduleResume(TItem item, bool mustReset, CancellationToken cancellationToken)
+    {
+        var resumeEvent = Hub.NewResumeEvent<TIndexingFlow>(item.Id.Value).WithReset(mustReset);
+        return resumeEvent.Schedule(cancellationToken);
+    }
 }

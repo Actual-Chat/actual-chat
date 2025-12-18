@@ -43,7 +43,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             return FlowHub
                 .NewResumeEvent<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(linkPreview.Url))
                 .WithDelay(SystemNow + Settings.LinkPreviewUpdatePeriod)
-                .WithReset()
+                .WithReset() // Intended, this flow runs just once unless it's reset
                 .Schedule(cancellationToken);
         }
     }

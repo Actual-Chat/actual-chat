@@ -34,6 +34,6 @@ public partial class ConversationSplitMasterFlow
     protected override async Task ProcessBatch(IReadOnlyList<Chat> batch, CancellationToken cancellationToken)
     {
         foreach (var item in batch.Where(x => x.IsSummarized ?? false))
-            await ScheduleReset(item, cancellationToken).ConfigureAwait(false);
+            await ScheduleResume(item, cancellationToken).ConfigureAwait(false);
     }
 }

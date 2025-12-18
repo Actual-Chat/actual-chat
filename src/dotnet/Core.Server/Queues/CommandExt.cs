@@ -1,3 +1,5 @@
+using ActualLab.Resilience;
+
 namespace ActualChat.Queues;
 
 public static class CommandExt

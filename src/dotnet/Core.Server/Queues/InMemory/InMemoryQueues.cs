@@ -9,9 +9,6 @@ public sealed class InMemoryQueues : QueuesBase<InMemoryQueues.Options>
         public int MaxQueueSize { get; init; } = 1024;
         public int MaxKnownCommandCount { get; init; } = 10_000;
         public TimeSpan MaxKnownCommandAge { get; init; } = TimeSpan.FromHours(1);
-
-        public Options()
-            => UseSingleQueue = true;
     }
 
     private readonly InMemoryQueueProcessor _processor;

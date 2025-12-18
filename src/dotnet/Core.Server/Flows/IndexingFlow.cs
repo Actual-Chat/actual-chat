@@ -19,9 +19,7 @@ public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt
 
     // Overridable methods
 
-    protected virtual ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
-        => new(FlowReadiness.Ready);
-
+    protected virtual ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken) => new(FlowReadiness.Ready);
     protected abstract ValueTask<BatchIndexingResult<TCursor>> Process(TCursor? cursor, CancellationToken cancellationToken);
 
     // Implementation
@@ -37,17 +35,17 @@ public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt
         LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
         if (LastReadiness is { IsSuspended: true } readiness) {
             var resumeDelay = ResumedAt + (readiness.ResumeDelay ?? MaxResumeDelay);
-            Console.Log($"Prepare -> {readiness}, will resume at {resumeDelay}");
+            Console.Log($"Prepare() -> {readiness}, will resume at {resumeDelay}");
             Runtime.StageResumeAt(resumeDelay);
             return;
         }
 
         LastRunAt = ResumedAt;
-        Console.Log($"Process from {Cursor}");
+        Console.Log($"Process({Cursor})");
         var result = await Process(Cursor, cancellationToken).ConfigureAwait(false);
         Cursor = result.Cursor;
 
-        Console.Log($"Process -> {result}");
+        Console.Log($"Process(...) -> {result}");
         if (!result.CompletionReason.IsNullOrEmpty())
             await Complete(result.CompletionReason, cancellationToken).ConfigureAwait(false);
         else if (result.IsTailReached)

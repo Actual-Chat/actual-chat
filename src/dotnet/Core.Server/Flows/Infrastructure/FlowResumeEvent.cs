@@ -1,6 +1,8 @@
+using ActualChat.Queues;
 using ActualChat.Time;
 using ActualLab.CommandR.Operations;
 using ActualLab.Generators;
+using ActualLab.Resilience;
 using MemoryPack;
 using MessagePack;
 
@@ -9,7 +11,7 @@ namespace ActualChat.Flows.Infrastructure;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 public sealed partial class FlowResumeEvent(FlowId flowId)
-    : IDelegatingCommand<long>, IBackendCommand, IOperationEventSource, IHasDelayUntil, IHasDelayQuanta
+    : IDelegatingCommand<long>, IBackendCommand, IOperationEventSource, IHasDelayUntil, IHasDelayQuanta, IComputesTimeout
 {
     private static readonly UuidGenerator UuidGenerator = UlidUuidGenerator.Instance;
 
@@ -72,4 +74,13 @@ public sealed partial class FlowResumeEvent(FlowId flowId)
 
     public Task Schedule(FlowHub hub, CancellationToken cancellationToken = default)
         => hub.Schedule(this, cancellationToken);
+
+    // IComputesTimeout implementation
+
+    TimeSpan IComputesTimeout.ComputeTimeout(IServiceProvider services)
+    {
+        var flowHub = services.FlowHub();
+        var flowDef = flowHub.Defs.ByName[FlowId.Name];
+        return flowDef.ResumeTimeout;
+    }
 }

@@ -6,6 +6,7 @@ using MemoryPack;
 
 namespace ActualChat.Chat.Flows;
 
+[Flow(ResumeTimeout = 60)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 {
@@ -58,7 +59,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
         if (LastReadiness is { IsSuspended: true } readiness) {
             var resumeDelay = ResumedAt + (readiness.ResumeDelay ?? MaxDelay);
-            Console.Log($"Prepare -> {readiness}, will resume at {resumeDelay}");
+            Console.Log($"Prepare() -> {readiness}, will resume at {resumeDelay}");
             Runtime.StageResumeAt(resumeDelay);
             return;
         }
@@ -84,9 +85,9 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 continue; // The first entry in the sequence must be not a reply!
 
             var lastEntry = replySequence.Entries[^1];
-            var idTileRange = IdTileStack.LastLayer.GetTile(entryLid).Range;
-            var conversationTile = await ConversationsBackend.GetRangeMeta(ChatId, idTileRange.Start, cancellationToken).ConfigureAwait(false);
-            var existingConversationIds = conversationTile.ConversationIds;
+            var idRange = IdTileStack.LastLayer.GetTile(entryLid).Range;
+            var rangeMeta = await ConversationsBackend.GetRangeMeta(ChatId, idRange.Start, cancellationToken).ConfigureAwait(false);
+            var existingConversationIds = rangeMeta.ConversationIds;
             var appendReply = new ConversationBackend_AppendReply(
                 ChatId,
                 entryLid,

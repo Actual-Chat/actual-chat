@@ -1,4 +1,5 @@
 using ActualChat.Attributes;
+using ActualChat.Queues;
 using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
@@ -26,10 +27,11 @@ public partial record AddTestEvent1Command(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record AddBothTestEventsCommand : ICommand<Unit>;
 
-[Queue(nameof(ShardScheme.TestBackend))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record AddBothTestEventsCommandWithShardKey : ICommand<Unit>, IHasShardKey<int>
+public partial record AddBothTestEventsCommandWithShardKey : ICommand<Unit>, IHasShardKey<int>, IHasQueueRef
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public int ShardKey { get; init; }
+
+    QueueRef IHasQueueRef.QueueRef => ShardScheme.SlowQueue;
 }

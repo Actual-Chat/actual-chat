@@ -43,6 +43,14 @@ public class TimerFlowTest(ITestOutputHelper @out)
 
         var flowHub = h0.Services.FlowHub();
 
+        var flowDef = flowHub.Defs.Get<TimerFlow>();
+        flowDef.DataVersion.Should().Be(2);
+        flowDef.ResumeTimeout.Should().Be(TimeSpan.FromSeconds(60));
+
+        var command = flowHub.NewResumeEvent<TimerFlow>("f0,1");
+        var queueRef = QueueRef.For(command, h0.Services);
+        queueRef.ShardScheme.Should().Be(ShardScheme.SlowQueue); // See [Flow] attribute on TimerFlow
+
         var f = await GetRemoteFlow<TimerFlow>(flowHub, i => $"f{i},2", cancellationToken);
         WriteLine($"f0.Id: {f.Id}");
 

@@ -18,7 +18,6 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
     // Services
     private FlowHub Hub => field ??= Services.FlowHub();
-    private FlowRegistry Registry => field ??= Hub.Registry;
     private IDbEntityResolver<string, DbFlow> EntityResolver { get; }
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
@@ -47,7 +46,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     // [ComputeMethod]
     public virtual async Task<IFlowData?> TryGetData(FlowId flowId, CancellationToken cancellationToken)
     {
-        var flowType = Registry.TypeByName[flowId.Name];
+        var flowDef = Hub.Defs.ByName[flowId.Name];
 
         // Check the in-memory cache first
         if (_cache.TryGetValue(flowId, out var flowData))
@@ -55,14 +54,14 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
         // Read the ground truth
         var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
-        flowData = dbFlow?.ToFlowData(flowType, flowId);
+        flowData = dbFlow?.ToFlowData(flowDef.Type, flowId);
         return _cache[flowId] = flowData;  // Update the in-memory cache
     }
 
     // Regular RPC method!
     public virtual async Task<IFlowData> Start(FlowId flowId, long? expectedVersion, CancellationToken cancellationToken)
     {
-        var flowType = Registry.TypeByName[flowId.Name];
+        var flowDef = Hub.Defs.ByName[flowId.Name];
         DebugLog?.LogDebug("Start: `{FlowId}`", flowId);
         return await ResumeRetryPolicy.Run(async ct => {
             using var _ = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
@@ -72,7 +71,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             if (flowData is not null && !VersionChecker.IsExpected(existingVersion, expectedVersion))
                 return flowData;
 
-            var flow = (IFlowImpl)flowType.CreateInstance();
+            var flow = (IFlowImpl)flowDef.Type.CreateInstance();
             var console = new FlowConsole(flow);
             flow.SetProperties(flowId, 0, 0, null, console);
             do {
@@ -96,7 +95,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     public virtual async Task<long> OnResume(FlowResumeEvent resumeEvent, CancellationToken cancellationToken)
     {
         var flowId = resumeEvent.FlowId;
-        var flowType = Registry.TypeByName[flowId.Name];
+        var flowDef = Hub.Defs.ByName[flowId.Name];
         DebugLog?.LogDebug("OnResume: `{FlowId}` <- {Event}", flowId, resumeEvent);
 
         return await ResumeRetryPolicy.Run(async ct => {
@@ -109,7 +108,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
             IFlowImpl flow;
             if (resumeEvent.MustReset) {
-                flow = (IFlowImpl)flowType.CreateInstance();
+                flow = (IFlowImpl)flowDef.Type.CreateInstance();
                 var console = new FlowConsole(flow, originalFlow.Console.Prefix);
                 flow.SetProperties(flowId, originalFlow.Version, 0, null, console);
             }
@@ -136,7 +135,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
         flowId.Require();
         var flow = command.Flow;
-        var flowType = Registry.TypeByName[flowId.Name];
+        var flowDef = Hub.Defs.ByName[flowId.Name];
         if (flow?.GetType() == typeof(Flow))
             throw StandardError.Internal("Flow.GetType() == typeof(Flow), i.e., the command is routed to another host.");
 
@@ -194,7 +193,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         context.Operation.MustStore(false);
         context.Operation.AddCompletionHandler(scope => {
             // Update cache to avoid the DB hit in TryGet
-            _cache[flowId] = dbFlow?.ToFlowData(flowType, flowId);
+            _cache[flowId] = dbFlow?.ToFlowData(flowDef.Type, flowId);
             // Invalidate TryGetData cache
             using (Invalidation.Begin())
                 _ = TryGetData(flowId, default);

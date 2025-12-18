@@ -17,10 +17,7 @@ public abstract class BatchedIndexingFlow<TItem, TId> : IndexingFlow<IndexingFlo
 
     // Overridable methods
 
-    protected abstract Task<IReadOnlyList<TItem>> GetBatch(
-        IndexingFlowCursor<TId>? cursor,
-        CancellationToken cancellationToken);
-
+    protected abstract Task<IReadOnlyList<TItem>> GetBatch(IndexingFlowCursor<TId>? cursor, CancellationToken cancellationToken);
     protected abstract Task ProcessBatch(IReadOnlyList<TItem> batch, CancellationToken cancellationToken);
 
     // Implementation

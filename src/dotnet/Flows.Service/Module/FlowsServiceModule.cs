@@ -17,8 +17,8 @@ public sealed class FlowsServiceModule(IServiceProvider moduleServices)
 
         // Flows
         rpcHost.AddBackend<IFlowBackend, FlowBackend>();
-        services.AddSingleton(c => new FlowRegistry(c));
         services.AddSingleton(c => new FlowHub(c));
+        services.AddSingleton(c => new FlowDefs(c));
         services.AddFlows();
 
         if (isBackendClient)

@@ -21,11 +21,8 @@ public abstract class PeriodicFlow : Flow<string>
 
     // Overridable methods
 
-    protected virtual ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
-        => new(FlowReadiness.Ready);
-
+    protected virtual ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken) => new(FlowReadiness.Ready);
     protected abstract ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken);
-
     protected abstract Task Run(CancellationToken cancellationToken);
 
     // Implementation
@@ -41,17 +38,21 @@ public abstract class PeriodicFlow : Flow<string>
         LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
         if (LastReadiness is { IsSuspended: true } readiness) {
             var resumeDelay = ResumedAt + (readiness.ResumeDelay ?? MaxResumeDelay);
-            Console.Log($"Prepare -> {readiness}, will resume at {resumeDelay}");
+            Console.Log($"Prepare() -> {readiness}, will resume at {resumeDelay}");
             Runtime.StageResumeAt(resumeDelay);
             return;
         }
 
         // Compute the next run time
         var nextRunAt = await GetNextRunAt(cancellationToken).ConfigureAwait(false);
+        if (nextRunAt == Moment.MaxValue) {
+            Console.Log("GetNextRunAt() -> Moment.MaxValue (never)");
+            return;
+        }
         var nextRunIn = (nextRunAt - ResumedAt).Clamp(TimeSpan.Zero, MaxResumeDelay);
         NextRunAt = ResumedAt + nextRunIn;
         if (NextRunAt > ResumedAt) {
-            Console.Log($"ComputeNextRunAt -> {NextRunAt} (in {nextRunIn.ToShortString()}), scheduling resume for that time");
+            Console.Log($"GetNextRunAt() -> {NextRunAt} (in {nextRunIn.ToShortString()}), scheduling resume for that time");
             Runtime.StageResumeAt(nextRunAt);
             return;
         }
