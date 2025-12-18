@@ -57,6 +57,9 @@ public sealed partial record ConversationBackend_Summarize(
 
     ChatId IHasShardKey<ChatId>.ShardKey => ChatId;
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);
+
+    public override string ToString()
+        => $"ConversationBackend_Summarize {{ ChatId={ChatId}, EntryIdRanges=[{string.Join(", ", EntryIdRanges.Select(r => r.Format()))}], DelayUntil={DelayUntil} }}";
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
