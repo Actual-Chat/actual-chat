@@ -856,8 +856,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (update.IsArchived.HasValue)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.IsArchived.");
 
-            if (update.IsSummarized.IsNone || !update.IsSummarized.Value.HasValue)
-                update = update with { IsSummarized = true }; // Enable summarization by default for new chats
+            if (update.IsSummarized.IsNone || !update.IsSummarized.Value.HasValue) {
+                var unsupportedSystemChats = new HashSet<Symbol> {
+                    Constants.Chat.SystemTags.Welcome,
+                    Constants.Chat.SystemTags.Notes,
+                    Constants.Chat.SystemTags.Bot,
+                };
+                if (!update.SystemTag.HasValue || !unsupportedSystemChats.Contains(update.SystemTag.Value))
+                    update = update with { IsSummarized = true }; // Enable summarization by default for new chats
+            }
 
             chat = new Chat(chatId.Require()) {
                 CreatedAt = Clocks.SystemClock.Now,
