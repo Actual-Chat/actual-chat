@@ -722,21 +722,49 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var entriesQuery = query.LastLocalId <= 0
-            ? dbContext.ChatEntries.Where(x => x.Version >= query.MinVersion && x.Version <= query.MaxVersion)
-            : dbContext.ChatEntries.Where(x
-                => (x.Version > query.MinVersion && x.Version <= query.MaxVersion)
-                || (x.Version == query.MinVersion && x.LocalId > query.LastLocalId));
+        if (query.LastLocalId == 0) {
+            var dbEntries = await dbContext.ChatEntries
+                .Where(x => x.ChatId == query.ChatId.Value
+                    && x.Kind == ChatEntryKind.Text
+                    && x.Version >= query.MinVersion
+                    && x.Version <= query.MaxVersion)
+                .OrderBy(x => x.Version)
+                .ThenBy(x => x.LocalId)
+                .Take(query.Limit)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return dbEntries.Select(x => x.ToModel()).ToArray();
+        }
 
-        return await entriesQuery
-            .Where(x => x.ChatId == query.ChatId.Value && x.Kind == ChatEntryKind.Text)
+        var part1 = await dbContext.ChatEntries
+            .Where(x => x.ChatId == query.ChatId.Value
+                && x.Kind == ChatEntryKind.Text
+                && x.Version == query.MinVersion
+                && x.LocalId > query.LastLocalId)
             .OrderBy(x => x.Version)
             .ThenBy(x => x.LocalId)
             .Take(query.Limit)
-            .AsAsyncEnumerable()
-            .Select(x => x.ToModel())
-            .ToArrayAsync(cancellationToken)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        if (part1.Count >= query.Limit)
+            return part1.Select(x => x.ToModel()).ToArray();
+
+        var part2 = await dbContext.ChatEntries
+            .Where(x => x.ChatId == query.ChatId.Value
+                && x.Kind == ChatEntryKind.Text
+                && x.Version > query.MinVersion
+                && x.Version <= query.MaxVersion)
+            .OrderBy(x => x.Version)
+            .ThenBy(x => x.LocalId)
+            .Take(query.Limit - part1.Count)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var result = new List<ChatEntry>(part1.Count + part2.Count);
+        result.AddRange(part1.Select(x => x.ToModel()));
+        result.AddRange(part2.Select(x => x.ToModel()));
+        return result.ToArray();
     }
 
     // Not a [ComputeMethod]!
