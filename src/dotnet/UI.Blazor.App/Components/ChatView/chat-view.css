@@ -795,10 +795,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 
 /* Smooth show */
 .playable-text-markup.smooth-show {
-    opacity: 1;
-    --text-animation:
-        var(--text-animation),
-        smoothShow 0.5s ease-in forwards;
+    --text-animation: smoothShow 0.5s ease-in;
 }
 @keyframes smoothHide {
     0% {

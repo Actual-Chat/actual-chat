@@ -1,8 +1,12 @@
 sub-header {
     opacity: 0;
     overflow: hidden;
-    max-width: 48rem;
     max-height: 0;
+}
+@media (min-width: 1280px) {
+    sub-header {
+        max-width: 48rem;
+    }
 }
 sub-header.enter {
     animation: showSubHeader 150ms ease-in forwards;
