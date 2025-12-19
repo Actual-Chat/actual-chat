@@ -1,4 +1,5 @@
 using ActualChat.Db.Diagnostics;
+using ActualChat.Flows.Infrastructure;
 using ActualChat.Queues;
 using ActualLab.CommandR.Operations;
 using ActualLab.Fusion.EntityFramework.Operations;
@@ -34,7 +35,10 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
             using var activity = DbInstruments.ActivitySource
                 .StartActivity(ProcessActivityName);
 
-            Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
+            if (value is FlowResumeEvent flowResumeEvent)
+                Log.LogInformation("-> {FlowResumeEvent}", flowResumeEvent);
+            else
+                Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
             try {
                 await Queues.Enqueue(command, cancellationToken).ConfigureAwait(false);
             }
