@@ -50,9 +50,9 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
             // No query, no data -> initial load
             (false, true) => new Range<int>(
                 chatIndex - ChatListUI.HalfLoadLimit,
-                chatIndex + ChatListUI.HalfLoadLimit),
+                chatIndex + ChatListUI.LoadLimit),
             // No query, but there is old data -> retaining visual position
-            (false, false) => new Range<int>(minVisibleIndex - ChatListUI.TileSize, maxVisibleIndex + ChatListUI.TileSize),
+            (false, false) => new Range<int>(minVisibleIndex - (ChatListUI.TileSize * 2), maxVisibleIndex + (ChatListUI.TileSize * 2)),
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToIntRange().Move(query.MoveRange),
         };
