@@ -45,6 +45,7 @@ export * from './Services/SendingMessages/send-message-requests';
 export * from './Services/FileUploads/upload-sessions';
 
 export * from './notification-ui';
+export * from './recaptcha-handler';
 
 export * from './Components/AudioPlayer/audio-player';
 export * from './Components/AudioRecorder/audio-recorder';
