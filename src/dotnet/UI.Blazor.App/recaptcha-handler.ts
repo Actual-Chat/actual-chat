@@ -13,8 +13,6 @@ export class RecaptchaHandler {
                         continue;
 
                     const outerDiv = node as HTMLElement;
-                    if (outerDiv.parentElement !== document.body)
-                        continue;
 
                     if (outerDiv.tagName !== 'DIV')
                         continue;
