@@ -32,6 +32,9 @@
     @apply text-caption-2 text-02;
     @apply truncate;
 }
+.author-modal .c-header > .c-bottom  > .c-title .call-text {
+    @apply text-02 text-text-1;
+}
 .author-modal .c-header > .c-bottom > .c-public {
     @apply max-h-16;
     @apply overflow-y-auto overflow-x-hidden;
@@ -188,4 +191,9 @@ body.hoverable .author-modal .tile-remove-from-group:hover {
     @apply absolute bottom-1 md:bottom-0;
     @apply text-xs;
     @apply opacity-70;
+}
+
+.incoming-call-modal .dialog-buttons,
+body.narrow .incoming-call-modal .dialog-buttons {
+    @apply flex-x;
 }

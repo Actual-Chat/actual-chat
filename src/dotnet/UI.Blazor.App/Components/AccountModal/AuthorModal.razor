@@ -39,6 +39,9 @@
             onEditClick = EventCallback.Factory.Create(this, _ => OnEditPeerContactClick(m.PeerChatContact));
         }
     }
+
+    if (IsCall)
+        cls += " incoming-call-modal";
 }
 
 <DialogFrame Title="@title" Class="@cls" HasCloseButton="true">
@@ -46,102 +49,115 @@
     <AuthorModalHeader
         Author="author"
         IsOwn="m.IsOwnAuthor"
+        IsCall="@IsCall"
         OnEditClick="@onEditClick"/>
     <FormBlock>
         <AuthorModalContent
             Author="@author"
             IsOwn="@m.IsOwnAuthor"
+            IsCall="@IsCall"
             UsePlaceSettingsToEditMember="@m.UsePlaceSettingsToEditMember"
             EditMemberModel="@m.EditMemberModel"/>
     </FormBlock>
     </Body>
     <Buttons>
-        @if (m.IsOwnAuthor) {
-            if (!author.IsAnonymous) {
-                if (!m.IsChatRoulette) {
-                    <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
-                        <Icon><i class="icon-sync text-lg"></i></Icon>
-                        <Title>Change avatar</Title>
+        @if (IsCall) {
+            <Button Class="btn-modal btn-danger">
+                <Icon><i class="icon-close text-xl"></i></Icon>
+                <Title>Decline</Title>
+            </Button>
+            <Button Class="btn-modal btn-primary">
+                <Icon><i class="icon-phone text-xl"></i></Icon>
+                <Title>Accept</Title>
+            </Button>
+        } else {
+            @if (m.IsOwnAuthor) {
+                if (!author.IsAnonymous) {
+                    if (!m.IsChatRoulette) {
+                        <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
+                            <Icon><i class="icon-sync text-lg"></i></Icon>
+                            <Title>Change avatar</Title>
+                        </Button>
+                    } else {
+                        <Button Class="btn-modal" Click="OnCancel">Close</Button>
+                    }
+                } else {
+                    <Button Class="btn-modal" Click="@(_ => OnEditAvatarClick(author))">
+                        <Icon><i class="icon-sync text-lg md:hidden"></i></Icon>
+                        <Title>Edit avatar</Title>
                     </Button>
+                    <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
+                        <Icon><i class="icon-eye text-xl md:hidden"></i></Icon>
+                        <Title>Reveal</Title>
+                    </Button>
+                }
+            } else if (author.IsAnonymous) {
+                <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
+            } else {
+                @if (m.CanStartPeerChat) {
+                    var authorName = author?.Avatar.Name ?? "";
+                    if (!m.OnlyAnonymousChatAllowed) {
+                        if (_anonymousChat) {
+                            <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
+                                <i class="icon-question-mark-bubble text-xl"></i>
+                                <span class="c-title">
+                                    <span>Chat with</span>
+                                    <span class="c-name">@authorName</span>
+                                </span>
+                            </Button>
+                        } else {
+                            <Button
+                                Class="btn-modal btn-primary start-chat-btn"
+                                Click="OnStartPeerChat">
+                                <i class="icon-message-ellipse text-xl"></i>
+                                <span class="c-title">
+                                    <span>Chat with</span>
+                                    <span class="c-name">@authorName</span>
+                                </span>
+                            </Button>
+                        }
+                    } else {
+                        if (m.EnableIncompleteUI) {
+                            <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
+                                <i class="icon-question-mark-bubble text-xl"></i>
+                                <span class="c-title">
+                                    <span>Chat with</span>
+                                    <span class="c-name">@authorName</span>
+                                </span>
+                            </Button>
+                        }
+                    }
+
+                    @if (m.EnableIncompleteUI) {
+                        <div class="tile-wrapper">
+                            <div class="c-incut @(toggleValue ? "show" : "")">
+                                <div class="c-info">
+                                    <i class="icon-alert-triangle text-lg text-warning"></i>
+                                    <span>
+                                        Anonymous chats hide user identities and don't transmit or record your voice, though still
+                                        show real-time transcription. And you can reveal you real identity there at any moment.
+                                    </span>
+                                </div>
+                            </div>
+
+                            <TileItem Click="@OnChatTypeChanged" Class="@tileCls">
+                                <Content>
+                                    Anonymous chat
+                                </Content>
+                                <Caption>
+                                    Chat can be direct or anonymous.
+                                </Caption>
+                                <Right>
+                                    <Toggle Class="mr-2"
+                                            IsChecked="@toggleValue"
+                                            IsDisabled="@m.OnlyAnonymousChatAllowed"/>
+                                </Right>
+                            </TileItem>
+                        </div>
+                    }
                 } else {
                     <Button Class="btn-modal" Click="OnCancel">Close</Button>
                 }
-            } else {
-                <Button Class="btn-modal" Click="@(_ => OnEditAvatarClick(author))">
-                    <Icon><i class="icon-sync text-lg md:hidden"></i></Icon>
-                    <Title>Edit avatar</Title>
-                </Button>
-                <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
-                    <Icon><i class="icon-eye text-xl md:hidden"></i></Icon>
-                    <Title>Reveal</Title>
-                </Button>
-            }
-        } else if (author.IsAnonymous) {
-            <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
-        } else {
-            @if (m.CanStartPeerChat) {
-                var authorName = author?.Avatar.Name ?? "";
-                if (!m.OnlyAnonymousChatAllowed) {
-                    if (_anonymousChat) {
-                        <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
-                            <i class="icon-question-mark-bubble text-xl"></i>
-                            <span class="c-title">
-                                <span>Chat with</span>
-                                <span class="c-name">@authorName</span>
-                            </span>
-                        </Button>
-                    } else {
-                        <Button
-                            Class="btn-modal btn-primary start-chat-btn"
-                            Click="OnStartPeerChat">
-                            <i class="icon-message-ellipse text-xl"></i>
-                            <span class="c-title">
-                                <span>Chat with</span>
-                                <span class="c-name">@authorName</span>
-                            </span>
-                        </Button>
-                    }
-                } else {
-                    if (m.EnableIncompleteUI) {
-                        <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
-                            <i class="icon-question-mark-bubble text-xl"></i>
-                            <span class="c-title">
-                                <span>Chat with</span>
-                                <span class="c-name">@authorName</span>
-                            </span>
-                        </Button>
-                    }
-                }
-
-                @if (m.EnableIncompleteUI) {
-                    <div class="tile-wrapper">
-                        <div class="c-incut @(toggleValue ? "show" : "")">
-                            <div class="c-info">
-                                <i class="icon-alert-triangle text-lg text-warning"></i>
-                                <span>
-                                    Anonymous chats hide user identities and don't transmit or record your voice, though still
-                                    show real-time transcription. And you can reveal you real identity there at any moment.
-                                </span>
-                            </div>
-                        </div>
-
-                        <TileItem Click="@OnChatTypeChanged" Class="@tileCls">
-                            <Content>
-                                Anonymous chat
-                            </Content>
-                            <Caption>
-                                Chat can be direct or anonymous.
-                            </Caption>
-                            <Right>
-                                <Toggle Class="mr-2"
-                                        IsChecked="@toggleValue"
-                                        IsDisabled="@m.OnlyAnonymousChatAllowed"/>
-                            </Right>
-                        </TileItem>
-                    </div>
-                }
-            } else {
-                <Button Class="btn-modal" Click="OnCancel">Close</Button>
             }
         }
     </Buttons>
@@ -158,6 +174,7 @@
 
     private AuthorId AuthorId => ModalModel.AuthorId;  // Shortcut
     private ChatId ChatId => AuthorId.ChatId; // Shortcut
+    private bool IsCall => ModalModel.IsCall;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -276,5 +293,5 @@
         public bool IsChatRoulette { get; init; }
     }
 
-    public sealed record Model(AuthorId AuthorId);
+    public sealed record Model(AuthorId AuthorId, bool IsCall);
 }
