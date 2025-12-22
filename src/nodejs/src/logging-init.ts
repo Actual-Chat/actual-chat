@@ -31,6 +31,7 @@ export type LogScope =
     | 'OnDeviceAwake'
     | 'promises'
     | 'Rpc'
+    | 'RecaptchaHandler'
     | 'ScreenSize'
     | 'ServiceWorker'
     | 'SessionTokens'
