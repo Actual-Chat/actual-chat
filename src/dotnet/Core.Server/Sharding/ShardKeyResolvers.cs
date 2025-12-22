@@ -60,6 +60,7 @@ public static class ShardKeyResolvers
         Register<StreamId>(static x => ForString(x.Value)); // Used as a shard key in TranslationsBackend_TranslateStream
         Register<UserIdentity>(static x => ForString(x.Id));
         Register<FlowId>(static x => ForString(x.Arguments));
+        Register<UploadId>(static x => ForString(x.Value));
 
         // Classes
         Register<string>(ForString); // TODO(AY): String shard keys are likely a mistake -> remove this in future
