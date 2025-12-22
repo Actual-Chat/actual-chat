@@ -11,8 +11,8 @@ public class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
     public virtual Task<AuthorFull> GetOwn(ChatId chatId, CancellationToken cancellationToken)
         => Authors.GetOwn(Session, chatId, cancellationToken).Require();
 
-    public Task<ModalRef> Show(AuthorId authorId)
-        => ModalUI.Show(new AuthorModal.Model(authorId), CancellationToken.None);
+    public Task<ModalRef> Show(AuthorId authorId, bool isCall = false)
+        => ModalUI.Show(new AuthorModal.Model(authorId, isCall), CancellationToken.None);
 
     public async Task StartPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
     {
