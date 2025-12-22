@@ -47,5 +47,6 @@ public class NotificationDbContext(DbContextOptions<NotificationDbContext> optio
 
         var events = model.Entity<DbEvent>();
         events.Property(e => e.Uuid).UseCollation("C");
+        events.DefineIndexes();
     }
 }

@@ -32,5 +32,6 @@ public class FlowsDbContext(DbContextOptions<FlowsDbContext> options) : DbContex
 
         var events = model.Entity<DbEvent>();
         events.Property(e => e.Uuid).UseCollation("C");
+        events.DefineIndexes();
     }
 }

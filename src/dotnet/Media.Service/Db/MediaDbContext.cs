@@ -44,5 +44,6 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
 
         var events = model.Entity<DbEvent>();
         events.Property(e => e.Uuid).UseCollation("C");
+        events.DefineIndexes();
     }
 }

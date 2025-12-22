@@ -89,5 +89,6 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
 
         var events = model.Entity<DbEvent>();
         events.Property(e => e.Uuid).UseCollation("C");
+        events.DefineIndexes();
     }
 }

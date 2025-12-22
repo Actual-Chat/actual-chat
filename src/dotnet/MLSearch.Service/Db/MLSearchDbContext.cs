@@ -27,5 +27,6 @@ public class MLSearchDbContext(DbContextOptions<MLSearchDbContext> options) : Db
 
         var events = model.Entity<DbEvent>();
         events.Property(e => e.Uuid).UseCollation("C");
+        events.DefineIndexes();
     }
 }

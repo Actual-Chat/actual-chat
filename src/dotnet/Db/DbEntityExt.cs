@@ -25,12 +25,16 @@ public class RemoveDbEventIndexesConvention : IModelFinalizingConvention
             var p1 = props[1].Name;
 
             if ((p0 != "State" || p1 != "DelayUntil") && (p0 != "DelayUntil" || p1 != "State"))
-                continue;
+                continue; // Skip if not a State-DelayUntil index
+
+            if (index.GetFilter() != null)
+                continue; // Skip if it has a filter - it is new one!
+
 
             // Verify it's the attribute-generated index (usually has default name or matching properties)
             // We remove it unconditionally as per requirement.
             entity.RemoveIndex(index);
-            Console.WriteLine($"Removing convention index: {index.Name}");
+            Console.WriteLine($"Removing convention index: {index}");
         }
     }
 }
@@ -60,17 +64,10 @@ public static class DbEntityExt
             .HasDatabaseName("ix_events_pending")
             .HasFilter("state = 0");  // WHERE state = 0
 
-        // Optional: if you also frequently query processed events (state = 1)
-        events
-            .HasIndex(e => e.DelayUntil)
-            .IncludeProperties(e => new {e.Uuid, e.Version, e.LoggedAt, e.ValueJson, e.State})
-            .HasDatabaseName("ix_events_processed")
-            .HasFilter("state = 1");
-
         // Optional: if you need a covering index for state != 0 queries
         events
-            .HasIndex(e => e.DelayUntil)
-            .HasDatabaseName("ix_events_delay_until_non_new")
+            .HasIndex(e => new {e.DelayUntil, e.State})
+            .HasDatabaseName("ix_events_delay_until_state_non_new")
             .HasFilter("state != 0");
     }
 }

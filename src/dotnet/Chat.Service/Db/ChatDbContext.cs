@@ -130,5 +130,6 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
 
         var events = model.Entity<DbEvent>();
         events.Property(e => e.Uuid).UseCollation("C");
+        events.DefineIndexes();
     }
 }
