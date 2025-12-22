@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:9.0.2-bookworm-slim AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:9.0.11-bookworm-slim AS runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -12,7 +12,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
 RUN apt update && apt install -y ffmpeg && apt clean
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0.200-bookworm-slim AS dotnet-restore
+FROM mcr.microsoft.com/dotnet/sdk:9.0.308-bookworm-slim AS dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -20,7 +20,6 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     POWERSHELL_TELEMETRY_OPTOUT=1 \
     POWERSHELL_UPDATECHECK_OPTOUT=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
-# workaround of https://github.com/microsoft/playwright-dotnet/issues/1791
     DOTNET_ROLL_FORWARD=Major \
     DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 \
     NUGET_CERT_REVOCATION_MODE=offline
