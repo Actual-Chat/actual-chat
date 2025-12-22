@@ -115,6 +115,8 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         conversation.Property(e => e.Description).UseCollation("C");
         conversation.Property(e => e.Summary).UseCollation("C");
         conversation.Property(e => e.AuthorIds).UseCollation("C");
+        conversation.HasIndex(x => new { x.ChatId, x.StartEntryLid }).IsUnique().IncludeProperties(nameof(DbConversation.EndEntryLid));
+        conversation.HasIndex(x => new { x.ChatId, x.EndEntryLid }).IsDescending(false, true).IsUnique().IncludeProperties(nameof(DbConversation.StartEntryLid));
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
