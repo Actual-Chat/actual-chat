@@ -100,12 +100,6 @@ namespace ActualChat.Flows.Migrations
                     b.HasKey("Uuid")
                         .HasName("pk_events");
 
-                    b.HasIndex("DelayUntil", "State")
-                        .HasDatabaseName("ix_events_delay_until_state");
-
-                    b.HasIndex("State", "DelayUntil")
-                        .HasDatabaseName("ix_events_state_delay_until");
-
                     b.ToTable("_events");
                 });
 
