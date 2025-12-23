@@ -21,7 +21,7 @@ namespace ActualChat.Users.Migrations
                 table: "_events",
                 column: "delay_until",
                 filter: "state = 0")
-                .Annotation("Npgsql:IndexInclude", new[] { "uuid", "version", "logged_at", "value_json", "state" });
+                .Annotation("Npgsql:IndexInclude", new[] { "uuid", "version", "logged_at", "state" });
         }
 
         /// <inheritdoc />

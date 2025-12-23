@@ -104,7 +104,7 @@ namespace ActualChat.Flows.Migrations
                         .HasDatabaseName("ix_events_pending")
                         .HasFilter("state = 0");
 
-                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("DelayUntil"), new[] { "Uuid", "Version", "LoggedAt", "ValueJson", "State" });
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("DelayUntil"), new[] { "Uuid", "Version", "State" });
 
                     b.HasIndex("DelayUntil", "State")
                         .HasDatabaseName("ix_events_delay_until_state_non_new")

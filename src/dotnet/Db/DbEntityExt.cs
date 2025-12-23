@@ -60,7 +60,7 @@ public static class DbEntityExt
         // 1. The MOST important index: partial index for pending (New) events
         events
             .HasIndex(e => e.DelayUntil)
-            .IncludeProperties(e => new {e.Uuid, e.Version, e.LoggedAt, e.ValueJson, e.State})
+            .IncludeProperties(e => new {e.Uuid, e.Version, e.State})
             .HasDatabaseName("ix_events_pending")
             .HasFilter("state = 0");  // WHERE state = 0
 
