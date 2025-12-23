@@ -25,7 +25,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         _fileUploader.ProgressChanged += OnProgressChanged;
         _fileUploader.Completed += OnCompleted;
         _fileUploader.Failed += OnFailed;
-        _fileUploader.Canceled += OnCanceled;
         _cleanupTask = BackgroundTask.Run(Cleanup);
     }
 
@@ -211,15 +210,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         var session = await GetSession(sessionId).ConfigureAwait(false);
         session.ProgressTracker.SetException(error);
         session.Status = UploadStatus.Failed;
-        session.LastUpdatedAt = Now;
-        await _repo.Save(session).ConfigureAwait(false);
-    }
-
-    private async Task OnCanceled(string sessionId)
-    {
-        var session = await GetSession(sessionId).ConfigureAwait(false);
-        session.ProgressTracker.SetCanceled();
-        session.Status = UploadStatus.Canceled;
         session.LastUpdatedAt = Now;
         await _repo.Save(session).ConfigureAwait(false);
     }
