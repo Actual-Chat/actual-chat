@@ -1,0 +1,4 @@
+.incoming-call-modal .dialog-buttons,
+body.narrow .incoming-call-modal .dialog-buttons {
+    @apply flex-x;
+}
