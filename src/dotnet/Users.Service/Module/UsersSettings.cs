@@ -29,7 +29,7 @@ public sealed class UsersSettings
     public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
 
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Active;
-    public TimeSpan TotpTimestep { get; set; } = TimeSpan.FromSeconds(60);
+    public TimeSpan TotpTimestep { get; set; } = TimeSpan.FromSeconds(60 * 15);
     public int TotpTimestepCount { get; set; } = 2;
     public int TotpRandomSecretLength { get; set; } = 32;
     public TimeSpan TotpLifetime => TotpTimestep * TotpTimestepCount;
