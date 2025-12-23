@@ -140,7 +140,7 @@ public class FileUploaderService
             var whenFileStreamReady = fileProvider.WhenFileStreamReady();
             var progress = new UploadProgressTracker();
             var uploadOperation = new FileUploadOperation(whenFileStreamReady, StartFunc, progress);
-            PropagateFileUploadProgress(uploadOperation.ProgressTracker, Session, Owner);
+            PropagateFileUploadProgress(uploadOperation, Session, Owner);
             return uploadOperation;
 
             async Task<MediaContent> StartFunc(CancellationToken ct)
@@ -163,11 +163,12 @@ public class FileUploaderService
         }
 
         private void PropagateFileUploadProgress(
-            UploadProgressTracker progressTracker,
+            FileUploadOperation uploadOperation,
             UploadSession session,
             FileUploaderService owner)
         {
             var sessionId = session.SessionId;
+            var progressTracker = uploadOperation.ProgressTracker;
             var progressChangedThrottler = Throttler.New<double>(
                 TimeSpan.FromMilliseconds(500),
                 value => {
@@ -187,10 +188,18 @@ public class FileUploaderService
                     await RaiseUploadFailed(t.Exception).ConfigureAwait(false);
                 }
                 else if (t.IsCanceled) {
-                    Log.LogInformation("**** Canceled upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
-                    await (owner.Canceled?.Invoke(sessionId) ?? Task.CompletedTask).ConfigureAwait(false);
+                    if (uploadOperation.CancellationToken.IsCancellationRequested) {
+                        Log.LogInformation("**** Canceled upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
+                        await (owner.Canceled?.Invoke(sessionId) ?? Task.CompletedTask).ConfigureAwait(false);
+                    }
+                    else {
+                        var ex = new OperationCanceledException("The upload was canceled unexpectedly");
+                        Log.LogError(ex, "**** Failed to upload file '{FileName}' for '{SessionId}'('{UploadId}')", session.FileName, sessionId, session.UploadId);
+                        await RaiseUploadFailed(ex).ConfigureAwait(false);
+                    }
                 }
                 owner.RemoveJob(this);
+                uploadOperation.DisposeSilently();
             }, TaskScheduler.Default);
         }
 

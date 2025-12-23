@@ -49,8 +49,5 @@ public sealed class FileUploadOperation : IDisposable
     }
 
     public void Dispose()
-    {
-        _cts.CancelAndDisposeSilently();
-        ProgressTracker.SetCanceled();
-    }
+        => _cts.DisposeSilently();
 }
