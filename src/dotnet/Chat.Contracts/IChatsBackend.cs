@@ -138,8 +138,13 @@ public interface IChatsBackend : IComputeService, IBackendService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateAttachments(
-    [property: DataMember, MemoryPackOrder(0)] TextEntryAttachment[] Attachments
-) : ICommand<TextEntryAttachment[]>, IBackendCommand;
+    [property: DataMember, MemoryPackOrder(0)]
+    TextEntryAttachment[] Attachments
+) : ICommand<TextEntryAttachment[]>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => Attachments.Length > 0 ? Attachments[0].EntryId.ChatId : throw new ArgumentException("No attachments provided", nameof(Attachments));
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
