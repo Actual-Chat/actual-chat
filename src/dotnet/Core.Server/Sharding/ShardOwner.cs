@@ -73,9 +73,10 @@ public sealed class ShardOwner : WorkerBase, IHasServices
     public IAsyncDisposable Use(ShardRunnable shardRunnable)
         => Dispatcher.Use(shardRunnable);
 
-    public ShardState GetShardState<T>(T shardKey)
+    public ShardState GetShardState(int shardIndex)
     {
-        var shardIndex = ShardScheme.GetShardIndex(shardKey);
+        if (shardIndex < 0 || shardIndex >= ShardScheme.ShardCount)
+            throw new ArgumentOutOfRangeException(nameof(shardIndex));
         return States[shardIndex].Value;
     }
 
