@@ -29,4 +29,8 @@ public sealed partial record ExternalContactHashesBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactHashesBackend_RemoveAccount(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand;
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => UserId;
+}

@@ -25,7 +25,15 @@ public static class ShardKeyResolvers
         => source => source is { } v
             ? nonNullableResolver.Invoke(v)
             : 0;
-    public static ShardKeyResolver<T> NewNotFound<T>() => NewHashBased<T>();
+    //public static ShardKeyResolver<T> NewNotFound<T>() => static x => throw StandardError.Internal($"ShardKeyResolver not found for type {typeof(T).GetName()}.");
+    public static ShardKeyResolver<T> NewNotFound<T>()
+    {
+        var hashBased = NewHashBased<T>();
+        return x => {
+            Log.LogWarning("ShardKeyResolver not found for type {TypeName}", typeof(T).GetName());
+            return hashBased(x);
+        };
+    }
 
     // These properties can be set!
 
@@ -61,6 +69,11 @@ public static class ShardKeyResolvers
         Register<UserIdentity>(static x => ForString(x.Id));
         Register<FlowId>(static x => ForString(x.Arguments));
         Register<UploadId>(static x => ForString(x.Value));
+        Register<ExplicitNotificationId>(static x => ForString(x.UserId.Value));
+        Register<AliasId>(static x => ForString(x.Value));
+        Register<ConversationId>(static x => ForString(x.ChatId.Value));
+        Register<ChatRouletteId>(static x => ForString(x.Value));
+        Register<ExternalContactId>(static x => ForString(x.UserDeviceId.OwnerId.Value));
 
         // Classes
         Register<string>(ForString); // TODO(AY): String shard keys are likely a mistake -> remove this in future
