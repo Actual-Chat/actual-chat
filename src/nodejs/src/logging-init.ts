@@ -18,6 +18,7 @@ export type LogScope =
     | 'BubbleHost'
     | 'Connectivity'
     | 'DelayedInvoker'
+    | 'FileUpload'
     | 'Gestures'
     | 'event-handling'
     | 'InertialScroll'
