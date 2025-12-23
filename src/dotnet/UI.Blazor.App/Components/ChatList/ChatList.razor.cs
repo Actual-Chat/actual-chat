@@ -49,7 +49,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>
         var range = (hasQuery, isFirstRender) switch {
             // No query, no data -> initial load
             (false, true) => new Range<int>(
-                chatIndex - ChatListUI.HalfLoadLimit,
+                chatIndex - ChatListUI.LoadLimit,
                 chatIndex + ChatListUI.LoadLimit),
             // No query, but there is old data -> retaining visual position
             (false, false) => new Range<int>(minVisibleIndex - (ChatListUI.TileSize * 2), maxVisibleIndex + (ChatListUI.TileSize * 2)),
