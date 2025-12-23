@@ -192,8 +192,3 @@ body.hoverable .author-modal .tile-remove-from-group:hover {
     @apply text-xs;
     @apply opacity-70;
 }
-
-.incoming-call-modal .dialog-buttons,
-body.narrow .incoming-call-modal .dialog-buttons {
-    @apply flex-x;
-}

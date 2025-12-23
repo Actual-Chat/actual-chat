@@ -25,56 +25,44 @@
             </BadgeContent>
         </AuthorCircle>
         <div class="c-buttons">
-            @if (IsCall) {
+            @if (_enableIncompleteUI) {
                 <ButtonRound
                     Class="btn-sm"
-                    Tooltip="Message"
-                    TooltipPosition="FloatingPosition.Top">
-                    <i class="icon-message-ellipse text-2xl"></i>
+                    Tooltip="Show call"
+                    TooltipPosition="FloatingPosition.Top"
+                    Click="OnCallClick">
+                    <i class="icon-phone text-2xl"></i>
                 </ButtonRound>
-            } else {
-                @if (_enableIncompleteUI) {
-                    <ButtonRound
-                        Class="btn-sm"
-                        Tooltip="Show call"
-                        TooltipPosition="FloatingPosition.Top"
-                        Click="OnCallClick">
-                        <i class="icon-phone text-2xl"></i>
-                    </ButtonRound>
-                }
+            }
 
-                @if (OnEditClick.HasDelegate) {
-                    <ButtonRound
-                        Class="btn-sm"
-                        Tooltip="Edit"
-                        TooltipPosition="FloatingPosition.Top"
-                        Click="@OnEditClick">
-                        <i class="icon-edit text-2xl"></i>
-                    </ButtonRound>
-                }
+            @if (OnEditClick.HasDelegate) {
+                <ButtonRound
+                    Class="btn-sm"
+                    Tooltip="Edit"
+                    TooltipPosition="FloatingPosition.Top"
+                    Click="@OnEditClick">
+                    <i class="icon-edit text-2xl"></i>
+                </ButtonRound>
+            }
 
-                @if (!IsOwn) {
-                    <AddToContactsButton Author="@Author"/>
-                }
+            @if (!IsOwn) {
+                <AddToContactsButton Author="@Author"/>
+            }
 
-                @if (_shareModalModel is not null) {
-                    <ButtonRound
-                        Class="btn-sm"
-                        Tooltip="Share"
-                        TooltipPosition="FloatingPosition.Top"
-                        Click="@OnShareClick">
-                        <i class="icon-share text-2xl"></i>
-                    </ButtonRound>
-                }
+            @if (_shareModalModel is not null) {
+                <ButtonRound
+                    Class="btn-sm"
+                    Tooltip="Share"
+                    TooltipPosition="FloatingPosition.Top"
+                    Click="@OnShareClick">
+                    <i class="icon-share text-2xl"></i>
+                </ButtonRound>
             }
         </div>
     </div>
 
     <div class="c-bottom">
         <div class="c-title">
-            @if (IsCall) {
-                <span class="call-text">Incoming call from </span>
-            }
             <AuthorName AuthorId="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
         </div>
         @if (!_peerOwnName.IsNullOrEmpty()) {
@@ -97,12 +85,10 @@
 
     private IAuthors Authors => Hub.Authors;
     private IAvatars Avatars => Hub.Avatars;
-    private AuthorUI AuthorUI => Hub.AuthorUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
-    [Parameter] public bool IsCall { get; set; }
     [Parameter] public EventCallback OnEditClick { get; set; }
 
     protected override async Task OnInitializedAsync() {
@@ -140,8 +126,10 @@
     private Task OnShareClick()
         => _shareModalModel is not null ? ShareUI.Share(_shareModalModel) : Task.CompletedTask;
 
-    private Task OnCallClick()
-        => AuthorUI.Show(Author.Id, true);
+    private async Task OnCallClick() {
+        Modal.Close();
+        await ModalUI.Show(new IncomingCallModal.Model(Author.Id));
+    }
 
     private void OnClose()
         => Modal.Close();
