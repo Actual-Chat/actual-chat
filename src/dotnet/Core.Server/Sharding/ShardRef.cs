@@ -15,12 +15,8 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
     public bool IsNone => _scheme == null || _scheme.IsNone;
     public bool IsValid => _scheme?.IsValid == true;
 
-    public ShardRef(ShardScheme scheme, long key)
-        : this(scheme, unchecked((int)key)) { }
     public ShardRef(int key)
         : this(ShardScheme.Undefined, key) { }
-    public ShardRef(long key)
-        : this(ShardScheme.Undefined, unchecked((int)key)) { }
 
     public void Deconstruct(out ShardScheme scheme, out int key)
     {
