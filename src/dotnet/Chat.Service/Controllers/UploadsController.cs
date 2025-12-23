@@ -92,6 +92,9 @@ public sealed class UploadsController(IServiceProvider services) : ControllerBas
             catch (UploadTransientException) {
                 return StatusCode((int)HttpStatusCode.ServiceUnavailable);
             }
+            catch (Microsoft.AspNetCore.Http.BadHttpRequestException) {
+                throw; // Ignore, let Kestrel process it.
+            }
             catch (Exception e) {
                 Log.LogError(e, "Failed to append chunk to upload '{UploadId}' at offset '{Offset}'", uploadId, uploadOffset);
                 return StatusCode((int)HttpStatusCode.InternalServerError);
