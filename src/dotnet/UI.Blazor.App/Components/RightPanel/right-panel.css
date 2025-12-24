@@ -188,7 +188,7 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
     @apply absolute top-0;
     @apply w-16 h-16 max-w-none max-h-none;
     @apply opacity-0;
-    transition: width 0.25s ease-in, height 0.25s ease-in;
+    transition: width 0.25s ease-in, height 0.25s ease-in, opacity 0.25s ease-in 0.25s;
 }
 .right-panel > .c-header.collapsed-header > .c-center .chat-avatar .clickable-avatar.full-size-avatar {
     @apply hidden;
@@ -259,7 +259,7 @@ body.hoverable .right-panel-chat-info-item.hovered:hover,
     @apply opacity-100;
     transform: translateX(0);
     transition:
-        opacity .15s ease-in 3s,
+        opacity .15s ease-in .5s,
         max-width .15s ease-in .15s,
         transform .15s ease-in .3s;
 }
