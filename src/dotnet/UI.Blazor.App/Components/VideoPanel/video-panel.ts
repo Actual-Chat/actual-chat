@@ -1,17 +1,19 @@
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 
 export class VideoPanel {
+    private blazorRef: DotNet.DotNetObject;
     private readonly videoPanel: HTMLElement;
     private readonly video: HTMLElement | null = null;
     private readonly expandBtn: HTMLElement | null = null;
     private parentElement: HTMLElement | null = null;
     private disposed$: Subject<void> = new Subject<void>();
 
-    static create(videoPanel: HTMLElement): VideoPanel {
-        return new VideoPanel(videoPanel);
+    static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
+        return new VideoPanel(videoPanel, blazorRef);
     }
 
-    constructor(videoPanel: HTMLElement) {
+    constructor(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject) {
+        this.blazorRef = blazorRef;
         this.videoPanel = videoPanel;
         if (!this.videoPanel)
             return;
@@ -21,14 +23,12 @@ export class VideoPanel {
             return;
 
         this.parentElement = this.videoPanel.parentElement;
-        console.log('videoPanel created.');
         const needToShowElements = this.videoPanel.querySelectorAll('.show-with-delay');
         setTimeout(() => {
             needToShowElements.forEach(element => element.classList.add('show'));
             this.videoPanel.classList.remove('first-time-open');
         }, 1000);
         this.expandBtn = this.videoPanel.querySelector('.expand-btn');
-        console.log('expandBtn: ', this.expandBtn);
         if (!this.expandBtn)
             return;
 
@@ -53,7 +53,6 @@ export class VideoPanel {
     }
 
     private onExpandBtnClick() {
-        console.log('onExpandBtnClick invoked.');
         if (!this.videoPanel.classList.contains('expanded')) {
             this.videoPanel.classList.toggle('expanded');
             document.body.appendChild(this.videoPanel);
@@ -68,5 +67,18 @@ export class VideoPanel {
             this.videoPanel.classList.remove('expanded');
             this.parentElement?.appendChild(this.videoPanel);
         }
+    }
+
+    public startClosing() {
+        this.videoPanel.classList.remove('first-time-open');
+        this.videoPanel.classList.add('closing');
+
+        const content = this.videoPanel.querySelector('.c-content')!;
+        const handler = () => {
+            content.removeEventListener('animationend', handler);
+            this.blazorRef.invokeMethodAsync("CloseVideoPanel");
+        };
+
+        content.addEventListener('animationend', handler);
     }
 }

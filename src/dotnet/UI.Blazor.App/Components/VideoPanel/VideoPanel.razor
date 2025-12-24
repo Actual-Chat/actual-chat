@@ -6,39 +6,68 @@
     var cls = isRightPanelVisible ? "rp-visible" : "";
 }
 
-<div @ref="Ref" class="video-panel first-time-open @cls">
-    <div class="c-content">
-        <div class="video-frame">
-            <video autoplay muted playsinline loop preload="auto" class="call-video">
-                <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
-                <source src="/dist/images/landing/landing-tutorial.mp4" type="video/mp4"/>
-            </video>
+@if (_rendered) {
+    <div @ref="Ref" class="video-panel first-time-open @cls">
+        <div class="c-content">
+            <div class="video-frame">
+                <video autoplay muted playsinline loop preload="auto" class="call-video">
+                    <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
+                    <source src="/dist/images/landing/landing-tutorial.mp4" type="video/mp4"/>
+                </video>
+            </div>
+            <HeaderButton Class="expand-btn show-with-delay">
+                <i class="icon-expand text-lg"></i>
+            </HeaderButton>
         </div>
-        <HeaderButton Class="expand-btn show-with-delay">
-            <i class="icon-expand text-lg"></i>
-        </HeaderButton>
     </div>
-</div>
+}
 
 @code {
+    private bool _rendered;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
 
     private ElementReference Ref { get; set; }
-    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<VideoPanel> BlazorRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; }
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public bool Show { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
         await base.DisposeAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        if (_rendered && JSRef is null) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
         }
     }
+
+    protected override async Task OnParametersSetAsync() {
+        if (Show && !_rendered) {
+            _rendered = true;
+        } else if (!Show && _rendered && JSRef is not null) {
+            await JSRef.InvokeVoidAsync("startClosing");
+        }
+    }
+
+    [JSInvokable]
+    public async Task CloseVideoPanel() {
+        _rendered = false;
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+
+        BlazorRef?.DisposeSilently();
+        BlazorRef = null!;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
