@@ -38,12 +38,15 @@ export class RecaptchaHandler {
         if (innerDiv.tagName !== 'DIV')
             return;
 
+        if (outerDiv.classList.length !== 0 || innerDiv.classList.length !== 0)
+            return;
+
         const rawText = innerDiv.textContent;
         if (!rawText)
             return;
 
         const text = this.normalizeText(rawText);
-        if (text.includes('recaptcha') && text.includes('connect')) {
+        if (text.includes('recaptcha')) {
             outerDiv.style.display = 'none';
             warnLog?.log('reCAPTCHA error detected and hidden:', rawText);
         }
