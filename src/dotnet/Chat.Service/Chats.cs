@@ -1,5 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.Users;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Chat;
 
@@ -89,8 +90,21 @@ public class Chats(IServiceProvider services) : IChats
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
-        await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
-        return await Backend.GetTile(chatId, entryKind, idTileRange, false, cancellationToken).ConfigureAwait(false);
+        var relatedId = RpcInboundContext.Current?.Message.RelatedId.ToInvariantString() ?? "";
+        try {
+            await Get(session, chatId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false); // Make sure we can read the chat
+            var chatTile = await Backend.GetTile(chatId, entryKind, idTileRange, false, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("Got tile for #{RelatedId} {Session}, {ChatId}, {EntryKind} and {Range}: {ChatTileEntries} entries",
+                relatedId, session, chatId, entryKind, idTileRange, chatTile.Entries.Length);
+            return chatTile;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to get chat tile for #{RelatedId} {Session}, {ChatId}, {EntryKind} and {Range}",
+                relatedId, session, chatId, entryKind, idTileRange);
+            throw;
+        }
     }
 
     // [ComputeMethod]
@@ -141,11 +155,23 @@ public class Chats(IServiceProvider services) : IChats
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false); // Make sure we can read the chat
-        if (chat == null)
-            return null;
+        var relatedId = RpcInboundContext.Current?.Message.RelatedId.ToInvariantString() ?? "";
+        try {
+            var chat = await Get(session, chatId, cancellationToken)
+                .ConfigureAwait(false); // Make sure we can read the chat
+            if (chat == null)
+                return null;
 
-        return await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
+            var chatNews = await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("Got news for #{RelatedId} {Session}, {ChatId}: {LastTextEntryId}",
+                relatedId, session, chatId, chatNews?.LastTextEntry?.Id);
+            return chatNews;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to get chat news for #{RelatedId} {Session}, {ChatId}",
+                relatedId, session, chatId);
+            throw;
+        }
     }
 
     // [ComputeMethod]

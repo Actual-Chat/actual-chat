@@ -292,16 +292,19 @@ public readonly struct RpcHostBuilder
 
     private void AddRpcPeerFactory()
     {
-        var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-        var serverInboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.ApiServer && isDevelopmentInstance
-            ? LogLevel.Debug
-            : LogLevel.None;
-        var backendInboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.BackendServer && isDevelopmentInstance
-            ? LogLevel.Debug
-            : LogLevel.None;
-        var backendOutboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.BackendClient && isDevelopmentInstance
-            ? LogLevel.Debug
-            : LogLevel.None;
+        // var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
+        // var serverInboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.ApiServer && isDevelopmentInstance
+        //     ? LogLevel.Debug
+        //     : LogLevel.None;
+        // var backendInboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.BackendServer && isDevelopmentInstance
+        //     ? LogLevel.Debug
+        //     : LogLevel.None;
+        // var backendOutboundCallLogLevel = CoreConstants.DebugMode.RpcCalls.BackendClient && isDevelopmentInstance
+        //     ? LogLevel.Debug
+        //     : LogLevel.None;
+        var serverInboundCallLogLevel = LogLevel.Information;
+        var backendInboundCallLogLevel = LogLevel.Information;
+        var backendOutboundCallLogLevel = LogLevel.Information;
         Services.ReplaceFactory<RpcPeerOptions>((_, oldFactory) => oldFactory.Invoke() with {
             PeerFactory = (hub, peerRef) => peerRef.IsServer
                 ? new RpcServerPeer(hub, peerRef) {
