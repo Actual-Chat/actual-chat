@@ -59,25 +59,27 @@
     </div>
     @if (chat is not null) {
         <div class="chat-header-control-panel hideable">
+        @if (m.EnableIncompleteUI) {
             <HeaderButton Click="@OnJoinVideoCallClick">
                 <i class="icon-monitor text-xl"></i>
             </HeaderButton>
             <HeaderButton Click="@OnShowVideoPanel">
                 <i class="icon-video text-xl"></i>
             </HeaderButton>
-            <TranslationButton ChatId="@chat.Id"/>
-            @* @if (m.EnableIncompleteUI) { *@
-            @* <HeaderButton Click="@OnSearchClick" Class="@searchCls"> *@
-            @* <i class="icon-ai-search"></i> *@
-            @* </HeaderButton> *@
-            @* } *@
-            @if (chat.Id.IsThread(out var threadChatId)) {
-                <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>
-            }
-            @if (IsRightNavigateButtonVisible) {
-                <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
-            }
-        </div>
+        }
+        <TranslationButton ChatId="@chat.Id"/>
+        @* @if (m.EnableIncompleteUI) { *@
+        @* <HeaderButton Click="@OnSearchClick" Class="@searchCls"> *@
+        @* <i class="icon-ai-search"></i> *@
+        @* </HeaderButton> *@
+        @* } *@
+        @if (chat.Id.IsThread(out var threadChatId)) {
+            <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>
+        }
+        @if (IsRightNavigateButtonVisible) {
+            <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
+        }
+    </div>
     }
 </div>
 @if (ScreenSize.IsNarrow() && isPanelVisible) {
@@ -85,9 +87,8 @@
         <ChatActivityPanel Chat="@chat" MaxCount="3"/>
     </div>
 }
-@if (_showVideoPanel) {
-    <VideoPanel/>
-}
+
+<VideoPanel Show="@_showVideoPanel"/>
 
 @code {
     private bool _showVideoPanel;
