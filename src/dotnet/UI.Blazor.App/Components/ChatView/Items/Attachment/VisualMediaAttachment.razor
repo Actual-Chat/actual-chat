@@ -28,13 +28,32 @@
             />
         }
     </a>
+    @* TODO(Andrey): need to add Attachment parameter Hidden *@
+    @* @if (_enableIncompleteUI) { *@
+    @*     <div class="noise-overlay @_overlayCls" @onclick="@OnOverlayClick"></div> *@
+    @* } *@
 </div>
 
 @code {
+    private string _overlayCls = "block";
+    private bool _enableIncompleteUI;
+
     private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public TextEntryAttachment Attachment { get; set; } = null!;
     [Parameter] public TextEntryAttachment[]? Attachments { get; set; }
     [Parameter] public string Class { get; set; } = "";
+
+    protected override async Task OnInitializedAsync() {
+        _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
+    }
+
+
+    private void OnOverlayClick() {
+        if (_overlayCls == "hidden")
+            return;
+        _overlayCls = "hidden";
+        StateHasChanged();
+    }
 }
