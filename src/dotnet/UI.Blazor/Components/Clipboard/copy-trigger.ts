@@ -47,7 +47,12 @@ export class CopyTrigger {
     private async copy() {
         let text = this.copyText;
         if (this.copyTextSourceRef != null) {
-            const sourceText = this.copyTextSourceRef.value;
+            let sourceText = this.copyTextSourceRef.value;
+            if (!sourceText || sourceText.length === 0) {
+                if (this.copyTextSourceRef.dataset['copySource'] === 'innerText') {
+                    sourceText = this.copyTextSourceRef.innerText;
+                }
+            }
             text = this.copyTextFormatString.length > 0 ? this.copyTextFormatString.replace('{0}', sourceText) : sourceText;
         }
         return navigator.clipboard.writeText(text).catch(e => errorLog?.log(`copy: failed to write to clipboard`, e));

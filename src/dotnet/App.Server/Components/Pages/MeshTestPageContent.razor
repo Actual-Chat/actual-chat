@@ -1,0 +1,165 @@
+@using System.Net.WebSockets
+@using ActualChat.Rpc
+@using ActualChat.UI.Blazor.App.Services;
+@using ActualChat.UI.Blazor;
+@using ActualChat.UI.Blazor.Components
+@using ActualLab.Fusion.Blazor
+@using ActualLab.Rpc
+@using ActualLab.Rpc.Infrastructure
+@inherits ComputedStateComponent<AppUIHub, MeshTestPageContent.Model>
+@implements IEmbeddedView
+@{
+    var m = State.Value;
+}
+<div class="flex-y h-full">
+    <div class="flex-x gap-x-2 mb-3">
+        <Button Click="@(() => State.Recompute())">Refresh</Button>
+        @if (!ReportContent.Id.IsNullOrEmpty()) {
+            _hasCopyButton = true;
+            <CopyTrigger CopyTextSourceRef="@ReportContent">
+                <Button Class="btn-primary">
+                    <Icon>
+                        <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                        <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+                    </Icon>
+                    <Title>
+                        <span class="hide-on-copied-hint">Copy report</span>
+                        <span class="copied-hint">Report copied!</span>
+                    </Title>
+                </Button>
+            </CopyTrigger>
+        }
+    </div>
+    <div @ref="@ReportContent" class="flex-y select-text" data-copy-source="innerText">
+        <h3>Mesh state (@m.Nodes.Length node(s)):</h3>
+        <p>
+            @{
+                var i = 0;
+                foreach (var node in m.Nodes) {
+                    @if (node.IsThis) {
+                        <span><b>[@i, this]</b></span>
+                    } else {
+                        <span>[@i]</span>
+                    }
+
+                    <span> = @node.Node.LockKey : @node.Node.State</span>
+                    @if (node.DiesIn is { } diesIn) {
+                        <span>, dies in: @{ diesIn.ToShortString(); }</span>
+                    }
+                    <br>
+                    i++;
+                }
+            }
+        </p>
+        <br>
+        <h3>Mesh Rpc Peer Refs:</h3>
+        <p>
+            @{
+                foreach (var peerRef in m.MeshRpcPeerRefs) {
+                    @peerRef<br>
+                }
+            }
+        </p>
+        <br>
+        <h3>Rpc Peers:</h3>
+        <p>
+            @{
+                foreach (var peer in m.RpcPeers) {
+                    <span>Id: <b>@peer.Id</b></span><br>
+                    <span>@peer.Peer</span><br>
+                    <span>IsConnected: <b>@peer.IsConnected</b></span><br>
+                    @* <span>Connection state:<br><pre class="text-[length:inherit] font-[family:inherit] text-wrap">@peer.ConnectionInfo</pre></span><br> *@
+                    <span>Connection state:<br><span style="white-space: pre-wrap;">@peer.ConnectionInfo</span></span><br>
+                    <br>
+                }
+            }
+        </p>
+    </div>
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions { WriteIndented = true };
+    private bool _hasCopyButton;
+
+    [Inject] private MeshRpcPeerRefs MeshRpcPeerRefs { get; set; } = null!;
+    private MeshWatcher MeshWatcher => MeshRpcPeerRefs.MeshWatcher;
+    private RpcHub RpcHub => Hub.RpcHub;
+
+    private ElementReference ReportContent { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var meshState = await MeshWatcher.State.Use(cancellationToken);
+        var meshRpcPeerRefs = MeshRpcPeerRefs.RpcPeerRefs
+            .Select(c => $"{c.Target.MeshRef} ==> {c}")
+            .ToImmutableArray();
+        var rpcPeers = RpcHub.InternalServices.Peers.Values
+            .Select(c => new PeerModel(c.Id.ToString(), c.ToString(), c.IsConnected(), GetConnectionInfo(c.ConnectionState.Value)))
+            .ToImmutableArray();
+        var now = Clocks.SystemClock.Now;
+        var nodes = meshState.AllNodes.Values.Order()
+            .Select(c => new NodeModel(c, MeshWatcher.ThisNode.Equals(c), c.DeadAt.HasValue ? (c.DeadAt.Value - now).Positive() : null))
+            .ToImmutableArray();
+        return new Model(nodes, meshRpcPeerRefs, rpcPeers);
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (!_hasCopyButton && ReportContent.Id.Length > 0)
+            StateHasChanged();
+    }
+
+    private string GetConnectionInfo(RpcPeerConnectionState state) {
+        var rpcConnection = state.Connection;
+        var info = new ConnectionStateDiagInfo(
+            state.Handshake,
+            state.Error?.ToString() ?? "",
+            state.TryIndex,
+            state.ReaderTokenSource?.IsCancellationRequested ?? false
+        );
+        if (rpcConnection is not null) {
+            var websocket = rpcConnection.Properties.KeylessGet<WebSocket>();
+            var uri = rpcConnection.Properties.KeylessGet<Uri>();
+            var connectionInfo = new RpcConnectionDiagInfo(rpcConnection.IsLocal, uri?.ToString() ?? "", websocket is not null ? GetWebsocketInfo(websocket) : null);
+            info = info with {
+                Connection = connectionInfo,
+            };
+        }
+        return JsonSerializer.Serialize(info, JsonSerializerOptions);
+    }
+
+    private WebSocketDiagInfo GetWebsocketInfo(WebSocket websocket)
+        => new(
+            websocket.ToString() ?? "",
+            websocket.State.ToString(),
+            websocket.SubProtocol,
+            websocket.CloseStatus?.ToString() ?? "",
+            websocket.CloseStatusDescription);
+
+    // Nested types
+    public record Model(
+        ImmutableArray<NodeModel> Nodes,
+        ImmutableArray<string> MeshRpcPeerRefs,
+        ImmutableArray<PeerModel> RpcPeers) {
+        public static readonly Model None = new ([], [], []);
+    }
+
+    public record PeerModel(string Id, string Peer, bool IsConnected, string ConnectionInfo);
+    public record NodeModel(MeshNode Node, bool IsThis, TimeSpan? DiesIn);
+
+    public record ConnectionStateDiagInfo(
+        RpcHandshake? Handshake,
+        string? Error,
+        int TryIndex,
+        bool IsCancelled) {
+        public RpcConnectionDiagInfo? Connection { get; init; }
+    }
+
+    public record WebSocketDiagInfo(string Websocket, string State, string? SubProtocol, string CloseStatus, string? CloseStatusDescription);
+    public record RpcConnectionDiagInfo(bool IsLocal, string Uri, WebSocketDiagInfo? WebSocket);
+}
