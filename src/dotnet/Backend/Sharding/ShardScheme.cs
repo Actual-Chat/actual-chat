@@ -22,7 +22,7 @@ public sealed class ShardScheme(
     public static readonly ShardScheme Queue = new(nameof(Queue), N, HostRole.EventQueue, ShardSchemeFlags.Queue);
     public static readonly ShardScheme SlowQueue = new(nameof(SlowQueue), N, HostRole.EventQueue, ShardSchemeFlags.SlowQueue);
     // Backend shard schemes
-    public static readonly ShardScheme FlowsBackend = new(nameof(FlowsBackend), 1, HostRole.FlowsBackend);
+    public static readonly ShardScheme FlowsBackend = new(nameof(FlowsBackend), N, HostRole.FlowsBackend);
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), N, HostRole.MediaBackend);
     public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), N, HostRole.AudioBackend);
     public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), N, HostRole.ChatBackend);

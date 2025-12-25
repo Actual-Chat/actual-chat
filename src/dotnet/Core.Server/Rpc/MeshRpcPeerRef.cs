@@ -16,25 +16,49 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         ConnectionKind = target.ConnectionKind;
         HostInfo = $"{target.ToString()}-v{version.Format()}";
         UseReferentialEquality = true;
+        RouteState = new();
+        _ = RouteState.WhenChanged.ContinueWith(
+            _ => Target.Owner.Log.LogWarning(
+                "'{RpcPeerRef}': rerouted from {OldTarget} to {NewTarget}",
+                this, Target, Target.Latest),
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+
         var shardRef = Target.ShardRef;
         if (!shardRef.IsNone) {
             _shardState = Target.Owner.ShardOwners[shardRef.Scheme].GetShardState(shardRef.Key);
-            RouteState = new();
-            _ = RouteState.WhenChanged.ContinueWith(
-                _ => Target.Owner.Log.LogWarning(
-                    "'{RpcPeerRef}': rerouted from {OldTarget} to {NewTarget}",
-                    this, Target, Target.Latest),
-                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             if (_shardState.MustOwn) {
                 RouteState.LocalExecutionAwaiter = LocalExecutionAwaiter;
                 _ = MarkChangedWhenShardOwnershipEnds(_shardState, RouteState.ChangedToken);
             }
             _ = MarkChangedWhenShardStateChanged(_shardState);
         }
+        _ = MarkChangedWhenTargetChanged(Target);
         Initialize();
     }
 
     // Private methods
+
+    private async Task MarkChangedWhenTargetChanged(ResolvedMeshRef target)
+    {
+        await Task.Yield();
+        await target.WhenChanged(true, CancellationToken.None).ConfigureAwait(false);
+        RouteState?.MarkChanged();
+    }
+
+    private async Task MarkChangedWhenShardStateChanged(ShardOwner.ShardState shardState)
+    {
+        await Task.Yield();
+        while (true) {
+            var nextShardState = (await shardState.AsyncState.WhenNext().ConfigureAwait(false)).Value;
+            var isLocal = shardState.OwnershipStatus != ShardOwnershipStatus.MappedToOtherNode;
+            var isNextLocal = nextShardState.OwnershipStatus != ShardOwnershipStatus.MappedToOtherNode;
+            if (isLocal != isNextLocal) {
+                RouteState?.MarkChanged();
+                return;
+            }
+            shardState = nextShardState;
+        }
+    }
 
     private async ValueTask LocalExecutionAwaiter(CancellationToken cancellationToken)
     {
@@ -70,9 +94,4 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
         }
     }
 
-    private async Task MarkChangedWhenShardStateChanged(ShardOwner.ShardState shardState)
-    {
-        await shardState.AsyncState.WhenNext().SilentAwait();
-        RouteState?.MarkChanged();
-    }
 }
