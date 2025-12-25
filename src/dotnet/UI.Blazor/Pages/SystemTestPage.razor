@@ -35,7 +35,6 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private HostId HostId { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private ComputedGraphPruner ComputedGraphPruner { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
 
@@ -50,7 +49,12 @@
     }
 
     private Task OnPruneComputedGraphLocallyClick() {
-        return ComputedGraphPruner.PruneOnce(CancellationToken.None);
+        var computedGraphPruner = ComputedRegistry.GraphPruner;
+        if (computedGraphPruner is not null)
+            return computedGraphPruner.PruneOnce(CancellationToken.None);
+
+        UICommander.ShowError("Computed graph pruner is not initialized");
+        return Task.CompletedTask;
     }
 
     private async Task OnPruneComputedGraphClick(bool everywhere) {
