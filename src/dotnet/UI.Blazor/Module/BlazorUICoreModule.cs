@@ -132,6 +132,8 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         );
         // IBannerViews
         services.AddTypeMapper<IBannerView>();
+        // IEmbeddedViews
+        services.AddTypeMapper<IEmbeddedView>();
 
         // RemoteComputedCache
         if (hostKind.IsWasmApp() && !HostInfo.IsTested) {
