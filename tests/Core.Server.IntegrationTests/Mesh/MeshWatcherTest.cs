@@ -40,7 +40,7 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         await w1.State.Computed.When(x => x.IsFinal).WaitAsync(syncTimeout);
     }
 
-    [Fact(Timeout = 30_000, Skip = "Unstable. AY should fix it.")]
+    [Fact(Timeout = 30_000)]
     public async Task PeerNodeRefTest()
     {
         await using var h1 = await NewAppHost();

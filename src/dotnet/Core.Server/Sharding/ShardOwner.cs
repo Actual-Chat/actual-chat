@@ -203,7 +203,7 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                     continue;
                 }
                 if (!isOwn) {
-                    if (mutableState.Value.Version == 0)
+                    if (mutableState.Value.OwnershipStatus is not ShardOwnershipStatus.MappedToOtherNode)
                         mutableState.Value = new ShardState(mutableState.Value, false);
                     continue;
                 }
@@ -212,12 +212,8 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                 var linkedToken = linkedCts.Token;
                 computed.Invalidated += _ => linkedCts.CancelAndDisposeSilently();
 
-                while (!linkedToken.IsCancellationRequested) {
-                    var shardState = mutableState.Value;
-                    if (shardState.OwnershipStatus is not ShardOwnershipStatus.MappedToThisNode)
-                        mutableState.Value = new ShardState(shardState, true);
+                while (!linkedToken.IsCancellationRequested)
                     await LockAndUse(shardIndex, linkedToken).SilentAwait(false);
-                }
                 if (mutableState.Value.OwnershipStatus is not ShardOwnershipStatus.MappedToOtherNode)
                     mutableState.Value = new ShardState(mutableState.Value, false);
             }
@@ -226,7 +222,8 @@ public sealed class ShardOwner : WorkerBase, IHasServices
             Log.LogError(e, "SyncShardState({ShardIndex}) failed", shardIndex);
         }
         finally {
-            mutableState.Value = new ShardState(mutableState.Value); // Final shard state
+            if (!mutableState.Value.IsFinal)
+                mutableState.Value = new ShardState(mutableState.Value); // Final shard state
         }
     }
 
@@ -234,6 +231,11 @@ public sealed class ShardOwner : WorkerBase, IHasServices
     {
         var mutableState = _states[shardIndex];
         DebugLog?.LogDebug("Shard #{ShardIndex}: ?++ {ThisNodeId}", shardIndex, ThisNode.Ref);
+
+        var shardState = mutableState.Value;
+        if (shardState.OwnershipStatus is ShardOwnershipStatus.MappedToOtherNode)
+            mutableState.Value = new ShardState(shardState, true); // Avoid unnecessary state updates if already mapped to this node or owned by this node
+
         var lockHolder = await OwnershipLocks.Lock(shardIndex.Format(), cancellationToken).ConfigureAwait(false);
         var lockToken = lockHolder.StopToken;
 

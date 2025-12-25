@@ -6,7 +6,7 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Flows;
 
-[BackendService(nameof(HostRole.FlowsBackend), ServiceMode.Server)] // TODO(AK): Change to Distributed when fixed
+[BackendService(nameof(HostRole.FlowsBackend), ServiceMode.Distributed)]
 [BackendClient(nameof(HostRole.FlowsBackend))]
 public interface IFlowBackend : IComputeService, IBackendService
 {

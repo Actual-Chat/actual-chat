@@ -56,17 +56,17 @@ public readonly struct ResolvedMeshRef
     {
         var self = this;
         return Owner.MeshState.Computed
-            .When(_ => !self.IsChanged(collapseState), cancellationToken);
+            .When(_ => self.IsChanged(collapseState), cancellationToken);
     }
 
     public bool IsChanged(bool collapseState)
         => IsChanged(Latest, collapseState);
 
     public bool IsChanged(ResolvedMeshRef other, bool collapseState)
-        => Owner == other.Owner
-            && ShardRef == other.ShardRef
-            && NodeRef == other.NodeRef
-            && (collapseState
-                ? Node?.State.IsLive() == other.Node?.State.IsLive()
-                : (Node?.State).OrUnknown() == (other.Node?.State).OrUnknown());
+        => Owner != other.Owner
+            || ShardRef != other.ShardRef
+            || NodeRef != other.NodeRef
+            || (collapseState
+                ? Node?.State.IsLive() != other.Node?.State.IsLive()
+                : (Node?.State).OrUnknown() != (other.Node?.State).OrUnknown());
 }
