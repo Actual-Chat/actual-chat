@@ -53,4 +53,6 @@ public sealed class MeshRpcPeerRefs
             return peerRef;
         }
     }
+
+    public IEnumerable<MeshRpcPeerRef> RpcPeerRefs => _peerRefs.Values;
 }

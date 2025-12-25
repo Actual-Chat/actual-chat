@@ -9,7 +9,9 @@ using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Pages;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Components;
 using ActualLab.CommandR.Diagnostics;
 using ActualLab.Fusion.Diagnostics;
 using ActualLab.Fusion.Server;
@@ -260,6 +262,10 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Open Telemetry
         if (!HostInfo.IsTested)
             ConfigureOpenTelemetry(services);
+
+        // Test UI
+        services.AddTypeMap<IEmbeddedView>(map => map
+            .Add<MeshTestPage, MeshTestPageContent>());
     }
 
     // Private methods
