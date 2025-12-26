@@ -85,6 +85,11 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IContentLinksBackend, ContentLinksBackend>();
         services.AddSingleton<OpenGraphTagsProvider>();
 
+        // Diagnostics
+        rpcHost.AddLocalApi<IDiagnostics, Diagnostics>();
+        rpcHost.AddBackend<IDiagnosticsBackend, DiagnosticsBackend>();
+        services.AddFusion().AddComputeService<DiagnosticsBackendLocal>();
+
         if (isBackendClient)
             return;
 
