@@ -34,7 +34,8 @@ public static class LoggingExt
             .AddFilter(null, LogLevel.Information)
             .AddFilter("System", LogLevel.Warning)
             .AddFilter("Microsoft", LogLevel.Warning)
-            .AddFilter("ActualChat", MinLevel);
+            .AddFilter("ActualChat", MinLevel)
+            .AddFilter("ActualLab.Rpc", LogLevel.Debug);
 #if false
         // Extra logging for profiling / perf. works:
         logging
@@ -52,6 +53,7 @@ public static class LoggingExt
 
         logging.SetMinimumLevel(MinLevel);
         // Use appsettings*.json to configure logging filters
+        logging.AddFilter("ActualLab.Rpc", LogLevel.Debug); // NOTE(DF): I could not enable it for Aspire host via appsettings*.json
         return logging;
     }
 }

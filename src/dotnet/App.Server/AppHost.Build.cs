@@ -77,6 +77,7 @@ public partial class AppHost
         services.AddTracers(Tracer.Default, useScopedTracers: true);
 
         // Logging
+        Console.WriteLine("About to configure logging for env: '{0}'", env.EnvironmentName);
         services.AddLogging(logging => {
             logging.ClearProviders();
             if (coreServicesOnly || isTested)
