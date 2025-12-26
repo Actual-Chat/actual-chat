@@ -7,7 +7,10 @@
     <p>Use Server-Side Rendering mode to see the info.</p>
     return;
 }
-@RenderContent()
+<ErrorBarrier Name="Mesh">
+    @RenderContent()
+</ErrorBarrier>
+
 
 @code {
     private RenderFragment? _renderContent;

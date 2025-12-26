@@ -34,6 +34,7 @@ public sealed class ShardScheme(
     public static readonly ShardScheme TranscriptionBackend = new(nameof(TranscriptionBackend), N, HostRole.TranscriptionBackend);
     public static readonly ShardScheme UsersBackend = new(nameof(UsersBackend), N, HostRole.UsersBackend);
     public static readonly ShardScheme TestBackend = new(nameof(TestBackend), N, HostRole.TestBackend); // Should be used only for testing
+    public static readonly ShardScheme DiagnosticsBackend = new(nameof(DiagnosticsBackend), N, HostRole.DiagnosticsBackend);
 
     // A reverse map of ShardScheme.Id to ShardScheme
     public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ById = new Dictionary<Symbol, ShardScheme>() {
@@ -53,6 +54,7 @@ public sealed class ShardScheme(
         { TranscriptionBackend.Id, TranscriptionBackend },
         { UsersBackend.Id, UsersBackend },
         { TestBackend.Id, TestBackend },
+        { DiagnosticsBackend.Id, DiagnosticsBackend },
     };
     public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ByBackendHostRole
         = ById.Values

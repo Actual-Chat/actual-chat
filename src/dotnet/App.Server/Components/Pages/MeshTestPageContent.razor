@@ -1,19 +1,21 @@
-@using System.Net.WebSockets
-@using ActualChat.Rpc
+@using ActualChat.Chat
 @using ActualChat.UI.Blazor.App.Services;
 @using ActualChat.UI.Blazor;
 @using ActualChat.UI.Blazor.Components
-@using ActualLab.Fusion.Blazor
-@using ActualLab.Rpc
-@using ActualLab.Rpc.Infrastructure
-@inherits ComputedStateComponent<AppUIHub, MeshTestPageContent.Model>
+@using ActualLab.Generators
+@inherits ComputedStateComponent<AppUIHub, MeshDiagInfo?>
 @implements IEmbeddedView
 @{
     var m = State.Value;
+    if (m is null) {
+        <h1>Loading...</h1>
+        return;
+    }
 }
+
 <div class="flex-y h-full">
     <div class="flex-x gap-x-2 mb-3">
-        <Button Click="@(() => State.Recompute())">Refresh</Button>
+        <Button Click="OnRefresh">Refresh</Button>
         @if (!ReportContent.Id.IsNullOrEmpty()) {
             _hasCopyButton = true;
             <CopyTrigger CopyTextSourceRef="@ReportContent">
@@ -41,12 +43,12 @@
                     } else {
                         <span>[@i]</span>
                     }
-                    <span> = @node.Node.Ref.Value @node.Node.Endpoint : @node.Node.State</span>
+                    <span> = @node.Id @node.Endpoint : @node.State</span>
                     @if (node.DiesIn is { } diesIn) {
                         <span>, dies in: @{ diesIn.ToShortString(); }</span>
                     }
                     <br>
-                    <span>Roles: @node.Node.Roles.ToDelimitedString(", ")</span>
+                    <span>Roles: @node.Roles</span>
                     <br>
                     i++;
                 }
@@ -55,10 +57,9 @@
         <br>
         <h3>Mesh Rpc Peer Refs:</h3>
         <p>
-            @{
-                foreach (var peerRef in m.MeshRpcPeerRefs) {
-                    @peerRef<br>
-                }
+            @foreach (var peerRef in m.MeshRpcPeerRefs) {
+                <span>@peerRef.MeshRef ==> @peerRef.PeerRef</span>
+                <br>
             }
         </p>
         <br>
@@ -69,7 +70,7 @@
                     <span>Id: <b>@peer.Id</b></span><br>
                     <span>@peer.Peer</span><br>
                     <span>ConnectionKind: <b>@peer.ConnectionKind.ToString()</b></span><br>
-                    @if (peer.ConnectionKind is not RpcPeerConnectionKind.Local) {
+                    @if (!OrdinalIgnoreCaseEquals(peer.ConnectionKind, "local")) {
                         <details class="main-collapsed" open="@(!peer.IsConnected)">
                             <summary class="c-summary">
                                 <span class="underline cursor-pointer">> IsConnected: <b>@peer.IsConnected</b></span><br>
@@ -85,35 +86,27 @@
 </div>
 
 @code {
-    private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions { WriteIndented = true };
     private bool _hasCopyButton;
+    private string _tag = "";
 
-    [Inject] private MeshRpcPeerRefs MeshRpcPeerRefs { get; set; } = null!;
-    private MeshWatcher MeshWatcher => MeshRpcPeerRefs.MeshWatcher;
-    private RpcHub RpcHub => Hub.RpcHub;
+    private IDiagnostics Diagnostics => field ??= Hub.Services.GetRequiredService<IDiagnostics>();
 
     private ElementReference ReportContent { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Model>.Options() {
-                InitialValue = Model.None,
-                Category = GetStateCategory(t),
-            });
+    protected override void OnInitialized() {
+        _tag = RandomStringGenerator.Default.Next();
+    }
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var meshState = await MeshWatcher.State.Use(cancellationToken);
-        var meshRpcPeerRefs = MeshRpcPeerRefs.RpcPeerRefs
-            .Select(c => $"{c.Target.MeshRef} ==> {c}")
-            .ToImmutableArray();
-        var rpcPeers = RpcHub.InternalServices.Peers.Values
-            .Select(c => new PeerModel(c.Id.ToString(), c.ToString(), c.ConnectionKind, c.IsConnected(), GetConnectionInfo(c.ConnectionState.Value)))
-            .ToImmutableArray();
-        var now = Clocks.SystemClock.Now;
-        var nodes = meshState.AllNodes.Values.Order()
-            .Select(c => new NodeModel(c, MeshWatcher.ThisNode.Equals(c), c.DeadAt.HasValue ? (c.DeadAt.Value - now).Positive() : null))
-            .ToImmutableArray();
-        return new Model(nodes, meshRpcPeerRefs, rpcPeers);
+    protected override async Task<MeshDiagInfo?> ComputeState(CancellationToken cancellationToken) {
+        try {
+            var services = Hub.Services;
+            var diagnostics = services.GetRequiredService<IDiagnostics>();
+            var info = await diagnostics.GetMeshDiagInfo(Session, _tag, cancellationToken).ConfigureAwait(false);
+            return info;
+        }
+        catch (Exception e) {
+            throw;
+        }
     }
 
     protected override void OnAfterRender(bool firstRender) {
@@ -121,52 +114,8 @@
             StateHasChanged();
     }
 
-    private string GetConnectionInfo(RpcPeerConnectionState state) {
-        var rpcConnection = state.Connection;
-        var info = new ConnectionStateDiagInfo(
-            state.Handshake,
-            state.Error?.ToString() ?? "",
-            state.TryIndex,
-            state.ReaderTokenSource?.IsCancellationRequested ?? false
-        );
-        if (rpcConnection is not null) {
-            var websocket = rpcConnection.Properties.KeylessGet<WebSocket>();
-            var uri = rpcConnection.Properties.KeylessGet<Uri>();
-            var connectionInfo = new RpcConnectionDiagInfo(rpcConnection.IsLocal, uri?.ToString() ?? "", websocket is not null ? GetWebsocketInfo(websocket) : null);
-            info = info with {
-                Connection = connectionInfo,
-            };
-        }
-        return JsonSerializer.Serialize(info, JsonSerializerOptions);
+    private void OnRefresh() {
+        _tag = RandomStringGenerator.Default.Next();
+        _ = State.Recompute();
     }
-
-    private WebSocketDiagInfo GetWebsocketInfo(WebSocket websocket)
-        => new(
-            websocket.ToString() ?? "",
-            websocket.State.ToString(),
-            websocket.SubProtocol,
-            websocket.CloseStatus?.ToString() ?? "",
-            websocket.CloseStatusDescription);
-
-    // Nested types
-    public record Model(
-        ImmutableArray<NodeModel> Nodes,
-        ImmutableArray<string> MeshRpcPeerRefs,
-        ImmutableArray<PeerModel> RpcPeers) {
-        public static readonly Model None = new ([], [], []);
-    }
-
-    public record PeerModel(string Id, string Peer, RpcPeerConnectionKind ConnectionKind, bool IsConnected, string ConnectionInfo);
-    public record NodeModel(MeshNode Node, bool IsThis, TimeSpan? DiesIn);
-
-    public record ConnectionStateDiagInfo(
-        RpcHandshake? Handshake,
-        string? Error,
-        int TryIndex,
-        bool IsCancelled) {
-        public RpcConnectionDiagInfo? Connection { get; init; }
-    }
-
-    public record WebSocketDiagInfo(string Websocket, string State, string? SubProtocol, string CloseStatus, string? CloseStatusDescription);
-    public record RpcConnectionDiagInfo(bool IsLocal, string Uri, WebSocketDiagInfo? WebSocket);
 }
