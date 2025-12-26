@@ -11,7 +11,9 @@
         "DOTNET_ENVIRONMENT": "Development",
         "DOTNET_DASHBOARD_OTLP_ENDPOINT_URL": "http://localhost:7010",
         "DOTNET_RESOURCE_SERVICE_ENDPOINT_URL": "http://localhost:7020",
-        "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true"
+        "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true",
+        "DASHBOARD__TELEMETRYLIMITS__MAXLOGCOUNT": "50000",
+        "DASHBOARD__TELEMETRYLIMITS__MaxTraceCount": "50000"
         // "DCP_IP_VERSION_PREFERENCE": "ipv4"
       }
     }
