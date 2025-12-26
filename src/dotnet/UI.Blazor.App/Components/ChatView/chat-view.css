@@ -9,6 +9,7 @@
 .message-wrapper.show-author {
     @apply min-h-12;
 }
+.message-wrapper.marked-message,
 body.hoverable .message-wrapper:hover,
 .touch-capable .message-wrapper:active {
     @apply bg-message-hover;
