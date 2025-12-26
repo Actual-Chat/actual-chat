@@ -30,7 +30,7 @@
             </CopyTrigger>
         }
     </div>
-    <div @ref="@ReportContent" class="flex-y select-text" data-copy-source="innerText">
+    <div @ref="@ReportContent" class="flex-y select-text overflow-y-auto" data-copy-source="innerText">
         <h3>Mesh state (@m.Nodes.Length node(s)):</h3>
         <p>
             @{
@@ -41,11 +41,12 @@
                     } else {
                         <span>[@i]</span>
                     }
-
-                    <span> = @node.Node.LockKey : @node.Node.State</span>
+                    <span> = @node.Node.Ref.Value @node.Node.Endpoint : @node.Node.State</span>
                     @if (node.DiesIn is { } diesIn) {
                         <span>, dies in: @{ diesIn.ToShortString(); }</span>
                     }
+                    <br>
+                    <span>Roles: @node.Node.Roles.ToDelimitedString(", ")</span>
                     <br>
                     i++;
                 }
@@ -67,9 +68,15 @@
                 foreach (var peer in m.RpcPeers) {
                     <span>Id: <b>@peer.Id</b></span><br>
                     <span>@peer.Peer</span><br>
-                    <span>IsConnected: <b>@peer.IsConnected</b></span><br>
-                    @* <span>Connection state:<br><pre class="text-[length:inherit] font-[family:inherit] text-wrap">@peer.ConnectionInfo</pre></span><br> *@
-                    <span>Connection state:<br><span style="white-space: pre-wrap;">@peer.ConnectionInfo</span></span><br>
+                    <span>ConnectionKind: <b>@peer.ConnectionKind.ToString()</b></span><br>
+                    @if (peer.ConnectionKind is not RpcPeerConnectionKind.Local) {
+                        <details class="main-collapsed" open="@(!peer.IsConnected)">
+                            <summary class="c-summary">
+                                <span class="underline cursor-pointer">> IsConnected: <b>@peer.IsConnected</b></span><br>
+                            </summary>
+                            <span>Connection state:<span style="white-space: pre-wrap;">@peer.ConnectionInfo</span></span>
+                        </details>
+                    }
                     <br>
                 }
             }
@@ -100,7 +107,7 @@
             .Select(c => $"{c.Target.MeshRef} ==> {c}")
             .ToImmutableArray();
         var rpcPeers = RpcHub.InternalServices.Peers.Values
-            .Select(c => new PeerModel(c.Id.ToString(), c.ToString(), c.IsConnected(), GetConnectionInfo(c.ConnectionState.Value)))
+            .Select(c => new PeerModel(c.Id.ToString(), c.ToString(), c.ConnectionKind, c.IsConnected(), GetConnectionInfo(c.ConnectionState.Value)))
             .ToImmutableArray();
         var now = Clocks.SystemClock.Now;
         var nodes = meshState.AllNodes.Values.Order()
@@ -149,7 +156,7 @@
         public static readonly Model None = new ([], [], []);
     }
 
-    public record PeerModel(string Id, string Peer, bool IsConnected, string ConnectionInfo);
+    public record PeerModel(string Id, string Peer, RpcPeerConnectionKind ConnectionKind, bool IsConnected, string ConnectionInfo);
     public record NodeModel(MeshNode Node, bool IsThis, TimeSpan? DiesIn);
 
     public record ConnectionStateDiagInfo(
