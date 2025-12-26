@@ -60,6 +60,9 @@ export class Versioning {
     }
 
     public static mapPath(path: string): string {
+        if (path.startsWith('./assets/'))
+            path = path.replace('./assets/', '/dist/assets/');
+
         const versionedPath = this.assetMap.get(path);
         if (versionedPath) {
             debugLog?.log(`mapPath: '${path}' -> '${versionedPath}'`);
