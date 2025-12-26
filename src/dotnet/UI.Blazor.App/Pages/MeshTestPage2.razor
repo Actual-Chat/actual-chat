@@ -1,10 +1,10 @@
-@using ActualChat.Chat
-@using ActualChat.UI.Blazor.App.Services;
-@using ActualChat.UI.Blazor;
-@using ActualChat.UI.Blazor.Components
 @using ActualLab.Generators
 @inherits ComputedStateComponent<AppUIHub, MeshDiagInfo?>
 @implements IEmbeddedView
+@page "/test/mesh"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Mesh Diagnostic Page</MainHeader>
 @{
     var m = State.Value;
     if (m is null) {
@@ -118,7 +118,7 @@
         => await Diagnostics.GetMeshDiagInfo(Session, _tag, cancellationToken).ConfigureAwait(false);
 
     protected override void OnAfterRender(bool firstRender) {
-        if (!_hasCopyButton && ReportContent.Id.Length > 0)
+        if (!_hasCopyButton && !ReportContent.Id.IsNullOrEmpty())
             StateHasChanged();
     }
 

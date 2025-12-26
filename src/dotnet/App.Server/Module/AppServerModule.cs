@@ -263,10 +263,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Open Telemetry
         if (!HostInfo.IsTested)
             ConfigureOpenTelemetry(services);
-
-        // Test UI
-        services.AddTypeMap<IEmbeddedView>(map => map
-            .Add<MeshTestPage, MeshTestPageContent>());
     }
 
     // Private methods
