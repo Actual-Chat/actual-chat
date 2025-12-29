@@ -79,6 +79,13 @@ public static partial class MauiProgram
                 _ = OnBackPressed(activity);
                 return true; // We handle it in HandleBackPressed
             });
+            android.OnDestroy(activity => {
+                if (activity is not MainActivity)
+                    return;
+
+                Log.LogInformation("MainActivity.OnDestroy");
+                AppNavigationQueue.Reset();
+            });
             IntentHandler.Activate(android);
         });
 

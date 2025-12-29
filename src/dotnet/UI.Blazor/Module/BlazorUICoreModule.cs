@@ -89,6 +89,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new InteractiveUI(c.UIHub()));
         services.AddScoped(c => new AutoNavigationUI(c.UIHub()));
+        services.AddScoped(_ => new AppNavigationQueue.ContainerDisposalTracker());
         services.AddScoped(c => new History(c.UIHub()));
         services.AddScoped(c => new HistoryStepper(c));
         services.AddScoped(_ => new HistoryItemIdFormatter());

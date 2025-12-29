@@ -6,14 +6,27 @@ public static class AppNavigationQueue
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For(typeof(AppNavigationQueue));
     private static readonly List<Func<IServiceProvider, Task>> Queue = new();
+    private static volatile ContainerInfo? _containerInfo;
 
-    public static IServiceProvider? ScopedServices { get; private set; }
+    private static IServiceProvider? ScopedServices {
+        get {
+            if (_containerInfo is null)
+                return null;
+
+            if (!_containerInfo.DisposalTracker.IsDisposed)
+                return _containerInfo.Services;
+
+            Log.LogWarning("Attempt to access disposed ScopedServices. Disposal stack trace: {DisposalStackTrace}", _containerInfo.DisposalTracker.DisposalStackTrace);
+            Reset();
+            return null;
+        }
+    }
 
     public static void Reset()
     {
         Log.LogDebug("Reset");
         lock (Queue) {
-            ScopedServices = null;
+            _containerInfo = null;
             Queue.Clear();
         }
     }
@@ -34,7 +47,15 @@ public static class AppNavigationQueue
         lock (Queue) {
             if (ScopedServices is { } c) {
                 // Navigate right now
-                var dispatcher = c.GetRequiredService<Dispatcher>();
+                Dispatcher dispatcher;
+                try {
+                    dispatcher = c.GetRequiredService<Dispatcher>();
+                }
+                catch (ObjectDisposedException e) {
+                    Log.LogWarning(e, "EnqueueOrNavigateToUrl: ScopedServices is disposed -> ignore");
+                    Reset();
+                    return;
+                }
                 _ = dispatcher.InvokeAsync(() => Run(c, taskFactory));
                 return;
             }
@@ -48,10 +69,18 @@ public static class AppNavigationQueue
     {
         Log.LogDebug("DequeueAll");
         lock (Queue) {
-            ScopedServices = scopedServices;
-            var tasks = Queue.Select(taskFactory => Run(scopedServices, taskFactory)).ToList();
-            Queue.Clear();
-            return tasks;
+            try {
+                var tracker = scopedServices.GetRequiredService<ContainerDisposalTracker>();
+                _containerInfo = new ContainerInfo(scopedServices, tracker);
+                var tasks = Queue.Select(taskFactory => Run(scopedServices, taskFactory)).ToList();
+                Queue.Clear();
+                return tasks;
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to get ContainerDisposalTracker instance");
+                Queue.Clear();
+                return Array.Empty<Task>();
+            }
         }
     }
 
@@ -67,4 +96,25 @@ public static class AppNavigationQueue
             log.LogError(e, "Enqueued task failed");
         }
     }
+
+    // Nested types
+    public class ContainerDisposalTracker : IDisposable
+    {
+        private bool _disposed;
+        private string _disposalStackTrace = "";
+
+        public bool IsDisposed => _disposed;
+        public string DisposalStackTrace => _disposalStackTrace;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            _disposalStackTrace = Environment.StackTrace;
+        }
+    }
+
+    private record ContainerInfo(IServiceProvider Services, ContainerDisposalTracker DisposalTracker);
 }
