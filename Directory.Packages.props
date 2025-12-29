@@ -29,9 +29,10 @@
     So we use only some packages in its project, and some - in other projects.
   -->
   <!-- MAUI-specific packages -->
-  <ItemGroup Condition="$(MSBuildProjectName.Contains('.Maui'))">
+  <ItemGroup Condition="$(MSBuildProjectName.Contains('Maui'))">
     <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
+    <PackageVersion Include="Microsoft.Maui.Essentials" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
@@ -117,6 +118,7 @@
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="Svg.Skia" Version="3.2.1" />
   </ItemGroup>
   <!-- All other packages -->
   <ItemGroup>

@@ -69,5 +69,18 @@
 	<false/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>ai.voxt.dev</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>voxt</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

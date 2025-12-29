@@ -1,5 +1,4 @@
 using ActualChat.Blobs.Internal;
-using ActualChat.Chat;
 using ActualChat.Media.Db;
 using ActualChat.Uploads;
 using ActualLab.Fusion.EntityFramework;
@@ -119,7 +118,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (upload is null)
             throw UploadNotFound();
 
-        var chatId = GetChatIdFromUploadTag(upload.Tag);
+        var chatId = upload.ExtractChatIdFromTag();
         var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
         if (offset != upload.Length)
             throw StandardError.Constraint("Upload length mismatch. Upload has not been completed.");
@@ -152,18 +151,6 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     {
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
-    }
-
-    private ChatId GetChatIdFromUploadTag(string uploadTag)
-    {
-        var parts = uploadTag.Split('/');
-        if (parts.Length == 3
-            && OrdinalEquals(parts[0], nameof(TextEntryAttachment))
-            && OrdinalEquals(parts[1], "v1")
-            && ChatId.TryParse(parts[2], out var chatId))
-            return chatId;
-
-        throw StandardError.Constraint("Invalid upload tag.");
     }
 
     private static Exception UploadNotFound()

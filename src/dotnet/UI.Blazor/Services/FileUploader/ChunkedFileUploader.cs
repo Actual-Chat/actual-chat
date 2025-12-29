@@ -1,20 +1,17 @@
 using ActualChat.Media;
 
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.UI.Blazor.Services;
 
-public sealed class ChunkedFileUploader : UIServiceBase<AppUIHub>
+public sealed class ChunkedFileUploader(IServiceProvider services)
 {
-    private readonly ChunkSizeSelectorRecommendation _chunkSizeSelectorRecommendation;
-    private readonly ILogger<ChunkSizeSelector> _chunkSizeSelectorLogger;
-
-    public ChunkedFileUploader(AppUIHub hub) : base(hub)
-    {
-        _chunkSizeSelectorRecommendation = Services.GetRequiredService<ChunkSizeSelectorRecommendation>();
-        _chunkSizeSelectorLogger = Hub.LogFor<ChunkSizeSelector>();
-    }
-
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5d, 3);
-    private IUploads Uploads => Hub.Uploads;
+
+    private IServiceProvider Services => services;
+    private ChunkSizeSelectorRecommendation ChunkSizeSelectorRecommendation => field ??= Services.GetRequiredService<ChunkSizeSelectorRecommendation>();
+    private Session Session => field ??= Services.Session();
+    private ICommander Commander => field ??= Services.Commander();
+    private ILogger Log => field ??= Services.LogFor(GetType());
+    private IUploads Uploads => field ??= Services.GetRequiredService<IUploads>();
 
     public async Task UploadData(
         UploadId uploadId,
@@ -25,7 +22,7 @@ public sealed class ChunkedFileUploader : UIServiceBase<AppUIHub>
         var file = await getStream.ConfigureAwait(false);
         var retryIndex = 0;
         const int maxRetries = 3;
-        var chunkSizeSelector = new ChunkSizeSelector(_chunkSizeSelectorRecommendation, _chunkSizeSelectorLogger);
+        var chunkSizeSelector = new ChunkSizeSelector(ChunkSizeSelectorRecommendation, Services.LogFor<ChunkSizeSelector>());
         await using (_ = file.ConfigureAwait(false)) {
             bool run = true;
             while (run) {
@@ -112,7 +109,7 @@ public sealed class ChunkedFileUploader : UIServiceBase<AppUIHub>
     }
 }
 
-internal sealed class ChunkSizeSelectorRecommendation
+public sealed class ChunkSizeSelectorRecommendation
 {
     public const int DefaultMultiplier = 8;
 

@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -19,6 +20,13 @@ public sealed class MauiSession(IServiceProvider services)
     private IServiceProvider Services { get; } = services;
     private TrueSessionResolver TrueSessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
     private IMobileSessions MobileSessions => field ??= Services.GetRequiredService<IMobileSessions>();
+
+    private static ISecureStorage Storage
+#if IOS
+        => field ??= IosSharedSecureStorage.Default;
+#else
+        => field ??= SecureStorage.Default;
+#endif
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiSession))]
     public static Task Start()
@@ -59,9 +67,8 @@ public sealed class MauiSession(IServiceProvider services)
     public static Task RemoveStored()
     {
         using var _ = Tracer.MethodRegion();
-        var storage = SecureStorage.Default;
         try {
-            if (storage.Remove(SessionStorageKey))
+            if (Storage.Remove(SessionStorageKey))
                 Log.LogInformation("Removed stored Session");
         }
         catch (Exception e) {
@@ -75,7 +82,7 @@ public sealed class MauiSession(IServiceProvider services)
     private static async Task<Session?> Read()
     {
         using var _ = Tracer.MethodRegion();
-        var storage = SecureStorage.Default;
+        var storage = Storage;
         try {
             var sessionId = await storage.GetAsync(SessionStorageKey).ConfigureAwait(false);
             if (!sessionId.IsNullOrEmpty()) {
@@ -97,12 +104,11 @@ public sealed class MauiSession(IServiceProvider services)
     private static async Task Store(Session session)
     {
         using var _ = Tracer.MethodRegion();
-        var storage = SecureStorage.Default;
         bool isSaved;
         try {
-            if (storage.Remove(SessionStorageKey))
+            if (Storage.Remove(SessionStorageKey))
                 Log.LogInformation("Removed stored Session before saving");
-            await storage.SetAsync(SessionStorageKey, session.Id).ConfigureAwait(false);
+            await Storage.SetAsync(SessionStorageKey, session.Id).ConfigureAwait(false);
             isSaved = true;
         }
         catch (Exception e) {
@@ -115,8 +121,8 @@ public sealed class MauiSession(IServiceProvider services)
         if (!isSaved) {
             Log.LogInformation("Second attempt to store Session");
             try {
-                storage.RemoveAll();
-                await storage.SetAsync(SessionStorageKey, session.Id).ConfigureAwait(false);
+                Storage.RemoveAll();
+                await Storage.SetAsync(SessionStorageKey, session.Id).ConfigureAwait(false);
             }
             catch (Exception e) {
                 Log.LogWarning(e, "Failed to store Session (second attempt)");
