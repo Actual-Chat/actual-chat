@@ -1,9 +1,14 @@
+using ActualChat.Hosting;
 using ActualChat.Module;
+using ActualLab.Internal;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.App.Maui.IosShareExt;
 
+// TODO: probably must be unified with UI.Blazor.App.ClientStartup
 public static class ClientStartup
 {
     public static void Initialize()
@@ -24,4 +29,24 @@ public static class ClientStartup
             MaxSynchronizeDurationProvider = static _ => TimeSpan.FromSeconds(1),
         };
     }
+
+    [RequiresUnreferencedCode(UnreferencedCode.Reflection)]
+    public static HostInfo CreateHostInfo(
+        IConfiguration cfg,
+        string environment,
+        string deviceModel,
+        HostKind hostKind,
+        AppKind appKind,
+        string baseUrl,
+        bool isTested = false)
+        => new() {
+            Configuration = cfg,
+            Environment = environment.NullIfEmpty() ?? Environments.Development,
+            DeviceModel = deviceModel,
+            HostKind = hostKind,
+            AppKind = appKind,
+            Roles = HostRoles.App,
+            BaseUrl = baseUrl,
+            IsTested = isTested,
+        };
 }

@@ -51,6 +51,17 @@
     <MTouchInterpreter>-ActualChat</MTouchInterpreter>
   </PropertyGroup>
 
+  <!-- Environment -->
+  <PropertyGroup>
+    <FixedEnvironment Condition="'$(FixedEnvironment)' == ''" />
+    <!-- Produces tons of misleading warnings if true! -->
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(FixedEnvironment)' == 'Production'">
+    <DefineConstants>$(DefineConstants);IS_PRODUCTION_ENV</DefineConstants>
+  </PropertyGroup>
+
+
   <ItemGroup>
     <BundleResource Include="..\..\..\resources\images\converted\error-barrier-image.png" Link="%(Filename)%(Extension)" />
   </ItemGroup>
