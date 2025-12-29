@@ -87,25 +87,34 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
         var timeoutToken = timeoutCts.Token;
         timeoutCts.CancelAfter(timeout);
 
-        ActivityContext senderContext = default;
         IEnumerable<ActivityLink>? links = null;
         var propagationContext = Propagators.DefaultTextMapPropagator
             .Extract(default, queuedCommand.Headers, static (headers, name) => headers.TryGetValue(name, out var value) ? value : []);
 
         if (propagationContext != default) {
-            senderContext = propagationContext.ActivityContext;
             Baggage.Current = propagationContext.Baggage;
-            links = [new ActivityLink(senderContext)];
+            links = propagationContext.ActivityContext.IsValid()
+                ? new[] { new ActivityLink(propagationContext.ActivityContext) }
+                : null;
         }
 
         var operationName = GetType().GetOperationName();
         using var activity = CoreServerInstruments.ActivitySource
-            .StartActivity(operationName, ActivityKind.Consumer, senderContext, links: links);
+            .StartActivity(
+                operationName,
+                ActivityKind.Consumer,
+                parentContext: default,  // Explicitly no parent → new root trace
+                links: links);
 
+        if (activity != null)
+        {
+            activity.SetTag(OtelConstants.MessagingOperation, "process");
+            activity.SetTag(OtelConstants.MessagingMessageId, queuedCommand.Uuid);
+        }
         try {
             if (command is IHasDelayUntil du && du.DelayUntil - Clock.Now is var delay && delay > TimeSpan.Zero) {
                 activity?.SetStatus(ActivityStatusCode.Ok, $"Postponed for {delay.ToShortString()}");
-                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
+                activity?.AddTag(OtelConstants.MessagingProcessingStatus, OtelConstants.ProcessingStatus.Postponed);
                 // ReSharper disable once PossiblyMistakenUseOfCancellationToken
                 await MarkPostponed(shardIndex, message, queuedCommand, delay, cancellationToken).ConfigureAwait(false);
                 DebugLog?.LogDebug(
@@ -130,12 +139,13 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
                     ShardScheme.Name, shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand, sw.Elapsed);
                 // ReSharper disable once PossiblyMistakenUseOfCancellationToken
                 await MarkCompleted(shardIndex, message, queuedCommand, cancellationToken).ConfigureAwait(false);
-                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
+                activity?.AddTag(OtelConstants.MessagingProcessingStatus, OtelConstants.ProcessingStatus.Completed);
+                activity?.SetStatus(ActivityStatusCode.Ok, "Completed");
             }
         }
         catch (Exception e) when (e.GetBaseException() is PostponeException pe) {
             activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
-            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
+            activity?.AddTag(OtelConstants.MessagingProcessingStatus, OtelConstants.ProcessingStatus.Postponed);
             // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             await MarkPostponed(shardIndex, message, queuedCommand, pe.Delay, cancellationToken).ConfigureAwait(false);
             DebugLog?.LogDebug(e,
@@ -146,7 +156,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
             // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             if (e.IsCancellationOf(cancellationToken)) {
                 activity?.SetStatus(ActivityStatusCode.Ok, $"{GetType().Name} is stopping, processing cancelled.");
-                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Canceled);
+                activity?.AddTag(OtelConstants.MessagingProcessingStatus, OtelConstants.ProcessingStatus.Canceled);
                 throw;
             }
             Log.LogError(e,
@@ -154,7 +164,7 @@ public abstract class ShardQueueProcessor<TSettings, TQueues, TMessage> : ShardW
                 ShardScheme.Name, shardIndex, kind, queuedCommand.Uuid, queuedCommand.UntypedCommand);
 
             activity?.SetStatus(ActivityStatusCode.Error, e.Message);
-            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Failed);
+            activity?.AddTag(OtelConstants.MessagingProcessingStatus, OtelConstants.ProcessingStatus.Failed);
             // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             await MarkFailed(shardIndex, message, queuedCommand, e, cancellationToken).ConfigureAwait(false);
         }

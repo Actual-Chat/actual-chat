@@ -1,4 +1,5 @@
 using ActualChat.Diagnostics;
+using ActualChat.Queues.Internal;
 using ActualLab.Resilience;
 using Microsoft.Extensions.Primitives;
 using OpenTelemetry;
@@ -27,8 +28,21 @@ public static class QueuesExt
             contextHeaders = new Dictionary<string, StringValues>(StringComparer.Ordinal);
             Propagators.DefaultTextMapPropagator.Inject(
                 propagationContext, contextHeaders, static (headers, key, value) => headers[key] = value);
+            activity.AddTag(OtelConstants.MessagingOperation, "enqueue");
+            activity.AddTag(OtelConstants.MessagingMessageType, command.GetType().Name);
         }
-        await queues.Enqueue(QueuedCommand.New(command, headers: contextHeaders), cancellationToken).ConfigureAwait(false);
+        try {
+            var queuedCommand = QueuedCommand.New(command, headers: contextHeaders);
+            await queues.Enqueue(queuedCommand, cancellationToken).ConfigureAwait(false);
+            activity?.SetTag(OtelConstants.MessagingMessageId, queuedCommand.Uuid);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception e) {
+            activity?.AddException(e);
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+
     }
 
     public static Task Enqueue(this IQueues queues,

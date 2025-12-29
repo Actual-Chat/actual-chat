@@ -2,7 +2,10 @@ namespace ActualChat.Queues.Internal;
 
 internal static class OtelConstants
 {
-    public const string ProcessingStatusTag = "queued_command.processing_status";
+    public const string MessagingProcessingStatus = "messaging.processing_status";
+    public const string MessagingOperation = "messaging.operation";
+    public const string MessagingMessageId = "messaging.message.id";
+    public const string MessagingMessageType = "messaging.message.type";
 
     public static class ProcessingStatus {
         public const string Completed = nameof(Completed);

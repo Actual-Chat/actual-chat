@@ -89,12 +89,12 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
             }
             // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             await MarkCompleted(queuedCommand, cancellationToken).ConfigureAwait(false);
-            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Completed);
+            activity?.AddTag(OtelConstants.MessagingProcessingStatus, OtelConstants.ProcessingStatus.Completed);
         }
         catch (Exception e) {
             if (e.GetBaseException() is PostponeException pe) {
                 activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
-                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Postponed);
+                activity?.AddTag(OtelConstants.MessagingProcessingStatus, OtelConstants.ProcessingStatus.Postponed);
                 DebugLog?.LogDebug(e, "Queued {Kind} postponed: {Command}", kind, queuedCommand);
                 // ReSharper disable once PossiblyMistakenUseOfCancellationToken
                 await MarkPostponed(queuedCommand, pe.Delay, cancellationToken).ConfigureAwait(false);
@@ -105,11 +105,11 @@ public abstract class LocalQueueProcessor<TSettings, TQueues> : WorkerBase, IQue
             await MarkFailed(queuedCommand, e, cancellationToken).ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested) {
                 activity?.SetStatus(ActivityStatusCode.Ok, e.Message);
-                activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Canceled);
+                activity?.AddTag(OtelConstants.MessagingProcessingStatus, OtelConstants.ProcessingStatus.Canceled);
                 throw;
             }
             activity?.SetStatus(ActivityStatusCode.Error, e.Message);
-            activity?.AddTag(OtelConstants.ProcessingStatusTag, OtelConstants.ProcessingStatus.Failed);
+            activity?.AddTag(OtelConstants.MessagingProcessingStatus, OtelConstants.ProcessingStatus.Failed);
         }
         finally {
             InterlockedExt.ExchangeIfGreater(ref _lastCommandCompletedAt, Clock.Now.EpochOffsetTicks);
