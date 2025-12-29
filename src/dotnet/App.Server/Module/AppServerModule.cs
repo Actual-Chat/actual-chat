@@ -27,6 +27,7 @@ using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -317,7 +318,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     ExporterTimeoutMilliseconds = 10_000,
                     MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
                     MaxQueueSize = 1024,
-                    ScheduledDelayMilliseconds = 20_000,
+                    ScheduledDelayMilliseconds = 5_000,
                 };
                 cfg.Protocol = OtlpExportProtocol.Grpc;
                 cfg.Endpoint = endpointUrl.ToUri();
@@ -359,11 +360,27 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     ExporterTimeoutMilliseconds = 10_000,
                     MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
                     MaxQueueSize = 1024,
-                    ScheduledDelayMilliseconds = 20_000,
+                    ScheduledDelayMilliseconds = 5_000,
                 };
                 cfg.Protocol = OtlpExportProtocol.Grpc;
                 cfg.Endpoint = endpointUrl.ToUri();
             })
         );
+        otel.WithLogging(
+            logger => logger.AddOtlpExporter(cfg => {
+                cfg.ExportProcessorType = ExportProcessorType.Batch;
+                cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
+                    ExporterTimeoutMilliseconds = 10_000,
+                    MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
+                    MaxQueueSize = 1024,
+                    ScheduledDelayMilliseconds = 5_000,
+                };
+                cfg.Protocol = OtlpExportProtocol.Grpc;
+                cfg.Endpoint = endpointUrl.ToUri();
+            }),
+            options => {
+                options.IncludeScopes = true;
+                options.IncludeFormattedMessage = true;
+            });
     }
 }
