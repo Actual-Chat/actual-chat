@@ -83,7 +83,6 @@ public static partial class MauiProgram
                 if (activity is not MainActivity)
                     return;
 
-                Log.LogInformation("MainActivity.OnDestroy");
                 AppNavigationQueue.Reset();
             });
             IntentHandler.Activate(android);
