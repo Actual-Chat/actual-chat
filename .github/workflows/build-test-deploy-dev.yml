@@ -704,6 +704,7 @@ jobs:
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
+      ENTITLEMENTS_FILE: Entitlements.${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI == 'true' && 'dev' || 'prod' }}.plist
       PACKAGE_FILE_NAME: App-signed.ipa
     outputs:
       ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.ipa
@@ -731,6 +732,18 @@ jobs:
         if: ${{env.IS_DEV_MAUI == 'false'}}
         with:
           base64: ${{ secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
+
+      - name: Install Provisioning Profile (Share extension) for DEV
+        uses: ./.github/actions/install-provisioning-profile
+        if: ${{env.IS_DEV_MAUI == 'true'}}
+        with:
+          base64: ${{ secrets.PROVISIONING_PROFILE_SHARE_DEV_BASE64 }}
+
+      - name: Install Provisioning Profile (Share extension) for PROD
+        uses: ./.github/actions/install-provisioning-profile
+        if: ${{env.IS_DEV_MAUI == 'false'}}
+        with:
+          base64: ${{ secrets.PROVISIONING_PROFILE_SHARE_PROD_BASE64 }}
 
       - name: Install the Apple distribution certificate
         env:
@@ -792,10 +805,11 @@ jobs:
           ${{ secrets.GOOGLE_SERVICES_PLIST_PROD }}
           EOF
 
+# TODO(FC): try get rid of this hack
       - name: PList - set aps-environment and app identifier
         uses: dppeak/update-ios-plist-action@v1.1.0
         with:
-          info-plist-path: "src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist"
+          info-plist-path: "src/dotnet/App.Maui/Platforms/iOS/${{env.ENTITLEMENTS_FILE}}"
           key-value-json: '[{"application-identifier": "${{secrets.APPLE_TEAM_ID}}.${{env.APP_ID}}"}, {"aps-environment": "production"}]'
           print-file: true
 
@@ -807,7 +821,7 @@ jobs:
           rm -r Payload/ActualChat.app/_CodeSignature
           rm -r Payload/ActualChat.app/Frameworks/*/_CodeSignature
           codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/Frameworks/*
-          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements ${{github.workspace}}/src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist Payload/ActualChat.app
+          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements ${{github.workspace}}/src/dotnet/App.Maui/Platforms/iOS/${{env.ENTITLEMENTS_FILE}} Payload/ActualChat.app
           zip -r "${{env.PACKAGE_FILE_NAME}}" Payload
           popd
 

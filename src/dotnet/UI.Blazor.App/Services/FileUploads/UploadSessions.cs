@@ -222,7 +222,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         if (session.Status is not UploadStatus.Uploading)
             throw new InvalidOperationException("Cannot register an upload for a session that is not uploading");
-        var tag = nameof(TextEntryAttachment) + "/v1/" + session.ChatId.Value;
+
+        var tag = UploadExt.BuildTag(session.ChatId);
         var fileMetadata = session.FileProvider.Metadata;
         var length = fileMetadata.Length;
         var metadata = new PropertyBag()

@@ -54,8 +54,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
         services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));
-        services.AddScoped(c => new ChunkedFileUploader(c.AppUIHub()));
-        services.AddScoped(_ => new ChunkSizeSelectorRecommendation());
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
         services.AddScoped(_ => new AudioFocusService());

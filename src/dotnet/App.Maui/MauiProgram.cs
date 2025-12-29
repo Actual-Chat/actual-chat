@@ -1,20 +1,22 @@
-using ActualChat.Hosting;
-using ActualChat.UI.Blazor.App;
+using ActualChat.App.Maui.Module;
 using ActualChat.App.Maui.Services;
+using ActualChat.Hosting;
 using ActualChat.Logging;
+using ActualChat.Maui.Module;
 using ActualChat.Security;
-using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Maui.LifecycleEvents;
+using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Diagnostics;
+using ActualChat.UI.Blazor.Services;
 using banditoth.MAUI.DeviceId;
 using banditoth.MAUI.DeviceId.Interfaces;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.JSInterop;
+using Microsoft.Maui.LifecycleEvents;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using Tracer = ActualChat.Performance.Tracer;
 #if IOS
@@ -298,7 +300,9 @@ public static partial class MauiProgram
 #endif
 
         // All other (module) services
-        ClientStartup.ConfigureServices(services, Constants.HostInfo, c => [new Module.MauiAppModule(c)]);
+        ClientStartup.ConfigureServices(services, Constants.HostInfo, c => [
+            new MauiModule(c),
+            new MauiAppModule(c)]);
 
         // Platform services
         services.ConfigureBlazorWebViewAppPlatformServices();

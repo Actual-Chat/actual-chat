@@ -43,7 +43,7 @@ public static partial class StringExt
     public static string? RequireMaxLength(this string source, int length, [CallerArgumentExpression(nameof(source))] string name = "")
         => source.Length <= length ? source : throw StandardError.Constraint($"{name} Must be no more than {length} characters.");
 
-    public static bool IsNullOrWhiteSpace(this string? source)
+    public static bool IsNullOrWhiteSpace([NotNullWhen(false)] this string? source)
         => string.IsNullOrWhiteSpace(source);
 
     public static SearchPhrase ToSearchPhrase(this string text, bool matchPrefixes, bool matchSuffixes)

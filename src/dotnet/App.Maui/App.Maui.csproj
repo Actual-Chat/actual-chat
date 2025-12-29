@@ -17,7 +17,6 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>9.0.120</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
@@ -94,7 +93,12 @@
 
   <!-- Project references -->
   <ItemGroup>
+    <ProjectReference Include="..\App.Maui.IosShareExt\App.Maui.IosShareExt.csproj" Condition="$(TargetFramework.Contains('-ios'))">
+      <IsAppExtension>true</IsAppExtension>
+      <IsWatchApp>false</IsWatchApp>
+    </ProjectReference>
     <ProjectReference Include="..\Core.Audio\Core.Audio.csproj" />
+    <ProjectReference Include="..\Maui\Maui.csproj" />
   </ItemGroup>
   <!-- UseAppPack == false -->
   <ItemGroup Condition="!$(UseAppPack)">
@@ -142,14 +146,9 @@
     <PackageReference Include="Sentry.OpenTelemetry" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
-    <PackageReference Include="sqlite-net-pcl" />
     <!-- SignalR client needed for AudioStreamer -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
-    <!--
-      An extra package to use SQLite on MAUI:
-      https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
-    <PackageReference Include="SQLitePCLRaw.bundle_green" />
     <PackageReference Include="Plugin.Maui.Audio" />
   </ItemGroup>
 
@@ -381,7 +380,8 @@
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
-    <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\iOS\Entitlements.dev.plist</CodesignEntitlements>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\iOS\Entitlements.prod.plist</CodesignEntitlements>
     <!-- Performance-related -->
     <EnableSGenConc>False</EnableSGenConc>
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
@@ -473,7 +473,7 @@
 
   <!-- Platform-specific files to compile -->
 
-  <!-- NOT Andoid -->
+  <!-- NOT Android -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android')) != true">
     <Compile Remove="**\**\*.Android.cs" />
     <None Include="**\**\*.Android.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
@@ -504,7 +504,7 @@
   </ItemGroup>
 
   <!-- NOT iOS and NOT Mac Catalyst -->
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net9.0-ios')) != true AND $(TargetFramework.StartsWith('net9.0-maccatalyst')) != true">
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
     <Compile Remove="**\**\*.MaciOS.cs" />
     <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\MaciOS\**\*.cs" />

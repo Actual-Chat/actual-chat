@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;

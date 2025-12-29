@@ -1,6 +1,4 @@
-﻿using ActualChat.Search;
-
-namespace ActualChat.UI.Blazor.App.Services;
+﻿namespace ActualChat.Search;
 
 public static class SearchExt
 {
