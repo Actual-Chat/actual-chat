@@ -4,8 +4,10 @@ namespace ActualChat.Chat;
 
 public class Diagnostics(IServiceProvider services) : IDiagnostics
 {
-    private DiagnosticsBackendLocal LocalBackend { get; } = services.GetRequiredService<DiagnosticsBackendLocal>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private DiagnosticsBackendLocal LocalBackend { get; } = services.GetRequiredService<DiagnosticsBackendLocal>();
+    private MeshWatcher MeshWatcher { get; } = services.GetRequiredService<MeshWatcher>();
+    private IDiagnosticsBackend Backend => field ??= services.GetRequiredService<IDiagnosticsBackend>();
 
     public virtual async Task<MeshDiagInfo> GetMeshDiagInfo(Session session, string tag, CancellationToken cancellationToken)
     {
@@ -13,9 +15,12 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
         if (!account.IsAdmin)
             throw StandardError.Unauthorized("Only admins can access.");
 
-        var nodeIds = new HashSet<string>(StringComparer.Ordinal);
+        // NOTE: Can't use diagnosticsBackend.GetMeshDiagInfo with theNode.Ref because it fails with NRE when launched in AspireHost.
+        // ProxyTarget property of IDiagnosticsBackendProxy is NULL.
+        //var diagnosticsBackend = Backend;
+        //var info = await diagnosticsBackend.GetMeshDiagInfo(MeshWatcher.ThisNode.Ref, tag, 1, cancellationToken).ConfigureAwait(false);
         var info = await LocalBackend.GetMeshDiagInfo(tag, 1, cancellationToken).ConfigureAwait(false);
-        nodeIds.Add(info.ThisNodeId);
+        var nodeIds = new HashSet<string>(StringComparer.Ordinal) { info.ThisNodeId };
         return info with {
             Others = Flatten(info.Others, nodeIds).ToArray(),
         };
