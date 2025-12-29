@@ -7,7 +7,7 @@ partial class SendingMessages
     public ChatSendingMessagesAccessor GetSendingMessages(ChatId chatId)
     {
         var chatSendingMessages = GetChatSendingMessages(chatId);
-        DebugLog?.LogInformation("-> GetSendingMessages. ChatId='{ChatId}'", chatId);
+        DebugLog?.LogDebug("-> GetSendingMessages. ChatId='{ChatId}'", chatId);
         return new ChatSendingMessagesAccessor(chatSendingMessages);
     }
 

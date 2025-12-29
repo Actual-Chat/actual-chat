@@ -33,7 +33,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     public SendingMessages(AppUIHub hub) : base(hub)
     {
-        DebugLog?.LogInformation("SendingMessages constructor");
+        DebugLog?.LogDebug("SendingMessages constructor");
         _requestsRepo = new SendMessageRequestsRepo(hub);
         _triggers = Services.GetRequiredService<ChatSendingMessagesTriggers>();
         _mediaUploadsUI = new MediaUploadsUI(_triggers);
@@ -55,19 +55,19 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     public async Task<Task<ChatEntry?>> Post(SendMessageRequest cmd, CancellationToken cancellationToken)
     {
-        DebugLog?.LogInformation("Post '{Text}'", cmd.Text);
+        DebugLog?.LogDebug("Post '{Text}'", cmd.Text);
         var now = Clocks.SystemClock.Now;
         var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
         await _whenStoredRequestsProcessed.ConfigureAwait(false);
         var uuid = Ulid.NewUlid().ToString();
         var entry = await CreateStoredSendRequest(uuid, now, cmd).ConfigureAwait(false);
-        DebugLog?.LogInformation("About to store post request '{Text}'", cmd.Text);
+        DebugLog?.LogDebug("About to store post request '{Text}'", cmd.Text);
         await _requestsRepo.Add(entry, cancellationToken).ConfigureAwait(false);
 
         var uploads = await CreateAttachmentUploads(entry, cmd.Attachments).ConfigureAwait(false);
         var requestInternal = CreatePostMessageRequestInternal(entry, uploads, false);
         _ = BackgroundTask.Run(async () => {
-            DebugLog?.LogInformation("About to post internal '{Text}'", cmd.Text);
+            DebugLog?.LogDebug("About to post internal '{Text}'", cmd.Text);
             await PostInternal(requestInternal, resultSource, cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
         return resultSource.Task;
@@ -264,7 +264,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         var discardSendRequest = false;
         TextEntryId? textEntryId = null;
         try {
-            DebugLog?.LogInformation("Sending message: LocalId={LocalId}, Content='{Content}', ClientId='{ClientId}', NewChatEntryLocalId={NewChatEntryLocalId}",
+            DebugLog?.LogDebug("Sending message: LocalId={LocalId}, Content='{Content}', ClientId='{ClientId}', NewChatEntryLocalId={NewChatEntryLocalId}",
                 request.LocalId, request.Text, request.ClientId, request.NewChatEntryLocalId);
             var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cancellationToken1 = cancellationTokenSource.Token;
@@ -352,7 +352,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 .ConfigureAwait(false);
             var chatEntry = (ChatEntry)postResult!;
             result = new Result<ChatEntry>(chatEntry);
-            DebugLog?.LogInformation("Sent message: LocalId={LocalId}, Content='{Content}'",
+            DebugLog?.LogDebug("Sent message: LocalId={LocalId}, Content='{Content}'",
                 chatEntry.LocalId,
                 chatEntry.Content);
         }
@@ -424,9 +424,9 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, CancellationToken cancellationToken)
     {
-        DebugLog?.LogInformation("-> ProcessQueueItem. Text: '{Text}'", command.Request.Text);
+        DebugLog?.LogDebug("-> ProcessQueueItem. Text: '{Text}'", command.Request.Text);
         ChatEntry chatEntry = await ProcessCommand(command, cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogInformation("<- ProcessQueueItem. Text: '{Text}'", command.Request.Text);
+        DebugLog?.LogDebug("<- ProcessQueueItem. Text: '{Text}'", command.Request.Text);
         return chatEntry;
     }
 
