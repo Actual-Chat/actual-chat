@@ -276,12 +276,19 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             var (host, port) = endpoint.ParseHostPort(4317);
             endpointUrl = $"http://{host}:{port.Format()}";
         }
+
         Log.LogInformation("OpenTelemetry: '{ServiceName}' @ {Endpoint}", serviceName, endpointUrl);
 
         var otel = services.AddOpenTelemetry();
-        otel.ConfigureResource(resource => _ = Env.IsDevelopment()
-            ? resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString, false, "dev")
-            : resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString));
+        otel.ConfigureResource(resource => {
+            _ = Env.IsDevelopment()
+                ? resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString, false, "dev")
+                : resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString);
+
+            var containerName = Environment.GetEnvironmentVariable("CONTAINER_NAME").NullIfEmpty() ?? "actual-chat-app";
+            if (!string.IsNullOrEmpty(containerName))
+                resource.AddAttributes([KeyValuePair.Create<string, object>("k8s.container.name", containerName)]);
+        });
 
         otel.WithMetrics(meter => meter
             // gcloud exporter doesn't support some of metrics yet:
