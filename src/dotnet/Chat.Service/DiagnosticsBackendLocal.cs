@@ -15,6 +15,7 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
     private MeshRpcPeerRefs MeshRpcPeerRefs { get; } = services.GetRequiredService<MeshRpcPeerRefs>();
     private MomentClockSet Clocks => field ??= services.Clocks();
     private MeshWatcher MeshWatcher => MeshRpcPeerRefs.MeshWatcher;
+    private ILogger Log { get; } = services.LogFor<DiagnosticsBackendLocal>();
 
     [ComputeMethod]
     public virtual async Task<MeshDiagInfo> GetMeshDiagInfo(string tag, int extraLevel, CancellationToken cancellationToken)
@@ -26,15 +27,22 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
         var meshState = MeshWatcher.State.Value;
         var otherNodes = meshState.AllNodes.Values.Where(c => !c.Equals(MeshWatcher.ThisNode)).ToArray();
         var infos = await otherNodes
-            .Select(c => {
+            .Select(async c => {
                 var diagnosticsBackend = Backend;
-                var otherInfo = diagnosticsBackend.GetMeshDiagInfo(c.Ref, tag, extraLevel - 1, cancellationToken);
-                return otherInfo;
+                try {
+                    var otherInfo = await diagnosticsBackend.GetMeshDiagInfo(c.Ref, tag, extraLevel - 1, cancellationToken)
+                        .WaitAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+                    return otherInfo;
+                }
+                catch (Exception ex) {
+                    Log.LogError(ex, "Failed to get mesh diag info for {Node}", c.Ref);
+                    return null;
+                }
             })
             .Collect(cancellationToken)
             .ConfigureAwait(false);
         return thisInfo with {
-            Others = infos,
+            Others = infos.SkipNullItems().ToArray(),
         };
     }
 
