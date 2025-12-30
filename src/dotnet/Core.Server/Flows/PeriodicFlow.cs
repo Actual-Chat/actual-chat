@@ -1,3 +1,4 @@
+using ActualChat.Time;
 using MemoryPack;
 
 namespace ActualChat.Flows;
@@ -31,9 +32,11 @@ public abstract class PeriodicFlow : Flow<string>
     {
         LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
         if (LastReadiness is { IsSuspended: true } readiness) {
-            var resumeDelay = ResumedAt + (readiness.ResumeDelay ?? MaxResumeDelay);
-            Console.Log($"Prepare() -> {readiness}, will resume at {resumeDelay}");
-            Runtime.StageResumeAt(resumeDelay);
+            var resumeDelay = readiness.ResumeDelay ?? MaxResumeDelay;
+            var resumeAt = ResumedAt + resumeDelay;
+            var resumeQuanta = GetResumeQuanta(resumeDelay);
+            Console.Log($"Prepare() -> {readiness}, will resume at {resumeAt} mod {resumeQuanta.ToShortString()}");
+            Runtime.StageResumeAt(resumeAt, resumeQuanta);
             return;
         }
 
@@ -46,8 +49,9 @@ public abstract class PeriodicFlow : Flow<string>
         var nextRunIn = (nextRunAt - ResumedAt).Clamp(TimeSpan.Zero, MaxResumeDelay);
         NextRunAt = ResumedAt + nextRunIn;
         if (NextRunAt > ResumedAt) {
-            Console.Log($"GetNextRunAt() -> {NextRunAt} (in {nextRunIn.ToShortString()}), scheduling resume for that time");
-            Runtime.StageResumeAt(nextRunAt);
+            var resumeQuanta = GetResumeQuanta(nextRunIn);
+            Console.Log($"GetNextRunAt() -> {NextRunAt} (in {nextRunIn.ToShortString()} mod {resumeQuanta.ToShortString()}), scheduling resume for that time");
+            Runtime.StageResumeAt(NextRunAt, resumeQuanta);
             return;
         }
 
@@ -59,8 +63,24 @@ public abstract class PeriodicFlow : Flow<string>
         LastRunAt = Hub.SystemNow;
         Console.Log($"Run() #{RunCount} completed in {startedAt.Elapsed.ToShortString()}");
 
-        // Schedule the next resume
+        // Schedule the next resume immediately
+        //TODO(AK): Probably we can schedule proper delay there, but I don't like code duplication and increasing complexity
         Console.Log("Scheduling immediate resume");
         Runtime.StageResume();
+    }
+
+    protected virtual TimeSpan GetResumeQuanta(TimeSpan delay)
+    {
+        if (this is IHasDelayQuanta hasDelayQuanta)
+            return hasDelayQuanta.DelayQuanta;
+
+        var delaySeconds = delay.TotalSeconds;
+        if (delaySeconds >= 2 * 24 * 3600) // More than 2 days
+            return TimeSpan.FromDays(1);
+        if (delaySeconds >= 2 * 3600) // More than 2 hours
+            return TimeSpan.FromHours(1);
+        if (delaySeconds >= 2 * 60) // More than 2 minutes
+            return TimeSpan.FromMinutes(1);
+        return TimeSpan.FromSeconds(1); // We don't need to run periodic flows more often than every second
     }
 }

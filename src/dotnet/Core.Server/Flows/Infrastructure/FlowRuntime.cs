@@ -26,22 +26,16 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
     // StageResume
 
     public FlowResumeEvent StageResume()
-        => StageResumeAt(Flow.Id, Hub.SystemNow);
-    public FlowResumeEvent StageResumeIn(TimeSpan delayBy)
-        => StageResumeAt(Flow.Id, Hub.SystemNow + delayBy);
-    public FlowResumeEvent StageResumeAt(Moment delayUntil)
-        => StageResumeAt(Flow.Id, delayUntil);
-
-    public FlowResumeEvent StageResume(FlowId flowId)
-        => StageResumeAt(flowId, Hub.SystemNow);
-    public FlowResumeEvent StageResumeIn(FlowId flowId, TimeSpan delayBy)
-        => StageResumeAt(flowId, Hub.SystemNow + delayBy);
-    public FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil)
     {
-        var e = new FlowResumeEvent(flowId).WithDelay(delayUntil, DefaultResumeDelayQuanta);
+        var e = new FlowResumeEvent(Flow.Id);
         StagedEvents.Add(e);
         return e;
     }
+
+    public FlowResumeEvent StageResumeIn(TimeSpan delayBy, TimeSpan? delayQuanta = null)
+        => StageResumeAt(Flow.Id, Hub.SystemNow + delayBy, delayQuanta ?? DefaultResumeDelayQuanta);
+    public FlowResumeEvent StageResumeAt(Moment delayUntil, TimeSpan? delayQuanta = null)
+        => StageResumeAt(Flow.Id, delayUntil, delayQuanta ?? DefaultResumeDelayQuanta);
 
     // Commit
 
@@ -76,6 +70,13 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
     }
 
     // Private methods
+
+    private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil, TimeSpan delayQuanta)
+    {
+        var e = new FlowResumeEvent(flowId).WithDelay(delayUntil, delayQuanta);
+        StagedEvents.Add(e);
+        return e;
+    }
 
     private OperationEvent[] GetStagedOperationEvents()
     {
