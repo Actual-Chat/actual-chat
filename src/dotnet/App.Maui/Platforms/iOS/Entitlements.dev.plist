@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>application-identifier</key>
+    <string>M287G8G83F.chat.actual.dev.app</string>
 	<key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>
@@ -13,7 +15,7 @@
 	</array>
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)chat.actual.dev.app.shared</string>
+		<string>M287G8G83F.chat.actual.dev.app.shared</string>
     </array>
 </dict>
 </plist>

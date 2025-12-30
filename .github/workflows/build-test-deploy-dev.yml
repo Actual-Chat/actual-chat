@@ -819,8 +819,10 @@ jobs:
           pushd artifacts/publish/App.Maui/release_net9.0-ios_ios-arm64
           unzip ActualChat.ipa
           rm -r Payload/ActualChat.app/_CodeSignature
+          rm -r Payload/ActualChat.app/PlugIns/*/_CodeSignature
           rm -r Payload/ActualChat.app/Frameworks/*/_CodeSignature
           codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/Frameworks/*
+          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/PlugIns/* --entitlements ${{github.workspace}}/src/dotnet/App.Maui.IosShareExt/${{env.ENTITLEMENTS_FILE}}
           codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements ${{github.workspace}}/src/dotnet/App.Maui/Platforms/iOS/${{env.ENTITLEMENTS_FILE}} Payload/ActualChat.app
           zip -r "${{env.PACKAGE_FILE_NAME}}" Payload
           popd
