@@ -17,10 +17,7 @@ public sealed partial class LinkPreviewFlow : PeriodicFlow
     public static string GetArguments(string url)
         => url.ToBase64();
 
-    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
-        => new(LastRunAt == default ? ResumedAt : Moment.MaxValue);
-
-    protected override async Task Run(CancellationToken cancellationToken)
+    protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
         var url = Id.Arguments.FromBase64();
         var id = LinkPreview.ComposeId(url);
@@ -28,7 +25,7 @@ public sealed partial class LinkPreviewFlow : PeriodicFlow
         var linkPreview = await LinkPreviewsBackend.Get(id, false, cancellationToken).ConfigureAwait(false);
         if (linkPreview != null && !NeedsUpdate(linkPreview.ModifiedAt)) {
             Console.Log("No update needed");
-            return;
+            return Moment.MaxValue;
         }
 
         using var activity = CoreServerInstruments.ActivitySource.StartActivity(typeof(Crawler), nameof(Crawler.Crawl), ActivityKind.Client);
@@ -56,6 +53,7 @@ public sealed partial class LinkPreviewFlow : PeriodicFlow
         var cmd = new LinkPreviewsBackend_Change(id, null, Change.Upsert(linkPreview));
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         Console.Log("Link preview updated");
+        return Moment.MaxValue;
     }
 
     // Private methods

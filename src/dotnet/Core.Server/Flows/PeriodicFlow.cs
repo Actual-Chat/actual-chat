@@ -9,8 +9,6 @@ public abstract class PeriodicFlow : Flow<string>
 {
     [IgnoreDataMember, MemoryPackIgnore]
     protected virtual TimeSpan MaxResumeDelay => TimeSpan.FromDays(7);
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected Moment NextRunAt { get; set; }
 
     // Persisted state
     [DataMember(Order = 0), MemoryPackOrder(0)]
@@ -23,8 +21,7 @@ public abstract class PeriodicFlow : Flow<string>
     // Overridable methods
 
     protected virtual ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken) => new(FlowReadiness.Ready);
-    protected abstract ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken);
-    protected abstract Task Run(CancellationToken cancellationToken);
+    protected abstract ValueTask<Moment> Run(CancellationToken cancellationToken);
 
     // Implementation
 
@@ -34,39 +31,36 @@ public abstract class PeriodicFlow : Flow<string>
         if (LastReadiness is { IsSuspended: true } readiness) {
             var resumeDelay = readiness.ResumeDelay ?? MaxResumeDelay;
             var resumeAt = ResumedAt + resumeDelay;
-            var resumeQuanta = GetResumeQuanta(resumeDelay);
-            Console.Log($"Prepare() -> {readiness}, will resume at {resumeAt} mod {resumeQuanta.ToShortString()}");
-            Runtime.StageResumeAt(resumeAt, resumeQuanta);
-            return;
-        }
-
-        // Compute the next run time
-        var nextRunAt = await GetNextRunAt(cancellationToken).ConfigureAwait(false);
-        if (nextRunAt == Moment.MaxValue) {
-            Console.Log("GetNextRunAt() -> Moment.MaxValue (never)");
-            return;
-        }
-        var nextRunIn = (nextRunAt - ResumedAt).Clamp(TimeSpan.Zero, MaxResumeDelay);
-        NextRunAt = ResumedAt + nextRunIn;
-        if (NextRunAt > ResumedAt) {
-            var resumeQuanta = GetResumeQuanta(nextRunIn);
-            Console.Log($"GetNextRunAt() -> {NextRunAt} (in {nextRunIn.ToShortString()} mod {resumeQuanta.ToShortString()}), scheduling resume for that time");
-            Runtime.StageResumeAt(NextRunAt, resumeQuanta);
+            var resumeQuanta1 = GetResumeQuanta(resumeDelay);
+            Console.Log($"Prepare() -> {readiness}, will resume at {resumeAt} mod {resumeQuanta1.ToShortString()}");
+            Runtime.StageResumeAt(resumeAt, resumeQuanta1);
             return;
         }
 
         // Run
         var startedAt = CpuTimestamp.Now;
         Console.Log($"Run() #{RunCount + 1} started");
-        await Run(cancellationToken).ConfigureAwait(false);
+        var nextRunAt = await Run(cancellationToken).ConfigureAwait(false);
         RunCount++;
         LastRunAt = Hub.SystemNow;
         Console.Log($"Run() #{RunCount} completed in {startedAt.Elapsed.ToShortString()}");
 
-        // Schedule the next resume immediately
-        //TODO(AK): Probably we can schedule proper delay there, but I don't like code duplication and increasing complexity
-        Console.Log("Scheduling immediate resume");
-        Runtime.StageResume();
+        if (nextRunAt == Moment.MaxValue) {
+            Console.Log("Run() -> Moment.MaxValue (never run again)");
+            return;
+        }
+
+        if (nextRunAt <= Hub.SystemNow) {
+            Console.Log("Run() requested immediate resume");
+            Runtime.StageResume();
+            return;
+        }
+
+        var nextRunIn = (nextRunAt - Hub.SystemNow).Clamp(TimeSpan.Zero, MaxResumeDelay);
+        var scheduledAt = Hub.SystemNow + nextRunIn;
+        var resumeQuanta2 = GetResumeQuanta(nextRunIn);
+        Console.Log($"Next run scheduled at {scheduledAt} (in {nextRunIn.ToShortString()} mod {resumeQuanta2.ToShortString()})");
+        Runtime.StageResumeAt(scheduledAt, resumeQuanta2);
     }
 
     protected virtual TimeSpan GetResumeQuanta(TimeSpan delay)
