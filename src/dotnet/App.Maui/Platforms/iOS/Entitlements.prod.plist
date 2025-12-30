@@ -4,8 +4,6 @@
 <dict>
     <key>application-identifier</key>
     <string>M287G8G83F.chat.actual.app</string>
-    <key>aps-environment</key>
-    <string>production</string>
     <key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>

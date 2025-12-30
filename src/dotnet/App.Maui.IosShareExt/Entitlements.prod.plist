@@ -4,8 +4,6 @@
 <dict>
     <key>application-identifier</key>
     <string>M287G8G83F.chat.actual.app.share</string>
-    <key>aps-environment</key>
-    <string>production</string>
     <key>keychain-access-groups</key>
 	<array>
 		<string>M287G8G83F.chat.actual.app.shared</string>
