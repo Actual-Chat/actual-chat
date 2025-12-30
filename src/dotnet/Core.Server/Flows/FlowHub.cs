@@ -74,6 +74,16 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
         => Get<TFlow>(arguments, addDependency: true, cancellationToken);
 
     // [ComputeMethod] - behaves exactly like a compute method
+    public async ValueTask<TFlow> Get<TFlow>(
+        FlowId flowId,
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+    {
+        var flow = await Get(flowId, addDependency: true, cancellationToken);
+        return (TFlow)flow;
+    }
+
+    // [ComputeMethod] - behaves exactly like a compute method
     public ValueTask<Flow> Get(
         FlowId flowId,
         CancellationToken cancellationToken = default)

@@ -1,6 +1,6 @@
 namespace ActualChat.Time;
 
-public interface IHasDelayQuanta : IHasDelayUntil
+public interface IHasDelayQuanta
 {
     TimeSpan DelayQuanta { get; }
 }
