@@ -1,7 +1,9 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Flows;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
+using ActualChat.Flows;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
@@ -29,6 +31,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private IStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IStreamingBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
 
     private static bool DebugMode => Constants.DebugMode.TranslationBackend;
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -123,6 +126,11 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             dbContext.Remove(dbTranslation);
         }
 
+        if (dbTranslation.StreamId is not null && !change.IsRemove())
+            await FlowHub
+                .NewResumeEvent<TranslationCleanupFlow>()
+                .WithDelay(now + Settings.Translation.HangingTimeout, TimeSpan.FromMinutes(1))
+                .Schedule(cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbTranslation.ToModel();
 

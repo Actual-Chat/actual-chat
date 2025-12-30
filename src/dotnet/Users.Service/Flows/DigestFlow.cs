@@ -50,13 +50,11 @@ public partial class DigestFlow : PeriodicFlow, IHasDelayQuanta
         return FlowReadiness.Ready;
     }
 
-    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
-        => new(TimeZoneInfo.NextTimeOfDay(DigestTime, LastRunAt));
-
-    protected override Task Run(CancellationToken cancellationToken)
+    protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
         var sendDigestCommand = new EmailsBackend_SendDigest(Account.Id);
         var queues = Services.Queues();
-        return queues.Enqueue(sendDigestCommand, cancellationToken);
+        await queues.Enqueue(sendDigestCommand, cancellationToken).ConfigureAwait(false);
+        return TimeZoneInfo.NextTimeOfDay(DigestTime, Hub.SystemNow);
     }
 }

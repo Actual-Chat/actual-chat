@@ -13,12 +13,10 @@ public sealed partial class PreviewThumbnailUpdateFlow : PeriodicFlow
     public static string GetArguments(string url)
         => url.ToBase64();
 
-    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
-        => new(LastRunAt == default ? ResumedAt : Moment.MaxValue);
-
-    protected override async Task Run(CancellationToken cancellationToken)
+    protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
         var url = Id.Arguments.FromBase64();
         await ImageGrabber.UpdateExisting(url, cancellationToken).ConfigureAwait(false);
+        return Moment.MaxValue;
     }
 }

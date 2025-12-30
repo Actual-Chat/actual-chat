@@ -13,25 +13,23 @@ public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
     private ITranslationsBackend TranslationsBackend => field ??= Services.GetRequiredService<ITranslationsBackend>();
     private ICommander Commander => field ??= Services.Commander();
 
-    protected override ValueTask<Moment> GetNextRunAt(CancellationToken cancellationToken)
-        => new(LastRunAt + Settings.Translation.CleanupInterval);
-
-    protected override async Task Run(CancellationToken cancellationToken)
+    protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
-        while (!cancellationToken.IsCancellationRequested) {
-            var translations = await TranslationsBackend.ListHanging(default, BatchSize, cancellationToken).ConfigureAwait(false);
-            if (translations.Count == 0)
-                return;
+        var translations = await TranslationsBackend.ListHanging(default, BatchSize, cancellationToken).ConfigureAwait(false);
+        if (translations.Count == 0)
+            return Moment.MaxValue; // no more work to do - We will wait for resume event.
 
-            Console.Log($"Finalizing {translations.Count} hanging translations");
-            var results = await translations.Select(FinalizeTranslation).CollectResults(cancellationToken).ConfigureAwait(false);
-            var failedCount = results.Count(x => x.HasError);
-            if (failedCount > 0) {
-                Console.LogError($"Failed to finalize {failedCount} of {translations.Count} hanging translations");
-                return; // intentional to break error loop
-            }
+        Console.Log($"Finalizing {translations.Count} hanging translations");
+        var results = await translations.Select(FinalizeTranslation).CollectResults(cancellationToken).ConfigureAwait(false);
+        var failedCount = results.Count(x => x.HasError);
+        if (failedCount > 0) {
+            Console.LogError($"Failed to finalize {failedCount} of {translations.Count} hanging translations");
+            return Hub.SystemNow + Settings.Translation.CleanupInterval; // schedule next run anyway, but not immediately to avoid error loop
         }
-        return;
+
+        return translations.Count == BatchSize
+            ? Hub.SystemNow
+            : Hub.SystemNow + Settings.Translation.CleanupInterval;
 
         Task<Translation> FinalizeTranslation(Translation translation)
         {
