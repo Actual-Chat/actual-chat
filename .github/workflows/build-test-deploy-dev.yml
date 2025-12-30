@@ -805,12 +805,18 @@ jobs:
           ${{ secrets.GOOGLE_SERVICES_PLIST_PROD }}
           EOF
 
-# TODO(FC): try get rid of this hack
-      - name: PList - set aps-environment and app identifier
+      - name: PList - set aps-environment
         uses: dppeak/update-ios-plist-action@v1.1.0
         with:
           info-plist-path: "src/dotnet/App.Maui/Platforms/iOS/${{env.ENTITLEMENTS_FILE}}"
-          key-value-json: '[{"application-identifier": "${{secrets.APPLE_TEAM_ID}}.${{env.APP_ID}}"}, {"aps-environment": "production"}]'
+          key-value-json: '[{"aps-environment": "production"}]'
+          print-file: true
+
+      - name: PList - set aps-environment (Share extension)
+        uses: dppeak/update-ios-plist-action@v1.1.0
+        with:
+          info-plist-path: "src/dotnet/App.Maui.IosShareExt/${{env.ENTITLEMENTS_FILE}}"
+          key-value-json: '[{"aps-environment": "production"}]'
           print-file: true
 
       - name: Build app package
