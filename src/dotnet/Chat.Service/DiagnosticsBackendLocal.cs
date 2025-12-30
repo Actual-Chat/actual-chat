@@ -27,6 +27,7 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
         var meshState = MeshWatcher.State.Value;
         var otherNodes = meshState.AllNodes.Values.Where(c => !c.Equals(MeshWatcher.ThisNode)).ToArray();
         var infos = await otherNodes
+            .Where(c => c.State is MeshNodeState.Online)
             .Select(async c => {
                 var diagnosticsBackend = Backend;
                 try {
