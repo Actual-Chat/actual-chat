@@ -134,11 +134,16 @@ public class ShareUI : UIServiceBase, IComputeService
                 var progress = new Progress<double>(pct => _uploadPct.Value = totalPct + (pct / chatIds.Count));
                 var attachments = await UploadFiles(chatId, fileInputs, progress, cancellationToken)
                     .ConfigureAwait(false);
-                var cmd = new Chats_UpsertTextEntry(Session, chatId, null, text) {
-                    ClientId = RandomStringGenerator.Default.Next(6),
-                    EntryAttachments = attachments,
-                };
-                await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
+                var entryText = text;
+                foreach (var attachmentList in attachments.Chunk(10))
+                {
+                    var cmd = new Chats_UpsertTextEntry(Session, chatId, null, entryText) {
+                        ClientId = RandomStringGenerator.Default.Next(6),
+                        EntryAttachments = attachmentList,
+                    };
+                    await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
+                    entryText = "";
+                }
             }
             await CloseApp(cancellationToken).ConfigureAwait(false);
         }
