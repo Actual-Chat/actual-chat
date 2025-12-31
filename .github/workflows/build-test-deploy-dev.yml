@@ -812,13 +812,6 @@ jobs:
           key-value-json: '[{"aps-environment": "production"}]'
           print-file: true
 
-      - name: PList - set aps-environment (Share extension)
-        uses: dppeak/update-ios-plist-action@v1.1.0
-        with:
-          info-plist-path: "src/dotnet/App.Maui.IosShareExt/${{env.ENTITLEMENTS_FILE}}"
-          key-value-json: '[{"aps-environment": "production"}]'
-          print-file: true
-
       - name: Build app package
         run: |-
           ./run-build.cmd publish-ios --configuration Release --is-dev-maui "${{env.IS_DEV_MAUI}}"
