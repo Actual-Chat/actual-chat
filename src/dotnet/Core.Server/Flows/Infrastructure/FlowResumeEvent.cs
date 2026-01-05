@@ -2,7 +2,6 @@ using ActualChat.Queues;
 using ActualChat.Time;
 using ActualLab.CommandR.Operations;
 using ActualLab.Generators;
-using ActualLab.Resilience;
 using MemoryPack;
 using MessagePack;
 
@@ -26,7 +25,7 @@ public sealed partial class FlowResumeEvent(FlowId flowId)
     [DataMember(Order = 3), MemoryPackOrder(3)]
     public TimeSpan DelayQuanta { get; set; }
 
-    public FlowResumeEvent(FlowId flowId, FlowHub? hub) : this(flowId)
+    internal FlowResumeEvent(FlowId flowId, FlowHub? hub) : this(flowId)
         => _hub = hub;
 
     public override string ToString()
@@ -47,7 +46,7 @@ public sealed partial class FlowResumeEvent(FlowId flowId)
         }
         else {
             operationEvent.Uuid = $"{nameof(FlowResumeEvent)}-{UuidGenerator.Next()}";
-            operationEvent.DelayUntil = DelayUntil;
+            operationEvent.SetDelayUntil(DelayUntil);
         }
         return operationEvent;
     }
