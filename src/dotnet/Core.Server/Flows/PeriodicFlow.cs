@@ -5,7 +5,7 @@ namespace ActualChat.Flows;
 
 // Base class for flows that run periodically.
 // Implements a simple pattern where Run is called at scheduled intervals.
-public abstract class PeriodicFlow : Flow<string>
+public abstract class PeriodicFlow : Flow<string>, IQuantProvider
 {
     [IgnoreDataMember, MemoryPackIgnore]
     protected virtual TimeSpan MaxResumeDelay => TimeSpan.FromDays(7);
@@ -28,10 +28,11 @@ public abstract class PeriodicFlow : Flow<string>
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
+        var flowDef = Hub.Defs.ByType[GetType()];
         if (LastReadiness is { IsSuspended: true } readiness) {
             var resumeDelay = readiness.ResumeDelay ?? MaxResumeDelay;
             var resumeAt = ResumedAt + resumeDelay;
-            var resumeQuanta1 = GetResumeQuanta(resumeDelay);
+            var resumeQuanta1 = flowDef.GetQuant!(resumeDelay);
             Console.Log($"Prepare() -> {readiness}, will resume at {resumeAt} mod {resumeQuanta1.ToShortString()}");
             Runtime.StageResumeAt(resumeAt, resumeQuanta1);
             return;
@@ -58,23 +59,8 @@ public abstract class PeriodicFlow : Flow<string>
 
         var nextRunIn = (nextRunAt - Hub.SystemNow).Clamp(TimeSpan.Zero, MaxResumeDelay);
         var scheduledAt = Hub.SystemNow + nextRunIn;
-        var resumeQuanta2 = GetResumeQuanta(nextRunIn);
+        var resumeQuanta2 = flowDef.GetQuant!(nextRunIn);
         Console.Log($"Next run scheduled at {scheduledAt} (in {nextRunIn.ToShortString()} mod {resumeQuanta2.ToShortString()})");
         Runtime.StageResumeAt(scheduledAt, resumeQuanta2);
-    }
-
-    protected virtual TimeSpan GetResumeQuanta(TimeSpan delay)
-    {
-        if (this is IHasDelayQuanta hasDelayQuanta)
-            return hasDelayQuanta.DelayQuanta;
-
-        var delaySeconds = delay.TotalSeconds;
-        if (delaySeconds >= 2 * 24 * 3600) // More than 2 days
-            return TimeSpan.FromDays(1);
-        if (delaySeconds >= 2 * 3600) // More than 2 hours
-            return TimeSpan.FromHours(1);
-        if (delaySeconds >= 2 * 60) // More than 2 minutes
-            return TimeSpan.FromMinutes(1);
-        return TimeSpan.FromSeconds(1); // We don't need to run periodic flows more often than every second
     }
 }
