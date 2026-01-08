@@ -4,6 +4,7 @@ using ActualChat.App.Server.Health;
 using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
 using ActualChat.Hosting;
+using ActualChat.Kubernetes;
 using ActualChat.MLSearch.Diagnostics;
 using ActualChat.Module;
 using ActualChat.Redis;
@@ -189,6 +190,13 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         redisModule.AddRedisDb<InfrastructureDbContext>(services);
 
         // Mesh Locks
+        var hasKube = IKubeInfo.HasKube();
+        var useLocalKube = Constants.DebugMode.KubeLocal;
+        if (useLocalKube)
+            // Validate that we are not managed by k8s and register local kube info otherwise
+            if (!hasKube)
+                services.AddSingleton(KubeInfo.GetLocal);
+
         services.AddSingleton<IMeshLocks>(c => {
             var subspace = Settings.MeshLockSubspace;
             if (OrdinalEquals(subspace, "?"))
@@ -202,6 +210,13 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 ? MeshLocksBase.DefaultKeyPrefix
                 : $"{MeshLocksBase.DefaultKeyPrefix}-{subspace}"; // Must not use "." as a delimiter!
 
+            if (useLocalKube || hasKube) {
+                Log.LogInformation("Using {KubeMeshLocks} for mesh locks", useLocalKube ? "Local KubeMeshLocks" : "KubeMeshLocks");
+                return c.GetRequiredService<KubeMeshLocks>()
+                    .With(keyPrefix, MeshLockOptions.Presets[optionsPreset]);
+            }
+
+            Log.LogInformation("Using RedisMeshLocks for mesh locks");
             return new RedisMeshLocks<InfrastructureDbContext>(c, keyPrefix) {
                 LockOptions = MeshLockOptions.Presets[optionsPreset],
             };
@@ -216,9 +231,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             var objectName = dataProtection[(6 + bucket.Length)..];
             services.AddDataProtection().PersistKeysToGoogleCloudStorage(bucket, objectName);
         }
-        else {
+        else
             services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtection));
-        }
         // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
         var origins = new List<string> {
             "http://0.0.0.0",

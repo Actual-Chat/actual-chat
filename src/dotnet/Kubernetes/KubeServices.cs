@@ -25,11 +25,11 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
         };
     }
 
+    public bool HasKube()
+        => IKubeInfo.HasKube();
+
     public ValueTask<Kube?> GetKube(CancellationToken cancellationToken = default)
         => KubeInfo.GetKube(cancellationToken);
-
-    public ValueTask<bool> HasKube(CancellationToken cancellationToken = default)
-        => KubeInfo.HasKube(cancellationToken);
 
     public ValueTask<Kube> RequireKube(CancellationToken cancellationToken = default)
         => KubeInfo.RequireKube(cancellationToken);
