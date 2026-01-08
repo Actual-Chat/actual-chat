@@ -42,9 +42,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
     <ProjectReference Include="..\Flows.Service\Flows.Service.csproj" />
-    <!-- Currently unused:
     <ProjectReference Include="..\Kubernetes\Kubernetes.csproj" />
-    -->
     <!-- You must reference migration projects here for services w/ DBs -->
     <ProjectReference Include="..\Flows.Service.Migration\Flows.Service.Migration.csproj" />
     <ProjectReference Include="..\Chat.Service.Migration\Chat.Service.Migration.csproj" />
