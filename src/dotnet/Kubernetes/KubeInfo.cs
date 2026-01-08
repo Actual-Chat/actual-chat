@@ -23,9 +23,8 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
 
     public ValueTask DisposeAsync()
     {
-        lock (_lock) {
+        lock (_lock)
             _disposeTask ??= _token?.DisposeAsync().AsTask() ?? Task.CompletedTask;
-        }
         return _disposeTask.ToValueTask();
     }
 

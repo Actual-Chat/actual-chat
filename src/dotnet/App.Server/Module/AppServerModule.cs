@@ -6,6 +6,7 @@ using ActualChat.Diagnostics;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.Diagnostics;
 using ActualChat.Module;
+using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
@@ -133,6 +134,24 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // endpoints.MapAppMetrics();
     }
 
+    // private readonly Lock _lock = new();
+    //
+    // private string MeshLockSubspace {
+    //     get {
+    //         if (field != null)
+    //             return field;
+    //
+    //         using var _ = _lock.EnterScope();
+    //         if (field != null)
+    //             return field;
+    //
+    //         var value = Cfg.GetSection("HostSettings")["MeshLockSubspace"];
+    //         if (OrdinalEquals(value, "?"))
+    //             value = Alphabet.AlphaNumeric.Generator8.Next();
+    //         return field = value ?? "";
+    //     }
+    // }
+
     protected override void InjectServices(IServiceCollection services)
     {
         // Host options
@@ -168,6 +187,25 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<InfrastructureDbContext>(services);
+
+        // Mesh Locks
+        services.AddSingleton<IMeshLocks>(c => {
+            var subspace = Settings.MeshLockSubspace;
+            if (OrdinalEquals(subspace, "?"))
+                subspace = Alphabet.AlphaNumeric.Generator8.Next();
+            else if (subspace.IsNullOrWhiteSpace())
+                subspace = "";
+            var optionsPreset = Settings.MeshLockOptionsPreset.NullIfEmpty() ?? nameof(MeshLockOptions.Default);
+            Log.LogInformation("IMeshLocks: '{Subspace}' subspace, '{OptionsPreset}' lock options preset", subspace, optionsPreset);
+
+            var keyPrefix = subspace.IsNullOrEmpty()
+                ? MeshLocksBase.DefaultKeyPrefix
+                : $"{MeshLocksBase.DefaultKeyPrefix}-{subspace}"; // Must not use "." as a delimiter!
+
+            return new RedisMeshLocks<InfrastructureDbContext>(c, keyPrefix) {
+                LockOptions = MeshLockOptions.Presets[optionsPreset],
+            };
+        });
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;

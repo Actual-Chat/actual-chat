@@ -3,7 +3,7 @@ using StackExchange.Redis;
 
 namespace ActualChat.Redis;
 
-public class RedisMeshLocks<TContext> : RedisMeshLocks, IMeshLocks<TContext>
+public class RedisMeshLocks<TContext> : RedisMeshLocks
 {
     public RedisMeshLocks(IServiceProvider services)
         : base(services, services.GetRequiredService<RedisDb<TContext>>())
@@ -93,8 +93,6 @@ public class RedisMeshLocks : MeshLocksBase
         until cursor == "0";
         return count;
         """;
-
-    public static readonly string DefaultKeyPrefix = "MeshLocks";
 
     private readonly Func<ChannelMessage, string> _changeMessageMapper;
     private readonly string _fullKeyPrefix;

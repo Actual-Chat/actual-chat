@@ -27,7 +27,7 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
 
     // ActionLocks root, see how it's used
     internal IMeshLocks ActionLocks { get; }
-        = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ActionLocks));
+        = services.MeshLocks().WithKeyPrefix(nameof(ActionLocks));
 
     private NatsConnection Connection {
         get {

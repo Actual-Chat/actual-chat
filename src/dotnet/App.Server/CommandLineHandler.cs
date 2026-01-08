@@ -1,3 +1,4 @@
+using ActualChat.App.Server.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using static System.Console;
@@ -14,8 +15,8 @@ public static class CommandLineHandler
     private const string RoleGroupDelimiter = ":";
     private const string UrlsEnvVar = "URLS";
     private const string ServerRoleEnvVar = "HostSettings__ServerRole";
-    private const string MeshLockSubspaceEnvVar = "RedisSettings__MeshLockSubspace";
-    private const string MeshLockOptionsPresetEnvVar = "RedisSettings__MeshLockOptionsPreset";
+    private const string MeshLockSubspaceEnvVar = "HostSettings__MeshLockSubspace";
+    private const string MeshLockOptionsPresetEnvVar = "HostSettings__MeshLockOptionsPreset";
 
     private static readonly Dictionary<Symbol, HostRole[]> AllRoleGroups = new() {
         { "1", [HostRole.OneServer] },
@@ -68,12 +69,12 @@ public static class CommandLineHandler
 
         // -multihost-role:<role-group>:<own-role> argument
         if (TryParseRoleArgument(args, MultiHostRoleArgPrefix)) {
-            var redisSettings = ConfigOnlyAppHost.Configuration.Settings<RedisSettings>();
-            var meshLockSubspace = redisSettings.MeshLockSubspace;
+            var hostSettings = ConfigOnlyAppHost.Configuration.Settings<HostSettings>();
+            var meshLockSubspace = hostSettings.MeshLockSubspace;
             if (OrdinalEquals(meshLockSubspace, "?"))
                 meshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
             var meshLockOptionsPreset =
-                redisSettings.MeshLockOptionsPreset.NullIfEmpty()
+                hostSettings.MeshLockOptionsPreset.NullIfEmpty()
                 ?? nameof(MeshLockOptions.Default);
             WriteLine($"IMeshLocks settings: '{meshLockSubspace}' subspace, '{meshLockOptionsPreset}' options preset");
             Environment.SetEnvironmentVariable(MeshLockSubspaceEnvVar, meshLockSubspace);

@@ -30,7 +30,7 @@ public sealed record MeshLockOptions(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public TimeSpan RenewalPeriod => ExpirationPeriod * RenewalPeriodRatio;
 
-    public MeshLockOptions(double expirationPeriod, float renewalPeriodRatio = 0.5f)
+    public MeshLockOptions(double expirationPeriod, float renewalPeriodRatio = 0.4f)
         : this(TimeSpan.FromSeconds(expirationPeriod), renewalPeriodRatio)
     { }
 

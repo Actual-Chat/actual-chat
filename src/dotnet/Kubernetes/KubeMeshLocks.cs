@@ -2,21 +2,8 @@ using System.Net;
 
 namespace ActualChat.Kubernetes;
 
-public class KubeMeshLocks<TContext> : KubeMeshLocks, IMeshLocks<TContext>
-{
-    public KubeMeshLocks(IServiceProvider services)
-        : base(services)
-    { }
-
-    public KubeMeshLocks(IServiceProvider services, string keyPrefix)
-        : base(services, keyPrefix)
-    { }
-}
-
 public class KubeMeshLocks : MeshLocksBase
 {
-    public static readonly string DefaultKeyPrefix = "mesh-lock-";
-
     private readonly string _keyPrefix;
     private KubeLeaseClient LeaseClient { get; }
     private string Namespace { get; }

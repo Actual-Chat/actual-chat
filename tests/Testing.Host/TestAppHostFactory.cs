@@ -1,4 +1,5 @@
 using ActualChat.App.Server;
+using ActualChat.App.Server.Module;
 using ActualChat.Blobs.Internal;
 using ActualChat.MLSearch.Engine;
 using ActualChat.Module;
@@ -60,7 +61,7 @@ public static class TestAppHostFactory
                         (WebHostDefaults.StaticWebAssetsKey, manifestPath),
                         ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.UseNatsQueues)}", $"{useNatsQueues}"))
                     .AddInMemory<CoreSettings>((x => x.Instance, instanceName))
-                    .AddInMemory<RedisSettings>(
+                    .AddInMemory<HostSettings>(
                         (x => x.MeshLockSubspace, options.MeshLockSubspace),
                         (x => x.MeshLockOptionsPreset, options.MeshLockOptionsPreset));
 
