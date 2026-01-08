@@ -1,6 +1,7 @@
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -12,7 +13,7 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
     protected override void InjectServices(IServiceCollection services)
     {
         services.AddFusion();
-        services.AddSingleton<KubeInfo>();
+        services.TryAddSingleton<KubeInfo>();
         services.AddSingleton<IKubeInfo>(c => c.GetRequiredService<KubeInfo>());
         services.AddSingleton<KubeServices>();
         services.AddSingleton<KubeLeaseClient>();

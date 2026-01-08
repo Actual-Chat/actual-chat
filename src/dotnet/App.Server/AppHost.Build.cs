@@ -6,6 +6,7 @@ using ActualChat.Db.Module;
 using ActualChat.Flows.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
+using ActualChat.Kubernetes.Module;
 using ActualChat.Logging;
 using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
@@ -159,7 +160,7 @@ public partial class AppHost
                 // Core modules
                 new CoreModule(moduleServices),
                 new CoreServerModule(moduleServices),
-                // new KubernetesModule(moduleServices),
+                new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
                 new DbModule(moduleServices),
                 new FlowsServiceModule(moduleServices),
