@@ -9,7 +9,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
-        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
+        var locks = AppHost.Services.MeshLocks().WithKeyPrefix(nameof(RedisMeshLocksTest));
         WriteLine($"{locks.LockOptions}");
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(5),
@@ -42,7 +42,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task LockIsGoneTest()
     {
-        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
+        var locks = AppHost.Services.MeshLocks().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
@@ -70,7 +70,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task ReleaseNotifyTest()
     {
-        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
+        var locks = AppHost.Services.MeshLocks().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(10) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
@@ -100,7 +100,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task ReleaseAcquireTest()
     {
-        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ReleaseAcquireTest));
+        var locks = AppHost.Services.MeshLocks().WithKeyPrefix(nameof(ReleaseAcquireTest));
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(15) };
 
         var ctsA = new CancellationTokenSource();
@@ -133,7 +133,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
     [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
     public async Task RedisReconnectTest()
     {
-        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
+        var locks = AppHost.Services.MeshLocks().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(2),
         };

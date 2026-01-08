@@ -194,7 +194,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
         moqServices
             .Setup(x => x.GetService(typeof(IHostApplicationLifetime)))
             .Returns(Mock.Of<IHostApplicationLifetime>(MockBehavior.Loose));
-        var moqMeshLocks = new Mock<IMeshLocks<InfrastructureDbContext>>(MockBehavior.Loose);
+        var moqMeshLocks = new Mock<IMeshLocks>(MockBehavior.Loose);
         moqMeshLocks
             .Setup(x => x.Clock)
             .Returns(MomentClockSet.Default.CoarseSystemClock);
@@ -205,7 +205,7 @@ public class ChatIndexInitializerTests(ITestOutputHelper @out) : TestBase(@out)
             .Setup(x => x.With(It.IsAny<string>(), It.IsAny<MeshLockOptions?>()))
             .Returns(moqMeshLocks.Object);
         moqServices
-            .Setup(x => x.GetService(typeof(IMeshLocks<InfrastructureDbContext>)))
+            .Setup(x => x.GetService(typeof(IMeshLocks)))
             .Returns(moqMeshLocks.Object);
         moqServices
             .Setup(x => x.GetService(typeof(StateFactory)))

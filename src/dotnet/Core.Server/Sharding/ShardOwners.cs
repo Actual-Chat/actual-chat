@@ -17,7 +17,7 @@ public sealed class ShardOwners : ProcessorBase, IHasServices
     public ShardOwners(IServiceProvider services) : base(services.HostLifetimeIfExist().CreateStopTokenSource())
     {
         Services = services;
-        OwnershipLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ShardOwners));
+        OwnershipLocks = services.MeshLocks().WithKeyPrefix(nameof(ShardOwners));
         Clock = OwnershipLocks.Clock;
     }
 

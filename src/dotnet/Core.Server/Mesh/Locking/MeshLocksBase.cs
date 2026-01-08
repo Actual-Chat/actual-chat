@@ -6,6 +6,7 @@ namespace ActualChat.Mesh;
 public abstract class MeshLocksBase : IMeshLocksBackend
 {
     private static bool DebugMode => Constants.DebugMode.MeshLocks;
+    public static readonly string DefaultKeyPrefix = "MeshLocks";
 
     private readonly LazySlim<ILogger?>? _debugLog;
 

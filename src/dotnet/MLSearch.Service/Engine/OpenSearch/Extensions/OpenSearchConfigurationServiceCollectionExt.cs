@@ -64,14 +64,14 @@ internal static class OpenSearchConfigurationServiceCollectionExt
 
         _ = services
             .AddSingleton<IClusterSetup>(static c => c.CreateInstance<ClusterSetup>(
-                c.GetRequiredService<IMeshLocks<MLSearchDbContext>>().WithKeyPrefix(nameof(ClusterSetup))
+                c.GetRequiredService<IMeshLocks>().WithKeyPrefix(nameof(ClusterSetup))
             ))
             .AddSingleton<IClusterSetupActions>(static c => {
                 var openSearchSettings = c.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
                 return openSearchSettings.EmbeddingService.EmbeddingServiceType switch {
                     EmbeddingServiceType.BuiltIn => c.CreateInstance<BuiltInModelClusterSetupActions>(),
                     EmbeddingServiceType.Custom => c.CreateInstance<CustomRemoteModelClusterSetupActions>(),
-                    _ => throw new InvalidOperationException()
+                    _ => throw new InvalidOperationException(),
                 };
             });
 

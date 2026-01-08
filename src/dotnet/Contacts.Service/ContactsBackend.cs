@@ -23,7 +23,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private IExternalContactsBackend ExternalContactsBackend => field ??= Services.GetRequiredService<IExternalContactsBackend>();
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
     private IDbEntityResolver<string, DbContact> DbContactResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
-    private IMeshLocks GreetLocks => field ??= Services.MeshLocks<ContactsDbContext>().WithKeyPrefix(nameof(GreetLocks));
+    private IMeshLocks GreetLocks => field ??= Services.MeshLocks().WithKeyPrefix(nameof(GreetLocks));
     public RedisDb<ContactsDbContext> RedisDb => field ??= Services.GetRequiredService<RedisDb<ContactsDbContext>>();
     private IDbEntityResolver<string, DbThreadContact> DbThreadContactResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbThreadContact>>();
 

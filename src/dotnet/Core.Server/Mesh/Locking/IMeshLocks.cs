@@ -1,9 +1,6 @@
-using ActualLab.Generators;
 using ActualLab.Resilience;
 
 namespace ActualChat.Mesh;
-
-public interface IMeshLocks<TContext> : IMeshLocks;
 
 public interface IMeshLocks : IHasServices
 {

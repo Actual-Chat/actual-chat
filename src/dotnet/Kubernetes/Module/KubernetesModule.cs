@@ -13,10 +13,10 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
     {
         services.AddFusion();
         services.AddSingleton<KubeInfo>();
+        services.AddSingleton<IKubeInfo>(c => c.GetRequiredService<KubeInfo>());
         services.AddSingleton<KubeServices>();
         services.AddSingleton<KubeLeaseClient>();
         services.AddSingleton<KubeMeshLocks>();
-        services.AddSingleton(typeof(KubeMeshLocks<>));
         services.AddHttpClient(Kube.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(c => {
                 var handler = new HttpClientHandler();

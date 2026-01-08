@@ -18,7 +18,7 @@ public class ImageGrabber(IServiceProvider services)
     private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
     private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient(Crawler.HttpClientName);
     private IReadOnlyList<IUploadProcessor> UploadProcessors => field ??= services.GetServices<IUploadProcessor>().ToList();
-    private IMeshLocks MeshLocks => field ??= services.MeshLocks<MediaDbContext>().WithKeyPrefix(nameof(ImageGrabber));
+    private IMeshLocks MeshLocks => field ??= services.MeshLocks().WithKeyPrefix(nameof(ImageGrabber));
     private ICommander Commander => field ??= services.Commander();
     private FlowHub FlowHub => field ??= services.FlowHub();
     private MomentClockSet Clocks => field ??= services.Clocks();

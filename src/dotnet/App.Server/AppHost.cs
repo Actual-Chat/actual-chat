@@ -31,7 +31,7 @@ public partial class AppHost : SafeAsyncDisposableBase
 
     public async Task RunInitializers(CancellationToken cancellationToken = default)
     {
-        var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix($"{nameof(AppHost)}");
+        var meshLocks = Services.MeshLocks().WithKeyPrefix($"{nameof(AppHost)}");
         var initializers = new WorkerBase[] {
             new AggregateDbInitializer(Services),
             new AggregateModuleInitializer(Services),

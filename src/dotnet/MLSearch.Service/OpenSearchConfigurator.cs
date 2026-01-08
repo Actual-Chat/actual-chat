@@ -17,7 +17,7 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
     private MLSearchSettings Settings => field ??= services.GetRequiredService<MLSearchSettings>();
     private OpenSearchNames OpenSearchNames => field ??= services.GetRequiredService<OpenSearchNames>();
     private IOpenSearchClient OpenSearchClient => field ??= services.GetRequiredService<IOpenSearchClient>();
-    private IMeshLocks MeshLocks => field ??= services.MeshLocks<MLSearchDbContext>().WithKeyPrefix(nameof(OpenSearchConfigurator));
+    private IMeshLocks MeshLocks => field ??= services.MeshLocks().WithKeyPrefix(nameof(OpenSearchConfigurator));
     private ILogger Log => field ??= services.LogFor(GetType());
 
     private readonly int _numberOfReplicas = services.GetRequiredService<HostInfo>().IsDevelopmentInstance ? 0 : 1;

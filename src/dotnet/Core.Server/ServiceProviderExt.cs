@@ -19,8 +19,8 @@ public static class ServiceProviderExt
         => services.GetService<IHostApplicationLifetime>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IMeshLocks<TContext> MeshLocks<TContext>(this IServiceProvider services)
-        => services.GetRequiredService<IMeshLocks<TContext>>();
+    public static IMeshLocks MeshLocks(this IServiceProvider services)
+        => services.GetRequiredService<IMeshLocks>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MeshWatcher MeshWatcher(this IServiceProvider services)

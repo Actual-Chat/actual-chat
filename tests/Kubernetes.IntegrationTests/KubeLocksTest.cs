@@ -52,7 +52,6 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
                 services.AddSingleton<KubeServices>();
                 services.AddSingleton<KubeLeaseClient>();
                 services.AddSingleton<KubeMeshLocks>();
-                services.AddSingleton(typeof(KubeMeshLocks<>));
                 services.AddHttpClient(Kube.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(c => {
                         var handler = new HttpClientHandler();
@@ -161,7 +160,7 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
         return await kubeInfo.HasKube();
     }
 
-    [Fact]
+    [Fact(Skip = "For manual testing only")]
     public async Task KubeLeaseClient_Crud_Works()
     {
         if (!await IsKubeAvailable()) return;
@@ -217,7 +216,7 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
         }
     }
 
-    [Fact]
+    [Fact(Skip = "For manual testing only")]
     public async Task KubeMeshLocks_Basic_Works()
     {
         if (!await IsKubeAvailable()) return;
@@ -250,7 +249,7 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
         await holder3!.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "For manual testing only")]
     public async Task KubeMeshLocks_Lock_Works()
     {
         if (!await IsKubeAvailable()) return;

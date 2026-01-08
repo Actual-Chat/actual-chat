@@ -35,7 +35,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
         Services = services;
         Log = services.LogFor(GetType());
         ThisNode = services.GetRequiredService<MeshNode>();
-        NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
+        NodeLocks = services.MeshLocks().WithKeyPrefix(nameof(NodeLocks));
         var stateFactory = services.StateFactory();
         _onlineNodes = stateFactory.NewMutable<ImmutableArray<MeshNode>>(
             new () {
