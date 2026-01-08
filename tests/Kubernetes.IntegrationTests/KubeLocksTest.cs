@@ -17,8 +17,7 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
                 services.AddSingleton(KubeInfo.GetLocal);
             },
         });
-        var kubeInfo = Services.GetRequiredService<KubeInfo>();
-        if (!await kubeInfo.HasKube())
+        if (!IKubeInfo.HasKube())
             WriteLine("Kubernetes is not available, skipping tests.");
     }
 
@@ -29,11 +28,13 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
         await base.DisposeAsync();
     }
 
-    private async Task<bool> IsKubeAvailable()
+    private Task<bool> IsKubeAvailable()
     {
-        if (_appHost == null) return false;
+        if (_appHost == null)
+            return Task.FromResult(false);
+
         var kubeInfo = Services.GetRequiredService<KubeInfo>();
-        return await kubeInfo.HasKube();
+        return Task.FromResult(IKubeInfo.HasKube());
     }
 
     [Fact(Skip = "For manual testing only")]

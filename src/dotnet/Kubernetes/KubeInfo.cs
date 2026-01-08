@@ -4,8 +4,13 @@ namespace ActualChat.Kubernetes;
 
 public interface IKubeInfo
 {
+    static bool HasKube()
+    {
+        var podIp = Environment.GetEnvironmentVariable("POD_IP");
+        return !podIp.IsNullOrEmpty();
+    }
+
     ValueTask<Kube?> GetKube(CancellationToken cancellationToken = default);
-    ValueTask<bool> HasKube(CancellationToken cancellationToken = default);
     ValueTask<Kube> RequireKube(CancellationToken cancellationToken = default);
 }
 
@@ -92,12 +97,6 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
             _cachedInfo = new CachedKube(info);
             return ValueTaskExt.FromResult(info);
         }
-    }
-
-    public async ValueTask<bool> HasKube(CancellationToken cancellationToken = default)
-    {
-        var info = await GetKube(cancellationToken).ConfigureAwait(false);
-        return info != null;
     }
 
     public async ValueTask<Kube> RequireKube(CancellationToken cancellationToken = default)
