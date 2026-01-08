@@ -9,4 +9,6 @@ public enum ChangeType
     Added,
     Modified,
     Deleted,
+    Bookmark,
+    Error,
 }

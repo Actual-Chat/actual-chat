@@ -5,6 +5,6 @@ public record OwnerReference(
     string Kind,
     string Name,
     string Uid,
-    bool Controller,
-    bool BlockOwnerDeletion
+    bool? Controller,
+    bool? BlockOwnerDeletion
 );
