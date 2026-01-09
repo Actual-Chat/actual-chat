@@ -133,9 +133,6 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
             var endpointsMap = new Dictionary<string, (EndpointSlice Slice, KubeEndpoint[] Endpoints)>(StringComparer.Ordinal);
 
             using var httpClient = Kube.CreateHttpClient(Services.HttpClientFactory());
-            var httpClientDisposable = new SafeDisposable(httpClient, 10, Log) { MustWait = false };
-            await using var _ = httpClientDisposable.ConfigureAwait(false);
-
             if (resourceVersion.IsNullOrEmpty()) {
                 var listUrl = $"apis/discovery.k8s.io/v1/namespaces/{KubeService.Namespace}/endpointslices" +
                               $"?labelSelector=kubernetes.io/service-name%3D{KubeService.Name}";
