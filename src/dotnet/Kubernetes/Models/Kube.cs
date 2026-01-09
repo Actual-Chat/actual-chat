@@ -37,6 +37,7 @@ public sealed record Kube : IRequirementTarget
         var client = httpClientFactory.CreateClient(name ?? HttpClientName);
         client.BaseAddress = Uri;
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token.Value);
+        client.DefaultRequestHeaders.ConnectionClose = false;
         return client;
     }
 }

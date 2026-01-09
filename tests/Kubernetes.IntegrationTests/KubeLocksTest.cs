@@ -37,7 +37,7 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
         return Task.FromResult(IKubeInfo.HasKube());
     }
 
-    [Fact(Skip = "For manual testing only")]
+    [Fact]
     public async Task KubeLeaseClient_Crud_Works()
     {
         if (!await IsKubeAvailable()) return;
