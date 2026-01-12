@@ -4,6 +4,8 @@ namespace ActualChat.Kubernetes.Api;
 
 public class Labels : Dictionary<string, string>
 {
+    public const string KubernetesIoServiceName = "kubernetes.io/service-name";
+
     public Labels() { }
     public Labels(IEnumerable<KeyValuePair<string, string>> collection) : base(collection) { }
 
@@ -18,10 +20,10 @@ public class Labels : Dictionary<string, string>
 
     [JsonIgnore]
     public string? ServiceName {
-        get => TryGetValue("kubernetes.io/service-name", out var value) ? value : null;
+        get => TryGetValue(KubernetesIoServiceName, out var value) ? value : null;
         set {
-            if (value != null) this["kubernetes.io/service-name"] = value;
-            else Remove("kubernetes.io/service-name");
+            if (value != null) this[KubernetesIoServiceName] = value;
+            else Remove(KubernetesIoServiceName);
         }
     }
 }

@@ -16,6 +16,8 @@ public interface IKubeInfo
 
 public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDisposable
 {
+    private static KubeInfo? _localInstance;
+
     public FilePath TokenPath { get; init; } = "/var/run/secrets/kubernetes.io/serviceaccount/token";
     public FilePath CACertPath { get; init; } = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
 
@@ -28,6 +30,9 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
 
     public static KubeInfo GetLocal(IServiceProvider services)
     {
+        if (_localInstance != null)
+            return _localInstance;
+
         var currentPodIp = Environment.GetEnvironmentVariable("POD_IP");
         if (!currentPodIp.IsNullOrEmpty())
             throw new InvalidOperationException("This method should not be executed within Kubernetes cluster.");
@@ -55,7 +60,7 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
         if (!string.IsNullOrEmpty(caData))
             File.WriteAllBytes(caPath, Convert.FromBase64String(caData));
 
-        return new KubeInfo(services) {
+        return _localInstance = new KubeInfo(services) {
             TokenPath = tokenPath,
             CACertPath = caPath,
         };

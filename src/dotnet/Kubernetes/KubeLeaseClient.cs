@@ -12,10 +12,14 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     public async Task<Api.Lease?> Get(string @namespace, string name, CancellationToken cancellationToken = default)
     {
+        Log.LogDebug("Getting lease {LeaseName} in namespace {Namespace}", name, @namespace);
         using var httpClient = await CreateHttpClient(cancellationToken).ConfigureAwait(false);
         var response = await httpClient.GetAsync(GetUrl(@namespace, name), cancellationToken).ConfigureAwait(false);
-        if (response.StatusCode == HttpStatusCode.NotFound)
+        if (response.StatusCode == HttpStatusCode.NotFound) {
+            Log.LogDebug("Lease {LeaseName} not found in namespace {Namespace}", name, @namespace);
             return null;
+        }
+
         if (response.StatusCode == HttpStatusCode.Forbidden)
             throw StandardError.Constraint(
                 "Kubernetes Role/ClusterRole to manage Leases is required for the service account.");
@@ -25,17 +29,29 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     public async Task<Api.Lease> Create(string @namespace, Api.Lease lease, CancellationToken cancellationToken = default)
     {
+        Log.LogDebug("Creating lease {LeaseName} in namespace {Namespace}", lease.Metadata.Name, @namespace);
+        var labels = lease.Metadata.Labels;
+        if (labels == null || labels.Count == 0)
+            throw StandardError.Internal("Lease metadata labels cannot be null or empty.");
+
         using var httpClient = await CreateHttpClient(cancellationToken).ConfigureAwait(false);
         var response = await httpClient.PostAsJsonAsync(GetUrl(@namespace), lease, WebJsonSerializeOptions, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.Forbidden)
             throw StandardError.Constraint(
                 "Kubernetes Role/ClusterRole to manage Leases is required for the service account.");
+        if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+            Log.LogDebug("Lease request is invalid: {StatusCode}, {Content}", response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<Api.Lease>(WebJsonSerializeOptions, cancellationToken).ConfigureAwait(false))!;
     }
 
     public async Task<Api.Lease> Replace(string @namespace, Api.Lease lease, CancellationToken cancellationToken = default)
     {
+        Log.LogDebug("Replacing lease {LeaseName} in namespace {Namespace}", lease.Metadata.Name, @namespace);
+        var labels = lease.Metadata.Labels;
+        if (labels == null || labels.Count == 0)
+            throw StandardError.Internal("Lease metadata labels cannot be null or empty.");
+
         using var httpClient = await CreateHttpClient(cancellationToken).ConfigureAwait(false);
         var response = await httpClient.PutAsJsonAsync(GetUrl(@namespace, lease.Metadata.Name), lease, WebJsonSerializeOptions, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.Forbidden)
@@ -47,10 +63,12 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     public async Task<bool> Delete(string @namespace, string name, CancellationToken cancellationToken = default)
     {
+        Log.LogDebug("Deleting lease {LeaseName} in namespace {Namespace}", name, @namespace);
         using var httpClient = await CreateHttpClient(cancellationToken).ConfigureAwait(false);
         var response = await httpClient.DeleteAsync(GetUrl(@namespace, name), cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)
             return false;
+
         if (response.StatusCode == HttpStatusCode.Forbidden)
             throw StandardError.Constraint(
                 "Kubernetes Role/ClusterRole to manage Leases is required for the service account.");
@@ -60,6 +78,8 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     public async Task<Api.LeaseList> List(string @namespace, string? labelSelector = null, CancellationToken cancellationToken = default)
     {
+        Log.LogDebug("Listing leases in namespace {Namespace} with label selector '{LabelSelector}'", @namespace, labelSelector ?? "none");
+
         using var httpClient = await CreateHttpClient(cancellationToken).ConfigureAwait(false);
         var url = GetUrl(@namespace);
         if (!labelSelector.IsNullOrEmpty())
@@ -92,10 +112,11 @@ public sealed class KubeLeaseClient(IServiceProvider services)
                 }
 
                 using var httpClient = await CreateHttpClient(cancellationToken).ConfigureAwait(false);
-                var url = GetUrl(@namespace) + $"?watch=true&resourceVersion={resourceVersion}&allowWatchBookmarks=true&timeoutSeconds=300";
+                var url = GetUrl(@namespace) + $"?watch=true&resourceVersion={resourceVersion}&allowWatchBookmarks=true&timeoutSeconds=30";
                 if (!labelSelector.IsNullOrEmpty())
                     url += $"&labelSelector={Uri.EscapeDataString(labelSelector)}";
 
+                Log.LogDebug("Starting lease watch in namespace {Namespace} with resource version {ResourceVersion} and label selector '{LabelSelector}'", @namespace, resourceVersion, labelSelector ?? "none");
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                 if (response.StatusCode == HttpStatusCode.Gone) {

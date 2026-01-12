@@ -1,10 +1,15 @@
 using System.Net;
+using ActualChat.Kubernetes.Api;
 
 namespace ActualChat.Kubernetes;
 
 public class KubeMeshLocks : MeshLocksBase
 {
+    public const string KeyPrefix = "voxt.ai/key-prefix";
+
+    private readonly ConcurrentDictionary<string, string> _leaseFullKeys = new();
     private readonly string _keyPrefix;
+    private readonly string _labelSelector;
     private KubeLeaseClient LeaseClient { get; }
     private string Namespace { get; }
 
@@ -17,15 +22,19 @@ public class KubeMeshLocks : MeshLocksBase
         Namespace = @namespace.IsNullOrEmpty()
             ? Environment.GetEnvironmentVariable("POD_NAMESPACE").NullIfEmpty() ?? "default"
             : @namespace;
+        _labelSelector = $"{KeyPrefix}={_keyPrefix}";
+
     }
 
     public override string GetFullKey(string key)
-        => _keyPrefix + key;
+        => _leaseFullKeys.GetOrAdd(key, k => (_keyPrefix + k).ToKebabCase());
 
     public override async Task<MeshLockInfo?> GetInfo(string key, CancellationToken cancellationToken = default)
     {
         var lease = await LeaseClient.Get(Namespace, GetFullKey(key), cancellationToken).ConfigureAwait(false);
-        return lease?.Spec.HolderIdentity == null ? null : new MeshLockInfo(key, lease.Spec.HolderIdentity);
+        return lease?.Spec.HolderIdentity == null
+            ? null
+            : new MeshLockInfo(key, lease.Spec.HolderIdentity);
     }
 
     public override async Task<IAsyncSubscription<string>> Changes(string key, CancellationToken cancellationToken = default)
@@ -34,10 +43,11 @@ public class KubeMeshLocks : MeshLocksBase
         var subscription = new KubeSubscription<string>(Clock);
         _ = Task.Run(async () => {
             try {
-                await LeaseClient.Watch(Namespace, null, OnChange, cancellationToken).ConfigureAwait(false);
+                await LeaseClient.Watch(Namespace, _labelSelector, OnChange, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                // Ignore
+                Log.LogWarning(e, "Failed to watch leases");
+                await subscription.DisposeSilentlyAsync().ConfigureAwait(false);
             }
         }, cancellationToken);
         return subscription;
@@ -51,7 +61,7 @@ public class KubeMeshLocks : MeshLocksBase
 
     public override async Task<List<string>> ListKeys(string prefix, CancellationToken cancellationToken = default)
     {
-        var leases = await LeaseClient.List(Namespace, null, cancellationToken).ConfigureAwait(false);
+        var leases = await LeaseClient.List(Namespace, _labelSelector, cancellationToken).ConfigureAwait(false);
         var fullPrefix = GetFullKey(prefix);
         return leases.Items
             .Where(x => x.Metadata.Name.StartsWith(fullPrefix, StringComparison.Ordinal))
@@ -74,7 +84,11 @@ public class KubeMeshLocks : MeshLocksBase
         var fullKey = GetFullKey(key);
         var now = Clock.Now.ToDateTime();
         var lease = new Api.Lease(
-            new Api.Metadata(fullKey, Namespace),
+            new Api.Metadata(fullKey, Namespace) {
+                Labels = new Labels {
+                    { KeyPrefix, _keyPrefix },
+                }
+            },
             new Api.LeaseSpec(value, (int)expiresIn.TotalSeconds, now, now)
         );
 
@@ -105,6 +119,10 @@ public class KubeMeshLocks : MeshLocksBase
                     return false;
                 }
             }
+            return false;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to create a K8s lease");
             return false;
         }
     }

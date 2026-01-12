@@ -1,6 +1,5 @@
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using ActualChat.App.Server;
 using ActualChat.Kubernetes.Api;
 using ActualChat.Testing.Host;
 using Polly;
@@ -16,9 +15,11 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
     {
         await base.InitializeAsync();
         var serviceCollection = new ServiceCollection();
+        serviceCollection.AddFusion();
         serviceCollection.AddSingleton(KubeInfo.GetLocal)
             .AddSingleton<IKubeInfo>(c => c.GetRequiredService<KubeInfo>())
             .AddSingleton<KubeLeaseClient>()
+            .AddSingleton<KubeMeshLocks>()
             .AddSingleton<ILoggerFactory>(c => new LoggerFactory().AddXUnit(@out))
             .AddHttpClient(Kube.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(c => {
@@ -83,8 +84,6 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public async Task KubeLeaseClient_Crud_Works()
     {
-        if (!await IsKubeAvailable()) return;
-
         var client = Services.GetRequiredService<KubeLeaseClient>();
         var ns = Environment.GetEnvironmentVariable("POD_NAMESPACE") ?? "default";
         var name = "test-lease-" + Guid.NewGuid().ToString("N")[..8];
@@ -147,8 +146,6 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact/*(Skip = "For manual testing only")*/]
     public async Task KubeMeshLocks_Basic_Works()
     {
-        if (!await IsKubeAvailable()) return;
-
         var locks = Services.GetRequiredService<KubeMeshLocks>();
         var key = "test-lock-" + Guid.NewGuid().ToString("N")[..8];
 
@@ -180,8 +177,6 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact/*(Skip = "For manual testing only")*/]
     public async Task KubeMeshLocks_Lock_Works()
     {
-        if (!await IsKubeAvailable()) return;
-
         var locks = Services.GetRequiredService<KubeMeshLocks>();
         var key = "test-lock-wait-" + Guid.NewGuid().ToString("N")[..8];
 
