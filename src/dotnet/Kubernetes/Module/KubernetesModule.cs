@@ -20,24 +20,26 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
         services.AddSingleton<KubeMeshLocks>();
         services.AddHttpClient(Kube.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(c => {
-                var handler = new SocketsHttpHandler {
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-                    MaxConnectionsPerServer = 20,
-                    EnableMultipleHttp2Connections = true,
-                    KeepAlivePingDelay = TimeSpan.FromSeconds(30),
-                    KeepAlivePingTimeout = TimeSpan.FromSeconds(10),
-                    KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always
-                };
+                var handler = new HttpClientHandler();
+                // var handler = new SocketsHttpHandler {
+                //     PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                //     PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+                //     MaxConnectionsPerServer = 20,
+                //     EnableMultipleHttp2Connections = true,
+                //     KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+                //     KeepAlivePingTimeout = TimeSpan.FromSeconds(10),
+                //     KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always
+                // };
                 var kubeInfo = c.GetRequiredService<KubeInfo>();
                 var log = c.LogFor<KubeServices>();
                 var caCertString = File.ReadAllText(kubeInfo.CACertPath);
                 var caCert = X509Certificate2.CreateFromPem(caCertString);
 #pragma warning disable MA0039
-                handler.SslOptions.RemoteCertificateValidationCallback =
+                handler.ServerCertificateCustomValidationCallback =
+                // handler.SslOptions.RemoteCertificateValidationCallback =
                         (_, cert, _, policyErrors) =>
                         {
-                            if (cert is not X509Certificate2 x509Cert)
+                            if (cert == null)
                                 return false;
                             if (policyErrors != SslPolicyErrors.RemoteCertificateChainErrors)
                                 return false;
@@ -47,7 +49,7 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
                                 x509Chain.ChainPolicy.ExtraStore.Add(caCert);
                                 x509Chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
                                 x509Chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-                                return x509Chain.Build(x509Cert);
+                                return x509Chain.Build(cert);
                             }
                             catch (Exception ex)
                             {
