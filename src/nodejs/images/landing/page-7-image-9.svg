@@ -1,0 +1,55 @@
+<svg width="184" height="184" viewBox="0 0 184 184" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <g clip-path="url(#clip0_889_1534)">
+        <ellipse cx="90.8523" cy="70.4051" rx="90.8523" ry="70.4051" transform="matrix(-0.953606 0.301057 0.301057 0.953606 157 0)" fill="url(#paint0_linear_889_1534)"/>
+        <rect x="64" y="137" width="62" height="6" rx="3" fill="#DCDCE7"/>
+        <path d="M139.5 131.5C139.5 130.672 138.828 130 138 130C137.172 130 136.5 130.672 136.5 131.5H138H139.5ZM132.5 137V135.5H52V137V138.5H132.5V137ZM44 129H45.5V123H44H42.5V129H44ZM52 137V135.5C48.4101 135.5 45.5 132.59 45.5 129H44H42.5C42.5 134.247 46.7533 138.5 52 138.5V137ZM132.5 137V138.5C136.366 138.5 139.5 135.366 139.5 131.5H138H136.5C136.5 133.709 134.709 135.5 132.5 135.5V137Z" fill="#858599"/>
+        <path d="M127.5 145.071C127.5 144.243 126.828 143.571 126 143.571C125.172 143.571 124.5 144.243 124.5 145.071H126H127.5ZM122.071 149V147.5H65V149V150.5H122.071V149ZM57 141H58.5V139H57H55.5V141H57ZM65 149V147.5C61.4101 147.5 58.5 144.59 58.5 141H57H55.5C55.5 146.247 59.7533 150.5 65 150.5V149ZM122.071 149V150.5C125.07 150.5 127.5 148.07 127.5 145.071H126H124.5C124.5 146.413 123.413 147.5 122.071 147.5V149Z" fill="#858599"/>
+        <rect x="51" y="126" width="87" height="6" rx="3" fill="#DCDCE7"/>
+        <path d="M150.5 119.25C150.5 118.422 149.828 117.75 149 117.75C148.172 117.75 147.5 118.422 147.5 119.25H149H150.5ZM41 99V100.5H149V99V97.5H41V99ZM142.25 126V124.5H41V126V127.5H142.25V126ZM33 118H34.5V107H33H31.5V118H33ZM41 126V124.5C37.4101 124.5 34.5 121.59 34.5 118H33H31.5C31.5 123.247 35.7533 127.5 41 127.5V126ZM142.25 126V127.5C146.806 127.5 150.5 123.806 150.5 119.25H149H147.5C147.5 122.149 145.149 124.5 142.25 124.5V126ZM41 99V97.5C35.7533 97.5 31.5 101.753 31.5 107H33H34.5C34.5 103.41 37.4101 100.5 41 100.5V99Z" fill="#858599"/>
+        <rect x="13" y="55" width="150" height="59" rx="8" fill="white"/>
+        <rect x="41" y="112" width="101" height="8" rx="4" fill="#DCDCE7"/>
+        <rect x="83.5" y="64.5" width="65" height="10" rx="5" fill="#D4D6FF" stroke="#858599" stroke-width="3"/>
+        <path d="M50.5107 68.7183L50.5107 71.6219" stroke="#858599" stroke-width="3"/>
+        <ellipse cx="50.7059" cy="66.1777" rx="2.34526" ry="2.17774" fill="white"/>
+        <path d="M50.5102 68.7184C51.9134 68.7184 53.0509 67.6622 53.0509 66.3592C53.0509 65.0563 51.9134 64 50.5102 64C49.107 64 47.9695 65.0563 47.9695 66.3592C47.9695 67.6622 49.107 68.7184 50.5102 68.7184Z" stroke="#858599" stroke-width="3" stroke-miterlimit="10"/>
+        <circle cx="49.9658" cy="66.3594" r="1.63331" fill="#CECEDD"/>
+        <ellipse cx="0.895107" cy="1.00657" rx="0.895107" ry="1.00657" transform="matrix(0.660861 0.750509 -0.79645 0.604705 49.573 64)" fill="white"/>
+        <path d="M50.8004 97.029C58.3771 97.029 64.5192 93.2915 64.5192 88.681C64.5192 84.0705 58.3771 80.333 50.8004 80.333C43.2237 80.333 37.0815 84.0705 37.0815 88.681C37.0815 93.2915 43.2237 97.029 50.8004 97.029Z" fill="url(#paint1_linear_889_1534)"/>
+        <path d="M41.5304 87.9575H39.7622V89.889H41.5304V87.9575Z" fill="white"/>
+        <path d="M43.2984 86.1406H41.5303V88.0721H43.2984V86.1406Z" fill="white"/>
+        <path d="M46.8346 87.9551H45.0664V89.8865H46.8346V87.9551Z" fill="white"/>
+        <path d="M45.0199 86.1406H43.2517V88.0721H45.0199V86.1406Z" fill="white"/>
+        <path d="M56.9977 87.9575H55.2295V89.889H56.9977V87.9575Z" fill="white"/>
+        <path d="M58.7655 86.1406H56.9973V88.0721H58.7655V86.1406Z" fill="white"/>
+        <path d="M62.3019 87.9551H60.5337V89.8865H62.3019V87.9551Z" fill="white"/>
+        <path d="M60.4872 86.1406H58.719V88.0721H60.4872V86.1406Z" fill="white"/>
+        <path d="M52.2054 92.6626H49.613V95.4944H52.2054V92.6626Z" fill="white"/>
+        <path d="M51.9627 101.929C40.711 102.836 32 94.8513 32 88.1877C32 79.013 40.4887 71.6221 50.8738 71.6221C61.2589 71.6221 69.7476 79.0722 69.7476 88.1877C69.7476 92.8551 67.3883 96.8476 61.2181 100.114" stroke="#858599" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M43.6147 71.7516C42.8879 69.0954 37.6203 64.8042 34.714 66.0304C32.8975 66.7968 30.9602 76.5873 33.8059 80.3332" stroke="#858599" stroke-width="3"/>
+        <path d="M58.1331 71.7516C58.8599 69.0954 64.1275 64.8042 67.0338 66.0304C68.8503 66.7968 70.7876 76.5873 67.9419 80.3332" stroke="#858599" stroke-width="3"/>
+        <path d="M83 84.5H148" stroke="#797991" stroke-width="3" stroke-linecap="round"/>
+        <path d="M83 93.5H148" stroke="#797991" stroke-width="3" stroke-linecap="round"/>
+        <path d="M83 101.5H148" stroke="#797991" stroke-width="3" stroke-linecap="round"/>
+        <path d="M49.5 49H164C168.418 49 172 52.5817 172 57V106C172 110.418 168.418 114 164 114H20C15.5817 114 12 110.418 12 106V57C12 52.5817 15.5817 49 20 49H38" stroke="#858599" stroke-width="3" stroke-linecap="round"/>
+        <ellipse cx="151" cy="48.5" rx="9" ry="9.5" fill="#FF7CAB"/>
+        <g style="mix-blend-mode:overlay" opacity="0.3">
+            <rect x="-63" y="-16" width="402" height="216" rx="8" fill="url(#pattern0_889_1534)"/>
+        </g>
+    </g>
+    <defs>
+        <pattern id="pattern0_889_1534" patternContentUnits="objectBoundingBox" width="0.584577" height="1.08796">
+            <use xlink:href="#image0_889_1534" transform="scale(0.00124378 0.00231481)"/>
+        </pattern>
+        <linearGradient id="paint0_linear_889_1534" x1="54.6376" y1="163.496" x2="169.365" y2="68.4247" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#E5E5FA"/>
+            <stop offset="1" stop-color="#F6EEF5"/>
+        </linearGradient>
+        <linearGradient id="paint1_linear_889_1534" x1="50.65" y1="83.0342" x2="50.65" y2="105.971" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#858599"/>
+            <stop offset="1" stop-color="#858599" stop-opacity="0.5"/>
+        </linearGradient>
+        <clipPath id="clip0_889_1534">
+            <rect width="184" height="184" fill="white"/>
+        </clipPath>
+    </defs>
+</svg>

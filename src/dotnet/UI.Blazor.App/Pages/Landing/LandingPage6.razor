@@ -1,43 +1,42 @@
+<div class="landing-page-noise">
+    <img draggable="false" src="/dist/images/landing/landing-page-noise.svg" alt="">
+</div>
 <div class="c-content">
-    <div class="c-top">
-        <div class="main-image">
-            <img draggable="false" src="/dist/images/landing/person-03.svg" alt="">
-        </div>
-        <div class="main-text">
-            <span class="title-text">
-                Get our AI Feature Pack for Free!
-            </span>
-            <p>
-                Become an Early Adopter now
-            </p>
-            <button class="btn-download light" @onclick="@PremiumFeaturesClick">
-                <span>Learn more</span>
-            </button>
-        </div>
-    </div>
+    <div class="title-text">Privacy & Security</div>
 
-    <div class="c-bottom">
-        <div class="c-btn-group">
-            @if (IsGuest) {
-                <button class="btn-download web-signin" @onclick="@SignInClick">
-                    <span>Sign in to web app</span>
-                    <i class="icon-monitor text-2xl font-thin"></i>
-                </button>
-            }
-            <DownloadButton
-                Title="Get mobile/desktop app"
-                Click="@DownloadClick"
-                Class="download-app"/>
+    @* Row 1 *@
+    <div class="c-row c-first">
+        <LandingImageCard>
+            <CardImage>
+                <img draggable="false" src="/dist/images/landing/page-6-image-1.svg" alt="">
+            </CardImage>
+            <CardTitle>
+                Private, end-to-end p2p conversations.
+            </CardTitle>
+        </LandingImageCard>
+        <LandingImageCard>
+            <CardImage>
+                <img draggable="false" src="/dist/images/landing/page-6-image-2.svg" alt="">
+            </CardImage>
+            <CardTitle>
+                Small groups & places — not public channels.
+            </CardTitle>
+        </LandingImageCard>
+        <LandingImageCard>
+            <CardImage>
+                <img draggable="false" src="/dist/images/landing/page-6-image-3.svg" alt="">
+            </CardImage>
+            <CardTitle>
+                No random feed. Zero algorithmic distractions.
+            </CardTitle>
+        </LandingImageCard>
+    </div>
+    <div class="c-description">
+        <div class="c-text">
+            No followers. No noise.
         </div>
-        <LandingLinks/>
+        <div class="c-text">
+            Voxt is built only for people you actually know and trust.
+        </div>
     </div>
 </div>
-
-@code {
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    [Parameter] public bool IsGuest { get; set; }
-    [Parameter] public EventCallback SignInClick { get; set; }
-    [Parameter] public EventCallback PremiumFeaturesClick { get; set; }
-    [Parameter] public EventCallback DownloadClick { get; set; }
-}
