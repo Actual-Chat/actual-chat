@@ -72,7 +72,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
+    <ProjectReference Include="..\UI.App\UI.App.csproj" />
   </ItemGroup>
 
 </Project>

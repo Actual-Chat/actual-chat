@@ -1,7 +1,7 @@
 using ActualChat.App.Maui.IosShareExt.Components;
 using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
-using ActualChat.UI.Blazor.Components;
+using ActualChat.UI;
 using SkiaSharp;
 using Svg.Skia;
 

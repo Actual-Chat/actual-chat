@@ -1,4 +1,4 @@
-using ActualChat.UI.Blazor.Components;
+using ActualChat.UI;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 

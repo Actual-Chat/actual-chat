@@ -4,7 +4,7 @@ using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Media;
 using ActualChat.Search;
-using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.App.Services;
 using ActualLab.Fusion.UI;
 using ActualLab.Generators;
 using Microsoft.Maui.ApplicationModel;
