@@ -1,7 +1,8 @@
-using ActualChat.UI.Blazor.Services;
+using ActualChat.App.Maui.Services;
+using ActualChat.UI.App.Caching;
 using ActualLab.IO;
 
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.Maui.Services;
 
 #pragma warning disable MA0064
 

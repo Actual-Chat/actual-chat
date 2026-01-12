@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Components;
+namespace ActualChat.UI;
 
 public enum AvatarKind
 {

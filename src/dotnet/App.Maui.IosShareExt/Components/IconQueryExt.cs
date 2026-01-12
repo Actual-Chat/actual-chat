@@ -1,7 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Media;
-using ActualChat.UI.Blazor.Components;
+using ActualChat.UI;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 

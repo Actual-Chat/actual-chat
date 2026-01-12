@@ -1,7 +1,7 @@
 using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.Chat;
 using ActualChat.Contacts;
-using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.App.Services;
 using ActualLab.Fusion.UI;
 using ShareUI = ActualChat.App.Maui.IosShareExt.Services.ShareUI;
 

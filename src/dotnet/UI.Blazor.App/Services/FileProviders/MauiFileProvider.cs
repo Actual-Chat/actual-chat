@@ -1,3 +1,4 @@
+using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.Services;
 using MemoryPack;
 

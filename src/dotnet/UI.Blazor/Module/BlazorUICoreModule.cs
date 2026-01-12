@@ -1,6 +1,7 @@
 using ActualChat.Hardware;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
 using ActualChat.UI.Blazor.Pages.DiveInModalTestPage;

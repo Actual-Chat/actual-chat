@@ -1,6 +1,7 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.Maui.Services;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.IO;
 using Microsoft.Extensions.DependencyInjection.Extensions;
