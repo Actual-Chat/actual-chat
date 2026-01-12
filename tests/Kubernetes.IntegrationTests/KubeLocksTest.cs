@@ -1,41 +1,84 @@
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+using ActualChat.App.Server;
 using ActualChat.Kubernetes.Api;
 using ActualChat.Testing.Host;
+using Polly;
+using Polly.Extensions.Http;
 
 namespace ActualChat.Kubernetes.IntegrationTests;
 
-public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks", @out)
+public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private TestAppHost? _appHost;
-    private IServiceProvider Services => _appHost!.Services;
+    private IServiceProvider Services { get; set; } = null!;
 
     protected override async Task InitializeAsync()
     {
         await base.InitializeAsync();
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddSingleton(KubeInfo.GetLocal)
+            .AddSingleton<IKubeInfo>(c => c.GetRequiredService<KubeInfo>())
+            .AddSingleton<KubeLeaseClient>()
+            .AddSingleton<ILoggerFactory>(c => new LoggerFactory().AddXUnit(@out))
+            .AddHttpClient(Kube.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(c => {
+                var handler = new SocketsHttpHandler {
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+                    MaxConnectionsPerServer = 20,
+                    EnableMultipleHttp2Connections = true,
+                    KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+                    KeepAlivePingTimeout = TimeSpan.FromSeconds(10),
+                    KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always
+                };
+                var kubeInfo = c.GetRequiredService<KubeInfo>();
+                var log = c.LogFor<KubeServices>();
+                var caCertString = File.ReadAllText(kubeInfo.CACertPath);
+                var caCert = X509Certificate2.CreateFromPem(caCertString);
+#pragma warning disable MA0039
+                handler.SslOptions.RemoteCertificateValidationCallback =
+                        (_, cert, _, policyErrors) =>
+                        {
+                            if (cert is not X509Certificate2 x509Cert)
+                                return false;
+                            if (policyErrors != SslPolicyErrors.RemoteCertificateChainErrors)
+                                return false;
 
-        _appHost = await NewAppHost(options => options with {
-            ConfigureServices = (_, services) => {
-                services.AddSingleton(KubeInfo.GetLocal);
-            },
-        });
-        if (!IKubeInfo.HasKube())
-            WriteLine("Kubernetes is not available, skipping tests.");
+                            try {
+                                using var x509Chain = new X509Chain();
+                                x509Chain.ChainPolicy.ExtraStore.Add(caCert);
+                                x509Chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+                                x509Chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+                                return x509Chain.Build(x509Cert);
+                            }
+                            catch (Exception ex)
+                            {
+                                log.LogError(ex, "Error validation certificate chain during Kubernetes API call");
+                                return false;
+                            }
+                        };
+                return handler;
+#pragma warning restore MA0039
+            })
+            .SetHandlerLifetime(TimeSpan.FromMinutes(5))
+            .AddPolicyHandler(GetRetryPolicy());
+        Services = serviceCollection.BuildServiceProvider();
+        return;
+
+        static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+        {
+            var retryDelays = RetryDelaySeq.Exp(0.5, 10);
+            return HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .WaitAndRetryAsync(5, retryAttempt => retryDelays[retryAttempt]);
+        }
     }
 
     protected override async Task DisposeAsync()
-    {
-        if (_appHost != null)
-            await _appHost.DisposeAsync();
-        await base.DisposeAsync();
-    }
+        => await base.DisposeAsync();
 
     private Task<bool> IsKubeAvailable()
-    {
-        if (_appHost == null)
-            return Task.FromResult(false);
-
-        var kubeInfo = Services.GetRequiredService<KubeInfo>();
-        return Task.FromResult(IKubeInfo.HasKube());
-    }
+        => Task.FromResult(IKubeInfo.HasKube());
 
     [Fact]
     public async Task KubeLeaseClient_Crud_Works()
@@ -50,12 +93,20 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
         try {
             // 1. Create
             var lease = new Lease(
-                new Metadata(name, ns),
+                new Metadata(name, ns) {
+                    Labels = new Labels {
+                        ["custom-label"] = "custom-value",
+                        App = "test-app",
+                    }
+                },
                 new LeaseSpec("holder-1", 30, now, now)
             );
             var createdLease = await client.Create(ns, lease);
             createdLease.Metadata.Name.Should().Be(name);
             createdLease.Spec.HolderIdentity.Should().Be("holder-1");
+            createdLease.Metadata.Labels.Should().NotBeNull();
+            createdLease.Metadata.Labels!["custom-label"].Should().Be("custom-value");
+            createdLease.Metadata.Labels.App.Should().Be("test-app");
 
             // 2. Get
             var gotLease = await client.Get(ns, name);
@@ -93,7 +144,7 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
         }
     }
 
-    [Fact(Skip = "For manual testing only")]
+    [Fact/*(Skip = "For manual testing only")*/]
     public async Task KubeMeshLocks_Basic_Works()
     {
         if (!await IsKubeAvailable()) return;
@@ -126,7 +177,7 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
         await holder3!.DisposeAsync();
     }
 
-    [Fact(Skip = "For manual testing only")]
+    [Fact/*(Skip = "For manual testing only")*/]
     public async Task KubeMeshLocks_Lock_Works()
     {
         if (!await IsKubeAvailable()) return;
@@ -145,5 +196,12 @@ public class KubeLocksTest(ITestOutputHelper @out) : AppHostTestBase("KubeLocks"
         var holder2 = await lockTask.WaitAsync(TimeSpan.FromSeconds(10));
         holder2.Should().NotBeNull();
         await holder2!.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task KubeMeshLocks_Create_AppHost()
+    {
+        var appHost = await TestAppHostFactory.NewAppHost(TestAppHostOptions.Default.With("KubeMeshLocks", @out));
+        appHost.Should().NotBeNull();
     }
 }

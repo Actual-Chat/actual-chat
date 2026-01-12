@@ -29,4 +29,4 @@ public record LeaseList(
 {
     public string ApiVersion => "coordination.k8s.io/v1";
     public string Kind => "LeaseList";
-};
+}

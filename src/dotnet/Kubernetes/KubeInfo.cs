@@ -148,16 +148,16 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
             apiVersion: rbac.authorization.k8s.io/v1
             kind: RoleBinding
             metadata:
-             namespace: default
-             name: lease-manager-binding
+              namespace: default
+              name: lease-manager-binding
             subjects:
             - kind: ServiceAccount
-             name: default
-             namespace: default
+              name: default
+              namespace: default
             roleRef:
-             kind: Role
-             name: lease-manager
-             apiGroup: rbac.authorization.k8s.io
+              kind: Role
+              name: lease-manager
+              apiGroup: rbac.authorization.k8s.io
             """;
         var bindingFile = Path.Combine(Path.GetTempPath(), "lease-manager-binding.yaml");
         File.WriteAllText(bindingFile, bindingYaml);
