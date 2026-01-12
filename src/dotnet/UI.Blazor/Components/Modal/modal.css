@@ -193,6 +193,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .modal-header-interactive {
+    @apply relative;
     @apply ordinary-header;
     @apply bg-02;
 }
