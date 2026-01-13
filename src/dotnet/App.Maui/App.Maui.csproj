@@ -93,7 +93,7 @@
 
   <!-- Project references -->
   <ItemGroup>
-    <ProjectReference Include="..\App.Maui.IosShareExt\App.Maui.IosShareExt.csproj">
+    <ProjectReference Include="..\App.Maui.IosShareExt\App.Maui.IosShareExt.csproj" Condition="$(TargetFramework.Contains('-ios')) AND $([MSBuild]::IsOSPlatform('osx'))">
       <IsAppExtension>true</IsAppExtension>
       <IsWatchApp>false</IsWatchApp>
     </ProjectReference>
