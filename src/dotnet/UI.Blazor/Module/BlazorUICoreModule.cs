@@ -1,12 +1,12 @@
 using ActualChat.Hardware;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
-using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
 using ActualChat.UI.Blazor.Pages.DiveInModalTestPage;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
+using ActualChat.UI.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ActualLab.Fusion.Client.Caching;
@@ -108,7 +108,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ThemeUI(c.UIHub()));
         services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
         services.AddScoped(_ => new BlazorAppLifecycle());
-        services.AddScoped(c => new ChunkedFileUploader(c));
         services.AddScoped(_ => new ChunkSizeSelectorRecommendation());
 
         // Fusion-based UI services

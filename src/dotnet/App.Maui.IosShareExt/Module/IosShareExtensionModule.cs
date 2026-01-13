@@ -1,7 +1,7 @@
 using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion;
 using ActualChat.Hosting;
-using ActualChat.UI.App.Services;
+using ActualChat.UI.Services;
 using ShareUI = ActualChat.App.Maui.IosShareExt.Services.ShareUI;
 
 namespace ActualChat.App.Maui.IosShareExt.Module;

@@ -4,6 +4,7 @@ using ActualChat.Maui;
 using ActualChat.Maui.Module;
 using ActualChat.Module;
 using ActualChat.Security;
+using ActualChat.UI.Module;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Hosting;
@@ -98,6 +99,7 @@ public static class App
             new CoreModule(moduleServices),
             new ApiModule(moduleServices),
             new ApiContractsModule(moduleServices),
+            new UICoreModule(moduleServices),
             new MauiModule(moduleServices),
             new IosShareExtensionModule(moduleServices)
         );
