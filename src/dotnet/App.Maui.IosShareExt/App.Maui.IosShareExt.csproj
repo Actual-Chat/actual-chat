@@ -70,7 +70,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
-    <ProjectReference Include="..\Maui\Maui.csproj" Condition="$(TargetFramework.Contains('-ios')) AND $([MSBuild]::IsOSPlatform('osx'))" />
+    <ProjectReference Include="..\Maui\Maui.csproj" />
   </ItemGroup>
 
   <ItemGroup>
