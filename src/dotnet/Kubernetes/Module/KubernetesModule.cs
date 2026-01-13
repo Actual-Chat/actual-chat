@@ -21,22 +21,12 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
         services.AddHttpClient(Kube.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(c => {
                 var handler = new HttpClientHandler();
-                // var handler = new SocketsHttpHandler {
-                //     PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-                //     PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-                //     MaxConnectionsPerServer = 20,
-                //     EnableMultipleHttp2Connections = true,
-                //     KeepAlivePingDelay = TimeSpan.FromSeconds(30),
-                //     KeepAlivePingTimeout = TimeSpan.FromSeconds(10),
-                //     KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always
-                // };
                 var kubeInfo = c.GetRequiredService<KubeInfo>();
                 var log = c.LogFor<KubeServices>();
                 var caCertString = File.ReadAllText(kubeInfo.CACertPath);
                 var caCert = X509Certificate2.CreateFromPem(caCertString);
 #pragma warning disable MA0039
                 handler.ServerCertificateCustomValidationCallback =
-                // handler.SslOptions.RemoteCertificateValidationCallback =
                         (_, cert, _, policyErrors) =>
                         {
                             if (cert == null)
