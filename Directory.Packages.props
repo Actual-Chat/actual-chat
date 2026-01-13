@@ -118,7 +118,7 @@
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
-    <PackageVersion Include="Svg.Skia" Version="3.2.1" />
+    <PackageVersion Include="Svg.Skia" Version="3.4.1" />
   </ItemGroup>
   <!-- All other packages -->
   <ItemGroup>
