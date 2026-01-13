@@ -18,20 +18,21 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
     private ILogger Log { get; } = services.LogFor<DiagnosticsBackendLocal>();
 
     [ComputeMethod]
-    public virtual async Task<MeshDiagInfo> GetMeshDiagInfo(string tag, int extraLevel, CancellationToken cancellationToken)
+    public virtual async Task<MeshDiagInfo> GetMeshInfo(string tag, int extraLevel, CancellationToken cancellationToken)
     {
-        var thisInfo = await GetMeshDiagInfo(tag, cancellationToken).ConfigureAwait(false);
+        var thisInfo = await GetMeshInfo(tag, cancellationToken).ConfigureAwait(false);
         if (extraLevel <= 0)
             return thisInfo;
 
+        var thisNode = MeshWatcher.ThisNode;
         var meshState = MeshWatcher.State.Value;
-        var otherNodes = meshState.AllNodes.Values.Where(c => !c.Equals(MeshWatcher.ThisNode)).ToArray();
+        var otherNodes = meshState.AllNodes.Values.Where(c => c != thisNode).ToArray();
         var infos = await otherNodes
             .Where(c => c.State is MeshNodeState.Online)
             .Select(async c => {
                 var diagnosticsBackend = Backend;
                 try {
-                    var otherInfo = await diagnosticsBackend.GetMeshDiagInfo(c.Ref, tag, extraLevel - 1, cancellationToken)
+                    var otherInfo = await diagnosticsBackend.GetMeshInfo(c.Ref, tag, extraLevel - 1, cancellationToken)
                         .WaitAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
                     return otherInfo;
                 }
@@ -48,15 +49,15 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
     }
 
     [ComputeMethod]
-    public virtual async Task<MeshDiagInfo> GetMeshDiagInfo(string tag, CancellationToken cancellationToken)
+    public virtual async Task<MeshDiagInfo> GetMeshInfo(string tag, CancellationToken cancellationToken)
     {
         var meshState = await MeshWatcher.State.Use(cancellationToken).ConfigureAwait(false);
         var meshRpcPeerRefs = MeshRpcPeerRefs.RpcPeerRefs
             .Select(c => new MeshRpcPeerRefDiagInfo(
-                c.Target.MeshRef.ToString(),
+                c.MeshRef.ToString(),
                 c.ToString(),
                 c.Address,
-                c.Target.NodeRef.Value,
+                c.Resolved.NodeRef.Value,
                 c.Version,
                 ""))
             .ToArray();
@@ -69,21 +70,23 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
                 GetConnectionInfo(c.ConnectionState.Value),
                 ""))
             .ToArray();
+
         var now = Clocks.SystemClock.Now;
+        var thisNode = MeshWatcher.ThisNode;
         var nodes = meshState.AllNodes
             .Values.Order()
             .Select(c => new NodeDiagInfo(
                 c.Ref.Value,
                 c.Endpoint,
                 c.State.ToString(),
-                MeshWatcher.ThisNode.Equals(c),
+                thisNode == c,
                 c.DeadAt.HasValue ? (c.DeadAt.Value - now).Positive() : null,
                 c.Roles.ToDelimitedString(", "),
                 ""))
             .ToArray();
 
         return new MeshDiagInfo(
-            MeshWatcher.ThisNode.Ref.Value,
+            thisNode.Ref.Value,
             tag,
             now,
             nodes,
@@ -104,7 +107,7 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
         if (rpcConnection is not null) {
             var websocket = rpcConnection.Properties.KeylessGet<WebSocket>();
             var uri = rpcConnection.Properties.KeylessGet<Uri>();
-            var connectionInfo = new RpcConnectionDiagInfo(rpcConnection.IsLocal, uri?.ToString() ?? "", websocket is not null ? GetWebsocketInfo(websocket) : null);
+            var connectionInfo = new RpcConnectionDiagInfo(rpcConnection.IsLocal, uri?.ToString() ?? "", websocket is not null ? GetWebSocketInfo(websocket) : null);
             info = info with {
                 Connection = connectionInfo,
             };
@@ -112,7 +115,7 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
         return JsonSerializer.Serialize(info, JsonSerializerOptions);
     }
 
-    private WebSocketDiagInfo GetWebsocketInfo(WebSocket websocket)
+    private WebSocketDiagInfo GetWebSocketInfo(WebSocket websocket)
         => new(
             websocket.ToString() ?? "",
             websocket.State.ToString(),
@@ -121,6 +124,7 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
             websocket.CloseStatusDescription);
 
     // Nested types
+
     public record ConnectionStateDiagInfo(
         RpcHandshake? Handshake,
         string? Error,

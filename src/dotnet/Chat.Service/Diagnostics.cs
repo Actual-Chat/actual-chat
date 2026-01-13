@@ -19,7 +19,7 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
         // ProxyTarget property of IDiagnosticsBackendProxy is NULL.
         //var diagnosticsBackend = Backend;
         //var info = await diagnosticsBackend.GetMeshDiagInfo(MeshWatcher.ThisNode.Ref, tag, 1, cancellationToken).ConfigureAwait(false);
-        var info = await LocalBackend.GetMeshDiagInfo(tag, 1, cancellationToken).ConfigureAwait(false);
+        var info = await LocalBackend.GetMeshInfo(tag, 1, cancellationToken).ConfigureAwait(false);
         var nodeIds = new HashSet<string>(StringComparer.Ordinal) { info.ThisNodeId };
         return info with {
             Others = Flatten(info.Others, nodeIds).ToArray(),

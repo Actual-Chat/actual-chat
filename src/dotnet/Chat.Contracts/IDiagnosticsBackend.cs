@@ -9,5 +9,5 @@ namespace ActualChat.Chat;
 public interface IDiagnosticsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<MeshDiagInfo> GetMeshDiagInfo(NodeRef nodeRef, string tag, int extraLevel, CancellationToken cancellationToken);
+    Task<MeshDiagInfo> GetMeshInfo(NodeRef nodeRef, string tag, int extraLevel, CancellationToken cancellationToken);
 }
