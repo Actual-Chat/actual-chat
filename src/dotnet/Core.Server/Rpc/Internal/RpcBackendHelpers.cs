@@ -51,14 +51,19 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
         if (peer.Ref is not MeshRpcPeerRef peerRef)
             throw new RpcReconnectFailedException($"Unsupported RpcPeerRef type: {peer.Ref}.");
 
-        var target = peerRef.Target;
-        var node = target.Node;
-        if (node is null) {
-            // No node -> target.State is Unknown or Dead
-            if (target.ShardRef.IsNone && target.Node?.State == MeshNodeState.Dead) // Such targets are never rerouted
-                throw new RpcReconnectFailedException($"Node {target.NodeRef} is dead."); // Makes peer to terminate
-
-            return null; // null Uri = peer will hang waiting for RpcPeerRef.RerouteToken cancellation
+        var node = peerRef.Node;
+        if (peerRef.RouteState is not null) {
+            // MeshRpcPeerRef with RouteState (i.e., with only a NodeRef) can be rerouted.
+            // If its node is dead or doesn't exist, we must await for rerouting.
+            if (node is null || node.State is MeshNodeState.Dead)
+                return null; // null Uri = the peer will wait for RouteState.ChangeToken cancellation and reconnect
+        }
+        else {
+            // MeshRpcPeerRef without RouteState (i.e., with only a NodeRef) can't be rerouted.
+            // But since nodes can die, we must handle this scenario here.
+            node = peerRef.Resolved.Latest.Node; // Get the latest node (to see its state)
+            if (node is null || node.State is MeshNodeState.Dead) // The latest node is dead
+                throw new RpcReconnectFailedException($"Node {peerRef.NodeRef} is dead."); // Terminate the peer
         }
 
         var client = Services.GetRequiredService<RpcWebSocketClient>();
