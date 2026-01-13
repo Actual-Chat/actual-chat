@@ -33,6 +33,7 @@
   <!-- Build properties -->
   <!-- Both: Debug & Release configuration -->
   <PropertyGroup>
+    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Entitlements.dev.plist</CodesignEntitlements>
     <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Entitlements.prod.plist</CodesignEntitlements>
     <MtouchLink>SdkOnly</MtouchLink>
