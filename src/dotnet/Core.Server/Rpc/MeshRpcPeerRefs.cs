@@ -47,8 +47,7 @@ public sealed class MeshRpcPeerRefs
                 return peerRef;
 
             var version = (peerRef?.Version ?? 0) + 1;
-            var target = new ResolvedMeshRef(this, meshRef);
-            peerRef = new MeshRpcPeerRef(target, version);
+            peerRef = new MeshRpcPeerRef(this, meshRef, version);
             _peerRefs[meshRef] = peerRef;
             return peerRef;
         }

@@ -2,19 +2,17 @@ namespace ActualChat.Mesh;
 
 public enum MeshNodeState
 {
-    Unknown = 0,
-    Online,
-    Offline,
-    Dead,
+    Online = 0,
+    Offline = 1,
+    Dead = 3,
 }
 
 public static class MeshNodeStateExt
 {
     public static string FormatSuffix(this MeshNodeState state)
         => state switch {
-            MeshNodeState.Unknown => "-unknown",
-            MeshNodeState.Online => "-online",
             MeshNodeState.Offline => "-offline",
+            MeshNodeState.Online => "-online",
             MeshNodeState.Dead => "-dead",
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
         };
@@ -25,6 +23,13 @@ public static class MeshNodeStateExt
     public static bool IsLive(this MeshNodeState? state)
         => state is not MeshNodeState.Dead;
 
-    public static MeshNodeState OrUnknown(this MeshNodeState? state)
-        => state ?? MeshNodeState.Unknown;
+    public static bool Equals(this MeshNodeState state, MeshNodeState other, bool simplifyToLiveOrDead = false)
+        => simplifyToLiveOrDead
+            ? state.IsLive() == other.IsLive()
+            : state == other;
+
+    public static bool Equals(this MeshNodeState? state, MeshNodeState? other, bool simplifyToLiveOrDead = false)
+        => simplifyToLiveOrDead
+            ? state.IsLive() == other.IsLive()
+            : state == other;
 }

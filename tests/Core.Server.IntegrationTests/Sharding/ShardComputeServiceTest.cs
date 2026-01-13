@@ -47,8 +47,8 @@ public class ShardComputeServiceTest(ITestOutputHelper @out)
         WriteLine($"- o1.NodeId: {o1.Host.ThisNode.Ref.Value}");
         WriteLine($"- o2.NodeId: {o2.Host.ThisNode.Ref.Value}");
         await ComputedTest.When(_ => {
-            var c1 = o1.GetShardStateComputed(key, true);
-            var c2 = o2.GetShardStateComputed(key, true);
+            var c1 = o1.GetShardStateComputed(key, addDependency: true);
+            var c2 = o2.GetShardStateComputed(key, addDependency: true);
             c1.Value.Version.Should().NotBe(0); // Waiting for the first update
             c2.Value.Version.Should().NotBe(0); // Waiting for the first update
             isOwner1 = c1.Value.OwnershipStatus is ShardOwnershipStatus.OwnedByThisNode;
@@ -113,7 +113,7 @@ public class TestShardComputeService(IServiceProvider services, ITestOutputHelpe
     [ComputeMethod]
     public virtual Task<CpuTimestamp?> TryGetTime(string key, CancellationToken cancellationToken = default)
         => Task.FromResult<CpuTimestamp?>(
-            ShardOwner.GetShardOwnershipStatus(key, true) is ShardOwnershipStatus.OwnedByThisNode
+            ShardOwner.GetShardStateComputed(key, true).Value.OwnershipStatus is ShardOwnershipStatus.OwnedByThisNode
                 ? CpuTimestamp.Now
                 : null);
 

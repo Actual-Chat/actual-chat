@@ -32,11 +32,11 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         EntityResolver = services.DbEntityResolver<string, DbFlow>();
         var stopToken = ShardOwner.StopToken;
         foreach (var shardIndex in ShardScheme.ShardIndexes) {
-            var asyncState = ShardOwner.GetShardState(shardIndex).AsyncState;
+            var shardState = ShardOwner.States[shardIndex].Value;
             // Start the cleaner task for shardIndex, which cleans it on any ownership state change
             _ = Task.Run(async () => {
                 while (true) {
-                    asyncState = await asyncState.WhenNext(stopToken).ConfigureAwait(false);
+                    shardState = await shardState.WhenNext(stopToken).ConfigureAwait(false);
                     _cache.Clear();
                 }
             }, CancellationToken.None);
