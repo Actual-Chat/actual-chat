@@ -138,8 +138,8 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
                 var listResponse = await httpClient.GetAsync(listUrl, cancellationToken).ConfigureAwait(false);
                 listResponse.EnsureSuccessStatusCode();
                 var list = await listResponse.Content.ReadFromJsonAsync<EndpointSliceList>(WebJsonSerializeOptions, cancellationToken).ConfigureAwait(false);
-                if (list != null) {
-                    resourceVersion = list.Metadata.ResourceVersion;
+                if (list?.Metadata != null) {
+                    resourceVersion = list.Metadata.ResourceVersion ?? "";
                     foreach (var item in list.Items)
                         ApplyChange(ChangeType.Added, item, endpointsMap);
                 }

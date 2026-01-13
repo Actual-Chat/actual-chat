@@ -85,7 +85,7 @@ public static class Base32Encoder
             int digit = c < 128 ? SymbolIndex[c] : -1;
             if (digit < 0)
                 throw new ArgumentException($"Invalid character '{c}' in base32 string.", nameof(value));
-            result = (result << 5) | (ulong)digit;
+            result = (result << 5) | (byte)digit;
         }
 
         return result;

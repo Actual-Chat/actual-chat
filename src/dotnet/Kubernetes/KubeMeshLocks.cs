@@ -155,7 +155,6 @@ public class KubeMeshLocks : MeshLocksBase
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Conflict) {
                 return false;
             }
-            return false;
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to create a K8s lease '{LeaseName}'", lease.Metadata.Name);
