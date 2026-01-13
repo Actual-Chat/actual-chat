@@ -97,7 +97,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var meshState = await MeshWatcher.State.Use(cancellationToken);
         var meshRpcPeerRefs = MeshRpcPeerRefs.RpcPeerRefs
-            .Select(c => $"{c.Target.MeshRef} ==> {c}")
+            .Select(c => $"{c.MeshRef} ==> {c}")
             .ToImmutableArray();
         var rpcPeers = RpcHub.InternalServices.Peers.Values
             .Select(c => new PeerModel(c.Id.ToString(), c.ToString(), c.IsConnected(), GetConnectionInfo(c.ConnectionState.Value)))
