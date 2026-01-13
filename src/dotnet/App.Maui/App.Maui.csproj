@@ -93,7 +93,7 @@
 
   <!-- Project references -->
   <ItemGroup>
-    <ProjectReference Include="..\App.Maui.IosShareExt\App.Maui.IosShareExt.csproj" Condition="$(TargetFramework.Contains('-ios'))">
+    <ProjectReference Include="..\App.Maui.IosShareExt\App.Maui.IosShareExt.csproj">
       <IsAppExtension>true</IsAppExtension>
       <IsWatchApp>false</IsWatchApp>
     </ProjectReference>
