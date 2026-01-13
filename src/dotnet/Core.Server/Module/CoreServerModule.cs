@@ -69,6 +69,5 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         // Health-related services
         services.AddSingleton(c => new HealthEventListener(c));
         services.AddAlias<IHealthState, HealthEventListener>();
-
     }
 }

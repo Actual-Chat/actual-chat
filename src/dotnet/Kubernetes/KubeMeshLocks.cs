@@ -11,6 +11,7 @@ public class KubeMeshLocks : MeshLocksBase
 
     private readonly ConcurrentDictionary<string, (string FullName, string LeaseName)> _leaseFullKeys = new();
     private readonly string _keyPrefix;
+    private readonly int _keyPrefixLength;
     private readonly string _labelSelector;
     private KubeLeaseClient LeaseClient { get; }
     private string Namespace { get; }
@@ -19,13 +20,13 @@ public class KubeMeshLocks : MeshLocksBase
         : base(services)
     {
         _keyPrefix = keyPrefix.IsNullOrEmpty() ? DefaultKeyPrefix : keyPrefix;
+        _keyPrefixLength = _keyPrefix.Length + 1; // including dash "-"
         LeaseClient = services.GetRequiredService<KubeLeaseClient>();
         // We use the namespace where the pod is running
         Namespace = @namespace.IsNullOrEmpty()
             ? Environment.GetEnvironmentVariable("POD_NAMESPACE").NullIfEmpty() ?? "default"
             : @namespace;
         _labelSelector = $"{KeyPrefix}={_keyPrefix}";
-
     }
 
     public override string GetFullKey(string key)
@@ -33,7 +34,6 @@ public class KubeMeshLocks : MeshLocksBase
         var (fullName, _) = GetName(key);
         return fullName;
     }
-
 
     public override async Task<MeshLockInfo?> GetInfo(string key, CancellationToken cancellationToken = default)
     {
@@ -80,7 +80,7 @@ public class KubeMeshLocks : MeshLocksBase
                     Log.LogWarning("Lease {LeaseName} has no full name annotation", lease.Metadata.Name);
                     return;
                 }
-                await subscription.Push(fullName[_keyPrefix.Length..], ct)
+                await subscription.Push(fullName[_keyPrefixLength..], ct)
                     .ConfigureAwait(false);
             }
         }
@@ -93,7 +93,7 @@ public class KubeMeshLocks : MeshLocksBase
         return leases.Items
             .Where(x => !IsExpired(x))
             .Where(x => x.Metadata.Annotations != null && x.Metadata.Annotations.TryGetValue(FullName, out var fullName) && fullName.StartsWith(fullPrefix, StringComparison.Ordinal))
-            .Select(x => x.Metadata.Annotations![FullName][_keyPrefix.Length..])
+            .Select(x => x.Metadata.Annotations![FullName][_keyPrefixLength..])
             .ToList();
     }
 
@@ -215,12 +215,16 @@ public class KubeMeshLocks : MeshLocksBase
     private (string FullName, string LeaseName) GetName(string key)
         => _leaseFullKeys.GetOrAdd(key,
             k => {
-                var fullName = _keyPrefix + k;
-                var hashSuffix = fullName.Hash().Blake3().Base32();
-                var name = fullName.Length < 63
-                    ? fullName.Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase()
-                    : fullName[..63].Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase() + "-" + hashSuffix;
+                var fullName = _keyPrefix + "-"+ k;
+                if (fullName.Length < 31)
+                    return (fullName, fullName.Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase());
 
+                var hashSuffix = fullName.Hash().Blake3().Base32(16);
+                var splitIndex = fullName.IndexOfAny([',', ':', ' ', '.']);
+                if (splitIndex < 0)
+                    splitIndex = 31;
+
+                var name = fullName[..splitIndex].Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase() + "-" + hashSuffix;
                 return (fullName, name);
             });
 

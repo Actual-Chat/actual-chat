@@ -17,7 +17,7 @@ public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<NodeRef>();
-    private static RandomStringGenerator IdGenerator => Alphabet.AlphaNumeric.Generator8;
+    private static RandomStringGenerator IdGenerator => Alphabet.AlphaNumericLower.Generator8;
 
     public static NodeRef None => default;
     public static readonly NodeRef ThisNodeAlias = new("@", AssumeValid.Option);
