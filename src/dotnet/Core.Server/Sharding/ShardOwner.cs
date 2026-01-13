@@ -218,14 +218,10 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         var mutableState = _states[shardIndex];
         DebugLog?.LogDebug("Shard #{ShardIndex}: ?++ {ThisNodeId}", shardIndex, ThisNode.Ref);
 
-        var shardState = mutableState.Value;
-        if (shardState.OwnershipStatus is ShardOwnershipStatus.MappedToOtherNode)
-            mutableState.Value = new ShardState(shardState, mustOwn: true);
-
         var lockHolder = await OwnershipLocks.Lock(shardIndex.Format(), cancellationToken).ConfigureAwait(false);
         var lockToken = lockHolder.StopToken;
-
         DebugLog?.LogDebug("Shard #{ShardIndex}: ++ {ThisNodeId}", shardIndex, ThisNode.Ref);
+
         var ownedShardState = new ShardState(mutableState.Value, mustOwn: true, lockHolder);
         mutableState.Value = ownedShardState;
         var ownership = ownedShardState.Ownership!;
