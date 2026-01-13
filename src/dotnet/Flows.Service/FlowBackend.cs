@@ -64,7 +64,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         var flowDef = Hub.Defs.ByName[flowId.Name];
         DebugLog?.LogDebug("Start: `{FlowId}`", flowId);
         return await ResumeRetryPolicy.Run(async ct => {
-            using var _ = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
+            using var releaser = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
+            releaser.MarkLockedLocally();
+
             var cFlowData = await Computed.Capture(() => TryGetData(flowId, ct), ct).ConfigureAwait(false);
             var flowData = cFlowData.Value;
             var existingVersion = flowData?.Version ?? 0L;
