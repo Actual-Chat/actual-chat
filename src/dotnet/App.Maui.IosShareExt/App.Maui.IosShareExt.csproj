@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net9.0-ios;</TargetFrameworks>
+    <!-- NOTE: android target is a workaround for windows  -->
+    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('osx'))">net9.0-android;</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">net9.0-ios;</TargetFrameworks>
     <OutputType>Library</OutputType>
     <UseMauiEssentials>true</UseMauiEssentials>
     <SingleProject>true</SingleProject>
@@ -68,12 +70,18 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
-    <ProjectReference Include="..\Maui\Maui.csproj" />
+    <ProjectReference Include="..\Maui\Maui.csproj" Condition="$(TargetFramework.Contains('-ios')) AND $([MSBuild]::IsOSPlatform('osx'))" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Essentials" />
     <PackageReference Include="Svg.Skia" />
+  </ItemGroup>
+
+  <!-- Workaround for excluding C# files from compilation for non-iOS targets -->
+  <ItemGroup Condition="!$(TargetFramework.Contains('-ios'))">
+    <Compile Remove="**\*.cs"/>
+    <None Include="**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)"/>
   </ItemGroup>
 
 </Project>
