@@ -359,7 +359,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         CancellationToken cancellationToken)
     {
         var streamName = GetStreamName(shardIndex);
-        var lockHolder = await ActionLocks.Lock($"{nameof(CreateStream)}({streamName})", cancellationToken).ConfigureAwait(false);
+        var lockHolder = await ActionLocks.Lock($"{nameof(CreateStream)}.{streamName}", cancellationToken).ConfigureAwait(false);
         await using var _ = lockHolder.ConfigureAwait(false);
         var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
@@ -407,7 +407,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     {
         var consumerName = GetConsumerName(shardIndex);
         var lockHolder = await ActionLocks
-            .Lock($"{nameof(CreateOrUpdateConsumer)}({consumerName})", cancellationToken)
+            .Lock($"{nameof(CreateOrUpdateConsumer)}.{consumerName}", cancellationToken)
             .ConfigureAwait(false);
         await using var _ = lockHolder.ConfigureAwait(false);
         var linkedCts = cancellationToken.LinkWith(lockHolder.StopToken);

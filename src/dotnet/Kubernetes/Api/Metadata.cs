@@ -9,5 +9,6 @@ public record Metadata(
     long? Generation = null,
     DateTime? CreationTimestamp = null,
     Labels? Labels = null,
+    Annotations? Annotations = null,
     IReadOnlyList<OwnerReference>? OwnerReferences = null
 );
