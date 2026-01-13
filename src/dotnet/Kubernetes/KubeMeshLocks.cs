@@ -66,6 +66,12 @@ public class KubeMeshLocks : MeshLocksBase
 
         async Task OnChange(Api.Change<Api.Lease> change, CancellationToken ct) {
             var lease = change.Object;
+            if (lease?.Metadata?.Name == null)
+                return;
+
+            if (IsExpired(lease) && change.Type == ChangeType.Added)
+                return; // Avoid processing an initial result of lease watch for expired leases
+
             if (lease.Metadata.Name == name || key.IsNullOrEmpty()) {
                 var fullName = lease.Metadata.Annotations?[FullName];
                 if (fullName == null && _leaseFullKeys.TryGetValue(key, out var names))
@@ -85,7 +91,8 @@ public class KubeMeshLocks : MeshLocksBase
         var leases = await LeaseClient.List(Namespace, _labelSelector, cancellationToken).ConfigureAwait(false);
         var (fullPrefix, _) = GetName(prefix);
         return leases.Items
-            .Where(x => x.Metadata.Annotations != null && x.Metadata.Annotations[FullName].StartsWith(fullPrefix, StringComparison.Ordinal))
+            .Where(x => !IsExpired(x))
+            .Where(x => x.Metadata.Annotations != null && x.Metadata.Annotations.TryGetValue(FullName, out var fullName) && fullName.StartsWith(fullPrefix, StringComparison.Ordinal))
             .Select(x => x.Metadata.Annotations![FullName][_keyPrefix.Length..])
             .ToList();
     }
