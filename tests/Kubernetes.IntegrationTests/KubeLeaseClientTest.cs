@@ -1,14 +1,12 @@
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading.Channels;
 using ActualChat.Kubernetes.Api;
-using ActualChat.Testing.Host;
 using Polly;
 using Polly.Extensions.Http;
 
 namespace ActualChat.Kubernetes.IntegrationTests;
 
-public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
+public class KubeLeaseClientTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private IServiceProvider Services { get; set; } = null!;
 
@@ -79,7 +77,7 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
     protected override async Task DisposeAsync()
         => await base.DisposeAsync();
 
-    [Fact]
+    [Fact(Skip = "For manual testing only with local docker-desktop k8s")]
     public async Task KubeLeaseClient_Crud_Works()
     {
         var client = Services.GetRequiredService<KubeLeaseClient>();
@@ -151,7 +149,7 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
         }
     }
 
-    [Fact]
+    [Fact(Skip = "For manual testing only with local docker-desktop k8s")]
     public async Task KubeLeaseClient_Watch_Works()
     {
         var client = Services.GetRequiredService<KubeLeaseClient>();
@@ -211,62 +209,5 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
             }
             catch (OperationCanceledException) { }
         }
-    }
-
-    [Fact/*(Skip = "For manual testing only")*/]
-    public async Task KubeMeshLocks_Basic_Works()
-    {
-        var locks = Services.GetRequiredService<KubeMeshLocks>();
-        var key = "test-lock-" + Guid.NewGuid().ToString("N")[..8];
-
-        // 1. TryLock
-        var holder = await locks.TryLock(key);
-        holder.Should().NotBeNull();
-        try {
-            holder!.Key.Should().Be(key);
-
-            // 2. TryLock again (should fail)
-            var holder2 = await locks.TryLock(key);
-            holder2.Should().BeNull();
-
-            // 3. GetInfo
-            var info = await locks.GetInfo(key);
-            info.Should().NotBeNull();
-            info!.HolderId.Should().Be(holder.Id);
-        }
-        finally {
-            await holder.DisposeAsync();
-        }
-
-        // 4. After release, should be able to lock again
-        var holder3 = await locks.TryLock(key);
-        holder3.Should().NotBeNull();
-        await holder3!.DisposeAsync();
-    }
-
-    [Fact/*(Skip = "For manual testing only")*/]
-    public async Task KubeMeshLocks_Lock_Works()
-    {
-        var locks = Services.GetRequiredService<KubeMeshLocks>();
-        var key = "test-lock-wait-" + Guid.NewGuid().ToString("N")[..8];
-
-        var holder1 = await locks.TryLock(key);
-        holder1.Should().NotBeNull();
-
-        var lockTask = locks.Lock(key);
-        lockTask.IsCompleted.Should().BeFalse();
-
-        await holder1!.DisposeAsync();
-
-        var holder2 = await lockTask.WaitAsync(TimeSpan.FromSeconds(10));
-        holder2.Should().NotBeNull();
-        await holder2!.DisposeAsync();
-    }
-
-    [Fact]
-    public async Task KubeMeshLocks_Create_AppHost()
-    {
-        var appHost = await TestAppHostFactory.NewAppHost(TestAppHostOptions.Default.With("KubeMeshLocks", @out));
-        appHost.Should().NotBeNull();
     }
 }
