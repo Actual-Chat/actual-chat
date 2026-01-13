@@ -19,7 +19,7 @@ public class KubeMeshLocksTest(ITestOutputHelper @out) : TestBase(@out)
             .AddSingleton<IKubeInfo>(c => c.GetRequiredService<KubeInfo>())
             .AddSingleton<KubeLeaseClient>()
             .AddSingleton<KubeMeshLocks>()
-            .AddSingleton<ILoggerFactory>(c => new LoggerFactory().AddXUnit(@out))
+            .AddSingleton<ILoggerFactory>(c => new LoggerFactory().AddXUnit(Out))
             .AddHttpClient(Kube.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(c => {
                 var handler = new SocketsHttpHandler {
