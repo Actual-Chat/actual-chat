@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Sockets;
 
 namespace ActualChat.Kubernetes;
 
@@ -108,17 +109,25 @@ public sealed class KubeLeaseClient(IServiceProvider services)
                     var list = await List(@namespace, labelSelector, cancellationToken).ConfigureAwait(false);
                     resourceVersion = list.Metadata.ResourceVersion;
                     foreach (var lease in list.Items)
-                        await onChange(new Api.Change<Api.Lease>(Api.ChangeType.Added, lease), cancellationToken).ConfigureAwait(false);
+                        await onChange(new Api.Change<Api.Lease>(Api.ChangeType.Added, lease), cancellationToken)
+                            .ConfigureAwait(false);
                 }
 
                 using var httpClient = await CreateHttpClient(cancellationToken).ConfigureAwait(false);
-                var url = GetUrl(@namespace) + $"?watch=true&resourceVersion={resourceVersion}&allowWatchBookmarks=true&timeoutSeconds=30";
+                var url = GetUrl(@namespace)
+                    + $"?watch=true&resourceVersion={resourceVersion}&allowWatchBookmarks=true&timeoutSeconds=30";
                 if (!labelSelector.IsNullOrEmpty())
                     url += $"&labelSelector={Uri.EscapeDataString(labelSelector)}";
 
-                Log.LogDebug("Starting lease watch in namespace {Namespace} with resource version {ResourceVersion} and label selector '{LabelSelector}'", @namespace, resourceVersion, labelSelector ?? "none");
+                Log.LogDebug(
+                    "Starting lease watch in namespace {Namespace} with resource version {ResourceVersion} and label selector '{LabelSelector}'",
+                    @namespace,
+                    resourceVersion,
+                    labelSelector ?? "none");
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                using var response = await httpClient
+                    .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                    .ConfigureAwait(false);
                 if (response.StatusCode == HttpStatusCode.Gone) {
                     resourceVersion = ""; // Reset RV to perform a fresh List
                     continue;
@@ -126,13 +135,18 @@ public sealed class KubeLeaseClient(IServiceProvider services)
                 if (response.StatusCode == HttpStatusCode.Forbidden)
                     throw StandardError.Constraint(
                         "Kubernetes Role/ClusterRole to manage Leases is required for the service account.");
+
                 response.EnsureSuccessStatusCode();
 
                 failureCount = 0;
                 using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
                 using var reader = new StreamReader(stream);
-                while (!reader.EndOfStream) {
+                while (true) {
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
                     var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                    if (line == null) // End of stream
+                        break;
                     if (line.IsNullOrEmpty())
                         continue;
 
@@ -140,12 +154,13 @@ public sealed class KubeLeaseClient(IServiceProvider services)
                     if (watchEvent == null)
                         continue;
 
-                    if (watchEvent.Object is {} lease) {
+                    if (watchEvent.Object is { } lease) {
                         if (!lease.Metadata.ResourceVersion.IsNullOrEmpty())
                             resourceVersion = lease.Metadata.ResourceVersion;
 
                         if (watchEvent.Type is not (Api.ChangeType.Bookmark or Api.ChangeType.Error))
-                            await onChange(new Api.Change<Api.Lease>(watchEvent.Type, lease), cancellationToken).ConfigureAwait(false);
+                            await onChange(new Api.Change<Api.Lease>(watchEvent.Type, lease), cancellationToken)
+                                .ConfigureAwait(false);
                     }
                     else if (watchEvent.Type == Api.ChangeType.Error) {
                         // In case of error, we might want to reset RV and restart
@@ -153,6 +168,17 @@ public sealed class KubeLeaseClient(IServiceProvider services)
                         break;
                     }
                 }
+            }
+            catch (IOException iex) when (iex.InnerException is SocketException {SocketErrorCode: SocketError.ConnectionAborted}) {
+                // Handling client cancellation
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
+                throw;
+            }
+            catch (SocketException sex) when (sex.SocketErrorCode == SocketError.ConnectionAborted && cancellationToken.IsCancellationRequested) {
+                // Handling client cancellation
+                return;
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 if (e is HttpRequestException { StatusCode: HttpStatusCode.Gone }) {

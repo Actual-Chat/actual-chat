@@ -1,5 +1,6 @@
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading.Channels;
 using ActualChat.Kubernetes.Api;
 using ActualChat.Testing.Host;
 using Polly;
@@ -78,9 +79,6 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
     protected override async Task DisposeAsync()
         => await base.DisposeAsync();
 
-    private Task<bool> IsKubeAvailable()
-        => Task.FromResult(IKubeInfo.HasKube());
-
     [Fact]
     public async Task KubeLeaseClient_Crud_Works()
     {
@@ -96,7 +94,10 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
                     Labels = new Labels {
                         ["custom-label"] = "custom-value",
                         App = "test-app",
-                    }
+                    },
+                    Annotations = new Annotations {
+                        ["custom-annotation"] = "custom-value-2",
+                    },
                 },
                 new LeaseSpec("holder-1", 30, now, now)
             );
@@ -106,6 +107,8 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
             createdLease.Metadata.Labels.Should().NotBeNull();
             createdLease.Metadata.Labels!["custom-label"].Should().Be("custom-value");
             createdLease.Metadata.Labels.App.Should().Be("test-app");
+            createdLease.Metadata.Annotations.Should().NotBeNull();
+            createdLease.Metadata.Annotations!["custom-annotation"].Should().Be("custom-value-2");
 
             // 2. Get
             var gotLease = await client.Get(ns, name);
@@ -114,6 +117,11 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
             gotLease.Spec.LeaseDurationSeconds.Should().Be(30);
             gotLease.Spec.AcquireTime.Should().BeCloseTo(now, TimeSpan.FromSeconds(1));
             gotLease.Spec.RenewTime.Should().BeCloseTo(now, TimeSpan.FromSeconds(1));
+            gotLease.Spec.LeaseTransitions.Should().BeNull();
+            gotLease.Metadata.Labels.Should().NotBeNull();
+            gotLease.Metadata.Labels!["custom-label"].Should().Be("custom-value");
+            gotLease.Metadata.Annotations.Should().NotBeNull();
+            gotLease.Metadata.Annotations!["custom-annotation"].Should().Be("custom-value-2");
 
             // 3. Replace
             var now2 = Services.Clocks().SystemClock.Now;
@@ -140,6 +148,68 @@ public class KubeLocksTest(ITestOutputHelper @out) : TestBase(@out)
         }
         finally {
             await client.Delete(ns, name);
+        }
+    }
+
+    [Fact]
+    public async Task KubeLeaseClient_Watch_Works()
+    {
+        var client = Services.GetRequiredService<KubeLeaseClient>();
+        var ns = Environment.GetEnvironmentVariable("POD_NAMESPACE") ?? "default";
+        var name = "test-watch-" + Guid.NewGuid().ToString("N")[..8];
+        var now = Services.Clocks().SystemClock.Now;
+        var labelSelector = $"test-watch={name}";
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var channel = Channel.CreateUnbounded<ActualChat.Kubernetes.Api.Change<Lease>>();
+
+        var cancellationToken = cts.Token;
+        var watchTask = Task.Run(async () => await client.Watch(
+            ns,
+            labelSelector,
+            (change, ct) => {
+                channel.Writer.TryWrite(change);
+                return Task.CompletedTask;
+            },
+            cancellationToken
+        ), cancellationToken);
+
+        try {
+            // 1. Create
+            var lease = new Lease(
+                new Metadata(name, ns) {
+                    Labels = new Labels {
+                        ["test-watch"] = name,
+                        App = "test-app",
+                    }
+                },
+                new LeaseSpec("holder-1", 3, now, now)
+            );
+            await client.Create(ns, lease, cancellationToken);
+            Out.WriteLine($"Created lease {name}");
+
+            var change = await channel.Reader.ReadAsync(cancellationToken);
+            change.Type.Should().Be(ChangeType.Added);
+            change.Object.Metadata.Name.Should().Be(name);
+            Out.WriteLine($"Change create {name} has been captured");
+
+            // 2. Delete
+            await client.Delete(ns, name, cancellationToken);
+            Out.WriteLine($"Deleted lease {name}");
+
+            change = await channel.Reader.ReadAsync(cancellationToken);
+            change.Type.Should().Be(ChangeType.Deleted);
+            change.Object.Metadata.Name.Should().Be(name);
+            Out.WriteLine($"Change delete {name} has been captured");
+        }
+        finally {
+            Out.WriteLine("Cleaning up...");
+            await cts.CancelAsync();
+            Out.WriteLine("Cleaned up.");
+            try {
+                await watchTask;
+            }
+            catch (OperationCanceledException) { }
         }
     }
 

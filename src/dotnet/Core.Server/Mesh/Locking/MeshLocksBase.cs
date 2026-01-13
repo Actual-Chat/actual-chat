@@ -74,11 +74,12 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         var holder = CreateHolder(key, lockOptions, cancellationToken);
         DebugLog?.LogDebug("Lock: {Key} = {Id}", key, holder.Id);
         IAsyncSubscription<string>? changes = null;
+        var changesCts = cancellationToken.CreateLinkedTokenSource();
         try {
             var consumeTask = (Task<bool>?)null;
             while (true) {
                 try {
-                    changes ??= await Changes(key, cancellationToken).ConfigureAwait(false);
+                    changes ??= await Changes(key, changesCts.Token).ConfigureAwait(false);
                     cancellationToken.ThrowIfCancellationRequested();
                     var tryLockTask = TryLock(key, holder.Id, lockOptions.ExpirationPeriod, cancellationToken);
                     if (warningDelayTask != null) {
@@ -124,6 +125,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
             throw;
         }
         finally {
+            changesCts.CancelAndDisposeSilently();
             await changes.DisposeSilentlyAsync().ConfigureAwait(false);
         }
         holder.Start();
