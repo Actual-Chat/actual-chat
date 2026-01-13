@@ -10,6 +10,8 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     private IServiceProvider Services { get; } = services;
     private ILogger Log { get; } = services.LogFor<KubeLeaseClient>();
+    private IKubeInfo KubeInfo { get; } = services.GetRequiredService<IKubeInfo>();
+    private IHttpClientFactory HttpClientFactory { get; } = services.GetRequiredService<IHttpClientFactory>();
 
     public async Task<Api.Lease?> Get(string @namespace, string name, CancellationToken cancellationToken = default)
     {
@@ -195,9 +197,8 @@ public sealed class KubeLeaseClient(IServiceProvider services)
 
     private async Task<HttpClient> CreateHttpClient(CancellationToken cancellationToken)
     {
-        var kubeInfo = Services.GetRequiredService<IKubeInfo>();
-        var kube = await kubeInfo.RequireKube(cancellationToken).ConfigureAwait(false);
-        return kube.CreateHttpClient(Services.HttpClientFactory());
+        var kube = await KubeInfo.RequireKube(cancellationToken).ConfigureAwait(false);
+        return kube.CreateHttpClient(HttpClientFactory);
     }
 
     private static string GetUrl(string @namespace, string? name = null)
