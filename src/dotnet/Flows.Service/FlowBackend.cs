@@ -13,7 +13,7 @@ namespace ActualChat.Flows;
 
 public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 {
-    private readonly AsyncLockSet<FlowId> _resumeLocks = new();
+    private readonly AsyncLockSet<FlowId> _resumeLocks = new(LockReentryMode.CheckedPass);
     private readonly ILruCache<FlowId, IFlowData?> _cache = new ConcurrentLruCache<FlowId, IFlowData?>(1024);
 
     // Services
@@ -101,7 +101,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         DebugLog?.LogDebug("OnResume: `{FlowId}` <- {Event}", flowId, resumeEvent);
 
         return await ResumeRetryPolicy.Run(async ct => {
-            using var _ = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
+            using var releaser = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
+            releaser.MarkLockedLocally();
+
             Flow originalFlow;
             using (Computed.BeginIsolation()) // Not needed inside a command handler, but let's be safe
                 originalFlow = await Hub.Get(flowId, ct).ConfigureAwait(false);
