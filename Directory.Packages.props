@@ -76,7 +76,7 @@
     <PackageVersion Include="ActualLab.Opus.MaciOS" Version="1.0.16-alpha" />
   </ItemGroup>
   <!-- Strictly non-MAUI packages -->
-  <ItemGroup Condition="!$(MSBuildProjectName.Contains('.Maui'))">
+  <ItemGroup Condition="!$(MSBuildProjectName.Contains('Maui'))">
     <PackageVersion Include="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="$(MicrosoftExtensionsVersion)" />
