@@ -1,8 +1,8 @@
 using System.Net.Mime;
 using ActualChat.Media;
+using ActualLab.IO;
 using FFMpegCore;
 using FFMpegCore.Enums;
-using ActualLab.IO;
 using SixLabors.ImageSharp;
 
 namespace ActualChat.Uploads;
@@ -64,13 +64,18 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
         try {
             var media = await FFProbe.AnalyseAsync(videoTempFile, cancellationToken: cancellationToken).ConfigureAwait(false);
             var video = media.PrimaryVideoStream;
-            var size = video is null ? (Size?)null : new Size(video.Width, video.Height);
+            var size = video is null ? (Size?)null : GetEffectiveSize(video);
             return (MustConvert(media), size, media.Duration);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to extract video info from '{FileName}'", videoUpload.FileName);
             return (false, null, TimeSpan.Zero);
         }
+
+        Size GetEffectiveSize(VideoStream video)
+            => video.Rotation is 90 or 270 or -90 or -270
+                ? new Size(video.Height, video.Width)
+                : new Size(video.Width, video.Height);
 
         bool MustConvert(IMediaAnalysis media)
         {
