@@ -135,24 +135,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // endpoints.MapAppMetrics();
     }
 
-    // private readonly Lock _lock = new();
-    //
-    // private string MeshLockSubspace {
-    //     get {
-    //         if (field != null)
-    //             return field;
-    //
-    //         using var _ = _lock.EnterScope();
-    //         if (field != null)
-    //             return field;
-    //
-    //         var value = Cfg.GetSection("HostSettings")["MeshLockSubspace"];
-    //         if (OrdinalEquals(value, "?"))
-    //             value = Alphabet.AlphaNumeric.Generator8.Next();
-    //         return field = value ?? "";
-    //     }
-    // }
-
     protected override void InjectServices(IServiceCollection services)
     {
         // Host options
