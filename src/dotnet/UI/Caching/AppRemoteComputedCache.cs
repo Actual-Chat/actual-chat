@@ -7,7 +7,7 @@ using ActualLab.Rpc;
 using ActualLab.Rpc.Caching;
 using ActualLab.Rpc.Serialization;
 
-namespace ActualChat.UI.App.Caching;
+namespace ActualChat.UI.Caching;
 
 public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCache
 {

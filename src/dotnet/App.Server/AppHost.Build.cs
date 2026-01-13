@@ -17,6 +17,7 @@ using ActualChat.Streaming.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Module;
 using ActualChat.Users.Module;
 using ActualLab.Diagnostics;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -176,6 +177,7 @@ public partial class AppHost
                 new NotificationServiceModule(moduleServices),
                 new MLSearchServiceModule(moduleServices),
                 // UI modules
+                new UICoreModule(moduleServices),
                 new BlazorUICoreModule(moduleServices),
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one

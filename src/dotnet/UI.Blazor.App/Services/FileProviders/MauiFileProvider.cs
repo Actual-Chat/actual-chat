@@ -1,5 +1,5 @@
-using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Services;
 using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;

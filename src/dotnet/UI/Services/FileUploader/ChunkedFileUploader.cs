@@ -1,6 +1,6 @@
 using ActualChat.Media;
 
-namespace ActualChat.UI.App.Services;
+namespace ActualChat.UI.Services;
 
 public sealed class ChunkedFileUploader(IServiceProvider services)
 {

@@ -1,5 +1,5 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.UI.App.Caching;
+using ActualChat.UI.Caching;
 using ActualLab.IO;
 
 namespace ActualChat.Maui.Services;
