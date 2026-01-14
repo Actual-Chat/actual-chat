@@ -17,13 +17,16 @@
 .copy-trigger.copied .log-item {
     animation: flash 0.8s ease-in-out;
 }
+.log-list.virtual-list > .c-wrapper > ul.c-virtual-container .item {
+    @apply mb-2;
+}
 
 /* Header */
 .log-item .c-header {
     @apply flex flex-x items-baseline gap-x-1;
 }
 .log-item .c-timestamp {
-    @apply text-03;
+    @apply text-03 underline;
 }
 .log-item .c-category {
     @apply text-03;
