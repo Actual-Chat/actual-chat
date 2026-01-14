@@ -17,7 +17,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     private readonly ILruCache<FlowId, IFlowData?> _cache = new ConcurrentLruCache<FlowId, IFlowData?>(1024);
 
     // Services
-    private FlowHub Hub => field ??= Services.FlowHub();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
     private IDbEntityResolver<string, DbFlow> EntityResolver { get; }
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Flows);
 
@@ -46,7 +46,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     // [ComputeMethod]
     public virtual async Task<IFlowData?> TryGetData(FlowId flowId, CancellationToken cancellationToken)
     {
-        var flowDef = Hub.Defs.ByName[flowId.Name];
+        var flowDef = FlowHub.Defs.ByName[flowId.Name];
 
         // Check the in-memory cache first
         if (_cache.TryGetValue(flowId, out var flowData))
@@ -61,7 +61,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     // Regular RPC method!
     public virtual async Task<IFlowData> Start(FlowId flowId, long? expectedVersion, CancellationToken cancellationToken)
     {
-        var flowDef = Hub.Defs.ByName[flowId.Name];
+        var flowDef = FlowHub.Defs.ByName[flowId.Name];
         DebugLog?.LogDebug("Start: `{FlowId}`", flowId);
         return await ResumeRetryPolicy.Run(async ct => {
             using var releaser = await _resumeLocks.Lock(flowId, ct).ConfigureAwait(false);
@@ -97,7 +97,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     public virtual async Task<long> OnResume(FlowResumeEvent resumeEvent, CancellationToken cancellationToken)
     {
         var flowId = resumeEvent.FlowId;
-        var flowDef = Hub.Defs.ByName[flowId.Name];
+        var flowDef = FlowHub.Defs.ByName[flowId.Name];
         DebugLog?.LogDebug("OnResume: `{FlowId}` <- {Event}", flowId, resumeEvent);
 
         return await ResumeRetryPolicy.Run(async ct => {
@@ -106,7 +106,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
             Flow originalFlow;
             using (Computed.BeginIsolation()) // Not needed inside a command handler, but let's be safe
-                originalFlow = await Hub.Get(flowId, ct).ConfigureAwait(false);
+                originalFlow = await FlowHub.Get(flowId, ct).ConfigureAwait(false);
             if (originalFlow.UntypedResult is not null && !resumeEvent.MustReset)
                 return originalFlow.Version; // The flow has already completed, so all subsequent events are ignored
 
@@ -127,7 +127,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 flow = originalFlow.Clone();
 
             // Run the HandleResume method
-            await flow.HandleResume(Hub, initReason, ct).ConfigureAwait(false);
+            await flow.HandleResume(FlowHub, initReason, ct).ConfigureAwait(false);
             return flow.Version;
         }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
     }
@@ -146,7 +146,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
         flowId.Require();
         var flow = command.Flow;
-        var flowDef = Hub.Defs.ByName[flowId.Name];
+        var flowDef = FlowHub.Defs.ByName[flowId.Name];
         if (flow?.GetType() == typeof(Flow))
             throw StandardError.Internal("Flow.GetType() == typeof(Flow), i.e., the command is routed to another host.");
 
@@ -169,7 +169,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 dbContext.Add(dbFlow);
 
                 // Any new flow requires a resume event
-                context.Operation.AddEvent(new FlowResumeEvent(flowId));
+                context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId));
             }
             else { // Update
                 if (!VersionChecker.IsExpected(dbFlow.Version, expectedVersion))

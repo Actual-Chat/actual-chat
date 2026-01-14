@@ -3,12 +3,8 @@ using MemoryPack;
 namespace ActualChat.Flows;
 
 // Base class for flows that perform cursor-based indexing operations.
-// Processes data in batches with support for recheck and watchdog intervals.
 public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt
 {
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected virtual TimeSpan MaxResumeDelay { get; } = TimeSpan.FromDays(1);
-
     // Persisted state
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public TCursor? Cursor { get; protected set; }
@@ -28,7 +24,12 @@ public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt
     {
         LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
         if (LastReadiness is { IsSuspended: true } readiness) {
-            var resumeDelay = ResumedAt + (readiness.ResumeDelay ?? MaxResumeDelay);
+            if (readiness.ResumeDelay is null) {
+                Console.Log($"Prepare() -> {readiness}, skipping resume");
+                return;
+            }
+
+            var resumeDelay = ResumedAt + readiness.ResumeDelay.Value;
             Console.Log($"Prepare() -> {readiness}, will resume at {resumeDelay}");
             Runtime.StageResumeAt(resumeDelay);
             return;
@@ -52,8 +53,7 @@ public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt
 
     protected virtual ValueTask TailReached(bool hasProcessedAnyItems, CancellationToken cancellationToken)
     {
-        Console.Log($"Tail reached, scheduling resume in {MaxResumeDelay.ToShortString()}");
-        Runtime.StageResumeIn(MaxResumeDelay);
+        Console.Log("Tail reached, will wait for resume events");
         return default;
     }
 

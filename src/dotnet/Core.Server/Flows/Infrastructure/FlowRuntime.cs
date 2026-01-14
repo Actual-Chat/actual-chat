@@ -13,8 +13,6 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
     // Properties
     public bool AutoCommit { get; set; } = true;
-    public TimeSpan DefaultResumeDelayQuanta { get; set; }
-
     // Events
     public List<object?> StagedEvents { get; } = new();
 
@@ -27,15 +25,15 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
     public FlowResumeEvent StageResume()
     {
-        var e = new FlowResumeEvent(Flow.Id);
+        var e = new FlowResumeEvent(Flow.Id, Hub);
         StagedEvents.Add(e);
         return e;
     }
 
     public FlowResumeEvent StageResumeIn(TimeSpan delayBy, TimeSpan? delayQuanta = null)
-        => StageResumeAt(Flow.Id, Hub.SystemNow + delayBy, delayQuanta ?? DefaultResumeDelayQuanta);
+        => StageResumeAt(Flow.Id, Hub.SystemNow + delayBy, delayQuanta);
     public FlowResumeEvent StageResumeAt(Moment delayUntil, TimeSpan? delayQuanta = null)
-        => StageResumeAt(Flow.Id, delayUntil, delayQuanta ?? DefaultResumeDelayQuanta);
+        => StageResumeAt(Flow.Id, delayUntil, delayQuanta);
 
     // Commit
 
@@ -71,9 +69,9 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
     // Private methods
 
-    private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil, TimeSpan delayQuanta)
+    private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil, TimeSpan? delayQuanta)
     {
-        var e = new FlowResumeEvent(flowId).WithDelay(delayUntil, delayQuanta);
+        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil, delayQuanta);
         StagedEvents.Add(e);
         return e;
     }

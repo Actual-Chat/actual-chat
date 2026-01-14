@@ -176,7 +176,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (mustResetDigestFlow) {
             Log.LogInformation("Scheduling DigestFlow reset for {AccountId}", account.Id);
             var flowId = FlowHub.NewId<DigestFlow>(account.Id.Value);
-            context.Operation.AddEvent(new FlowResumeEvent(flowId).WithReset());
+            context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId).WithReset());
         }
 
         var oldAliasId = existing?.AliasId;
