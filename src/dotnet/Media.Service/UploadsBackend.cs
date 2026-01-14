@@ -45,7 +45,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             return;
         }
         var upload = new Upload(uploadId, command.UserId, command.Length, command.Tag, command.Metadata);
-        var contentType = upload.ContentType.NullIfEmpty() ?? "application/octet-stream";
+        var contentType = upload.ContentType.NullIfEmpty() ?? MediaMimeTypes.GetMimeType(upload.FileName);
+        upload = upload with { ContentType = contentType };
         if (IsGoogleStorage) {
             var location = await InitiateUploadSession(upload, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Upload session for upload '{UploadId}' initiated: '{Location}'", uploadId, location.AbsoluteUri);
