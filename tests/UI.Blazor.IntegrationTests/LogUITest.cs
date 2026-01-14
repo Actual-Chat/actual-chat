@@ -28,7 +28,7 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         await Tester.SignInAsBobAdmin();
-        await LocalSettings.LocalAppSettings().Update(x => x with { IsLogViewerEnabled = true });
+        await SetIsEnabled(true);
         await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
         await LogUI.WhenReady;
         ScopedLog.LogInformation($"{nameof(ShouldReturnLogEntries)}: Hello, Info!");
@@ -48,7 +48,7 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         await Tester.SignInAsBobAdmin();
-        await LocalSettings.Update<LocalAppSettings>(x => x with { IsLogViewerEnabled = false });
+        await SetIsEnabled(false);
         await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeFalse(), TimeSpan.FromSeconds(10));
         await LogUI.WhenReady;
         ScopedLog.LogInformation($"{nameof(ShouldReturnLogEntries)}: Hello, Info!");
@@ -96,7 +96,7 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         // arrange
         await Tester.SignInAsBobAdmin();
-        await LocalSettings.Update<LocalAppSettings>(x => x with { IsLogViewerEnabled = true });
+        await SetIsEnabled(true);
         await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
         await LogUI.WhenReady;
         for (int i = 0; i < 1000; i++) {
@@ -141,4 +141,10 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
              foundEntries.Should().HaveCount(minExpectedEntryCount);
              return tiles;
          }, TimeSpan.FromSeconds(10).Debuggable());
+
+     private async Task SetIsEnabled(bool? isLogViewerEnabled)
+     {
+         await LocalSettings.LocalAppSettings().Update(x => x with { IsLogViewerEnabled = isLogViewerEnabled });
+         LogUI.IsEnabled.Invalidate();
+     }
 }

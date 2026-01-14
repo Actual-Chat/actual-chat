@@ -91,6 +91,7 @@
     private BubbleUI BubbleUI => Hub.BubbleUI;
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
+    private LogUI LogUI => Hub.LogUI;
 
     protected override void OnInitialized()
         => NativeAppSettings = Hub.Services.GetService<INativeAppSettings>();
@@ -141,6 +142,7 @@
         await LocalSettings.LocalAppSettings().Update(x => x with {
             IsLogViewerEnabled = !x.IsLogViewerEnabledOrDefault,
         });
+        LogUI.IsEnabled.Invalidate();
     }
 
     // Nested types
