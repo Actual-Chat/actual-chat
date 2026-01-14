@@ -103,7 +103,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
             flow!.RemainingCount.Should().Be(3);
         }, DefaultTimeout);
 
-        await queues.Enqueue(new FlowResumeEvent(f.Id).WithReset(), cancellationToken);
+        await queues.Enqueue(flowHub.NewResumeEvent(f.Id).WithReset(), cancellationToken);
 
         await ComputedTest.When(async ct => {
             var flow = await GetFlow<TimerFlow>(flowHub, f.Id, ct);

@@ -1,5 +1,6 @@
 using System.Globalization;
 using ActualChat.Flows;
+using ActualChat.Time;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -7,7 +8,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Flow(ResumeTimeout = 60, DataVersion = 2)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class TimerFlow : Flow<Unit>
+public partial class TimerFlow : Flow<Unit>, IHasDelayQuanta
 {
     private static bool _threwRerouteException;
 
@@ -15,6 +16,9 @@ public partial class TimerFlow : Flow<Unit>
     public int RemainingCount { get; private set; }
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public TimeSpan Period { get; private set; }
+
+    [IgnoreDataMember, MemoryPackIgnore]
+    public TimeSpan DelayQuanta => Period / 2;
 
     protected override ValueTask Init(CancellationToken cancellationToken)
     {
@@ -29,7 +33,6 @@ public partial class TimerFlow : Flow<Unit>
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         Console.Log($"Resume @ {Runtime.Services.MeshWatcher().ThisNode.Ref.Value}");
-        Runtime.DefaultResumeDelayQuanta = Period / 2;
 
         if (RemainingCount > 0) {
             if (!_threwRerouteException) {

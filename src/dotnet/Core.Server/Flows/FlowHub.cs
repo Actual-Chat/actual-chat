@@ -137,21 +137,15 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
 
     internal async Task Schedule(FlowResumeEvent resumeEvent, CancellationToken cancellationToken)
     {
-        var flowId = resumeEvent.FlowId;
-        var flowDef = Defs.ByName[flowId.Name];
         var delayUntil = resumeEvent.DelayUntil;
         var delay = (delayUntil - SystemNow).Positive();
-        var quanta = flowDef.DelayQuanta ?? resumeEvent.DelayQuanta;
-        if (quanta == TimeSpan.Zero)
-            quanta = flowDef.GetQuant?.Invoke(delay) ?? TimeSpan.Zero;
-        resumeEvent.DelayQuanta = quanta;
-
         if (delay > TimeSpan.Zero) // This has to go through DbEvents
             await Commander.Call(new Flows_ScheduleResume(resumeEvent), cancellationToken).ConfigureAwait(false);
         else
             await Queues.Enqueue(resumeEvent, cancellationToken).ConfigureAwait(false);
 
         if (DebugLog is { } debugLog) {
+            var flowId = resumeEvent.FlowId;
             var eventKind = resumeEvent.MustReset ? "restart" : "resume";
             var delayQuanta = resumeEvent.DelayQuanta;
             if (delayQuanta > TimeSpan.Zero)

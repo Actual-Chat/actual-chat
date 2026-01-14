@@ -9,6 +9,7 @@ namespace ActualChat.Media.Flows;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class LinkPreviewFlow : PeriodicFlow
 {
+    // TODO: Do not run if not requested
     private MediaSettings Settings => field ??= Services.GetRequiredService<MediaSettings>();
     private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Services.GetRequiredService<ILinkPreviewsBackend>();
     private Crawler Crawler => field ??= Services.GetRequiredService<Crawler>();
