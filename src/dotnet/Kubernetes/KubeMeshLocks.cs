@@ -9,7 +9,7 @@ public class KubeMeshLocks : MeshLocksBase
     public const string KeyPrefix = "voxt.ai/key-prefix";
     public const string FullName = "voxt.ai/full-name";
 
-    private readonly ConcurrentDictionary<string, (string FullName, string LeaseName)> _leaseFullKeys = new();
+    private readonly ConcurrentDictionary<string, (string FullName, string LeaseName)> _leaseFullKeys = new(StringComparer.Ordinal);
     private readonly string _keyPrefix;
     private readonly int _keyPrefixLength;
     private readonly string _labelSelector;
@@ -72,7 +72,7 @@ public class KubeMeshLocks : MeshLocksBase
             if (IsExpired(lease) && change.Type == ChangeType.Added)
                 return; // Avoid processing an initial result of lease watch for expired leases
 
-            if (lease.Metadata.Name == name || key.IsNullOrEmpty()) {
+            if (OrdinalEquals(lease.Metadata.Name, name) || key.IsNullOrEmpty()) {
                 var fullName = lease.Metadata.Annotations?[FullName];
                 if (fullName == null && _leaseFullKeys.TryGetValue(key, out var names))
                     fullName = names.FullName;
@@ -166,7 +166,7 @@ public class KubeMeshLocks : MeshLocksBase
     {
         var (_, name) = GetName(key);
         var existingLease = await LeaseClient.Get(Namespace, name, cancellationToken).ConfigureAwait(false);
-        if (existingLease == null || existingLease.Spec.HolderIdentity != value)
+        if (existingLease == null || !OrdinalEquals(existingLease.Spec.HolderIdentity, value))
             return false;
 
         var now = Clock.Now.ToDateTime();
@@ -193,7 +193,7 @@ public class KubeMeshLocks : MeshLocksBase
         if (existingLease == null)
             return MeshLockReleaseResult.Released;
 
-        if (existingLease.Spec.HolderIdentity != value)
+        if (!OrdinalEquals(existingLease.Spec.HolderIdentity, value))
             return MeshLockReleaseResult.AcquiredBySomeoneElse;
 
         try {

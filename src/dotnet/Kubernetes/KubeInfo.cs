@@ -7,7 +7,7 @@ public interface IKubeInfo
     static bool HasKube()
     {
         var podIp = Environment.GetEnvironmentVariable("POD_IP");
-        return !podIp.IsNullOrEmpty() && podIp != "127.0.0.1";
+        return !podIp.IsNullOrEmpty() && !OrdinalEquals(podIp, "127.0.0.1");
     }
 
     ValueTask<Kube?> GetKube(CancellationToken cancellationToken = default);
@@ -34,7 +34,7 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
             return _localInstance;
 
         var currentPodIp = Environment.GetEnvironmentVariable("POD_IP");
-        if (!currentPodIp.IsNullOrEmpty() && currentPodIp != "127.0.0.1")
+        if (!currentPodIp.IsNullOrEmpty() && !OrdinalEquals(currentPodIp, "127.0.0.1"))
             throw new InvalidOperationException("This method should not be executed within Kubernetes cluster.");
 
         // Ensure current context is docker-desktop
