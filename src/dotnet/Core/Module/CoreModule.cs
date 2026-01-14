@@ -59,10 +59,9 @@ public sealed class CoreModule(IServiceProvider moduleServices)
             });
 
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            // var rpcCallLogLevel = CoreConstants.DebugMode.RpcCalls.ApiClient && isDevelopmentInstance
-            //     ? LogLevel.Debug
-            //     : LogLevel.None;
-            var rpcCallLogLevel = LogLevel.Information;
+            var rpcCallLogLevel = CoreConstants.DebugMode.RpcCalls.ApiClient && isDevelopmentInstance
+                ? LogLevel.Debug
+                : LogLevel.None;
             services.ReplaceFactory<RpcPeerOptions>((_, oldFactory) => oldFactory.Invoke() with {
                 PeerFactory = (hub, peerRef) => peerRef.IsServer
                     ? throw StandardError.Internal("Server peer is requested on the client side!")
