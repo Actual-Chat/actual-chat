@@ -260,6 +260,9 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply px-1;
 }
 /* Colorized header */
+.list-view-layout:has(.chat-activity-panel.listening) .layout-subheader {
+    @apply bg-transparent;
+}
 .list-view-layout:has(.chat-activity-panel.listening):after {
     @apply content-empty;
     @apply absolute z-minus inset-x-0 top-0;
