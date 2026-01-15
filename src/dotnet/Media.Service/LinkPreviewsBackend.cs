@@ -42,7 +42,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
             return FlowHub
                 .NewResumeEvent<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(linkPreview.Url))
-                .WithDelay(SystemNow + Settings.LinkPreviewUpdatePeriod)
+                .WithQuanta() // Schedule immediately, but quantize to prevent duplicates
                 .WithReset() // Intended, this flow runs just once unless it's reset
                 .Schedule(cancellationToken);
         }
@@ -113,7 +113,10 @@ public class LinkPreviewsBackend(IServiceProvider services)
             var links = ExtractLinks(entry);
             var oldLinks = ExtractLinks(oldEntry);
             foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks, StringComparer.Ordinal))
-                await FlowHub.Get<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(link), cancellationToken).ConfigureAwait(false);
+                await FlowHub.NewResumeEvent<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(link))
+                    .WithQuanta() // Schedule immediately, but quantize to prevent duplicates
+                    .Schedule(cancellationToken)
+                    .ConfigureAwait(false);
         }
     }
 

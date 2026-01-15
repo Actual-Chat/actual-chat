@@ -39,7 +39,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         Context.Add(id, batches);
 
         // act
-        await FlowHub.Get<SimpleIndexingFlow>(id);
+        await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).Schedule();
 
         // assert
         await TestExt.When(async () => {
@@ -73,7 +73,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         Context.Add(id, batches);
 
         // act
-        await FlowHub.Get<SimpleIndexingFlow>(id);
+        await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).Schedule();
 
         // assert
         await TestExt.When(async () => {
@@ -114,7 +114,7 @@ public class IndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @out)
         Context.Add(id, batches);
 
         // act
-        await FlowHub.Get<SimpleIndexingFlow>(id);
+        await FlowHub.NewResumeEvent<SimpleIndexingFlow>(id).Schedule();
 
         // assert
         await TestExt.When(async () => {

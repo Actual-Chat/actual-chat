@@ -22,7 +22,10 @@ public abstract class BatchedIndexingFlow<TItem, TId> : IndexingFlow<IndexingFlo
 
     // Implementation
 
-    protected override async ValueTask<BatchIndexingResult<IndexingFlowCursor<TId>>> Process(
+    protected override ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
+        => ValueTask.FromResult(FlowReadiness.Ready);
+
+    protected override async ValueTask<BatchIndexingResult<IndexingFlowCursor<TId>>> Run(
         IndexingFlowCursor<TId>? cursor,
         CancellationToken cancellationToken)
     {

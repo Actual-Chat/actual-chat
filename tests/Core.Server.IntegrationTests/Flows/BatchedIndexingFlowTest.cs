@@ -15,7 +15,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         = fixture.AppHost.Services.GetRequiredService<BatchedIndexingFlowTestContext<SimpleItem, ChatId>>();
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
 
-    [FlakyFact("AY: Not sure why yet.", 3)]
+    [Fact]
     public async Task MustHandleEmptyBatch()
     {
         // arrange
@@ -26,7 +26,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         Context.Add(id, batches);
 
         // act
-        await FlowHub.Get<SimpleBatchedIndexingFlow>(id);
+        await FlowHub.NewResumeEvent<SimpleBatchedIndexingFlow>(id).Schedule();
 
         // assert
         await TestExt.When(() => {
@@ -35,7 +35,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         }, TimeSpan.FromSeconds(10));
     }
 
-    [FlakyTheory("AY: Not sure why yet.", 3)]
+    [Theory]
     [InlineData(0, 0)]
     [InlineData(0, 1)]
     [InlineData(1, 0)]
@@ -57,7 +57,7 @@ public class BatchedIndexingFlowTest(AppHostFixture fixture, ITestOutputHelper @
         Context.Add(id, batches);
 
         // act
-        await FlowHub.Get<SimpleBatchedIndexingFlow>(id);
+        await FlowHub.NewResumeEvent<SimpleBatchedIndexingFlow>(id).Schedule();
 
         // assert
         await TestExt.When(async () => {

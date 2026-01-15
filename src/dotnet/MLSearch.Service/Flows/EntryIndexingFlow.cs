@@ -8,6 +8,7 @@ using MemoryPack;
 
 namespace ActualChat.MLSearch.Flows;
 
+[Flow(DelayQuanta = 30)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, ChatEntryId>
 {

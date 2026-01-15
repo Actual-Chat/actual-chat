@@ -1,17 +1,24 @@
 using ActualChat.Flows;
-using ActualChat.Media.Module;
 using MemoryPack;
 
 namespace ActualChat.Media.Flows;
 
+[Flow(DelayQuanta = 5)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class PreviewThumbnailUpdateFlow : PeriodicFlow
 {
-    private MediaSettings Settings => field ??= Services.GetRequiredService<MediaSettings>();
     private ImageGrabber ImageGrabber => field ??= Services.GetRequiredService<ImageGrabber>();
 
     public static string GetArguments(string url)
         => url.ToBase64();
+
+    protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
+    {
+        var url = Id.Arguments.FromBase64();
+        return await ImageGrabber.NeedsUpdate(url, cancellationToken).ConfigureAwait(false)
+            ? FlowReadiness.Ready
+            : "No update needed";
+    }
 
     protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
