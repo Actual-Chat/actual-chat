@@ -48,7 +48,6 @@ public static class MauiDiagnostics
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)
     {
         services.AddTracers(Tracer.Default, useScopedTracers: false);
-        services.AddSingleton<Disposer>();
         services.AddLogging(logging => {
             logging.ClearProviders();
             logging.ConfigureClientFilters(MauiSettings.AppKind);
@@ -130,7 +129,7 @@ public static class MauiDiagnostics
         options.MinimumEventLevel = LogEventLevel.Warning;
 
         // We'll use an event processor to set things like SDK name
-        options.AddEventProcessor(new SentryMauiEventProcessor2(options));
+        options.AddEventProcessor(new SentryMauiEventProcessor(options));
         _sentryOptions = options;
     }
 
