@@ -8,7 +8,10 @@ public partial class SimpleIndexingFlow : IndexingFlow<long>
 {
     private IndexingFlowTestContext Context => field ??= Services.GetRequiredService<IndexingFlowTestContext>();
 
-    protected override async ValueTask<BatchIndexingResult<long>> Process(long cursor, CancellationToken cancellationToken)
+    protected override ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
+        => new(FlowReadiness.Ready);
+
+    protected override async ValueTask<BatchIndexingResult<long>> Run(long cursor, CancellationToken cancellationToken)
     {
         await Task.Yield();
         var batch = Context.Next(Id.Arguments);

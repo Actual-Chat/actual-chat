@@ -26,7 +26,7 @@ public class MasterFlowTest(ITestOutputHelper @out)
         await using var h = await NewAppHost();
 
         var flowHub = h.Services.FlowHub();
-        await flowHub.Get<MasterFlow>("");
+        await flowHub.NewResumeEvent<MasterFlow>("").Schedule();
 
         await ComputedTest.When(async ct => {
             var flow = await flowHub.TryGet<MasterFlow>("", ct);

@@ -1,3 +1,4 @@
+using ActualChat.Time;
 using ActualLab.CommandR.Operations;
 
 namespace ActualChat.Flows.Infrastructure;
@@ -71,7 +72,8 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
     private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil, TimeSpan? delayQuanta)
     {
-        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil, delayQuanta);
+        var currentDelayQuanta = delayQuanta ?? (Flow as IHasDelayQuanta)?.DelayQuanta;
+        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil, currentDelayQuanta);
         StagedEvents.Add(e);
         return e;
     }

@@ -33,7 +33,9 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
             .ReadAsync(pageSize, x => x.Id, cancellationToken);
         await foreach (var accountId in accountIds.ConfigureAwait(false)) {
             var userId = UserId.Parse(accountId);
-            await Hub.Get<DigestFlow>(userId.Id.Value, cancellationToken).ConfigureAwait(false);
+            await Hub.NewResumeEvent<DigestFlow>(userId.Id.Value)
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }

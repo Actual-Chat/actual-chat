@@ -20,7 +20,7 @@ public abstract class PeriodicFlow : Flow<string>, IQuantProvider
 
     // Overridable methods
 
-    protected virtual ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken) => new(FlowReadiness.Ready);
+    protected abstract ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken);
     protected abstract ValueTask<Moment> Run(CancellationToken cancellationToken);
 
     // Implementation

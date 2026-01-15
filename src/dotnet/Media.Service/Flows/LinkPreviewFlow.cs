@@ -6,10 +6,10 @@ using MemoryPack;
 
 namespace ActualChat.Media.Flows;
 
+[Flow(DelayQuanta = 5)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class LinkPreviewFlow : PeriodicFlow
 {
-    // TODO: Do not run if not requested
     private MediaSettings Settings => field ??= Services.GetRequiredService<MediaSettings>();
     private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Services.GetRequiredService<ILinkPreviewsBackend>();
     private Crawler Crawler => field ??= Services.GetRequiredService<Crawler>();
@@ -18,16 +18,24 @@ public sealed partial class LinkPreviewFlow : PeriodicFlow
     public static string GetArguments(string url)
         => url.ToBase64();
 
+    protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
+    {
+        var url = Id.Arguments.FromBase64();
+        var id = LinkPreview.ComposeId(url);
+
+        var linkPreview = await LinkPreviewsBackend.Get(id, false, cancellationToken).ConfigureAwait(false);
+        if (linkPreview != null && !NeedsUpdate(linkPreview.ModifiedAt))
+            return "No update needed";
+
+        return FlowReadiness.Ready;
+    }
+
     protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
         var url = Id.Arguments.FromBase64();
         var id = LinkPreview.ComposeId(url);
 
         var linkPreview = await LinkPreviewsBackend.Get(id, false, cancellationToken).ConfigureAwait(false);
-        if (linkPreview != null && !NeedsUpdate(linkPreview.ModifiedAt)) {
-            Console.Log("No update needed");
-            return Moment.MaxValue;
-        }
 
         using var activity = CoreServerInstruments.ActivitySource.StartActivity(typeof(Crawler), nameof(Crawler.Crawl), ActivityKind.Client);
         var linkMeta = await Crawler.Crawl(url, cancellationToken)

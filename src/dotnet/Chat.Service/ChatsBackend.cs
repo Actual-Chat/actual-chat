@@ -2057,7 +2057,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         if (NeedsSummarization())
-            await FlowHub.Get<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
+            await FlowHub.NewResumeEvent<ConversationSplitFlow>(chat.Id.Value)
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
         return;
 
         bool NeedsSummarization()

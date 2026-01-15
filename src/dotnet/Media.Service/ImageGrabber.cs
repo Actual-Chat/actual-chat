@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using ActualChat.Flows;
 using ActualChat.Hashing;
-using ActualChat.Media.Db;
 using ActualChat.Media.Flows;
 using ActualChat.Media.Module;
 using ActualChat.Uploads;
@@ -31,7 +30,7 @@ public class ImageGrabber(IServiceProvider services)
 
         var existingId = await GetExisting().ConfigureAwait(false);
         if (existingId != null) {
-            await ScheduleUpdateIfRequired(imageUrl, cancellationToken).ConfigureAwait(false);
+            await ScheduleUpdateIfRequired().ConfigureAwait(false);
             return existingId;
         }
 
@@ -51,6 +50,20 @@ public class ImageGrabber(IServiceProvider services)
                 .ConfigureAwait(false);
             return existingMedia?.Id;
         }
+
+        async Task ScheduleUpdateIfRequired()
+        {
+            var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
+            if (!NeedsUpdate(grabStatus))
+                return;
+
+            await FlowHub
+                .NewResumeEvent<PreviewThumbnailUpdateFlow>(PreviewThumbnailUpdateFlow.GetArguments(imageUrl))
+                .WithQuanta() // Schedule immediately, but quantize to prevent duplicates
+                .WithReset() // Intended, this flow runs just once unless it's reset
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
+        }
     }
 
     public async Task UpdateExisting(string imageUrl, CancellationToken cancellationToken)
@@ -65,6 +78,22 @@ public class ImageGrabber(IServiceProvider services)
         }
     }
 
+    public async Task<bool> NeedsUpdate(string imageUrl, CancellationToken cancellationToken)
+    {
+        var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
+        return NeedsUpdate(grabStatus);
+    }
+
+    // Private members
+
+    private bool NeedsUpdate(GrabStatus? grabStatus) => grabStatus is null
+        || grabStatus.ModifiedAt + GetUpdatePeriod(grabStatus) < Clocks.SystemClock.Now;
+
+    private TimeSpan GetUpdatePeriod(GrabStatus? grabStatus)
+        => grabStatus?.IsSuccessful != false
+            ? Settings.LinkPreviewUpdatePeriod
+            : TimeSpan.FromHours(1);
+
     private async Task<MediaId?> GrabUnsafe(string imageUrl, CancellationToken cancellationToken)
     {
         var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
@@ -77,20 +106,6 @@ public class ImageGrabber(IServiceProvider services)
         // TODO: image size limit
         var processedFile = await DownloadImageToFile(new Uri(imageUrl), cancellationToken).ConfigureAwait(false);
         return await SaveFileToMedia(imageUrl, processedFile, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task ScheduleUpdateIfRequired(string imageUrl, CancellationToken cancellationToken)
-    {
-        var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
-        if (!NeedsUpdate(grabStatus))
-            return;
-
-        await FlowHub
-            .NewResumeEvent<PreviewThumbnailUpdateFlow>(PreviewThumbnailUpdateFlow.GetArguments(imageUrl))
-            .WithDelay(Clocks.SystemClock.Now + GetUpdatePeriod(grabStatus))
-            .WithReset() // Intended, this flow runs just once unless it's reset
-            .Schedule(cancellationToken)
-            .ConfigureAwait(false);
     }
 
     private async Task<ProcessedFile?> DownloadImageToFile(Uri uri, CancellationToken cancellationToken)
@@ -165,12 +180,4 @@ public class ImageGrabber(IServiceProvider services)
         var cmd = new GrabStatusesBackend_Change(GrabStatus.ComposeId(imageUrl), success);
         return Commander.Call(cmd, true, cancellationToken);
     }
-
-    private bool NeedsUpdate(GrabStatus? grabStatus) => grabStatus is null
-        || grabStatus.ModifiedAt + GetUpdatePeriod(grabStatus) < Clocks.SystemClock.Now;
-
-    private TimeSpan GetUpdatePeriod(GrabStatus? grabStatus)
-        => grabStatus?.IsSuccessful != false
-            ? Settings.LinkPreviewUpdatePeriod
-            : TimeSpan.FromHours(1);
 }

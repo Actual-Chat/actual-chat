@@ -58,6 +58,12 @@ public sealed partial class FlowResumeEvent : IDelegatingCommand<long>, IBackend
     public FlowResumeEvent WithDelay(Moment delayUntil, TimeSpan? delayQuanta = null)
     {
         DelayUntil = delayUntil;
+        return WithQuanta(delayQuanta);
+    }
+
+    public FlowResumeEvent WithQuanta(TimeSpan? delayQuanta = null)
+    {
+        var delayUntil = DelayUntil;
         if (delayQuanta is null) {
             if (_hub != null) {
                 var flowDef = _hub.Defs.ByName[FlowId.Name];

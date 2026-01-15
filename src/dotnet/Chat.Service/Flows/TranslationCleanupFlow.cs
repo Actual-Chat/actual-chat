@@ -13,6 +13,14 @@ public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
     private ITranslationsBackend TranslationsBackend => field ??= Services.GetRequiredService<ITranslationsBackend>();
     private ICommander Commander => field ??= Services.Commander();
 
+    protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
+    {
+        var translations = await TranslationsBackend.ListHanging(default, BatchSize, cancellationToken).ConfigureAwait(false);
+        return translations.Count == 0
+            ? "No hanging translations to finalize"
+            : FlowReadiness.Ready;
+    }
+
     protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
         var translations = await TranslationsBackend.ListHanging(default, BatchSize, cancellationToken).ConfigureAwait(false);
