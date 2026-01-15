@@ -1,4 +1,3 @@
-using Microsoft.Maui.Devices.Sensors;
 using Sentry.Extensibility;
 using Sentry.Protocol;
 using Device = Sentry.Protocol.Device;
