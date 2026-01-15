@@ -184,8 +184,7 @@ public class AudioWidgetForegroundService : Service
             .SetOngoing(true)!;
 
         var mediaStyle = new AndroidX.Media.App.NotificationCompat.MediaStyle()
-            .SetMediaSession(mediaSession.SessionToken)!
-            .SetShowActionsInCompactView(0);
+            .SetMediaSession(mediaSession.SessionToken)!;
         builder.SetStyle(mediaStyle);
 
         return builder.Build()!;
