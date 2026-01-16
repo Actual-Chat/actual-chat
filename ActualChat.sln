@@ -8,6 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}"
 	ProjectSection(SolutionItems) = preProject
 		src\dotnet\Directory.Build.props = src\dotnet\Directory.Build.props
+		src\dotnet\reset-migrations.sh = src\dotnet\reset-migrations.sh
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Db", "src\dotnet\Db\Db.csproj", "{A9BD0955-135A-441C-A775-560ACA80245E}"
