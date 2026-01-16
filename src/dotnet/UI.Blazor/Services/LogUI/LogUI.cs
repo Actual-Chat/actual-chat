@@ -146,16 +146,10 @@ public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogS
         }
     }
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
-    {
-        var cAccount = await AccountUI.OwnAccount.Computed
-            .When(x => !x.IsGuestOrNull(), cancellationToken)
-            .ConfigureAwait(false);
-        if (!cAccount.Value.IsAdmin)
-            return;
-
+    protected override Task OnRun(CancellationToken cancellationToken) {
         LogSinks.Add(this);
         _whenReady.TrySetResult();
+        return Task.CompletedTask;
     }
 
     private void InvalidateTiles(long id)
