@@ -129,6 +129,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // IModalViews
         services.AddTypeMapper<IModalView>(map => map
             .Add<VisualMediaViewerModal.Model, VisualMediaViewerModal>()
+            .Add<VisualMediaInfoModal.Model, VisualMediaInfoModal>()
             .Add<DemandUserInteractionModal.Model, DemandUserInteractionModal>()
             .Add<DiveInModal.Model, DiveInModal>()
             .Add<ConfirmModal.Model, ConfirmModal>()
