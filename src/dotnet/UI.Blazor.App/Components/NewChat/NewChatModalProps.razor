@@ -68,7 +68,7 @@
             </TileItem>
             <TileItem
                 Class="@(!_form.IsPublic ? "transparent selected" : "transparent")"
-                Click="@(() => OnPublicChatClick(true))">
+                Click="@(() => OnPublicChatClick(false))">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
                 </Icon>
