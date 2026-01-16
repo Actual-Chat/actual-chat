@@ -36,36 +36,37 @@
     <div class="c-buttons">
         @if (!IsListening) {
             <Button
-                Class="btn-xs btn-transparent unhovered not-listening"
+                Class="btn-sm btn-transparent unhovered not-listening"
                 StopPropagation="true"
                 PreventDefault="true"
-                Click="@OnListenClick"
+                Click="@OnClick"
                 Tooltip="@tooltip"
                 TooltipPosition="FloatingPosition.Bottom"
                 MustKeepAwake="@(!IsListening)">
                 Join muted
             </Button>
         } else {
-            <Button
-                Class="btn-xs btn-transparent unhovered listening"
+            <ButtonRound
+                Class="btn-sm btn-transparent unhovered listening"
                 StopPropagation="true"
                 PreventDefault="true"
-                Click="@OnListenClick"
+                Click="@OnClick"
                 Tooltip="@tooltip"
                 TooltipPosition="FloatingPosition.Bottom"
                 MustKeepAwake="@(!IsListening)">
-                Leave
-            </Button>
+                <i class="icon-phone-off"></i>
+            </ButtonRound>
         }
     </div>
 </div>
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatActivityPanel.create";
+    private readonly TaskSerializer _taskSerializer = new();
+    private CpuTimestamp _lastActionAt;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
-    private DotNetObjectReference<ChatActivityPanel> BlazorRef { get; set; } = null!;
 
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -90,8 +91,6 @@
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
         await base.DisposeAsync();
     }
 
@@ -105,8 +104,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender && ScreenSize.IsNarrow()) {
-            BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, BlazorRef, Ref);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
         }
     }
 
@@ -129,6 +127,35 @@
             return;
 
         _ = ChatAudioUI.SetListeningState(chatId, !IsListening);
+    }
+
+    private void OnClick() {
+        if (IsUpdating || Chat?.Id is not { } chatId)
+            return;
+
+        if (IsListening && IsRecordingHere)
+            StopRecording();
+
+        _ = ChatAudioUI.SetListeningState(chatId, !IsListening);
+    }
+
+    private void StopRecording() {
+        if (!IsValidAction())
+            return;
+
+        _ = _taskSerializer.Enqueue(async _ => {
+            // .ConfigureAwait(false) is fine here
+            if (RecordingChatId is not null)
+                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+        }, mustAbortPreviousTasks: true);
+    }
+
+    private bool IsValidAction() {
+        if (_lastActionAt.Elapsed < TimeSpan.FromMilliseconds(500))
+            return false; // Rapid action sequence is likely a mistake
+
+        _lastActionAt = CpuTimestamp.Now;
+        return true;
     }
 
     // Nested types

@@ -1,105 +1,113 @@
-import { fromEvent, Subject, takeUntil, Subscription } from 'rxjs';
-import { throttle } from 'promises';
+import { fromEvent, merge, Subject } from 'rxjs';
+import { filter, first, switchMap, takeUntil, tap, throttleTime } from 'rxjs/operators';
 
 export class ChatActivityPanel {
-    private blazorRef: DotNet.DotNetObject;
     private readonly activityPanel: HTMLElement;
     private chatView: HTMLElement;
     private header: HTMLElement;
-    private endAnchor: HTMLElement | null;
-    private isMoving: boolean = false;
     private disposed$: Subject<void> = new Subject<void>();
-    private pointerMoveSub: Subscription | null = null;
-    private pointerUpSub: Subscription | null = null;
 
-    static create(blazorRef: DotNet.DotNetObject, activityPanel: HTMLElement): ChatActivityPanel {
-        return new ChatActivityPanel(blazorRef, activityPanel);
+    private state: 'expanded' | 'collapsed' = 'expanded';
+    private lockUntil = 0;
+    private isMoving = false;
+
+    static create(activityPanel: HTMLElement): ChatActivityPanel {
+        return new ChatActivityPanel(activityPanel);
     }
 
-    constructor(blazorRef: DotNet.DotNetObject, activityPanel: HTMLElement) {
-        this.blazorRef = blazorRef;
+    constructor(activityPanel: HTMLElement) {
         this.activityPanel = activityPanel;
         this.chatView = document.querySelector('.chat-view')!;
         this.header = this.activityPanel.closest('.layout-header')!;
-        this.endAnchor = this.chatView ? this.chatView.querySelector('.c-end-anchor') : null;
 
-        if (this.chatView && this.header && this.endAnchor) {
-            fromEvent(this.chatView, 'scroll')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => {
-                    this.throttledScrollHandler();
-                });
-
-            fromEvent<PointerEvent>(this.header, 'pointerdown')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(e => this.onPointerDown(e));
+        if (!this.chatView || !this.header) {
+            return;
         }
+
+        this.lockUntil = Date.now() + 3000;
+        fromEvent(this.chatView, 'scroll').pipe(
+            throttleTime(200),
+            filter(() => {
+                if (this.isMoving)
+                    this.isMoving = false;
+
+                return true;
+            }),
+            filter(() => !this.isLocked()),
+            takeUntil(this.disposed$)
+        ).subscribe(() => this.collapse());
+
+        merge(
+            fromEvent<PointerEvent>(this.header, 'pointerdown'),
+            fromEvent<PointerEvent>(this.activityPanel, 'pointerdown'),
+            fromEvent<PointerEvent>(this.chatView, 'pointerdown')
+        ).pipe(
+            tap(startEvent => {
+                this.isMoving = true;
+                startEvent.preventDefault();
+            }),
+            switchMap(startEvent => {
+                const startY = startEvent.clientY;
+                const startX = startEvent.clientX;
+
+                return fromEvent<PointerEvent>(document, 'pointermove').pipe(
+                    filter(moveEvent => {
+                        const dy = moveEvent.clientY - startY;
+                        const dx = Math.abs(moveEvent.clientX - startX);
+                        return dy > 6 && dy > dx;
+                    }),
+                    first(),
+                    takeUntil(
+                        fromEvent(document, 'pointerup').pipe(
+                            tap(() => {
+                                this.isMoving = false;
+                            })
+                        )
+                    )
+                );
+            }),
+            takeUntil(this.disposed$)
+        ).subscribe(() => this.manualExpand());
     }
 
     public dispose() {
         if (this.disposed$.isStopped)
             return;
 
+        this.header.classList.remove('expanded', 'collapsed');
         this.disposed$.next();
         this.disposed$.complete();
-        this.pointerMoveSub?.unsubscribe();
-        this.pointerUpSub?.unsubscribe();
     }
 
-    private onPointerDown(e: PointerEvent): void {
-        this.pointerMoveSub = fromEvent<PointerEvent>(document, 'pointermove')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(ev => this.onPointerMove(ev));
-
-        this.pointerUpSub = fromEvent<PointerEvent>(document, 'pointerup')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(() => this.onPointerUp());
-    }
-
-    private onPointerMove(e: PointerEvent): void {
-        if (e.movementY > 0)
-            this.expandHeader();
-    }
-
-    private onPointerUp(): void {
-        this.pointerMoveSub?.unsubscribe();
-        this.pointerUpSub?.unsubscribe();
-        this.pointerMoveSub = null;
-        this.pointerUpSub = null;
-    }
-
-    private throttledScrollHandler = throttle(() => this.onScrollHandler(), 300);
-    private onScrollHandler(): void {
-        this.collapseHeader();
-    }
-
-    private collapseHeader(): void {
-        if (this.isMoving)
+    private manualExpand() {
+        this.isMoving = false;
+        if (this.state === 'expanded')
             return;
 
-        this.isMoving = true;
-        this.allowMove(100);
-        setTimeout(() => {
-            this.header.classList.remove('expanded');
-            if (!this.header.classList.contains('collapsed'))
-                this.header.classList.add('collapsed');
-        }, 1000);
+        this.expand();
+        this.lockUntil = Date.now() + 5000;
     }
-    private expandHeader(): void {
-        if (this.isMoving)
+
+    private isLocked(): boolean {
+        const now = Date.now();
+        return now < this.lockUntil;
+    }
+
+    private collapse() {
+        if (this.state === 'collapsed')
             return;
 
-        this.isMoving = true;
-        this.allowMove(5000);
+        this.state = 'collapsed';
+        this.header.classList.remove('expanded');
+        this.header.classList.add('collapsed');
+    }
 
+    private expand() {
+        if (this.state === 'expanded')
+            return;
+
+        this.state = 'expanded';
         this.header.classList.remove('collapsed');
-        if (!this.header.classList.contains('expanded'))
-            this.header.classList.add('expanded');
-    }
-
-    private allowMove(delay: number) {
-        setTimeout(() => {
-            this.isMoving = false;
-        }, delay);
+        this.header.classList.add('expanded');
     }
 }

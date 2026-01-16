@@ -221,17 +221,17 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 .list-view-layout .layout-header:has(.header-activity-panel-wrapper),
 .list-view-layout .layout-header.expanded:has(.header-activity-panel-wrapper) {
-    max-height: 7rem;
+    max-height: 7.5rem;
 }
 .list-view-layout .layout-header:has(.header-activity-panel-wrapper):has(.video-panel),
 .list-view-layout .layout-header.expanded:has(.header-activity-panel-wrapper):has(.video-panel) {
-    max-height: 19rem;
+    max-height: 19.5rem;
 }
 .list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) {
     max-height: 3.5rem;
 }
 .list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper):has(.video-panel) {
-    max-height: 15.5rem;
+    max-height: 16rem;
 }
 .list-view-layout .layout-header:has(.video-panel) {
     max-height: 100%;
@@ -256,7 +256,7 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 .header-activity-panel-wrapper {
     @apply flex-x items-center;
-    @apply w-full h-12;
+    @apply w-full h-14;
     @apply px-1;
 }
 /* Colorized header */
@@ -265,11 +265,12 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 .list-view-layout:has(.chat-activity-panel.listening):after {
     @apply content-empty;
-    @apply absolute z-minus inset-x-0 top-0;
-    @apply h-28;
+    @apply absolute z-minus inset-x-0 -top-4;
+    @apply h-32;
     @apply opacity-90;
     background: linear-gradient(180deg, var(--header-fog-color-1) 0%, var(--header-fog-color-2) 100%);
-    animation: smoothOpacity 1s ease forwards;
+    transition: transform 0.5s ease-in;
+    animation: smoothOpacity 1s ease forwards, headerWave 2s ease-in 1s infinite;
 }
 body.wide .list-view-layout:has(.chat-activity-panel.listening):after {
     @apply h-40;
@@ -292,6 +293,14 @@ body.wide .list-view-layout:has(.chat-activity-panel.listening):before {
     100% {
         opacity: 0.9;
         filter: brightness(1);
+    }
+}
+@keyframes headerWave {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(1rem);
     }
 }
 .list-view-layout > .layout-header > .c-content {
