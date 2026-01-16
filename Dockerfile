@@ -9,7 +9,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
-RUN apt update && apt install -y ffmpeg && apt clean
+RUN apt update && apt install -y ffmpeg postgresql-client && apt clean
 WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0.308-bookworm-slim AS dotnet-restore
@@ -108,15 +108,32 @@ RUN ./ef-migrations.cmd Chat.Service bundle --runtime linux-x64 --output ./artif
 
 FROM runtime AS migrations-app
 COPY --from=migrations-build /src/artifacts/*.Migration.exe /migrations/
-COPY <<EOF /migrations/entrypoint.sh
+COPY src/dotnet/reset-migrations.sh /migrations/reset-migrations.sh
+COPY <<"EOF" /migrations/entrypoint.sh
 #!/bin/bash
-./Chat.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}chat;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
-./Contacts.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}contacts;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
-./Invite.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}invite;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
-./Media.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}media;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
-./MLSearch.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}mlsearch;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
-./Notification.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}notification;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
-./Users.Service.Migration.exe --connection "Host=\$HOST;Database=ac_\${INSTANCE}users;Port=\$PORT;User Id=\$USER;Password=\$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+./reset-migrations.sh 20260116070750_Initial ac_${INSTANCE}chat
+./Chat.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}chat;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+
+./reset-migrations.sh 20260116070751_Initial ac_${INSTANCE}contacts
+./Contacts.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}contacts;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+
+./reset-migrations.sh 20260116070748_Initial ac_${INSTANCE}flows
+./Flows.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}flows;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+
+./reset-migrations.sh 20260116070752_Initial ac_${INSTANCE}invite
+./Invite.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}invite;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+
+./reset-migrations.sh 20260116070754_Initial ac_${INSTANCE}media
+./Media.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}media;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+
+./reset-migrations.sh 20260116070755_Initial ac_${INSTANCE}mlsearch
+./MLSearch.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}mlsearch;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+
+./reset-migrations.sh 20260116070757_Initial ac_${INSTANCE}notification
+./Notification.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}notification;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
+
+./reset-migrations.sh 20260116070758_Initial ac_${INSTANCE}users
+./Users.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}users;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
 EOF
 RUN chmod -R 755 /migrations/
 WORKDIR /migrations
