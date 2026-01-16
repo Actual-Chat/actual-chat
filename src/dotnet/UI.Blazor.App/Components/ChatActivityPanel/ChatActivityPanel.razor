@@ -122,13 +122,6 @@
         return new (chat, audioState, authorIds.Length > 0);
     }
 
-    private void OnListenClick() {
-        if (IsUpdating || Chat?.Id is not { } chatId)
-            return;
-
-        _ = ChatAudioUI.SetListeningState(chatId, !IsListening);
-    }
-
     private void OnClick() {
         if (IsUpdating || Chat?.Id is not { } chatId)
             return;
