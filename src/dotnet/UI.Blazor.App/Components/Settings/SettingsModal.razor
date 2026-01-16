@@ -61,7 +61,9 @@
 
         @if (m.ShowLogViewer) {
             <SettingsTab @key="9" TabIndex="9" Title="Log Viewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" IconClass="icon-info">
-                <LogViewerPage/>
+                <div class="log-viewer-page">
+                    <LogView/>
+                </div>
             </SettingsTab>
         }
 
