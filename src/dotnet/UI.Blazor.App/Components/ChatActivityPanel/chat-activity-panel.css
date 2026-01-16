@@ -94,7 +94,7 @@ body.narrow .chat-activity-panel.listening:after {
 }
 .chat-activity-panel > .c-buttons {
     @apply flex-none flex-x items-center gap-x-4 md:gap-x-2;
-    @apply pl-1 md:pr-1;
+    @apply pl-1;
 }
 .chat-activity-panel > .c-buttons > .btn {
     @apply px-0;
@@ -113,10 +113,9 @@ body.narrow .chat-activity-panel.listening:after {
 .chat-activity-panel > .c-buttons > .btn.btn-transparent:active::after {
     @apply hidden;
 }
-body.narrow .chat-activity-panel > .c-buttons > .btn.listening {
+body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
     @apply px-4;
-    @apply rounded-lg border border-[var(--violet-90)];
-    @apply bg-[var(--leave-btn)];
+    @apply rounded-full;
 }
 .chat-activity-panel > .c-icon {
     @apply flex items-center justify-center;
@@ -128,13 +127,14 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.listening {
     @apply md:mt-1;
 }
 .chat-activity-panel .btn.not-listening {
-    @apply md:pr-1;
+    @apply md:px-4;
     @apply text-[var(--violet-70)] text-caption-3;
+    @apply bg-[var(--leave-btn)];
 }
 .chat-activity-panel .btn.listening {
-    @apply md:px-2;
+    @apply md:-mr-0.5;
     @apply text-[var(--magenta-60)] text-caption-3;
-    @apply md:bg-white;
+    @apply bg-[var(--leave-btn)];
 }
 
 .chat-activity-subheader:empty {
@@ -216,11 +216,11 @@ body.narrow .chat-activity-panel.listening:after {
     animation: smoothShow 0.3s ease-in-out forwards;
 }
 .header-activity-panel-wrapper .chat-activity-panel {
-    @apply absolute z-10 bottom-1 left-1 right-1;
-    @apply h-12 w-auto;
-    @apply px-2;
-    @apply rounded-md;
-    @apply border border-[var(--violet-90)];
+    @apply absolute z-10 bottom-0.5 left-1 right-1;
+    @apply h-13 w-auto;
+    @apply pl-2 pr-1.5;
+    @apply rounded-full;
+    box-shadow: 0 0 0.25rem var(--violet-90);
 }
 .header-activity-panel-wrapper .chat-activity-panel.listening {
     @apply border-transparent;
