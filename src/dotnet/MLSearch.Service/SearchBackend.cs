@@ -172,9 +172,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         Task StartIndexingEntries()
             => changeKind != ChangeKind.Create || chat.Id is PlaceChatId { IsRoot: true }
                 ? Task.CompletedTask
-                : FlowHub.NewResumeEvent<EntryIndexingFlow>(chat.Id.Value)
-                    .WithQuanta()
-                    .Schedule(cancellationToken);
+                : ResumeIndexingFlow<EntryIndexingFlow>(chat.Id.Value, cancellationToken);
     }
 
     // [EventHandler]
@@ -499,9 +497,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         string arguments,
         CancellationToken cancellationToken = default)
         where TFlow : Flow
-    {
-        var delay = Clocks.SystemClock.Now + Settings.ChangedEntityIndexingDelay;
-        var resumeEvent = FlowHub.NewResumeEvent<TFlow>(arguments).WithDelay(delay, Settings.IndexingFlowResumeDelayQuanta);
-        return resumeEvent.Schedule(cancellationToken);
-    }
+        => FlowHub.NewResumeEvent<TFlow>(arguments)
+            .WithDelay(Settings.ChangedEntityIndexingDelay, Settings.IndexingFlowResumeDelayQuanta)
+            .Schedule(cancellationToken);
 }
