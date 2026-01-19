@@ -282,6 +282,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
     private Task<Task> ResumeRealtimePlayback(ChatId chatId, CancellationToken cancellationToken)
     {
         var player = GetOrCreate(chatId, ChatPlayerKind.Realtime);
+        player.Playback.IsPaused.Updated += IsPausedOnUpdated;
         player.Playback.IsPlaying.Updated += IsPlayingOnUpdated;
         var whenPlaying = player.WhenPlaying;
         return whenPlaying is { IsCompleted: false }
