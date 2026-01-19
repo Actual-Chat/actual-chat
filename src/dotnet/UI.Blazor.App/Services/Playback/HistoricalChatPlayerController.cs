@@ -39,3 +39,9 @@ public class HistoricalChatPlayerController(HistoricalChatPlayer chatPlayer, Cha
         _ = ChatPlayer.Playback.Resume(default);
     }
 }
+
+public class RealtimeChatPlayerController(RealtimeChatPlayer chatPlayer, ChatPlayers chatPlayers)
+    : ChatPlayerController(chatPlayer, chatPlayers)
+{
+    public new RealtimeChatPlayer ChatPlayer { get; } = chatPlayer;
+}

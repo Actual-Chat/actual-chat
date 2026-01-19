@@ -90,15 +90,20 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
             chatId = recordingChatId;
         }
         else if (playbackState is RealtimePlaybackState realtimePlaybackState) {
-            mode = AudioWidgetSessionStateMode.RealtimePlayback;
             chatId = realtimePlaybackState.ChatIds.First();
-            extraChatCount = realtimePlaybackState.ChatIds.Count - 1;
+            var controller = ChatPlayers?.GetRealtimeChatPlayerControllerNonComputed(chatId);
+            if (controller?.ChatPlayer.Playback.IsPlaying.Value ?? false) {
+                mode = AudioWidgetSessionStateMode.RealtimePlayback;
+                extraChatCount = realtimePlaybackState.ChatIds.Count - 1;
+            }
         }
         else if (playbackState is HistoricalPlaybackState historicalPlaybackState) {
-            mode = AudioWidgetSessionStateMode.HistoricalPlayback;
             chatId = historicalPlaybackState.ChatId;
             var controller = ChatPlayers?.GetHistoricalChatPlayerControllerNonComputed(chatId);
-            isPaused = controller?.IsPaused.Value ?? false;
+            if (controller?.ChatPlayer.Playback.IsPlaying.Value ?? false) {
+                mode = AudioWidgetSessionStateMode.HistoricalPlayback;
+                isPaused = controller.IsPaused.Value;
+            }
         }
         if (mode is null)
             return null;
