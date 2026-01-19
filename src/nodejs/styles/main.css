@@ -33,6 +33,10 @@ body.device-ios * {
     /* disable pinch zoom gestures and double-tap to zoom in iOS Safari */
     touch-action: pan-x pan-y;
 }
+body.no-select {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
 
 /* prevent pull-to-refresh for Safari 16+ */
 @media screen and (pointer: coarse) {

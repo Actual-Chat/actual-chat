@@ -36,8 +36,20 @@ body.hoverable .chat-audio-panel .take-phone-btn.btn:hover {
 .chat-audio-panel .listen-only-btn.btn,
 body.hoverable .chat-audio-panel .listen-only-btn.btn:hover {
     @apply text-06;
-    background: linear-gradient(0deg, #FF3880 -48.07%, #B6B6CC 94.47%);
+    background: linear-gradient(180deg, #C60077 -18.32%, #2970FF 132%);
+    background-size: 100% 180%;
+    background-position: center center;
+    background-repeat: no-repeat;
     transition-property: transform, opacity, filter;
+    animation: gradientShake 3s ease-in-out infinite alternate;
+}
+@keyframes gradientShake {
+    0% {
+        background-position: center 10%;
+    }
+    100% {
+        background-position: center 90%;
+    }
 }
 .chat-audio-panel .record-off-btn.btn,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover {
@@ -223,10 +235,10 @@ body.narrow .text-mode .recorder-wrapper::before {
     @apply bg-transparent;
     @apply text-06;
     box-shadow:
-        -1px 0 0 0 var(--ash-80),
-        0 -1px 0 0 var(--ash-80),
-        1px 0 0 0 var(--ash-80),
-        0 1px 0 0 var(--ash-80);
+        -1px 0 0 0 var(--recorder-off-middle),
+        0 -1px 0 0 var(--recorder-off-bottom),
+        1px 0 0 0 var(--recorder-off-middle),
+        0 1px 0 0 var(--recorder-off-top);
 }
 .chat-audio-panel .recorder-wrapper .btn {
     @apply absolute z-button;
