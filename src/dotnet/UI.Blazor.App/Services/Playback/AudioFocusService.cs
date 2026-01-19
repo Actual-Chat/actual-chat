@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public enum AudioMode { Tunes, Playback, /* HistoricalPlayback, ChatListening, */ Recording }
+public enum AudioMode { Tunes, Playback, Recording }
 
 public delegate void RestoreFocusHandler();
 
