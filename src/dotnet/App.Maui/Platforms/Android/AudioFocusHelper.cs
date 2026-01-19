@@ -42,6 +42,7 @@ public class AudioFocusHelper
         _log.LogInformation("Abandon audio focus");
         StopBluetoothSco();
         _audioManager.AbandonAudioFocusRequest(_focusRequest);
+        _audioManager.Mode = Mode.Normal;
         _hasFocus = false;
     }
 
@@ -86,6 +87,10 @@ public class AudioFocusHelper
 
     private bool RequestFocus(AudioFocus audioFocus, AudioUsageKind audioUsageKind, AudioContentType audioContentType)
     {
+        var isCommunication = audioUsageKind == AudioUsageKind.VoiceCommunication;
+        if (isCommunication)
+            _audioManager.Mode = Mode.InCommunication;
+
         var attrs = new AudioAttributes.Builder()
             .SetUsage(audioUsageKind)!
             .SetContentType(audioContentType)!
