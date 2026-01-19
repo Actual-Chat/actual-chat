@@ -90,13 +90,13 @@ public class AudioWidgetForegroundService : Service
         var link = Links.Chat(chatId);
 
         long capabilities = 0;
-        if (mode is Mode.HistoricalPlayback) {
+        if (mode is Mode.HistoricalPlayback or Mode.RealtimePlayback) {
             capabilities |= isPaused ? PlaybackStateCompat.ActionPlay : PlaybackStateCompat.ActionPause;
             capabilities |= PlaybackStateCompat.ActionStop;
         }
         var playbackStateCompat = new PlaybackStateCompat.Builder()
             .SetState(
-                mode is Mode.HistoricalPlayback && isPaused
+                mode is (Mode.HistoricalPlayback or Mode.RealtimePlayback) && isPaused
                     ? PlaybackStateCompat.StatePaused
                     : PlaybackStateCompat.StatePlaying,
                 PlaybackStateCompat.PlaybackPositionUnknown,

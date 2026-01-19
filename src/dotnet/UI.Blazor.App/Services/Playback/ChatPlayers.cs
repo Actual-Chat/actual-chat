@@ -77,20 +77,25 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             StopPlayback();
     }
 
-    public void ReleaseAudioFocusDueToPause(HistoricalChatPlayerController controller)
+    public void ReleaseAudioFocusDueToPause(ChatPlayerController controller)
     {
-        Log.LogInformation("Releasing audio focus for historical chat player '{ChatId}'", controller.ChatId);
+        Log.LogInformation("Releasing audio focus for chat player '{ChatId}'", controller.ChatId);
 
-        if (_playbackState.Value is HistoricalPlaybackState historicalPlaybackState
-            && historicalPlaybackState.ChatId == controller.ChatId) {
+        var playbackState = _playbackState.Value;
+        var shouldRelease = playbackState switch {
+            HistoricalPlaybackState historical => historical.ChatId == controller.ChatId,
+            RealtimePlaybackState realtime => realtime.ChatIds.Contains(controller.ChatId),
+            _ => false
+        };
+
+        if (shouldRelease)
             ReleaseAudioFocus();
-        }
     }
 
-    public async Task<bool> TryGainAudioFocusForResume(HistoricalChatPlayerController controller)
+    public async Task<bool> TryGainAudioFocusForResume(ChatPlayerController controller)
     {
-        Log.LogInformation("Trying to gain audio focus for historical chat player '{ChatId}'", controller.ChatId);
-        var audioFocusHandle = await TryGainAudioFocus($"Resuming historical chat player '{controller.ChatId}'").ConfigureAwait(false);
+        Log.LogInformation("Trying to gain audio focus for chat player '{ChatId}'", controller.ChatId);
+        var audioFocusHandle = await TryGainAudioFocus($"Resuming chat player '{controller.ChatId}'").ConfigureAwait(false);
         return audioFocusHandle is not null;
     }
 
@@ -244,7 +249,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             };
             var controller = newPlayer is HistoricalChatPlayer historicalChatPlayer
                 ? new HistoricalChatPlayerController(historicalChatPlayer, this, Log)
-                : (ChatPlayerController)new RealtimeChatPlayerController((RealtimeChatPlayer)newPlayer, this);
+                : (ChatPlayerController)new RealtimeChatPlayerController((RealtimeChatPlayer)newPlayer, this, Log);
             _players = _players.Add((chatId, playerKind), controller);
         }
         if (playerKind is ChatPlayerKind.Historical)

@@ -95,6 +95,7 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
             if (controller?.ChatPlayer.Playback.IsPlaying.Value ?? false) {
                 mode = AudioWidgetSessionStateMode.RealtimePlayback;
                 extraChatCount = realtimePlaybackState.ChatIds.Count - 1;
+                isPaused = controller.IsPaused.Value;
             }
         }
         else if (playbackState is HistoricalPlaybackState historicalPlaybackState) {
@@ -127,6 +128,8 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
 
         if (playbackState is HistoricalPlaybackState historicalPlaybackState)
             InvokeHistoricalPlaybackAction(historicalPlaybackState, actionName);
+        else if (playbackState is RealtimePlaybackState realtimePlaybackState)
+            InvokeRealtimePlaybackAction(realtimePlaybackState, actionName);
     }
 
     private void InvokeHistoricalPlaybackAction(HistoricalPlaybackState state, string actionName)
@@ -149,6 +152,33 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
         case Actions.Resume: {
             _ = chatPlayers
                 .GetHistoricalChatPlayerControllerNonComputed(state.ChatId)
+                ?.Resume();
+            break;
+        }
+        }
+    }
+
+    private void InvokeRealtimePlaybackAction(RealtimePlaybackState state, string actionName)
+    {
+        var chatPlayers = ChatPlayers;
+        if (chatPlayers is null)
+            return;
+
+        var chatId = state.ChatIds.First();
+        switch (actionName) {
+        case Actions.Stop: {
+            chatPlayers.StopRealtimePlayback();
+            break;
+        }
+        case Actions.Pause: {
+            chatPlayers
+                .GetRealtimeChatPlayerControllerNonComputed(chatId)
+                ?.Pause();
+            break;
+        }
+        case Actions.Resume: {
+            _ = chatPlayers
+                .GetRealtimeChatPlayerControllerNonComputed(chatId)
                 ?.Resume();
             break;
         }
