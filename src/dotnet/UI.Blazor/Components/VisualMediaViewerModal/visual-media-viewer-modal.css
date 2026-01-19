@@ -208,6 +208,7 @@ body.device-ios swiper-slide img {
 }
 
 .video-wrapper .video-control .c-line-2 {
+    @apply relative;
     @apply flex-x items-center gap-x-4;
     @apply w-full h-5;
 }
@@ -232,7 +233,6 @@ body.device-ios swiper-slide img {
     @apply w-32;
     @apply text-caption-1;
 }
-
 .video-wrapper .video-control progress:before {
     @apply content-empty;
     @apply absolute z-10 left-0;
@@ -241,10 +241,20 @@ body.device-ios swiper-slide img {
     @apply bg-[var(--white-50)];
     width: var(--data-media-loaded);
 }
+.video-wrapper .video-control .c-thumb {
+    @apply absolute top-1/2 z-10;
+    @apply w-5 h-5;
+    @apply rounded-full;
+    @apply -translate-y-1/2;
+    @apply cursor-pointer pointer-events-auto;
+    background: linear-gradient(180deg, #2970FF 0.32%, #C60077 133.76%);
+    border: 2px solid white;
+}
 
 .media-preview-swiper {
     height: 3.5rem;
     box-sizing: border-box;
+    pointer-events: none;
 }
 .media-preview-swiper swiper-slide {
     height: 100%;
@@ -254,6 +264,7 @@ body.device-ios swiper-slide img {
     justify-content: center;
     align-items: center;
     filter: brightness(0.25);
+    pointer-events: auto;
 }
 swiper-container.media-preview-swiper::part(wrapper) {
     justify-content: center;

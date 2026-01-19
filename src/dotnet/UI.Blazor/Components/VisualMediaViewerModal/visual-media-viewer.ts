@@ -29,10 +29,10 @@ export class VisualMediaViewer {
     private thumbsEl: any;
     private swiper: any;
     private thumbs: any;
-    private clickTimeout: number | null = null;
-    private CLICK_DELAY = 250;
     private isHiding = false;
     private hideBlocked = false;
+    private isDoubleClick = false;
+    private isDraggingThumb = false;
 
     static create(imageViewer: HTMLElement, blazorRef: DotNet.DotNetObject): VisualMediaViewer {
         return new VisualMediaViewer(imageViewer, blazorRef);
@@ -114,10 +114,6 @@ export class VisualMediaViewer {
         fromEvent(this.overlay, 'click')
          .pipe(takeUntil(this.disposed$))
          .subscribe((event: PointerEvent) => this.onClick(event));
-
-        fromEvent(this.overlay, 'dblclick')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onClick(event, true));
 
         fromEvent(this.overlay, 'youtubeplayeronstatechange')
             .pipe(takeUntil(this.disposed$))
@@ -267,7 +263,7 @@ export class VisualMediaViewer {
 
         this.hideTimeoutId = window.setTimeout(() => {
             void this.hideHeaderAndFooter();
-        }, 3000);
+        }, 5000);
     }
 
     private onUserActivityThrottled = throttle(() =>
@@ -335,7 +331,7 @@ export class VisualMediaViewer {
         if (!this.isHeaderAndFooterVisible)
             return;
 
-        this.hideLockedUntil = Date.now() + 1500;
+        this.hideLockedUntil = Date.now() + 250;
 
         const footer = this.footer;
         const header = this.header;
@@ -417,38 +413,28 @@ export class VisualMediaViewer {
         }
     }
 
-    private onClick(event: PointerEvent | MouseEvent, isDouble: boolean = false) {
-        if (isDouble)
-            return;
-
-        const { pageY } = event;
-        const cursorInHeaderArea = pageY <= this.header.offsetHeight;
-        const cursorInFooterArea = this.footer
-            ? this.overlay.offsetHeight - pageY <= this.footer.offsetHeight
-            : false;
-        if (this.isHeaderAndFooterVisible && (cursorInHeaderArea || cursorInFooterArea))
-            return;
-
-        const target = event.target as HTMLElement;
-
-        if (this.clickTimeout) {
-            clearTimeout(this.clickTimeout);
-            this.clickTimeout = null;
+    private onClick(event: PointerEvent | MouseEvent): void {
+        if (this.isDoubleClick) {
+            this.isDoubleClick = false;
             return;
         }
 
-        this.clickTimeout = window.setTimeout(() => {
-            this.clickTimeout = null;
-            if (target.classList.contains('media-swiper')) {
-                // click on prev / next buttons
-            } else if (target.classList.contains('swiper-zoom-container')) {
-                // click outside image/video
-                void this.blazorRef.invokeMethodAsync('Close');
-            } else {
-                // click on image/video
-                this.toggleHeaderAndFooterVisibility();
-            }
-        }, this.CLICK_DELAY);
+        const target = event.target as HTMLElement;
+        const clickOnControl = target.closest('.video-control');
+        if (clickOnControl) {
+            void this.showHeaderAndFooter();
+            return;
+        }
+
+        if (target.classList.contains('media-swiper')) {
+            // click on prev / next buttons
+        } else if (target.classList.contains('swiper-zoom-container')) {
+            // click outside image/video
+            void this.blazorRef.invokeMethodAsync('Close');
+        } else {
+            // click on image/video
+            this.toggleHeaderAndFooterVisibility();
+        }
     }
 
     private onYouTubePlayerStateChange(event: CustomEvent<YT.OnStateChangeEvent>): void {
@@ -556,7 +542,8 @@ export class VisualMediaViewer {
         const rewindBtn = control.querySelector('.rewind-btn') as HTMLElement;
         const forwardBtn = control.querySelector('.forward-btn') as HTMLElement;
         const progressBar = control.querySelector('progress') as HTMLProgressElement;
-        if (!control || !playBtn || !rewindBtn || !forwardBtn || !progressBar) {
+        const thumb = control.querySelector('.c-thumb') as HTMLElement;
+        if (!control || !playBtn || !rewindBtn || !forwardBtn || !progressBar || !thumb) {
             if (control)
                 control.remove();
             video.controls = true;
@@ -590,9 +577,79 @@ export class VisualMediaViewer {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent | MouseEvent) => this.onJumpBtnClick(event, video, true));
 
-        fromEvent(progressBar, 'click')
+        this.drugThumb(video, progressBar, thumb);
+    }
+
+    private drugThumb(video: HTMLMediaElement, progressBar: HTMLProgressElement, thumb: HTMLElement) {
+        let rect: DOMRect | null = null;
+
+        const updateThumbPosition = (percent: number) => {
+            if (!rect)
+                return;
+
+            const left = (percent / 100) * rect.width;
+            thumb.style.left = `${left}px`;
+            progressBar.value = percent;
+        };
+
+        const onLinePointerDown = (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            rect = progressBar.getBoundingClientRect();
+            const offsetX = e.clientX - rect.left;
+            let percent = (offsetX / rect.width) * 100;
+            percent = Math.max(0, Math.min(100, percent));
+
+            updateThumbPosition(percent);
+            this.isDraggingThumb = true;
+            document.body.classList.add('no-select');
+            void this.showHeaderAndFooter();
+        };
+
+        const onPointerMove = (e: PointerEvent) => {
+            if (!this.isDraggingThumb || !rect)
+                return;
+
+            const offsetX = e.clientX - rect.left;
+            let percent = (offsetX / rect.width) * 100;
+            percent = Math.max(0, Math.min(100, percent));
+            updateThumbPosition(percent);
+        };
+
+        const onPointerUp = (e: PointerEvent) => {
+            if (!this.isDraggingThumb) return;
+
+            if (rect && Number.isFinite(video.duration) && video.duration > 0) {
+                const offsetX = e.clientX - rect.left;
+                let percent = (offsetX / rect.width) * 100;
+                percent = Math.max(0, Math.min(100, percent));
+                video.currentTime = (percent / 100) * video.duration;
+            }
+
+            setTimeout(() => {
+                this.isDraggingThumb = false;
+            }, 50);
+
+            document.body.classList.remove('no-select');
+            void this.showHeaderAndFooter();
+        };
+
+        const progressContainer = progressBar.closest('.c-line-2') as HTMLElement;
+        if (!progressContainer)
+            return;
+
+        fromEvent(progressContainer, 'pointerdown')
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent | MouseEvent) => this.seekVideoPoint(event, video, progressBar));
+            .subscribe(onLinePointerDown);
+
+        fromEvent(document, 'pointermove')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(onPointerMove);
+
+        fromEvent(document, 'pointerup')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(onPointerUp);
     }
 
     private addImageListeners(container: HTMLElement) {
@@ -708,6 +765,15 @@ export class VisualMediaViewer {
         let percentage = Math.round(current / video.duration * 100);
         progressBar.value = percentage;
         progressBar.innerHTML = percentage + '% played';
+        const thumb = control.querySelector('.c-thumb') as HTMLElement;
+
+        if (!this.isDraggingThumb) {
+            if (thumb) {
+                const rect = progressBar.getBoundingClientRect();
+                const left = (percentage / 100) * rect.width;
+                thumb.style.left = `${left}px`;
+            }
+        }
         let currentTimeDiv = control.querySelector('.c-current')!;
         currentTimeDiv.innerHTML = this.formatTime(current);
         let durationDiv = control.querySelector('.c-duration')!;
@@ -742,14 +808,6 @@ export class VisualMediaViewer {
         event.stopPropagation();
         const timeDelta = forward ? this.jumpTime : -this.jumpTime;
         video.currentTime += timeDelta
-    }
-
-    private seekVideoPoint(event: PointerEvent | MouseEvent, video: HTMLMediaElement, progressBar: HTMLProgressElement) {
-        event.stopPropagation();
-        let percent = event.offsetX / progressBar.offsetWidth;
-        video.currentTime = percent * video.duration;
-        let value = progressBar.value = Math.floor(percent * 100);
-        progressBar.innerHTML = value + '% played';
     }
 
     private playAndPauseHandler(e: Event, btn: HTMLElement) {
