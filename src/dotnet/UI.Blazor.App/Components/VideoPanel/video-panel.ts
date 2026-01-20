@@ -2,15 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-deprecated, @typescript-eslint/no-floating-promises */
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 import { Log } from 'logging';
-import {
-    VideoRecorder,
-    createVideoRecorder,
-} from '../../Services/Video/video-recorder';
-import type {
-    VideoRecorderState,
-    VideoRecorderCallbacks,
-    IVideoRecorder,
-} from '../../Services/Video/video-recorder-contract';
+import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPanel');
 
@@ -24,9 +16,10 @@ export class VideoPanel {
     private parentElement: HTMLElement | null = null;
     private disposed$: Subject<void> = new Subject<void>();
 
-    // Video recorder
-    private videoRecorder: IVideoRecorder | null = null;
+    // Video recording service (using video-pipeline)
+    private recordingService: RecordingService | null = null;
     private isRecording = false;
+    private animationFrameId: number | null = null;
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
@@ -88,20 +81,40 @@ export class VideoPanel {
         infoLog?.log('Starting video recording...');
 
         try {
-            // Create video recorder with callbacks
-            const callbacks: VideoRecorderCallbacks = {
-                onFrame: (frame: VideoFrame) => this.renderFrame(frame),
-                onStateChange: (state: VideoRecorderState) => this.onRecorderStateChange(state),
-                onError: (error: Error) => this.onRecorderError(error),
+            // Create recording service with default config (uses video-pipeline internally)
+            const config: RecordingConfig = {
+                mode: 'webcam',
+                codec: 'h264',
+                width: 1280,
+                height: 720,
+                bitrate: 2_000_000,
+                framerate: 30,
+                bandwidth: 10_000_000,
+                latency: 0,
+                jitter: 0,
+                packetLoss: 0,
             };
 
-            this.videoRecorder = createVideoRecorder(callbacks);
+            this.recordingService = new RecordingService(config);
 
-            // Initialize with default config
-            await this.videoRecorder.initialize();
+            // Listen for state changes
+            this.recordingService.addEventListener('state-change', ((event: CustomEvent<RecordingState>) => {
+                this.onRecorderStateChange(event.detail);
+            }) as EventListener);
 
-            // Start recording
-            await this.videoRecorder.start();
+            // Listen for errors
+            this.recordingService.addEventListener('error', ((event: CustomEvent<Error>) => {
+                this.onRecorderError(event.detail);
+            }) as EventListener);
+
+            // Start recording (this initializes the video-pipeline)
+            await this.recordingService.start();
+
+            // Get output stream and render frames to canvas
+            const outputStream = this.recordingService.getOutputStream();
+            if (outputStream) {
+                this.startRenderingStream(outputStream);
+            }
 
             this.isRecording = true;
             this.updateRecordButtonState();
@@ -120,14 +133,15 @@ export class VideoPanel {
      * Stop video recording
      */
     public async stopRecording(): Promise<void> {
-        if (!this.isRecording || !this.videoRecorder) {
+        if (!this.isRecording || !this.recordingService) {
             return;
         }
 
         infoLog?.log('Stopping video recording...');
 
         try {
-            await this.videoRecorder.stop();
+            await this.recordingService.stop();
+            this.stopRenderingStream();
             this.isRecording = false;
             this.updateRecordButtonState();
 
@@ -137,6 +151,57 @@ export class VideoPanel {
             infoLog?.log('Video recording stopped');
         } catch (error) {
             errorLog?.log('Failed to stop recording:', error);
+        }
+    }
+
+    /**
+     * Start rendering the output stream to canvas
+     */
+    private startRenderingStream(stream: MediaStream): void {
+        const videoTrack = stream.getVideoTracks()[0];
+        if (!videoTrack || !this.canvas || !this.canvasCtx) {
+            return;
+        }
+
+        // Create a video element to render the stream
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        video.muted = true;
+        video.playsInline = true;
+        video.play();
+
+        const renderFrame = () => {
+            if (!this.isRecording || !this.canvas || !this.canvasCtx) {
+                return;
+            }
+
+            // Resize canvas if needed
+            if (this.canvas.width !== video.videoWidth || this.canvas.height !== video.videoHeight) {
+                if (video.videoWidth > 0 && video.videoHeight > 0) {
+                    this.canvas.width = video.videoWidth;
+                    this.canvas.height = video.videoHeight;
+                    debugLog?.log(`Canvas resized to ${video.videoWidth}x${video.videoHeight}`);
+                }
+            }
+
+            // Draw frame to canvas
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                this.canvasCtx.drawImage(video, 0, 0);
+            }
+
+            this.animationFrameId = requestAnimationFrame(renderFrame);
+        };
+
+        this.animationFrameId = requestAnimationFrame(renderFrame);
+    }
+
+    /**
+     * Stop rendering the stream
+     */
+    private stopRenderingStream(): void {
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
         }
     }
 
@@ -152,32 +217,13 @@ export class VideoPanel {
     }
 
     /**
-     * Render a decoded video frame to the canvas
-     */
-    private renderFrame(frame: VideoFrame): void {
-        if (!this.canvas || !this.canvasCtx) {
-            return;
-        }
-
-        // Resize canvas if needed
-        if (this.canvas.width !== frame.displayWidth || this.canvas.height !== frame.displayHeight) {
-            this.canvas.width = frame.displayWidth;
-            this.canvas.height = frame.displayHeight;
-            debugLog?.log(`Canvas resized to ${frame.displayWidth}x${frame.displayHeight}`);
-        }
-
-        // Draw frame to canvas
-        this.canvasCtx.drawImage(frame, 0, 0);
-    }
-
-    /**
      * Handle recorder state changes
      */
-    private onRecorderStateChange(state: VideoRecorderState): void {
+    private onRecorderStateChange(state: RecordingState): void {
         debugLog?.log('Recorder state changed:', state);
 
         // Update UI based on state
-        if (state.error) {
+        if (state.status.startsWith('error')) {
             this.videoPanel.classList.add('has-error');
         } else {
             this.videoPanel.classList.remove('has-error');
@@ -221,10 +267,13 @@ export class VideoPanel {
         if (this.disposed$.isStopped)
             return;
 
-        // Stop and dispose video recorder
-        if (this.videoRecorder) {
-            this.videoRecorder.dispose();
-            this.videoRecorder = null;
+        // Stop rendering
+        this.stopRenderingStream();
+
+        // Stop recording service
+        if (this.recordingService) {
+            this.recordingService.stop().catch(() => {});
+            this.recordingService = null;
         }
 
         this.isRecording = false;
@@ -252,8 +301,9 @@ export class VideoPanel {
 
     public startClosing() {
         // Stop recording before closing
-        if (this.isRecording && this.videoRecorder) {
-            this.videoRecorder.stop().catch(() => {});
+        if (this.isRecording && this.recordingService) {
+            this.stopRenderingStream();
+            this.recordingService.stop().catch(() => {});
         }
 
         this.videoPanel.classList.remove('first-time-open');

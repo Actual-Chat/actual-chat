@@ -20,6 +20,7 @@ import { TransferSimulator, type TransferConfig, type TransferStats } from '../u
 import { WebSocketTransferAdapter } from '../utils/websocket-transfer';
 import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
 import { MediaStreamRecorder } from '../utils/mp4-muxer';
+import { Versioning } from 'versioning';
 
 export interface PipelineConfig {
   encoderConfig: EncoderConfig;
@@ -218,13 +219,15 @@ export class VideoPipeline implements IVideoPipeline {
 
   constructor(private config: PipelineConfig) {
     // Create worker instances
+    const encoderWorkerPath = Versioning.mapPath('/dist/videoEncoderWorker.js');
     this.encoderWorkerInstance = new Worker(
-      new URL('../workers/encoder.worker.ts', import.meta.url),
+      encoderWorkerPath,
       { type: 'module' }
     );
 
+    const decoderWorkerPath = Versioning.mapPath('/dist/videoDecoderWorker.js');
     this.decoderWorkerInstance = new Worker(
-      new URL('../workers/decoder.worker.ts', import.meta.url),
+      decoderWorkerPath,
       { type: 'module' }
     );
 
@@ -244,8 +247,9 @@ export class VideoPipeline implements IVideoPipeline {
     // Initialize segmentation worker if background blur is enabled
     if (this.config.backgroundBlur?.enabled) {
       console.log('[VideoPipeline] Creating segmentation worker for background blur with config:', this.config.backgroundBlur);
+      const segmentationWorkerPath = Versioning.mapPath('/dist/videoSegmentationWorker.js');
       this.segmentationWorkerInstance = new Worker(
-        new URL('../workers/segmentation.worker.ts', import.meta.url),
+        segmentationWorkerPath,
         { type: 'module' }
       );
 
