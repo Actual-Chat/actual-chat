@@ -39,13 +39,13 @@
             <RecorderToggle Chat="@Chat"/>
         </div>
         @if (IsNarrow) {
-            <VolumeSettingsButton Chat="@Chat"/>
+            <VoiceSettingsButton Chat="@Chat" IsNarrow="true" />
         }
         <div class="language-button"
              data-bubble="@(BubbleRef.New<VoiceSettingsButtonBubble>())"
              data-bubble-priority="120"
              data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
-            <VoiceSettingsButton Chat="@Chat"/>
+            <VoiceSettingsButton Chat="@Chat" IsNarrow="false" />
         </div>
     </div>
 </div>
