@@ -135,28 +135,19 @@ public partial class StreamingBackend
                 .ConfigureAwait(false);
 
         // And we await for the last "pending" task, which is likely already completed
-        var textEntryId = await transcribeTask.ConfigureAwait(false);
-        if (textEntryId is not null) {
+        var transcribeResult = await transcribeTask.ConfigureAwait(false);
+        if (transcribeResult is not null) {
             // Launch re-transcribe after text and audio entries have been finalized.
-            await RetranscribeTextEntry(textEntryId, openSegment.Languages[0]).SilentAwait();
+            await RetranscribeTextEntry(transcribeResult.Value.Item1, transcribeResult.Value.Item2).SilentAwait();
         }
     }
 
-    private async Task<Language[]> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
+    private async Task<AudioSegmentLanguage> GetTranscriptionLanguage(AudioRecord record, CancellationToken cancellationToken)
     {
         var kvas = ServerKvas.GetClient(record.Session);
         var settings = await kvas.UserChatSettings(record.ChatId).Get(cancellationToken).ConfigureAwait(false);
         var languageSettings = await kvas.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
-        var language = await settings.LanguageOrPrimary(kvas, cancellationToken).ConfigureAwait(false);
-        Language?[] languages = [
-            language,
-            languageSettings.Primary,
-            languageSettings.Secondary,
-            languageSettings.Tertiary];
-
-        return [..languages
-            .SkipNullItems()
-            .Distinct()];
+        return new AudioSegmentLanguage(settings.Language, languageSettings);
     }
 
     private async Task<TranscriptionEngine> GetTranscriptionEngine(AudioRecord record, CancellationToken cancellationToken)
@@ -166,18 +157,60 @@ public partial class StreamingBackend
         return settings.TranscriptionEngine;
     }
 
-    private async Task<TextEntryId?> TranscribeAudio(
+    private async Task<(TextEntryId, Language)?> TranscribeAudio(
         OpenAudioSegment audioSegment,
         Moment beginsAt,
         Task<ChatEntry>? audioEntryTask,
         CancellationToken cancellationToken)
     {
-        var audioSegmentLanguage = audioSegment.Languages[0];
-        var transcriptionOptions = new TranscriptionOptions {
-            Language = audioSegmentLanguage,
-        };
-        var transcriptionEngine = await GetTranscriptionEngine(audioSegment.Record, cancellationToken)
-            .ConfigureAwait(false);
+        var (chatLanguage, userLanguageSettings) = audioSegment.Languages;
+        if (chatLanguage is not null) {
+            var transcriptionOptions = new TranscriptionOptions {
+                Language = chatLanguage,
+            };
+            var textEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, audioEntryTask, cancellationToken).ConfigureAwait(false);
+            return textEntryId is not null ? (textEntryId, chatLanguage) : null;
+        }
+        else {
+            var languageCandidates = userLanguageSettings.ListSpoken().ToArray();
+            Language? detectedLanguage = null;
+            Action<Language[]> onLanguageDetected = languages1 => {
+                if (detectedLanguage is not null)
+                    return;
+
+                foreach (var languageCandidate in languageCandidates) {
+                    if (languages1.Contains(languageCandidate)) {
+                        detectedLanguage = languageCandidate;
+                        DebugLog?.LogDebug("Detected language: {Language} for AudioSegment: {AudioSegment}", detectedLanguage, audioSegment.StreamId);
+                        ApplyTranscriptionDetectedLanguage(audioSegment.Record, detectedLanguage, default);
+                        break;
+                    }
+                }
+            };
+            var transcriptionOptions = new TranscriptionOptions {
+                DetectLanguage = true,
+                LanguageCandidates = languageCandidates,
+                LanguageDetectedCallback = onLanguageDetected,
+            };
+            var textEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, audioEntryTask, cancellationToken).ConfigureAwait(false);
+            if (detectedLanguage is not null && textEntryId is not null)
+                return (textEntryId, detectedLanguage);
+            return null;
+        }
+    }
+
+    private async Task<TextEntryId?> TranscribeAudio(
+        OpenAudioSegment audioSegment,
+        TranscriptionOptions transcriptionOptions,
+        Moment beginsAt,
+        Task<ChatEntry>? audioEntryTask,
+        CancellationToken cancellationToken)
+    {
+        TranscriptionEngine transcriptionEngine;
+        if (transcriptionOptions.DetectLanguage)
+            transcriptionEngine = TranscriptionEngine.Deepgram;
+        else
+            transcriptionEngine = await GetTranscriptionEngine(audioSegment.Record, cancellationToken).ConfigureAwait(false);
         var transcriber = TranscriberFactory.Get(transcriptionEngine);
         var transcripts = transcriber
             .Transcribe(audioSegment.StreamId.Value, audioSegment.Source, transcriptionOptions, cancellationToken)
@@ -348,11 +381,24 @@ public partial class StreamingBackend
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
-    async Task RetranscribeTextEntry(ChatEntryId textEntryId, Language audioSegmentLanguage)
+    private async Task RetranscribeTextEntry(ChatEntryId textEntryId, Language audioSegmentLanguage)
     {
         var command = new ChatsBackend_RetranscribeChatEntry(
             textEntryId,
             audioSegmentLanguage);
         await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
     }
+
+    private void ApplyTranscriptionDetectedLanguage(AudioRecord audioSegmentRecord, Language detectedLanguage,
+        CancellationToken cancellationToken)
+        => _ = BackgroundTask.Run(async () => {
+            var chatId = audioSegmentRecord.ChatId;
+            var kvas = ServerKvas.GetClient(audioSegmentRecord.Session);
+            var userChatRecordingDetectedLanguage = new UserChatRecordingDetectedLanguage {
+                Language = detectedLanguage,
+                ChatId = chatId,
+                Timestamp = Clocks.SystemClock.Now,
+            };
+            await kvas.UserChatRecordingDetectedLanguage().Set(userChatRecordingDetectedLanguage, default).ConfigureAwait(false);
+        }, Log, "Failed to apply transcription detected language", cancellationToken);
 }

@@ -8,7 +8,7 @@ public sealed class OpenAudioSegment(
     AudioRecord record,
     AudioSource source,
     Author author,
-    Language[] languages,
+    AudioSegmentLanguage languages,
     ILogger log)
 {
     private readonly AsyncTaskMethodBuilder<Moment?> _recordedAtSource = AsyncTaskMethodBuilderExt.New<Moment?>();
@@ -20,7 +20,7 @@ public sealed class OpenAudioSegment(
     public AudioRecord Record { get; } = record;
     public AudioSource Source { get; } = source;
     public Author Author { get; } = author;
-    public Language[] Languages { get; } = languages;
+    public AudioSegmentLanguage Languages { get; } = languages;
     public Task<Moment?> RecordedAt => _recordedAtSource.Task;
     public Task<TimeSpan> AudibleDuration => _audibleDurationSource.Task;
     public Task<ClosedAudioSegment> ClosedSegment => _closedSegmentSource.Task;

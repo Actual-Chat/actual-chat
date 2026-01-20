@@ -24,8 +24,31 @@ public partial class DeepgramTranscriber : ITranscriber
 
     private static readonly Regex CompleteSentenceOrEmptyRegex = CompleteSentenceOrEmptyRegexFactory();
     private static readonly Regex EndsWithWhitespaceOrEmptyRegex = EndsWithWhitespaceOrEmptyRegexFactory();
-
-
+    private static readonly HashSet<Language> Nova3Languages = new [] {
+            Languages.Danish,
+            Languages.Dutch,
+            Languages.French,
+            Languages.FrenchCA,
+            Languages.German,
+            Languages.Portuguese,
+            Languages.PortugueseBR,
+            Languages.Spanish,
+            Languages.SpanishMX,
+            Languages.SpanishUS,
+            Languages.Czech,
+            Languages.Russian,
+            Languages.Polish,
+            Languages.Ukrainian,
+            Languages.Finnish,
+            Languages.Hindi,
+            Languages.Japanese,
+            Languages.Korean,
+            Languages.Vietnamese,
+            Languages.Italian,
+            Languages.Turkish,
+            Languages.Indonesian,
+        }
+        .ToHashSet();
     private static bool DebugMode => Constants.DebugMode.TranscriberDeepgram;
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
@@ -68,37 +91,22 @@ public partial class DeepgramTranscriber : ITranscriber
             await deepgramClient.Subscribe(HandleConnectionError).ConfigureAwait(false);
             await deepgramClient.Subscribe(HandleTranscriptReceived).ConfigureAwait(false);
 
-            var language = options.Language.ToDeepgram();
-            var nova3Languages = new [] {
-                    Languages.Danish,
-                    Languages.Dutch,
-                    Languages.French,
-                    Languages.FrenchCA,
-                    Languages.German,
-                    Languages.Portuguese,
-                    Languages.PortugueseBR,
-                    Languages.Spanish,
-                    Languages.SpanishMX,
-                    Languages.SpanishUS,
-                    Languages.Czech,
-                    Languages.Russian,
-                    Languages.Polish,
-                    Languages.Ukrainian,
-                    Languages.Finnish,
-                    Languages.Hindi,
-                    Languages.Japanese,
-                    Languages.Korean,
-                    Languages.Vietnamese,
-                    Languages.Italian,
-                    Languages.Turkish,
-                    Languages.Indonesian,
-                }
-                .ToHashSet();
-            var model = options.Language.IsAnyEnglish || nova3Languages.Contains(options.Language)
-                ? "nova-3"
-                : "nova-2";
+            var language = options.Language;
+            var schemaLanguage = language.ToDeepgram();
+            var useNova3Model = true;
+            if (!options.DetectLanguage)
+                useNova3Model = IsNova3Language(language);
+            else {
+                schemaLanguage = "multi";
+                foreach (var languageCandidate in options.LanguageCandidates)
+                    if (!IsNova3Language(languageCandidate)) {
+                        useNova3Model = false;
+                        break;
+                    }
+            }
+            var model = useNova3Model ? "nova-3" : "nova-2";
             var liveSchema = new LiveSchema {
-                Language = language,
+                Language = schemaLanguage,
                 Punctuate = true,
                 Diarize = false,
                 Encoding = AudioEncoding.OggOpus,
@@ -205,9 +213,11 @@ public partial class DeepgramTranscriber : ITranscriber
         var alternative = result.Channel?.Alternatives?.FirstOrDefault();
         var suffix = alternative?.Transcript ?? "";
         // NOTE: as for now deepgram does not support language detection in streaming mode so we use language from options
-        var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToArray() ?? [];
-        if (languages.Length == 0)
-            languages = [options.Language];
+        var detectedLanguages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToArray() ?? [];
+        var languages = detectedLanguages.Length > 0 ? detectedLanguages : [options.Language];
+        const int minTranscriptLengthForLanguageDetection = 20;
+        if (options.DetectLanguage && detectedLanguages.Length > 0 && suffix.Length >= minTranscriptLengthForLanguageDetection)
+            options.LanguageDetectedCallback?.Invoke(languages);
         var endTime = (float?)result.Duration ?? 0;
         if (isFinal) {
             if (TryParseFinal(state, result, out suffix, out var map))
@@ -310,4 +320,7 @@ public partial class DeepgramTranscriber : ITranscriber
 
         return suffix;
     }
+
+    private static bool IsNova3Language(Language language)
+        => language.IsAnyEnglish || Nova3Languages.Contains(language);
 }

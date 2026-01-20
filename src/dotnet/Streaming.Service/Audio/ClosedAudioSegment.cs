@@ -17,5 +17,5 @@ public sealed class ClosedAudioSegment(
     public TimeSpan Duration { get; init; } = duration;
     public TimeSpan AudibleDuration { get; init; } = audibleDuration;
     public Author Author { get; init; } = openSegment.Author;
-    public Language[] Languages { get; init; } = openSegment.Languages;
+    public AudioSegmentLanguage Languages { get; init; } = openSegment.Languages;
 }

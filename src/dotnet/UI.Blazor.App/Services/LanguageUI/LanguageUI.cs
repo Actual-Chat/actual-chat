@@ -34,11 +34,20 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     [ComputeMethod]
     public virtual async Task<Language> GetChatLanguage(ChatId? chatId, CancellationToken cancellationToken = default)
     {
+        var (chatLanguage, primary) = await GetChatLanguageAndPrimary(chatId, cancellationToken).ConfigureAwait(false);
+        return chatLanguage ?? primary;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<(Language?, Language)> GetChatLanguageAndPrimary(ChatId? chatId, CancellationToken cancellationToken = default)
+    {
         chatId = chatId?.GetThreadOutermostParentOrSelf();
         var userChatSettings = chatId is not null
             ? await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false)
             : UserChatSettings.Default;
-        return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
+        var language = userChatSettings.Language;
+        var userSettings = await Hub.LanguageUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        return (language, userSettings.Primary);
     }
 
     public async Task<Language> ChangeChatLanguage(ChatId chatId, Language language, CancellationToken cancellationToken = default)
