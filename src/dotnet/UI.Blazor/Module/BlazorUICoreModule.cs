@@ -108,7 +108,6 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ThemeUI(c.UIHub()));
         services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
         services.AddScoped(_ => new BlazorAppLifecycle());
-        services.AddScoped(_ => new ChunkSizeSelectorRecommendation());
 
         // Fusion-based UI services
         if (hostKind == HostKind.Server)

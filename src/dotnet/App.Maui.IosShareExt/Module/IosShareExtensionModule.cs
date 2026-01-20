@@ -16,7 +16,6 @@ public sealed class IosShareExtensionModule(IServiceProvider moduleServices)
         fusion.AddService<ShareUI>(ServiceLifetime.Scoped);
         fusion.AddService<IconUI>(ServiceLifetime.Scoped);
         services.AddScoped<ShareInputs>();
-        services.AddScoped(c => new ChunkedFileUploader(c));
-        services.AddScoped(_ => new ChunkSizeSelectorRecommendation());
+        services.AddScoped<SessionInitializer>();
     }
 }
