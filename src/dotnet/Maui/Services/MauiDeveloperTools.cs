@@ -1,7 +1,8 @@
-using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.App.Services.NativeAppSettings;
 using ActualChat.Users;
+using Microsoft.Maui.Storage;
 
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.Maui.Services;
 
 public class MauiDeveloperTools : IDeveloperTools
 {

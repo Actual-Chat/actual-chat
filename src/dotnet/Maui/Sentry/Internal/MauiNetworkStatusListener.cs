@@ -1,6 +1,8 @@
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Networking;
 using Sentry.Extensibility;
 
-namespace Sentry.Maui.Internal;
+namespace ActualChat.Maui.Sentry.Internal;
 
 internal class MauiNetworkStatusListener : INetworkStatusListener
 {

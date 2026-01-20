@@ -1,15 +1,14 @@
 // using ActualChat.App.Maui.Logging; // TODO(Frol): uncomment when you fix the underlying issue
-using ActualChat.App.Maui.Sentry;
-using ActualChat.App.Maui.Services;
+using ActualChat.App.Maui;
 using ActualChat.Audio.WebM;
 using ActualChat.Logging;
-using ActualChat.UI.Blazor.App;
-using ActualChat.UI.Blazor.Services;
+using ActualChat.Maui.Sentry;
+using ActualChat.Maui.Sentry.Internal;
+using ActualChat.UI;
 using ActualLab.IO;
 using Microsoft.Maui.Networking;
+using Microsoft.Maui.Storage;
 using OpenTelemetry.Trace;
-using Sentry;
-using Sentry.Maui.Internal;
 using Sentry.Serilog;
 using Serilog;
 using Serilog.Events;
@@ -17,16 +16,15 @@ using Serilog.Extensions.Logging;
 using ILogger = Serilog.ILogger;
 using Tracer = ActualChat.Performance.Tracer;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.Maui;
 
 #pragma warning disable CA1823 // Unused members - 'LogFolder', etc.
 
 public static class MauiDiagnostics
 {
     private const string AndroidOutputTemplate = "({ThreadID}) [{SourceContext}] {Message:l}{NewLine:l}{Exception}";
-    private static readonly TimeSpan SentryStartDelay = TimeSpan.FromSeconds(10);
 
-    private static SentryOptions? _sentryOptions;
+    private static SentryOptions _sentryOptions = null!;
 
     public static readonly string LogTag = MauiSettings.IsDevApp ? Constants.Hosts.DevVoxt : Constants.Hosts.Voxt;
     public static FilePath AppDataLogFilePath { get; private set; }
@@ -41,8 +39,6 @@ public static class MauiDiagnostics
 
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = StaticLog.Factory.CreateLogger(typeof(WebMReader));
-
-        InitSentrySdk();
     }
 
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)
@@ -133,18 +129,9 @@ public static class MauiDiagnostics
         _sentryOptions = options;
     }
 
-    // Prevent invoking LoadingUI static constructor before Tracer.Default is initialized.
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void InitSentrySdk()
-    {
-        if (_sentryOptions != null)
-            _ = LoadingUI.WhenAppRendered
-                .WithDelay(SentryStartDelay)
-                .ContinueWith(_ => {
-                    InitSentrySdk(_sentryOptions);
-                    var _1 = CreateSentryTraceProvider();
-                }, TaskScheduler.Default);
-    }
+    public static void InitSentrySdk()
+        => InitSentrySdk(_sentryOptions);
 
     private static void InitSentrySdk(SentryOptions options)
     {
@@ -161,21 +148,8 @@ public static class MauiDiagnostics
         // disposer.Register(disposable);
     }
 
-    private static async Task CreateSentryTraceProvider()
-    {
-        // Initialize client trace provider only in the development environment or for admin users.
- #pragma warning disable CS0162 // Unreachable code detected
-        if (!MauiSettings.IsDevApp) {
-            var scopedServices = await WhenBlazorAppServicesReady().ConfigureAwait(false);
-            var accountUI = scopedServices.GetRequiredService<AccountUI>();
-            await accountUI.WhenReady.ConfigureAwait(false);
-            var ownAccount = await accountUI.OwnAccount.Use().ConfigureAwait(false);
-            if (!ownAccount.IsAdmin)
-                return;
-        }
- #pragma warning restore CS0162 // Unreachable code detected
-        TracerProvider = SentryExt.CreateSentryTraceProvider("MauiApp");
-    }
+    public static void CreateSentryTraceProvider()
+        => TracerProvider = SentryExt.CreateSentryTraceProvider("MauiApp");
 
     public static ILoggingBuilder AddFilteringSerilog(
         this ILoggingBuilder builder,

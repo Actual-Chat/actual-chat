@@ -15,6 +15,14 @@
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(IsDevMaui)' == ''">
+    <IsDevMaui>true</IsDevMaui>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsDevMaui)' == 'true'">
+    <DefineConstants>$(DefineConstants);IS_DEV_MAUI</DefineConstants>
+  </PropertyGroup>
+
   <!-- Platform-specific files to compile -->
 
   <!-- NOT iOS -->
@@ -24,6 +32,15 @@
     <Compile Remove="**\iOS\**\*.cs" />
     <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Update="Platforms\iOS\IosSharedSecureStorage.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
+    <Compile Update="Platforms\Android\Logging\AndroidTaggedLogSink.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
+    <Compile Update="Platforms\Android\Logging\FirebaseCrashlyticsSink.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
+    <Compile Update="Platforms\Android\Logging\LoggerConfigurationXamarinExtensions.cs">
       <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
     </Compile>
   </ItemGroup>
@@ -63,6 +80,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Essentials" />
+    <PackageReference Include="OpenTelemetry" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="Sentry.Serilog" />
+    <PackageReference Include="Sentry.Extensions.Logging" />
+    <PackageReference Include="Sentry.OpenTelemetry" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="sqlite-net-pcl" />
     <!--
       An extra package to use SQLite on MAUI:
@@ -70,8 +94,24 @@
     <PackageReference Include="SQLitePCLRaw.bundle_green" />
   </ItemGroup>
 
+  <!-- Platform-specific package references -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <PackageReference Include="Plugin.Firebase.Analytics" />
+    <PackageReference Include="Xamarin.Firebase.Analytics" />
+    <PackageReference Include="Xamarin.Firebase.Crashlytics" />
+    <PackageReference Include="Xamarin.Firebase.Messaging" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <PackageReference Include="Plugin.Firebase.Analytics" />
+    <PackageReference Include="Plugin.Firebase.Crashlytics" />
+    <PackageReference Include="AdamE.Firebase.iOS.Analytics" />
+    <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
+    <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\UI.App\UI.App.csproj" />
     <ProjectReference Include="..\UI\UI.csproj" />
   </ItemGroup>
 

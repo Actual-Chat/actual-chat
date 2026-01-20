@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;
 using Sentry;

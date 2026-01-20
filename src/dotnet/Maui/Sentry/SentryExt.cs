@@ -1,12 +1,11 @@
 using ActualChat.Diagnostics;
-using ActualChat.UI.Blazor.Diagnostics;
+using ActualChat.UI.Diagnostics;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Sentry;
 using Sentry.OpenTelemetry;
 
-namespace ActualChat.App.Maui.Sentry;
+namespace ActualChat.Maui.Sentry;
 
 public static class SentryExt
 {

@@ -22,7 +22,10 @@ public static class App
     {
         try
         {
+            MauiDiagnostics.Initialize();
             ClientStartup.Initialize();
+            MauiDiagnostics.InitSentrySdk();
+            MauiDiagnostics.CreateSentryTraceProvider();
             // TODO: StaticLog bootstrap
             var services = CreateServiceProvider();
             _ = SetSession(services);
@@ -60,12 +63,6 @@ public static class App
 #else
             Environments.Development;
 #endif
-        var baseUrl =
-#if IS_DEV_MAUI
-            $"https://{Constants.Hosts.DevVoxt}";
-#else
-        $"https://{Constants.Hosts.Voxt}"
-#endif
         cfg.Sources.Add(new MemoryConfigurationSource() {
             InitialData = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase) {
                 { "DOTNET_ENVIRONMENT", env },
@@ -76,7 +73,7 @@ public static class App
             DeviceInfo.Current.Model,
             HostKind.MauiApp,
             AppKind.Ios,
-            baseUrl);
+            MauiSettings.BaseUrl);
 
         // ReSharper disable once VariableHidesOuterVariable
         var services = new ServiceCollection();

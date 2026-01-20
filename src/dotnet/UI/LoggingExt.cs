@@ -1,8 +1,8 @@
 using ActualChat.Hosting;
-using Microsoft.Extensions.Hosting;
 using ActualLab.IO;
+using Microsoft.Extensions.Hosting;
 
-namespace ActualChat.UI.Blazor.App;
+namespace ActualChat.UI;
 
 public static class LoggingExt
 {
