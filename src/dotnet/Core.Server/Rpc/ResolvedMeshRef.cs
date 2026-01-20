@@ -34,7 +34,7 @@ public readonly struct ResolvedMeshRef
             NodeRef = meshNode?.Ref ?? default;
         }
         Node = meshState[NodeRef];
-        ConnectionKind = Node == Owner.ThisNode
+        ConnectionKind = Node == Owner.ThisNode || OrdinalEquals(Node?.Endpoint, Owner.ThisNode.Endpoint)
             ? RpcPeerConnectionKind.Local
             : RpcPeerConnectionKind.Remote;
     }

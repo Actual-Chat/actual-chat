@@ -12,6 +12,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
     private readonly MutableState<ImmutableArray<MeshNode>> _onlineNodes;
     private readonly ComputedState<MeshState> _state;
 
+    private IMeshLocks EndpointLocks { get; }
     private IMeshLocks NodeLocks { get; }
     private MomentClock Clock => NodeLocks.Clock;
     private ILogger Log { get; }
@@ -35,6 +36,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
         Services = services;
         Log = services.LogFor(GetType());
         ThisNode = services.GetRequiredService<MeshNode>();
+        EndpointLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(EndpointLocks));
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         var stateFactory = services.StateFactory();
         _onlineNodes = stateFactory.NewMutable<ImmutableArray<MeshNode>>(
@@ -223,6 +225,14 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                 ..keys.Select(key => {
                     var node = MeshNode.FromLockKey(key);
                     return node == ThisNode ? ThisNode : node;
+                }).Where(node => {
+                    if (!OrdinalEquals(node.Endpoint, ThisNode.Endpoint) || node == ThisNode)
+                        return true;
+
+                    Log.LogError(
+                        "Filtering out stale mesh node with same endpoint, this should never happen: {StaleNode} (current: {ThisNode})",
+                        node, ThisNode);
+                    return false;
                 }).Order(),
             ];
         }
@@ -233,41 +243,56 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
 
     private async Task Announce(CancellationToken cancellationToken)
     {
-        var lockKey = ThisNode.LockKey;
+        var endpointLockKey = ThisNode.Endpoint;
+        var nodeLockKey = ThisNode.LockKey;
         var timeout = (Moment?)null;
-        Log.LogInformation("-> Announce: {MeshNode}", lockKey);
+        Log.LogInformation("-> Announce: {MeshNode}", nodeLockKey);
 
         void CheckTimeout() {
             if (!timeout.HasValue || Clock.Now < timeout.GetValueOrDefault())
                 return;
 
-            Log.LogCritical("[!] {MeshNode} - failed to (re)acquire the node announcement lock in time", lockKey);
+            Log.LogCritical("[!] {MeshNode} - failed to (re)acquire the node announcement lock in time", nodeLockKey);
             if (MustStopHostOnAnnounceFailure
                 && Services.HostLifetimeIfExist() is { } hostLifetime
                 && !hostLifetime.StopToken().IsCancellationRequested) {
-                Log.LogCritical("[!] {MeshNode} - stopping the host", lockKey);
+                Log.LogCritical("[!] {MeshNode} - stopping the host", nodeLockKey);
                 hostLifetime.StopApplication();
             }
             throw StandardError.Timeout("Failed to (re)acquire the node announcement lock in time.");
         }
 
         try {
-            var holderStopToken = CancellationToken.None;
+            var endpointHolderStopToken = CancellationToken.None;
+            var nodeHolderStopToken = CancellationToken.None;
             while (!cancellationToken.IsCancellationRequested) {
                 try {
                     CheckTimeout();
-                    var holder = await NodeLocks
-                        .Lock(lockKey, cancellationToken)
+                    // First, acquire the endpoint lock to ensure only one server per endpoint can announce
+                    var endpointHolder = await EndpointLocks
+                        .Lock(endpointLockKey, cancellationToken)
                         .ConfigureAwait(false);
-                    await using var _1 = holder.ConfigureAwait(false);
+                    await using var _1 = endpointHolder.ConfigureAwait(false);
+                    endpointHolderStopToken = endpointHolder.StopToken;
+                    Log.LogInformation("[+] Endpoint lock acquired: {Endpoint}", endpointLockKey);
+
+                    CheckTimeout();
+                    // Then, acquire the node lock
+                    var nodeHolder = await NodeLocks
+                        .Lock(nodeLockKey, cancellationToken)
+                        .ConfigureAwait(false);
+                    await using var _2 = nodeHolder.ConfigureAwait(false);
+                    nodeHolderStopToken = nodeHolder.StopToken;
                     CheckTimeout();
                     timeout = null;
 
-                    holderStopToken = holder.StopToken;
                     _whenAnnouncedSource.TrySetResult();
-                    Log.LogInformation("[+] {MeshNode}", lockKey);
+                    Log.LogInformation("[+] {MeshNode}", nodeLockKey);
 
-                    using var linkedTokenSource = cancellationToken.LinkWith(holderStopToken);
+                    // Wait until either lock is lost or cancellation is requested
+                    using var linkedTokenSource = cancellationToken
+                        .LinkWith(endpointHolderStopToken)
+                        .Token.LinkWith(nodeHolderStopToken);
                     await TaskExt.NeverEnding(linkedTokenSource.Token).ConfigureAwait(false);
                     // Can't reach this point: above await can only complete with cancellation
                 }
@@ -276,14 +301,16 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                         throw; // Thrown by CheckTimeout()
 
                     Log.LogError(e,
-                        "[!] {MeshNode} - failed to (re)acquire the node announcement; holder.StopToken.IsCancellationRequested = {StopTokenIsCancelled}",
-                        lockKey, holderStopToken.IsCancellationRequested);
+                        "[!] {MeshNode} - failed to (re)acquire the node announcement; " +
+                        "endpointHolder.StopToken.IsCancellationRequested = {EndpointStopTokenIsCancelled}, " +
+                        "nodeHolder.StopToken.IsCancellationRequested = {NodeStopTokenIsCancelled}",
+                        nodeLockKey, endpointHolderStopToken.IsCancellationRequested, nodeHolderStopToken.IsCancellationRequested);
                 }
                 timeout ??= Clock.Now + RelockTimeout;
             }
         }
         finally {
-            Log.LogInformation("<- Announce: {MeshNode}", lockKey);
+            Log.LogInformation("<- Announce: {MeshNode}", nodeLockKey);
         }
     }
 }
