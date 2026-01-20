@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.UI.App.Services.NativeAppSettings;
 
 public interface IMauiHostSwitcher
 {

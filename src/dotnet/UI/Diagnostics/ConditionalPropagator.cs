@@ -1,4 +1,4 @@
-﻿namespace ActualChat.UI.Blazor.Diagnostics;
+﻿namespace ActualChat.UI.Diagnostics;
 
 internal sealed class ConditionalPropagator : DistributedContextPropagator
 {

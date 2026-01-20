@@ -118,8 +118,6 @@
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Microsoft.JSInterop.WebAssembly" />
-    <PackageReference Include="OpenTelemetry" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="RestEase" />
     <PackageReference Include="SauceControl.Blake2Fast" />
     <PackageReference Include="System.Linq.Async" />
@@ -141,11 +139,6 @@
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
-    <PackageReference Include="Sentry.Serilog" />
-    <PackageReference Include="Sentry.Extensions.Logging" />
-    <PackageReference Include="Sentry.OpenTelemetry" />
-    <PackageReference Include="Serilog" />
-    <PackageReference Include="Serilog.Extensions.Logging" />
     <!-- SignalR client needed for AudioStreamer -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />

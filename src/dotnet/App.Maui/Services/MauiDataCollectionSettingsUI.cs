@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.Services;
 #if IOS
 using Plugin.Firebase.Analytics;

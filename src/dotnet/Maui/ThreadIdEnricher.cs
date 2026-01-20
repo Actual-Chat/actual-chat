@@ -1,7 +1,7 @@
 using Serilog.Core;
 using Serilog.Events;
 
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.Maui;
 
 internal class ThreadIdEnricher : ILogEventEnricher
 {

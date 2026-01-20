@@ -1,4 +1,4 @@
-namespace Sentry.Maui.Internal;
+namespace ActualChat.Maui.Sentry.Internal;
 
 internal static class Constants
 {

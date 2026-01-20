@@ -3,7 +3,7 @@ using ActualChat.Kvas;
 using ActualLab.IO;
 using SQLite;
 
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.Maui.Services;
 
 // ReSharper disable once InconsistentNaming
 public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend

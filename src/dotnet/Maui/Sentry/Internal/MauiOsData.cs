@@ -1,7 +1,8 @@
+using Microsoft.Maui.Devices;
 using Sentry.Extensibility;
 using OperatingSystem = Sentry.Protocol.OperatingSystem;
 
-namespace Sentry.Maui.Internal;
+namespace ActualChat.Maui.Sentry.Internal;
 
 internal static class MauiOSData
 {

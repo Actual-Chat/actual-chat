@@ -1,8 +1,12 @@
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
+using Microsoft.Maui.Devices.Sensors;
+using Microsoft.Maui.Networking;
 using Sentry.Extensibility;
 using Sentry.Protocol;
 using Device = Sentry.Protocol.Device;
 
-namespace Sentry.Maui.Internal;
+namespace ActualChat.Maui.Sentry.Internal;
 
 internal static class MauiDeviceData
 {

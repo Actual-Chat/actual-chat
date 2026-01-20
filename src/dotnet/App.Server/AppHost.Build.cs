@@ -14,6 +14,7 @@ using ActualChat.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Streaming.Module;
+using ActualChat.UI;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;

@@ -1,7 +1,7 @@
-using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
+using Microsoft.Maui.Graphics;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.Maui;
 
 public static class MauiSettings
 {
@@ -52,7 +52,7 @@ public static class MauiSettings
     }
 
     private static string? GetHostOverride()
-        => MauiHostSwitcher.GetHostOverride()?.Host;
+        => MauiHostStorage.GetHostOverride()?.Host;
 
     // Nested types
 

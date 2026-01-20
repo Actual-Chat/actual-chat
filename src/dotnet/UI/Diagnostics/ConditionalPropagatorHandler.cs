@@ -1,4 +1,4 @@
-﻿namespace ActualChat.UI.Blazor.Diagnostics;
+﻿namespace ActualChat.UI.Diagnostics;
 
 public sealed class ConditionalPropagatorHandler : DelegatingHandler
 {

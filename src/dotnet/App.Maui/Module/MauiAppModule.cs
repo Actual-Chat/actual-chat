@@ -4,8 +4,10 @@ using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Audio;
 using ActualChat.Hosting;
+using ActualChat.Maui.Services;
 using ActualChat.MediaPlayback;
 using ActualChat.UI;
+using ActualChat.UI.App.Services.NativeAppSettings;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
@@ -28,6 +30,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
     {
         // System
         services.AddScoped<MauiWebViewPageContextTracker>(c => new MauiWebViewPageContextTracker(c));
+        services.AddScoped<MauiSentryInitializer>();
 
         // Session & authentication
         services.AddSingleton(c => new MauiSession(c));

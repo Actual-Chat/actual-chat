@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Security;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
 
@@ -31,6 +32,7 @@ public sealed class MauiBlazorApp : AppBase
         _mauiWebView?.SetScopedServices(Services, session);
 
         FirebaseAnalyticsExt.ActivateOwnAnalyticsCollection(Services);
+        _ = Services.GetRequiredService<MauiSentryInitializer>().Start();
 
         // Uncomment to gather Fusion stats for profiling
         // var debugUI = Services.GetRequiredService<DebugUI>();
