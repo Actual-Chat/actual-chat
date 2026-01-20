@@ -18,6 +18,7 @@ let frameCount = 0;
 let encoderConfig: EncoderConfig | null = null;
 let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
+let startTimestamp: number | undefined = undefined;
 
 // RPC callbacks to main thread (initialized below)
 let callbacks: EncoderWorkerCallbacks;
@@ -82,7 +83,7 @@ function resizeFrame(frame: VideoFrame, targetWidth: number, targetHeight: numbe
 
   // Create new VideoFrame from canvas
   const newFrame = new VideoFrame(resizeCanvas, {
-    timestamp: frame.timestamp,
+    timestamp: frame.timestamp - (startTimestamp ?? 0),
     duration: frame.duration || undefined
   });
 
@@ -219,6 +220,7 @@ const serverImpl: EncoderWorker = {
       resizeCanvas = null;
       resizeCtx = null;
       frameCount = 0;
+      startTimestamp = undefined;
     } catch (error) {
       console.error('[Encoder Worker] Failed to stop encoder:', error);
       throw error; // RPC automatically propagates errors
@@ -229,25 +231,31 @@ const serverImpl: EncoderWorker = {
    * Encode a single frame
    */
   encodeFrame: async (frame): Promise<void> => {
-    if (!encoder || !processing || !encoderConfig) {
-      frame.close();
-      return;
-    }
+   if (!encoder || !processing || !encoderConfig) {
+     frame.close();
+     return;
+   }
 
-    try {
-      // Resize frame if dimensions don't match encoder configuration
-      const processedFrame = resizeFrame(frame, encoderConfig.width, encoderConfig.height);
+   try {
+     // Record start timestamp for normalization
+     if (startTimestamp === undefined) {
+       startTimestamp = frame.timestamp;
+       console.log(`[Encoder Worker] Start timestamp set to ${startTimestamp}μs`);
+     }
 
-      // Encode frame (keyframe every 30 frames for 1 second at 30fps)
-      const isKeyFrame = frameCount % 30 === 0;
-      await encoder.encode(processedFrame, isKeyFrame);
-      frameCount++;
-    } catch (error) {
-      console.error('[Encoder Worker] Error processing frame:', error);
-      frame.close();
-      throw error; // RPC automatically propagates errors
-    }
-  },
+     // Resize frame if dimensions don't match encoder configuration
+     const processedFrame = resizeFrame(frame, encoderConfig.width, encoderConfig.height);
+
+     // Encode frame (keyframe every 30 frames for 1 second at 30fps)
+     const isKeyFrame = frameCount % 30 === 0;
+     encoder.encode(processedFrame, isKeyFrame);
+     frameCount++;
+   } catch (error) {
+     console.error('[Encoder Worker] Error processing frame:', error);
+     frame.close();
+     throw error; // RPC automatically propagates errors
+   }
+ },
 
   /**
    * Flush pending frames

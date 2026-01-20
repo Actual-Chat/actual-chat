@@ -4,26 +4,38 @@
 @{
     var isRightPanelVisible = State.Value;
     var cls = isRightPanelVisible ? "rp-visible" : "";
+    var recordingCls = _isRecording ? "recording" : "";
 }
 
 @if (_rendered) {
-    <div @ref="Ref" class="video-panel first-time-open @cls">
+    <div @ref="Ref" class="video-panel first-time-open @cls @recordingCls">
         <div class="c-content">
             <div class="video-frame">
-                <video autoplay muted playsinline loop preload="auto" class="call-video">
-                    <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
-                    <source src="/dist/images/landing/landing-tutorial.mp4" type="video/mp4"/>
-                </video>
+                <canvas class="call-video"></canvas>
+            </div>
+            <div class="video-controls show-with-delay">
+                <HeaderButton Class="@($"record-btn {recordingCls}")"
+                              Name="@(_isRecording ? "Stop Recording" : "Start Recording")">
+                    <i class="@(_isRecording ? "icon-stop" : "icon-video") text-lg"></i>
+                </HeaderButton>
             </div>
             <HeaderButton Class="expand-btn show-with-delay">
                 <i class="icon-expand text-lg"></i>
             </HeaderButton>
+            @if (_hasError) {
+                <div class="video-error">
+                    <span>@_errorMessage</span>
+                </div>
+            }
         </div>
     </div>
 }
 
 @code {
     private bool _rendered;
+    private bool _isRecording;
+    private bool _hasError;
+    private string _errorMessage = "";
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
 
     private ElementReference Ref { get; set; }
@@ -59,6 +71,7 @@
     [JSInvokable]
     public async Task CloseVideoPanel() {
         _rendered = false;
+        _isRecording = false;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
 
@@ -68,6 +81,34 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    [JSInvokable]
+    public async Task OnRecordingStarted() {
+        _isRecording = true;
+        _hasError = false;
+        _errorMessage = "";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnRecordingStopped() {
+        _isRecording = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnRecordingError(string error) {
+        _hasError = true;
+        _errorMessage = error;
+        _isRecording = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnRecorderStateChanged(string stateJson) {
+        // State is passed as JSON string from TypeScript
+        // Can be parsed and used for more detailed UI updates if needed
+        await InvokeAsync(StateHasChanged);
+    }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
