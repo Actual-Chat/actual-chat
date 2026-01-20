@@ -43,6 +43,7 @@ const options = {
         { out: 'vadWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts' },
         { out: 'videoDecoderWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts' },
         { out: 'videoEncoderWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker.ts' },
+        { out: 'videoSegmentationWorker', in: './src/dotnet/UI.Blazor.App/Services/Video/workers/segmentation-worker.ts' },
     ],
     bundle: true,
     platform: 'browser',
