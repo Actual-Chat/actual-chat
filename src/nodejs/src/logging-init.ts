@@ -92,6 +92,8 @@ export type LogScope =
     | 'Theme'
     | 'TooltipHost'
     | 'UserInterface'
+    | 'VideoPanel'
+    | 'VideoRecorder'
     | 'VisualMediaViewer'
     | 'WebAuth'
     | 'WebFileProvider';
