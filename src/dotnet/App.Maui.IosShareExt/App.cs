@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.IosShareExt.Module;
+using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.Hosting;
 using ActualChat.Maui;
 using ActualChat.Maui.Module;
@@ -15,8 +16,7 @@ namespace ActualChat.App.Maui.IosShareExt;
 #pragma warning disable VSTHRD002, IL2026
 public static class App
 {
-    // TODO: use StaticLog instead
-    private static readonly ILogger Log = new OSLogLogger(nameof(App));
+    private static readonly ILogger BootstrapLog = new OSLogLogger(nameof(App));
 
     public static ServiceProvider Bootstrap()
     {
@@ -28,29 +28,14 @@ public static class App
             MauiDiagnostics.CreateSentryTraceProvider();
             // TODO: StaticLog bootstrap
             var services = CreateServiceProvider();
-            _ = SetSession(services);
+            _ = services.GetRequiredService<SessionInitializer>().SetSession();
+
             return services;
         }
         catch (Exception e)
         {
-            Log.LogCritical(e, "App bootstrap failed.");
+            BootstrapLog.LogCritical(e, "App bootstrap failed.");
             throw;
-        }
-    }
-
-    private static async Task SetSession(ServiceProvider services)
-    {
-        try {
-            // TODO: share constant for "Fusion.SessionID"
-            var sessionId = await IosSharedSecureStorage.Default.GetAsync("Fusion.SessionId").ConfigureAwait(false);
-            if (sessionId.IsNullOrEmpty()) {
-                Log.LogCritical("No session id found.");
-                return;
-            }
-            services.GetRequiredService<TrueSessionResolver>().Session = new Session(sessionId);
-        }
-        catch (Exception e) {
-            Log.LogCritical(e, "Failed to set session.");
         }
     }
 

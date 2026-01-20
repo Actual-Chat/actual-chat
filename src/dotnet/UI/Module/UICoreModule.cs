@@ -10,5 +10,8 @@ public sealed class UICoreModule(IServiceProvider moduleServices)
 {
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion.")]
     protected override void InjectServices(IServiceCollection services)
-        => services.AddScoped(c => new ChunkedFileUploader(c));
+    {
+        services.AddScoped(c => new ChunkedFileUploader(c));
+        services.AddScoped(_ => new ChunkSizeSelectorRecommendation());
+    }
 }
