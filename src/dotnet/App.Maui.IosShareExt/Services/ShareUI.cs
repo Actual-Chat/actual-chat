@@ -135,15 +135,12 @@ public class ShareUI : UIServiceBase, IComputeService
                 var attachments = await UploadFiles(chatId, fileInputs, progress, cancellationToken)
                     .ConfigureAwait(false);
                 var entryText = text;
-                foreach (var attachmentList in attachments.Chunk(10))
-                {
-                    var cmd = new Chats_UpsertTextEntry(Session, chatId, null, entryText) {
-                        ClientId = RandomStringGenerator.Default.Next(6),
-                        EntryAttachments = attachmentList,
-                    };
-                    await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
+                foreach (var attachmentList in attachments.Chunk(10)) {
+                    await CreateChatEntry(chatId, entryText, attachmentList, cancellationToken).ConfigureAwait(false);
                     entryText = "";
                 }
+                if (!entryText.IsNullOrWhiteSpace())
+                    await CreateChatEntry(chatId, entryText, [], cancellationToken).ConfigureAwait(false);
             }
             await CloseApp(cancellationToken).ConfigureAwait(false);
         }
@@ -152,6 +149,15 @@ public class ShareUI : UIServiceBase, IComputeService
             _isFailed.Value = true;
             throw;
         }
+    }
+
+    private async Task CreateChatEntry(ChatId chatId, string entryText, TextEntryAttachment[] attachmentList, CancellationToken cancellationToken)
+    {
+        var cmd = new Chats_UpsertTextEntry(Session, chatId, null, entryText) {
+            ClientId = RandomStringGenerator.Default.Next(6),
+            EntryAttachments = attachmentList,
+        };
+        await UICommander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<TextEntryAttachment[]> UploadFiles(
