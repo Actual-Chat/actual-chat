@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using ActualChat.Chat.Db;
 using ActualChat.Redis;
 using ActualChat.Testing.Host;
