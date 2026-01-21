@@ -14,6 +14,14 @@
                 <canvas class="call-video"></canvas>
             </div>
             <div class="video-controls show-with-delay">
+                @if (_videoDevices.Count > 1) {
+                    <select @bind="_selectedCameraDeviceId" @bind:after="async () => await OnSelectedCameraChanged(_selectedCameraDeviceId)" class="camera-select" disabled="@_isRecording">
+                        <option value="">Default Camera</option>
+                        @foreach (var device in _videoDevices) {
+                            <option value="@device.DeviceId">@device.Label</option>
+                        }
+                    </select>
+                }
                 <HeaderButton Class="@($"record-btn {recordingCls}")"
                               Name="@(_isRecording ? "Stop Recording" : "Start Recording")">
                     <i class="@(_isRecording ? "icon-stop" : "icon-video") text-lg"></i>
@@ -32,11 +40,21 @@
 }
 
 @code {
+    private record VideoDevice(string DeviceId, string Label);
+
     private bool _rendered;
     private bool _isRecording;
     private bool _hasError;
     private string _errorMessage = "";
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
+
+    private List<VideoDevice> _videoDevices = new();
+    private string _selectedCameraDeviceId = "";
+    private async Task OnSelectedCameraChanged(string deviceId) {
+        if (JSRef is not null) {
+            await JSRef.InvokeVoidAsync("setSelectedCamera", deviceId);
+        }
+    }
 
     private ElementReference Ref { get; set; }
     private DotNetObjectReference<VideoPanel> BlazorRef { get; set; } = null!;
@@ -57,6 +75,7 @@
         if (_rendered && JSRef is null) {
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            await LoadVideoDevices();
         }
     }
 
@@ -109,6 +128,20 @@
         // Can be parsed and used for more detailed UI updates if needed
         await InvokeAsync(StateHasChanged);
     }
+
+    private async Task LoadVideoDevices() {
+        if (JSRef is null) return;
+
+        try {
+            var devices = await JSRef.InvokeAsync<VideoDevice[]>("enumerateVideoDevices");
+            _videoDevices = devices.ToList();
+            await InvokeAsync(StateHasChanged);
+        } catch {
+            // Handle error silently - camera selection is optional
+            _videoDevices = new();
+        }
+    }
+
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

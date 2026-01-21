@@ -92,6 +92,13 @@ body.hoverable .btn-h.record-btn:hover {
 body.hoverable .btn-h.record-btn.recording:hover {
     @apply bg-red-700;
 }
+.video-panel .camera-select {
+    @apply bg-gray-800/50 text-white;
+    @apply rounded-lg px-3 py-1;
+    @apply text-sm;
+    @apply border border-gray-600;
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
 
 /* Recording indicator */
 .video-panel.recording::before {
