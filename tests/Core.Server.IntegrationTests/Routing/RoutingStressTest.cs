@@ -1,24 +1,41 @@
 using System.Collections.Concurrent;
-using ActualChat.Rpc;
+using ActualChat.Attributes;
+using ActualChat.Hosting;
+using ActualChat.Mesh;
 using ActualChat.Testing.Host;
-using ActualLab.Generators;
 using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Routing;
+
+// Register a faster mesh lock preset for stress tests
+file static class MeshLockOptionsRegistration
+{
+    static MeshLockOptionsRegistration()
+    {
+        var presets = (Dictionary<string, MeshLockOptions>)MeshLockOptions.Presets;
+        presets["Fast"] = new MeshLockOptions(expirationPeriod: 5, renewalPeriodRatio: 0.4f) {
+            UnconditionalCheckPeriod = TimeSpan.FromSeconds(1),
+        };
+    }
+
+    public static void EnsureRegistered() { } // Call to trigger static constructor
+}
 
 /// <summary>
 /// Stress test for RPC routing with distributed compute services.
 /// This test creates and destroys nodes rapidly while calling compute methods
 /// to verify that routing works correctly and no "RemoteComputeMethodCallFromTheSameService" errors occur.
 /// </summary>
+[Collection(nameof(ServerCollection))]
+[Trait("Category", "Slow")]
 public class RoutingStressTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(RoutingStressTest)}", TestAppHostOptions.None with {
         MustStart = true,
-        ConfigureModuleServices = (ctx, services) => {
-            var fusion = services.AddFusion();
-            // Register our test service in Distributed mode
-            fusion.AddDistributedService<IRoutingTestService, RoutingTestService>();
+        ConfigureServices = (ctx, services) => {
+            var rpcHost = services.AddRpcHost(ctx.HostInfo);
+            // Register our test service as a backend service in Distributed mode
+            rpcHost.AddBackend<IRoutingTestService, RoutingTestService>();
         },
     }, @out)
 {
@@ -187,11 +204,16 @@ public class RoutingStressTest(ITestOutputHelper @out)
     [Fact(Timeout = 90_000)]
     public async Task ConcurrentCallsDuringHostAdditionTest()
     {
+        MeshLockOptionsRegistration.EnsureRegistered();
+
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(80));
         var cancellationToken = cts.Token;
+        var perCallTimeout = TimeSpan.FromSeconds(10);
 
-        // Start with one host
-        await using var h1 = await NewAppHost(o => o.WithMeshLockSubspace(_sharedMeshLockSubspace));
+        // Start with one host using faster mesh lock options
+        await using var h1 = await NewAppHost(o => o
+            .WithMeshLockSubspace(_sharedMeshLockSubspace)
+            with { MeshLockOptionsPreset = "Fast" });
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var s1 = h1.Services.GetRequiredService<IRoutingTestService>();
         await w1.WhenAnnounced;
@@ -210,8 +232,9 @@ public class RoutingStressTest(ITestOutputHelper @out)
                     var key = $"call-{i}";
                     var value = $"value-{i}";
 
-                    await s1.SetValue(shardKey, key, value);
-                    var result = await s1.GetValue(shardKey, key);
+                    // Use per-call timeout to prevent indefinite blocking during topology changes
+                    await s1.SetValue(shardKey, key, value).WaitAsync(perCallTimeout, cancellationToken);
+                    var result = await s1.GetValue(shardKey, key).WaitAsync(perCallTimeout, cancellationToken);
 
                     if (result.Value != value)
                         errors.Add(new InvalidOperationException($"Value mismatch: expected {value}, got {result.Value}"));
@@ -223,6 +246,10 @@ public class RoutingStressTest(ITestOutputHelper @out)
 
                     await Task.Delay(10, cancellationToken);
                 }
+                catch (TimeoutException e) {
+                    errors.Add(e);
+                    WriteLine($"Call {i} timed out: {e.Message}");
+                }
                 catch (Exception e) when (e is not OperationCanceledException) {
                     errors.Add(e);
                     WriteLine($"Call {i} failed: {e.GetType().Name}: {e.Message}");
@@ -231,7 +258,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         }, cancellationToken);
 
         // Concurrently add hosts
-        var hosts = new List<TestAppHost>();
+        var hosts = new ConcurrentBag<TestAppHost>();
         var addHostTask = Task.Run(async () => {
             var rnd = new Random();
             while (!callTask.IsCompleted && !cancellationToken.IsCancellationRequested) {
@@ -239,7 +266,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
 
                 var host = await NewAppHost(o => o
                     .WithMeshLockSubspace(_sharedMeshLockSubspace)
-                    with { MustInitializeDb = false });
+                    with { MustInitializeDb = false, MeshLockOptionsPreset = "Fast" });
                 hosts.Add(host);
                 Interlocked.Increment(ref addedHostCount);
 
@@ -253,9 +280,8 @@ public class RoutingStressTest(ITestOutputHelper @out)
         cts.Cancel(); // Stop adding hosts
         await addHostTask.SilentAwait();
 
-        // Cleanup
-        foreach (var host in hosts)
-            await host.DisposeAsync();
+        // Cleanup hosts in parallel
+        await Task.WhenAll(hosts.Select(h => h.DisposeAsync().AsTask()));
 
         errors.Should().BeEmpty($"No errors should occur during concurrent operations. Errors: {string.Join("; ", errors.Take(5).Select(e => e.Message))}");
         WriteLine($"Test completed: {completedCalls} calls, {addedHostCount} hosts added, {errors.Count} errors");
@@ -330,6 +356,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
 }
 
 // Test service interface
+[BackendService(nameof(HostRole.TestBackend), ServiceMode.Distributed)]
 public interface IRoutingTestService : IComputeService, IBackendService
 {
     [ComputeMethod]
