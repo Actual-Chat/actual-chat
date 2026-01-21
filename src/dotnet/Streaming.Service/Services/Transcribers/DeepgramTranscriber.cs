@@ -215,6 +215,8 @@ public partial class DeepgramTranscriber : ITranscriber
         // NOTE: as for now deepgram does not support language detection in streaming mode so we use language from options
         var detectedLanguages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram).Distinct().ToArray() ?? [];
         var languages = detectedLanguages.Length > 0 ? detectedLanguages : [options.Language];
+        // Minimum transcript length (in characters) before treating streaming language detection as reliable;
+        // very short snippets are often ambiguous or misclassified, so we wait until we have enough context.
         const int minTranscriptLengthForLanguageDetection = 20;
         if (options.DetectLanguage && detectedLanguages.Length > 0 && suffix.Length >= minTranscriptLengthForLanguageDetection)
             options.LanguageDetectedCallback?.Invoke(languages);

@@ -174,12 +174,12 @@ public partial class StreamingBackend
         else {
             var languageCandidates = userLanguageSettings.ListSpoken().ToArray();
             Language? detectedLanguage = null;
-            Action<Language[]> onLanguageDetected = languages1 => {
+            Action<Language[]> onLanguageDetected = detectedLanguages => {
                 if (detectedLanguage is not null)
                     return;
 
                 foreach (var languageCandidate in languageCandidates) {
-                    if (languages1.Contains(languageCandidate)) {
+                    if (detectedLanguages.Contains(languageCandidate)) {
                         detectedLanguage = languageCandidate;
                         DebugLog?.LogDebug("Detected language: {Language} for AudioSegment: {AudioSegment}", detectedLanguage, audioSegment.StreamId);
                         ApplyTranscriptionDetectedLanguage(audioSegment.Record, detectedLanguage, default);
@@ -187,11 +187,7 @@ public partial class StreamingBackend
                     }
                 }
             };
-            var transcriptionOptions = new TranscriptionOptions {
-                DetectLanguage = true,
-                LanguageCandidates = languageCandidates,
-                LanguageDetectedCallback = onLanguageDetected,
-            };
+            var transcriptionOptions = TranscriptionOptions.AutoDetectLanguage(languageCandidates, onLanguageDetected);
             var textEntryId = await TranscribeAudio(audioSegment, transcriptionOptions, beginsAt, audioEntryTask, cancellationToken).ConfigureAwait(false);
             if (detectedLanguage is not null && textEntryId is not null)
                 return (textEntryId, detectedLanguage);
@@ -399,6 +395,6 @@ public partial class StreamingBackend
                 ChatId = chatId,
                 Timestamp = Clocks.SystemClock.Now,
             };
-            await kvas.UserChatRecordingDetectedLanguage().Set(userChatRecordingDetectedLanguage, default).ConfigureAwait(false);
+            await kvas.UserChatRecordingDetectedLanguage().Set(userChatRecordingDetectedLanguage, cancellationToken).ConfigureAwait(false);
         }, Log, "Failed to apply transcription detected language", cancellationToken);
 }
