@@ -20,6 +20,7 @@ import { TransferSimulator, type TransferConfig, type TransferStats } from '../u
 import { WebSocketTransferAdapter } from '../utils/websocket-transfer';
 import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
 import { MediaStreamRecorder } from '../utils/mp4-muxer';
+import { VideoStreamer, type VideoStreamConfig } from '../video-streamer';
 import { Versioning } from 'versioning';
 
 export interface PipelineConfig {
@@ -50,6 +51,16 @@ export interface PipelineConfig {
   useWebSocketTransfer?: boolean;
   websocketServerUrl?: string;
   websocketRole?: 'sender' | 'receiver' | 'bidirectional';
+  /**
+   * Streaming configuration (optional)
+   * When enabled, streams encoded chunks to server for real-time viewing
+   */
+  streaming?: {
+    enabled: boolean;
+    sessionToken: string;
+    chatId: string;
+    audioStreamId?: string;
+  };
 }
 
 // Type declarations for Insertable Streams API
@@ -96,6 +107,9 @@ export class VideoPipeline implements IVideoPipeline {
   // Network simulation (Chrome path only - represents boundary between sender and receiver)
   private transferSimulator: TransferSimulator | null = null;
   private websocketTransfer: WebSocketTransferAdapter | null = null;
+
+  // Video streaming
+  private videoStream: any = null; // VideoStream instance
 
   // Canvas fallbacks (when MSTG not available)
   private outputCanvas: HTMLCanvasElement | null = null;
@@ -147,6 +161,14 @@ export class VideoPipeline implements IVideoPipeline {
   private onEncoderEncodedChunk = async (chunkData: EncodedChunkData) => {
     // const chunkSeq = chunkData.sequenceNumber ?? -1;
     // console.log(`[Pipeline] Encoded chunk #${chunkSeq} received from sender via RPC: ${chunkData.type}, size: ${chunkData.byteLength}`);
+
+    // Stream to server if enabled
+    if (this.config.streaming?.enabled && this.videoStream) {
+      const chunkBytes = new Uint8Array(chunkData.byteLength);
+      chunkData.chunk.copyTo(chunkBytes);
+      this.videoStream.addChunk(chunkBytes);
+      // console.log(`[Pipeline] Chunk (${chunkData.type}) streamed to server: ${chunkBytes.length} bytes`);
+    }
 
     if (this.websocketTransfer) {
       await this.websocketTransfer.sendChunk(chunkData);
@@ -327,6 +349,23 @@ export class VideoPipeline implements IVideoPipeline {
         }
       );
       console.log('[Pipeline] Transfer simulator initialized in main thread (network boundary)');
+    }
+
+    // Initialize video streaming if enabled
+    if (this.config.streaming?.enabled) {
+      console.log('[Pipeline] Initializing video streaming to server');
+      const streamConfig: VideoStreamConfig = {
+        codec: this.config.encoderConfig.codec,
+        width: this.config.encoderConfig.width,
+        height: this.config.encoderConfig.height,
+        audioStreamId: this.config.streaming.audioStreamId
+      };
+      this.videoStream = VideoStreamer.addStream(
+        this.config.streaming.sessionToken,
+        this.config.streaming.chatId,
+        streamConfig
+      );
+      console.log('[Pipeline] Video streaming initialized');
     }
 
 
@@ -535,6 +574,13 @@ export class VideoPipeline implements IVideoPipeline {
     } else if (this.transferSimulator) {
       this.transferSimulator.reset();
       this.transferSimulator = null;
+    }
+
+    // Complete video stream if active
+    if (this.videoStream) {
+      this.videoStream.complete();
+      console.log('[Pipeline] Video stream completed');
+      this.videoStream = null;
     }
 
     // Reset timestamp normalization

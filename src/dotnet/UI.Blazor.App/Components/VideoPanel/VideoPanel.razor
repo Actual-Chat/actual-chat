@@ -47,6 +47,7 @@
     private bool _hasError;
     private string _errorMessage = "";
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
+    private static readonly string JSSetSessionContextMethod = "setSessionContext";
 
     private List<VideoDevice> _videoDevices = new();
     private string _selectedCameraDeviceId = "";
@@ -75,6 +76,7 @@
         if (_rendered && JSRef is null) {
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            await UpdateSessionContext();
             await LoadVideoDevices();
         }
     }
@@ -85,6 +87,9 @@
         } else if (!Show && _rendered && JSRef is not null) {
             await JSRef.InvokeVoidAsync("startClosing");
         }
+
+        if (JSRef is not null)
+            await UpdateSessionContext();
     }
 
     [JSInvokable]
@@ -140,6 +145,19 @@
             // Handle error silently - camera selection is optional
             _videoDevices = new();
         }
+    }
+
+    private async Task UpdateSessionContext() {
+        if (JSRef is null)
+            return;
+
+        var chatId = await Hub.ChatUI.SelectedChatId.Use(CancellationToken.None).ConfigureAwait(false);
+        if (chatId is null)
+            return;
+
+        var sessionTokens = Hub.Services.GetRequiredService<SessionTokens>();
+        var secureToken = await sessionTokens.Get(CancellationToken.None).ConfigureAwait(false);
+        await JSRef.InvokeVoidAsync(JSSetSessionContextMethod, chatId.Value, secureToken.Token);
     }
 
 

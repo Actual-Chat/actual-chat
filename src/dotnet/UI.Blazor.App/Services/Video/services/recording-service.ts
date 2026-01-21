@@ -24,6 +24,12 @@ export interface RecordingConfig {
   latency: number;
   jitter: number;
   packetLoss: number;
+  // Streaming settings
+  streaming?: {
+    enabled: boolean;
+    sessionToken: string;
+    chatId: string;
+  };
   // Background blur settings
   backgroundBlur?: {
     enabled: boolean;

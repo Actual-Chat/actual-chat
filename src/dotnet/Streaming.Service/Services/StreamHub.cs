@@ -45,6 +45,27 @@ public class StreamHub(IServiceProvider services) : Hub
             preSkip,
             audioStream.SelectMany(c => c.AsAsyncEnumerable()));
 
+    // Video streaming method for JS client
+    public Task PushVideo(
+        string sessionToken,
+        string? chatId,
+        string codec,
+        int width,
+        int height,
+        double clientStartOffset,
+        string? audioStreamId,
+        IAsyncEnumerable<byte[][]> videoStream)
+        // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+        => PushVideo(
+            sessionToken,
+            chatId,
+            codec,
+            width,
+            height,
+            clientStartOffset,
+            audioStreamId,
+            videoStream.SelectMany(c => c.AsAsyncEnumerable()));
+
     // Private methods
 
     private async Task ProcessAudio(
@@ -87,6 +108,45 @@ public class StreamHub(IServiceProvider services) : Hub
         var frameStream = RpcStream.New(frames);
         await Backend
             .ProcessAudio(audioRecord, preSkip, frameStream, CancellationToken.None)
+            .SilentAwait(false);
+    }
+
+    private async Task PushVideo(
+        string sessionToken,
+        string? chatId,
+        string codec,
+        int width,
+        int height,
+        double clientStartOffset,
+        string? audioStreamId,
+        IAsyncEnumerable<byte[]> videoStream)
+    {
+        // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+
+        var chatIdTyped = ChatId.Parse(chatId);
+        var audioStreamIdTyped = StreamId.ParseNullable(audioStreamId);
+        var httpContext = Context.GetHttpContext()!;
+        var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSessionFromCookie();
+
+        using var stopCts = CreateStopTokenSource(httpContext);
+        if (stopCts.IsCancellationRequested)
+            return;
+
+        stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
+        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.VideoBackend];
+        if (nodes.Length == 0) {
+            Log.LogError("No nodes serving {Role} role!", HostRole.VideoBackend);
+            return; // No backends
+        }
+
+        var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
+        var streamId = StreamId.New(nodeRef);
+        var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, codec, width, height, audioStreamIdTyped);
+        Log.LogInformation("PushVideo: {VideoRecord}", videoRecord);
+        var chunks = videoStream.SuppressCancellation(stopCts.Token);
+        var chunkStream = RpcStream.New(chunks);
+        await Backend
+            .PushVideo(videoRecord, chunkStream, CancellationToken.None)
             .SilentAwait(false);
     }
 
