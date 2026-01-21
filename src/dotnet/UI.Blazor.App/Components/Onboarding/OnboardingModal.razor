@@ -13,11 +13,11 @@
 }
 
 <DialogFrame
-    Class="onboarding-modal"
+    Class="onboarding-modal theme-light"
     HasHeader="false"
     NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged" Class="onboarding-stepper">
+    <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged" Class="onboarding-stepper" ShowNoise="@true">
         <Filler>
             @if (stepper.CurrentStep is PhoneStep) {
                 <div class="stepper-image-filler">
@@ -61,8 +61,8 @@
             <div class="onboarding-footer">
                 @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep)) {
                     <LineProgress
-                        StepCount="@(stepper.StepCount - 4)"
-                        CurrentStepIndex="@(stepper.CurrentStepIndex - 4)"
+                        StepCount="@stepper.StepCount"
+                        CurrentStepIndex="@stepper.CurrentStepIndex"
                         Decoration="LineProgress.LineProgressDecoration.Gray">
                     </LineProgress>
                 }

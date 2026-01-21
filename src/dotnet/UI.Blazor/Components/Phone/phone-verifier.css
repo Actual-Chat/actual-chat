@@ -17,7 +17,7 @@
 }
 
 .phone-verifier .c-incut {
-    @apply flex-x gap-x-4 items-center;
+    @apply flex-y gap-4 items-center;
     @apply py-2;
     @apply rounded-lg;
     @apply overflow-hidden;
@@ -26,6 +26,8 @@
 .phone-verifier .c-incut .verify-btn {
     @apply flex-none;
     @apply px-8;
+    @apply bg-01;
+    @apply text-primary;
 }
 .phone-verifier .c-incut .c-info {
     @apply text-caption-4;

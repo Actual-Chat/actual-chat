@@ -6,15 +6,29 @@
     @apply custom-scrollbar;
 }
 .stepper-header {
+    @apply z-20;
     @apply ordinary-header;
     @apply px-0;
 }
 .stepper-body {
+    @apply z-20;
     @apply flex-y grow shrink justify-center;
 }
 .stepper-footer {
+    @apply z-20;
     @apply py-8;
 }
 .stepper-filler {
     @apply grow;
+}
+.stepper-noise {
+    @apply absolute inset-0;
+    @apply opacity-100;
+    @apply overflow-hidden;
+    mix-blend-mode: overlay;
+}
+.stepper-noise img {
+    @apply block;
+    @apply w-full h-full;
+    @apply object-cover;
 }
