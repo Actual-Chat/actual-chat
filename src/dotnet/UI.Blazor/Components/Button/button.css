@@ -37,7 +37,7 @@ body.device-ios * {
 }
 .btn[data-button-class="default"],
 .btn.btn-md[data-button-class="default"] {
-    @apply min-h-12 h-12 md:min-h-10 md:h-10 w-fit;
+    @apply min-h-10 w-fit;
 }
 .btn .btn-title {
     @apply truncate;

@@ -5,6 +5,8 @@
 }
 .stepper.onboarding-stepper {
     @apply md:h-192;
+    background: linear-gradient(89deg, #FFEFFF 5.09%, #DAD2FF 94.69%);
+
 }
 .step-tiles {
     @apply mt-6 flex-y gap-y-4;
@@ -12,7 +14,7 @@
 .step-tile {
     @apply flex-x gap-x-4;
     @apply pl-4 pt-2 pb-2 pr-4;
-    @apply bg-03;
+    @apply bg-01;
     @apply rounded-lg;
 }
 .step-tile-body {
@@ -272,8 +274,11 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 }
 
 .onboarding-footer {
-    @apply flex-y gap-y-8;
+    @apply flex-y gap-y-2;
 }
 .onboarding-footer .line-progress {
     @apply self-center;
+    @apply p-1;
+    @apply rounded-full;
+    @apply bg-[var(--white-80)];
 }

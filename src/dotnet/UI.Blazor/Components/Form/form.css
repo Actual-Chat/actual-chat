@@ -3,9 +3,6 @@
     @apply mt-2;
     @apply rounded-t-md;
 }
-.form section:has(.form-section-content.label-inside-input) {
-    @apply bg-input;
-}
 .form-section-content {
     @apply relative;
     @apply flex-1 flex-x items-center;
@@ -66,8 +63,10 @@ form .form-section {
     @apply px-1;
 }
 .form.form-y section .form-section-content.label-inside-input {
-    @apply min-h-12;
+    @apply h-12;
     @apply px-4;
+    @apply rounded-t-md;
+    @apply bg-input;
 }
 
 /* FormSection with textarea */
@@ -106,7 +105,8 @@ form .form-section {
     @apply flex-y gap-x-4;
     @apply h-4;
     @apply pl-4;
-    @apply bg-modal;
+    @apply rounded-b-md;
+    @apply bg-transparent;
     @apply text-caption-6 font-normal;
 }
 .form-section-validation.invalid {
@@ -114,6 +114,9 @@ form .form-section {
 }
 .form-section-validation.success {
     @apply text-success;
+}
+.form-section-validation:not(:empty) {
+    @apply bg-input;
 }
 
 /*Label inside input*/

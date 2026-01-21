@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using System.ComponentModel.DataAnnotations
 @inherits SimpleStep<AppUIHub>;
 
 @if (CurrentStep != this) {
@@ -16,62 +15,64 @@
     <p class="text-text-1 mt-2">
         We collect this information to help you find friends in your contacts list who are already using @CoreConstants.AppName.
     </p>
-    <Form
-        Class="mt-6"
-        Model="@_model">
-        <AsyncDataAnnotationsValidator @ref="_validator"/>
-        <FormSection
-            For="() => _model.Phone"
-            InputId="phone"
-            Label="Phone"
-            Class="grow"
-            IsLabelInsideInput="true"
-            IsRequired="true">
-            <ChildContent>
-                <TextBox
-                    Id="phone"
-                    @bind-Value="_model.Phone"
-                    Autocomplete="tel"
-                    type="tel"
-                    inputmode="tel"/>
-            </ChildContent>
-            <Right>
-                @if (_showVerificationStatus) {
-                    <VerificationStatus
-                        IsVerified="_isVerified ?? false"
-                        Class="w-8 h-8" />
-                }
-            </Right>
-        </FormSection>
-        <div class="c-incut">
-            <Button
-                Class="btn-outline verify-btn"
-                IsDisabled="@(_validationState is ValidationState.Invalid)"
-                Click="@OnVerifyClick">
-                @VerifyButtonText
-            </Button>
-            <div class="c-info">
-                You can skip this step. The phone number can be filled in later.
+    <CascadingValue Value="_editContext">
+        <EditForm EditContext="_editContext" class="form form-y mt-6">
+            <FormSection
+                For="() => _model.Phone"
+                InputId="phone"
+                Label="Phone"
+                Class="grow"
+                IsLabelInsideInput="true"
+                IsRequired="true">
+                <ChildContent>
+                    <TextBox
+                        Id="phone"
+                        @bind-Value="_model.Phone"
+                        @oninput="OnPhoneInput"
+                        Autocomplete="tel"
+                        type="tel"
+                        inputmode="tel"/>
+                </ChildContent>
+                <Right>
+                    @if (_showVerificationStatus) {
+                        <VerificationStatus
+                            IsVerified="_isVerified ?? false"
+                            Class="w-8 h-8"/>
+                    }
+                </Right>
+            </FormSection>
+            <div class="c-incut">
+                <Button
+                    Class="verify-btn btn-w-full"
+                    IsDisabled="@(IsVerifyButtonDisabled)"
+                    Click="@OnVerifyClick">
+                    Verify
+                </Button>
+                <div class="c-info">
+                    You can skip this step. The phone number can be filled in later.
+                </div>
             </div>
-        </div>
 
-        @if (CaptchaUI.IsConfigured) {
-            <div class="c-recaptcha-info">
-                This site is protected by reCAPTCHA and the Google
-                <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
-                <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
-            </div>
-        }
-    </Form>
+            @if (CaptchaUI.IsConfigured) {
+                <div class="c-recaptcha-info">
+                    This site is protected by reCAPTCHA and the Google
+                    <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
+                    <a class="recaptcha-link" href="https://policies.google.com/terms">Terms of Service</a> apply.
+                </div>
+            }
+        </EditForm>
+        </CascadingValue>
 </div>
 
 @code {
     private readonly Model _model = new();
+    private FieldIdentifier _phoneFieldIdentifier;
+    private EditContext? _editContext;
+    private ValidationMessageStore? _validationMessageStore;
     private ValidationState _validationState = ValidationState.None;
     private bool _showVerificationStatus;
     private bool? _isVerified;
     private bool? _skipped;
-    private AsyncDataAnnotationsValidator _validator = null!;
 
     private IAccounts Accounts => Hub.Accounts;
     private IPhones Phones => Hub.Phones;
@@ -82,11 +83,6 @@
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
     [Parameter] public EventCallback OnVerifyClick { get; set; }
-
-    private string VerifyButtonText
-        => _validationState == ValidationState.Invalid
-            ? "Unavailable"
-            : "Verify";
 
     public override bool CanSkip => false;
 
@@ -113,16 +109,21 @@
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, default);
         _showVerificationStatus = !account.HasVerifiedPhone();
+
         if (account.Phone != null)
             _model.Phone = account.Phone.ToReadable();
+        else
+            _model.Phone = PhoneCodes.Default.DisplayCode;
+
+        _editContext = new EditContext(_model);
+        _validationMessageStore = new ValidationMessageStore(_editContext);
+        _phoneFieldIdentifier = FieldIdentifier.Create(() => _model.Phone);
 
         await CaptchaUI.EnsureInitialized();
     }
 
-    protected override async Task<bool> Validate() {
-        var isValid = _validationState != ValidationState.Invalid
-            && await _validator.Validate().ConfigureAwait(false);
-        return isValid;
+    protected override Task<bool> Validate() {
+        return Task.FromResult(_validationState == ValidationState.Valid);
     }
 
     protected override ValueTask OnSkip() {
@@ -188,7 +189,44 @@
         }
     }
 
+    private bool IsVerifyButtonDisabled =>
+        string.IsNullOrWhiteSpace(_model.Phone) ||
+        _validationState == ValidationState.Invalid ||
+        _editContext?.GetValidationMessages(_phoneFieldIdentifier).Any() == true;
+
+    private void OnPhoneInput(ChangeEventArgs e) {
+        if (_editContext == null || _validationMessageStore == null)
+            return;
+
+        var phone = (e.Value?.ToString() ?? "").Trim();
+
+        _validationMessageStore.Clear(_phoneFieldIdentifier);
+        _validationState = ValidationState.None;
+
+        if (string.IsNullOrEmpty(phone)) {
+            _validationMessageStore.Add(_phoneFieldIdentifier, "Phone number is required");
+            _validationState = ValidationState.Invalid;
+        } else if (!phone.StartsWith("+")) {
+            _validationMessageStore.Add(_phoneFieldIdentifier, "Phone number must start with '+'");
+            _validationState = ValidationState.Invalid;
+        } else {
+            var digits = new string(phone.Skip(1).Where(char.IsDigit).ToArray());
+            if (digits.Length < 8) {
+                _validationMessageStore.Add(_phoneFieldIdentifier, "Phone number is too short");
+                _validationState = ValidationState.Invalid;
+            } else if (digits.Length > 15) {
+                _validationMessageStore.Add(_phoneFieldIdentifier, "Phone number is too long");
+                _validationState = ValidationState.Invalid;
+            } else {
+                _validationState = ValidationState.Valid;
+            }
+        }
+
+        _editContext.NotifyValidationStateChanged();
+        StateHasChanged();
+    }
+
     public class Model {
-        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+        public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
     }
 }

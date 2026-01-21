@@ -214,6 +214,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .dialog-body {
+    @apply relative;
     @apply flex-1 flex-y items-stretch;
     @apply overflow-y-auto custom-scrollbar;
 }
