@@ -116,6 +116,22 @@ export function isTransferable(x: unknown): x is Transferable {
         return true;
     if (x instanceof MessagePort)
         return true;
+    // VideoFrame can be transferred
+    if (typeof VideoFrame !== 'undefined' && x instanceof VideoFrame)
+        return true;
+    // OffscreenCanvas can be transferred
+    if (typeof OffscreenCanvas !== 'undefined' && x instanceof OffscreenCanvas)
+        return true;
+    // ImageBitmap can be transferred
+    if (typeof ImageBitmap !== 'undefined' && x instanceof ImageBitmap)
+        return true;
+    // WebCodecs types can be transferred
+    if (typeof EncodedVideoChunk !== 'undefined' && x instanceof EncodedVideoChunk)
+        return true;
+    if (typeof EncodedAudioChunk !== 'undefined' && x instanceof EncodedAudioChunk)
+        return true;
+    if (typeof AudioData !== 'undefined' && x instanceof AudioData)
+        return true;
     // we don' use those objects yet
     // if (x instanceof ReadableStream)
     //     return true;
