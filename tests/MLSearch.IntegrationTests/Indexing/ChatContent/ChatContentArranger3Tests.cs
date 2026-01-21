@@ -5,10 +5,8 @@ using ActualChat.MLSearch.Indexing.ChatContent;
 
 namespace ActualChat.MLSearch.IntegrationTests.Indexing.ChatContent;
 
-public class ChatContentArranger3Tests(ITestOutputHelper @out)
+public class ChatContentArranger3Tests(ITestOutputHelper @out) : TestBase(@out)
 {
-    protected ITestOutputHelper Out { get; } = @out.ToSafe();
-
     [Fact(Skip = "Run explicitly")]
     public async Task IndexChat()
     {
@@ -27,7 +25,7 @@ public class ChatContentArranger3Tests(ITestOutputHelper @out)
         var documentLoader = new DocumentLoader(tailDocuments);
         var embeddingsCalculator = new EmbeddingsCalculator(new EmbeddingSettings());
         var contentArranger = new ChatContentArranger3(documentLoader, embeddingsCalculator, chatDialogFormatter);
-        //contentArranger.DebugLog = c => Out.WriteLine(c);
+        //contentArranger.DebugLog = c => WriteLine(c);
         var fragmentId = 0;
 
         var enumerator = GetEntries().GetEnumerator();
@@ -42,7 +40,7 @@ public class ChatContentArranger3Tests(ITestOutputHelper @out)
                     break;
             }
 
-            Out.WriteLine("-- Starting new arrange iteration");
+            WriteLine("-- Starting new arrange iteration");
             var result = contentArranger.Arrange(batch, tailDocuments.Values.ToImmutableArray(), default);
 
             var outDocuments = new Dictionary<SourceEntries, ChatSlice>();
@@ -53,10 +51,10 @@ public class ChatContentArranger3Tests(ITestOutputHelper @out)
                 var text = await chatDialogFormatter.EntriesToText(entrySet.Entries);
                 outDocuments.Add(entrySet, new ChatSlice(chatSliceMetadata, text));
                 var docId = entrySet.Entries.Min(c => c.LocalId);
-                Out.WriteLine("----------------------------");
-                Out.WriteLine($"Fragment {fragmentId}. DocId: {docId}, Entry count: {entrySet.Entries.Count}, Word count: {ChatContentArranger3.CountWords(text)}");
-                Out.WriteLine(text);
-                Out.WriteLine("----------------------------");
+                WriteLine("----------------------------");
+                WriteLine($"Fragment {fragmentId}. DocId: {docId}, Entry count: {entrySet.Entries.Count}, Word count: {ChatContentArranger3.CountWords(text)}");
+                WriteLine(text);
+                WriteLine("----------------------------");
                 fragmentId++;
             }
             i++;

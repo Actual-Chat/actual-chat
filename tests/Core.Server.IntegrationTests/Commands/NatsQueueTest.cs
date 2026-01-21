@@ -11,7 +11,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
     [Fact]
     public async Task SmokeTest()
     {
-        using var host = await NewAppHost(options => options with {
+        await using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(SmokeTest)}",
             ConfigureServices = (ctx, services) => {
                 var rpcHost = services.AddRpcHost(ctx.HostInfo);
@@ -37,7 +37,7 @@ public class NatsQueueTest(ITestOutputHelper @out)
     [Fact]
     public async Task MultipleCommandsCanBeScheduled()
     {
-        using var host = await NewAppHost(options => options with {
+        await using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(MultipleCommandsCanBeScheduled)}",
             ConfigureServices = (ctx, services) => {
                 var rpcHost = services.AddRpcHost(ctx.HostInfo);
@@ -67,17 +67,18 @@ public class NatsQueueTest(ITestOutputHelper @out)
 
         await DumpEventCount($"after awaiting {eventCount} events");
         countComputed.Value.Should().BeGreaterThanOrEqualTo(eventCount);
+        return;
 
         async Task DumpEventCount(string point) {
             countComputed = await countComputed.Update();
-            Out.WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count {point}: {testService.ProcessedEvents.Count} (computed: {countComputed.Value})");
+            WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count {point}: {testService.ProcessedEvents.Count} (computed: {countComputed.Value})");
         }
     }
 
     [Fact]
     public async Task CommandsWithCustomQueuesAreHandled()
     {
-        using var host = await NewAppHost(options => options with {
+        await using var host = await NewAppHost(options => options with {
             InstanceName = $"x-{nameof(NatsQueueTest)}-{nameof(CommandsWithCustomQueuesAreHandled)}",
             ConfigureServices = (ctx, services) => {
                 var rpcHost = services.AddRpcHost(ctx.HostInfo);
@@ -93,7 +94,11 @@ public class NatsQueueTest(ITestOutputHelper @out)
         var testService = (ScheduledCommandTestService)services.GetRequiredService<IScheduledCommandTestService>();
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await queues.Enqueue(new AddBothTestEventsCommandWithShardKey { ShardKey = 7 });
+        var command = new AddBothTestEventsCommandWithShardKey { ShardKey = 7 };
+        var queueRef = QueueRef.For(command, services);
+        queueRef.ShardScheme.Should().Be(ShardScheme.SlowQueue);
+
+        await queues.Enqueue(command);
         await queues.WhenProcessing();
 
         testService.ProcessedEvents.Count.Should().Be(2);

@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>11.2.57</ActualLabFusionVersion>
+    <ActualLabFusionVersion>11.4.3</ActualLabFusionVersion>
     <AspNetCoreVersion>10.0.0</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>10.0.0</EntityFrameworkCoreVersion>
@@ -29,9 +29,10 @@
     So we use only some packages in its project, and some - in other projects.
   -->
   <!-- MAUI-specific packages -->
-  <ItemGroup Condition="$(MSBuildProjectName.Contains('.Maui'))">
+  <ItemGroup Condition="$(MSBuildProjectName.Contains('Maui'))">
     <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
+    <PackageVersion Include="Microsoft.Maui.Essentials" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
@@ -75,7 +76,7 @@
     <PackageVersion Include="ActualLab.Opus.MaciOS" Version="1.0.16-alpha" />
   </ItemGroup>
   <!-- Strictly non-MAUI packages -->
-  <ItemGroup Condition="!$(MSBuildProjectName.Contains('.Maui'))">
+  <ItemGroup Condition="!$(MSBuildProjectName.Contains('Maui'))">
     <PackageVersion Include="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="$(MicrosoftExtensionsVersion)" />
@@ -117,6 +118,7 @@
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="Svg.Skia" Version="3.4.1" />
   </ItemGroup>
   <!-- All other packages -->
   <ItemGroup>
@@ -255,8 +257,9 @@
     <PackageVersion Include="System.Management" Version="8.0.0" />
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
-    <PackageVersion Include="bunit" Version="1.39.5" />
     <PackageVersion Include="AwesomeAssertions" Version="9.3.0" />
+    <PackageVersion Include="bunit" Version="1.39.5" />
+    <PackageVersion Include="FlakyTest.XUnit" Version="2.4.10" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />

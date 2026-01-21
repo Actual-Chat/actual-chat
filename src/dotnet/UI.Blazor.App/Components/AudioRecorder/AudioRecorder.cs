@@ -28,14 +28,12 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private MomentClockSet Clocks => Hub.Clocks;
     private TuneUI TuneUI => Hub.TuneUI;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     protected AudioFocusService AudioFocusService => Hub.AudioFocusService;
     protected AudioWidgetSession AudioWidgetSession => Hub.AudioWidgetSession;
 
-    [field: AllowNull, MaybeNull]
     public MicrophonePermissionHandler MicrophonePermission
         => field ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
 
@@ -285,7 +283,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         _audioFocusActivation = null;
     }
 
-    private RestoreFocusHandler? LostFocusCallback(bool mayRecover)
+    private RestoreFocusHandler? LostFocusCallback(bool mayRecover, bool canDuck)
         // Do nothing even app lost the audio focus.
         => null;
 

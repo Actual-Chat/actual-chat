@@ -23,6 +23,7 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
     private readonly LinkedList<KeyValuePair<TKey, TValue>> _list;
 
     public int Capacity { get; }
+    private Action<TKey, TValue>? EvictionHandler { get; }
     public int Count => _list.Count;
 
     public TValue this[TKey key] {
@@ -45,10 +46,11 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
         }
     }
 
-    public LruCache(int capacity, IEqualityComparer<TKey>? comparer = null)
+    public LruCache(int capacity, IEqualityComparer<TKey>? comparer = null, Action<TKey, TValue>? evictionHandler = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
         Capacity = capacity;
+        EvictionHandler = evictionHandler;
         if (comparer is null && typeof(TKey) == typeof(string))
             comparer = (IEqualityComparer<TKey>)StringComparer.Ordinal;
         _dictionary = new Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>>(capacity, comparer);
@@ -137,6 +139,7 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
             var node = _list.Last!;
             _list.Remove(node);
             _dictionary.Remove(node.Value.Key);
+            EvictionHandler?.Invoke(node.Value.Key, node.Value.Value);
         }
     }
 }

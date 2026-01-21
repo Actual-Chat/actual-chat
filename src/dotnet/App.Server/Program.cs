@@ -1,6 +1,7 @@
 using System.Text;
 using ActualChat.Audio.WebM;
 using ActualChat.Module;
+using ActualChat.Rpc.Internal;
 using ActualLab.Fusion.Client;
 using ActualLab.Rpc;
 using Grpc.Core;
@@ -26,7 +27,7 @@ internal static class Program
                 // See https://github.com/xoofx/Blake3.NET?tab=readme-ov-file#results
                 var hash = Blake3.Hasher.Hash(data.Span);
                 return Convert.ToBase64String(hash.AsSpan()[..18]); // 18 bytes -> 24 chars
-            }
+            },
         };
         ComputedSynchronizer.Default = ComputedSynchronizer.None.Instance; // Server shouldn't use it
 
@@ -39,7 +40,8 @@ internal static class Program
         AdjustThreadPool();
         AdjustGrpcCoreThreadPool();
 
-        using var appHost = new AppHost();
+        var appHost = new AppHost();
+        await using var _ = appHost.ConfigureAwait(false);
         try {
             appHost.Build();
         }
@@ -50,14 +52,16 @@ internal static class Program
             return 1;
         }
 
-        Constants.HostInfo = appHost.Services.HostInfo();
-        StaticLog.Factory = appHost.Services.LoggerFactory();
+        var c = appHost.Services;
+        Constants.HostInfo = c.HostInfo();
+        StaticLog.Factory = c.LoggerFactory();
         if (Constants.DebugMode.WebMReader)
-            WebMReader.DebugLog = appHost.Services.LogFor(typeof(WebMReader));
+            WebMReader.DebugLog = c.LogFor(typeof(WebMReader));
         if (Constants.DebugMode.Npgsql)
-            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(),true);
+            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(c.GetRequiredService<ILoggerFactory>(),true);
 
-        await appHost.InvokeInitializers().ConfigureAwait(false);
+        await appHost.RunInitializers().ConfigureAwait(false);
+
         await appHost.Run().ConfigureAwait(false);
         return 0;
 
@@ -94,14 +98,8 @@ internal static class Program
             Console.WriteLine($"GRPC thread pool size: {threadCount}");
             GrpcEnvironment.SetThreadPoolSize(threadCount);
             GrpcEnvironment.SetCompletionQueueCount(threadCount);
-            // true is dangerous: if user block in async code, this can easily lead to deadlocks
+            // true is dangerous: if the code blocks in async code, this can lead to deadlocks
             GrpcEnvironment.SetHandlerInlining(false);
-        }
-
-        static void AdjustThreadPoolToOneThread()
-        {
-            ThreadPool.SetMinThreads(1, 1);
-            ThreadPool.SetMaxThreads(1, 1);
         }
     }
 }

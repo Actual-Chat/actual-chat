@@ -3,6 +3,8 @@ using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
 using Android.Media;
+using Android.Runtime;
+using JetBrains.Annotations;
 using AudioSource = ActualChat.Audio.AudioSource;
 using Encoding = Android.Media.Encoding;
 
@@ -32,6 +34,7 @@ internal sealed class AndroidAudioPlaybackEngine(
     private AudioTrack? _audioTrack;
     private Task? _decodeAndFeedTask;
     private PlayPositionListener? _listener;
+    private GCHandle? _listenerHandle;
 
     // Last known number of played samples (playback head), used as a fallback when AudioTrack is not queryable
     private int _lastPlayedSamples;
@@ -40,10 +43,8 @@ internal sealed class AndroidAudioPlaybackEngine(
     private int _feedSamples;
     private int _endedReported;
 
-    [field: AllowNull, MaybeNull]
     private IAudioCodec AudioCodec => field ??= services.GetRequiredService<IAudioCodec>();
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor<AndroidAudioPlaybackEngine>();
 
     public async Task Play(CancellationToken cancellationToken)
@@ -96,6 +97,8 @@ internal sealed class AndroidAudioPlaybackEngine(
         _decodeAndFeedTask = BackgroundTask.Run(() => DecodeAndFeed(ct), ct);
 
         _listener = new PlayPositionListener(this);
+        // Keep listener pinned to avoid GC while native code holds only weak reference
+        _listenerHandle = GCHandle.Alloc(_listener, GCHandleType.Normal);
         // Reasonable period to receive callbacks; not too frequent
         _audioTrack.SetPlaybackPositionUpdateListener(_listener);
         _audioTrack.SetPositionNotificationPeriod(Constants.Audio.PcmFrameLength * 10); // 200 ms
@@ -201,6 +204,9 @@ internal sealed class AndroidAudioPlaybackEngine(
             _decodeAndFeedTask = null;
 
             // Dispose the listener to help GC and prevent finalizer issues
+            if (_listenerHandle is { IsAllocated: true } handle)
+                handle.Free();
+
             _listener?.DisposeSilently();
             _listener = null;
         }
@@ -389,15 +395,29 @@ internal sealed class AndroidAudioPlaybackEngine(
         }
     }
 
-    private sealed class PlayPositionListener(AndroidAudioPlaybackEngine parent)
-        : Java.Lang.Object, AudioTrack.IOnPlaybackPositionUpdateListener
+    private class PlayPositionListener : Java.Lang.Object, AudioTrack.IOnPlaybackPositionUpdateListener
     {
+        private readonly AndroidAudioPlaybackEngine? _parent;
         private readonly TaskCompletionSource<bool> _whenCompletedSource = new (TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<bool> WhenCompleted => _whenCompletedSource.Task;
 
+        // Required by Android runtime when the listener is re-hydrated from a JNI handle
+        // (e.g., during callbacks after GC). Keeps managed type activation functional.
+        [UsedImplicitly]
+        protected PlayPositionListener(IntPtr handle, JniHandleOwnership transfer)
+            : base(handle, transfer)
+        { }
+
+        public PlayPositionListener(AndroidAudioPlaybackEngine parent)
+            => _parent = parent;
+
         public void OnMarkerReached(AudioTrack? track)
         {
+            var parent = _parent;
+            if (parent is null)
+                return;
+
             // Defensive check: ensure parent's track is still valid
             if (parent._audioTrack is null)
                 return;
@@ -411,11 +431,15 @@ internal sealed class AndroidAudioPlaybackEngine(
                 head = parent._lastPlayedSamples;
             else
                 head = parent.GetSafePlayedSamples(track);
-            parent.ReportPlaying(head);
+            _ = parent.ReportPlaying(head);
         }
 
         public void OnPeriodicNotification(AudioTrack? track)
         {
+            var parent = _parent;
+            if (parent is null)
+                return;
+
             // Defensive check: ensure parent's track is still valid
             if (parent._audioTrack is null)
                 return;
@@ -424,12 +448,12 @@ internal sealed class AndroidAudioPlaybackEngine(
             if (track is null) {
                 _whenCompletedSource.TrySetResult(false);
                 var fallback = parent.GetSafePlayedSamples(null);
-                parent.ReportPlaying(fallback);
+                _ = parent.ReportPlaying(fallback);
                 return;
             }
 
             var head = parent.GetSafePlayedSamples(track);
-            parent.ReportPlaying(head);
+            _ = parent.ReportPlaying(head);
         }
     }
 }

@@ -32,7 +32,7 @@ public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaI
     [IgnoreDataMember]
     public string LocalId { get; }
 
-    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    [IgnoreDataMember]
     private string SecureHash
         => field ??= Value.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
 

@@ -36,7 +36,7 @@ public class ShardMapTest(ITestOutputHelper @out) : TestBase(@out)
                 var delta = maxCount - minCount;
                 delta.Should().BeInRange(0, 1);
             }
-            Out.WriteLine(shardMap.ToString());
+            WriteLine(shardMap.ToString());
         }
     }
 }

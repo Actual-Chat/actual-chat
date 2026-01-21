@@ -2,34 +2,30 @@ using ActualChat.Flows.Infrastructure;
 
 namespace ActualChat.Flows;
 
-internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(services, ShardScheme.FlowsBackend)
+internal class MasterFlowStarter(IServiceProvider services) : ShardWorker(services, ShardScheme.FlowsBackend)
 {
     private readonly ConcurrentDictionary<Type, Unit> _flowTypesToStart = new();
 
-    [field: AllowNull, MaybeNull]
-    private FlowRegistry FlowRegistry => field ??= Services.GetRequiredService<FlowRegistry>();
-    [field: AllowNull, MaybeNull]
-    private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
-    [field: AllowNull, MaybeNull]
-    private ShardKeyResolver<FlowId> FlowIdShardKeyResolver
-        => field ??= ShardKeyResolvers.Get<FlowId>(typeof(MasterFlowStarter));
+    private FlowHub Hub => field ??= Services.FlowHub();
+    private ShardKeyResolver<FlowId> FlowIdShardKeyResolver => field ??= ShardKeyResolvers.Get<FlowId>();
 
     protected override Task OnStart(CancellationToken cancellationToken)
     {
-        if (!FlowRegistry.UseMasterFlows)
+        if (!Services.GetRequiredService<FlowRegistry>().UseMasterFlows)
             return Task.CompletedTask;
 
-        var masterFlowTypes = FlowRegistry.NameByType.Keys.Where(x => x.IsAssignableTo(typeof(IMasterFlow)));
+        var masterFlowTypes = Hub.Defs.ByType.Keys.Where(x => x.IsAssignableTo(typeof(IMasterFlow)));
         foreach (var masterFlowType in masterFlowTypes)
             _flowTypesToStart[masterFlowType] = default;
         return Task.CompletedTask;
     }
 
-    protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
+    protected override async Task OnRun(ShardOwnership shardOwnership, CancellationToken cancellationToken)
     {
+        var shardIndex = shardOwnership.ShardIndex;
         var tasks = new List<Task>();
         foreach (var flowType in _flowTypesToStart.Keys) {
-            var flowId = GetFlowId(flowType);
+            var flowId = Hub.NewId(flowType, "");
             var requiredShardIndex = ShardScheme.GetShardIndex(FlowIdShardKeyResolver.Invoke(flowId));
             if (shardIndex != requiredShardIndex)
                 continue;
@@ -45,12 +41,8 @@ internal class MasterFlowStarter(IServiceProvider services) : LegacyShardWorker(
 
     private async Task StartMasterFlow(Type flowType, CancellationToken cancellationToken)
     {
-        await Flows
-            .Reset(GetFlowId(flowType), null, nameof(MasterFlowStarter), cancellationToken)
-            .ConfigureAwait(false);
+        var resumeEvent = Hub.NewResumeEvent(flowType, "");
+        await resumeEvent.Schedule(cancellationToken).ConfigureAwait(false);
         _flowTypesToStart.TryRemove(flowType, out _);
     }
-
-    private FlowId GetFlowId(Type masterFlowType)
-        => FlowRegistry.NewId(masterFlowType, "");
 }

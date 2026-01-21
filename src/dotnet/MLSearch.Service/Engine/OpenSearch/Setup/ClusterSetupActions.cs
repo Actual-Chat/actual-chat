@@ -34,13 +34,14 @@ internal abstract class ClusterSetupActions(
 ) : IClusterSetupActions
 {
     private const string TimestampFieldName = "timestamp";
-    protected readonly Tracer _tracer = baseTracer[typeof(ClusterSetup)];
+
+    protected readonly Tracer Tracer = baseTracer[typeof(ClusterSetup)];
 
     protected async Task<string?> GetModelGroupId(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
         var modelGroupName = openSearchSettings.ModelGroup;
 
-        // Read model group latest state
+        // Read model group's latest state
         var modelGroupResponse = await openSearch.RunAsync(
                 $$"""
                 POST /_plugins/_ml/model_groups/_search
@@ -401,7 +402,7 @@ internal sealed class BuiltInModelClusterSetupActions : ClusterSetupActions
 
     protected override async Task<EmbeddingModelProps> RetrieveEmbeddingModelPropsAsync(OpenSearchSettings openSearchSettings, CancellationToken cancellationToken)
     {
-        using var _1 = _tracer.MethodRegion();
+        using var _1 = Tracer.MethodRegion();
 
         var modelGroupId = await GetModelGroupId(openSearchSettings, cancellationToken).ConfigureAwait(false);
 

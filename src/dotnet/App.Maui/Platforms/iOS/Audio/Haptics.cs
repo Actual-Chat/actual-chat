@@ -11,9 +11,7 @@ public class Haptics(AppUIHub hub) : IDisposable
     private readonly Lock _lock = new ();
     private readonly Dictionary<Tune, ICHHapticPatternPlayer> _players = new ();
 
-    [field: AllowNull, MaybeNull]
     private CHHapticEngine HapticEngine => field ??= CreateHapticEngine();
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public void Dispose()

@@ -29,6 +29,12 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
     public DbSet<DbEvent> Events { get; protected set; } = null!;
 
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+        configurationBuilder.Conventions.Add(_ => new RemoveDbEventIndexesConvention());
+    }
+
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.ApplyConfigurationsFromAssembly(typeof(ChatDbContext).Assembly).UseSnakeCaseNaming();
@@ -115,6 +121,8 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         conversation.Property(e => e.Description).UseCollation("C");
         conversation.Property(e => e.Summary).UseCollation("C");
         conversation.Property(e => e.AuthorIds).UseCollation("C");
+        conversation.HasIndex(x => new { x.ChatId, x.StartEntryLid }).IsUnique().IncludeProperties(nameof(DbConversation.EndEntryLid));
+        conversation.HasIndex(x => new { x.ChatId, x.EndEntryLid }).IsDescending(false, true).IsUnique().IncludeProperties(nameof(DbConversation.StartEntryLid));
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
@@ -122,5 +130,6 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
 
         var events = model.Entity<DbEvent>();
         events.Property(e => e.Uuid).UseCollation("C");
+        events.DefineIndexes();
     }
 }

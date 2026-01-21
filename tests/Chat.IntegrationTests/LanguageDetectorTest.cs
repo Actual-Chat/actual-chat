@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -15,9 +14,7 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
                                        In this code `number = 5`.
                                        """;
 
-    [field: AllowNull, MaybeNull]
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
-    [field: AllowNull, MaybeNull]
     private LanguageDetector Sut => field ??= Tester.AppServices.GetRequiredService<LanguageDetector>();
 
 

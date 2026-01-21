@@ -32,7 +32,6 @@
     private Form? _formRef;
     private FormModel _form = null!;
 
-    [field: AllowNull, MaybeNull]
     private ServerSettingsKvasClient ServerSettings => field ??= Hub.Services.GetRequiredService<ServerSettingsKvasClient>();
 
     protected override void OnInitialized()

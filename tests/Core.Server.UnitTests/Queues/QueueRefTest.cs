@@ -17,7 +17,7 @@ public class QueueRefTest(ITestOutputHelper @out) : TestBase(@out)
         s.IsUndefined.Should().BeTrue();
         s.IsValid.Should().BeFalse();
 
-        s = ShardScheme.TestBackend;
+        s = ShardScheme.Queue;
         s.IsNone.Should().BeFalse();
         s.IsUndefined.Should().BeFalse();
         s.IsValid.Should().BeTrue();

@@ -15,7 +15,6 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
     private IServiceProvider Services { get; }
 
-    [field: AllowNull, MaybeNull]
     private IMediaMetadataUI MediaMetadataUI => field ??= Services.GetRequiredService<IMediaMetadataUI>();
     private IAudioPlaybackEngineFactory Factory { get; }
 

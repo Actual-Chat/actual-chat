@@ -15,7 +15,7 @@ internal sealed class ChatIndexInitializer(
     IChatIndexInitializerShard chatIndexInitializerShard,
     IServiceCoordinator serviceCoordinator,
     ILogger<ChatIndexInitializer> log
-    ) : LegacyShardWorker(services, shardScheme), IChatIndexInitializer
+    ) : ShardWorker(services, shardScheme), IChatIndexInitializer
 {
     private record DummyEvent : IHasShardKey<string>
     {
@@ -35,8 +35,9 @@ internal sealed class ChatIndexInitializer(
         await chatIndexInitializerShard.PostAsync(evt, cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
+    protected override async Task OnRun(ShardOwnership shardOwnership, CancellationToken cancellationToken)
     {
+        var shardIndex = shardOwnership.ShardIndex;
         var isActiveShard = shardIndex == ActiveShardIndex;
         _isHostingActiveShard |= isActiveShard;
         if (isActiveShard) {

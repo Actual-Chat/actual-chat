@@ -6,23 +6,14 @@ namespace ActualChat.Chat;
 
 public class ChatThreads(IServiceProvider services) : IChatThreads
 {
-    [field: AllowNull, MaybeNull]
     private IChatThreadsBackend Backend => field ??= services.GetRequiredService<IChatThreadsBackend>();
-    [field: AllowNull, MaybeNull]
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= services.GetRequiredService<IChatsBackend>();
-    [field: AllowNull, MaybeNull]
     private IPlaces Places => field ??= services.GetRequiredService<IPlaces>();
-    [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
-    [field: AllowNull, MaybeNull]
     private IContactsBackend ContactsBackend => field ??= services.GetRequiredService<IContactsBackend>();
-    [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= services.GetRequiredService<ICommander>();
-    [field: AllowNull, MaybeNull]
     private IThreadInsightExtractor ThreadInsightExtractor => field ??= services.GetRequiredService<IThreadInsightExtractor>();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
     // [ComputeMethod]

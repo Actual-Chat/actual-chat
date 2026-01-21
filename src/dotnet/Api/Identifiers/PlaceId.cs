@@ -24,7 +24,7 @@ public sealed partial class PlaceId : StringIdentifier, IStringIdentifier<PlaceI
 
     public static readonly RandomStringGenerator IdGenerator = ChatId.IdGenerator;
 
-    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    [IgnoreDataMember]
     public PlaceChatId RootChatId => field ??= PlaceChatId.Parse(PlaceChatId.Format(this, Value));
 
     // Factories and constructors

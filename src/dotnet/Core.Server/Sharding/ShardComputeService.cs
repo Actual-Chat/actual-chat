@@ -6,7 +6,6 @@ public abstract class ShardComputeService(IServiceProvider services, ShardScheme
 {
     protected ShardOwner ShardOwner { get; } = services.ShardOwner(shardScheme);
     protected ShardScheme ShardScheme => ShardOwner.ShardScheme;
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 

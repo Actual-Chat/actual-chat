@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using ActualLab.CommandR.Operations;
 using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Queues;
@@ -29,12 +30,12 @@ public abstract record QueuedCommand : IHasUuid, IHasId<string>
         if (typeof(TCommand) != command.GetType())
             return NewUntyped(command, uuid, headers);
 
-        if (uuid.IsNullOrEmpty()) {
-            if (command is IHasUuid hasUuid)
-                uuid = hasUuid.Uuid;
-            else
-                uuid = Ulid.NewUlid().ToString();
-        }
+        if (uuid.IsNullOrEmpty())
+            uuid = command switch {
+                IOperationEventSource operationEventSource => operationEventSource.ToOperationEvent().Uuid,
+                IHasUuid hasUuid => hasUuid.Uuid,
+                _ => Ulid.NewUlid().ToString()
+            };
 
         return headers is null
             ? new QueuedCommand<TCommand>(command) { Uuid = uuid }

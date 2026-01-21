@@ -1,0 +1,19 @@
+.media-info {
+    @apply flex-y gap-y-2;
+    @apply px-4;
+    @apply overflow-hidden;
+}
+.media-info .c-item {
+    @apply flex-y gap-x-1;
+    @apply text-text-1 text-03;
+}
+.media-info .c-item:not(:last-child) {
+    @apply border-b border-separator;
+}
+.media-info .c-item .c-key {
+    @apply text-caption-2 text-03;
+}
+.media-info .c-item .c-value {
+    @apply line-clamp-2;
+    @apply text-text-1 text-01;
+}

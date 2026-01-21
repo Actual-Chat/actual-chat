@@ -22,12 +22,16 @@ public static partial class StringExt
     [GeneratedRegex(@"\s*(\S+)\s*$")]
     private static partial Regex LastWordRegexFactory();
 
+    [GeneratedRegex(@"([a-z0-9])([A-Z])|([A-Z])([A-Z][a-z])")]
+    private static partial Regex KebabCaseRegexFactory();
+
     private static readonly Regex CaseChangeRegex = CaseChangeRegexFactory();
 #pragma warning disable MA0023
     private static readonly Regex CamelCaseRegex = CamelCaseRegexFactory();
     private static readonly Regex NewLineRegex = NewLineRegexFactory();
 #pragma warning restore MA0023
     private static readonly Regex LastWordRegex = LastWordRegexFactory();
+    private static readonly Regex KebabCaseRegex = KebabCaseRegexFactory();
 
 
     public static string RequireNonEmpty(this string? source, [CallerArgumentExpression(nameof(source))] string name = "")
@@ -43,7 +47,7 @@ public static partial class StringExt
     public static string? RequireMaxLength(this string source, int length, [CallerArgumentExpression(nameof(source))] string name = "")
         => source.Length <= length ? source : throw StandardError.Constraint($"{name} Must be no more than {length} characters.");
 
-    public static bool IsNullOrWhiteSpace(this string? source)
+    public static bool IsNullOrWhiteSpace([NotNullWhen(false)] this string? source)
         => string.IsNullOrWhiteSpace(source);
 
     public static SearchPhrase ToSearchPhrase(this string text, bool matchPrefixes, bool matchSuffixes)
@@ -267,5 +271,20 @@ public static partial class StringExt
             return s;
         var i = s.LastIndexOf(separator, comparison);
         return i < 0 ? s : s[(i + separator.Length)..];
+    }
+
+    public static string ToKebabCase(this string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        // Split on capital letters, but keep sequences of capitals together if followed by lowercase
+        // e.g., "XMLHttpRequest" → ["XML", "Http", "Request"]
+        string withDashes = KebabCaseRegex.Replace(
+            input,
+            "$1$3-$2$4"
+        );
+
+        return withDashes.ToLowerInvariant();
     }
 }

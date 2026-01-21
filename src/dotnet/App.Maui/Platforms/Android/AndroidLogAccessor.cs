@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.App.Services;
 using Environment = Android.OS.Environment;
 
@@ -141,6 +142,12 @@ public class AndroidLogAccessor : IMauiLogAccessor
                     }
                 }
             }
+            if (!match)
+                return false;
+            // NOTE(DF): some logs (e.g. from Andrey Y.) contain a lot of these noisy lines
+            // that are not helpful for us but increase log file size.
+            if (line.Contains("setRequestedFrameRate frameRate="))
+                return false;
             return match;
         }
     }

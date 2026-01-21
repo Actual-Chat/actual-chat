@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;
 using Sentry;
@@ -11,7 +12,6 @@ public class App : Application
     public static bool MustMinimizeOnQuit { get; private set; } = true;
 
     private IServiceProvider Services { get; }
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public App(IServiceProvider services)
@@ -32,7 +32,12 @@ public class App : Application
     {
 		var window = new Window(new MainPage());
         window.Destroying += (_, _) => FlushSentryData();
-        window.Title = MauiSettings.IsDevApp ? $"{CoreConstants.AppName} (Dev)" : CoreConstants.AppName;
+        window.Title =
+            MauiSettings.UseLocalhost
+                ? $"{CoreConstants.AppName} (Local)"
+                : MauiSettings.IsDevApp
+                    ? $"{CoreConstants.AppName} (Dev)"
+                    : CoreConstants.AppName;
         return window;
     }
 

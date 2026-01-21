@@ -1,6 +1,7 @@
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -12,8 +13,11 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
     protected override void InjectServices(IServiceCollection services)
     {
         services.AddFusion();
-        services.AddSingleton<KubeInfo>();
+        services.TryAddSingleton<KubeInfo>();
+        services.AddSingleton<IKubeInfo>(c => c.GetRequiredService<KubeInfo>());
         services.AddSingleton<KubeServices>();
+        services.AddSingleton<KubeLeaseClient>();
+        services.AddSingleton<KubeMeshLocks>();
         services.AddHttpClient(Kube.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(c => {
                 var handler = new HttpClientHandler();
@@ -23,7 +27,6 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
                 var caCert = X509Certificate2.CreateFromPem(caCertString);
 #pragma warning disable MA0039
                 handler.ServerCertificateCustomValidationCallback =
-                    handler.ServerCertificateCustomValidationCallback =
                         (_, cert, _, policyErrors) =>
                         {
                             if (cert == null)

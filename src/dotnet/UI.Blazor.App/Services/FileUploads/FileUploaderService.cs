@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -6,21 +7,29 @@ public class FileUploaderService
 {
     private readonly Lock _lock = new ();
     private readonly Dictionary<string, UploadJob> _jobs = new (StringComparer.Ordinal);
-    private readonly IServiceProvider _services;
     private readonly OperationQueue _operationQueue;
-
-    private ILogger Log => _services.LogFor(GetType());
+    private readonly Func<string, CancellationToken, Task<UploadId>> _getUploadId;
+    private readonly Func<UploadId, CancellationToken, Task<MediaContent>> _convertUpload;
+    private readonly Func<string, CancellationToken, Task> _clearUploadId;
+    private ILogger Log { get; }
 
     public event Func<string, double, Task>? ProgressChanged;
     public event Func<string, MediaContent, Task>? Completed;
     public event Func<string, Exception, Task>? Failed;
     public event Func<string, Task>? Canceled;
 
-    public FileUploaderService(IServiceProvider services)
+    public FileUploaderService(
+        ILogger log,
+        Func<string, CancellationToken, Task<UploadId>> getUploadId,
+        Func<UploadId, CancellationToken, Task<MediaContent>> convertUpload,
+        Func<string, CancellationToken, Task> clearUploadId)
     {
-        _services = services;
+        _getUploadId = getUploadId;
+        _convertUpload = convertUpload;
+        _clearUploadId = clearUploadId;
         // TODO: add queues with different priorities for small and big files.
         _operationQueue = new OperationQueue();
+        Log = log;
     }
 
     public async Task StartOrResumeUpload(UploadSession session)
@@ -53,8 +62,17 @@ public class FileUploaderService
         }
     }
 
-    private void EnqueueFileUploadOperation(IFileUploadOperation fileUploadOperation)
+    private void EnqueueFileUploadOperation(FileUploadOperation fileUploadOperation)
         => _operationQueue.Enqueue(fileUploadOperation);
+
+    private Task<UploadId> GetUploadId(string sessionId, CancellationToken cancellationToken)
+        => _getUploadId(sessionId, cancellationToken);
+
+    private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken cancellationToken)
+        => _convertUpload(uploadId, cancellationToken);
+
+    private Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
+        => _clearUploadId(sessionId, cancellationToken);
 
     // Nested types
 
@@ -63,7 +81,7 @@ public class FileUploaderService
         private readonly AsyncLock _asyncLock = new ();
         private bool _isCancelled;
         private bool _isResumed;
-        private IFileUploadOperation? _uploadOperation;
+        private FileUploadOperation? _uploadOperation;
 
         private ILogger Log => Owner.Log;
 
@@ -92,7 +110,7 @@ public class FileUploaderService
             _isResumed = true;
 
             try {
-                _uploadOperation ??= await CreateUploadOperation().ConfigureAwait(false);
+                _uploadOperation ??= CreateUploadOperation();
                 Log.LogInformation("**** Started uploading file '{FileName}' for '{SessionId}'", Session.FileName, Session.SessionId);
             }
             catch (Exception ex) {
@@ -116,18 +134,37 @@ public class FileUploaderService
             return Task.CompletedTask;
         }
 
-        private async Task<IFileUploadOperation> CreateUploadOperation()
+        private FileUploadOperation CreateUploadOperation()
         {
-            var chatId = Session.ChatId;
             var fileProvider = Session.FileProvider;
-            var uploadOperation = await fileProvider.CreateUploadOperation(chatId).ConfigureAwait(false);
-            StartOperationProgressTracking(Session, uploadOperation, Owner);
+            var whenFileStreamReady = fileProvider.WhenFileStreamReady();
+            var progress = new UploadProgressTracker();
+            var uploadOperation = new FileUploadOperation(whenFileStreamReady, StartFunc, progress);
+            PropagateFileUploadProgress(uploadOperation, Session, Owner);
             return uploadOperation;
+
+            async Task<MediaContent> StartFunc(CancellationToken ct)
+            {
+                try {
+                    return await UploadAndConvert(ct, fileProvider, progress).ConfigureAwait(false);
+                }
+                catch (UploadNotFoundException) {
+                    await Owner.ClearUploadId(Session.SessionId, ct).ConfigureAwait(false);
+                    throw;
+                }
+            }
         }
 
-        private void StartOperationProgressTracking(
+        private async Task<MediaContent> UploadAndConvert(CancellationToken ct, IFileProvider fileProvider, UploadProgressTracker progress)
+        {
+            var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
+            await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
+            return await Owner.ConvertUpload(uploadId, ct).ConfigureAwait(false);
+        }
+
+        private void PropagateFileUploadProgress(
+            FileUploadOperation uploadOperation,
             UploadSession session,
-            IFileUploadOperation uploadOperation,
             FileUploaderService owner)
         {
             var sessionId = session.SessionId;
@@ -135,7 +172,7 @@ public class FileUploaderService
             var progressChangedThrottler = Throttler.New<double>(
                 TimeSpan.FromMilliseconds(500),
                 value => {
-                    Log.LogInformation("**** Uploading file  '{FileName}' for '{SessionId}' - '{Progress:P}'", session.FileName, sessionId, value / 100.0);
+                    Log.LogDebug("**** Uploading file  '{FileName}' for '{SessionId}' - '{Progress:P}'", session.FileName, sessionId, value / 100.0);
                     _ = owner.ProgressChanged?.Invoke(sessionId, value);
                 });
             progressTracker.ProgressChanged += (_, value) => progressChangedThrottler.Throttle(value);
@@ -147,14 +184,22 @@ public class FileUploaderService
                 }
                 else if (t.IsFaulted) {
                     foreach (var ex in t.Exception.Flatten().InnerExceptions)
-                        Log.LogError(ex, "**** Failed to upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
+                        Log.LogError(ex, "**** Failed to upload file '{FileName}' for '{SessionId}'('{UploadId}')", session.FileName, sessionId, session.UploadId);
                     await RaiseUploadFailed(t.Exception).ConfigureAwait(false);
                 }
                 else if (t.IsCanceled) {
-                    Log.LogInformation("**** Canceled upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
-                    await (owner.Canceled?.Invoke(sessionId) ?? Task.CompletedTask).ConfigureAwait(false);
+                    if (uploadOperation.CancellationToken.IsCancellationRequested) {
+                        Log.LogInformation("**** Canceled upload file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
+                        await (owner.Canceled?.Invoke(sessionId) ?? Task.CompletedTask).ConfigureAwait(false);
+                    }
+                    else {
+                        var ex = new OperationCanceledException("The upload was canceled unexpectedly");
+                        Log.LogError(ex, "**** Failed to upload file '{FileName}' for '{SessionId}'('{UploadId}')", session.FileName, sessionId, session.UploadId);
+                        await RaiseUploadFailed(ex).ConfigureAwait(false);
+                    }
                 }
                 owner.RemoveJob(this);
+                uploadOperation.DisposeSilently();
             }, TaskScheduler.Default);
         }
 
@@ -166,9 +211,9 @@ public class FileUploaderService
     {
         private const int MaxActiveCount = 2;
         private readonly Lock _lock = new();
-        private readonly List<IFileUploadOperation> _operations = new ();
+        private readonly List<FileUploadOperation> _operations = new ();
 
-        public void Enqueue(IFileUploadOperation operation)
+        public void Enqueue(FileUploadOperation operation)
         {
             lock (_lock) {
                 _operations.Add(operation);
@@ -177,7 +222,7 @@ public class FileUploaderService
             ReviewQueue();
         }
 
-        private void TrackOperation(IFileUploadOperation operation)
+        private void TrackOperation(FileUploadOperation operation)
         {
             var task = operation.ProgressTracker.Task;
             _ = task.ContinueWith(_ => OnOperationCompleted(operation), TaskScheduler.Default);
@@ -185,7 +230,7 @@ public class FileUploaderService
                 OnOperationCompleted(operation);
         }
 
-        private void OnOperationCompleted(IFileUploadOperation operation)
+        private void OnOperationCompleted(FileUploadOperation operation)
         {
             lock (_lock)
                 _operations.Remove(operation);
@@ -196,17 +241,31 @@ public class FileUploaderService
         {
             lock (_lock) {
                 int activeCount = 0;
-                var toStart = new List<IFileUploadOperation>();
-                foreach (var operation in _operations) {
+                var toStart = new List<FileUploadOperation>();
+                foreach (var operation in _operations)
                     if (operation.HasStarted)
                         activeCount++;
-                    else if (activeCount < MaxActiveCount) {
-                        toStart.Add(operation);
-                        activeCount++;
+
+                var operationsToAwaitToBeReady = new List<Task>();
+                foreach (var operation in _operations) {
+                    if (activeCount >= MaxActiveCount)
+                        break;
+                    if (operation.HasStarted)
+                        continue;
+                    if (!operation.WhenReadyToStart.IsCompleted) {
+                        operationsToAwaitToBeReady.Add(operation.WhenReadyToStart);
+                        continue;
                     }
+                    toStart.Add(operation);
+                    activeCount++;
                 }
                 foreach (var operation in toStart)
                     operation.Start();
+
+                if (operationsToAwaitToBeReady.Count > 0) {
+                    _ = Task.WhenAny(operationsToAwaitToBeReady)
+                        .ContinueWith(_ => ReviewQueue(), TaskScheduler.Default);
+                }
             }
         }
     }

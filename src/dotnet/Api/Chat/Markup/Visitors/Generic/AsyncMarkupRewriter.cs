@@ -37,7 +37,7 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
     {
         var newMarkup = await Visit(markup.Content, cancellationToken).ConfigureAwait(false);
         return newMarkup == markup ? markup
-            : new ListItemMarkup(newMarkup, markup.Order);
+            : new ListItemMarkup(newMarkup);
     }
 
     protected override async ValueTask<Markup> VisitStylized(StylizedMarkup markup, CancellationToken cancellationToken)

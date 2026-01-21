@@ -6,7 +6,7 @@ partial class UploadSessions
     {
         // We wait until all upload sessions have been requested by their consumers and their usage IDs have been updated.
         // After this, we'll see which upload sessions are unused and can be cleared.
-        await Hub.SendingMessages.WhenReady.ConfigureAwait(false);
+        await Hub.SendingMessages.WhenStoredRequestsProcessed.ConfigureAwait(false);
         // Let's wait a bit to avoid increasing the load on the system while the application is starting.
         await Task.Delay(5000).ConfigureAwait(false);
         Log.LogDebug("About to cleanup upload sessions");

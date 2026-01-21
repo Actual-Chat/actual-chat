@@ -8,9 +8,8 @@ public sealed class ShardOwnership : RunnableRunner
     // Handy shortcuts
     public ShardOwner ShardOwner { get; }
     public int ShardIndex { get; }
-    public CancellationToken CancelLockToken { get; }
     public CancellationToken LockToken { get; }
-    public bool IsLockExpired => LockHolder.IsExpired;
+    public bool IsLockExpired => LockHolder.IsExpiredOnRenewal;
     public Moment AcquiredAt { get; }
 
     public ShardOwnership(ShardOwner.ShardState shardState, MeshLockHolder lockHolder)
@@ -19,8 +18,10 @@ public sealed class ShardOwnership : RunnableRunner
         LockHolder = lockHolder;
         ShardOwner = shardState.ShardOwner;
         ShardIndex = shardState.ShardIndex;
-        CancelLockToken = shardState.CancelLockToken;
-        LockToken = lockHolder.StopToken;
-        AcquiredAt = ShardOwner.Host.Clock.Now;
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (lockHolder is not null) { // lockHolder can be null in tests
+            LockToken = lockHolder.StopToken;
+            AcquiredAt = ShardOwner.Host.Clock.Now;
+        }
     }
 }

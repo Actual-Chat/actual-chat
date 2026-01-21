@@ -1,0 +1,103 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net9.0-android;</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net9.0-ios</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.22621.0</TargetFrameworks>
+    <UseMauiEssentials>true</UseMauiEssentials>
+<!--    <UseMaui>true</UseMaui>-->
+    <SingleProject>true</SingleProject>
+    <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">28.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">16.4</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsDevMaui)' == ''">
+    <IsDevMaui>true</IsDevMaui>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsDevMaui)' == 'true'">
+    <DefineConstants>$(DefineConstants);IS_DEV_MAUI</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Platform-specific files to compile -->
+
+  <!-- NOT iOS -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
+    <Compile Remove="**\**\*.iOS.cs" />
+    <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\iOS\**\*.cs" />
+    <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
+  <!-- NOT MacCatalyst -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst')) != true">
+    <Compile Remove="**\**\*.MacCatalyst.cs" />
+    <None Include="**\**\*.MacCatalyst.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\MacCatalyst\**\*.cs" />
+    <None Include="**\MacCatalyst\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
+  <!-- NOT Windows -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows')) != true">
+    <Compile Remove="**\*.Windows.cs" />
+    <None Include="**\*.Windows.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\Windows\**\*.cs" />
+    <None Include="**\Windows\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
+  <!-- NOT Android -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) != true">
+    <Compile Remove="**\**\*.Android.cs" />
+    <None Include="**\**\*.Android.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\Android\**\*.cs" />
+    <None Include="**\Android\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <None Remove="GoogleService-Info.plist" />
+    <Compile Remove="Resources\Images\**" />
+    <None Remove="Resources\Images\**" />
+    <None Remove="android.nettrace" />
+    <None Remove="android.etlx" />
+    <None Remove="android.etlx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Essentials" />
+    <PackageReference Include="OpenTelemetry" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="Sentry.Serilog" />
+    <PackageReference Include="Sentry.Extensions.Logging" />
+    <PackageReference Include="Sentry.OpenTelemetry" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Include="sqlite-net-pcl" />
+    <!--
+      An extra package to use SQLite on MAUI:
+      https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
+    <PackageReference Include="SQLitePCLRaw.bundle_green" />
+  </ItemGroup>
+
+  <!-- Platform-specific package references -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <PackageReference Include="Plugin.Firebase.Analytics" />
+    <PackageReference Include="Xamarin.Firebase.Analytics" />
+    <PackageReference Include="Xamarin.Firebase.Crashlytics" />
+    <PackageReference Include="Xamarin.Firebase.Messaging" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <PackageReference Include="Plugin.Firebase.Analytics" />
+    <PackageReference Include="Plugin.Firebase.Crashlytics" />
+    <PackageReference Include="AdamE.Firebase.iOS.Analytics" />
+    <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
+    <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\UI.App\UI.App.csproj" />
+    <ProjectReference Include="..\UI\UI.csproj" />
+  </ItemGroup>
+
+</Project>

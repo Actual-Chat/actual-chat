@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
@@ -10,9 +9,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<TranslationCollection.AppHostFixture>(fixture, @out)
 {
-    [field: AllowNull, MaybeNull]
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbChatEntryLanguage> LanguageEntityResolver => field ??= Tester.AppServices.DbEntityResolver<string, DbChatEntryLanguage>();
     private ITranslations Translations => Tester.Translations;
 
@@ -141,6 +138,40 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
             TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task ShouldNotConfuseLanguage()
+    {
+        // arrange
+        const int count = 10;
+        var original = """
+                       Forgot about migrations)
+                       The only reason I still have EF in my project).
+                       In my tests EF was always 10-20% slower (sometimes even more) in queries comparing to Dapper/Npgsql and it creates 30-50% more garbage for GC.
+                       In some cases Npgsql allows you deserialize data to ArrayPool directly reducing allocations.
+                       I know that I can use compiled queries in EF to match the speed, but it is so inconvinient (and still memory inefficient) that it is simplier to write SQL directly with Dapper/Npgsql.
+                       """;
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var targetLanguage = Languages.English;
+        var entries = await Enumerable.Range(0, count)
+            .Select(async i => {
+                var entry = await Tester.CreateTextEntry(chatId, original);
+                await Tester.CreateEntryLanguage(entry.Id.ToTextEntryId(), null, entry.ContentHash);
+                _ = Tester.GetTranslation(TranslationId.New((TextEntryId)entry.Id, targetLanguage), true, CancellationToken.None);
+                return entry;
+            })
+            .Collect(1);
+        foreach (var entry in entries) {
+            // act
+            var translation = await WhenTranslated((TextEntryId)entry.Id, targetLanguage);
+
+            // assert
+            if (!translation.Content.IsNullOrEmpty())
+                translation.Content.Should()
+                    .BeSimilarTo(original, 0.7, "entry #{0} should remain in English", entry.Id);
+        }
+    }
+
     [Fact(Skip = "Ignored")] // TODO: enable when translation is better
     public async Task ShouldTranslateWithContextFromPreviousMessages()
     {
@@ -184,12 +215,15 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
                 .And.ContainWord(mainExpectedWord);
         }
         return;
-
-        Task<Translation> WhenTranslated(TextEntryId id, Language language)
-            => ComputedTest.When(
-                ct => Translations.Get(Tester.Session, TranslationId.New(id, language), true, ct).Require(),
-                TimeSpan.FromSeconds(10));
     }
+
+    private Task<Translation> WhenTranslated(TextEntryId id, Language language)
+        => ComputedTest.When(async ct => {
+                var translation = await Translations.Get(Tester.Session, TranslationId.New(id, language), true, ct).Require();
+                translation.IsStreaming.Should().BeFalse();
+                return translation;
+            },
+            TimeSpan.FromSeconds(10));
 
     private Task<Language[]> WhenDetected(ChatEntryId id, string sExpectedLanguages, TimeSpan? timeout = null)
     {

@@ -18,17 +18,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         "ustinovas@gmail.com",
     };
 
-    [field: AllowNull, MaybeNull]
     private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
-    [field: AllowNull, MaybeNull]
     private IAvatarsBackend AvatarsBackend => field ??= Services.GetRequiredService<IAvatarsBackend>();
-    [field: AllowNull, MaybeNull]
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
-    [field: AllowNull, MaybeNull]
     private ContactGreeter ContactGreeter => field ??= Services.GetRequiredService<ContactGreeter>();
-    [field: AllowNull, MaybeNull]
-    private FlowRegistry FlowRegistry => field ??= Services.GetRequiredService<FlowRegistry>();
-    [field: AllowNull, MaybeNull]
+    private FlowHub FlowHub => field ??= Services.FlowHub();
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
 
     // [ComputeMethod]
@@ -170,7 +164,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Version = VersionGenerator.NextVersion(dbAccount.Version),
         };
         var mustGreet = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
-        var mustStartDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
+        var mustResetDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -179,10 +173,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (mustGreet)
             ContactGreeter.Activate();
 
-        if (mustStartDigestFlow) {
-            Log.LogInformation("Digest flow reset for: {AccountId}", account.Id);
-            var e = new LegacyFlowResetEvent(FlowRegistry.NewId<DigestFlow>(account.Id.Value), "Account change");
-            context.Operation.AddEvent(e);
+        if (mustResetDigestFlow) {
+            Log.LogInformation("Scheduling DigestFlow reset for {AccountId}", account.Id);
+            var flowId = FlowHub.NewId<DigestFlow>(account.Id.Value);
+            context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId).WithReset());
         }
 
         var oldAliasId = existing?.AliasId;

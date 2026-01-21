@@ -11,7 +11,6 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private IStreamClient StreamClient => hub.StreamClient;
     private MomentClockSet Clocks => hub.Clocks;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.LogFor(GetType());
 
     public IState<TranscriptStreamerState> State => _state;

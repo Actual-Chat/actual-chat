@@ -3,22 +3,19 @@
 @inherits ComponentBase<AppUIHub>
 @implements GrantFileUploadsSubHeader.IGrantFileUploadsSubHeader
 
-@if (!_isVisible)
-    return;
-
-<div class="grant-file-upload-permissions-subheader subheader-item">
+<SubHeader Class="grant-file-upload-permissions-subheader" IsVisible="@_isVisible">
     @if (!ScreenSize.IsNarrow()) {
         <div class="c-icon">
             <i class="icon-alert-circle"></i>
         </div>
     }
     <div class="c-content">
-        <span>Pending file uploads detected.</span><span>Allow to continue?</span>
+        <span>There are pending file uploads.</span>
     </div>
     <div class="c-buttons">
-        <Button Class="btn-transparent btn-primary" Click="InvokeGrantFilePermissions">Allow</Button>
+        <Button Class="btn-transparent btn-primary" Click="InvokeGrantFilePermissions">Resume</Button>
     </div>
-</div>
+</SubHeader>
 
 @code {
     private bool _isVisible;

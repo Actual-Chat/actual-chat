@@ -28,7 +28,7 @@ public class NotificationTest(AppHostFixture fixture, ITestOutputHelper @out)
         }
 
         var results = await Task.WhenAll(tasks);
-        Out.WriteLine(string.Join(", ", results));
+        WriteLine(string.Join(", ", results));
 
         results.Should().ContainSingle(r => r);
     }

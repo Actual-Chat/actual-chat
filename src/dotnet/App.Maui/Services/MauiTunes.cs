@@ -124,7 +124,7 @@ public class MauiTunes : TuneUI
         _audioFocusActivation = null;
     }
 
-    private RestoreFocusHandler? OnLostFocus(bool mayRecover)
+    private RestoreFocusHandler? OnLostFocus(bool mayRecover, bool canDuck)
     {
         if (!mayRecover)
             _audioFocusActivation = null;

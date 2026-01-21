@@ -10,13 +10,9 @@ namespace ActualChat.Invite;
 public class InvitesBackend(IServiceProvider services)
     : DbServiceBase<InviteDbContext>(services), IInvitesBackend
 {
-    [field: AllowNull, MaybeNull]
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    [field: AllowNull, MaybeNull]
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
-    [field: AllowNull, MaybeNull]
     private IServerKvas ServerKvas => field ??= Services.ServerKvas();
     private IDbEntityResolver<string, DbInvite> DbInviteResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();

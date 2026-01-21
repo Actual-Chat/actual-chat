@@ -20,9 +20,7 @@ public partial class WebFileProvider : IFileProvider
     private bool IsOriginal => WebFileProviderInternal is WebFileProviderInternal provider && provider.IsOriginal;
     [IgnoreDataMember, MemoryPackIgnore]
     private IServiceProvider Services => _services ?? throw new InvalidOperationException("Initialize must be called first.");
-    [field: AllowNull, MaybeNull]
     private IJSRuntime JS => field ??= Services.JSRuntime();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor<WebFileProvider>();
 
     public void Initialize(IServiceProvider services)
@@ -32,6 +30,14 @@ public partial class WebFileProvider : IFileProvider
     {
         WebFileProviderInternal ??= await CreateInternal().ConfigureAwait(false);
         return WebFileProviderInternal is WebFileProviderInternal;
+    }
+
+    public Task<bool> WhenUserConsentGranted()
+    {
+        if (WebFileProviderInternal is null)
+            throw StandardError.Constraint("Can't call this method before CanAccessFile returns true.");
+
+        return WebFileProviderInternal.WhenUserConsentGranted();
     }
 
     private async Task<IWebFileProviderInternal> CreateInternal()
@@ -48,8 +54,10 @@ public partial class WebFileProvider : IFileProvider
                     FileHandleDbKey)
                 .ConfigureAwait(false);
             var jsRef = nullableRef.Value;
-            if (jsRef is not null)
-                return new WebFileProviderInternal(jsRef, null, false);
+            if (jsRef is not null) {
+                var whenUserConsentGranted = jsRef.InvokeAsync<bool>("whenUserConsentGranted", CancellationToken.None).AsTask();
+                return new WebFileProviderInternal(jsRef, null, false, whenUserConsentGranted);
+            }
         }
         catch (Exception ex) {
             Log.LogWarning(ex, "Failed to create WebFileProviderInternal");
@@ -71,102 +79,117 @@ public partial class WebFileProvider : IFileProvider
     public async Task ClearForRemoving()
     {
         if (WebFileProviderInternal is not null) {
-            await WebFileProviderInternal.RevokePreviewUrl().ConfigureAwait(false);
-            await WebFileProviderInternal.DeleteFileHandleFromDb().ConfigureAwait(false);
-            return;
+            await WebFileProviderInternal.ClearForRemoving().ConfigureAwait(false);
+            await WebFileProviderInternal.DisposeAsync().ConfigureAwait(false);
         }
-
-        await WebFileProviders.DeleteFileHandleFromDb(JS, FileHandleDbKey).ConfigureAwait(false);
+        else
+            await WebFileProviders.DeleteFileHandleFromDb(JS, FileHandleDbKey).ConfigureAwait(false);
     }
 
     public Task<string> GetPreviewUrl()
+        => DemandWebFileProviderInternal().CreatePreviewUrl().AsTask();
+
+    public Task WhenFileStreamReady()
+        => DemandWebFileProviderInternal().WhenFileStreamReady();
+
+    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
+        => DemandWebFileProviderInternal().UploadData(uploadId, progressTracker, ct);
+
+    private IWebFileProviderInternal DemandWebFileProviderInternal()
     {
         var @internal = WebFileProviderInternal;
         if (@internal is null)
             throw new InvalidOperationException("Upload can't be created.");
-        return @internal.CreatePreviewUrl().AsTask();
-    }
-
-    public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
-    {
-        var @internal = WebFileProviderInternal;
-        if (@internal is null)
-            throw new InvalidOperationException("Upload can't be created.");
-
-        return @internal.CreateUploadOperation(chatId);
+        return @internal;
     }
 }
 
-public interface IWebFileProviderInternal
+public interface IWebFileProviderInternal : IAsyncDisposable
 {
     ValueTask<string> CreatePreviewUrl();
-    ValueTask RevokePreviewUrl();
     ValueTask<string> SaveFileHandleToDb();
-    ValueTask<bool> DeleteFileHandleFromDb();
-    Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId);
+    Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct);
+    Task<bool> WhenUserConsentGranted();
+    Task WhenFileStreamReady();
+    Task ClearForRemoving();
 }
 
-public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposable
+public class WebFileProviderInternal : IWebFileProviderInternal
 {
     private readonly IJSObjectReference _jsRef;
-    private readonly List<IDisposable> _disposables = new ();
     private bool _disposed;
     private string? _previewUrl;
+    private readonly CancellationTokenSource _cancellationTokenSource;
+    private readonly CancellationToken _cancellationToken;
+    private readonly Task<bool> _whenUserConsentGranted;
 
     public bool IsOriginal { get; }
 
     public WebFileProviderInternal(
         IJSObjectReference jsRef,
         string? previewUrl,
-        bool isOriginal)
+        bool isOriginal,
+        Task<bool> whenUserConsentGranted)
     {
         _jsRef = jsRef;
         _previewUrl = previewUrl;
+        _cancellationTokenSource = new CancellationTokenSource();
+        _cancellationToken = _cancellationTokenSource.Token;
+        _whenUserConsentGranted = whenUserConsentGranted;
         IsOriginal = isOriginal;
     }
 
+    public Task<bool> WhenUserConsentGranted() => _whenUserConsentGranted;
+
     public async ValueTask<string> CreatePreviewUrl()
     {
-        _previewUrl ??= await _jsRef.InvokeAsync<string>("createPreviewUrl").ConfigureAwait(false);
+        _previewUrl ??= await _jsRef.InvokeAsync<string>("createPreviewUrl", _cancellationToken).ConfigureAwait(false);
         return _previewUrl;
     }
 
-    public async ValueTask RevokePreviewUrl()
+    public async Task ClearForRemoving()
     {
-        if (_previewUrl is null)
-            return;
-
-        await _jsRef.InvokeVoidAsync("revokePreviewUrl").ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("clearForRemoving", _cancellationToken).ConfigureAwait(false);
         _previewUrl = null;
     }
 
     public ValueTask<string> SaveFileHandleToDb()
-        => _jsRef.InvokeAsync<string>("saveFileHandleToDb");
+        => _jsRef.InvokeAsync<string>("saveFileHandleToDb", _cancellationToken);
 
-    public ValueTask<bool> DeleteFileHandleFromDb()
-        => _jsRef.InvokeAsync<bool>("removeFileHandleFromDb");
-
-    public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
+    public async Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
     {
-        var fileUploaderBackend = new WebFileUploaderBackend();
-        _disposables.Add(fileUploaderBackend.BlazorRef);
-        var tracker = fileUploaderBackend.Tracker;
-        var uploadOperation = new FileUploadOperation(async ct => {
+        var cts = _cancellationToken.LinkWith(ct);
+        var ct2 = cts.Token;
+        var backend = new WebFileUploaderBackend(progressTracker);
+        var blazorRef = backend.BlazorRef;
+        try {
             ct.Register(() => {
-                tracker.SetCanceled();
                 _ = Cancel();
             });
-            await Start(chatId, fileUploaderBackend.BlazorRef).ConfigureAwait(false);
-            return await tracker.Task.ConfigureAwait(false);
-        }, tracker);
-        return Task.FromResult<IFileUploadOperation>(uploadOperation);
+            // Upload data
+            await Start(uploadId, blazorRef, ct2).ConfigureAwait(false);
+            await backend.WhenUploadCompleted.WaitAsync(ct2).ConfigureAwait(false);
+        }
+        finally {
+            blazorRef.Dispose();
+            cts.DisposeSilently();
+        }
     }
 
-    private ValueTask Start(ChatId chatId, DotNetObjectReference<IWebFileUploaderBackend> blazorRef)
-        => _jsRef.InvokeVoidAsync("start", chatId.Value, blazorRef);
+    public async Task WhenFileStreamReady()
+    {
+        var granted = await WhenUserConsentGranted().ConfigureAwait(false);
+        if (granted)
+            return;
+
+        await TaskExt.NeverEnding(_cancellationToken).ConfigureAwait(false);
+    }
+
+    private ValueTask Start(UploadId uploadId, DotNetObjectReference<IWebFileUploaderBackend> blazorRef, CancellationToken ct)
+        => _jsRef.InvokeVoidAsync("start", ct, uploadId.Value, blazorRef);
 
     private ValueTask Cancel()
-        => _jsRef.InvokeVoidAsync("cancel");
+        => _jsRef.InvokeVoidAsync("cancel", _cancellationToken);
 
     public async ValueTask DisposeAsync()
     {
@@ -174,10 +197,8 @@ public class WebFileProviderInternal : IWebFileProviderInternal, IAsyncDisposabl
             return;
 
         _disposed = true;
-        await _jsRef.DisposeAsync().ConfigureAwait(false);
-        foreach (var disposable in _disposables)
-            disposable.Dispose();
-        _disposables.Clear();
+        _cancellationTokenSource.CancelAndDisposeSilently();
+        await _jsRef.DisposeSilentlyAsync().ConfigureAwait(false);
     }
 }
 
@@ -186,17 +207,23 @@ public class NoFileAccessWebFileProviderInternal(IJSRuntime jsRuntime, string fi
     public ValueTask<string> CreatePreviewUrl()
         => throw new NotSupportedException();
 
-    public ValueTask RevokePreviewUrl()
-        => ValueTask.CompletedTask;
-
     public ValueTask<string> SaveFileHandleToDb()
         => throw new NotSupportedException();
 
-    public ValueTask<bool> DeleteFileHandleFromDb()
-        => WebFileProviders.DeleteFileHandleFromDb(jsRuntime, fileHandleDbKey);
+    public Task ClearForRemoving()
+        => WebFileProviders.DeleteFileHandleFromDb(jsRuntime, fileHandleDbKey).AsTask();
 
-    public Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
+    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
         => throw new NotSupportedException();
+
+    Task<bool> IWebFileProviderInternal.WhenUserConsentGranted()
+        => throw new NotSupportedException();
+
+    public Task WhenFileStreamReady()
+        => throw new NotSupportedException();
+
+    public ValueTask DisposeAsync()
+        => ValueTask.CompletedTask;
 }
 
 internal static class WebFileProviders

@@ -23,7 +23,7 @@ public static class ShardSchemeExt
 
     public static int? TryGetShardIndex<T>(this ShardScheme? shardScheme, T shardKey)
     {
-        var shardKeyResolver = ShardKeyResolvers.Get<T>(new Requester(typeof(ShardSchemeExt)));
+        var shardKeyResolver = ShardKeyResolvers.Get<T>();
         var intShardKey = shardKeyResolver.Invoke(shardKey);
         return shardScheme.TryGetShardIndex(intShardKey);
     }
@@ -34,7 +34,7 @@ public static class ShardSchemeExt
 
     public static int GetShardIndex<T>(this ShardScheme? shardScheme, T shardKey)
     {
-        var shardKeyResolver = ShardKeyResolvers.Get<T>(new Requester(typeof(ShardSchemeExt)));
+        var shardKeyResolver = ShardKeyResolvers.Get<T>();
         var intShardKey = shardKeyResolver.Invoke(shardKey);
         return shardScheme.GetShardIndex(intShardKey);
     }

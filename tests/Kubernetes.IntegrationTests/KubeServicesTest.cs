@@ -26,6 +26,6 @@ public class KubeServicesTest(ITestOutputHelper @out) : TestBase(@out)
             new[] { new KubeEndpoint(new[] { "123.123.12.3" }.ToArray(), true) }.ToArray(),
             new[] { new KubePort("http", KubeServiceProtocol.Tcp, 8080) }.ToArray());
 
-        Out.WriteLine(a.ToString());
+        WriteLine(a.ToString());
     }
 }

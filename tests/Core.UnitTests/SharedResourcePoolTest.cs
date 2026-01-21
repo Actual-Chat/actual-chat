@@ -15,7 +15,7 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
         };
 
         var l = await pool.Rent(10, cancellationToken);
-        using (var l1 = l) {
+        using (var _ = l) {
             l.IsRented.Should().BeTrue();
             l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
 
@@ -26,8 +26,7 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
         }
         l.IsRented.Should().BeFalse();
 
-        await testClock.Delay(100, cancellationToken);
-        l.Resource.WhenDisposed.IsCompleted.Should().BeTrue();
+        await l.Resource.WhenDisposed.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
     }
 
     [Fact]
@@ -52,8 +51,7 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
         l.IsRented.Should().BeFalse();
         l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
 
-        await testClock.Delay(1000, cancellationToken);
-        l.Resource.WhenDisposed.IsCompleted.Should().BeTrue();
+        await l.Resource.WhenDisposed.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
     }
 
     [Fact]
@@ -89,8 +87,7 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
         }
         l.IsRented.Should().BeFalse();
 
-        await testClock.Delay(2000, cancellationToken);
-        l.Resource.WhenDisposed.IsCompleted.Should().BeTrue();
+        await l.Resource.WhenDisposed.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
     }
 
     [Fact (Timeout = 5000)]

@@ -1,15 +1,15 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, RecordingSubHeader.Model?>
 @{
-    if (State.IsInitial(out var m) || m is null)
-        return;
-
-    var recordingElsewhereCls = m.RecordingChat != null ? "recording-elsewhere" : "";
+    var m = State.Value;
+    var cls = "recording-sub-header";
+    if (m?.RecordingChat != null)
+        cls += " recording-elsewhere";
 }
 
-<div class="recording-sub-header subheader-item @recordingElsewhereCls">
+<SubHeader Class="@cls" IsVisible="@(m is not null)">
     <div class="c-round-container">
-        @if (m.RecordingChat != null) {
+        @if (m?.RecordingChat != null) {
             <div class="c-round"></div>
         } else {
             <i class="icon-alert-triangle text-banner-warning"></i>
@@ -17,7 +17,7 @@
     </div>
 
     <div class="c-container">
-        @if (m.RecordingChat != null) {
+        @if (m?.RecordingChat != null) {
             <div class="c-line-1">
                 <div class="c-text">
                     Recording in
@@ -27,7 +27,7 @@
             </div>
         }
 
-        @if (m.StopRecordingAt != null) {
+        @if (m?.StopRecordingAt != null) {
             <div class="c-line-2 flex-none pr-4">
                 <div class="c-text">Recording will stop in </div>
                 <Countdown EndsAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
@@ -42,7 +42,7 @@
         TooltipPosition="FloatingPosition.Top">
         Stop
     </Button>
-</div>
+</SubHeader>
 
 @code {
     private IChats Chats => Hub.Chats;

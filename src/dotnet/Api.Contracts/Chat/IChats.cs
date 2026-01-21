@@ -1,3 +1,4 @@
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Chat;
@@ -64,10 +65,10 @@ public interface IChats : IComputeService
     [CommandHandler]
     Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken);
 
-    [CommandHandler]
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken);
 
-    [CommandHandler]
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task OnRemoveTextEntry(Chats_RemoveTextEntry command, CancellationToken cancellationToken);
 
     [CommandHandler]

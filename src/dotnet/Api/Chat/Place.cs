@@ -27,7 +27,6 @@ public sealed partial record Place(
     [DataMember, MemoryPackOrder(13)] public Media.Media? Background { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    [field: AllowNull, MaybeNull]
     public AliasInfo<PlaceId> AliasInfo => field ??= new(Id, AliasId);
 
     // This record relies on referential equality

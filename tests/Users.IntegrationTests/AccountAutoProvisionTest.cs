@@ -22,8 +22,8 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
 
     protected override async Task DisposeAsync()
     {
-        await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
+        await _tester.DisposeAsync();
+        await _appHost.DisposeAsync();
     }
 
     [Fact]

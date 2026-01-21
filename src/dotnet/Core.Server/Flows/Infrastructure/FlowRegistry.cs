@@ -1,37 +1,37 @@
-using System.Collections.Frozen;
+using ActualLab.Internal;
 
 namespace ActualChat.Flows.Infrastructure;
 
-public class FlowRegistry : IHasServices
+public class FlowRegistry
 {
-    public IServiceProvider Services { get; }
-    public IReadOnlyDictionary<Symbol, Type> TypeByName { get; }
-    public IReadOnlyDictionary<Type, Symbol> NameByType { get; }
-    public bool UseMasterFlows { get; }
-    public bool UseLegacyFlows { get; }
+    private readonly Dictionary<Symbol, Type> _byName = new(64);
+    private readonly Dictionary<Type, Symbol> _nameByType = new(64);
 
-    public FlowRegistry(IServiceProvider services)
+    public IReadOnlyDictionary<Symbol, Type> ByName => _byName;
+    public bool UseMasterFlows { get; set; } = true;
+
+    public FlowRegistry Add<TFlow>(Symbol name = default)
+        where TFlow : Flow
+        => Add(typeof(TFlow), name);
+
+    public FlowRegistry Add(Type flowType, Symbol name = default)
     {
-        Services = services;
-        var flowRegistryBuilder = services.GetRequiredService<FlowRegistryBuilder>();
-        var flows = flowRegistryBuilder.Flows;
-        TypeByName = flows.ToFrozenDictionary();
-        NameByType = flows.ToFrozenDictionary(kv => kv.Value, kv => kv.Key);
-        UseMasterFlows = flowRegistryBuilder.UseMasterFlows;
-        UseLegacyFlows = flowRegistryBuilder.UseLegacyFlows;
+        RequireFlowType(flowType);
+        if (_nameByType.ContainsKey(flowType))
+            throw Errors.KeyAlreadyExists();
+
+        if (name.IsEmpty)
+            name = flowType.GetName();
+        _byName.Add(name, flowType);
+        _nameByType.Add(flowType, name);
+        return this;
     }
 
-    public FlowId NewId<TFlow>(string arguments)
-        where TFlow : Flow
-        => new(NameByType[typeof(TFlow)], arguments);
+    // RequireFlowType
 
-    public FlowId NewId<TFlow>(params ReadOnlySpan<string> arguments)
-        where TFlow : Flow
-        => new(NameByType[typeof(TFlow)], FlowId.CombineArguments(arguments));
-
-    public FlowId NewId(Type flowType, string arguments)
-        => new(NameByType[flowType], arguments);
-
-    public FlowId NewId(Type flowType, params ReadOnlySpan<string> arguments)
-        => new(NameByType[flowType], FlowId.CombineArguments(arguments));
+    private static void RequireFlowType(Type type)
+    {
+        if (!typeof(Flow).IsAssignableFrom(type))
+            throw Errors.MustBeAssignableTo<Flow>(type);
+    }
 }

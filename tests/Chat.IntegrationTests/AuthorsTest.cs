@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using ActualChat.Testing.Host;
+﻿using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -7,9 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class AuthorsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [field: AllowNull, MaybeNull]
     private WebClientTester Alice => field ??= fixture.AppHost.NewWebClientTester(Out);
-    [field: AllowNull, MaybeNull]
     private WebClientTester Anonymous => field ??= fixture.AppHost.NewWebClientTester(Out);
 
     protected override async Task InitializeAsync()
@@ -30,13 +27,13 @@ public class AuthorsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelpe
     {
         var startedAt = CpuTimestamp.Now;
         var appHost = AppHost;
-        using var tester = appHost.NewWebClientTester(Out);
-        Out.WriteLine($"{startedAt}: app host init");
+        await using var tester = appHost.NewWebClientTester(Out);
+        WriteLine($"{startedAt}: app host init");
         var session = tester.Session;
 
         var authors = tester.ClientServices.GetRequiredService<IAuthors>();
         var author = await authors.GetOwn(session, Constants.Chat.DefaultChatId, default);
-        Out.WriteLine($"{startedAt}: get author");
+        WriteLine($"{startedAt}: get author");
         author.Should().BeNull();
     }
 

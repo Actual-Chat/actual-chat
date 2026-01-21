@@ -11,7 +11,6 @@ public sealed partial record SearchMatch(
     public static readonly SearchMatch Empty = New("");
 
     [DataMember(Order = 2), MemoryPackOrder(2)]
-    [field: AllowNull, MaybeNull]
     public SearchMatchPart[] Parts {
         get => field ?? [];
         init;

@@ -24,7 +24,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
     private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityConverter<DbUser, User> UserConverter => field ??= Services.DbEntityConverter<DbUser, User>();
 
     // [ComputeMethod]

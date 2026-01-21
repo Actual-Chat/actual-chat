@@ -1,7 +1,9 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Flows;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Diagnostics;
+using ActualChat.Flows;
 using ActualChat.Queues;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
@@ -18,28 +20,18 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private static readonly TimeSpan TranslateThrottleDelay = TimeSpan.FromMilliseconds(500);
     private readonly ConcurrentDictionary<StreamId, FuncWorker> _activePublishers = new ();
 
-    [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbTranslation> EntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbTranslation>>();
-    [field: AllowNull, MaybeNull]
     private Translator Translator => field ??= Services.GetRequiredService<Translator>();
-    [field: AllowNull, MaybeNull]
     private Translator RealtimeTranslator => field ??= Services.GetRequiredKeyedService<Translator>(Constants.Translation.RealtimeServiceKey);
-    [field: AllowNull, MaybeNull]
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
-    [field: AllowNull, MaybeNull]
     private IQueues Queues => field ??= Services.Queues();
-    [field: AllowNull, MaybeNull]
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    [field: AllowNull, MaybeNull]
     private IStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IStreamingBackend>();
-    [field: AllowNull, MaybeNull]
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
-    [field: AllowNull, MaybeNull]
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
 
     private static bool DebugMode => Constants.DebugMode.TranslationBackend;
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -134,6 +126,11 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             dbContext.Remove(dbTranslation);
         }
 
+        if (dbTranslation.StreamId is not null && !change.IsRemove())
+            await FlowHub
+                .NewResumeEvent<TranslationCleanupFlow>()
+                .WithDelay(now + Settings.Translation.HangingTimeout, TimeSpan.FromMinutes(1))
+                .Schedule(cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbTranslation.ToModel();
 

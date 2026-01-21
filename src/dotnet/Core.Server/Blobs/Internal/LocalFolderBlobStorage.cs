@@ -14,7 +14,6 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
     private FilePath BaseDirectory { get; } = options.BaseDirectory.FullPath;
     private IServiceProvider Services { get; } = services;
     private ILogger Log { get; } = services.LogFor<LocalFolderBlobStorage>();
-    [field: AllowNull, MaybeNull]
     private IContentTypeProvider ContentTypeProvider => field ??= Services.GetRequiredService<IContentTypeProvider>();
 
     public ValueTask DisposeAsync()
@@ -107,6 +106,19 @@ public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, ISer
             return Task.FromException(StandardError.Constraint($"Cannot delete. No such object: '{path}'."));
 
         return Task.CompletedTask;
+    }
+
+    public async Task Append(string path, Stream stream, CancellationToken cancellationToken)
+    {
+        ValidatePath(path);
+
+        var fullPath = BaseDirectory & path;
+        if (!File.Exists(fullPath))
+            throw StandardError.Constraint($"Cannot append to non-existent file: '{path}'.");
+
+        var fileStream = new FileStream(fullPath, FileMode.Append, FileAccess.Write, FileShare.None);
+        await using var _ = fileStream.ConfigureAwait(false);
+        await stream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

@@ -29,7 +29,9 @@
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.ConsoleClient'">App.ConsoleClient</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Server'">App.Server</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Wasm'">App.Wasm</ProjectKind>
-    <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Maui'">App.Maui</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Maui'">Maui</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Maui.IosShareExt'">Maui</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'Maui'">Maui</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Core'">Core</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Core.Server'">Core.Server</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Db'">Db</ProjectKind>
@@ -48,7 +50,7 @@
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Testing'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Tests'">true</IsServerSideProject>
     <IsStandaloneProject Condition="'$(ProjectKind)' == 'App.ConsoleClient'">true</IsStandaloneProject>
-    <IsMauiProject Condition="'$(ProjectKind)' == 'App.Maui'">true</IsMauiProject>
+    <IsMauiProject Condition="'$(ProjectKind)' == 'Maui'">true</IsMauiProject>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -84,6 +86,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Features>strict</Features>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <MauiVersion Condition="$(IsMauiProject)">9.0.120</MauiVersion>
 
     <!-- Generators -->
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>

@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using ActualChat.Kvas;
 using ActualChat.Testing.Host;
@@ -13,13 +12,9 @@ namespace ActualChat.UI.Blazor.IntegrationTests;
 public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [field: AllowNull, MaybeNull]
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
-    [field: AllowNull, MaybeNull]
     private LogUI LogUI => field ??= Tester.ScopedAppServices.GetRequiredService<LogUI>();
-    [field: AllowNull, MaybeNull]
     private LocalSettings LocalSettings => field ??= Tester.Services.LocalSettings();
-    [field: AllowNull, MaybeNull]
     private ILogger ScopedLog => field ??= Tester.ScopedAppServices.LogFor(GetType());
 
     protected override Task InitializeAsync()
@@ -32,9 +27,8 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldReturnLogEntries()
     {
         // arrange
-        await Tester.SignInAsBobAdmin();
-        await LocalSettings.LocalAppSettings().Update(x => x with { IsLogViewerEnabled = true });
-        await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
+        await Tester.SignInAsBob();
+        await SetIsEnabled(true);
         await LogUI.WhenReady;
         ScopedLog.LogInformation($"{nameof(ShouldReturnLogEntries)}: Hello, Info!");
         ScopedLog.LogWarning($"{nameof(ShouldReturnLogEntries)}: Hello, Warning!");
@@ -52,34 +46,10 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldReturnEmptyIfDisabled()
     {
         // arrange
-        await Tester.SignInAsBobAdmin();
-        await LocalSettings.Update<LocalAppSettings>(x => x with { IsLogViewerEnabled = false });
-        await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeFalse(), TimeSpan.FromSeconds(10));
+        await Tester.SignInAsBob();
+        await SetIsEnabled(false);
         await LogUI.WhenReady;
         ScopedLog.LogInformation($"{nameof(ShouldReturnLogEntries)}: Hello, Info!");
-
-        // act
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var cancellationToken = cts.Token;
-        var idRange = await LogUI.GetIdRange(cancellationToken);
-
-        // assert
-        idRange.IsEmpty.Should().BeTrue();
-
-        // act
-        var tiles = await LogUI.GetTiles(new (5, 10), cancellationToken);
-
-        // assert
-        tiles.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task ShouldNotBecomeReadyIfNotAdmin()
-    {
-        // arrange
-        await Tester.SignInAsBob();
-        await LogUI.WhenReady.AsAsyncFunc().Should().NotCompleteWithinAsync(TimeSpan.FromSeconds(1));
-        ScopedLog.LogInformation($"{nameof(ShouldNotBecomeReadyIfNotAdmin)}: Hello, Info!");
 
         // act
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -100,9 +70,8 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task TilesShouldNotContainIdGaps()
     {
         // arrange
-        await Tester.SignInAsBobAdmin();
-        await LocalSettings.Update<LocalAppSettings>(x => x with { IsLogViewerEnabled = true });
-        await TestExt.When(() => LogUI.IsEnabled.ValueOrDefault.Should().BeTrue(), TimeSpan.FromSeconds(10));
+        await Tester.SignInAsBob();
+        await SetIsEnabled(true);
         await LogUI.WhenReady;
         for (int i = 0; i < 1000; i++) {
             ScopedLog.LogDebug($"{nameof(ShouldReturnLogEntries)}: Hello, Debug!");
@@ -146,4 +115,11 @@ public class LogUITest(AppHostFixture fixture, ITestOutputHelper @out)
              foundEntries.Should().HaveCount(minExpectedEntryCount);
              return tiles;
          }, TimeSpan.FromSeconds(10).Debuggable());
+
+     private async Task SetIsEnabled(bool value)
+     {
+         await LocalSettings.LocalAppSettings().Update(x => x with { IsLogViewerEnabled = value });
+         LogUI.IsEnabled.Invalidate();
+         await TestExt.When(() => LogUI.IsEnabled.Value.Should().Be(value), TimeSpan.FromSeconds(10));
+     }
 }

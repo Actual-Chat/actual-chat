@@ -1,6 +1,6 @@
 namespace ActualChat;
 
-public static class ChannelExt
+public static partial class ChannelExt
 {
     private static readonly ChannelClosedException ChannelClosedError = new();
 

@@ -7,7 +7,6 @@ namespace ActualChat.App.Maui.Audio;
 
 public class IosAudioCodec(AppUIHub hub) : IAudioCodec
 {
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
 
     public async IAsyncEnumerable<IMemoryOwner<byte>> Encode(

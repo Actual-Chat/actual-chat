@@ -50,6 +50,7 @@
     <PackageReference Include="ActualLab.Generators" PrivateAssets="all" />
     <PackageReference Include="ActualLab.Testing" />
     <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="FlakyTest.XUnit" />
     <PackageReference Include="MemoryPack.Generator" PrivateAssets="all" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Moq" />
@@ -69,6 +70,8 @@
     <Using Include="ActualChat.Testing" />
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Immutable" />
+    <Using Include="System.Diagnostics" />
+    <Using Include="System.Diagnostics.CodeAnalysis" />
     <Using Include="System.Linq" />
     <Using Include="System.Reflection" />
     <Using Include="System.Reactive" /> <!-- Mainly for Unit type -->
@@ -110,12 +113,14 @@
     <Using Include="ActualLab.Testing" />
     <Using Include="Xunit" />
     <Using Include="Xunit.Abstractions" />
+    <Using Include="FlakyTest.XUnit.Attributes" />
 
     <None Include="$(MSBuildThisFileDirectory)template.xunit.runner.json" CopyToOutputDirectory="PreserveNewest" Link="$(AssemblyName).xunit.runner.json"/>
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">
     <!-- Global usings for UI.Blazor projects -->
+    <Using Include="ActualChat.UI" />
     <Using Include="ActualChat.UI.Blazor" />
     <Using Include="ActualChat.UI.Blazor.Components" />
     <Using Include="ActualChat.UI.Blazor.Layouts" />

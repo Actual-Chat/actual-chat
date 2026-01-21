@@ -2,7 +2,7 @@ using ActualChat.Queues.Internal;
 
 namespace ActualChat.Queues.InMemory;
 
-public sealed class InMemoryQueues : QueuesBase<InMemoryQueues.Options, InMemoryQueueProcessor>
+public sealed class InMemoryQueues : QueuesBase<InMemoryQueues.Options>
 {
     public sealed record Options : QueueSettings
     {
@@ -14,10 +14,10 @@ public sealed class InMemoryQueues : QueuesBase<InMemoryQueues.Options, InMemory
     private readonly InMemoryQueueProcessor _processor;
 
     public InMemoryQueues(Options settings, IServiceProvider services)
-        : base(settings, services, false)
+        : base(settings, services, createProcessors: false)
     {
         _processor = new(settings, this);
-        Processors = CreateProcessors();
+        CreateProcessors();
     }
 
     public override Task Purge(CancellationToken cancellationToken = default)
@@ -25,6 +25,6 @@ public sealed class InMemoryQueues : QueuesBase<InMemoryQueues.Options, InMemory
 
     // Protected methods
 
-    protected override InMemoryQueueProcessor CreateProcessor(QueueRef queueRef)
+    protected override IQueueProcessor CreateProcessor(QueueRef queueRef)
         => _processor; // There is just a single processor
 }

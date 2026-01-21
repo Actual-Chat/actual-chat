@@ -36,7 +36,7 @@ internal sealed class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
     IShardIndexResolver<TShardKey> shardIndexResolver,
     IWorkerPoolShardFactory<TWorker, TJob, TJobId, TShardKey> workerPoolFactory,
     IServiceCoordinator serviceCoordinator
-) : LegacyShardWorker(services, ShardScheme.MLSearchBackend), IWorkerPool<TJob, TJobId, TShardKey>
+) : Sharding.ShardWorker(services, ShardScheme.MLSearchBackend), IWorkerPool<TJob, TJobId, TShardKey>
     where TWorker : class, IWorker<TJob>
     where TJob : IHasId<TJobId>, IHasShardKey<TShardKey>
     where TJobId : notnull
@@ -57,8 +57,9 @@ internal sealed class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
         await poolShard.CancelAsync(jobCancellation.Id, cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
+    protected override async Task OnRun(ShardOwnership shardOwnership, CancellationToken cancellationToken)
     {
+        var shardIndex = shardOwnership.ShardIndex;
         var poolShard = _workerPoolShards.AddOrUpdate(shardIndex,
             static (key, arg) => arg.Factory.Create(key, arg.DuplicateJobPolicy, arg.ConcurrencyLevel),
             static (key, _, arg) => arg.Factory.Create(key, arg.DuplicateJobPolicy, arg.ConcurrencyLevel),
@@ -67,7 +68,7 @@ internal sealed class WorkerPool<TWorker, TJob, TJobId, TShardKey>(
             await serviceCoordinator.ExecuteWhenReadyAsync(poolShard.UseAsync, cancellationToken).ConfigureAwait(false);
         }
         finally {
-            // Clean up dictionary of worker pools if it still contains the pool being stopped
+            // Clean up the dictionary of worker pools if it still contains the pool being stopped
             _workerPoolShards.TryRemove(new KeyValuePair<int, IWorkerPoolShard<TJob, TJobId, TShardKey>>(shardIndex, poolShard));
         }
     }

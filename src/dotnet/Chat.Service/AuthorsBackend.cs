@@ -10,7 +10,6 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
 {
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IAvatarsBackend AvatarsBackend { get; } = services.GetRequiredService<IAvatarsBackend>();
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbAuthor> DbAuthorResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbAuthor>>();
     private IDbShardLocalIdGenerator<DbAuthor, string> DbAuthorLocalIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbAuthor, string>>();

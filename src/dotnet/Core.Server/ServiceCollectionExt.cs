@@ -36,17 +36,14 @@ public static class ServiceCollectionExt
 
     // AddFlows
 
-    public static FlowRegistryBuilder AddFlows(
+    public static FlowRegistry AddFlows(
         this IServiceCollection services,
-        bool? useMasterFlows = null,
-        bool? useLegacyFlows = null)
+        bool? useMasterFlows = null)
     {
-        var flows = services.FindOrAddInstance(() => new FlowRegistryBuilder(), addInFront: true);
+        var flowRegistry = services.FindOrAddInstance(() => new FlowRegistry(), addInFront: true);
         if (useMasterFlows.HasValue)
-            flows.UseMasterFlows = useMasterFlows.Value;
-        if (useLegacyFlows.HasValue)
-            flows.UseLegacyFlows = useLegacyFlows.Value;
-        return flows;
+            flowRegistry.UseMasterFlows = useMasterFlows.Value;
+        return flowRegistry;
     }
 
     // AddNats
@@ -138,7 +135,6 @@ public static class ServiceCollectionExt
             services.AddSingleton<IQueues>(c => c.GetRequiredService<InMemoryQueues>());
             services.AddHostedService(c => c.Queues());
             services.AddSingleton(c => new BackendServiceDefs(c));
-            services.AddSingleton<IQueueRefResolver>(c => new QueueRefResolver(c));
         }
         services.AddSingleton(optionsBuilder ?? (static _ => new InMemoryQueues.Options()));
         return services;
@@ -154,7 +150,6 @@ public static class ServiceCollectionExt
             services.AddSingleton<IQueues>(c => c.GetRequiredService<NatsQueues>());
             services.AddHostedService(c => c.Queues());
             services.AddSingleton(c => new BackendServiceDefs(c));
-            services.AddSingleton<IQueueRefResolver>(c => new QueueRefResolver(c));
         }
         services.AddSingleton(optionsBuilder ?? (static _ => new NatsQueues.Options()));
         return services;

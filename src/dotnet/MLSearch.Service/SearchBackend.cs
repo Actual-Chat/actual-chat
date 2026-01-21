@@ -24,7 +24,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IndexedDocuments IndexedDocuments { get; } = services.GetRequiredService<IndexedDocuments>();
-    private IFlows Flows { get; } = services.GetRequiredService<IFlows>();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
     private ILogger? OpenSearchDebugLog => Constants.DebugMode.OpenSearchRequestResponse ? Log : null;
 
     // Not a [ComputeMethod]!
@@ -38,8 +38,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return ContactSearchResultPage.Empty;
         }
 
-        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenReady.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenReady.ConfigureAwait(false);
         query = query.Clamp();
         return query.Scope switch {
             SearchScope.People => query.Own
@@ -64,8 +64,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return EntrySearchResultPage.Empty;
         }
 
-        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenReady.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenReady.ConfigureAwait(false);
         query = query.Clamp();
         return await FindEntriesInOpenSearch(userId, query, cancellationToken).ConfigureAwait(false);
     }
@@ -112,7 +112,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             // NOTE: we don't have any other chance to process removed items
             => changeKind == ChangeKind.Remove
                 ? IndexedDocuments.SaveUsers([], [old!.Id], cancellationToken)
-                : ResumeIndexingFlow<AccountIndexingFlow>("", "Account changed", cancellationToken);
+                : ResumeIndexingFlow<AccountIndexingFlow>("", cancellationToken);
     }
 
     // [EventHandler]
@@ -129,7 +129,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         async Task UpdateIndexedUsers()
         {
             if (!eventCommand.HasLeft) {
-                await ResumeIndexingFlow<PlaceContactIndexingFlow>("", "Place membership changed", cancellationToken)
+                await ResumeIndexingFlow<PlaceContactIndexingFlow>("", cancellationToken)
                     .ConfigureAwait(false);
                 return;
             }
@@ -154,7 +154,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             return;
 
         var (chat, _, changeKind) = eventCommand;
-        // TODO: Stop indexing removed chats
         await StartIndexingEntries().ConfigureAwait(false);
         await UpdateIndexedChatContacts().ConfigureAwait(false);
         return;
@@ -167,13 +166,13 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             if (changeKind == ChangeKind.Remove)
                 return IndexedDocuments.SaveGroups([], [chat.Id], cancellationToken);
 
-            return ResumeIndexingFlow<GroupIndexingFlow>("", "Chat changed", cancellationToken);
+            return ResumeIndexingFlow<GroupIndexingFlow>("", cancellationToken);
         }
 
         Task StartIndexingEntries()
             => changeKind != ChangeKind.Create || chat.Id is PlaceChatId { IsRoot: true }
                 ? Task.CompletedTask
-                : Flows.Get<EntryIndexingFlow>(chat.Id.Value, cancellationToken).AsTask();
+                : ResumeIndexingFlow<EntryIndexingFlow>(chat.Id.Value, cancellationToken);
     }
 
     // [EventHandler]
@@ -195,7 +194,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
             if (changeKind == ChangeKind.Remove)
                 return IndexedDocuments.SavePlaces([], [place.Id], cancellationToken);
 
-            return ResumeIndexingFlow<PlaceIndexingFlow>("", "Place changed", cancellationToken);
+            return ResumeIndexingFlow<PlaceIndexingFlow>("", cancellationToken);
         }
     }
 
@@ -211,7 +210,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         Task UpdateIndexedEntries()
             => entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text
                 ? Task.CompletedTask
-                : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, $"{nameof(OnTextEntryChangedEvent)} #{eventCommand.Entry.Id}", cancellationToken);
+                : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, cancellationToken);
     }
 
     // [EventHandler]
@@ -229,7 +228,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
             return changeKind is ChangeKind.Remove
                 ? IndexedDocuments.SaveUserContacts([], [contact.Id], cancellationToken)
-                : ResumeIndexingFlow<UserContactIndexingFlow>("", "Contact changed", cancellationToken);
+                : ResumeIndexingFlow<UserContactIndexingFlow>("", cancellationToken);
         }
     }
 
@@ -440,8 +439,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         EntrySearchQuery query,
         CancellationToken cancellationToken)
     {
-        if (!OpenSearchConfigurator.WhenCompleted.IsCompletedSuccessfully)
-            await OpenSearchConfigurator.WhenCompleted.ConfigureAwait(false);
+        if (!OpenSearchConfigurator.WhenReady.IsCompletedSuccessfully)
+            await OpenSearchConfigurator.WhenReady.ConfigureAwait(false);
         var chatIds = await ListChatIds().ConfigureAwait(false);
 
         var searchResponse =
@@ -496,11 +495,9 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
     private Task ResumeIndexingFlow<TFlow>(
         string arguments,
-        string? tag = null,
-        CancellationToken cancellationToken = default) where TFlow : Flow
-        => Flows.Resume<TFlow>(arguments,
-            Settings.ChangedEntityIndexingDelay,
-            tag,
-            Settings.ChangedEntityIndexingDelay + Settings.IndexingFlowResumeDelay, // to avoid too many flow executions
-            cancellationToken);
+        CancellationToken cancellationToken = default)
+        where TFlow : Flow
+        => FlowHub.NewResumeEvent<TFlow>(arguments)
+            .WithDelay(Settings.ChangedEntityIndexingDelay, Settings.IndexingFlowResumeDelayQuanta)
+            .Schedule(cancellationToken);
 }

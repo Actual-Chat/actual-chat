@@ -1,5 +1,6 @@
 @implements IModalView<SettingsModal.Model>
 @using ActualChat.Hosting
+@using ActualChat.UI.App.Services.NativeAppSettings
 @inherits ComputedStateComponent<AppUIHub, SettingsModal.ComputedModel>
 @{
     var m = State.Value;
@@ -59,6 +60,14 @@
             </SettingsTab>
         }
 
+        @if (m.ShowLogViewer) {
+            <SettingsTab @key="9" TabIndex="9" Title="Log Viewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" IconClass="icon-info">
+                <div class="log-viewer-page">
+                    <LogView/>
+                </div>
+            </SettingsTab>
+        }
+
         <SettingsTab @key="90" TabIndex="90" Title="Documents" Id="@SettingsTabId.Documents" Class="docs-tab" IconClass="icon-file-text">
             <DocumentsPage/>
         </SettingsTab>
@@ -105,9 +114,11 @@
         var showDeveloperTools = _developerTools?.IsEnabled(account) ?? false;
         var tabId = ModalModel.TabId;
         var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
+        var showLogViewer = await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
         return new ComputedModel(account, tabId) {
             ShowDeveloperTools = showDeveloperTools,
             EnableChatRouletteUI = enableChatRouletteUI,
+            ShowLogViewer = showLogViewer,
         };
     }
 
@@ -119,6 +130,7 @@
     public sealed record ComputedModel(AccountFull AccountFull, string? TabId) {
         public bool ShowDeveloperTools { get; init; }
         public bool EnableChatRouletteUI { get; init; }
+        public bool ShowLogViewer { get; init; }
     }
 
     public sealed record Model(string? TabId = null) {

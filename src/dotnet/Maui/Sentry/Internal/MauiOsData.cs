@@ -1,0 +1,33 @@
+using Microsoft.Maui.Devices;
+using Sentry.Extensibility;
+using OperatingSystem = Sentry.Protocol.OperatingSystem;
+
+namespace ActualChat.Maui.Sentry.Internal;
+
+internal static class MauiOSData
+{
+    public static void ApplyMauiOSData(this OperatingSystem os, IDiagnosticLogger? logger)
+    {
+        try {
+            // https://docs.microsoft.com/dotnet/maui/platform-integration/device/information
+            var deviceInfo = DeviceInfo.Current;
+            if (deviceInfo.Platform == DevicePlatform.Unknown) {
+                // return early so we don't get NotImplementedExceptions (i.e., in unit tests, etc.)
+                return;
+            }
+
+            os.Name ??= deviceInfo.Platform.ToString();
+            os.Version ??= deviceInfo.VersionString;
+            // We need infor about Processor \ device name
+
+            // TODO: fill in these
+            // os.Build ??= ?
+            // os.KernelVersion ??= ?
+            // os.Rooted ??= ?
+        }
+        catch (Exception ex) {
+            // Log, but swallow the exception so we can continue sending events
+            logger?.LogError(ex, "Error getting MAUI OS information");
+        }
+    }
+}

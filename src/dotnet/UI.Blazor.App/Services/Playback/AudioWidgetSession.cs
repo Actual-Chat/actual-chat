@@ -1,4 +1,5 @@
 using ActualLab.Locking;
+using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -90,15 +91,21 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
             chatId = recordingChatId;
         }
         else if (playbackState is RealtimePlaybackState realtimePlaybackState) {
-            mode = AudioWidgetSessionStateMode.RealtimePlayback;
             chatId = realtimePlaybackState.ChatIds.First();
-            extraChatCount = realtimePlaybackState.ChatIds.Count - 1;
+            var controller = ChatPlayers?.GetRealtimeChatPlayerControllerNonComputed(chatId);
+            if (controller?.ChatPlayer.Playback.IsPlaying.Value ?? false) {
+                mode = AudioWidgetSessionStateMode.RealtimePlayback;
+                extraChatCount = realtimePlaybackState.ChatIds.Count - 1;
+                isPaused = controller.IsPaused.Value;
+            }
         }
         else if (playbackState is HistoricalPlaybackState historicalPlaybackState) {
-            mode = AudioWidgetSessionStateMode.HistoricalPlayback;
             chatId = historicalPlaybackState.ChatId;
             var controller = ChatPlayers?.GetHistoricalChatPlayerControllerNonComputed(chatId);
-            isPaused = controller?.IsPaused.Value ?? false;
+            if (controller?.ChatPlayer.Playback.IsPlaying.Value ?? false) {
+                mode = AudioWidgetSessionStateMode.HistoricalPlayback;
+                isPaused = controller.IsPaused.Value;
+            }
         }
         if (mode is null)
             return null;
@@ -122,6 +129,8 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
 
         if (playbackState is HistoricalPlaybackState historicalPlaybackState)
             InvokeHistoricalPlaybackAction(historicalPlaybackState, actionName);
+        else if (playbackState is RealtimePlaybackState realtimePlaybackState)
+            InvokeRealtimePlaybackAction(realtimePlaybackState, actionName);
     }
 
     private void InvokeHistoricalPlaybackAction(HistoricalPlaybackState state, string actionName)
@@ -149,12 +158,40 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
         }
         }
     }
+
+    private void InvokeRealtimePlaybackAction(RealtimePlaybackState state, string actionName)
+    {
+        var chatPlayers = ChatPlayers;
+        if (chatPlayers is null)
+            return;
+
+        var chatId = state.ChatIds.First();
+        switch (actionName) {
+        case Actions.Stop: {
+            chatPlayers.StopRealtimePlayback();
+            break;
+        }
+        case Actions.Pause: {
+            chatPlayers
+                .GetRealtimeChatPlayerControllerNonComputed(chatId)
+                ?.Pause();
+            break;
+        }
+        case Actions.Resume: {
+            _ = chatPlayers
+                .GetRealtimeChatPlayerControllerNonComputed(chatId)
+                ?.Resume();
+            break;
+        }
+        }
+    }
 }
 
 public class AudioWidgetSessionChatResolver(IServiceProvider services)
 {
     private Session Session => field ??= services.GetRequiredService<Session>();
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
+    private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();
     private UrlMapper UrlMapper => field ??= services.GetRequiredService<UrlMapper>();
 
     public async Task<AudioWidgetSessionChatInfo> Get(ChatId chatId)
@@ -164,6 +201,17 @@ public class AudioWidgetSessionChatResolver(IServiceProvider services)
             return new AudioWidgetSessionChatInfo(chatId, "unknown chat", "", 0);
 
         var picUrl = chat.Picture is not null ? UrlMapper.ContentUrl(chat.Picture.ContentId) : "";
+
+        if (!picUrl.IsNullOrEmpty() || chatId is not PeerChatId peerChatId)
+            return new AudioWidgetSessionChatInfo(chatId, chat.Title, picUrl, 0);
+
+        // For peer chats without a picture, use the peer's avatar
+        var ownAccount = await Accounts.GetOwn(Session, CancellationToken.None).ConfigureAwait(false);
+        var peerUserId = peerChatId.AnotherUserId(ownAccount.Id);
+        var peerAccount = await Accounts.Get(Session, peerUserId, CancellationToken.None).ConfigureAwait(false);
+        if (peerAccount?.Avatar.Picture?.MediaContent is { } mediaContent)
+            picUrl = UrlMapper.ContentUrl(mediaContent.ContentId);
+
         return new AudioWidgetSessionChatInfo(chatId, chat.Title, picUrl, 0);
     }
 }

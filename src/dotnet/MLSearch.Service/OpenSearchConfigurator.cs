@@ -12,37 +12,32 @@ namespace ActualChat.MLSearch;
 // TODO: merge with cluster setup actions or cluster setup
 public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBase
 {
-    private readonly TaskCompletionSource _whenCompleted = TaskCompletionSourceExt.New();
+    private readonly TaskCompletionSource _whenReady = TaskCompletionSourceExt.New();
 
-    [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= services.GetRequiredService<MLSearchSettings>();
-    [field: AllowNull, MaybeNull]
     private OpenSearchNames OpenSearchNames => field ??= services.GetRequiredService<OpenSearchNames>();
-    [field: AllowNull, MaybeNull]
     private IOpenSearchClient OpenSearchClient => field ??= services.GetRequiredService<IOpenSearchClient>();
-    [field: AllowNull, MaybeNull]
-    private IMeshLocks MeshLocks => field ??= services.MeshLocks<MLSearchDbContext>().WithKeyPrefix(nameof(OpenSearchConfigurator));
-    [field: AllowNull, MaybeNull]
+    private IMeshLocks MeshLocks => field ??= services.MeshLocks().WithKeyPrefix(nameof(OpenSearchConfigurator));
     private ILogger Log => field ??= services.LogFor(GetType());
 
     private readonly int _numberOfReplicas = services.GetRequiredService<HostInfo>().IsDevelopmentInstance ? 0 : 1;
 
-    public Task WhenCompleted => _whenCompleted.Task;
+    public Task WhenReady => _whenReady.Task;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         if (!Settings.IsEnabled) {
-            _whenCompleted.SetException(StandardError.Unavailable("Search feature is turned off."));
+            _whenReady.SetException(StandardError.Unavailable("Search feature is turned off."));
             return;
         }
 
         try {
             await Run(cancellationToken).ConfigureAwait(false);
-            _whenCompleted.SetResult();
+            _whenReady.SetResult();
         }
         catch (Exception e)
         {
-            _whenCompleted.SetException(e);
+            _whenReady.SetException(e);
             throw;
         }
     }
@@ -61,24 +56,10 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
     }
 
     private Task EnsureTemplates(CancellationToken cancellationToken)
-    {
-        var runOptions = RunLockedOptions.Default with { Log = Log };
-        return MeshLocks.RunLocked(
-            nameof(EnsureTemplates),
-            runOptions,
-            EnsureTemplatesUnsafe,
-            cancellationToken);
-    }
+        => MeshLocks.LockAndRun(nameof(EnsureTemplates), EnsureTemplatesUnsafe, cancellationToken);
 
     private Task EnsureIndices(CancellationToken cancellationToken)
-    {
-        var runOptions = RunLockedOptions.Default with { Log = Log };
-        return MeshLocks.RunLocked(
-            nameof(EnsureIndices),
-            runOptions,
-            EnsureIndicesUnsafe,
-            cancellationToken);
-    }
+        => MeshLocks.LockAndRun(nameof(EnsureIndices), EnsureIndicesUnsafe, cancellationToken);
 
     private async Task EnsureTemplatesUnsafe(CancellationToken cancellationToken)
     {

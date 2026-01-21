@@ -46,6 +46,19 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             return _players.GetValueOrDefault((chatId, ChatPlayerKind.Historical)) as HistoricalChatPlayerController;
     }
 
+    [ComputeMethod]
+    public virtual Task<RealtimeChatPlayerController?> GetRealtimeChatPlayerController(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var controller = GetRealtimeChatPlayerControllerNonComputed(chatId);
+        return Task.FromResult(controller);
+    }
+
+    public RealtimeChatPlayerController? GetRealtimeChatPlayerControllerNonComputed(ChatId chatId)
+    {
+        lock (Lock)
+            return _players.GetValueOrDefault((chatId, ChatPlayerKind.Realtime)) as RealtimeChatPlayerController;
+    }
+
     public void StartHistoricalPlayback(ChatId chatId, Moment startAt)
         => StartPlayback(new HistoricalPlaybackState(chatId, startAt));
 
@@ -64,20 +77,25 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             StopPlayback();
     }
 
-    public void ReleaseAudioFocusDueToPause(HistoricalChatPlayerController controller)
+    public void ReleaseAudioFocusDueToPause(ChatPlayerController controller)
     {
-        Log.LogInformation("Releasing audio focus for historical chat player '{ChatId}'", controller.ChatId);
+        Log.LogInformation("Releasing audio focus for chat player '{ChatId}'", controller.ChatId);
 
-        if (_playbackState.Value is HistoricalPlaybackState historicalPlaybackState
-            && historicalPlaybackState.ChatId == controller.ChatId) {
+        var playbackState = _playbackState.Value;
+        var shouldRelease = playbackState switch {
+            HistoricalPlaybackState historical => historical.ChatId == controller.ChatId,
+            RealtimePlaybackState realtime => realtime.ChatIds.Contains(controller.ChatId),
+            _ => false
+        };
+
+        if (shouldRelease)
             ReleaseAudioFocus();
-        }
     }
 
-    public async Task<bool> TryGainAudioFocusForResume(HistoricalChatPlayerController controller)
+    public async Task<bool> TryGainAudioFocusForResume(ChatPlayerController controller)
     {
-        Log.LogInformation("Trying to gain audio focus for historical chat player '{ChatId}'", controller.ChatId);
-        var audioFocusHandle = await TryGainAudioFocus($"Resuming historical chat player '{controller.ChatId}'").ConfigureAwait(false);
+        Log.LogInformation("Trying to gain audio focus for chat player '{ChatId}'", controller.ChatId);
+        var audioFocusHandle = await TryGainAudioFocus($"Resuming chat player '{controller.ChatId}'").ConfigureAwait(false);
         return audioFocusHandle is not null;
     }
 
@@ -156,6 +174,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             await ExitState(lastPlaybackState).ConfigureAwait(false);
             await EnterState(playbackState, cancellationToken).ConfigureAwait(false);
             AudioWidgetSession.OnPlaybackStateChanged(playbackState);
+            UpdateMediaSessionState();
             return;
         }
 
@@ -178,6 +197,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             throw new ArgumentOutOfRangeException(nameof(playbackState));
         }
         AudioWidgetSession.OnPlaybackStateChanged(playbackState);
+        UpdateMediaSessionState();
         return;
 
         async Task EnterState(PlaybackState? state, CancellationToken ct)
@@ -229,12 +249,15 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             };
             var controller = newPlayer is HistoricalChatPlayer historicalChatPlayer
                 ? new HistoricalChatPlayerController(historicalChatPlayer, this, Log)
-                : new ChatPlayerController(newPlayer, this);
+                : (ChatPlayerController)new RealtimeChatPlayerController((RealtimeChatPlayer)newPlayer, this, Log);
             _players = _players.Add((chatId, playerKind), controller);
         }
         if (playerKind is ChatPlayerKind.Historical)
             using (Invalidation.Begin())
                 _ = GetHistoricalChatPlayerController(chatId, default);
+        if (playerKind is ChatPlayerKind.Realtime)
+            using (Invalidation.Begin())
+                _ = GetRealtimeChatPlayerController(chatId, default);
         return newPlayer;
     }
 
@@ -251,11 +274,16 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         if (playerKind is ChatPlayerKind.Historical)
             using (Invalidation.Begin())
                 _ = GetHistoricalChatPlayerController(chatId, default);
+        if (playerKind is ChatPlayerKind.Realtime)
+            using (Invalidation.Begin())
+                _ = GetRealtimeChatPlayerController(chatId, default);
     }
 
     private Task<Task> ResumeRealtimePlayback(ChatId chatId, CancellationToken cancellationToken)
     {
         var player = GetOrCreate(chatId, ChatPlayerKind.Realtime);
+        player.Playback.IsPaused.Updated += IsPausedOnUpdated;
+        player.Playback.IsPlaying.Updated += IsPlayingOnUpdated;
         var whenPlaying = player.WhenPlaying;
         return whenPlaying is { IsCompleted: false }
             ? Task.FromResult(whenPlaying)
@@ -276,6 +304,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         var player = GetOrCreate(chatId, ChatPlayerKind.Historical);
         var startTask = player.Start(startAt, cancellationToken);
         player.Playback.IsPaused.Updated += IsPausedOnUpdated;
+        player.Playback.IsPlaying.Updated += IsPlayingOnUpdated;
         return startTask;
     }
 
@@ -287,12 +316,15 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         if (controller is null)
             return Task.CompletedTask;
 
-        if (controller.ChatPlayer is HistoricalChatPlayer)
-            controller.ChatPlayer.Playback.IsPaused.Updated -= IsPausedOnUpdated;
+        controller.ChatPlayer.Playback.IsPaused.Updated -= IsPausedOnUpdated;
+        controller.ChatPlayer.Playback.IsPlaying.Updated -= IsPlayingOnUpdated;
         return controller.ChatPlayer.Stop();
     }
 
     private void IsPausedOnUpdated(State state, StateEventKind kind)
+        => UpdateMediaSessionState();
+
+    private void IsPlayingOnUpdated(State state, StateEventKind kind)
         => UpdateMediaSessionState();
 
     private Task StopPlayers(IEnumerable<ChatId> chatIds, ChatPlayerKind playerKind)
@@ -322,9 +354,12 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         _audioFocusActivation = null;
     }
 
-    private RestoreFocusHandler? OnLostFocus(bool mayRecover)
+    private RestoreFocusHandler? OnLostFocus(bool mayRecover, bool canDuck)
     {
-        Log.LogInformation("Audio focus lost event. May recover: {MayRecover}", mayRecover);
+        Log.LogInformation("Audio focus lost event. May recover: {MayRecover}, Can duck: {CanDuck}", mayRecover, canDuck);
+        if (canDuck)
+            return null; // Do not stop players. We don't support ducking so far, so just let it play, do nothing.
+
         if (!mayRecover)
             _audioFocusActivation = null;
         var restoreFocusHandler = HandleLostAudioFocus(PlaybackState.Value, mayRecover);

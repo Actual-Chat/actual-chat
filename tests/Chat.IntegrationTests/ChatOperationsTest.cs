@@ -210,7 +210,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     public async Task NotesChatCreatedOnSignIn()
     {
         // arrange
-        using var appHost = await NewAppHost("notes-chats", options => options with {
+        await using var appHost = await NewAppHost("notes-chats", options => options with {
             ChatDbInitializerOptions = ChatDbInitializer.Options.Default with {
                 AddNotesChat = true,
             },

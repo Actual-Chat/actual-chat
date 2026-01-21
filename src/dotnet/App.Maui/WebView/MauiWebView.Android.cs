@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using Android.Webkit;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.Maui.Platform;

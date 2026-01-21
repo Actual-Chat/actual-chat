@@ -16,7 +16,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
     public FileAttachments(AppUIHub hub, ChatId chatId) : base(hub)
     {
         AttachmentsController = Hub.Services.GetRequiredService<AttachmentsController>();
-        VisualMediaDimensions = new VisualMediaDimensions(Hub.JS);
+        VisualMediaDimensions = new VisualMediaDimensions(Hub.JS, Hub.LogFor<VisualMediaDimensions>());
         ChatId = chatId;
     }
 
@@ -60,7 +60,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             return false;
 
         webFileProvider.Initialize(Hub.Services);
-        return await AddFileAttachment(list, webFileProvider);
+        return await TryAddFileAttachment(list, webFileProvider);
     }
 
     private async Task<bool> TryAddFileAttachment(AttachmentList list, AttachFileInfo fileInfo)
@@ -72,7 +72,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
 
         var fileProvider = fileInfo.FileProvider;
         fileProvider.Initialize(Hub.Services);
-        return await AddFileAttachment(list, fileProvider);
+        return await TryAddFileAttachment(list, fileProvider);
     }
 
     private Exception? CheckCanAdd(AttachmentList list, long length)
@@ -96,7 +96,8 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             webFileProviderInternal = new WebFileProviderInternal(
                 webFileAttachment.FileProvider,
                 webFileAttachment.PreviewUrl,
-                true);
+                true,
+                Task.FromResult(true));
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to create file provider");
@@ -113,7 +114,30 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         return webFileProvider;
     }
 
-    private async Task<bool> AddFileAttachment(AttachmentList list, IFileProvider fileProvider)
+    private async Task<bool> TryAddFileAttachment(AttachmentList list, IFileProvider fileProvider)
+    {
+        Attachment attachment;
+        try {
+            attachment = await CreateAttachment(fileProvider);
+        }
+        catch (Exception ex) {
+            await AttachmentCleanupFactory.ForFile(fileProvider)
+                .Cleanup.Invoke()
+                .WithErrorLog(Log, "Failed to cleanup file provider")
+                .SilentAwait();
+            Log.LogError(ex, "Failed to add file attachment");
+            UICommander.ShowError("Failed to add file attachment.");
+            return false;
+        }
+
+        await AttachmentsController.AddAttachment(list, attachment);
+        // NOTE: Start upload immediately after adding attachments.
+        await AttachmentsController.InitUpload(list, attachment.Id, ChatId);
+        await AttachmentsController.ResumeUpload(list, attachment.Id);
+        return true;
+    }
+
+    private async Task<Attachment> CreateAttachment(IFileProvider fileProvider)
     {
         var fileMetadata = fileProvider.Metadata;
         var previewUrl = "";
@@ -129,17 +153,14 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             fileMetadata.FileName,
             fileMetadata.FileType,
             fileMetadata.Length,
-            previewUrl,
             width,
-            height) {
+            height,
+            Task.FromResult(true),
+            Task.FromResult(previewUrl)) {
             FileProvider = fileProvider,
         };
         attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
-        await AttachmentsController.AddAttachment(list, attachment);
-        // NOTE: Start upload immediately after adding attachments.
-        await AttachmentsController.InitUpload(list, attachment.Id, ChatId);
-        await AttachmentsController.ResumeUpload(list, attachment.Id);
-        return true;
+        return attachment;
     }
 
     private struct CreateWebFileProviderResult

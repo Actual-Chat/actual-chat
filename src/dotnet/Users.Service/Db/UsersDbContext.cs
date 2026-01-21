@@ -27,6 +27,12 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
     public DbSet<DbEvent> Events { get; protected set; } = null!;
 
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+        configurationBuilder.Conventions.Add(_ => new RemoveDbEventIndexesConvention());
+    }
+
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
@@ -83,5 +89,6 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
 
         var events = model.Entity<DbEvent>();
         events.Property(e => e.Uuid).UseCollation("C");
+        events.DefineIndexes();
     }
 }

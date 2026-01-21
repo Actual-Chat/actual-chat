@@ -11,7 +11,6 @@ public partial class CustomBlazorWebViewHandler
     private AndroidWebViewClient? _androidWebViewClient;
     private AndroidWebChromeClient? _androidWebChromeClient;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= StaticLog.For<CustomBlazorWebViewHandler>();
 
     protected override WebView CreatePlatformView()

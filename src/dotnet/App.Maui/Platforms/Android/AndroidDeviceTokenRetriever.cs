@@ -6,7 +6,6 @@ namespace ActualChat.App.Maui;
 
 public class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTokenRetriever
 {
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
 
     public async Task<string?> GetDeviceToken(CancellationToken cancellationToken)

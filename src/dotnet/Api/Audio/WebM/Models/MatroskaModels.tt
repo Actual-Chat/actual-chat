@@ -8,12 +8,11 @@
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Xml.Linq" #>
 <#
-    var XmlFile = "../ebml.xml";
-    var MatroskaXmlFile = "../ebml_matroska.xml";
+    var xmlFile = "../ebml.xml";
+    var matroskaXmlFile = "../ebml_matroska.xml";
     XNamespace ns = "urn:ietf:rfc:8794";
 #>
 using System;
-using System.Collections.Generic;
 using System.CodeDom.Compiler;
 using System.Runtime.CompilerServices;
 using ActualChat.Spans;
@@ -75,7 +74,7 @@ namespace ActualChat.Audio.WebM.Models
         "SimpleBlock",
     };
 
-    var elementsEbml = XElement.Load(Path.Combine(Path.GetDirectoryName(Host.TemplateFile), XmlFile)).Elements()
+    var elementsEbml = XElement.Load(Path.Combine(Path.GetDirectoryName(Host.TemplateFile), xmlFile)).Elements()
         .Select(e => new Element
         {
             Name = e.Attribute("name").Value.Replace("CRC-32", "CRC32"),
@@ -92,7 +91,7 @@ namespace ActualChat.Audio.WebM.Models
             Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : "",
         });
 
-    var elementsMatroska = XElement.Load(Path.Combine(Path.GetDirectoryName(Host.TemplateFile), MatroskaXmlFile))
+    var elementsMatroska = XElement.Load(Path.Combine(Path.GetDirectoryName(Host.TemplateFile), matroskaXmlFile))
         .Elements()
         .Select(e => new Element
         {

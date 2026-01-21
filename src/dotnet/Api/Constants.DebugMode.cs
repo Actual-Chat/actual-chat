@@ -17,9 +17,9 @@ public static partial class Constants
         public static readonly bool RemoteComputedCache = false;
         public static readonly bool WebKvasBackend = false;
         public static readonly bool MeshLocks = false;
-        public static readonly bool ShardOwner = false;
-        public static readonly bool QueueProcessor = false;
-        public static readonly bool Flows = false;
+        public static readonly bool ShardOwners = false;
+        public static readonly bool QueueProcessors = true;
+        public static readonly bool Flows = true;
 
         // UI services
         public static readonly bool History = false;
@@ -61,6 +61,7 @@ public static partial class Constants
 
         // Misc.
         public static readonly bool KubeEmulation = false;
+        public static readonly bool KubeLocal = false;
         public const bool ThrottledWorkQueue = false;
     }
 }

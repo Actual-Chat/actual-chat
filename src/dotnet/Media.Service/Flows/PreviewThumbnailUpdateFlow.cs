@@ -1,35 +1,29 @@
 using ActualChat.Flows;
-using ActualChat.Media.Module;
 using MemoryPack;
 
 namespace ActualChat.Media.Flows;
 
+[Flow(DelayQuanta = 5)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class PreviewThumbnailUpdateFlow : LegacyFlow, IHasLastRunAt
+public sealed partial class PreviewThumbnailUpdateFlow : PeriodicFlow
 {
-    [field: AllowNull, MaybeNull]
-    private MediaSettings Settings => field ??= Host.Services.GetRequiredService<MediaSettings>();
-    [field: AllowNull, MaybeNull]
-    private IMediaBackend MediaBackend => field ??= Host.Services.GetRequiredService<IMediaBackend>();
-    [field: AllowNull, MaybeNull]
-    private ImageGrabber ImageGrabber => field ??= Host.Services.GetRequiredService<ImageGrabber>();
-
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public Moment LastRunAt { get; private set; }
+    private ImageGrabber ImageGrabber => field ??= Services.GetRequiredService<ImageGrabber>();
 
     public static string GetArguments(string url)
         => url.ToBase64();
 
-    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {
-        await Run(cancellationToken).ConfigureAwait(false);
-        return WaitForEvent(nameof(OnReset), Settings.LinkPreviewUpdatePeriod);
+        var url = Id.Arguments.FromBase64();
+        return await ImageGrabber.NeedsUpdate(url, cancellationToken).ConfigureAwait(false)
+            ? FlowReadiness.Ready
+            : "No update needed";
     }
 
-    private async Task Run(CancellationToken cancellationToken)
+    protected override async ValueTask<Moment> Run(CancellationToken cancellationToken)
     {
-        LastRunAt = Host.Clocks.SystemClock.Now;
         var url = Id.Arguments.FromBase64();
         await ImageGrabber.UpdateExisting(url, cancellationToken).ConfigureAwait(false);
+        return Moment.MaxValue;
     }
 }

@@ -21,7 +21,7 @@ public sealed class Alphabet
     public static readonly Alphabet AlphaNumericUpperDash = AlphaUpper + NumericDash;
     public static readonly Alphabet AlphaNumeric64 = AlphaNumeric + "-_";
     public static readonly Alphabet Base64 = AlphaNumeric + "+/";
-    public static readonly Alphabet Base32 = AlphaNumericLower.Symbols[..32];
+    public static readonly Alphabet Base32 = AlphaLower + "234567";
     public static readonly Alphabet Base16 = AlphaNumericLower.Symbols[..16];
 
     // We use readonly to (possibly) speed things up here

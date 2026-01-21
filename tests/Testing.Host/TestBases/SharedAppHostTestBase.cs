@@ -18,8 +18,7 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
     protected TestAppHost AppHost { get; } = fixture.AppHost;
     protected ICommander Commander { get; } = fixture.AppHost.Services.Commander();
     protected IQueues Queues { get; } = fixture.AppHost.Services.Queues();
-    protected IFlows Flows { get; } = fixture.AppHost.Services.GetRequiredService<IFlows>();
-    protected FlowRegistry FlowRegistry { get; } = fixture.AppHost.Services.GetRequiredService<FlowRegistry>();
+    protected FlowHub FlowHub { get; } = fixture.AppHost.Services.FlowHub();
     protected MomentClockSet Clocks { get; } = fixture.AppHost.Services.Clocks();
 
     protected override Task InitializeAsync()

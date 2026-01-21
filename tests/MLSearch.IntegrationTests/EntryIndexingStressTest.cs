@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat;
 using ActualChat.MLSearch.Module;
 using ActualChat.Search;
@@ -11,9 +10,7 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class EntryIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<SlowAppHostFixture>(fixture, @out)
 {
-    [field: AllowNull, MaybeNull]
     private BlazorTester Tester => field ??= AppHost.NewBlazorTester(Out);
-    [field: AllowNull, MaybeNull]
     private MLSearchSettings Settings => field ??= AppHost.Services.GetRequiredService<MLSearchSettings>();
 
     private string UniquePart { get; } = UniqueNames.Prefix();
@@ -42,7 +39,7 @@ public class EntryIndexingStressTest(SlowAppHostFixture fixture, ITestOutputHelp
         var (chatId, _) = await Tester.CreateChat(false);
         var portion1 = await CreateEntries(chatId, portionSize, "The first portion:");
         var portion2 = await CreateEntries(chatId, 50, "The second portion:");
-        await Task.Delay(Settings.ChangedEntityIndexingDelay + Settings.IndexingFlowResumeDelay);
+        await Task.Delay(Settings.ChangedEntityIndexingDelay + Settings.IndexingFlowResumeDelayQuanta);
 
         // act
         var searchResults = await Find("first");

@@ -1,0 +1,57 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<JoinVideoCallModal.Model>
+
+<DialogFrame
+    Class="join-video-call-modal modal-sm"
+    Title="Join the video call">
+    <Body>
+    <FormBlock Class="">
+        <div class="c-members">
+            <ChatActivities
+                @key="@ModalModel.Chat.Id.Value"
+                Chat="@ModalModel.Chat"
+                MaxCount="3"
+                IsListening="true"/>
+            <span class="c-text">Lena J, Ethan Y and 8 others on the call</span>
+        </div>
+        <div class="c-video">
+            <div class="video-frame">
+                <span class="plug-text">
+                    Camera inactive
+                </span>
+            </div>
+        </div>
+        <div class="c-buttons">
+            <ButtonRound Class="transcription-btn">
+                <i class="icon-transcription text-2xl"></i>
+            </ButtonRound>
+            <ButtonRound Class="recording-btn">
+                <i class="icon-mic-2 text-2xl"></i>
+            </ButtonRound>
+            <ButtonRound Class="video-btn">
+                <i class="icon-video text-2xl"></i>
+            </ButtonRound>
+            <ButtonRound Class="cast-btn">
+                <i class="icon-cast text-2xl"></i>
+            </ButtonRound>
+        </div>
+        <div class="c-rules">
+            <span class="c-title">Rules</span>
+            <span class="c-text">No transcription, no anonymous</span>
+        </div>
+    </FormBlock>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+        <Button>Join</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    // Nested types
+
+    public sealed record Model(Chat Chat);
+}

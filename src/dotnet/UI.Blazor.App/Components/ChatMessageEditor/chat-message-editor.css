@@ -1,9 +1,9 @@
 .chat-message-editor {
     @apply relative;
-    @apply bg-post-panel md:bg-01;
+    @apply bg-transparent md:bg-01;
 }
-body.narrow .chat-message-editor {
-    background: transparent;
+.list-view-layout:has(.chat-activity-panel.listening) .chat-message-editor {
+    @apply bg-transparent;
 }
 
 /* Bottom Panel, Desktop view */
@@ -30,6 +30,9 @@ body.narrow .chat-message-editor > .c-content {
     @apply overflow-hidden;
     @apply break-all;
     transition: border-radius 0.25s ease;
+}
+body.wide .list-view-layout:has(.chat-activity-panel.listening) .post-panel {
+    @apply bg-01;
 }
 .post-panel.sharp-corners {
     @apply rounded-xl;
@@ -169,7 +172,7 @@ body.wide .post-panel .c-left-buttons {
     transition-property: display, opacity;
 }
 .default-mode .notify-call-btn {
-    @apply static right-auto;
+    @apply right-2;
     @apply flex;
     @apply opacity-100;
 }
@@ -458,12 +461,13 @@ body.narrow .narrow-panel .attachment-filename {
 .attachment-upload-progress {
     @apply absolute bottom-4.5 z-20;
     @apply h-1;
-    @apply bg-[var(--white-80)];
+    @apply bg-05;
     @apply rounded-full;
     @apply overflow-hidden;
     transition: all 150ms ease-in-out;
 }
 .narrow-panel .attachment-upload-progress {
+    @apply bottom-0;
     @apply h-[2x];
     @apply mt-px;
 }
@@ -599,28 +603,64 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 
 .rounded-sub-footer {
     @apply absolute z-10;
-    @apply -top-8;
     @apply flex;
     @apply h-8 inset-x-0;
-    background: linear-gradient(to top, var(--background-01), 80%, transparent);
+    top: calc(-2rem + 1px);
 }
-.narrow-panel .rounded-sub-footer {
-    @apply -top-8;
+.rounded-sub-footer > .bg-layer {
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to top, var(--background-01), 75%, transparent 100%);
+    mask: linear-gradient(to top, var(--background-01) 75%, transparent 100%);
+    -webkit-mask: linear-gradient(to top, var(--background-01) 75%, transparent 100%);
 }
+.rounded-sub-footer > .bg-layer:before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    filter: blur(30px);
+    backdrop-filter: blur(8px);
+}
+
 .chat-message-editor:has(.show-mention-list) .rounded-sub-footer {
     @apply hidden;
 }
 .rounded-sub-footer::before {
-    content: '';
-    @apply absolute left-0;
+    @apply content-empty;
+    @apply absolute left-0 bottom-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 60%)
 }
 .rounded-sub-footer::after {
-    content: '';
-    @apply absolute right-0;
+    @apply content-empty;
+    @apply absolute right-0 bottom-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%)
+}
+body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer {
+    @apply h-20 inset-x-0;
+    top: calc(-5rem + 1px);
+}
+body.narrow .list-view-layout:has(.chat-activity-panel.listening) .narrow-panel .rounded-sub-footer {
+    @apply h-12 inset-x-0;
+    top: calc(-3rem + 1px);
+}
+body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-footer > .bg-layer {
+    background:
+        radial-gradient(100.91% 105.88% at 50% 100%, var(--background-01) 30%, var(--transparent) 75%),
+        radial-gradient(100.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 30%, var(--footer-fog-color-2) 75%);
+    animation: smoothSubFooter 1s ease forwards;
+}
+@keyframes smoothSubFooter {
+    0% {
+        opacity: 0;
+        filter: brightness(1.2);
+    }
+    100% {
+        opacity: 1;
+        filter: brightness(1);
+    }
 }
 
 .editor-separator {
@@ -634,4 +674,43 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply px-4;
     @apply bg-mobile-landscape-audio-panel-button-text;
     width: calc(100% - 2rem);
+}
+
+.attachment-web-file-picker {
+    @apply block absolute;
+    left: -10000px;
+    top: 0;
+    opacity: 1;
+    z-index: -999;
+}
+
+.bell-svg {
+    @apply inline-block;
+    @apply w-6 h-6;
+    @apply cursor-pointer;
+    transform-origin: 50% 10%;
+    transition: transform 0.2s;
+}
+.bell-svg path {
+    fill: var(--cancel-text);
+}
+.bell-svg.active path {
+    fill: var(--primary);
+}
+.list-view-layout:has(.chat-activity-panel.listening) .bell-svg.active path {
+    fill: var(--violet-60);
+}
+body.hoverable .notify-call-btn:hover .bell-svg.active,
+body.touch-capable .notify-call-btn:active .bell-svg.active {
+    animation: bell-shake 0.7s ease-in-out;
+}
+@keyframes bell-shake {
+    0%   { transform: rotate(0deg); }
+    10%  { transform: rotate(10deg); }
+    20%  { transform: rotate(-8deg); }
+    30%  { transform: rotate(6deg); }
+    40%  { transform: rotate(-4deg); }
+    50%  { transform: rotate(2deg); }
+    60%  { transform: rotate(0deg); }
+    100% { transform: rotate(0deg); }
 }

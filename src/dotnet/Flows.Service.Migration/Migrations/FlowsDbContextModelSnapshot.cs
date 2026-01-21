@@ -39,9 +39,9 @@ namespace ActualChat.Flows.Migrations
                         .HasColumnType("bytea")
                         .HasColumnName("data");
 
-                    b.Property<DateTime?>("HardResumeAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("hard_resume_at");
+                    b.Property<int>("DataVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("data_version");
 
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("boolean")
@@ -51,13 +51,6 @@ namespace ActualChat.Flows.Migrations
                         .HasColumnType("bytea")
                         .HasColumnName("result_data");
 
-                    b.Property<string>("Step")
-                        .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("character varying(250)")
-                        .HasColumnName("step")
-                        .UseCollation("C");
-
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint")
@@ -66,14 +59,8 @@ namespace ActualChat.Flows.Migrations
                     b.HasKey("Id")
                         .HasName("pk_flows");
 
-                    b.HasIndex("HardResumeAt", "Step")
-                        .HasDatabaseName("ix_flows_hard_resume_at_step");
-
                     b.HasIndex("IsCompleted", "Version")
                         .HasDatabaseName("ix_flows_is_completed_version");
-
-                    b.HasIndex("Step", "HardResumeAt")
-                        .HasDatabaseName("ix_flows_step_hard_resume_at");
 
                     b.HasIndex("Version", "IsCompleted")
                         .HasDatabaseName("ix_flows_version_is_completed");
@@ -113,11 +100,13 @@ namespace ActualChat.Flows.Migrations
                     b.HasKey("Uuid")
                         .HasName("pk_events");
 
-                    b.HasIndex("DelayUntil", "State")
-                        .HasDatabaseName("ix_events_delay_until_state");
+                    b.HasIndex("DelayUntil")
+                        .HasDatabaseName("ix_events_pending")
+                        .HasFilter("state = 0");
 
-                    b.HasIndex("State", "DelayUntil")
-                        .HasDatabaseName("ix_events_state_delay_until");
+                    b.HasIndex("DelayUntil", "State")
+                        .HasDatabaseName("ix_events_delay_until_state_non_new")
+                        .HasFilter("state != 0");
 
                     b.ToTable("_events");
                 });

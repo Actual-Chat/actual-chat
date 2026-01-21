@@ -1,9 +1,5 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
-
 public class WeakValueTable<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     where TKey : notnull
     where TValue : class

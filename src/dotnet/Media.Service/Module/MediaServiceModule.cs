@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Media.Flows;
 using ActualChat.Redis.Module;
+using ActualChat.Uploads;
 
 namespace ActualChat.Media.Module;
 
@@ -20,6 +21,12 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<ILinkPreviewsBackend, LinkPreviewsBackend>();
         rpcHost.AddBackend<IMediaBackend, MediaBackend>();
         rpcHost.AddBackend<IGrabStatusesBackend, GrabStatusesBackend>();
+
+        // Uploads
+        rpcHost.AddApi<IUploads, Uploads>();
+        rpcHost.AddBackend<IUploadsBackend, UploadsBackend>();
+        services.AddSingleton<IMediaSaver>(c => new MediaSaver(c.Commander(), c.GetRequiredService<IContentSaver>()));
+        services.AddSingleton<IMediaProcessor, MediaProcessor>();
 
         if (isBackendClient)
             return;
@@ -51,5 +58,8 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
 
         // Flows
         services.AddFlows().Add<LinkPreviewFlow>().Add<PreviewThumbnailUpdateFlow>();
+
+        // Uploads
+        services.AddSingleton<UploadsStorage>();
     }
 }

@@ -11,17 +11,12 @@ namespace ActualChat.Media;
 public class LinkPreviewsBackend(IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {
-    [field: AllowNull, MaybeNull]
-    private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
-    [field: AllowNull, MaybeNull]
     private MediaSettings Settings => field ??= Services.GetRequiredService<MediaSettings>();
-    [field: AllowNull, MaybeNull]
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
-    [field: AllowNull, MaybeNull]
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbLinkPreview> EntityResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbLinkPreview>>();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
     private Moment SystemNow => Clocks.SystemClock.Now;
 
     // [ComputeMethod]
@@ -41,13 +36,16 @@ public class LinkPreviewsBackend(IServiceProvider services)
             PreviewMedia = await MediaBackend.Get(linkPreview.PreviewMediaId, cancellationToken).ConfigureAwait(false),
         };
 
-        Task ScheduleRefreshIfRequired()
-            => mustScheduleRefreshIfRequired && linkPreview != null && NeedsUpdate(linkPreview.ModifiedAt)
-                ? Flows.Reset<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(linkPreview.Url),
-                    Settings.LinkPreviewUpdatePeriod,
-                    "Get link preview",
-                    cancellationToken)
-                : Task.CompletedTask;
+        Task ScheduleRefreshIfRequired() {
+            if (!mustScheduleRefreshIfRequired || linkPreview == null || !NeedsUpdate(linkPreview.ModifiedAt))
+                return Task.CompletedTask;
+
+            return FlowHub
+                .NewResumeEvent<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(linkPreview.Url))
+                .WithQuanta() // Schedule immediately, but quantize to prevent duplicates
+                .WithReset() // Intended, this flow runs just once unless it's reset
+                .Schedule(cancellationToken);
+        }
     }
 
     // [CommandHandler]
@@ -115,7 +113,10 @@ public class LinkPreviewsBackend(IServiceProvider services)
             var links = ExtractLinks(entry);
             var oldLinks = ExtractLinks(oldEntry);
             foreach (var link in links.Take(Constants.Media.LinkPreviewsPerMessageLimit).Except(oldLinks, StringComparer.Ordinal))
-                await Flows.Get<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(link), cancellationToken).ConfigureAwait(false);
+                await FlowHub.NewResumeEvent<LinkPreviewFlow>(LinkPreviewFlow.GetArguments(link))
+                    .WithQuanta() // Schedule immediately, but quantize to prevent duplicates
+                    .Schedule(cancellationToken)
+                    .ConfigureAwait(false);
         }
     }
 

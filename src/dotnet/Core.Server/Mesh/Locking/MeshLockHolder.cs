@@ -8,27 +8,21 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     protected ILogger? DebugLog => Backend.DebugLog;
     protected HashSet<Task>? Dependencies;
 
-    public string Id { get; } // This is the ID of the lock holder, i.e. this object
+    public string Id { get; } // This is the ID of the lock holder, i.e., this object
     public string Key { get; }
     public string FullKey { get; }
-    public string Value { get; }
-    public string StoredValue { get; }
     public MeshLockOptions Options { get; }
-    public TimeSpan MinExpiresIn { get; init; } = TimeSpan.FromSeconds(0.25);
     public Moment CreatedAt { get; }
     public Moment ExpiresAt { get; protected set; }
-    public bool IsExpired { get; protected set; }
+    public bool IsExpiredOnRenewal { get; protected set; }
 
     public MeshLockHolder(
         IMeshLocksBackend backend,
         string id,
         string key,
-        string value,
         MeshLockOptions options,
         CancellationToken cancellationToken)
-        : base(cancellationToken == default
-            ? new CancellationTokenSource()
-            : cancellationToken.CreateLinkedTokenSource())
+        : base(cancellationToken.CreateLinkedTokenSource())
     {
         if (key.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(key));
@@ -39,8 +33,6 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         Id = id;
         Key = key;
         FullKey = backend.GetFullKey(key);
-        Value = value;
-        StoredValue = string.Concat(id, " ", value);
         Options = options;
         CreatedAt = Clock.Now;
     }
@@ -65,19 +57,6 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             Dependencies?.Remove(dependency);
     }
 
-    // ParseXxx
-
-    public static (string Value, string HolderId) ParseStoredValue(string storedValue)
-    {
-        var spaceIndex = storedValue.OrdinalIndexOf(' ');
-        if (spaceIndex < 0)
-            throw new ArgumentOutOfRangeException(nameof(storedValue));
-
-        var holderId = storedValue[..spaceIndex];
-        var value = storedValue[(spaceIndex + 1)..];
-        return (value, holderId);
-    }
-
     // Protected methods
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -86,14 +65,30 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
         ExpiresAt = now + Options.ExpirationPeriod;
         DebugLog?.LogDebug(
             "[+] {Key}: acquired in {AcquireTime}, value = {StoredValue}",
-            FullKey, (now - CreatedAt).ToShortString(), StoredValue);
+            FullKey, (now - CreatedAt).ToShortString(), Id);
+
+        var chaosMaker = Backend.ChaosMaker;
+        if (chaosMaker.IsEnabled)
+            _ = Task.Run(async () => {
+                try {
+                    await chaosMaker.Act(this, cancellationToken).ResultAwait();
+                }
+                catch (Exception e) {
+                    if (e.IsCancellationOf(cancellationToken))
+                        return;
+
+                    Log.LogWarning("[!] {Key}: ChaosMaker-caused termination", FullKey);
+                    _ = Stop();
+                }
+            }, CancellationToken.None);
+
         var isHeld = true;
         while (isHeld) {
             await Clock.Delay(Options.RenewalPeriod, cancellationToken).ConfigureAwait(false);
             isHeld = await TryRenew(cancellationToken).ConfigureAwait(false);
         }
         lock (Lock)
-            IsExpired = true;
+            IsExpiredOnRenewal = true;
         Log.LogError("[+-] {Key}: reported as expired on renewal", FullKey);
         _ = DisposeAsync();
     }
@@ -113,8 +108,8 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             }
         }
         finally {
-            var result = IsExpired
-                ? MeshLockReleaseResult.MarkedAsExpiredEarlier
+            var result = IsExpiredOnRenewal
+                ? MeshLockReleaseResult.ExpiredOnRenewal
                 : await TryRelease().ConfigureAwait(false);
             DebugLog?.LogDebug("[-] {Key}: released -> {Result}", FullKey, result.ToString("G"));
         }
@@ -123,9 +118,8 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     protected async Task<bool> TryRenew(CancellationToken cancellationToken)
     {
         while (true) {
-            var now = Clock.Now;
-            var expiresIn = ExpiresAt - Options.ExpirationSafetyMargin - now;
-            if (expiresIn < MinExpiresIn) {
+            var expiresIn = ExpiresAt - Options.ExpirationSafetyMargin - Clock.Now;
+            if (expiresIn < TimeSpan.Zero) {
                 Log.LogError("[+*] {Key}: renewal failed - too late to renew", FullKey);
                 return false;
             }
@@ -134,10 +128,10 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
             var expiredToken = expiredCts.Token;
             expiredCts.CancelAfter(expiresIn);
             try {
-                var expiresAt = now + Options.ExpirationPeriod;
+                var expiresAt = Clock.Now + Options.ExpirationPeriod;
                 // DebugLog?.LogDebug("[+*] {Key}: renew {StoredValue}", FullKey, StoredValue);
                 var isRenewed = await Backend
-                    .TryRenew(Key, StoredValue, Options.ExpirationPeriod, expiredToken)
+                    .TryRenew(Key, Id, Options.ExpirationPeriod, expiredToken)
                     .ConfigureAwait(false);
                 if (isRenewed) {
                     ExpiresAt = expiresAt;
@@ -167,16 +161,15 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     {
         while (true) {
             var expiresIn = ExpiresAt - Clock.Now;
-            if (expiresIn < MinExpiresIn) {
+            if (expiresIn < TimeSpan.Zero) {
                 Log.LogError("[+-] {Key}: release failed - too late to release", FullKey);
-                return MeshLockReleaseResult.Expired;
+                return MeshLockReleaseResult.ExpiredOnRelease;
             }
 
-            var cts = new CancellationTokenSource(expiresIn);
+            var timeoutCts = new CancellationTokenSource(expiresIn);
+            var timeoutToken = timeoutCts.Token;
             try {
-                var result = await Backend
-                    .TryRelease(Key, StoredValue, cts.Token)
-                    .ConfigureAwait(false);
+                var result = await Backend.TryRelease(Key, Id, timeoutToken).ConfigureAwait(false);
                 if (result == MeshLockReleaseResult.Released) {
                     // Uncomment for debugging - too verbose
                     // Log?.LogDebug("[+*] {Key}: released", FullKey);
@@ -186,15 +179,15 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                 return result;
             }
             catch (Exception e) {
-                if (cts.Token.IsCancellationRequested) {
+                if (timeoutToken.IsCancellationRequested) {
                     Log.LogError(e, "[+-] {Key}: release failed - timeout", FullKey);
-                    return MeshLockReleaseResult.Expired;
+                    return MeshLockReleaseResult.ExpiredOnRelease;
                 }
 
                 Log.LogError(e, "[+-] {Key}: release failed, will retry", FullKey);
             }
             finally {
-                cts.CancelAndDisposeSilently();
+                timeoutCts.CancelAndDisposeSilently();
             }
         }
     }

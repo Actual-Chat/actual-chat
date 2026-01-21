@@ -1,6 +1,9 @@
 .pic {
     @apply h-full;
 }
+.pic > .c-content {
+    @apply w-full h-full;
+}
 
 .pic-generated {
     @apply rounded-full;

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Web;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
@@ -7,8 +8,11 @@ using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Indexing;
 using ActualChat.MLSearch.Indexing.ChatContent;
 using ActualChat.Testing.Host;
+using Microsoft.AspNetCore.WebUtilities;
 using OpenSearch.Client;
 using OpenSearch.Net;
+using OpenSearch.Net.Specification.HttpApi;
+
 
 namespace ActualChat.MLSearch.IntegrationTests.OpenSearch;
 
@@ -96,8 +100,14 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var chatInfoSink = AppHost.Services.GetRequiredService<ISink<ChatInfo, string>>();
         await chatInfoSink.ExecuteAsync([chatInfo1, chatInfo2], null);
 
+        //await DumpStat(true);
         var documentSink = AppHost.Services.GetRequiredService<ISink<ChatSlice, string>>();
-        await documentSink.ExecuteAsync(documents.ToArray(), null);
+        try {
+            await documentSink.ExecuteAsync(documents.ToArray(), null);
+        }
+        finally {
+            //await DumpStat();
+        }
 
         // Ensure all documents processed by the ingestion pipeline
         var documentLoader = AppHost.Services.GetRequiredService<IChatContentDocumentLoader>();
@@ -229,5 +239,13 @@ public class ChatContentSemanticSearchTest(AppHostFixture fixture, ITestOutputHe
         var encoding = new UTF8Encoding(false);
         using var stream = new MemoryStream(encoding.GetBytes(jsonString));
         return serializer.Deserialize<TDoc>(stream);
+    }
+
+    private async Task DumpStat(bool settings = false)
+    {
+        var openSearchClient = AppHost.Services.GetRequiredService<IOpenSearchClient>();
+        Log.LogInformation(await openSearchClient.Debug().DumpStat());
+        if (settings)
+            Log.LogInformation(await openSearchClient.Debug().DumpSettings());
     }
 }

@@ -7,7 +7,6 @@ namespace ActualChat.Media;
 public class GrabStatusesBackend(IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), IGrabStatusesBackend
 {
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbGrabStatus> DbGrabStatusResolver => field ??= Services.DbEntityResolver<string, DbGrabStatus>();
 
     // [ComputeMethod]

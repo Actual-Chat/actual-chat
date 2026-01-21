@@ -34,14 +34,10 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
 
     private AppUIHub Hub { get; }
     private Session Session => Hub.Session;
-    [field: AllowNull, MaybeNull]
     private MomentClock ServerClock => field ??= Hub.Clocks.ServerClock;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
-    [field: AllowNull, MaybeNull]
     public ChatEntryReader TextEntryReader
         => field ??= Hub.Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Text);
-    [field: AllowNull, MaybeNull]
     public ChatEntryReader AudioEntryReader
         => field ??= Hub.Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
 

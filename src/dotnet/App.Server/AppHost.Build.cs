@@ -6,6 +6,7 @@ using ActualChat.Db.Module;
 using ActualChat.Flows.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
+using ActualChat.Kubernetes.Module;
 using ActualChat.Logging;
 using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
@@ -13,19 +14,20 @@ using ActualChat.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Streaming.Module;
+using ActualChat.UI;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Module;
 using ActualChat.Users.Module;
 using ActualLab.Diagnostics;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
-using Microsoft.Extensions.Logging.Console;
-using OpenTelemetry.Logs;
 using Serilog;
 using Serilog.Events;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using Tracer = ActualChat.Performance.Tracer;
 
 namespace ActualChat.App.Server;
 
@@ -78,15 +80,15 @@ public partial class AppHost
         services.AddTracers(Tracer.Default, useScopedTracers: true);
 
         // Logging
+        Console.WriteLine("About to configure logging for env: '{0}'", env.EnvironmentName);
         services.AddLogging(logging => {
             logging.ClearProviders();
             if (coreServicesOnly || isTested)
                 return;
 
             logging.ConfigureServerFilters(env.EnvironmentName);
-            logging.AddOpenTelemetry(options => options.AddOtlpExporter());
-            logging.AddConsole();
-            logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
+            if (isLocalDev)
+                logging.AddConsole();
             logging.AddTailLogger();
             if (!appKind.IsServer() || isTested)
                 return;
@@ -145,7 +147,7 @@ public partial class AppHost
 
         ConfigureModuleServices?.Invoke(ctx, services);
 
-        // Notice that we create "partial" service provider here, which contains
+        // Notice that we create a "partial" service provider here, which contains
         // just the services registered above - i.e. logging + HostInfo
         var moduleServices = ctx.ModuleServices = services.BuildServiceProvider();
         var hostInfo = ctx.HostInfo;
@@ -160,7 +162,7 @@ public partial class AppHost
                 // Core modules
                 new CoreModule(moduleServices),
                 new CoreServerModule(moduleServices),
-                // new KubernetesModule(moduleServices),
+                new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
                 new DbModule(moduleServices),
                 new FlowsServiceModule(moduleServices),
@@ -176,6 +178,7 @@ public partial class AppHost
                 new NotificationServiceModule(moduleServices),
                 new MLSearchServiceModule(moduleServices),
                 // UI modules
+                new UICoreModule(moduleServices),
                 new BlazorUICoreModule(moduleServices),
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one
@@ -194,6 +197,11 @@ public partial class AppHost
         // 4. Configure & build WebApplication (IHost)
         /////
 
+        builder.Host.ConfigureHostOptions(options => {
+            options.ServicesStartConcurrently = true;
+            options.ServicesStopConcurrently = true;
+            options.ShutdownTimeout = TimeSpan.FromSeconds(15);
+        });
         builder.WebHost
             .UseDefaultServiceProvider((_, options) => {
                 if (hostInfo.IsDevelopmentInstance) {
@@ -280,9 +288,7 @@ public partial class AppHost
         public IServiceProvider ModuleServices { get; set; } = null!;
         public ModuleHostBuilder ModuleHostBuilder { get; set; } = new();
         public ModuleHost ModuleHost { get; set; } = null!;
-        [field: AllowNull, MaybeNull]
         public HostInfo HostInfo => field ??= ModuleServices.GetRequiredService<HostInfo>();
-        [field: AllowNull, MaybeNull]
         public ILogger Log => field ??= ModuleServices.LogFor<BuildContext>();
         public WebApplication App { get; set; } = null!;
     }

@@ -22,7 +22,7 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
     private static ILogger Log => _log ??= StaticLog.For<Email>();
     private static readonly ILruCache<string, Email> Cache = CreateCache<Email>(256);
 
-    [IgnoreDataMember] [field: AllowNull, MaybeNull]
+    [IgnoreDataMember]
     public string Hash => field ??= ContactIdExt.Hash(Value);
 
     // Factories and constructors

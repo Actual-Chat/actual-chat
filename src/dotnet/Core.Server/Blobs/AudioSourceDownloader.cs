@@ -5,13 +5,9 @@ namespace ActualChat.Blobs;
 public class AudioSourceDownloader(IServiceProvider services)
 {
     protected IServiceProvider Services { get; } = services;
-    [field:AllowNull, MaybeNull]
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
-    [field:AllowNull, MaybeNull]
     protected MomentClockSet Clocks => field ??= Services.Clocks();
-    [field:AllowNull, MaybeNull]
     protected ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
-    [field:AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<AudioSource> Download(

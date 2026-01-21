@@ -86,7 +86,6 @@
     protected LoadingUI LoadingUI => Hub.LoadingUI;
     protected BrowserInfo BrowserInfo => Hub.BrowserInfo;
 
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string? Route { get; set; }

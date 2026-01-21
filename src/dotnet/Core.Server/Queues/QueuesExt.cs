@@ -1,4 +1,6 @@
 using ActualChat.Diagnostics;
+using ActualChat.Queues.Internal;
+using ActualLab.Resilience;
 using Microsoft.Extensions.Primitives;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
@@ -7,6 +9,10 @@ namespace ActualChat.Queues;
 
 public static class QueuesExt
 {
+    public static readonly TimeSpan QueueTimeout = TimeSpan.FromSeconds(15);
+    public static readonly TimeSpan SlowQueueTimeout = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan DefaultTimeout = QueueTimeout;
+
     // Enqueue
 
     public static async Task Enqueue<TCommand>(this IQueues queues,
@@ -22,21 +28,30 @@ public static class QueuesExt
             contextHeaders = new Dictionary<string, StringValues>(StringComparer.Ordinal);
             Propagators.DefaultTextMapPropagator.Inject(
                 propagationContext, contextHeaders, static (headers, key, value) => headers[key] = value);
+            activity.AddTag(OtelConstants.MessagingOperation, "enqueue");
+            activity.AddTag(OtelConstants.MessagingMessageType, command.GetType().Name);
         }
-        await queues.Enqueue(QueuedCommand.New(command, headers: contextHeaders), cancellationToken).ConfigureAwait(false);
+        try {
+            var queuedCommand = QueuedCommand.New(command, headers: contextHeaders);
+            await queues.Enqueue(queuedCommand, cancellationToken).ConfigureAwait(false);
+            activity?.SetTag(OtelConstants.MessagingMessageId, queuedCommand.Uuid);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception e) {
+            activity?.AddException(e);
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+
     }
 
     public static Task Enqueue(this IQueues queues,
         QueuedCommand queuedCommand,
         CancellationToken cancellationToken = default)
     {
-        var queueRefResolver = queues.Services.GetRequiredService<IQueueRefResolver>();
-        var command = queuedCommand.UntypedCommand;
-        var requester = new Requester(command,
-            static c => $"{nameof(QueuesExt)}.{nameof(Enqueue)}({c?.GetType().GetName() ?? "null"})");
-        var queueShardRef = queueRefResolver.GetQueueShardRef(command, requester);
-        var queueProcessor = queues.GetSender(queueShardRef.QueueRef);
-        return queueProcessor.Enqueue(queueShardRef, queuedCommand, cancellationToken);
+        var queueShardRef = QueueShardRef.For(queuedCommand.UntypedCommand, queues.Services);
+        var sender = queues.GetSender(queueShardRef.QueueRef);
+        return sender.Enqueue(queueShardRef, queuedCommand, cancellationToken);
     }
 
     // WhenProcessing
@@ -48,5 +63,15 @@ public static class QueuesExt
     {
         var tasks = queues.Processors.Values.Select(x => x.WhenProcessing(maxCommandGap, cancellationToken));
         return Task.WhenAll(tasks);
+    }
+
+    // Internal methods
+
+    internal static TimeSpan GetTimeout(ICommand command, IServiceProvider services)
+    {
+        if (command is IComputesTimeout computeTimeout)
+            return computeTimeout.ComputeTimeout(services);
+
+        return (command as IHasTimeout)?.Timeout ?? DefaultTimeout;
     }
 }

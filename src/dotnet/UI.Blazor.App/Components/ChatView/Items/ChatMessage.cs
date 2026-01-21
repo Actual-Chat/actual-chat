@@ -3,7 +3,6 @@ namespace ActualChat.UI.Blazor.App.Components;
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMessage>
 {
-    [field: AllowNull, MaybeNull]
     public ChatMessageKey Key => field ??= ChatMessageKey.New(Kind, Id);
     string IVirtualListItem.Key => Key.Value;
     public long Id { get; } = id;

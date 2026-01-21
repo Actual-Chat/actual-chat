@@ -20,7 +20,7 @@ IResourceBuilder<ProjectResource> AddHost(string name, int port, string role)
         .WithHttpEndpoint(port)
         .WithEnvironment("HostSettings__IsAspireManaged", "true")
         .WithEnvironment("DOTNET_ENVIRONMENT", "Development") // Optional
-        .WithEnvironment("RedisSettings__MeshLockSubspace", meshLockSubspace)
-        .WithEnvironment("RedisSettings__MeshLockOptionsPreset", meshLockOptionsPreset)
+        .WithEnvironment("HostSettings__MeshLockSubspace", meshLockSubspace)
+        .WithEnvironment("HostSettings__MeshLockOptionsPreset", meshLockOptionsPreset)
         .WithArgs(args);
 }

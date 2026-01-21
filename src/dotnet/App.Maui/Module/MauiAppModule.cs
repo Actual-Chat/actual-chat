@@ -4,9 +4,10 @@ using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Audio;
 using ActualChat.Hosting;
-using ActualChat.Kvas;
+using ActualChat.Maui.Services;
 using ActualChat.MediaPlayback;
 using ActualChat.UI;
+using ActualChat.UI.App.Services.NativeAppSettings;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
@@ -14,8 +15,6 @@ using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Fusion.Client.Caching;
-using ActualLab.IO;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.App.Maui.Module;
@@ -31,6 +30,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
     {
         // System
         services.AddScoped<MauiWebViewPageContextTracker>(c => new MauiWebViewPageContextTracker(c));
+        services.AddScoped<MauiSentryInitializer>();
 
         // Session & authentication
         services.AddSingleton(c => new MauiSession(c));
@@ -63,9 +63,12 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
             async Task<byte[]> ModelLoader()
             {
-                await using var modelStream = await FileSystem.OpenAppPackageFileAsync(@"wwwroot\dist\assets\ort\vad_batched.ort");
+                var modelStream = await FileSystem
+                    .OpenAppPackageFileAsync(@"wwwroot\dist\assets\ort\vad_batched.ort")
+                    .ConfigureAwait(true);
+                await using var _ = modelStream.ConfigureAwait(true);
                 using var ms = new MemoryStream();
-                await modelStream.CopyToAsync(ms, CancellationToken.None);
+                await modelStream.CopyToAsync(ms, CancellationToken.None).ConfigureAwait(true);
                 ms.Position = 0;
                 return ms.ToArray();
             }
@@ -83,33 +86,6 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Notifications
         services.AddSingleton<MauiNotifications>(c => new MauiNotifications(c));
 
-        // RemoteComputedCache
-        var appCacheDir = new FilePath(FileSystem.CacheDirectory);
-        services.AddSingleton(_ => new SQLiteRemoteComputedCache.Options() {
-            DbPath = appCacheDir & "CCC.db3",
-        });
-        services.AddSingleton<IRemoteComputedCache>(c => {
-            var options = c.GetRequiredService<SQLiteRemoteComputedCache.Options>();
-            return new SQLiteRemoteComputedCache(options, c);
-        });
-
-        // LocalSettings backend override
-        var appDataDir = new FilePath(FileSystem.AppDataDirectory);
-        services.AddSingleton(c => {
-            var dbPath = appDataDir & "LocalSettings.db3";
-            var backend = new SQLiteBatchingKvasBackend(dbPath, "1.0", c);
-            return new LocalSettings.Options() {
-                BackendFactory = _ => backend,
-                ReaderWorkerPolicy = new BatchProcessorWorkerPolicy() {
-                    MinWorkerCount = 2,
-                    MaxWorkerCount = HardwareInfo.ProcessorCount.Clamp(2, 16),
-                },
-            };
-        });
-        // Make LocalSettings singleton
-        services.Replace(ServiceDescriptor.Singleton(c
-            => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c)));
-
         // Contacts
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));
@@ -119,7 +95,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<AudioFocusService>(c => new AndroidAudioFocusService(c.AppUIHub()));
 #endif
         // File attachments
+#if ANDROID || WINDOWS
         services.AddScoped<IAttachmentFilePicker>(c => new MauiAttachmentFilePicker(c));
+#endif
         services.AddScoped<IMauiFileProviderImplFactory>(c => new MauiFileProviderImplFactory(c));
 
         // Test Page

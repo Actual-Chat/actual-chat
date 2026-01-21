@@ -42,6 +42,7 @@ public class AudioFocusHelper
         _log.LogInformation("Abandon audio focus");
         StopBluetoothSco();
         _audioManager.AbandonAudioFocusRequest(_focusRequest);
+        _audioManager.Mode = Mode.Normal;
         _hasFocus = false;
     }
 
@@ -86,6 +87,19 @@ public class AudioFocusHelper
 
     private bool RequestFocus(AudioFocus audioFocus, AudioUsageKind audioUsageKind, AudioContentType audioContentType)
     {
+        var isCommunication = audioUsageKind == AudioUsageKind.VoiceCommunication;
+
+        // For voice communication, we need to set Mode.InCommunication to enable proper audio routing.
+        // However, this mode defaults to earpiece on many devices. We explicitly enable speakerphone
+        // right after setting the mode to ensure audio goes through the speaker (not earpiece)
+        // unless an external device (Bluetooth, wired headset, etc.) is connected.
+        if (isCommunication) {
+            _audioManager.Mode = Mode.InCommunication;
+            // Immediately set speakerphone to prevent earpiece routing.
+            // ApplyPreferredRoute will be called again after focus is granted to handle external devices.
+            _audioManager.SpeakerphoneOn = true;
+        }
+
         var attrs = new AudioAttributes.Builder()
             .SetUsage(audioUsageKind)!
             .SetContentType(audioContentType)!
@@ -100,7 +114,7 @@ public class AudioFocusHelper
         _hasFocus = result == AudioFocusRequest.Granted;
         _log.LogInformation("Requested audio focus for '{Usage}', granted = {Result}", audioUsageKind, _hasFocus);
 
-        // After gaining focus, apply routing preference
+        // After gaining focus, apply routing preference (handles external devices like Bluetooth)
         if (_hasFocus)
             ApplyPreferredRoute();
 

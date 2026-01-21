@@ -88,13 +88,15 @@ body.hoverable .contact-selector-badges > .c-contact:hover .c-remove {
     @apply flex-none flex-x gap-x-4 ;
     @apply overflow-x-auto custom-scrollbar-hide;
 }
+.contact-selector-place-picker .tab-panel {
+    @apply px-2;
+}
 .contact-selector-place-picker .tab-panel-tabs {
     @apply max-h-none;
     @apply mb-0 pb-0;
 }
 .contact-selector-place-picker .tab-panel-tabs .btn-group {
     @apply justify-start;
-    @apply mx-2 mt-1;
 }
 
 .contact-selector-place-picker .tab-panel-tabs .btn-group-container {

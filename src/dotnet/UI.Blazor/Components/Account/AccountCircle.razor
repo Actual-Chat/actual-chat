@@ -11,10 +11,14 @@
     Avatar="@m.Account?.Avatar"
     Size="@Size"
     IsBlurred="@IsBlurred"
+    ShowFullSizeAvatar="@ShowFullSizeAvatar"
+    Class="@Class"
     BadgeContent="@badgeContent" />
 
 @code {
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public bool ShowPresence { get; set; }
     [Parameter] public bool IsBlurred { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool ShowFullSizeAvatar { get; set; }
 }

@@ -1,7 +1,29 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits FusionComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, ChatAudioState?>
+@{
+    var m = State.Value;
+    var isHeaderVisible = m != null && IsNarrow && m is { IsListening: true, IsRecording: true };
+}
 
 <div class="chat-audio-panel">
+    @if (isHeaderVisible) {
+        <div class="audio-panel-header">
+            <div class="c-left">
+                <div class="w-12"></div>
+                <ButtonRound>
+                    <i class="icon-transcription text-xl"></i>
+                </ButtonRound>
+            </div>
+            <div class="c-right">
+                <ButtonRound>
+                    <i class="icon-video text-xl"></i>
+                </ButtonRound>
+                <ButtonRound>
+                    <i class="icon-cast text-xl"></i>
+                </ButtonRound>
+            </div>
+        </div>
+    }
     <div class="audio-panel-wrapper">
         <div class="playback-button"
              data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
@@ -16,7 +38,9 @@
             </div>
             <RecorderToggle Chat="@Chat"/>
         </div>
-        <VolumeSettingsButton Chat="@Chat"/>
+        @if (IsNarrow) {
+            <VolumeSettingsButton Chat="@Chat"/>
+        }
         <div class="language-button"
              data-bubble="@(BubbleRef.New<VoiceSettingsButtonBubble>())"
              data-bubble-priority="120"
@@ -27,5 +51,26 @@
 </div>
 
 @code {
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter] public bool IsNarrow { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task<ChatAudioState?> ComputeState(CancellationToken cancellationToken) {
+        if (ChatRecordingActivity == null)
+            return null;
+
+        var chat = Chat;
+        var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
+        return audioState;
+    }
 }

@@ -27,6 +27,21 @@ export class DelayedInvoker {
         return this.currentPromise;
     }
 
+    public unregisterCallback(cb: () => void | Promise<void>) : boolean {
+        const hasCallbacks = this.hasCallbacks();
+        const index = this.callbacks.indexOf(cb);
+        if (index < 0)
+            return false;
+        this.callbacks.splice(index, 1);
+        const hasCallbacks2 = this.hasCallbacks();
+        if (hasCallbacks != hasCallbacks2) {
+            setTimeout(() => {
+                this.hasCallbacksChanged.triggerSilently();
+            }, 0);
+        }
+        return true;
+    }
+
     public hasCallbacks(): boolean {
         return this.callbacks.length > 0;
     }

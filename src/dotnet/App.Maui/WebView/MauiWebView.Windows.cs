@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.App.Services;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.AspNetCore.Components.WebView.Maui;

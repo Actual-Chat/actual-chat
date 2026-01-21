@@ -1,0 +1,136 @@
+using ActualChat.App.Maui.IosShareExt.Services;
+using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+
+namespace ActualChat.App.Maui.IosShareExt.Components;
+
+public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<ContactSelectionView.Model?>(hub)
+{
+    private ShareUI ShareUI => field ??= Services.GetRequiredService<ShareUI>();
+    private UIButton _sendButton = null!;
+
+    protected override void OnInitialRender(Model? model)
+    {
+        TranslatesAutoresizingMaskIntoConstraints = false;
+
+        // Close button
+        var closeButton = new UIButton(UIButtonType.System);
+        closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
+        closeButton.SetImage(UIImage.GetSystemImage("xmark"), UIControlState.Normal);
+        closeButton.TintColor = UIColor.White;
+        closeButton.TouchUpInside += Safe(ShareUI.CloseApp);
+        AddSubview(closeButton);
+
+        // Title label
+        var titleLabel = new UILabel
+        {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+            Text = "Share with",
+            Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold),
+            TextColor = UIColor.White,
+            TextAlignment = UITextAlignment.Center
+        };
+        AddSubview(titleLabel);
+
+        // Send button
+        _sendButton = new UIButton(UIButtonType.System);
+        _sendButton.TranslatesAutoresizingMaskIntoConstraints = false;
+        _sendButton.SetTitle("Send", UIControlState.Normal);
+        _sendButton.TitleLabel.Font = UIFont.SystemFontOfSize(17, UIFontWeight.Semibold);
+        _sendButton.Enabled = false;
+        _sendButton.TouchUpInside += Safe(() => ShareUI.StartSending());
+        AddSubview(_sendButton);
+
+        // Search field
+        var searchField = new UITextField
+        {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+            Placeholder = "Who would you like to share with",
+            Font = UIFont.SystemFontOfSize(17),
+            TextColor = UIColor.White,
+            BackgroundColor = new UIColor(red: 0.18f, green: 0.18f, blue: 0.19f, alpha: 1.0f),
+            BorderStyle = UITextBorderStyle.RoundedRect,
+            LeftView = new UIView(new CGRect(0, 0, 40, 40)),
+            LeftViewMode = UITextFieldViewMode.Always,
+            ReturnKeyType = UIReturnKeyType.Search,
+        };
+        searchField.EditingChanged += Safe(() => ShareUI.SetFilter(searchField.Text ?? ""));
+        searchField.ShouldReturn = textField => {
+            textField.ResignFirstResponder();
+            return true;
+        };
+
+        // Add search icon to the left view with proper centering
+        var searchIcon = new UIImageView(UIImage.GetSystemImage("magnifyingglass"))
+        {
+            Frame = new CGRect(10, 10, 20, 20),
+            TintColor = UIColor.LightGray,
+            ContentMode = UIViewContentMode.ScaleAspectFit
+        };
+        searchField.LeftView.AddSubview(searchIcon);
+        AddSubview(searchField);
+
+        // Add tap gesture to dismiss keyboard when tapping outside
+        var tapGesture = new UITapGestureRecognizer(() => searchField.ResignFirstResponder());
+        tapGesture.CancelsTouchesInView = false;
+        AddGestureRecognizer(tapGesture);
+
+        // Place list
+        var placeListView = new PlaceListView(Hub);
+        AddSubview(placeListView);
+
+        // Contact list
+        var contactListView = new ContactListView(Hub);
+        AddSubview(contactListView);
+
+        NSLayoutConstraint.ActivateConstraints([
+            closeButton.TopAnchor.ConstraintEqualTo(SafeAreaLayoutGuide.TopAnchor, 8),
+            closeButton.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 8),
+            closeButton.WidthAnchor.ConstraintEqualTo(44),
+            closeButton.HeightAnchor.ConstraintEqualTo(44),
+
+            titleLabel.CenterYAnchor.ConstraintEqualTo(closeButton.CenterYAnchor),
+            titleLabel.CenterXAnchor.ConstraintEqualTo(CenterXAnchor),
+
+            _sendButton.CenterYAnchor.ConstraintEqualTo(closeButton.CenterYAnchor),
+            _sendButton.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -16),
+
+            searchField.TopAnchor.ConstraintEqualTo(closeButton.BottomAnchor, 8),
+            searchField.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 16),
+            searchField.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -16),
+            searchField.HeightAnchor.ConstraintEqualTo(44),
+
+            placeListView.TopAnchor.ConstraintEqualTo(searchField.BottomAnchor, 12),
+            placeListView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            placeListView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+
+            contactListView.TopAnchor.ConstraintEqualTo(placeListView.BottomAnchor, 16),
+            contactListView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            contactListView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+            contactListView.BottomAnchor.ConstraintEqualTo(SafeAreaLayoutGuide.BottomAnchor)
+        ]);
+    }
+
+    protected override void OnStateChanged(Model? model)
+    {
+        var canSend = model?.CanSend ?? false;
+        _sendButton.Enabled = canSend;
+    }
+
+    protected override ComputedState<Model?>.Options GetStateOptions()
+        => GetStateOptions(GetType(),
+            static t => new ComputedState<Model?>.Options {
+                InitialValue = null,
+                Category = GetStateCategory(t),
+                UpdateDelayer = FixedDelayer.MinDelay,
+            });
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken)
+    {
+        var canSend = await ShareUI.CanSend.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(canSend);
+    }
+
+    // Nested types
+
+    public sealed record Model(bool CanSend);
+}

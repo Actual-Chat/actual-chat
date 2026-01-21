@@ -1,25 +1,28 @@
 .translation-sub-header {
-    @apply px-2;
+    @apply pl-1 pr-0;
     @apply rounded-lg border-banner-default border-2;
     @apply bg-banner-default;
     @apply text-banner-default;
 }
-.translation-sub-header .c-content {
-    @apply flex-1 flex-x items-center gap-x-2;
+body.narrow .translation-sub-header {
+    @apply pl-3 pr-2;
+}
+sub-header.translation-sub-header .c-content {
+    @apply flex-1 flex-x items-center gap-x-3;
     @apply min-h-10;
     @apply md:px-2;
 }
-.translation-sub-header .c-left {
+sub-header.translation-sub-header .c-left {
     @apply flex-none;
     @apply text-03;
 }
-.translation-sub-header .c-center {
+sub-header.translation-sub-header .c-center {
     @apply flex-1 flex-x items-center justify-between;
     @apply text-headline-1 text-01;
 }
-.translation-sub-header .c-language {
+sub-header.translation-sub-header .c-language {
     @apply text-primary cursor-pointer;
 }
-.translation-sub-header .c-right {
+sub-header.translation-sub-header .c-right {
     @apply flex-none;
 }

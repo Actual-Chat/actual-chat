@@ -154,8 +154,10 @@
             return;
 
         _tabs.RemoveAt(tabIndex);
-        tabIndex = tabIndex.Clamp(0, _tabs.Count - 1);
-        ActiveTab = tabIndex >= 0 ? _tabs[tabIndex] : null;
+        if (tab == ActiveTab) {
+            tabIndex = tabIndex.Clamp(0, _tabs.Count - 1);
+            ActiveTab = tabIndex >= 0 ? _tabs[tabIndex] : null;
+        }
         StateHasChanged();
     }
 

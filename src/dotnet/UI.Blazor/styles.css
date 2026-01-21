@@ -46,6 +46,7 @@
 @import './Components/TotpInput/totp-input.css';
 @import './Components/VirtualList/virtual-list.css';
 @import './Components/VisualMediaViewerModal/visual-media-viewer-modal.css';
+@import './Components/VisualMediaInfoModal/visual-media-info-modal.css';
 @import './Components/YoutubePlayer/youtube-player.css';
 
 @import './Services/ScreenSize/screen-size.css';

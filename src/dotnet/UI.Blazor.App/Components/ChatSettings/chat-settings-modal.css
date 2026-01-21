@@ -210,8 +210,8 @@ body.hoverable .chat-settings-container .tile-item:hover {
 }
 body.narrow .own-avatar-edit-header > .c-top::after,
 body.narrow .chat-settings-header > .c-top::after {
+    @apply content-empty;
     @apply absolute z-10 inset-0;
-    content: '';
     background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
 }
 .own-avatar-edit-header > .c-top .right-panel-close-btn,

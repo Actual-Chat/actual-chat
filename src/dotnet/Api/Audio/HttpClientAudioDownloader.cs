@@ -2,7 +2,6 @@ namespace ActualChat.Audio;
 
 public class HttpClientAudioDownloader(IServiceProvider services) : AudioDownloader(services)
 {
-    [field: AllowNull, MaybeNull]
     private IHttpClientFactory HttpClientFactory => field ??= Services.HttpClientFactory();
 
     public override async Task<AudioSource> Download(

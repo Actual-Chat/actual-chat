@@ -1,0 +1,66 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ChatActivitySubHeader.Model?>
+@{
+    var m = State.Value;
+    if (!ScreenSize.IsNarrow())
+        return;
+
+    var isVisible = (m?.IsAnyoneTalking ?? false) || (m?.AudioState.IsListening ?? false) || IsRecordingHere;
+}
+
+<SubHeader Class="chat-activity-subheader" IsVisible="@(m is not null && isVisible)">
+    <ChatActivityPanel Chat="@m?.Chat"/>
+</SubHeader>
+
+@code {
+    private IChats Chats => Hub.Chats;
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private ChatId? RecordingChatId {
+        get {
+            var activeChats = ActiveChatsUI.ActiveChats.Value;
+            return activeChats.Length > 0 ? activeChats[0].ChatId : null;
+        }
+    }
+
+    private bool IsRecordingHere => ChatId is not null && RecordingChatId == ChatId;
+
+    [Parameter, EditorRequired] public ChatId? ChatId { get; set; }
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = ChatId is not null
+            ? await ChatActivity.GetStreamingActivity(ChatId, CancellationToken.None)
+            : null;
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        if (ChatRecordingActivity == null)
+            return null;
+
+        var chatId = ChatId;
+        if (chatId is null)
+            return null;
+
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return null;
+
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+
+        return new (chat, audioState, authorIds.Length > 0);
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        Chat Chat,
+        ChatAudioState AudioState,
+        bool IsAnyoneTalking);
+}

@@ -1,5 +1,5 @@
-using ActualChat.Attributes;
 using ActualChat.Time;
+using ActualLab.Resilience;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -43,33 +43,34 @@ public sealed partial record ConversationBackend_Change(
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
-[Queue("SummarizeQueue")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] Range<long>[] EntryIdRanges
-    ): ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil
+    ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil, IHasTimeout
 {
-    [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => ChatId;
-
     [DataMember, MemoryPackOrder(2)]
     public Moment DelayUntil { get; init; }
+
+    ChatId IHasShardKey<ChatId>.ShardKey => ChatId;
+    TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);
+
+    public override string ToString()
+        => $"ConversationBackend_Summarize {{ ChatId={ChatId}, EntryIdRanges=[{string.Join(", ", EntryIdRanges.Select(r => r.Format()))}], DelayUntil={DelayUntil} }}";
 }
 
-[Queue("SummarizeQueue")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_AppendReply(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] long EntryLid,
     [property: DataMember, MemoryPackOrder(2)] Range<long> ReplySequence
-) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil
+) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>, IHasDelayUntil, IHasTimeout
 {
-    [IgnoreDataMember, MemoryPackIgnore]
-    public ChatId ShardKey => ChatId;
-
     [DataMember, MemoryPackOrder(3)]
     public Moment DelayUntil { get; init; }
+
+    ChatId IHasShardKey<ChatId>.ShardKey => ChatId;
+    TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);
 }

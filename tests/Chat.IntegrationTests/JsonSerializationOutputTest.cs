@@ -89,8 +89,8 @@ public class JsonSerializationOutputTest(ITestOutputHelper @out) : TestBase(@out
     private void Dump<T>(T instance)
     {
         var s = SystemJsonSerializer.Default;
-        Out.WriteLine($"{typeof(T).GetName()}:");
-        Out.WriteLine("\"" + s.Write(instance).Replace("\"", "\\\"", StringComparison.OrdinalIgnoreCase) + "\"");
-        Out.WriteLine("");
+        WriteLine($"{typeof(T).GetName()}:");
+        WriteLine("\"" + s.Write(instance).Replace("\"", "\\\"", StringComparison.OrdinalIgnoreCase) + "\"");
+        WriteLine("");
     }
 }

@@ -4,12 +4,16 @@ using ActualChat.App.Server.Health;
 using ActualChat.Db.Diagnostics;
 using ActualChat.Diagnostics;
 using ActualChat.Hosting;
+using ActualChat.Kubernetes;
 using ActualChat.MLSearch.Diagnostics;
 using ActualChat.Module;
+using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Pages;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Components;
 using ActualLab.CommandR.Diagnostics;
 using ActualLab.Fusion.Diagnostics;
 using ActualLab.Fusion.Server;
@@ -25,6 +29,7 @@ using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -34,7 +39,6 @@ namespace ActualChat.App.Server.Module;
 public sealed class AppServerModule(IServiceProvider moduleServices)
     : HostModule<HostSettings>(moduleServices), IWebServerModule
 {
-    [field: AllowNull, MaybeNull]
     public IWebHostEnvironment Env => field ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
 
     public void ConfigureApp(WebApplication app)
@@ -167,6 +171,39 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<InfrastructureDbContext>(services);
 
+        // Mesh Locks
+        var hasKube = IKubeInfo.HasKube();
+        var useLocalKube = Constants.DebugMode.KubeLocal;
+        if (useLocalKube)
+            // Validate that we are not managed by k8s and register local kube info otherwise
+            if (!hasKube)
+                services.AddSingleton(KubeInfo.GetLocal);
+
+        services.AddSingleton<IMeshLocks>(c => {
+            var subspace = Settings.MeshLockSubspace;
+            if (OrdinalEquals(subspace, "?"))
+                subspace = Alphabet.AlphaNumeric.Generator8.Next();
+            else if (subspace.IsNullOrWhiteSpace())
+                subspace = "";
+            var optionsPreset = Settings.MeshLockOptionsPreset.NullIfEmpty() ?? nameof(MeshLockOptions.Default);
+            Log.LogInformation("IMeshLocks: '{Subspace}' subspace, '{OptionsPreset}' lock options preset", subspace, optionsPreset);
+
+            var keyPrefix = subspace.IsNullOrEmpty()
+                ? MeshLocksBase.DefaultKeyPrefix
+                : $"{MeshLocksBase.DefaultKeyPrefix}-{subspace}"; // Must not use "." as a delimiter!
+
+            if (useLocalKube || hasKube) {
+                Log.LogInformation("Using {KubeMeshLocks} for mesh locks", useLocalKube ? "Local KubeMeshLocks" : "KubeMeshLocks");
+                return c.GetRequiredService<KubeMeshLocks>()
+                    .With(keyPrefix, MeshLockOptions.Presets[optionsPreset]);
+            }
+
+            Log.LogInformation("Using RedisMeshLocks for mesh locks");
+            return new RedisMeshLocks<InfrastructureDbContext>(c, keyPrefix) {
+                LockOptions = MeshLockOptions.Presets[optionsPreset],
+            };
+        });
+
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
         var dataProtection = Settings.DataProtection.NullIfEmpty() ?? binPath & "data-protection-keys";
@@ -176,9 +213,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             var objectName = dataProtection[(6 + bucket.Length)..];
             services.AddDataProtection().PersistKeysToGoogleCloudStorage(bucket, objectName);
         }
-        else {
+        else
             services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtection));
-        }
         // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
         var origins = new List<string> {
             "http://0.0.0.0",
@@ -259,7 +295,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         services.AddBlazorCircuitActivitySuppressor();
 
         // Open Telemetry
-        ConfigureOpenTelemetry(services);
+        if (!HostInfo.IsTested)
+            ConfigureOpenTelemetry(services);
     }
 
     // Private methods
@@ -273,12 +310,19 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             var (host, port) = endpoint.ParseHostPort(4317);
             endpointUrl = $"http://{host}:{port.Format()}";
         }
+
         Log.LogInformation("OpenTelemetry: '{ServiceName}' @ {Endpoint}", serviceName, endpointUrl);
 
         var otel = services.AddOpenTelemetry();
-        otel.ConfigureResource(resource => _ = Env.IsDevelopment()
-            ? resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString, false, "dev")
-            : resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString));
+        otel.ConfigureResource(resource => {
+            _ = Env.IsDevelopment()
+                ? resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString, false, "dev")
+                : resource.AddService(serviceName, "actualchat", ApiConstants.FullVersionString);
+
+            var containerName = Environment.GetEnvironmentVariable("CONTAINER_NAME").NullIfEmpty() ?? "actual-chat-app";
+            if (!string.IsNullOrEmpty(containerName))
+                resource.AddAttributes([KeyValuePair.Create<string, object>("k8s.container.name", containerName)]);
+        });
 
         otel.WithMetrics(meter => meter
             // gcloud exporter doesn't support some of metrics yet:
@@ -311,7 +355,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     ExporterTimeoutMilliseconds = 10_000,
                     MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
                     MaxQueueSize = 1024,
-                    ScheduledDelayMilliseconds = 20_000,
+                    ScheduledDelayMilliseconds = 5_000,
                 };
                 cfg.Protocol = OtlpExportProtocol.Grpc;
                 cfg.Endpoint = endpointUrl.ToUri();
@@ -353,11 +397,27 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                     ExporterTimeoutMilliseconds = 10_000,
                     MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
                     MaxQueueSize = 1024,
-                    ScheduledDelayMilliseconds = 20_000,
+                    ScheduledDelayMilliseconds = 5_000,
                 };
                 cfg.Protocol = OtlpExportProtocol.Grpc;
                 cfg.Endpoint = endpointUrl.ToUri();
             })
         );
+        otel.WithLogging(
+            logger => logger.AddOtlpExporter(cfg => {
+                cfg.ExportProcessorType = ExportProcessorType.Batch;
+                cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
+                    ExporterTimeoutMilliseconds = 10_000,
+                    MaxExportBatchSize = 200, // Google Cloud Monitoring limits batches to 200 metric points.
+                    MaxQueueSize = 1024,
+                    ScheduledDelayMilliseconds = 5_000,
+                };
+                cfg.Protocol = OtlpExportProtocol.Grpc;
+                cfg.Endpoint = endpointUrl.ToUri();
+            }),
+            options => {
+                options.IncludeScopes = true;
+                options.IncludeFormattedMessage = true;
+            });
     }
 }

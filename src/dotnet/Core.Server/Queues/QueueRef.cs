@@ -1,3 +1,5 @@
+using ActualLab.Resilience;
+
 namespace ActualChat.Queues;
 
 [StructLayout(LayoutKind.Auto)]
@@ -12,8 +14,25 @@ public readonly struct QueueRef : ICanBeNone<QueueRef>, IEquatable<QueueRef>
 
     // Computed properties
     public bool IsNone => _shardScheme == null || _shardScheme.IsNone;
-    public bool IsUndefined => _shardScheme != null && _shardScheme.IsUndefined;
-    public bool IsValid => _shardScheme != null && _shardScheme.IsValid;
+    public bool IsUndefined => _shardScheme is { IsUndefined: true };
+    public bool IsValid => _shardScheme is { IsValid: true };
+
+    public static QueueRef For(ICommand command, IServiceProvider services)
+    {
+        var commandKind = command.GetKind();
+        if (commandKind is CommandKind.UnboundEvent) {
+            // All unbound events go to the event queue, coz their execution = enqueuing their chains
+            return ShardScheme.Queue;
+        }
+
+        if (command is IHasQueueRef hasQueueRef)
+            return hasQueueRef.QueueRef; // Explicitly specified queue
+
+        // Timeout-based heuristics
+        return QueuesExt.GetTimeout(command, services) > QueuesExt.QueueTimeout
+            ? ShardScheme.SlowQueue
+            : ShardScheme.Queue;
+    }
 
     // ReSharper disable once ConvertToPrimaryConstructor
     public QueueRef(ShardScheme shardScheme)

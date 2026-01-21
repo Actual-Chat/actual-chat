@@ -1,17 +1,14 @@
-using System.Buffers;
-using System.Runtime.InteropServices;
 using ActualLab.IO;
-using ActualChat;
 using ActualChat.Audio.APM;
 
 namespace Core.Audio.UnitTests;
 
-public class ApmGainTest(ITestOutputHelper @out)
+public class ApmGainTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact(Skip = "Manual")]
     public void ApmShouldAdjustGain()
     {
-        @out.WriteLine("Starting APM gain test...");
+        WriteLine("Starting APM gain test...");
 
         // Arrange: load test PCM float32 (LE), 16 kHz, mono
         var filePath = GetAudioFilePath(new FilePath("micIn.bin"));
@@ -39,7 +36,7 @@ public class ApmGainTest(ITestOutputHelper @out)
             apm.ProcessStream(inSpan, outSpan);
             // var inSpanGain = AudioExt.ApproximateGain(inSpan);
             // var outSpanGain = AudioExt.ApproximateGain(outSpan);
-            // @out.WriteLine($"Processed frame {i + 1:0000}/{totalFrames}: {inSpanGain:F5} -> {outSpanGain:F5}");
+            // WriteLine($"Processed frame {i + 1:0000}/{totalFrames}: {inSpanGain:F5} -> {outSpanGain:F5}");
         }
 
         // Write processed output to data/output.bin as float32 LE
@@ -54,7 +51,7 @@ public class ApmGainTest(ITestOutputHelper @out)
         var inMax = MaxAbs(input);
         var outMax = MaxAbs(output);
 
-        @out.WriteLine("APM gain test completed. Original gain: " + inGain + ", processed gain: " + outGain);
+        WriteLine("APM gain test completed. Original gain: " + inGain + ", processed gain: " + outGain);
         // Assert: processed output should have significantly higher gain
         outGain.Should().BeGreaterThan(inGain * 1.2, "APM AGC should increase overall gain");
         outMax.Should().BeGreaterThan((float)(inMax * 1.2), "APM AGC should increase peak amplitude");

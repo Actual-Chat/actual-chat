@@ -13,13 +13,18 @@ public class FlowsDbContext(DbContextOptions<FlowsDbContext> options) : DbContex
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
     public DbSet<DbEvent> Events { get; protected set; } = null!;
 
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+        configurationBuilder.Conventions.Add(_ => new RemoveDbEventIndexesConvention());
+    }
+
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.ApplyConfigurationsFromAssembly(typeof(FlowsDbContext).Assembly).UseSnakeCaseNaming();
 
         var contact = model.Entity<DbFlow>();
         contact.Property(e => e.Id).UseCollation("C");
-        contact.Property(e => e.Step).UseCollation("C");
 
         var operation = model.Entity<DbOperation>();
         operation.Property(e => e.Uuid).UseCollation("C");
@@ -27,5 +32,6 @@ public class FlowsDbContext(DbContextOptions<FlowsDbContext> options) : DbContex
 
         var events = model.Entity<DbEvent>();
         events.Property(e => e.Uuid).UseCollation("C");
+        events.DefineIndexes();
     }
 }

@@ -50,7 +50,6 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
     private Options Settings { get; }
     private MomentClock CpuClock { get; }
-    [field: AllowNull, MaybeNull]
     private Queue<Expiring<T>> RecentlyWritten => field ??= new Queue<Expiring<T>>(2); // Use only inside lock (Lock)!
     private ILogger? DebugLog => CoreConstants.DebugMode.SyncedState ? Log : null;
 

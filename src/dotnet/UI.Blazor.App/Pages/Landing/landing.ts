@@ -11,6 +11,7 @@ export class Landing {
     private readonly disposed$ = new Subject<void>();
     private readonly header: HTMLElement | null;
     private readonly firstPage: HTMLElement | null;
+    private readonly lastPage: HTMLElement | null;
     private readonly downloadLinksPage: HTMLElement | null;
     private readonly scrollContainer: HTMLElement | null;
     private lastPosition: number = 0;
@@ -32,6 +33,7 @@ export class Landing {
             return;
 
         this.firstPage = landing.querySelector('.page-1');
+        this.lastPage = landing.querySelector('.page-last');
         this.vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${this.vh}px`);
 
@@ -189,8 +191,9 @@ export class Landing {
             return;
 
         let isNotFirstPage = this.firstPage && this.firstPage.getBoundingClientRect().bottom <= 0;
+        let isNotLastPage = this.lastPage && Math.trunc(this.lastPage.getBoundingClientRect().top) > 0;
 
-        if ((isNotFirstPage && this.canScroll)) {
+        if ((isNotFirstPage && isNotLastPage && this.canScroll)) {
             this.header.classList.add('filled');
         } else {
             this.header.classList.remove('filled');

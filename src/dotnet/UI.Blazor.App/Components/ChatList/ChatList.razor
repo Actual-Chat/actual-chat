@@ -32,7 +32,6 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListRelated ? Log : null;
 

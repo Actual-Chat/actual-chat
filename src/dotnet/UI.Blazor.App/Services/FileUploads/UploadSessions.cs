@@ -1,3 +1,5 @@
+using ActualChat.Media;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 using System.Collections.Concurrent;
@@ -15,13 +17,14 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     public UploadSessions(AppUIHub hub) :base(hub)
     {
         _repo = new UploadSessionRepo(hub.Services);
-        _fileUploader = hub.Services.GetRequiredService<FileUploaderService>();
-
+        _fileUploader = new FileUploaderService(
+            hub.LogFor<FileUploaderService>(),
+            GetOrRegisterUpload,
+            ConvertUpload,
+            ClearUploadId);
         _fileUploader.ProgressChanged += OnProgressChanged;
         _fileUploader.Completed += OnCompleted;
         _fileUploader.Failed += OnFailed;
-        _fileUploader.Canceled += OnCanceled;
-
         _cleanupTask = BackgroundTask.Run(Cleanup);
     }
 
@@ -101,8 +104,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     private async Task CancelSessionIfNotCompleted(string sessionId, bool force)
     {
-        var session = await GetSession(sessionId).ConfigureAwait(false);
+        var session = await TryGetSession(sessionId).ConfigureAwait(false);
         await _fileUploader.CancelUpload(sessionId).ConfigureAwait(false);
+        if (session is null)
+            return;
+
         if (session.Status is not UploadStatus.Canceled) {
             if (force || session.Status is not (UploadStatus.Completed or UploadStatus.Failed)) {
                 session.LastUpdatedAt = Now;
@@ -114,13 +120,19 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     public async Task DeleteSession(string sessionId)
     {
-        var session = await GetSession(sessionId).ConfigureAwait(false);
+        var session = await TryGetSession(sessionId).ConfigureAwait(false);
+        if (session is null) {
+            Log.LogWarning("Got delete session '{SessionId}' request, but did not find the session", sessionId);
+            return;
+        }
         if (session.Status is not UploadStatus.Canceled and not UploadStatus.Completed and not UploadStatus.Failed)
             throw new InvalidOperationException("Cannot delete a not canceled/completed/failed session");
 
+        if (session.UploadId is not null)
+            await Commander.Call(new Uploads_Remove(Hub.Session, session.UploadId), CancellationToken.None).ConfigureAwait(false);
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repo.Delete(sessionId).ConfigureAwait(false);
-        Log.LogInformation("Deleted session {SessionId}", sessionId);
+        Log.LogInformation("Deleted session '{SessionId}'", sessionId);
     }
 
     public async Task<UploadSession> GetSession(string sessionId)
@@ -148,6 +160,18 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             return null;
 
         session.FileProvider.Initialize(Hub.Services);
+        switch (session.Status) {
+            case UploadStatus.Completed when session.MediaContent is not null:
+                session.ProgressTracker.ReportProgress(100);
+                session.ProgressTracker.SetResult(session.MediaContent);
+                break;
+            case UploadStatus.Canceled:
+                session.ProgressTracker.SetCanceled();
+                break;
+            case UploadStatus.Failed:
+                session.ProgressTracker.SetException(new Exception("Upload failed"));
+                break;
+        }
         _sessions[sessionId] = session;
         return session;
     }
@@ -177,6 +201,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.ProgressTracker.SetResult(mediaContent);
         session.Status = UploadStatus.Completed;
         session.LastUpdatedAt = Now;
+        session.MediaContent = mediaContent;
         await _repo.Save(session).ConfigureAwait(false);
     }
 
@@ -189,11 +214,37 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await _repo.Save(session).ConfigureAwait(false);
     }
 
-    private async Task OnCanceled(string sessionId)
+    private async Task<UploadId> GetOrRegisterUpload(string sessionId, CancellationToken cancellationToken)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
-        session.ProgressTracker.SetCanceled();
-        session.Status = UploadStatus.Canceled;
+        if (session.UploadId is not null)
+            return session.UploadId;
+
+        if (session.Status is not UploadStatus.Uploading)
+            throw new InvalidOperationException("Cannot register an upload for a session that is not uploading");
+
+        var tag = UploadExt.BuildTag(session.ChatId);
+        var fileMetadata = session.FileProvider.Metadata;
+        var length = fileMetadata.Length;
+        var metadata = new PropertyBag()
+            .Set(nameof(Media.Media.FileName), fileMetadata.FileName)
+            .Set(nameof(Media.Media.ContentType), fileMetadata.FileType);
+        var uploadId = await Commander.Call(new Uploads_Create(Hub.Session, length, tag, metadata), cancellationToken).ConfigureAwait(false);
+        session.UploadId = uploadId;
+        session.LastUpdatedAt = Now;
+        await _repo.Save(session).ConfigureAwait(false);
+        return session.UploadId;
+    }
+
+    private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken ct)
+        => Commander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), ct);
+
+    private async Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
+    {
+        var session = await GetSession(sessionId).ConfigureAwait(false);
+        if (session.UploadId is null)
+            return;
+        session.UploadId = null;
         session.LastUpdatedAt = Now;
         await _repo.Save(session).ConfigureAwait(false);
     }

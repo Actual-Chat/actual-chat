@@ -18,7 +18,6 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
 {
     private IServiceProvider Services { get; } = services;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     [HttpGet("sign-in-apple")]

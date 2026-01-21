@@ -9,11 +9,10 @@
 <#@ import namespace="System.Xml.Linq" #>
 <#@ import namespace="System.Linq" #>
 <#
-    string XmlFile = "ebml.xml";
-    string MatroskaXmlFile = "ebml_matroska.xml";
+    string xmlFile = "ebml.xml";
+    string matroskaXmlFile = "ebml_matroska.xml";
     XNamespace ns = "urn:ietf:rfc:8794";
 #>
-using System.Collections.Generic;
 using System.CodeDom.Compiler;
 using System.Linq;
 using System.Reflection;
@@ -65,7 +64,7 @@ namespace ActualChat.Audio.WebM
         "SignedElement"
     };
 
-    var elementsEbml = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), XmlFile)).Elements()
+    var elementsEbml = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), xmlFile)).Elements()
         .Select(e => new
         {
             Name = e.Attribute("name").Value.Replace("CRC-32", "CRC32"),
@@ -78,7 +77,7 @@ namespace ActualChat.Audio.WebM
             Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : ""
         });
 
-    var elementsMatroska = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), MatroskaXmlFile)).Elements()
+    var elementsMatroska = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), matroskaXmlFile)).Elements()
         .Select(e => new
         {
             Name = e.Attribute("name").Value,

@@ -1,0 +1,65 @@
+@using ActualChat.Chat
+@inherits ComponentBase<UIHub>
+@implements IModalView<VisualMediaInfoModal.Model>
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var attachment = ModalModel.Attachment;
+    if (attachment == null)
+        return;
+
+    var media = attachment.Media;
+    var fileName = media.FileName;
+    var size = FormatSize(media.Length);
+    var height = media.Height;
+    var width = media.Width;
+    var contentType = media.ContentType;
+}
+
+<DialogFrame Title="Media Info" Class="media-info-modal modal-sm" HasCloseButton="true">
+    <Body>
+        <div class="media-info">
+            <div class="c-item">
+                <span class="c-key">File name:</span>
+                <span class="c-value">@fileName</span>
+            </div>
+            <div class="c-item">
+                <span class="c-key">Size:</span>
+                <span class="c-value">@size</span>
+            </div>
+            <div class="c-item">
+                <span class="c-key">Height:</span>
+                <span class="c-value">@height</span>
+            </div>
+            <div class="c-item">
+                <span class="c-key">Width:</span>
+                <span class="c-value">@width</span>
+            </div>
+            <div class="c-item">
+                <span class="c-key">Content type:</span>
+                <span class="c-value">@contentType</span>
+            </div>
+        </div>
+    </Body>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private string FormatSize(long bytes) {
+        const double KB = 1024;
+        const double MB = KB * 1024;
+        const double GB = MB * 1024;
+
+        if (bytes >= GB)
+            return $"{bytes / GB:F2} GB";
+        if (bytes >= MB)
+            return $"{bytes / MB:F2} MB";
+        if (bytes >= KB)
+            return $"{bytes / KB:F2} KB";
+
+        return $"{bytes} B";
+    }
+
+    public sealed record Model(TextEntryAttachment? Attachment);
+}

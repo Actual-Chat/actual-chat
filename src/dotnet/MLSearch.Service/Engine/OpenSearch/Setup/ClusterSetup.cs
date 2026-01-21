@@ -18,7 +18,6 @@ internal sealed class ClusterSetup(
     IClusterSetupActions actions,
     IOptions<OpenSearchSettings> openSearchSettings,
     IEnumerable<ISettingsChangeTokenSource> changeSources,
-    ILogger<ClusterSetup> log,
     OpenSearchNames openSearchNames,
     Tracer baseTracer
 ) : IClusterSetup
@@ -39,14 +38,11 @@ internal sealed class ClusterSetup(
         var isClusterStateValid = await CheckClusterStateValidAsync(embeddingModelProps, cancellationToken)
             .ConfigureAwait(false);
         if (!isClusterStateValid) {
-            var runOptions = RunLockedOptions.Default with { Log = log };
-            _ = await meshLocks.RunLocked(
-                    $"{nameof(ClusterSetup)}.{nameof(InitializeAsync)}",
-                    runOptions,
-                    ct => InitialiseUnsafeAsync(embeddingModelProps, ct),
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+            await meshLocks.LockAndRun(
+                $"{nameof(ClusterSetup)}.{nameof(InitializeAsync)}",
+                ct => InitializeUnsafeAsync(embeddingModelProps, ct),
+                cancellationToken
+            ).ConfigureAwait(false);
         }
 
         _result = new ClusterSetupResult(embeddingModelProps);
@@ -73,7 +69,7 @@ internal sealed class ClusterSetup(
         return isTemplateValid && isIngestPipelineExists && isAllIndexesExist;
     }
 
-    private async Task InitialiseUnsafeAsync(EmbeddingModelProps embeddingModelProps, CancellationToken cancellationToken)
+    private async Task InitializeUnsafeAsync(EmbeddingModelProps embeddingModelProps, CancellationToken cancellationToken)
     {
         await EnsureTemplatesAsync(cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(embeddingModelProps, cancellationToken).ConfigureAwait(false);

@@ -1,5 +1,6 @@
 .toggle {
     @apply flex-1 flex-x justify-end items-center gap-x-2;
+    @apply px-px;
     @apply overflow-hidden;
     @apply cursor-pointer;
 }

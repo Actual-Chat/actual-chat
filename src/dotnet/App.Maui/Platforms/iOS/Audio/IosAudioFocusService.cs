@@ -17,9 +17,7 @@ public class IosAudioFocusService : MauiAudioFocusService
     private int _id;
     private AudioFocusHandle? _handle;
 
-    [field: AllowNull, MaybeNull]
     private AudioSession AudioSession => field ??= Hub.Services.GetRequiredService<AudioSession>();
-    [field: AllowNull, MaybeNull]
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
 
     public IosAudioFocusService(AppUIHub hub) : base(hub)
@@ -97,7 +95,8 @@ public class IosAudioFocusService : MauiAudioFocusService
         using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
         switch (type) {
         case AVAudioSessionInterruptionType.Began:
-            _handle?.RaiseLostFocus(true);
+            // TODO(FROL): please check how canDuck parameter should be set.
+            _handle?.RaiseLostFocus(true, false);
             break;
         case AVAudioSessionInterruptionType.Ended:
             if (option == AVAudioSessionInterruptionOptions.ShouldResume)

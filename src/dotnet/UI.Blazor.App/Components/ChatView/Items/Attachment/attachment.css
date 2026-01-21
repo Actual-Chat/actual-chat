@@ -4,7 +4,7 @@
 }
 .image-line {
     @apply flex-x gap-x-px;
-    @apply h-full w-full min-w-full;
+    @apply h-full w-full min-w-full max-w-full;
     @apply overflow-hidden;
 }
 .wide .image-line {
@@ -161,6 +161,18 @@ body.hoverable .image-line .image-item:hover {
 .image-attachment image-skeleton::part(image) {
     object-fit: cover;
 }
+.image-attachment .noise-overlay {
+    @apply absolute inset-0;
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    background-color: rgba(0,0,0,0.2);
+}
+.image-attachment .noise-overlay::after {
+    @apply content-empty;
+    @apply absolute inset-0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.9' numOctaves='5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.75'/%3E%3C/svg%3E");
+    mix-blend-mode: soft-light;
+}
 
 /* File Attachment */
 .file-attachment {
@@ -280,4 +292,18 @@ body.hoverable .message-image-attachments.media-attachment-uploads .image-item:h
 .message-image-attachments.media-attachment-uploads .attachment-item > img,
 .message-image-attachments.media-attachment-uploads .attachment-item > video {
     @apply h-full;
+}
+
+.attachment-item .c-plug {
+    @apply absolute inset-0 z-10;
+    @apply flex items-center justify-center;
+    @apply bg-02;
+}
+.attachment-item .c-plug > .c-wrapper {
+    @apply flex items-center justify-center;
+    @apply w-12 h-12;
+    @apply rounded-full;
+    @apply overflow-hidden;
+    @apply bg-03;
+    @apply text-01;
 }

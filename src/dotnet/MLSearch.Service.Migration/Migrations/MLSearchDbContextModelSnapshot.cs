@@ -54,11 +54,13 @@ namespace ActualChat.MLSearch.Migrations
                     b.HasKey("Uuid")
                         .HasName("pk_events");
 
-                    b.HasIndex("DelayUntil", "State")
-                        .HasDatabaseName("ix_events_delay_until_state");
+                    b.HasIndex("DelayUntil")
+                        .HasDatabaseName("ix_events_pending")
+                        .HasFilter("state = 0");
 
-                    b.HasIndex("State", "DelayUntil")
-                        .HasDatabaseName("ix_events_state_delay_until");
+                    b.HasIndex("DelayUntil", "State")
+                        .HasDatabaseName("ix_events_delay_until_state_non_new")
+                        .HasFilter("state != 0");
 
                     b.ToTable("_events");
                 });

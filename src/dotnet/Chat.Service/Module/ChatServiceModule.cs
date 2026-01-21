@@ -10,11 +10,11 @@ using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Roulette;
+using ActualChat.Uploads;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Google;
@@ -34,7 +34,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<IChats, Chats>(); // Used by many
         rpcHost.AddBackend<IChatsBackend, ChatsBackend>();
         rpcHost.AddBackend<IChatsUpgradeBackend, ChatsUpgradeBackend>();
-        services.AddSingleton<MediaStorage>();
 
         // Places
         rpcHost.AddLocalApi<IPlaces, Places>(); // Used by Chats
@@ -86,6 +85,11 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IContentLinksBackend, ContentLinksBackend>();
         services.AddSingleton<OpenGraphTagsProvider>();
 
+        // Diagnostics
+        rpcHost.AddLocalApi<IDiagnostics, Diagnostics>();
+        rpcHost.AddBackend<IDiagnosticsBackend, DiagnosticsBackend>();
+        services.AddFusion().AddComputeService<DiagnosticsBackendLocal>();
+
         if (isBackendClient)
             return;
 
@@ -124,23 +128,23 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => new EntryGroupExtractor(c.GetRequiredService<IEmbeddingsCalculator>(), c.LogFor<EntryGroupExtractor>()));
 
         if (Settings.IsSummarizationEnabled) {
-            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.OpenAIChatModel, Settings.OpenAIApiKey);
+            AddKeyedOpenAI(services, ConversationSummarizer.ServiceKey, Settings.Summarization.OpenAIModel, Settings.Summarization.OpenAIKey, Settings.Summarization.HttpTimeout);
             services.AddSingleton<IConversationSummarizer>(
                 c => new ConversationSummarizer(
                     new ConversationSummarizer.Options {
-                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.SummarizeConversationPromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Summarization.SummarizeConversationPromptFile,
                     },
                     c));
             services.AddSingleton<IThreadInsightExtractor, ThreadInsightExtractor>(
                 c => new ThreadInsightExtractor(
                     new ThreadInsightExtractor.Options {
-                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.SuggestChatThreadTitlePromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Summarization.SuggestChatThreadTitlePromptFile,
                     },
                     c));
             services.AddSingleton<IChatDigestSummarizer, ChatDigestSummarizer>(
                 c => new ChatDigestSummarizer(
                     new ChatDigestSummarizer.Options {
-                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.SummarizeChatDigestPromptFile,
+                        PromptFile = c.GetRequiredService<CoreServerSettings>().PromptsDir | Settings.Summarization.SummarizeChatDigestPromptFile,
                     },
                     c));
         }
@@ -238,9 +242,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         };
         services.AddKeyedSingleton(serviceKey, httpClient); // for disposal
         if (openAIKey.IsNullOrEmpty())
-            openAIKey = Settings.OpenAIApiKey;
+            openAIKey = Settings.OpenAIKey;
         if (openAIModel.IsNullOrEmpty())
-            openAIModel = Settings.OpenAIChatModel;
+            openAIModel = Settings.OpenAIModel;
 
         // unlimited
         var unlimitedServiceKey = serviceKey + "_Unlimited";

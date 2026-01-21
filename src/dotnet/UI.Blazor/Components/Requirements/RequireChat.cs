@@ -4,7 +4,6 @@ namespace ActualChat.UI.Blazor.Components;
 
 public sealed class RequireChat : RequirementComponent
 {
-    [field: AllowNull, MaybeNull]
     private IChats Chats => field ??= Hub.Services.GetRequiredService<IChats>();
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";

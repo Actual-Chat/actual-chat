@@ -17,6 +17,7 @@ using ActualChat.UI.Blazor.Pages.DiveInModalTestPage;
 using ActualChat.UI.Blazor.Pages.Emails;
 using ActualChat.UI.Blazor.Pages.ErrorBarrierTestPage;
 using ActualChat.UI.Blazor.Pages.RenderSlotTestPage;
+using ActualChat.UI.Module;
 using ActualLab.Fusion.Client;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Client.Interception;
@@ -256,6 +257,7 @@ public static class ClientStartup
                 new ApiModule(moduleServices),
                 new ApiContractsModule(moduleServices),
                 // UI modules
+                new UICoreModule(moduleServices),
                 new BlazorUICoreModule(moduleServices),
                 // This module should be the last one
                 new BlazorUIAppModule(moduleServices)

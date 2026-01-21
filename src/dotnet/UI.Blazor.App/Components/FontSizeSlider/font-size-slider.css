@@ -1,0 +1,79 @@
+.font-size-slider {
+    @apply flex-x items-center gap-x-2;
+    @apply h-full;
+    --track-height: 2px;
+    --thumb-size: 16px;
+    --track-color: var(--separator);
+    --progress-color: var(--blue-50-50);
+    --thumb-color: var(--primary);
+}
+.font-size-slider label {
+    @apply flex-y self-end;
+    @apply w-full;
+    row-gap: 4px;
+}
+.font-size-slider input[type="range"] {
+    @apply w-full;
+    @apply bg-transparent;
+    @apply cursor-pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    height: var(--thumb-size);
+    padding: 0 calc(var(--thumb-size) / 2);
+}
+
+/* Chrome / Edge / Safari */
+.font-size-slider input[type="range"]::-webkit-slider-runnable-track {
+    @apply rounded-full;
+    height: var(--track-height);
+    background: linear-gradient(
+        to right,
+        var(--progress-color) 0%,
+        var(--progress-color) var(--progress, 0%),
+        var(--track-color) var(--progress, 0%),
+        var(--track-color) 100%
+    );
+}
+.font-size-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    border-radius: 50%;
+    background: var(--thumb-color);
+    margin-top: calc(
+        (var(--track-height) - var(--thumb-size)) / 2
+    );
+}
+/* Firefox */
+.font-size-slider input[type="range"]::-moz-range-track {
+    @apply rounded-full;
+    height: var(--track-height);
+    background: var(--track-color);
+}
+.font-size-slider input[type="range"]::-moz-range-thumb {
+    width: var(--thumb-size);
+    height: var(--thumb-size);
+    border-radius: 50%;
+    background: var(--thumb-color);
+    border: none;
+}
+.font-size-slider input[type="range"]::-moz-range-progress {
+    @apply rounded-full;
+    height: var(--track-height);
+    background: var(--progress-color);
+}
+.font-size-slider .slider-text {
+    font-size: 14px;
+    line-height: 18px;
+}
+
+.font-size-tile {
+    height: 80px;
+}
+.font-size-tile .ui-settings {
+    @apply h-full;
+}
+.settings-tab-content:has(.font-size-tile) {
+    @apply absolute;
+    top: 80px;
+}

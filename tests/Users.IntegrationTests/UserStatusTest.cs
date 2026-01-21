@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;

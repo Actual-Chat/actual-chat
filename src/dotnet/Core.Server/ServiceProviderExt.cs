@@ -1,3 +1,4 @@
+using ActualChat.Flows;
 using ActualChat.Queues;
 using Microsoft.Extensions.Hosting;
 
@@ -18,8 +19,8 @@ public static class ServiceProviderExt
         => services.GetService<IHostApplicationLifetime>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IMeshLocks<TContext> MeshLocks<TContext>(this IServiceProvider services)
-        => services.GetRequiredService<IMeshLocks<TContext>>();
+    public static IMeshLocks MeshLocks(this IServiceProvider services)
+        => services.GetRequiredService<IMeshLocks>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MeshWatcher MeshWatcher(this IServiceProvider services)
@@ -42,4 +43,8 @@ public static class ServiceProviderExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static IQueues Queues(this IServiceProvider services)
         => services.GetRequiredService<IQueues>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static FlowHub FlowHub(this IServiceProvider services)
+        => services.GetRequiredService<FlowHub>();
 }

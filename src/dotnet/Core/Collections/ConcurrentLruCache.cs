@@ -6,7 +6,7 @@ public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue
     private readonly int _cacheIndexMask;
     private readonly LruCache<TKey, TValue>[] _caches;
 
-    public ConcurrentLruCache(int capacity, int cacheCount = 0, IEqualityComparer<TKey>? comparer = null)
+    public ConcurrentLruCache(int capacity, int cacheCount = 0, IEqualityComparer<TKey>? comparer = null, Action<TKey, TValue>? evictionHandler = null)
     {
         if (cacheCount <= 0)
             cacheCount = HardwareInfo.ProcessorCountPo2;

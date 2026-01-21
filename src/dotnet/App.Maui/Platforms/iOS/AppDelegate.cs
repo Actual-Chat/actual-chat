@@ -67,7 +67,7 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
 
     private static void RegisterBadgeNotifications()
         => UNUserNotificationCenter.Current.RequestAuthorization(
-            UNAuthorizationOptions.Badge,
+            UNAuthorizationOptions.Badge | UNAuthorizationOptions.Alert | UNAuthorizationOptions.Sound,
             (approved, error) => {
                 if (approved)
                     return;

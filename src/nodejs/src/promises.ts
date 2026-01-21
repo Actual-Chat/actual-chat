@@ -32,14 +32,15 @@ export class PromiseSource<T> implements Promise<T> {
                 if (resolve)
                     resolve(value);
             };
-            this.reject = (reason?: string) => {
+            this.reject = (arg: any) => {
                 if (this._isCompleted)
                     return;
 
                 this._isCompleted = true;
-                reject1(new Error(reason));
+                const error = arg instanceof Error ? arg : typeof arg === 'string' ? new Error(arg) : new Error(String(arg));
+                reject1(error);
                 if (reject)
-                    reject(reason);
+                    reject(error);
             };
         })
         this[Symbol.toStringTag] = this._promise[Symbol.toStringTag];

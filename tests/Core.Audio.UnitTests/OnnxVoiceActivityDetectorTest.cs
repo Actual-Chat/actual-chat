@@ -4,7 +4,7 @@ using ActualChat.Hosting;
 
 namespace Core.Audio.UnitTests;
 
-public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
+public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact(Skip = "Manual")]
     public async Task BasicTest()
@@ -48,7 +48,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
                 if (result.HasEvent)
                     eventCount++;
                 var ms = i / 16000.0;
-                @out.WriteLine($"Chunk [{ms:F3}s]: {result.Change} ({result.Gain}) ");
+                WriteLine($"Chunk [{ms:F3}s]: {result.Change} ({result.Gain}) ");
             }
         }
 
@@ -102,7 +102,7 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
 
             foreach (var result in results) {
                 var ms = i / 16000.0;
-                @out.WriteLine($"Chunk [{ms:F3}s]: {result} ");
+                WriteLine($"Chunk [{ms:F3}s]: {result} ");
             }
         }
 
@@ -157,12 +157,12 @@ public class OnnxVoiceActivityDetectorTest(ITestOutputHelper @out)
             processed++;
 
             var ms = i / 16000.0;
-            // @out.WriteLine($"Chunk [{ms:F3}s]: {internalResult:F5} - {result.Gain:F5} change={result.Change?.Kind}");
+            // WriteLine($"Chunk [{ms:F3}s]: {internalResult:F5} - {result.Gain:F5} change={result.Change?.Kind}");
         }
 
         Assert.True(processed > 0);
         sw.Stop();
-        @out.WriteLine($"Processed {processed} chunks in {sw.ElapsedMilliseconds} ms");
+        WriteLine($"Processed {processed} chunks in {sw.ElapsedMilliseconds} ms");
         // We don't assert a specific number of events since it depends on the sample content and model,
         // but we verify the pipeline runs end-to-end without exceptions.
     }

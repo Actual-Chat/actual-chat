@@ -15,25 +15,19 @@ public class LanguageDetector(IServiceProvider services)
 
     private string ServiceKey => Constants.LanguageDetection.ServiceKey;
 
-    [field: AllowNull, MaybeNull]
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
-    [field: AllowNull, MaybeNull]
     private CoreServerSettings CoreServerSettings => field ??= Services.GetRequiredService<CoreServerSettings>();
 
-    [field: AllowNull, MaybeNull]
     private string Prompt => field ??= File
         .ReadAllText(CoreServerSettings.PromptsDir | Settings.LanguageDetection.PromptFile)
         .RequireNonEmpty();
 
-    [field: AllowNull, MaybeNull]
     private Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();
 
-    [field: AllowNull, MaybeNull]
     private IChatCompletionService Completion
         => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<IReadOnlyList<Language>> DetectLanguages(string content, CancellationToken cancellationToken)

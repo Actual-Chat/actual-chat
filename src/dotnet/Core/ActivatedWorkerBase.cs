@@ -10,7 +10,6 @@ public abstract class ActivatedWorkerBase(IServiceProvider services) : WorkerBas
 
     protected IServiceProvider Services { get; } = services;
 
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
 
     public void Activate()

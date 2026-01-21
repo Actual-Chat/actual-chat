@@ -9,9 +9,7 @@ public class ContactGreeter(IServiceProvider services) : ActivatedWorkerBase(ser
 {
     private const int BatchSize = 100;
 
-    [field: AllowNull, MaybeNull]
     private DbHub<UsersDbContext> DbHub => field ??= Services.DbHub<UsersDbContext>();
-    [field: AllowNull, MaybeNull]
     private ICommander Commander => field ??= Services.Commander();
 
     protected override async Task<bool> OnActivate(CancellationToken cancellationToken)

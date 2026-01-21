@@ -2,7 +2,6 @@ namespace ActualChat.App.Maui;
 
 public static class MauiExceptionHandlers
 {
-    [field: AllowNull, MaybeNull]
     private static ILogger Log => field ??= StaticLog.For(typeof(MauiExceptionHandlers));
 
     public static void Use()

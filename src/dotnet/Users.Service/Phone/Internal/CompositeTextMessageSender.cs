@@ -4,10 +4,8 @@ public sealed class CompositeTextMessageSender(IServiceProvider services) : ITex
 {
     private ILogger Log { get; } = services.LogFor<CompositeTextMessageSender>();
 
-    [field: AllowNull, MaybeNull]
     private ITextMessageSender SmsTo => field ??= services.GetRequiredKeyedService<ITextMessageSender>("SMSTo");
 
-    [field: AllowNull, MaybeNull]
     private ITextMessageSender Default => field ??= services.GetRequiredKeyedService<ITextMessageSender>("Default");
 
     public Task Send(ActualChat.Phone phone, string text)

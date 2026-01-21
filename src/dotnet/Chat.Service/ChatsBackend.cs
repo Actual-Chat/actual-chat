@@ -1,4 +1,4 @@
-using ActualChat.Chat.Db;
+﻿using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
@@ -34,49 +34,27 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // all backend services should be requested lazily to avoid circular references!
 
-    [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
-    [field: AllowNull, MaybeNull]
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
-    [field: AllowNull, MaybeNull]
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
-    [field: AllowNull, MaybeNull]
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
-    [field: AllowNull, MaybeNull]
     private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Services.GetRequiredService<ILinkPreviewsBackend>();
-    [field: AllowNull, MaybeNull]
     private IInvitesBackend InvitesBackend => field ??= Services.GetRequiredService<IInvitesBackend>();
-    [field: AllowNull, MaybeNull]
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
-    [field: AllowNull, MaybeNull]
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
-    [field: AllowNull, MaybeNull]
     private IRouletteBackend RouletteBackend => field ??= Services.GetRequiredService<IRouletteBackend>();
-    [field: AllowNull, MaybeNull]
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
-    [field: AllowNull, MaybeNull]
     private HostInfo HostInfo => field ??= Services.HostInfo();
-    [field: AllowNull, MaybeNull]
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
-    [field: AllowNull, MaybeNull]
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory => field ??= Services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbChat> DbChatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbChatCopyState> DbChatCopyStateResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatCopyState>>();
-    [field: AllowNull, MaybeNull]
     private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
-    [field: AllowNull, MaybeNull]
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
-    [field: AllowNull, MaybeNull]
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
-    [field: AllowNull, MaybeNull]
-    private IFlows Flows => field ??= Services.GetRequiredService<IFlows>();
-    [field: AllowNull, MaybeNull]
+    private FlowHub FlowHub => field ??= Services.FlowHub();
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-    [field: AllowNull, MaybeNull]
     private AudioSourceDownloader AudioSourceDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
-    [field: AllowNull, MaybeNull]
     private OpenAITranscriber OpenAITranscriber => field ??= Services.GetRequiredService<OpenAITranscriber>();
 
     // [ComputeMethod]
@@ -269,8 +247,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatEntryKind entryKind,
         Range<long> idTileRange,
         bool includeRemoved,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
+        using var cts = ct.CreateLinkedTokenSource(TimeSpan.FromSeconds(60));
+        var cancellationToken = cts.Token;
         var idTile = IdTileStack.GetTile(idTileRange);
         var smallerIdTiles = idTile.Smaller();
         if (smallerIdTiles.Length != 0) {
@@ -316,7 +296,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var allAttachmentsTask = GetAttachments(dbEntries, cancellationToken);
         var allLinkPreviewsTask = GetLinkPreviews();
 
-        await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).ConfigureAwait(false);
+        await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).WaitAsync(cancellationToken).ConfigureAwait(false);
 
         var allAttachments = await allAttachmentsTask.ConfigureAwait(false);
         var allLinkPreviews = await allLinkPreviewsTask.ConfigureAwait(false);
@@ -744,21 +724,49 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var entriesQuery = query.LastLocalId <= 0
-            ? dbContext.ChatEntries.Where(x => x.Version >= query.MinVersion && x.Version <= query.MaxVersion)
-            : dbContext.ChatEntries.Where(x
-                => (x.Version > query.MinVersion && x.Version <= query.MaxVersion)
-                || (x.Version == query.MinVersion && x.LocalId > query.LastLocalId));
+        if (query.LastLocalId == 0) {
+            var dbEntries = await dbContext.ChatEntries
+                .Where(x => x.ChatId == query.ChatId.Value
+                    && x.Kind == ChatEntryKind.Text
+                    && x.Version >= query.MinVersion
+                    && x.Version <= query.MaxVersion)
+                .OrderBy(x => x.Version)
+                .ThenBy(x => x.LocalId)
+                .Take(query.Limit)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return dbEntries.Select(x => x.ToModel()).ToArray();
+        }
 
-        return await entriesQuery
-            .Where(x => x.ChatId == query.ChatId.Value && x.Kind == ChatEntryKind.Text)
+        var part1 = await dbContext.ChatEntries
+            .Where(x => x.ChatId == query.ChatId.Value
+                && x.Kind == ChatEntryKind.Text
+                && x.Version == query.MinVersion
+                && x.LocalId > query.LastLocalId)
             .OrderBy(x => x.Version)
             .ThenBy(x => x.LocalId)
             .Take(query.Limit)
-            .AsAsyncEnumerable()
-            .Select(x => x.ToModel())
-            .ToArrayAsync(cancellationToken)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        if (part1.Count >= query.Limit)
+            return part1.Select(x => x.ToModel()).ToArray();
+
+        var part2 = await dbContext.ChatEntries
+            .Where(x => x.ChatId == query.ChatId.Value
+                && x.Kind == ChatEntryKind.Text
+                && x.Version > query.MinVersion
+                && x.Version <= query.MaxVersion)
+            .OrderBy(x => x.Version)
+            .ThenBy(x => x.LocalId)
+            .Take(query.Limit - part1.Count)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var result = new List<ChatEntry>(part1.Count + part2.Count);
+        result.AddRange(part1.Select(x => x.ToModel()));
+        result.AddRange(part2.Select(x => x.ToModel()));
+        return result.ToArray();
     }
 
     // Not a [ComputeMethod]!
@@ -878,6 +886,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (update.IsArchived.HasValue)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.IsArchived.");
 
+            if (update.IsSummarized.IsNone || !update.IsSummarized.Value.HasValue) {
+                var unsupportedSystemChats = new HashSet<Symbol> {
+                    Constants.Chat.SystemTags.Welcome,
+                    Constants.Chat.SystemTags.Notes,
+                    Constants.Chat.SystemTags.Bot,
+                };
+                if (!update.SystemTag.HasValue || !unsupportedSystemChats.Contains(update.SystemTag.Value))
+                    update = update with { IsSummarized = true }; // Enable summarization by default for new chats
+            }
+
             chat = new Chat(chatId.Require()) {
                 CreatedAt = Clocks.SystemClock.Now,
             };
@@ -980,12 +998,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag))
                 throw StandardError.Constraint("It's prohibited to remove 'Welcome' chat.");
 
-            if (!dbChat.MediaId.IsNullOrEmpty()) {
-                var removeMediaCommand = new MediaBackend_Change(
-                    MediaId.Parse(dbChat.MediaId),
-                    new Change<Media.Media> { Remove = true });
-                await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
-            }
+            await RemoveMedia(dbChat.MediaId, cancellationToken).ConfigureAwait(false);
             var attachmentMediaIds = await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId.Value && ce.HasAttachments)
                 .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea.MediaId)
@@ -997,10 +1010,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 if (!OrdinalEquals(mediaId.Scope, chatId.Value))
                     continue; // NOTE(DF): Do not remove media from current chat scope. Forwarded messages can contain media from another chat.
 
-                var removeMediaCommand = new MediaBackend_Change(
-                    mediaId,
-                    new Change<Media.Media> { Remove = true });
-                await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
+                await RemoveMedia(mediaId, cancellationToken).ConfigureAwait(false);
             }
             // Remove attachments
             await dbContext.ChatEntries
@@ -1570,12 +1580,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Distinct()
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
-            foreach (var mediaId in attachmentMediaIds) {
-                var removeMediaCommand = new MediaBackend_Change(
-                    MediaId.Parse(mediaId),
-                    new Change<Media.Media> { Remove = true });
-                await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
-            }
+            foreach (var mediaId in attachmentMediaIds)
+                await RemoveMedia(mediaId, cancellationToken).ConfigureAwait(false);
 
             // Remove attachments
             await dbContext.ChatEntries
@@ -1864,6 +1870,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (transcription is null)
             return;
 
+        if (ShouldUseOriginalTranscript(textEntry, transcription)) {
+            Log.LogDebug("Skip updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
+            return;
+        }
+
         Log.LogDebug("Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'", textEntry.Id.Value, textEntry.Content, transcription.Text);
         var timeMap = transcription.TimeMap;
         if (timeMap.IsDegenerate && !textEntry.TimeMap.IsDegenerate) {
@@ -1879,7 +1890,23 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 Content = transcription.Text,
                 TimeMap = timeMap,
             })), cancellationToken).ConfigureAwait(false);
-    }      // Event handlers
+        return;
+
+        static bool ShouldUseOriginalTranscript(ChatEntry textEntry, Transcript transcription)
+        {
+            var text = textEntry.Content;
+            var newText = transcription.Text;
+            if (newText.Length >= text.Length)
+                return false;
+            if (text.Length > 50)
+                return newText.Length < 0.9 * text.Length;
+            if (text.Length > 25)
+                return newText.Length < 0.8 * text.Length;
+            return true;
+        }
+    }
+
+    // Event handlers
 
     // [EventHandler]
     public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
@@ -2030,7 +2057,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         if (NeedsSummarization())
-            await Flows.Get<ConversationSplitFlow>(chat.Id.Value, cancellationToken).ConfigureAwait(false);
+            await FlowHub.NewResumeEvent<ConversationSplitFlow>(chat.Id.Value)
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
         return;
 
         bool NeedsSummarization()
@@ -2062,17 +2091,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chat.IsSummarized == false || kind == ChangeKind.Remove)
                 return;
 
-            var endsAt = entry.GetEndsAt();
-            var timeSinceEnded = Clocks.SystemClock.Now - endsAt;
-            await Flows
-                .Resume<ConversationSplitFlow>(chat.Id.Value,
-                    timeSinceEnded + Settings.ChatEntrySummarizationDelay,
-                    $"{nameof(OnTextEntryChangedEvent)} #{entry.Id}",
-                    timeSinceEnded + Settings.ChatEntrySummarizationDelay,
-                    cancellationToken)
+            var endsAt = Moment.Max(entry.GetEndsAt(), Clocks.SystemClock.Now);
+            await FlowHub
+                .NewResumeEvent<ConversationSplitFlow>(chat.Id.Value)
+                .WithDelay(endsAt + Settings.Summarization.ChatEntrySummarizationDelay, Settings.Summarization.ChatEntrySummarizationDelayQuanta)
+                .Schedule(cancellationToken)
                 .ConfigureAwait(false);
         }
     }
+
 
     // Protected methods
 
@@ -2446,5 +2473,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .ConfigureAwait(false);
             return attachments.SelectMany(x => x).ToLookup(x => x.EntryId);
         }
+    }
+
+    private Task RemoveMedia(string mediaSid, CancellationToken cancellationToken)
+        => !mediaSid.IsNullOrEmpty() ? RemoveMedia(MediaId.Parse(mediaSid), cancellationToken) : Task.CompletedTask;
+
+    private async Task RemoveMedia(MediaId mediaId, CancellationToken cancellationToken)
+    {
+        var removeCommand = new MediaBackend_Change(
+            mediaId,
+            new Change<Media.Media> { Remove = true });
+        await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

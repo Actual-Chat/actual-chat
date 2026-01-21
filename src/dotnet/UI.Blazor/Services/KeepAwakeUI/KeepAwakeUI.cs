@@ -8,7 +8,6 @@ public class KeepAwakeUI(UIHub hub)
 
     protected UIHub Hub => hub;
     protected IJSRuntime JS => hub.JS;
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public virtual ValueTask SetKeepAwake(bool mustKeepAwake)

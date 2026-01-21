@@ -13,7 +13,6 @@ public class AudioEngines : ProcessorBase
     public AudioEngine Recording { get; }
 
     private AppUIHub Hub { get; }
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public AudioEngines(AppUIHub hub)

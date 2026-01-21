@@ -11,7 +11,6 @@ public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IB
 
     public IServiceProvider Services { get; } = services;
     public ChatId ChatId { get; } = chatId;
-    [field: AllowNull, MaybeNull]
     public IMarkupParser Parser
         => field ??= Services.GetRequiredService<IMarkupParser>();
 

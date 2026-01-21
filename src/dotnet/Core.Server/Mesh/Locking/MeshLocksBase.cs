@@ -1,29 +1,33 @@
 using ActualLab.Diagnostics;
-using Cysharp.Text;
+using ActualLab.Resilience;
 
 namespace ActualChat.Mesh;
 
 public abstract class MeshLocksBase : IMeshLocksBackend
 {
     private static bool DebugMode => Constants.DebugMode.MeshLocks;
+    public static readonly string DefaultKeyPrefix = "MeshLocks";
 
     private readonly LazySlim<ILogger?>? _debugLog;
 
     protected readonly string HolderKeyPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     protected long LastHolderId;
-    [field: AllowNull, MaybeNull]
+
     protected ILogger Log => field ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => _debugLog?.Value;
-    ILogger IMeshLocksBackend.Log => Log;
-    ILogger? IMeshLocksBackend.DebugLog => DebugLog;
+    protected ChaosMaker ChaosMaker => field ??= Services.GetRequiredService<ChaosMaker>();
 
     public MeshLockOptions LockOptions { get; init; } = MeshLockOptions.Default;
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
 
     public IServiceProvider Services { get; init; }
-    [field: AllowNull, MaybeNull]
     public MomentClock Clock => field ??= Services.Clocks().SystemClock;
     public IMeshLocksBackend Backend => this;
+
+    // IMeshLocksBackend
+    ILogger IMeshLocksBackend.Log => Log;
+    ILogger? IMeshLocksBackend.DebugLog => DebugLog;
+    ChaosMaker IMeshLocksBackend.ChaosMaker => ChaosMaker;
 
     protected MeshLocksBase(IServiceProvider services)
     {
@@ -32,24 +36,25 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     }
 
     public virtual async Task<MeshLockHolder?> TryLock(
-        string key, string value,
-        MeshLockOptions lockOptions,
+        string key,
+        MeshLockOptions? lockOptions,
         CancellationToken cancellationToken = default)
     {
-        var holder = CreateHolder(key, value, lockOptions, cancellationToken);
-        DebugLog?.LogDebug("TryLock: {Key} = {StoredValue}", key, holder.StoredValue);
+        lockOptions ??= LockOptions;
+        var holder = CreateHolder(key, lockOptions, cancellationToken);
+        DebugLog?.LogDebug("TryLock: {Key} = {Id}", key, holder.Id);
         try {
             cancellationToken.ThrowIfCancellationRequested();
-            var isAcquired = await TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken)
+            var isAcquired = await TryLock(key, holder.Id, lockOptions.ExpirationPeriod, cancellationToken)
                 .ConfigureAwait(false);
             if (!isAcquired)
                 return null;
         }
         catch (Exception e) {
             if (e is OperationCanceledException)
-                DebugLog?.LogDebug("TryLock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
+                DebugLog?.LogDebug("TryLock cancelled: {Key} = {Id}", key, holder.Id);
             else
-                DebugLog?.LogError(e, "TryLock failed: {Key} = {StoredValue}", key, holder.StoredValue);
+                DebugLog?.LogError(e, "TryLock failed: {Key} = {Id}", key, holder.Id);
             throw;
         }
         holder.Start();
@@ -57,29 +62,31 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     }
 
     public virtual async Task<MeshLockHolder> Lock(
-        string key, string value,
-        MeshLockOptions lockOptions,
+        string key,
+        MeshLockOptions? lockOptions,
         CancellationToken cancellationToken = default)
     {
+        lockOptions ??= LockOptions;
         var warningDelay = lockOptions.WarningDelay.Positive();
         var warningDelayTask = warningDelay > TimeSpan.Zero
             ? Clock.Delay(warningDelay, cancellationToken)
             : null;
-        var holder = CreateHolder(key, value, lockOptions, cancellationToken);
-        DebugLog?.LogDebug("Lock: {Key} = {StoredValue}", key, holder.StoredValue);
+        var holder = CreateHolder(key, lockOptions, cancellationToken);
+        DebugLog?.LogDebug("Lock: {Key} = {Id}", key, holder.Id);
         IAsyncSubscription<string>? changes = null;
+        var changesCts = cancellationToken.CreateLinkedTokenSource();
         try {
             var consumeTask = (Task<bool>?)null;
             while (true) {
                 try {
-                    changes ??= await Changes(key, cancellationToken).ConfigureAwait(false);
+                    changes ??= await Changes(key, changesCts.Token).ConfigureAwait(false);
                     cancellationToken.ThrowIfCancellationRequested();
-                    var tryLockTask = TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken);
+                    var tryLockTask = TryLock(key, holder.Id, lockOptions.ExpirationPeriod, cancellationToken);
                     if (warningDelayTask != null) {
                         var completedTask = await Task.WhenAny(tryLockTask, warningDelayTask).ConfigureAwait(false);
                         if (completedTask == warningDelayTask) {
                             if (warningDelayTask.IsCompletedSuccessfully)
-                                Log.LogWarning("Lock takes too long: {Key} = {StoredValue}", key, holder.StoredValue);
+                                Log.LogWarning("Lock takes too long: {Key} = {Id}", key, holder.Id);
                             warningDelayTask = null; // We report it just once per Lock call
                         }
                     }
@@ -112,12 +119,13 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         }
         catch (Exception e) {
             if (e.IsCancellationOf(cancellationToken))
-                DebugLog?.LogDebug("Lock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
+                DebugLog?.LogDebug("Lock cancelled: {Key} = {Id}", key, holder.Id);
             else
-                Log.LogError(e, "Lock failed: {Key} = {StoredValue}", key, holder.StoredValue);
+                Log.LogError(e, "Lock failed: {Key} = {Id}", key, holder.Id);
             throw;
         }
         finally {
+            changesCts.CancelAndDisposeSilently();
             await changes.DisposeSilentlyAsync().ConfigureAwait(false);
         }
         holder.Start();
@@ -139,8 +147,14 @@ public abstract class MeshLocksBase : IMeshLocksBackend
 
     // Protected methods
 
-    protected virtual MeshLockHolder CreateHolder(string key, string value, MeshLockOptions options, CancellationToken cancellationToken)
-        => new(this, NextHolderId(), key, value, options, cancellationToken);
+    protected virtual MeshLockHolder CreateHolder(string key,
+        MeshLockOptions options,
+        CancellationToken cancellationToken)
+    {
+        var holderId = NextHolderId();
+        var lockToken = options.LinkCancellationToken ? cancellationToken : default;
+        return new (this, holderId, key, options, lockToken);
+    }
 
     protected virtual string NextHolderId()
         => string.Concat(HolderKeyPrefix, Interlocked.Increment(ref LastHolderId).ToInvariantString());

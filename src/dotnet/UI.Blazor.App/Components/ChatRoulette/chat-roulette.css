@@ -65,6 +65,7 @@ body.narrow .cr-center {
 }
 .cr-item .c-top .c-description {
     @apply flex-1 flex-y;
+    @apply overflow-hidden;
     @apply text-01;
 }
 .cr-item .c-top .c-description .c-name {

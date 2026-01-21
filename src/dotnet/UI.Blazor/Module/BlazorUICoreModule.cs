@@ -6,6 +6,7 @@ using ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
 using ActualChat.UI.Blazor.Pages.DiveInModalTestPage;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
+using ActualChat.UI.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ActualLab.Fusion.Client.Caching;
@@ -89,6 +90,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new InteractiveUI(c.UIHub()));
         services.AddScoped(c => new AutoNavigationUI(c.UIHub()));
+        services.AddScoped(_ => new AppNavigationQueue.ContainerDisposalTracker());
         services.AddScoped(c => new History(c.UIHub()));
         services.AddScoped(c => new HistoryStepper(c));
         services.AddScoped(_ => new HistoryItemIdFormatter());
@@ -126,12 +128,15 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // IModalViews
         services.AddTypeMapper<IModalView>(map => map
             .Add<VisualMediaViewerModal.Model, VisualMediaViewerModal>()
+            .Add<VisualMediaInfoModal.Model, VisualMediaInfoModal>()
             .Add<DemandUserInteractionModal.Model, DemandUserInteractionModal>()
             .Add<DiveInModal.Model, DiveInModal>()
             .Add<ConfirmModal.Model, ConfirmModal>()
         );
         // IBannerViews
         services.AddTypeMapper<IBannerView>();
+        // IEmbeddedViews
+        services.AddTypeMapper<IEmbeddedView>();
 
         // RemoteComputedCache
         if (hostKind.IsWasmApp() && !HostInfo.IsTested) {

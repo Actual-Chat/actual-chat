@@ -1,0 +1,127 @@
+@using ActualLab.Generators
+@inherits ComputedStateComponent<AppUIHub, MeshDiagInfo?>
+@implements IEmbeddedView
+@page "/test/mesh"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Mesh Diagnostic Page</MainHeader>
+@{
+    var m = State.Value;
+    if (m is null) {
+        <h2>Loading...</h2>
+        return;
+    }
+    <div class="flex-y h-full">
+        <div class="flex-x gap-x-2 mb-3">
+            <Button Click="OnRefresh">Refresh</Button>
+            @if (!ReportContent.Id.IsNullOrEmpty()) {
+                _hasCopyButton = true;
+                <CopyTrigger CopyTextSourceRef="@ReportContent">
+                    <Button Class="btn-primary">
+                        <Icon>
+                            <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                            <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+                        </Icon>
+                        <Title>
+                            <span class="hide-on-copied-hint">Copy report</span>
+                            <span class="copied-hint">Report copied!</span>
+                        </Title>
+                    </Button>
+                </CopyTrigger>
+            }
+        </div>
+        <div @ref="@ReportContent" class="flex-y select-text overflow-y-auto" data-copy-source="innerText">
+            @RenderNodeMeshInfo(m)
+            @if (m.Others.Length > 0) {
+                foreach (var otherInfo in m.Others) {
+                    <br>
+                    <span>***********************************************************</span>
+                    <br>
+                    @RenderNodeMeshInfo(otherInfo)
+                }
+            }
+        </div>
+    </div>
+}
+@{
+    RenderFragment RenderNodeMeshInfo(MeshDiagInfo nodeInfo) =>
+        @<div>
+            <h3>Mesh state (@nodeInfo.Nodes.Length node(s)):</h3>
+            <p>
+                @{
+                    var i = 0;
+                    foreach (var node in nodeInfo.Nodes) {
+                        @if (node.IsThis) {
+                            <span><b>[@i, this]</b></span>
+                        } else {
+                            <span>[@i]</span>
+                        }
+
+                        <span> = @node.Id @node.Endpoint : @node.State</span>
+                        @if (node.DiesIn is { } diesIn) {
+                            <span>, dies in: @diesIn.ToShortString()</span>
+                        }
+
+                        <br>
+                        <span>Roles: @node.Roles</span>
+                        <br>
+                        i++;
+                    }
+                }
+            </p>
+            <br>
+            <h3>Mesh Rpc Peer Refs:</h3>
+            <p>
+                @foreach (var peerRef in nodeInfo.MeshRpcPeerRefs) {
+                    <span>@peerRef.MeshRef ==> @peerRef.PeerRef</span>
+                    <br>
+                }
+            </p>
+            <br>
+            <h3>Rpc Peers:</h3>
+            <p>
+                @{
+                    foreach (var peer in nodeInfo.RpcPeers) {
+                        <span>Id: <b>@peer.Id</b></span><br>
+                        <span>@peer.Peer</span><br>
+                        <span>ConnectionKind: <b>@peer.ConnectionKind</b></span><br>
+                        @if (!OrdinalIgnoreCaseEquals(peer.ConnectionKind, "local")) {
+                            <details class="main-collapsed" open="@(!peer.IsConnected)">
+                                <summary class="c-summary">
+                                    <span class="underline cursor-pointer">> IsConnected: <b>@peer.IsConnected</b></span><br>
+                                </summary>
+                                <span>Connection state:<span style="white-space: pre-wrap;">@peer.ConnectionInfo</span></span>
+                            </details>
+                        }
+                        <br>
+                    }
+                }
+            </p>
+        </div>;
+}
+
+@code {
+    private bool _hasCopyButton;
+    private string _tag = "";
+
+    private IDiagnostics Diagnostics => field ??= Hub.Services.GetRequiredService<IDiagnostics>();
+
+    private ElementReference ReportContent { get; set; }
+
+    protected override void OnInitialized() {
+        _tag = RandomStringGenerator.Default.Next();
+    }
+
+    protected override async Task<MeshDiagInfo?> ComputeState(CancellationToken cancellationToken)
+        => await Diagnostics.GetMeshDiagInfo(Session, _tag, cancellationToken).ConfigureAwait(false);
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (!_hasCopyButton && !ReportContent.Id.IsNullOrEmpty())
+            StateHasChanged();
+    }
+
+    private void OnRefresh() {
+        _tag = RandomStringGenerator.Default.Next();
+        _ = State.Recompute();
+    }
+}

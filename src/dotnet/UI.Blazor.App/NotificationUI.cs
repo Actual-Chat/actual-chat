@@ -19,7 +19,6 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     private readonly AsyncTaskMethodBuilder _whenPermissionStateReady = AsyncTaskMethodBuilderExt.New();
     private volatile Task<string?>? _registerDeviceTask;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private UIHub Hub { get; }
@@ -27,7 +26,6 @@ public class NotificationUI : ProcessorBase, INotificationUI, INotificationUIBac
     private Session Session => Hub.Session;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
 
-    [field: AllowNull, MaybeNull]
     private IDeviceTokenRetriever DeviceTokenRetriever => field ??= Hub.Services.GetRequiredService<IDeviceTokenRetriever>();
     private UrlMapper UrlMapper => Hub.UrlMapper;
     private IJSRuntime JS => Hub.JS;

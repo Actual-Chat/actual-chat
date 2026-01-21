@@ -1,6 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var cls = IsDotOnly ? "only-dot" : "";
+    if (Status == MessageStatus.Sending)
+        cls += " sending";
 
     var text = Status switch {
         MessageStatus.Sending => "sending",

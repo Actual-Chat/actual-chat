@@ -56,24 +56,16 @@
             </Right>
         </TileItem>
     </Tile>
-    <TileTopic Topic="Troubleshooting"/>
-    <Tile>
-        <TileItem Click="@OnLogUIEnabledClick">
-            <Content>Enable log viewer</Content>
-            <Right>
-                <Toggle IsChecked="@m.IsLogUIEnabled"/>
-            </Right>
-        </TileItem>
-        @if (m.IsLogUIEnabled) {
-            <TileItem Click="@OnLogsClick">
-                <Icon><i class="icon-hash-fill text-2xl"></i></Icon>
-                <Content>
-                    See logs
-                </Content>
-            </TileItem>
-        }
-    </Tile>
 }
+<TileTopic Topic="Troubleshooting"/>
+<Tile>
+    <TileItem Click="@OnLogUIEnabledClick">
+        <Content>Enable log viewer</Content>
+        <Right>
+            <Toggle IsChecked="@m.IsLogUIEnabled"/>
+        </Right>
+    </TileItem>
+</Tile>
 
 <TileTopic Topic="Walk-through"/>
 <Button
@@ -99,6 +91,7 @@
     private BubbleUI BubbleUI => Hub.BubbleUI;
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
+    private LogUI LogUI => Hub.LogUI;
 
     protected override void OnInitialized()
         => NativeAppSettings = Hub.Services.GetService<INativeAppSettings>();
@@ -145,14 +138,11 @@
             IsIncompleteUIEnabled = !(x.IsIncompleteUIEnabled ?? false),
         });
 
-    private Task OnLogUIEnabledClick()
-        => LocalSettings.LocalAppSettings().Update(x => x with {
+    private async Task OnLogUIEnabledClick() {
+        await LocalSettings.LocalAppSettings().Update(x => x with {
             IsLogViewerEnabled = !x.IsLogViewerEnabledOrDefault,
         });
-
-    private void OnLogsClick() {
-        _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
-        _ = History.NavigateTo(Links.Logs);
+        LogUI.IsEnabled.Invalidate();
     }
 
     // Nested types

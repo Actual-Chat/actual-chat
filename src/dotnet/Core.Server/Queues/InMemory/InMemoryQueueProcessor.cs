@@ -27,22 +27,15 @@ public sealed class InMemoryQueueProcessor : LocalQueueProcessor<InMemoryQueues.
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        using var gracefulStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
+        using var gracefulStopCts = cancellationToken.CreateDelayedTokenSource(Settings.GracefulStopDelay);
         var gracefulStopToken = gracefulStopCts.Token;
 
         // ReSharper disable once PossiblyMistakenUseOfCancellationToken
-        var commands = _queue.Reader.ReadAllAsync(cancellationToken);
-        var parallelOptions = new ParallelOptions {
-            MaxDegreeOfParallelism = Settings.ConcurrencyLevel,
-            CancellationToken = cancellationToken,
-        };
-        await Parallel.ForEachAsync(commands, parallelOptions, HandleMessage).ConfigureAwait(false);
+        await _queue.ProcessConcurrently(Settings.ConcurrencyLevel, ProcessImpl, cancellationToken).ConfigureAwait(false);
         return;
 
-        ValueTask HandleMessage(QueuedCommand queuedCommand, CancellationToken _) {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Process(queuedCommand, gracefulStopToken);
-        }
+        ValueTask ProcessImpl(QueuedCommand queuedCommand, CancellationToken _)
+            => Process(queuedCommand, gracefulStopToken);
     }
 
     protected override bool MarkKnown(QueuedCommand command)

@@ -22,4 +22,6 @@ public sealed class HostSettings
 
     public int? LivelinessCpuLimit { get; set; }
     public int? ReadinessCpuLimit { get; set; }
+    public string MeshLockSubspace { get; set; } = ""; // "?" means "make it random"
+    public string MeshLockOptionsPreset { get; set; } = "";
 }

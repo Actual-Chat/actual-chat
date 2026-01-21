@@ -223,7 +223,8 @@ jobs:
 
       - name: Run unit tests
         id: run-unit-tests
-        run: ./run-build.cmd unit-tests --configuration Debug --dumps
+        run: ./run-build.cmd unit-tests --configuration Debug
+#        run: ./run-build.cmd unit-tests --configuration Debug --dumps
 
       - name: Upload crash dumps (unit)
         if: failure() && steps.run-unit-tests.outcome == 'failure'
@@ -330,6 +331,17 @@ jobs:
         volumes:
           - opensearch-data:/usr/share/opensearch/data
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: insightsengineering/disk-space-reclaimer@v1
+        with:
+          android: false
+          dotnet: true
+          haskell: false
+          large-packages: false
+          swap-storage: true
+          docker-images: true
+          tools-cache: true
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -432,60 +444,61 @@ jobs:
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
-          ./run-build.cmd integration-tests --configuration Debug --dumps
+          ./run-build.cmd integration-tests --configuration Debug
+#          ./run-build.cmd integration-tests --configuration Debug --dumps
 
-      - name: Upload crash dumps (integration)
-        if: failure() && steps.run-integration-tests.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: crash-dumps-integration
-          path: |
-            artifacts/tests/crash-dumps/**/*
-            **/TestResults/**/*.dmp
-            **/TestResults/**/*_crashdump*
-            **/TestResults/**/Sequence*.xml
-            **/TestResults/**/*sequence*.xml
-          if-no-files-found: ignore
-          retention-days: 7
-          include-hidden-files: 'true'
-          compression-level: '9'
+#      - name: Upload crash dumps (integration)
+#        if: failure() && steps.run-integration-tests.outcome == 'failure'
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: crash-dumps-integration
+#          path: |
+#            artifacts/tests/crash-dumps/**/*
+#            **/TestResults/**/*.dmp
+#            **/TestResults/**/*_crashdump*
+#            **/TestResults/**/Sequence*.xml
+#            **/TestResults/**/*sequence*.xml
+#          if-no-files-found: ignore
+#          retention-days: 7
+#          include-hidden-files: 'true'
+#          compression-level: '9'
 
-      - name: Dump opensearch
-        id: dump-opensearch
-        if: failure() && steps.run-integration-tests.outcome == 'failure'
-        run: |-
-          set -e
-          echo Creating snapshots repo
-          curl -X POST "http://localhost:9200/_snapshot/tests" -H 'Content-Type: application/json' -d'
-          {
-            "type": "fs",
-            "settings": {
-              "location": "/usr/share/opensearch/data/snapshots"
-            }
-          }'
+#      - name: Dump opensearch
+#        id: dump-opensearch
+#        if: failure() && steps.run-integration-tests.outcome == 'failure'
+#        run: |-
+#          set -e
+#          echo Creating snapshots repo
+#          curl -X POST "http://localhost:9200/_snapshot/tests" -H 'Content-Type: application/json' -d'
+#          {
+#            "type": "fs",
+#            "settings": {
+#              "location": "/usr/share/opensearch/data/snapshots"
+#            }
+#          }'
+#
+#          echo Creating snapshot
+#          curl -X PUT "http://localhost:9200/_snapshot/tests/snapshot_1?wait_for_completion=true" -H 'Content-Type: application/json' -d'
+#          {
+#            "indices": "test-*",
+#            "ignore_unavailable": true,
+#            "include_global_state": false
+#          }'
+#
+#
+#          echo Copy snapshot from docker
+#          cid=$(docker ps -q -f name=opensearch)
+#          mkdir opensearch-snapshots
+#          docker cp $cid:/usr/share/opensearch/data/snapshots ./opensearch-snapshots
 
-          echo Creating snapshot
-          curl -X PUT "http://localhost:9200/_snapshot/tests/snapshot_1?wait_for_completion=true" -H 'Content-Type: application/json' -d'
-          {
-            "indices": "test-*",
-            "ignore_unavailable": true,
-            "include_global_state": false
-          }'
-
-
-          echo Copy snapshot from docker
-          cid=$(docker ps -q -f name=opensearch)
-          mkdir opensearch-snapshots
-          docker cp $cid:/usr/share/opensearch/data/snapshots ./opensearch-snapshots
-
-      - uses: actions/upload-artifact@v4
-        if: failure() && steps.run-integration-tests.outcome == 'failure' && steps.dump-opensearch.outcome == 'success'
-        with:
-          name: opensearch-snapshot
-          path: ./opensearch-snapshots
-          retention-days: 3
-          include-hidden-files: 'true'
-          compression-level: '9'
+#      - uses: actions/upload-artifact@v4
+#        if: failure() && steps.run-integration-tests.outcome == 'failure' && steps.dump-opensearch.outcome == 'success'
+#        with:
+#          name: opensearch-snapshot
+#          path: ./opensearch-snapshots
+#          retention-days: 3
+#          include-hidden-files: 'true'
+#          compression-level: '9'
 
       - name: Report integration test results
         uses: phoenix-actions/test-reporting@v15
@@ -691,6 +704,7 @@ jobs:
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
       IS_DEV_MAUI: ${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI }}
       APP_ID: ${{ needs.calc-pkg-params.outputs.APP_ID }}
+      ENTITLEMENTS_FILE: Entitlements.${{ needs.calc-pkg-params.outputs.IS_DEV_MAUI == 'true' && 'dev' || 'prod' }}.plist
       PACKAGE_FILE_NAME: App-signed.ipa
     outputs:
       ARTIFACT_NAME: ${{env.APP_ID}}.${{steps.nbgv.outputs.SemVer2}}.ipa
@@ -718,6 +732,18 @@ jobs:
         if: ${{env.IS_DEV_MAUI == 'false'}}
         with:
           base64: ${{ secrets.PROVISIONING_PROFILE_PROD_BASE64 }}
+
+      - name: Install Provisioning Profile (Share extension) for DEV
+        uses: ./.github/actions/install-provisioning-profile
+        if: ${{env.IS_DEV_MAUI == 'true'}}
+        with:
+          base64: ${{ secrets.PROVISIONING_PROFILE_SHARE_DEV_BASE64 }}
+
+      - name: Install Provisioning Profile (Share extension) for PROD
+        uses: ./.github/actions/install-provisioning-profile
+        if: ${{env.IS_DEV_MAUI == 'false'}}
+        with:
+          base64: ${{ secrets.PROVISIONING_PROFILE_SHARE_PROD_BASE64 }}
 
       - name: Install the Apple distribution certificate
         env:
@@ -779,11 +805,11 @@ jobs:
           ${{ secrets.GOOGLE_SERVICES_PLIST_PROD }}
           EOF
 
-      - name: PList - set aps-environment and app identifier
+      - name: PList - set aps-environment
         uses: dppeak/update-ios-plist-action@v1.1.0
         with:
-          info-plist-path: "src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist"
-          key-value-json: '[{"application-identifier": "${{secrets.APPLE_TEAM_ID}}.${{env.APP_ID}}"}, {"aps-environment": "production"}]'
+          info-plist-path: "src/dotnet/App.Maui/Platforms/iOS/${{env.ENTITLEMENTS_FILE}}"
+          key-value-json: '[{"aps-environment": "production"}]'
           print-file: true
 
       - name: Build app package
@@ -792,9 +818,11 @@ jobs:
           pushd artifacts/publish/App.Maui/release_net9.0-ios_ios-arm64
           unzip ActualChat.ipa
           rm -r Payload/ActualChat.app/_CodeSignature
+          rm -r Payload/ActualChat.app/PlugIns/*/_CodeSignature
           rm -r Payload/ActualChat.app/Frameworks/*/_CodeSignature
           codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/Frameworks/*
-          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements ${{github.workspace}}/src/dotnet/App.Maui/Platforms/iOS/Entitlements.plist Payload/ActualChat.app
+          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" Payload/ActualChat.app/PlugIns/* --entitlements ${{github.workspace}}/src/dotnet/App.Maui.IosShareExt/${{env.ENTITLEMENTS_FILE}}
+          codesign -f -s "Apple Distribution: Actual Chat Inc. (M287G8G83F)" --entitlements ${{github.workspace}}/src/dotnet/App.Maui/Platforms/iOS/${{env.ENTITLEMENTS_FILE}} Payload/ActualChat.app
           zip -r "${{env.PACKAGE_FILE_NAME}}" Payload
           popd
 

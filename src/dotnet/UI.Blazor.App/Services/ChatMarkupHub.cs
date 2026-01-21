@@ -13,7 +13,6 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
     public IServiceProvider Services { get; } = services;
     public ChatId ChatId { get; } = chatId;
 
-    [field: AllowNull, MaybeNull]
     public IMarkupParser Parser
         => field ??= Services.GetRequiredService<IMarkupParser>();
 
@@ -22,15 +21,12 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
         => _trimmer ??= new MarkupTrimmer();
 #pragma warning restore CA1822
 
-    [field: AllowNull, MaybeNull]
     public IMentionNamer MentionNamer
         => field ??= new MentionNamer(MentionResolver);
 
-    [field: AllowNull, MaybeNull]
     public IChatMentionResolver MentionResolver
         => field ??= new ChatMentionResolver(Services, NonThreadChatId);
 
-    [field: AllowNull, MaybeNull]
     public ISearchProvider<MentionSearchResult> MentionSearchProvider
         => field ??= new ChatMentionSearchProvider(Services, NonThreadChatId);
 

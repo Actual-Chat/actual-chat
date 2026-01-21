@@ -30,11 +30,7 @@ public readonly struct MeshRef : ICanBeNone<MeshRef>, IEquatable<MeshRef>
         => new(shardRef);
     public static MeshRef Shard(ShardScheme scheme, int key)
         => new(new ShardRef(scheme, key));
-    public static MeshRef Shard(ShardScheme scheme, long key)
-        => new(new ShardRef(scheme, key));
     public static MeshRef Shard(int key)
-        => new(new ShardRef(key));
-    public static MeshRef Shard(long key)
         => new(new ShardRef(key));
 
     public MeshRef(ShardRef shardRef)

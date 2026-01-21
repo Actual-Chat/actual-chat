@@ -19,4 +19,6 @@ runs:
         echo ::Applying provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         uuid=`grep UUID -A1 -a $PP_PATH | grep -io "[-A-F0-9]\{36\}"`
-        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision
+        mv $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision
+        echo "Provisioning profile installed at ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision"
+        ls -la ~/Library/MobileDevice/Provisioning\ Profiles

@@ -1,21 +1,15 @@
 import { deleteFileHandle, getFileHandle, saveFileHandle } from './file-handle-storage';
-import { grantFileUploadPermissionsInvoker, requestFileHandlePermission } from './file-handle-permissions';
+import { grantFileUploadPermissionsInvoker, requestFileHandlePermission, GetFilePermissionsRequest } from './file-handle-permissions';
 import { Log } from 'logging';
-import { OperationCancelledError, PromiseSource } from 'promises';
+import { delayAsync, OperationCancelledError, PromiseSource } from 'promises';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEditor/attachment-web-file-picker';
+import { Connectivity } from 'connectivity';
 
-const { errorLog } = Log.get('WebFileProvider');
-
-interface MediaContent {
-    mediaId: string;
-    contentId: string;
-    thumbnailMediaId?: string;
-    thumbnailContentId?: string;
-}
+const { debugLog, warnLog, errorLog } = Log.get('WebFileProvider');
 
 type ProgressReporter = (progressPercent: number) => void;
 
@@ -35,7 +29,7 @@ export class WebFileProviders
         let previewUrl = "";
         try {
             const file = fileResult.file;
-            const provider = new WebFileProvider('', fileResult.fileHandle, file, file.name);
+            const provider = new WebFileProvider('', fileResult.fileHandle, file, null);
             previewUrl = provider.createPreviewUrl();
             // @ts-ignore
             const jsObjectReference = DotNet.createJSObjectReference(provider);
@@ -59,12 +53,8 @@ export class WebFileProviders
             return NullableJSObjectReference.create(null);
         }
 
-        const granted = await requestFileHandlePermission(fileHandle, 'read');
-        if (!granted) {
-            return NullableJSObjectReference.create(null);
-        }
-        const file = await fileHandle.getFile();
-        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, file, file.name);
+        const grantedReadPermissionRequest = await requestFileHandlePermission(fileHandle, 'read');
+        const provider = new WebFileProvider(fileHandleDbKey, fileHandle, null, grantedReadPermissionRequest);
         return NullableJSObjectReference.create(provider);
     }
 
@@ -93,31 +83,56 @@ export class WebFileProviders
 
 
 export class WebFileProvider {
+    private readonly userConsentRequest: GetFilePermissionsRequest | null;
+    private readonly whenUserConsentGrantedSource: PromiseSource<boolean>;
     private previewUrl: string | null = null;
-    private fileUpload: FileUpload | null;
+    private fileUpload: ChunkedFileUpload | null;
+    private userConsentGranted : boolean | null = null;
+    private resolvedFile: Blob | null;
 
     constructor(
         private fileHandleDbKey: string,
         private readonly fileHandle: FileSystemFileHandle | null,
-        private readonly file: Blob,
-        private readonly fileName: string,
+        private readonly file: Blob | null,
+        userConsentRequest: GetFilePermissionsRequest | null,
     )
     {
+        if (!this.fileHandle && !this.file)
+            throw new Error('No file or file handle provided');
+        this.userConsentRequest = userConsentRequest;
+        this.whenUserConsentGrantedSource = new PromiseSource<boolean>();
+        if (this.file) {
+            this.resolvedFile = this.file;
+            this.userConsentGranted = true;
+            this.whenUserConsentGrantedSource.resolve(true);
+        }
+        else if (userConsentRequest) {
+            userConsentRequest.granted
+                .then(async x => {
+                    if (x)
+                        this.resolvedFile = this.file ?? await this.fileHandle!.getFile();
+                    this.userConsentGranted = x;
+                    this.whenUserConsentGrantedSource.resolve(x);
+                })
+                .catch(e => {
+                    this.userConsentGranted = false;
+                    this.whenUserConsentGrantedSource.resolve(false);
+                });
+        }
+        else
+            throw new Error('No file and no whenUserConsentGrantedPromise');
+    }
+
+    public whenUserConsentGranted() : Promise<boolean>
+    {
+        return this.whenUserConsentGrantedSource;
     }
 
     public createPreviewUrl() : string
     {
         if (!this.previewUrl)
-            this.previewUrl = URL.createObjectURL(this.file);
+            this.previewUrl = URL.createObjectURL(this.GetFile());
         return this.previewUrl;
-    }
-
-    public revokePreviewUrl() : void
-    {
-        if (!this.previewUrl)
-            return;
-        URL.revokeObjectURL(this.previewUrl);
-        this.previewUrl = null;
     }
 
     public async saveFileHandleToDb() : Promise<string>
@@ -134,28 +149,26 @@ export class WebFileProvider {
         return fileHandleDbKey;
     }
 
-    public async removeFileHandleFromDb(): Promise<boolean>
+    public start(uploadId: string, blazorRef: DotNet.DotNetObject)
     {
-        if (this.fileHandleDbKey.length == 0)
-            return false;
-
-        await deleteFileHandle(this.fileHandleDbKey);
-        this.fileHandleDbKey = '';
-        return true;
-    }
-
-    public start(chatId: string, blazorRef: DotNet.DotNetObject)
-    {
-        if (this.fileUpload) {
+        if (this.fileUpload)
             throw new Error('File upload already started');
-        }
+
         const reporter = new FileUploadProgressReporter(blazorRef);
-        this.fileUpload = new FileUpload(chatId, this.file, this.fileName, pct => reporter.reportProgress(pct));
+        this.fileUpload = new ChunkedFileUpload(uploadId, this.GetFile(), pct => reporter.reportProgress(pct));
         this.fileUpload.whenCompleted.then(x => {
-            void reporter.reportUploadSucceed(x.mediaId, x.thumbnailMediaId);
+            void reporter.reportUploadSucceed();
             this.fileUpload = null;
         }).catch(e => {
-            if (!(e instanceof OperationCancelledError)) {
+            if (e instanceof OperationCancelledError) {
+                debugLog?.log(`File upload '${uploadId}' cancelled`);
+                void reporter.reportUploadCancelled();
+            }
+            else if (e instanceof UploadNotFoundError) {
+                errorLog?.log(`File upload '${uploadId}' not found`);
+                void reporter.reportUploadNotFound();
+            }
+            else {
                 errorLog?.log('Failed to upload file', e);
                 void reporter.reportUploadFailed();
             }
@@ -172,6 +185,40 @@ export class WebFileProvider {
         this.fileUpload.cancel();
         this.fileUpload = null;
     }
+
+    public async clearForRemoving() : Promise<void>
+    {
+        this.cancel();
+        this.revokePreviewUrl();
+        if (this.userConsentRequest)
+            this.userConsentRequest.cancel();
+        await this.removeFileHandleFromDb();
+    }
+
+    private async removeFileHandleFromDb(): Promise<boolean>
+    {
+        if (this.fileHandleDbKey.length == 0)
+            return false;
+
+        await deleteFileHandle(this.fileHandleDbKey);
+        this.fileHandleDbKey = '';
+        return true;
+    }
+
+    private revokePreviewUrl() : void
+    {
+        if (!this.previewUrl)
+            return;
+        URL.revokeObjectURL(this.previewUrl);
+        this.previewUrl = null;
+    }
+
+    private GetFile() : Blob
+    {
+        if (!this.userConsentGranted)
+            throw new Error('User consent not granted yet');
+        return this.resolvedFile!;
+    }
 }
 
 export class FileUploadProgressReporter {
@@ -183,59 +230,294 @@ export class FileUploadProgressReporter {
         return this.blazorRef.invokeMethodAsync('OnUploadProgress', Math.trunc(progressPercent));
     }
 
-    public async reportUploadSucceed(mediaId: string, thumbnailMediaId?: string) {
-        return this.blazorRef.invokeMethodAsync('OnUploadSucceed', mediaId, thumbnailMediaId);
+    public async reportUploadSucceed() {
+        return this.blazorRef.invokeMethodAsync('OnUploadSucceed');
     }
 
     public async reportUploadFailed() {
         return this.blazorRef.invokeMethodAsync('OnUploadFailed');
     }
-}
 
-class FileUpload {
-    private readonly xhr: XMLHttpRequest;
-    private readonly whenCompletedSource: PromiseSource<MediaContent> = new PromiseSource<MediaContent>();
-    private isCancelled = false;
-
-    constructor(
-        private readonly chatId: string,
-        private readonly blob: Blob,
-        private readonly fileName: string,
-        private readonly progressReporter: ProgressReporter) {
-        this.xhr = new XMLHttpRequest();
-        if (!this.fileName)
-            this.fileName = 'upload';
+    public async reportUploadCancelled() {
+        return this.blazorRef.invokeMethodAsync('OnUploadCancelled');
     }
 
-    public get whenCompleted(): Promise<MediaContent> {
+    public async reportUploadNotFound() {
+        return this.blazorRef.invokeMethodAsync('OnUploadNotFound');
+    }
+}
+
+class ChunkedFileUpload {
+    private readonly whenCompletedSource: PromiseSource<void> = new PromiseSource<void>();
+    private readonly uploadUrl: string;
+    private readonly abortController: AbortController = new AbortController();
+
+    constructor(
+        private readonly uploadId: string,
+        private readonly blob: Blob,
+        private readonly progressReporter: ProgressReporter)
+    {
+        this.uploadUrl = BrowserInit.getUrl(`api/uploads/${this.uploadId}`);
+    }
+
+    public get whenCompleted(): Promise<void> {
         return this.whenCompletedSource;
     }
 
-    public start() {
-        const formData = new FormData();
-        formData.append('file', this.blob, this.fileName);
-        this.xhr.upload.onprogress = (e) => {
-            const progress = Math.floor(e.loaded / e.total * 1000) / 10;
-            this.progressReporter(progress);
-        };
-        this.xhr.onreadystatechange = () => {
-            if (this.xhr.readyState === XMLHttpRequest.DONE) {
-                if (this.xhr.status === 200) {
-                    this.whenCompletedSource.resolve(JSON.parse(this.xhr.response));
-                } else if (this.isCancelled)
-                    this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled: ' + this.xhr.statusText));
-                else
-                    this.whenCompletedSource.reject(this.xhr.responseText);
-            }
-        };
-        const url = BrowserInit.getUrl(`api/chat-media/${this.chatId}/upload`);
-        this.xhr.open('post', url, true);
-        this.xhr.setRequestHeader(SessionTokens.headerName, SessionTokens.current);
-        this.xhr.send(formData);
+    public start()
+    {
+        void this.startInternal();
     }
 
     public cancel() {
-        this.isCancelled = true;
-        this.xhr.abort();
+        this.abortController.abort();
+    }
+
+    private async startInternal() {
+        let retryIndex = 0;
+        const maxRetries = 3;
+        let run = true;
+        const chunkSizeSelector = new ChunkSizeSelector();
+        while (run) {
+            run = false;
+            try {
+                let offset = await this.getOffset();
+                debugLog?.log(`Starting upload of ${this.uploadId} at offset ${offset}`);
+                const fileSize = this.blob.size;
+                this.progressReporter((offset / fileSize) * 100);
+                // Upload chunks
+                while (offset < fileSize) {
+                    const remainingBytes = fileSize - offset;
+                    const chunkSize = chunkSizeSelector.getChunkSize();
+                    const currentChunkSize = Math.min(chunkSize, remainingBytes);
+                    const t0 = chunkSizeSelector.getTimestamp();
+                    const newOffset = await this.uploadChunk(offset, currentChunkSize);
+                    const dt = chunkSizeSelector.getElapsedTime(t0);
+                    const expectedNewOffset = offset + currentChunkSize;
+                    if (newOffset !== expectedNewOffset)
+                        warnLog?.log(`Offset mismatch detected: ${expectedNewOffset} != ${newOffset}`);
+                    offset = newOffset;
+                    // Reset retry counter on successful chunk upload
+                    retryIndex = 0;
+                    chunkSizeSelector.adaptChunkSizeOnSucceedUpload(dt);
+                    this.progressReporter((offset / fileSize) * 100);
+                }
+                chunkSizeSelector.updateRecommendation();
+                this.whenCompletedSource.resolve();
+                return;
+            } catch (error) {
+                chunkSizeSelector.adaptOnUploadIssue(error instanceof TypeError);
+                if (error instanceof OffsetConflictError) {
+                    if (retryIndex < maxRetries) {
+                        warnLog?.log('Offset conflict detected. Retrying...');
+                        retryIndex++;
+                        run = true;
+                        continue;
+                    }
+                }
+                else if (error instanceof UploadTransientFailure) {
+                    if (retryIndex < maxRetries) {
+                        warnLog?.log('Upload transient failure. Retrying...');
+                        await delayAsync(500);
+                        retryIndex++;
+                        // on transient server-side problems try to reduce chunk size for stability
+                        run = true;
+                        continue;
+                    }
+                }
+                else if (error instanceof TypeError) {
+                    // Network-level error (no connection, timeout, offline, etc.)
+                    if (retryIndex < maxRetries) {
+                        retryIndex++;
+                        run = true;
+                        await Connectivity.whenOnline();
+                        continue;
+                    }
+                }
+                if (this.isCancelled()) {
+                    this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled'));
+                } else {
+                    this.whenCompletedSource.reject(error);
+                }
+                return;
+            }
+        }
+    }
+
+    private async getOffset(): Promise<number>
+    {
+        const response = await fetch(this.uploadUrl, {
+            method: 'HEAD',
+            headers: {
+                [SessionTokens.headerName]: SessionTokens.current,
+                'Tus-Resumable' : '1.0.0',
+            },
+            signal: this.abortController.signal
+        });
+        if (!response.ok) {
+            if (response.status == 404)
+                throw new UploadNotFoundError(`Upload ${this.uploadId} not found`);
+            if (response.status == 503)
+                throw new UploadTransientFailure(`Upload transient failure`);
+            throw new Error(`Failed to get upload status: ${response.statusText}`);
+        }
+        const header = response.headers.get('Upload-Offset');
+        if (!header)
+            throw new Error('Upload-Offset header not found in response');
+        return parseInt(header, 10);
+    }
+
+    private async uploadChunk(offset: number, chunkSize: number): Promise<number>
+    {
+        const contentType = 'application/offset+octet-stream';
+        const expectedNewOffset = offset + chunkSize;
+        const chunk = this.blob.slice(offset, expectedNewOffset, contentType);
+        const response = await fetch(this.uploadUrl, {
+            method: 'PATCH',
+            headers: {
+                [SessionTokens.headerName]: SessionTokens.current,
+                'Content-Type': contentType,
+                'Upload-Offset': offset.toString(),
+                'Tus-Resumable' : '1.0.0',
+            },
+            body: chunk,
+            signal: this.abortController.signal
+        });
+
+        if (!response.ok) {
+            if (response.status == 404)
+                throw new UploadNotFoundError(`Upload ${this.uploadId} not found`);
+            if (response.status == 503)
+                throw new UploadTransientFailure(`Upload transient failure`);
+            if (response.status == 409)
+                throw new OffsetConflictError('Upload offset conflict');
+            throw new Error(`Failed to upload chunk: ${response.statusText}`);
+        }
+
+        const newOffsetHeader = response.headers.get('Upload-Offset');
+        if (!newOffsetHeader)
+            throw new Error('Upload-Offset header not found in response');
+        return parseInt(newOffsetHeader, 10);
+    }
+
+    private isCancelled() : boolean {
+        return this.abortController.signal.aborted;
+    }
+}
+
+type Stat = { multiplier: number; ms: number; };
+
+class ChunkSizeSelector
+{
+    private static minChunkSize : number = 256 * 1024; // 256 KB
+    private static defaultChunkSizeMultiplier: number = 8; // 4 Mb
+    private static maxChunkSizeMultiplier: number = 16; // 8 Mb
+    private static recommendedChunkSizeMultiplier: number = 8; // 4 Mb
+    private static maxChunkUploadDurationMs: number = 5000; // 5 seconds
+
+    private currentMultiplier: number;
+    private lastStats: Stat[] = [];
+
+    constructor(){
+        this.currentMultiplier = ChunkSizeSelector.recommendedChunkSizeMultiplier;
+    }
+
+    public adaptChunkSizeOnSucceedUpload(duration : number)
+    {
+        // track stats (limit to last 5)
+        this.lastStats.push({ multiplier: this.currentMultiplier, ms: duration });
+        if (this.lastStats.length > 5)
+            this.lastStats.shift();
+
+        const isSlowUpload = duration > ChunkSizeSelector.maxChunkUploadDurationMs;
+        if (isSlowUpload) {
+            // Slow upload
+            if (this.currentMultiplier === 1)
+                return;
+        }
+        else {
+            // Fast upload
+            if (this.currentMultiplier === ChunkSizeSelector.maxChunkSizeMultiplier)
+                return;
+        }
+
+        let averagePerf = 0.5;
+        if (this.lastStats.length > 1) {
+            const minWeight = 0.2; // 20%
+            const lastIndex = this.lastStats.length - 1;
+            let step = 0;
+            let totalPerf = 0;
+            let totalWeights = 0;
+            for (let i = lastIndex; i >= 0; i--) {
+                const stat = this.lastStats[i];
+                const perf = stat.multiplier / stat.ms;
+                const z = step / lastIndex;
+                const weight = Math.pow(minWeight, z);
+                totalPerf += perf * weight;
+                totalWeights += weight;
+                step++;
+            }
+            averagePerf = totalPerf / totalWeights;
+        }
+        else {
+            averagePerf = this.lastStats[0].multiplier / this.lastStats[0].ms;
+        }
+
+        const averageMultiplier = averagePerf * ChunkSizeSelector.maxChunkUploadDurationMs;
+        let newMultiplier = Math.round(averageMultiplier);
+        if (isNaN(newMultiplier))
+            newMultiplier = 8;
+        else
+            newMultiplier = Math.min(Math.max(newMultiplier, 1), ChunkSizeSelector.maxChunkSizeMultiplier);
+        this.currentMultiplier = newMultiplier;
+        debugLog?.log(`Adapted chunkSizeMultiplier=${this.currentMultiplier}`);
+    }
+
+    public getChunkSize() : number {
+        return this.currentMultiplier * ChunkSizeSelector.minChunkSize;
+    }
+
+    public adaptOnUploadIssue(isConnectionIssue: boolean) {
+        if (this.currentMultiplier === 1)
+            return;
+
+        if (isConnectionIssue && this.currentMultiplier > ChunkSizeSelector.defaultChunkSizeMultiplier)
+            this.currentMultiplier = ChunkSizeSelector.defaultChunkSizeMultiplier;
+        else
+            this.currentMultiplier--;
+        debugLog?.log(`Adapted chunkSizeMultiplier=${this.currentMultiplier} on error`);
+    }
+
+    public getTimestamp() : number {
+        return typeof performance !== 'undefined' ? performance.now() : Date.now();
+    }
+
+    public getElapsedTime(timestamp: number) : number {
+        const now = this.getTimestamp();
+        return Math.max(0, now - timestamp);
+    }
+
+    public updateRecommendation()
+    {
+        ChunkSizeSelector.recommendedChunkSizeMultiplier = this.currentMultiplier;
+        debugLog?.log(`Set recommendedChunkSizeMultiplier=${this.currentMultiplier}`);
+    }
+}
+
+class UploadNotFoundError extends Error {
+    constructor(message: string) {
+        super(message);
+    }
+}
+
+class UploadTransientFailure extends Error {
+    constructor(message: string) {
+        super(message);
+    }
+}
+
+class OffsetConflictError extends Error {
+    constructor(message?: string) {
+        super(message);
     }
 }

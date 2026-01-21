@@ -14,9 +14,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     private ExternalContactHasher Hasher { get; } = services.GetRequiredService<ExternalContactHasher>();
     private IDbEntityResolver<string, DbExternalContact> DbExternalContactResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbExternalContact>>();
-    [field: AllowNull, MaybeNull]
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
-    [field: AllowNull, MaybeNull]
     private ContactLinker ContactLinker => field ??= Services.GetRequiredService<ContactLinker>();
 
     [ComputeMethod]

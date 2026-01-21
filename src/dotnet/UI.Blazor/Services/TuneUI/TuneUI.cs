@@ -48,7 +48,6 @@ public abstract class TuneUI : IDisposable
 
     protected UIHub Hub { get; }
 
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     private async ValueTask Initialize()

@@ -52,7 +52,6 @@ public sealed partial record Chat(
     public bool HasSingleAuthor => SystemTag == Constants.Chat.SystemTags.Notes;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    [field: AllowNull, MaybeNull]
     public AliasInfo<ChatId> AliasInfo => field ??= new(Id, AliasId);
 
     public bool CanInvite()

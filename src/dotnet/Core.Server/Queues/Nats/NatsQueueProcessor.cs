@@ -10,8 +10,8 @@ namespace ActualChat.Queues.Nats;
 
 public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options, NatsQueues, NatsJSMsg<IMemoryOwner<byte>>>
 {
-    private const byte Version = 2;
-    private static readonly byte[] VersionBytes = [Version];
+    private const byte FormatVersion = 2;
+    private static readonly byte[] FormatVersionBytes = [FormatVersion];
     private static readonly IByteSerializer Serializer = MemoryPackByteSerializer.Default;
     private static readonly IByteSerializer TypeDecoratingSerializer
         = new TypeDecoratingByteSerializer(MemoryPackByteSerializer.Default);
@@ -24,7 +24,6 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     private IMeshLocks ActionLocks { get; }
 
-    [field: AllowNull, MaybeNull]
     private NatsConnection Connection {
         get {
             if (field != null)
@@ -44,7 +43,9 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     public override async Task Enqueue(QueueShardRef queueShardRef, QueuedCommand queuedCommand, CancellationToken cancellationToken = default)
     {
-        RequireValid(queueShardRef.QueueRef);
+        if (queueShardRef.QueueRef != QueueRef)
+            throw new ArgumentOutOfRangeException(nameof(queueShardRef));
+
         var shardIndex = queueShardRef.GetShardIndex();
         await GetStream(shardIndex, cancellationToken).ConfigureAwait(false);
         var context = new NatsJSContext(Connection);
@@ -103,90 +104,127 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
+    protected override async Task OnRun(ShardOwnership shardOwnership, CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("OnRun: ShardScheme={ShardScheme}, ShardIndex={ShardIndex}", ShardScheme, shardIndex);
+        var shardIndex = shardOwnership.ShardIndex;
+        DebugLog?.LogDebug("[{ShardScheme}-S{ShardIndex}] OnRun started", ShardScheme.Name, shardIndex);
 
-        var expireIn = Settings.IdleTimeout.ToRandom(0.25);
-        using var stopCts = cancellationToken.CreateLinkedTokenSource();
-        var stopToken = stopCts.Token;
-        using var processingStopCts = cancellationToken.CreateDelayedTokenSource(Settings.ProcessCancellationDelay);
-        var processingStopToken = processingStopCts.Token;
+        var concurrencyLevel = Settings.ConcurrencyLevel;
+        var buffer = Channel.CreateBounded<(NatsJSMsg<IMemoryOwner<byte>> Message, QueuedCommand Command)>(
+            new BoundedChannelOptions(concurrencyLevel) {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleWriter = true,
+            });
 
-        while (true) {
-            processingStopToken.ThrowIfCancellationRequested(); // HandleMessage cancels it on DI container disposal
-            var consumer = await GetConsumer(shardIndex, stopToken).ConfigureAwait(false);
-            DebugLog?.LogDebug(
-                "NATS: pulling messages from consumer='{Consumer}' stream='{Stream}' shard='{ShardIndex}'",
-                consumer.Info.Name,
-                consumer.Info.StreamName,
-                shardIndex);
-            var batchSize = ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue)
-                ? 2
-                : consumer.Info.Config.MaxBatch;
-            var fetchExpiration = expireIn.Next();
-            var messages = consumer.FetchAsync<IMemoryOwner<byte>>(
-                opts: new NatsJSFetchOpts {
-                    MaxMsgs = batchSize,
-                    Expires = fetchExpiration,
-                    IdleHeartbeat = fetchExpiration / 2,
-                },
-                cancellationToken: stopToken);
+        using var gracefulStopCts = cancellationToken.CreateDelayedTokenSource(Settings.GracefulStopDelay);
+        var gracefulStopToken = gracefulStopCts.Token;
+        var mustLogExit = true;
+        try {
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+            var processTask = buffer.ProcessConcurrently(concurrencyLevel, ProcessImpl, gracefulStopToken);
+            var copyToBufferTask = CopyToBuffer();
+            await Task.WhenAll(copyToBufferTask, processTask).ConfigureAwait(false);
+        }
+        // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken) && !e.IsCancellationOf(gracefulStopToken)) {
+            Log.LogError(e, "[{ShardScheme}-S{ShardIndex}] OnRun failed", ShardScheme.Name, shardIndex);
+            mustLogExit = false;
+        }
+        finally {
+            gracefulStopCts.CancelAndDisposeSilently();
+            if (mustLogExit)
+                DebugLog?.LogDebug("[{ShardScheme}-S{ShardIndex}] OnRun completed", ShardScheme.Name, shardIndex);
+        }
+        return;
 
-            MarkStarted();
-            var degreeOfParallelism = ShardScheme.DegreeOfParallelism ?? Settings.ConcurrencyLevel;
-            var parallelOptions = new ParallelOptions {
-                MaxDegreeOfParallelism = degreeOfParallelism,
-                CancellationToken = processingStopToken,
-            };
-            var handledCount = 0;
+        async Task CopyToBuffer()
+        {
+            Exception? error = null;
+            try {
+                // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+                var consumer = await GetConsumer(shardIndex, cancellationToken).ConfigureAwait(false);
+                DebugLog?.LogDebug(
+                    "[{ShardScheme}-S{ShardIndex}] Got consumer='{Consumer}', stream='{Stream}'",
+                    ShardScheme.Name, shardIndex, consumer.Info.Name, consumer.Info.StreamName);
 
-            // NOTE(AY): Trying to address "Unable to cast object of type
-            // 'NATS.Client.JetStream.Internal.NatsJSFetch1[System.Buffers.IMemoryOwner1[System.Byte]]'
-            // to type 'ActualLab.Fusion.Computed'" via execution context flow suppression.
-            // NOTE(AY): Ended up commenting out the "fix": it slows down the tests somehow.
-            // using var _ = ExecutionContextExt.TrySuppressFlow();
-            await Parallel
-                .ForEachAsync(messages, parallelOptions, HandleMessage)
-                .SilentAwait(false); // We swallow all exceptions here
-            DebugLog?.LogDebug(
-                "NATS: handled {Count} messages from consumer='{Consumer}' stream='{Stream}' shard='{ShardIndex}'",
-                handledCount,
-                consumer.Info.Name,
-                consumer.Info.StreamName,
-                shardIndex);
-            continue;
+                while (!cancellationToken.IsCancellationRequested) {
+                    var messages = consumer.FetchAsync<IMemoryOwner<byte>>(
+                        opts: new NatsJSFetchOpts {
+                            MaxMsgs = Math.Min(8 * concurrencyLevel, consumer.Info.Config.MaxBatch),
+                            Expires = Settings.FetchTimeout,
+                            IdleHeartbeat = Settings.FetchTimeout / 3,
+                        },
+                        // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+                        cancellationToken: cancellationToken);
+                    MarkStarted();
 
-            async ValueTask HandleMessage(NatsJSMsg<IMemoryOwner<byte>> message, CancellationToken cancellationToken1) {
-                try {
-                    await Process(shardIndex, message, cancellationToken1).ConfigureAwait(false);
-                    Interlocked.Increment(ref handledCount);
+                    var count = 0;
+                    await foreach (var message in messages.ConfigureAwait(false)) {
+                        gracefulStopToken.ThrowIfCancellationRequested(); // We cancel it on DI container disposal
+
+                        count++;
+                        QueuedCommand? queuedCommand;
+                        try {
+                            queuedCommand = Deserialize(message);
+                        }
+                        catch (Exception e) when (!e.IsCancellationOf(gracefulStopToken)) {
+                            Log.LogError(e,
+                                "[{ShardScheme}-S{ShardIndex}] Couldn't deserialize the message",
+                                ShardScheme.Name, shardIndex);
+                            await MarkFailed(shardIndex, message, null, e, gracefulStopToken).ConfigureAwait(false);
+                            message.Data.DisposeSilently();
+                            continue;
+                        }
+
+                        await buffer.Writer.WriteAsync((message, queuedCommand), gracefulStopToken).ConfigureAwait(false);
+                    }
+                    DebugLog?.LogDebug(
+                        "[{ShardScheme}-S{ShardIndex}] Pulled {Count} messages",
+                        ShardScheme.Name, shardIndex, count);
                 }
-                catch (ObjectDisposedException) {
+            }
+            catch (Exception e) {
+                error = e;
+                throw;
+            }
+            finally {
+                buffer.Writer.TryComplete(error);
+            }
+        }
+
+        async ValueTask ProcessImpl(
+            (NatsJSMsg<IMemoryOwner<byte>> Message, QueuedCommand Command) item,
+            CancellationToken ct)
+        {
+            var (message, queuedCommand) = item;
+            try {
+                if (ct.IsCancellationRequested)
+                    return; // We want the batch processing to complete successfully
+
+                // NOTE: We already deserialized in pump, so we avoid doing it again.
+                await Process(shardIndex, message, queuedCommand, Stopwatch.StartNew(), ct).ConfigureAwait(false);
+            }
+            catch (Exception e)  {
+                if (e is ObjectDisposedException or TargetException && Services.IsDisposedOrDisposing()) {
                     // NOTE(AY): NatsQueueProcessor is sometimes disposed ~ at the very end
                     // of container disposal, and thus it retries many times to process
                     // queued events, even though it's already impossible, coz the Commander
                     // can't create scope for any new command it runs, because the container
                     // is already disposed.
-                    // So here we detect this & instantly abort the message reader.
-                    if (Services.IsDisposedOrDisposing())
-                        // ReSharper disable once AccessToDisposedClosure
-                        processingStopCts.CancelAndDisposeSilently();
-                    throw;
+                    // TargetException can be thrown by MethodCommandHandler on an attempt to
+                    // invoke a method of an already disposed service.
+                    // ReSharper disable once AccessToDisposedClosure
+                    gracefulStopCts.CancelAndDisposeSilently();
                 }
-                finally {
-                    message.Data.DisposeSilently();
-                }
+
+                // We want ForEachAsync to complete successfully, so we suppress all exceptions here.
+                // There is nothing to log here, coz Process logs its own errors.
+            }
+            finally {
+                message.Data.DisposeSilently();
             }
         }
     }
-
-    // Private methods
-
-    private QueueRef RequireValid(QueueRef queueRef)
-        => queueRef == QueueRef ? queueRef
-            : throw new ArgumentOutOfRangeException(nameof(queueRef),
-                "Can't use provided QueueRef with the current IQueueProcessor.");
 
     // MarkXxx
 
@@ -263,11 +301,12 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             MaxDeliver = Settings.MaxTryCount,
             FilterSubject = GetConsumerFilter(shardIndex),
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
-            AckWait = ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue)
-                ? TimeSpan.FromMinutes(15)
-                : TimeSpan.FromSeconds(15),
+            AckWait = TimeSpan.FromSeconds(30) +
+                (ShardScheme.HasFlags(ShardSchemeFlags.SlowQueue)
+                ? QueuesExt.SlowQueueTimeout
+                : QueuesExt.QueueTimeout),
             MaxAckPending = Settings.MaxPendingCount,
-            MaxBatch = 10,
+            MaxBatch = 64,
             SampleFreq = "20%",
         };
 
@@ -320,7 +359,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         CancellationToken cancellationToken)
     {
         var streamName = GetStreamName(shardIndex);
-        var lockHolder = await ActionLocks.Lock($"{nameof(CreateStream)}({streamName})", "", cancellationToken).ConfigureAwait(false);
+        var lockHolder = await ActionLocks.Lock($"{nameof(CreateStream)}.{streamName}", cancellationToken).ConfigureAwait(false);
         await using var _ = lockHolder.ConfigureAwait(false);
         var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
@@ -367,17 +406,19 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         CancellationToken cancellationToken)
     {
         var consumerName = GetConsumerName(shardIndex);
-        var lockHolder = await ActionLocks.Lock($"{nameof(CreateOrUpdateConsumer)}({consumerName})", "", cancellationToken).ConfigureAwait(false);
+        var lockHolder = await ActionLocks
+            .Lock($"{nameof(CreateOrUpdateConsumer)}.{consumerName}", cancellationToken)
+            .ConfigureAwait(false);
         await using var _ = lockHolder.ConfigureAwait(false);
-        var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
+        var linkedCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
         var config = GetConsumerConfig(shardIndex, consumerName);
-        return await stream.CreateOrUpdateConsumerAsync(config, lockCts.Token).ConfigureAwait(false);
+        return await stream.CreateOrUpdateConsumerAsync(config, linkedCts.Token).ConfigureAwait(false);
     }
 
     // Serialization
 
-    protected override QueuedCommand Deserialize(NatsJSMsg<IMemoryOwner<byte>> message)
+    private QueuedCommand Deserialize(NatsJSMsg<IMemoryOwner<byte>> message)
     {
         var data = message.Data;
         if (data == null)
@@ -385,28 +426,23 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
         var dataMemory = data.Memory;
         var dataSpan = dataMemory.Span;
-        var version = dataSpan[0];
+        var formatVersion = dataSpan[0];
 
-        switch (version) {
-        case 1: {
-            var id = new Ulid(dataSpan[1..17]);
-            var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[17..], typeof(ICommand), out _)!;
-            return QueuedCommand.NewUntyped(command, id.ToString(), message.Headers?.AsReadOnly());
-        }
+        switch (formatVersion) {
         case 2: {
-            var ulid = (string)Serializer.Read(dataMemory[1..], typeof(string), out var ulidLength)!;
+            var uuid = (string)Serializer.Read(dataMemory[1..], typeof(string), out var ulidLength)!;
             var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[(1 + ulidLength)..], typeof(ICommand), out _)!;
-            return QueuedCommand.NewUntyped(command, ulid, message.Headers?.AsReadOnly());
+            return QueuedCommand.NewUntyped(command, uuid, message.Headers?.AsReadOnly());
         }
         default:
-            throw StandardError.Internal($"Unsupported command version: {version}.");
+            throw StandardError.Internal($"Unsupported format version: {formatVersion}.");
         }
     }
 
     private static void Serialize(ArrayPoolBuffer<byte> buffer, QueuedCommand queuedCommand)
     {
         var command = queuedCommand.UntypedCommand;
-        buffer.Write(VersionBytes);
+        buffer.Write(FormatVersionBytes);
         Serializer.Write(buffer, queuedCommand.Uuid, typeof(string));
         TypeDecoratingSerializer.Write(buffer, command, command.GetType()); // Command itself
     }

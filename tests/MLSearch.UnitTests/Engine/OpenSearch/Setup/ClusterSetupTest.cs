@@ -26,7 +26,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             Mock.Of<IClusterSetupActions>(MockBehavior.Loose),
             Mock.Of<IOptions<OpenSearchSettings>>(MockBehavior.Loose),
             [],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
         _ = Assert.Throws<InvalidOperationException>(() => clusterSetup.Result);
@@ -44,7 +43,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -111,7 +109,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -119,7 +116,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         await clusterSetup.InitializeAsync(cancellationSource.Token);
 
         meshLocks.Verify(locks => locks.Lock(
-                It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<MeshLockOptions>(),
                 It.Is<CancellationToken>(t => t == cancellationSource.Token)
@@ -142,7 +138,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -192,7 +187,6 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
             setupActions.Object,
             openSearchSettings.Object,
             [settingChangeSource.Object],
-            Mock.Of<ILogger<ClusterSetup>>(MockBehavior.Loose),
             _openSearchNames,
             Tracer.None);
 
@@ -318,12 +312,11 @@ public class ClusterSetupTest(ITestOutputHelper @out) : TestBase(@out)
         meshLocks
             .Setup(locks => locks.Lock(
                 It.IsAny<string>(),
-                It.IsAny<string>(),
                 It.IsAny<MeshLockOptions>(),
                 It.IsAny<CancellationToken>()
             ))
-            .Returns<string, string, MeshLockOptions, CancellationToken>((key, value, options, ct)
-                => Task.FromResult(new MeshLockHolder(meshLocksBackend.Object, "id", key, value, options, ct)))
+            .Returns<string, MeshLockOptions, CancellationToken>((key, options, ct)
+                => Task.FromResult(new MeshLockHolder(meshLocksBackend.Object, "id", key, MeshLockOptions.Default, ct)))
             .Verifiable();
 
         return meshLocks;

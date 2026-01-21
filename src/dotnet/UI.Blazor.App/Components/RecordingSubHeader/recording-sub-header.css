@@ -2,7 +2,7 @@
     @apply relative;
     @apply flex-x items-center justify-start gap-x-2;
     @apply min-h-10;
-    @apply px-2 md:px-4;
+    @apply px-2;
     @apply rounded-lg border-banner-error border-2;
     @apply bg-banner-error;
     @apply animate-opacity-from-0;

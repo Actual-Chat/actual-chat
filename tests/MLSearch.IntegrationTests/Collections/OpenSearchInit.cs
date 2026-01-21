@@ -10,13 +10,15 @@ namespace ActualChat.MLSearch.IntegrationTests;
 // An instance of OpenSearchInit class is created via DI container on app start
 internal sealed class OpenSearchInit(IClusterSetup clusterSetup) : IModuleInitializer
 {
-    public Task Initialize(CancellationToken cancellationToken) => clusterSetup.InitializeAsync(cancellationToken);
+    public Task Initialize(CancellationToken cancellationToken)
+        => clusterSetup.InitializeAsync(cancellationToken);
 }
 
 // An instance of OpenSearchCleanup class is created via DI container of the app host of MLSearchCollection above
 internal sealed class OpenSearchCleanup(
     IOpenSearchClient openSearch,
-    OpenSearchNames openSearchNames) : IAsyncDisposable
+    OpenSearchNames openSearchNames
+    ) : IAsyncDisposable
 {
     public async ValueTask DisposeAsync()
     {

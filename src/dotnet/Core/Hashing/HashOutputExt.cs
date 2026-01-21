@@ -9,12 +9,20 @@ public static class HashOutputExt
         where THash : struct, IHashOutput
         => Convert.ToHexString(hash.Bytes.Slice(0, count));
 
+    public static string Base32<THash>(this THash hash)
+        where THash : struct, IHashOutput
+        => Base32Encoder.Encode(hash.Bytes);
+
+    public static string Base32<THash>(this THash hash, int count)
+        where THash : struct, IHashOutput
+        => Base32Encoder.Encode(hash.Bytes[..count]);
+
     public static string Base64<THash>(this THash hash)
         where THash : struct, IHashOutput
         => Convert.ToBase64String(hash.Bytes);
     public static string Base64<THash>(this THash hash, int count)
         where THash : struct, IHashOutput
-        => Convert.ToBase64String(hash.Bytes.Slice(0, count));
+        => Convert.ToBase64String(hash.Bytes[..count]);
 
     public static string Base64Url<THash>(this THash hash)
         where THash : struct, IHashOutput

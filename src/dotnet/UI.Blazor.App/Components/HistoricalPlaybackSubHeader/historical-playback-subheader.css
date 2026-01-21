@@ -1,12 +1,10 @@
 .historical-playback-subheader {
     @apply relative z-10;
     @apply w-full;
-    @apply pl-1 pr-2 md:pl-4 md:pr-4 ;
+    @apply pl-1 pr-2;
     @apply bg-historical-playback;
     @apply text-historical-playback;
     @apply rounded-lg border-2 border-historical-playback;
-    @apply duration-150;
-    transition-behavior: allow-discrete;
 }
 .historical-playback-subheader > .c-content {
     @apply flex-1 flex-x justify-between items-center gap-x-2;

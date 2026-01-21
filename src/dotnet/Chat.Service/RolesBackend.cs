@@ -7,7 +7,6 @@ namespace ActualChat.Chat;
 
 public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IRolesBackend
 {
-    [field: AllowNull, MaybeNull]
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbRole> DbRoleResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbRole>>();

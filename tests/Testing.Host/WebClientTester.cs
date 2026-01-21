@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Server;
 using ActualChat.Chat;
 using ActualChat.Hosting;
@@ -46,39 +45,24 @@ public class WebClientTester : IWebClientTester
 
     public AppHost AppHost { get; }
     public IServiceProvider AppServices => AppHost.Services;
-    [field: AllowNull, MaybeNull]
     public ICommander Commander => field ??= AppServices.Commander();
-    [field: AllowNull, MaybeNull]
     public IAuth Auth => field ??= AppServices.GetRequiredService<IAuth>();
-    [field: AllowNull, MaybeNull]
     public IAuthors Authors => field ??= AppServices.GetRequiredService<IAuthors>();
-    [field: AllowNull, MaybeNull]
     public IAuthorsBackend AuthorsBackend => field ??= AppServices.GetRequiredService<IAuthorsBackend>();
-    [field: AllowNull, MaybeNull]
     public IAccounts Accounts => field ??= AppServices.GetRequiredService<IAccounts>();
-    [field: AllowNull, MaybeNull]
     public IAccountsBackend AccountsBackend => field ??= AppServices.GetRequiredService<IAccountsBackend>();
-    [field: AllowNull, MaybeNull]
     public IChats Chats => field ??= AppServices.GetRequiredService<IChats>();
-    [field: AllowNull, MaybeNull]
     public ITranslations Translations => field ??= AppServices.GetRequiredService<ITranslations>();
-    [field: AllowNull, MaybeNull]
     public IPlaces Places => field ??= AppServices.GetRequiredService<IPlaces>();
-    [field: AllowNull, MaybeNull]
     public ISearch Search => field ??= AppServices.GetRequiredService<ISearch>();
-    [field: AllowNull, MaybeNull]
     public IAuthBackend AuthBackend => field ??= AppServices.GetRequiredService<IAuthBackend>();
-    [field: AllowNull, MaybeNull]
     public INotificationsBackend NotificationsBackend  => field ??= AppServices.GetRequiredService<INotificationsBackend>();
-    [field: AllowNull, MaybeNull]
     public UrlMapper UrlMapper => field ??= AppServices.UrlMapper();
     public ITestOutputHelper Out { get; }
     public Session Session { get; }
 
     public IServiceProvider ClientServices => _clientServicesLazy.Value;
-    [field: AllowNull, MaybeNull]
     public ICommander ClientCommander => field ??= ClientServices.Commander();
-    [field: AllowNull, MaybeNull]
     public IAuth ClientAuth => field ??= ClientServices.GetRequiredService<IAuth>();
 
     public WebClientTester(

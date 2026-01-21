@@ -21,12 +21,34 @@ public static class MediaMimeTypes
     /// </exception>
     public static string GetMimeType(string fileName)
     {
+        TryGetMimeType(fileName, out var mimeType);
+        return mimeType ?? "application/octet-stream";
+    }
+
+    /// <summary>
+    /// Try to get the MIME-type of a file.
+    /// </summary>
+    /// <remarks>
+    /// Attempts to get the MIME-type of a file based on the file extension.
+    /// Returns false if the file name has no extension.
+    /// </remarks>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="mimeType">The MIME-type if found; otherwise, <c>null</c>.</param>
+    /// <returns><c>true</c> if the MIME-type was found; otherwise, <c>false</c>.</returns>
+    /// <exception cref="System.ArgumentNullException">
+    /// <paramref name="fileName"/> is <c>null</c>.
+    /// </exception>
+    public static bool TryGetMimeType(string fileName, [NotNullWhen(true)] out string? mimeType)
+    {
         if (fileName is null)
             throw new ArgumentNullException(nameof(fileName));
 
+        mimeType = null;
         var extension = Path.GetExtension(fileName);
-        Types.TryGetValue(extension, out var mimeType);
-        return mimeType ?? "application/octet-stream";
+        if (extension.IsNullOrEmpty())
+            return false;
+
+        return Types.TryGetValue(extension, out mimeType);
     }
 
     /// <summary>

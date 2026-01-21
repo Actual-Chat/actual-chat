@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.Maui;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
@@ -14,6 +15,7 @@ using Uri = Android.Net.Uri;
 namespace ActualChat.App.Maui;
 
 [Activity(
+    Name = MauiSettings.IsDevApp ? "chat.actual.dev.app.MainActivity" : "actual.chat.app.MainActivity",
     Theme = "@style/SplashTheme",
     MainLauncher = true,
     // When user tap on a notification which was created by FCM when app was in background mode,

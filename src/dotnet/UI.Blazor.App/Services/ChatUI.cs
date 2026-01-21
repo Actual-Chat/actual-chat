@@ -120,7 +120,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
             var userSettingsTask = AccountSettings.UserChatSettings(chatId).Get(cancellationToken);
 
-            var news = await chatNewsTask.ConfigureAwait(false);
+            var news = await chatNewsTask.WaitAsync(TimeSpan.FromSeconds(20), cancellationToken).ConfigureAwait(false);
             var userSettings = await userSettingsTask.ConfigureAwait(false);
             var lastMention = await lastMentionTask.ConfigureAwait(false);
             var readEntryLid = await readEntryLidTask.ConfigureAwait(false);

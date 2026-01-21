@@ -5,7 +5,6 @@ public abstract partial class AppActivity : UIWorkerBase<UIHub>, IComputeService
 {
     private readonly MutableState<ActivityState> _state;
 
-    [field: AllowNull, MaybeNull]
     protected BackgroundStateTracker BackgroundStateTracker
         => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 

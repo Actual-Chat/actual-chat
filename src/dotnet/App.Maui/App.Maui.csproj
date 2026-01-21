@@ -17,7 +17,6 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>10.0.0</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
     <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
@@ -94,7 +93,12 @@
 
   <!-- Project references -->
   <ItemGroup>
+    <ProjectReference Include="..\App.Maui.IosShareExt\App.Maui.IosShareExt.csproj" Condition="$(TargetFramework.Contains('-ios')) AND $([MSBuild]::IsOSPlatform('osx'))">
+      <IsAppExtension>true</IsAppExtension>
+      <IsWatchApp>false</IsWatchApp>
+    </ProjectReference>
     <ProjectReference Include="..\Core.Audio\Core.Audio.csproj" />
+    <ProjectReference Include="..\Maui\Maui.csproj" />
   </ItemGroup>
   <!-- UseAppPack == false -->
   <ItemGroup Condition="!$(UseAppPack)">
@@ -114,8 +118,6 @@
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Microsoft.JSInterop.WebAssembly" />
-    <PackageReference Include="OpenTelemetry" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="RestEase" />
     <PackageReference Include="SauceControl.Blake2Fast" />
     <PackageReference Include="System.Linq.Async" />
@@ -137,19 +139,9 @@
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
-    <PackageReference Include="Sentry.Serilog" />
-    <PackageReference Include="Sentry.Extensions.Logging" />
-    <PackageReference Include="Sentry.OpenTelemetry" />
-    <PackageReference Include="Serilog" />
-    <PackageReference Include="Serilog.Extensions.Logging" />
-    <PackageReference Include="sqlite-net-pcl" />
     <!-- SignalR client needed for AudioStreamer -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
-    <!--
-      An extra package to use SQLite on MAUI:
-      https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
-    <PackageReference Include="SQLitePCLRaw.bundle_green" />
     <PackageReference Include="Plugin.Maui.Audio" />
   </ItemGroup>
 
@@ -381,7 +373,8 @@
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
-    <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\iOS\Entitlements.dev.plist</CodesignEntitlements>
+    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\iOS\Entitlements.prod.plist</CodesignEntitlements>
     <!-- Performance-related -->
     <EnableSGenConc>False</EnableSGenConc>
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
@@ -468,11 +461,12 @@
 
     <!-- Raw Assets -->
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+    <MauiAsset Include="..\..\..\resources\sounds\converted\*.m4a" LogicalName="sounds\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Platform-specific files to compile -->
 
-  <!-- NOT Andoid -->
+  <!-- NOT Android -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android')) != true">
     <Compile Remove="**\**\*.Android.cs" />
     <None Include="**\**\*.Android.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
@@ -487,8 +481,7 @@
   </ItemGroup>
   <!-- Android -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
-    <BundleResource Include="wwwroot\dist\sounds\*.webm" Link="sounds\%(Filename)%(Extension)" />
-    <AndroidResource Include="..\..\..\resources\sounds\attention_ringtone.mp3" Link="Resources\Raw\attention_ringtone.mp3" />
+    <AndroidResource Include="..\..\..\resources\sounds\raw\attention_ringtone.mp3" Link="Resources\Raw\attention_ringtone.mp3" />
     <!-- Keep the wildcard include for any other native libs laid out per ABI -->
     <AndroidNativeLibrary Include="runtimes\android-$(AndroidSupportedAbis)\native\*.so" />
     <!-- Explicitly include Opus for the ABIs we ship -->
@@ -504,7 +497,7 @@
   </ItemGroup>
 
   <!-- NOT iOS and NOT Mac Catalyst -->
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net10.0-ios')) != true AND $(TargetFramework.StartsWith('net10.0-maccatalyst')) != true">
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
     <Compile Remove="**\**\*.MaciOS.cs" />
     <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\MaciOS\**\*.cs" />
@@ -521,12 +514,11 @@
   <!-- iOS -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <Folder Include="Platforms\iOS\Resources\" />
-    <BundleResource Include="wwwroot\dist\sounds\*.m4a" Link="sounds\%(Filename)%(Extension)" />
+    <BundleResource Include="..\..\..\resources\sounds\converted\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
     <!-- Remove metadata.json from Content to prevent default SDK behavior -->
     <Content Remove="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\metadata.json" />
     <!-- Includes all files in the .mlmodelc recursively as BundleResources -->
     <BundleResource Include="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\**" />
-    <BundleResource Include="wwwroot\dist\sounds\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
@@ -544,7 +536,6 @@
   </ItemGroup>
   <!-- MacCatalyst -->
   <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
-    <BundleResource Include="wwwroot\dist\sounds\*.m4a" Link="sounds\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- NOT Windows -->
@@ -591,14 +582,6 @@
 
   <ItemGroup>
     <MauiAsset Include="wwwroot\loading_icon_voxt.svg" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <AndroidAsset Include="Resources\Raw\sounds\begin-recording.m4a" />
-    <AndroidAsset Include="Resources\Raw\sounds\end-recording.m4a" />
-    <AndroidAsset Include="Resources\Raw\sounds\new-audio-message-after-delay.m4a" />
-    <AndroidAsset Include="Resources\Raw\sounds\notify-on-new-message-in-app.m4a" />
-    <AndroidAsset Include="Resources\Raw\sounds\remind-of-recording.m4a" />
   </ItemGroup>
 
   <ItemGroup>

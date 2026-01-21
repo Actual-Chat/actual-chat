@@ -1,69 +1,66 @@
+using ActualChat.Time;
 using MemoryPack;
 
 namespace ActualChat.Flows;
 
-public abstract partial class PeriodicFlow : LegacyFlow
+// Base class for flows that run periodically.
+// Implements a simple pattern where Run is called at scheduled intervals.
+public abstract class PeriodicFlow : Flow<string>, IQuantProvider
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    protected TimeSpan MaxDelay { get; set; } = TimeSpan.FromDays(7);
-    [IgnoreDataMember, MemoryPackIgnore]
-    protected string? EndReason { get; set; }
+    protected virtual TimeSpan MaxResumeDelay => TimeSpan.FromDays(7);
 
-    [DataMember(Order = 100), MemoryPackOrder(100)]
-    public Moment LastRunAt { get; protected set; }
-    [DataMember(Order = 101), MemoryPackOrder(101)]
-    public Moment? NextRunAt { get; protected set; }
-    [DataMember(Order = 110), MemoryPackOrder(110)]
+    // Persisted state
+    [DataMember(Order = 0), MemoryPackOrder(0)]
     public int RunCount { get; protected set; }
+    [DataMember(Order = 1), MemoryPackOrder(1)]
+    public Moment LastRunAt { get; protected set; }
+    [DataMember(Order = 2), MemoryPackOrder(2)]
+    public FlowReadiness LastReadiness { get; protected set; }
 
-    // Not a step!
-    protected abstract Task<string?> Update(CancellationToken cancellationToken);
-    protected abstract Task Run(CancellationToken cancellationToken);
+    // Overridable methods
 
-    protected override Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
+    protected abstract ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken);
+    protected abstract ValueTask<Moment> Run(CancellationToken cancellationToken);
+
+    // Implementation
+
+    protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        LastRunAt = Clocks.SystemClock.Now;
-        NextRunAt = null;
-        return GetTransition(cancellationToken);
-    }
-
-    protected async Task<LegacyFlowTransition> OnCheck(CancellationToken cancellationToken)
-    {
-        Log.LogInformation("`{Id}`: OnCheck, Event: {Event}", Id, Event.Event);
-        if (!Event.IsHandled)
-            Event.Require<LegacyFlowTimerEvent>();
-
-        var transition = await GetTransition(cancellationToken).ConfigureAwait(false);
-        if (transition.Step != nameof(OnCheck) || transition.HardResumeAt.HasValue)
-            return transition;
-
-        Log.LogInformation("`{Id}`: Run #{RunIndex}", Id, RunCount);
-        await Run(cancellationToken).ConfigureAwait(false);
-        LastRunAt = Clocks.SystemClock.Now;
-        NextRunAt = null;
-        RunCount++;
-        return await GetTransition(cancellationToken).ConfigureAwait(false);
-    }
-
-    protected virtual async Task<LegacyFlowTransition> GetTransition(CancellationToken cancellationToken)
-    {
-        EndReason = await Update(cancellationToken).ConfigureAwait(false);
-        if (!EndReason.IsNullOrEmpty()) {
-            Log.LogWarning("`{Id}`: {EndReason}, will end", Id, EndReason);
-            return End();
+        LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
+        var flowDef = Hub.Defs.ByType[GetType()];
+        if (LastReadiness is { IsSuspended: true } readiness) {
+            var resumeDelay = readiness.ResumeDelay ?? MaxResumeDelay;
+            var resumeAt = ResumedAt + resumeDelay;
+            var resumeQuanta1 = flowDef.GetQuant!(resumeDelay);
+            Console.Log($"Prepare() -> {readiness}, will resume at {resumeAt} mod {resumeQuanta1.ToShortString()}");
+            Runtime.StageResumeAt(resumeAt, resumeQuanta1);
+            return;
         }
 
-        var now = Clocks.SystemClock.Now;
-        if (NextRunAt is { } lastNextRunAt)
-            return lastNextRunAt <= now
-                ? Resume(nameof(OnCheck))
-                : WaitForEvent(nameof(OnCheck), lastNextRunAt);
+        // Run
+        var startedAt = CpuTimestamp.Now;
+        Console.Log($"Run() #{RunCount + 1} started");
+        var nextRunAt = await Run(cancellationToken).ConfigureAwait(false);
+        RunCount++;
+        LastRunAt = Hub.SystemNow;
+        Console.Log($"Run() #{RunCount} completed in {startedAt.Elapsed.ToShortString()}");
 
-        var nextRunAt = now + (ComputeNextRunAt(now, cancellationToken) - now).Clamp(TimeSpan.Zero, MaxDelay);
-        NextRunAt = nextRunAt;
-        Log.LogInformation("`{Id}`: Next run in: {Delay}", Id, (nextRunAt - now).ToShortString());
-        return WaitForTimer(nameof(OnCheck), nextRunAt);
+        if (nextRunAt == Moment.MaxValue) {
+            Console.Log("Run() -> Moment.MaxValue (never run again)");
+            return;
+        }
+
+        if (nextRunAt <= Hub.SystemNow) {
+            Console.Log("Run() requested immediate resume");
+            Runtime.StageResume();
+            return;
+        }
+
+        var nextRunIn = (nextRunAt - Hub.SystemNow).Clamp(TimeSpan.Zero, MaxResumeDelay);
+        var scheduledAt = Hub.SystemNow + nextRunIn;
+        var resumeQuanta2 = flowDef.GetQuant!(nextRunIn);
+        Console.Log($"Next run scheduled at {scheduledAt} (in {nextRunIn.ToShortString()} mod {resumeQuanta2.ToShortString()})");
+        Runtime.StageResumeAt(scheduledAt, resumeQuanta2);
     }
-
-    protected abstract Moment ComputeNextRunAt(Moment now, CancellationToken cancellationToken);
 }

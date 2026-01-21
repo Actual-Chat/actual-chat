@@ -6,7 +6,6 @@ public class NavbarUI(IServiceProvider services)
 
     private IServiceProvider Services { get; } = services;
 
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public string SelectedGroupId { get; private set; } = "";

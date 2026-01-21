@@ -1,6 +1,5 @@
 using ActualChat.Db;
 using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using MemoryPack;
@@ -8,31 +7,25 @@ using MemoryPack;
 namespace ActualChat.Users.Flows;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class MasterFlow : LegacyFlow, IMasterFlow
+public partial class MasterFlow : Flow<Unit>, IMasterFlow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public int FlowSetVersion { get; private set; }
+    public HashSet<string> AppliedMigrations { get; set; } = new (StringComparer.Ordinal);
 
-    protected override async Task<LegacyFlowTransition> OnReset(CancellationToken cancellationToken)
+    protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        while (true) {
-            var nextFlowSetVersion = FlowSetVersion + 1;
-            var migrationFunc = LegacyFlowSteps.Get(GetType(), $"MigrateToVersion{nextFlowSetVersion}");
-            if (migrationFunc == null)
-                break;
-
-            await migrationFunc.Invoke(this, cancellationToken).ConfigureAwait(false);
-            FlowSetVersion = nextFlowSetVersion;
-            return StoreAndResume(nameof(OnReset));
+        if (!AppliedMigrations.Contains(nameof(StartDigestFlows))) {
+            await StartDigestFlows(cancellationToken).ConfigureAwait(false);
+            AppliedMigrations.Add(nameof(StartDigestFlows));
         }
-        return WaitForEvent(LegacyFlowSteps.OnReset, InfiniteHardResumeAt);
     }
 
-    // ReSharper disable UnusedMember.Local
-    private async Task MigrateToVersion1(CancellationToken cancellationToken)
+    // Private methods
+
+    private async Task StartDigestFlows(CancellationToken cancellationToken)
     {
         const int pageSize = 1000;
-        var dbHub = Host.Services.DbHub<UsersDbContext>();
+        var dbHub = Runtime.Services.DbHub<UsersDbContext>();
         var dbContext = await dbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var accountIds = dbContext.Accounts
@@ -40,7 +33,9 @@ public partial class MasterFlow : LegacyFlow, IMasterFlow
             .ReadAsync(pageSize, x => x.Id, cancellationToken);
         await foreach (var accountId in accountIds.ConfigureAwait(false)) {
             var userId = UserId.Parse(accountId);
-            await Host.Flows.Get<DigestFlow>(userId.Id, cancellationToken).ConfigureAwait(false);
+            await Hub.NewResumeEvent<DigestFlow>(userId.Id.Value)
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }

@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
 
@@ -16,9 +15,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
                                        In this code `number = 5`.
                                        """;
 
-    [field: AllowNull, MaybeNull]
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
-    [field: AllowNull, MaybeNull]
     private Translator Translator => field ??= Tester.AppServices.GetRequiredService<Translator>();
 
     [Theory]
@@ -60,7 +57,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
 
         // act
         var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [], cancellationToken);
-        Out.WriteLine($"Translated text:\n {translated}");
+        WriteLine($"Translated text:\n {translated}");
 
         // assert
         translated.Should().BeSimilarTo(expected, minSimilarity);
@@ -91,7 +88,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
 
         // act
         var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [new TranslationResult( context, translatedContext)], cancellationToken);
-        Out.WriteLine($"Translated text: \n{translated}");
+        WriteLine($"Translated text: \n{translated}");
 
         // assert
         translated.Should().BeSimilarTo(expected, minSimilarity);
@@ -134,7 +131,7 @@ public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestO
 
         // act
         var translated = await Translator.Translate(text, Language.Parse(targetLanguage), [ new TranslationResult(context, translatedContext)], cancellationToken);
-        Out.WriteLine($"Translated text: \n{translated}");
+        WriteLine($"Translated text: \n{translated}");
 
         // assert
         translated.Should().BeSimilarTo(expected, minSimilarity);

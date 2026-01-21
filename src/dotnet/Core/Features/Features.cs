@@ -4,11 +4,9 @@ public class Features(IServiceProvider services) : IFeatures
 {
     public IServiceProvider Services { get; } = services;
 
-    [field: AllowNull, MaybeNull]
     public IClientFeatures ClientFeatures
         => field ??= Services.GetRequiredService<IClientFeatures>();
 
-    [field: AllowNull, MaybeNull]
     public IServerFeatures ServerFeatures
         => field ??= Services.GetRequiredService<IServerFeatures>();
 

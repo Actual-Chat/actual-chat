@@ -1,11 +1,14 @@
+@using ActualChat.UI.Blazor.Module
+@inherits ComponentBase<UIHub>
 @namespace ActualChat.UI.Blazor.Components
+@implements IAsyncDisposable
 @{
     _renderedSelectedTab = null;
     _renderedTabs = SortedTabs.ToList();
 }
 
 <CascadingValue Value="@this" IsFixed="true" >
-    <div class="@Class tab-panel">
+    <div @ref="Ref" class="@Class tab-panel">
         <div class="@TabsClass tab-panel-tabs" role="tablist">
             <div class="btn-group">
                 @if (AdditionalButton != null) {
@@ -25,8 +28,9 @@
                     if (tab.AdditionalAttributes != null)
                         attributes.AddRange(tab.AdditionalAttributes);
 
-                    var cls = $"tab-btn unhovered {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")} {tab.ButtonClass} ";
-                    <div @key="@tab.Id" class="btn-group-container">
+                    var cls = $"tab-btn unhovered {(isActive ? "on" : "")} {tab.ButtonClass} ";
+                    var wrapperCls = isActive ? "selected-tab" : "";
+                    <div @key="@tab.Id" class="btn-group-container @wrapperCls">
                         <Button
                             AdditionalAttributes="@attributes"
                             Class="@cls"
@@ -37,15 +41,15 @@
                                 @tab.Title
                             }
                         </Button>
-                        @if (BottomHill) {
-                            <div class="c-bottom-hill"></div>
-                        }
                     </div>
                     @if (tab.TitleExtras != null) {
                         @tab.TitleExtras
                     }
                 }
             </div>
+            @if (BottomHill) {
+                <div class="bottom-hill"></div>
+            }
         </div>
         <Divider/>
         @ChildContent
@@ -56,15 +60,19 @@
 </CascadingValue>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.TabPanel.create";
+
     private readonly List<Tab> _tabs = new();
     private string? _selectedTabId;
     private IReadOnlyList<Tab> _renderedTabs = [];
     private Tab? _renderedSelectedTab;
 
+    private IJSObjectReference? JSRef { get; set; }
+    private ElementReference Ref { get; set; }
+
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string TabsClass { get; set; } = "";
     [Parameter] public bool BottomHill { get; set; }
-    [Parameter] public bool BottomBorder { get; set; }
     [Parameter] public bool AutoSelectInitialTab { get; set; } = true;
     [Parameter] public RenderFragment? AdditionalButton { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
@@ -86,7 +94,12 @@
     public IReadOnlyList<Tab> Tabs => _tabs;
     public IEnumerable<Tab> SortedTabs => Tabs.OrderBy(x => x.Order).ThenBy(x => x.Id);
 
-    protected override void OnAfterRender(bool firstRender) {
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
         var tabs = SortedTabs.ToList();
         var selectedTabId = SelectedTabId;
         if (_renderedSelectedTab == null) {
@@ -100,6 +113,13 @@
             SelectedTabId = newSelectedTab?.Id;
         }
         var tabsHaveChanged = !_renderedTabs.SequenceEqual(tabs);
+
+        if (firstRender && BottomHill) {
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSCreateMethod,
+                Ref);
+        }
+
         // If a tab list has changed, we need to rerender tab buttons.
         if (!tabsHaveChanged)
             return;

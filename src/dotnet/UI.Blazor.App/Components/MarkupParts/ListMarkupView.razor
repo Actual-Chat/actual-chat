@@ -1,15 +1,7 @@
 @inherits MarkupViewBase<ListMarkup>
 
-@if (Markup.IsOrdered) {
-    <ol class="list-markup">
-        @foreach (var item in Markup.Items) {
-            <li><MarkupView Markup="@item.Content"/></li>
-        }
-    </ol>
-} else {
-    <ul class="list-markup">
-        @foreach (var item in Markup.Items) {
-            <li><MarkupView Markup="@item.Content"/></li>
-        }
-    </ul>
-}
+<ul class="list-markup">
+    @foreach (var item in Markup.Items) {
+        <li><MarkupView Markup="@item.Content"/></li>
+    }
+</ul>

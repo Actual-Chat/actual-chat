@@ -1,0 +1,81 @@
+using ActualChat.App.Maui.IosShareExt.Services;
+using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+using ActualChat.UI;
+
+namespace ActualChat.App.Maui.IosShareExt.Components;
+
+public sealed class AvatarView(IconQuery? iconQuery, UIImage? defaultImage, string title, bool isRound, IosHub hub)
+    : ComputedStateView<LoadedImage?>(hub)
+{
+    private const int Size = 40;
+    private UIImageView _image = null!;
+    private UILabel _initialLabel = null!;
+
+    private IconUI IconUI => Hub.IconUI;
+    private int CornerRadius => isRound ? Size / 2 : 12;
+
+    protected override void OnInitialRender(LoadedImage? imageData)
+    {
+        TranslatesAutoresizingMaskIntoConstraints = false;
+
+        // Avatar - circular
+        _image = new UIImageView
+        {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+            ContentMode = UIViewContentMode.ScaleAspectFill,
+            BackgroundColor = UIColor.SystemBlue,
+            Layer = { CornerRadius = CornerRadius, MasksToBounds = true },
+        };
+
+        // Add initial letter if no image
+        _initialLabel = new UILabel
+        {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+            Font = UIFont.SystemFontOfSize(Size / 2f, UIFontWeight.Medium),
+            TextColor = UIColor.White,
+            TextAlignment = UITextAlignment.Center,
+            Text = title.Length > 0 ? title[0].ToString().ToUpperInvariant() : string.Empty,
+        };
+        _image.AddSubview(_initialLabel);
+        SetImage(imageData);
+
+        AddSubview(_image);
+
+        NSLayoutConstraint.ActivateConstraints([
+            _image.CenterXAnchor.ConstraintEqualTo(CenterXAnchor),
+            _image.CenterYAnchor.ConstraintEqualTo(CenterYAnchor),
+            _image.WidthAnchor.ConstraintEqualTo(Size),
+            _image.HeightAnchor.ConstraintEqualTo(Size),
+
+            _initialLabel.CenterXAnchor.ConstraintEqualTo(_image.CenterXAnchor),
+            _initialLabel.CenterYAnchor.ConstraintEqualTo(_image.CenterYAnchor),
+            HeightAnchor.ConstraintEqualTo(Size),
+            WidthAnchor.ConstraintEqualTo(Size),
+            TopAnchor.ConstraintEqualTo(_image.TopAnchor),
+            TrailingAnchor.ConstraintEqualTo(_image.TrailingAnchor),
+            BottomAnchor.ConstraintEqualTo(_image.BottomAnchor),
+            LeadingAnchor.ConstraintEqualTo(_image.LeadingAnchor),
+        ]);
+    }
+
+    protected override void OnStateChanged(LoadedImage? model)
+        => SetImage(model);
+
+    private void SetImage(LoadedImage? model)
+    {
+        var image = model?.Data is null ? defaultImage : UIImage.LoadFromData(NSData.FromArray(model.Data));
+        if (image is null) {
+            _image.BackgroundColor = UIColor.SystemBlue;
+            _image.Image = null;
+            _initialLabel.Hidden = false;
+        }
+        else {
+            _image.BackgroundColor = UIColor.Clear;
+            _image.Image = image;
+            _initialLabel.Hidden = model?.AvatarKind is not AvatarKind.Marble;
+        }
+    }
+
+    protected override Task<LoadedImage?> ComputeState(CancellationToken cancellationToken)
+        => iconQuery is not null ? IconUI.Get(iconQuery, cancellationToken) : Task.FromResult<LoadedImage?>(null);
+}

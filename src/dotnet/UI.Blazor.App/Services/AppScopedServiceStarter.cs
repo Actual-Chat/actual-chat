@@ -4,7 +4,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class AppScopedServiceStarter
+public class AppScopedServiceStarter
 {
     private volatile string? _sessionHash;
 
@@ -14,7 +14,6 @@ public sealed class AppScopedServiceStarter
     private History History => Hub.History;
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public AppScopedServiceStarter(AppUIHub hub)
@@ -108,6 +107,9 @@ public sealed class AppScopedServiceStarter
         }
     }
 
+    protected virtual Task OnPrepareFirstRender()
+        => Task.CompletedTask;
+
     public async Task AfterFirstRender(CancellationToken cancellationToken)
     {
         // Starts in Blazor dispatcher
@@ -148,6 +150,9 @@ public sealed class AppScopedServiceStarter
             throw;
         }
     }
+
+    protected virtual Task OnAfterFirstRender(CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     // Private methods
 

@@ -7,15 +7,16 @@ using NATS.Client.JetStream.Models;
 namespace ActualChat.Queues.Nats;
 
 public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProvider services)
-    : QueuesBase<NatsQueues.Options, NatsQueueProcessor>(settings, services)
+    : QueuesBase<NatsQueues.Options>(settings, services)
 {
     public sealed record Options : QueueSettings
     {
         public bool UseStreamPerShard { get; init; } = true;
         public int MaxQueueSize { get; init; } = 1024 * 1024;
         public int ReplicaCount { get; init; } = 0;
-        public int MaxTryCount { get; set; } = 20;
-        public long MaxPendingCount { get; set; } = 1_000_000;
+        public int MaxTryCount { get; init; } = 20;
+        public long MaxPendingCount { get; init; } = 1_000_000;
+        public TimeSpan FetchTimeout { get; init; } = TimeSpan.FromSeconds(30);
     }
 
     [GeneratedRegex(@"[\.\[\]\<\>`']+")]
@@ -26,9 +27,8 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
 
     // ActionLocks root, see how it's used
     internal IMeshLocks ActionLocks { get; }
-        = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ActionLocks));
+        = services.MeshLocks().WithKeyPrefix(nameof(ActionLocks));
 
-    [field: AllowNull, MaybeNull]
     private NatsConnection Connection {
         get {
             if (field != null)
@@ -39,7 +39,6 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
         }
     }
 
-    [field: AllowNull, MaybeNull]
     public NatsSettings NatsSettings => field ??= Services.GetRequiredService<NatsSettings>();
 
     public override async Task Purge(CancellationToken cancellationToken = default)
@@ -75,6 +74,6 @@ public sealed partial class NatsQueues(NatsQueues.Options settings, IServiceProv
 
     // Protected methods
 
-    protected override NatsQueueProcessor CreateProcessor(QueueRef queueRef)
-        => new(Settings, this, queueRef);
+    protected override IQueueProcessor CreateProcessor(QueueRef queueRef)
+        => new NatsQueueProcessor(Settings, this, queueRef);
 }

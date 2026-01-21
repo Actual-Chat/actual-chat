@@ -10,7 +10,6 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
     public IState<UserBubbleSettings> Settings => _settings;
     public TaskCompletionSource<BubbleHost> HostAcceptor { get; } = TaskCompletionSourceExt.New<BubbleHost>();
     public Task WhenReady => HostAcceptor.Task;
-    [field: AllowNull, MaybeNull]
     public BubbleHost Host => field ??= HostAcceptor.Task.RequireResult();
 
     public BubbleUI(UIHub hub) : base(hub)

@@ -18,9 +18,7 @@ public abstract class DbInitializer<
 
     private new DbHub<TDbContext> DbHub => base.DbHub;
     public new IServiceProvider Services => base.Services;
-    [field: AllowNull, MaybeNull]
     public DbInfo<TDbContext> DbInfo => field ??= Services.GetRequiredService<DbInfo<TDbContext>>();
-    [field: AllowNull, MaybeNull]
     public HostInfo HostInfo => field ??= Services.HostInfo();
     public Dictionary<IDbInitializer, Task> RunningTasks { get; set; } = null!;
 

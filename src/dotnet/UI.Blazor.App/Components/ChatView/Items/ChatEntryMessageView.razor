@@ -69,7 +69,7 @@
 
 @if (isSystem) {
     <div class="@cls"
-         data-menu="@(MenuRef.New<MessageMenu>(entry.GetClientId(), bool.TrueString, "", ""))"
+         data-menu="@(MenuRef.New<MessageMenu>(entry.Id.Value, bool.TrueString, "", ""))"
          @onmouseenter="@ShowHoverMenu"
          @onmouseleave="@HideHoverMenu">
         <div class="chat-message">
@@ -90,10 +90,9 @@
     </div>
     return;
 }
-
 <div class="@cls"
      data-chat-entry-id="@(entry.Id)"
-     data-menu="@(MenuRef.New<MessageMenu>(entry.GetClientId(), bool.FalseString, "", ""))"
+     data-menu="@(MenuRef.New<MessageMenu>(entry.GetClientId(m.IsOwnMessage), bool.FalseString, "", ""))"
      @onmouseenter="@ShowHoverMenu"
      @onmouseleave="@HideHoverMenu">
     <div class="chat-message group">
@@ -173,54 +172,13 @@
                     IsUnreadByOthersBlockStart="@m.IsUnreadByOthersBlockStart"
                 />
             </div>
-            @if (entry.Attachments.Length > 0) {
-                if (_hasShownUploads) {
-                    Hub.SendingMessages.NotifyAttachmentsLoaded(entry.Id);
-                    _hasShownUploads = false;
-                }
-                var (mediaList, fileList) = GetOrderedAttachmentList(entry);
-                <div class="message-attachments">
-                    <VisualMediaAttachmentList MediaList="@mediaList" />
-                    <div class="message-file-attachments">
-                        @foreach (var attachment in fileList) {
-                            <FileAttachment Attachment="@attachment"/>
-                        }
-                    </div>
-                    @if (m.IsUnreadByOthers) {
-                        <ChatMessageSendingStatus
-                            Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                            IsDotOnly="@(!m.IsUnreadByOthersBlockStart)"/>
-                    }
-                </div>
-            }
-            else if (entry.HasAttachmentUploads) {
-                if (m.IsOwnMessage) {
-                    if (m.MediaUploads is {} mediaUploads) {
-                        <div class="message-attachments">
-                            <ChatEntryMessageAttachmentUploadsView Uploads="@mediaUploads.Attachments"/>
-                            <ChatMessageSendingStatus
-                                Status="@ChatMessageSendingStatus.MessageStatus.Sending"
-                                IsDotOnly="@true"/>
-                        </div>
-                        _hasShownUploads = true;
-                    }
-                } else {
-                    <div class="upload-plug">
-                        <div class="upload-plug-icons">
-                            <div class="c-image c-icon">
-                                <i class="icon-image"></i>
-                            </div>
-                            <div class="c-video c-icon">
-                                <i class="icon-video"></i>
-                            </div>
-                            <div class="c-file c-icon">
-                                <i class="icon-file"></i>
-                            </div>
-                        </div>
-                        <div class="upload-plug-text">Sending attachments…</div>
-                    </div>
-                    // Display progress indicator or something else indicating that we expect addition content to be shown soon.
-                }
+            @if (entry.Attachments.Length > 0 || entry.HasAttachmentUploads) {
+                <ChatEntryAttachmentsView
+                    Hub="@Hub"
+                    Entry="@entry"
+                    IsOwnMessage="@m.IsOwnMessage"
+                    IsUnreadByOthers="@m.IsUnreadByOthers"
+                    IsUnreadByOthersBlockStart="@m.IsUnreadByOthersBlockStart" />
             }
             @if (entry.LinkPreviews.Length > 0) {
                 <div class="message-links">
@@ -265,7 +223,6 @@
     private ChatEntryMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
     private bool _hasBeenRead;
-    private bool _hasShownUploads;
 
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
@@ -279,8 +236,6 @@
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-
-    [field: AllowNull] [field: MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
@@ -396,7 +351,6 @@
         var (isUnreadByOthers, isUnreadBlockStart) = (false, false);
         if (chat is not null && ownAuthorId is not null)
             (isUnreadByOthers, isUnreadBlockStart) = await IsUnreadByOthers(chat, entry, prevEntry, ownAuthorId, cancellationToken);
-        var mediaUploads = Entry.HasAttachmentUploads && isOwnMessage ? Hub.SendingMessages.GetMediaUploads(entry) : null;
         var result = new Model(chat) {
             RepliedEntry = repliedEntry,
             IsOwnMessage = isOwnMessage,
@@ -413,7 +367,6 @@
             IsUnreadByOthers = isUnreadByOthers,
             IsUnreadByOthersBlockStart = isUnreadBlockStart,
             MentionedAuthorIds = mentionedAuthorIds,
-            MediaUploads = mediaUploads,
         };
         return result.Equals(_rendered) ? _rendered! : result;
 
@@ -522,10 +475,6 @@
             _messageHoverMenu?.Hide();
     }
 
-    private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(ChatEntry entry)
-        => (entry.Attachments.Where(a => a.IsVisualMedia()).ToArray(),
-            entry.Attachments.Where(a => !a.IsVisualMedia()).ToArray());
-
     private async Task<Author?> GetForwardedAuthor(ChatEntry entry, AuthorFull? ownAuthor, CancellationToken cancellationToken) {
         if (entry.ForwardedAuthorId is null)
             return null;
@@ -604,6 +553,5 @@
         public bool IsUnreadByOthers { get; init; }
         public bool IsUnreadByOthersBlockStart { get; init; }
         public IReadOnlyList<AuthorId>? MentionedAuthorIds { get; init; }
-        public AttachmentUploads? MediaUploads { get; init; }
     }
 }

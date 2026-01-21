@@ -660,6 +660,17 @@ namespace ActualChat.Chat.Migrations
                     b.HasIndex("Version")
                         .HasDatabaseName("ix_conversations_version");
 
+                    b.HasIndex("ChatId", "EndEntryLid")
+                        .IsUnique()
+                        .IsDescending(false, true);
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("ChatId", "EndEntryLid"), new[] { "StartEntryLid" });
+
+                    b.HasIndex("ChatId", "StartEntryLid")
+                        .IsUnique();
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("ChatId", "StartEntryLid"), new[] { "EndEntryLid" });
+
                     b.ToTable("conversations");
                 });
 
@@ -1081,11 +1092,13 @@ namespace ActualChat.Chat.Migrations
                     b.HasKey("Uuid")
                         .HasName("pk_events");
 
-                    b.HasIndex("DelayUntil", "State")
-                        .HasDatabaseName("ix_events_delay_until_state");
+                    b.HasIndex("DelayUntil")
+                        .HasDatabaseName("ix_events_pending")
+                        .HasFilter("state = 0");
 
-                    b.HasIndex("State", "DelayUntil")
-                        .HasDatabaseName("ix_events_state_delay_until");
+                    b.HasIndex("DelayUntil", "State")
+                        .HasDatabaseName("ix_events_delay_until_state_non_new")
+                        .HasFilter("state != 0");
 
                     b.ToTable("_events");
                 });

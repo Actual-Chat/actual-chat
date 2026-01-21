@@ -81,7 +81,6 @@ internal sealed class ChatIndexInitializerShard(
     // # Fields
     private object _lock = new();
 
-    [field: AllowNull, MaybeNull]
     private Channel<(MLSearch_TriggerChatIndexingCompletion, PropagationContext?)> Events => LazyInitializer.EnsureInitialized(
         ref field,
         ref _lock,

@@ -43,6 +43,7 @@ export class MenuHost implements Disposable {
     private readonly hoverMenuDelayMs = 50;
     private readonly disposed$: Subject<void> = new Subject<void>();
     private menu: Menu | null;
+    private currentMenuRef: string;
 
     public static create(blazorRef: DotNet.DotNetObject): MenuHost {
         return new MenuHost(blazorRef);
@@ -175,8 +176,17 @@ export class MenuHost implements Disposable {
 
         this.menu = menu;
         this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
+        this.removeMessageMark(this.currentMenuRef);
+        this.currentMenuRef = menu.menuRef;
+        this.addMessageMark(this.currentMenuRef);
         if (ScreenSize.isNarrow())
             TuneUI.play(Tune.ShowMenu);
+    }
+
+    private addMessageMark(menuRef: string) {
+        const message = document.querySelector(`[data-menu="${menuRef}"]`);
+        if (message && !message.classList.contains('marked-message'))
+            message.classList.add('marked-message');
     }
 
     private hide(options?: {
@@ -198,6 +208,12 @@ export class MenuHost implements Disposable {
         this.menu = null;
         // Hide (un-render) it
         this.blazorRef.invokeMethodAsync('OnHideRequest', menu.id);
+        this.removeMessageMark(this.currentMenuRef);
+    }
+
+    private removeMessageMark(menuRef: string) {
+        const message = document.querySelector(`[data-menu="${menuRef}"]`);
+        message?.classList.remove('marked-message');
     }
 
     private async position(menu: Menu, updatedMenu?: Menu): Promise<void> {

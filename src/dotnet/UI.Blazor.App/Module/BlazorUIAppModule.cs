@@ -54,7 +54,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
         services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));
-        services.AddScoped(c => new FileUploader(c.UIHub()));
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
         services.AddScoped(_ => new AudioFocusService());
@@ -127,6 +126,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<ChatRouletteProfileEditorModal.Model, ChatRouletteProfileEditorModal>()
             .Add<LanguagesSelectorPopup.Model, LanguagesSelectorPopup>()
             .Add<TranslationTargetLanguageModal.Model, TranslationTargetLanguageModal>()
+            .Add<JoinVideoCallModal.Model, JoinVideoCallModal>()
+            .Add<IncomingCallModal.Model, IncomingCallModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map
@@ -208,7 +209,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // Sending messages & File uploads
         fusion.AddService<ChatSendingMessagesTriggers>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SendingMessages(c.AppUIHub()));
-        services.AddScoped(c => new FileUploaderService(c));
         services.AddScoped<UploadSessions>(c => new UploadSessions(c.AppUIHub()));
         services.AddScoped(c => new AttachmentsController(c.AppUIHub()));
         services.AddScoped(c => new IncomingShareAfterSendMessageHandler(c.AppUIHub()));

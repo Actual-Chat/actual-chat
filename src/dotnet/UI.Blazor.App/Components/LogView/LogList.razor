@@ -2,9 +2,11 @@
 @inherits FusionComponentBase<AppUIHub>
 
 <VirtualList
-    @ref="_virtualListRef"
+    @key="nameof(LogList)"
     Class="log-list"
     DataSource="@this"
+    Identity="logs"
+    DefaultEdge="@VirtualListEdge.End"
     ExpandMultiplier="2"
     SkeletonCount="@_skeletonCount"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
@@ -17,7 +19,6 @@
 </VirtualList>
 
 @code {
-    private VirtualList<LogEntry>? _virtualListRef;
     private int _skeletonCount;
 
     private LogUI LogUI => Hub.LogUI;
@@ -26,7 +27,4 @@
 
     protected override void OnInitialized()
         => _skeletonCount = ScreenSize.IsNarrow() ? 10 : 15;
-
-    protected override void OnParametersSet()
-        => _ = _virtualListRef?.Reset();
 }

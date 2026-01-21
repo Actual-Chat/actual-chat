@@ -1,11 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, TranslationSubHeader.Model?>
 @{
-    if (State.Value is not { } m)
-        return;
+    var m = State.Value;
 }
 
-<div class="translation-sub-header subheader-item">
+<SubHeader Class="translation-sub-header" IsVisible="@(m is not null)">
     <div class="c-content">
         <div class="c-left">
             <i class="icon-translation text-xl"></i>
@@ -14,10 +13,10 @@
         <div class="c-center">
             <div class="c-text">
                 Translate to
-                <span class="c-language" @onclick="@OnLanguageClick">@m.TargetLanguage.Title</span>
+                <span class="c-language" @onclick="@OnLanguageClick">@m?.TargetLanguage.Title</span>
             </div>
             <div class="c-toggle" @onclick="@OnToggleClick">
-                <Toggle IsChecked="@m.IsOn"/>
+                <Toggle IsChecked="@(m?.IsOn ?? false)"/>
             </div>
         </div>
 
@@ -27,7 +26,7 @@
             </HeaderButton>
         </div>
     </div>
-</div>
+</SubHeader>
 
 @code {
     private TranslationUI TranslationUI => Hub.TranslationUI;

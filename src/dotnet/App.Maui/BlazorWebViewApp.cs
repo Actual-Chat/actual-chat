@@ -14,7 +14,6 @@ public class BlazorWebViewApp
         = AsyncTaskMethodBuilderExt.New<BlazorWebViewApp>();
     private static ILogger Log => _log ??= StaticLog.Factory.CreateLogger<BlazorWebViewApp>();
 
-    [field: AllowNull, MaybeNull]
     public static BlazorWebViewApp Current {
         get => field ?? throw Errors.NotInitialized(nameof(Current));
         private set {

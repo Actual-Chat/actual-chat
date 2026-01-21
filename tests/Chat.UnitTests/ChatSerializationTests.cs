@@ -26,7 +26,7 @@ public class ChatSerializationTests(ITestOutputHelper @out) : TestBase(@out)
         if (s2 == null)
             return;
 
-        Out.WriteLine($"Same hashed strings: '{s1}', '{s2}'");
+        WriteLine($"Same hashed strings: '{s1}', '{s2}'");
         var s = new ImmutableOptionSet();
         byte[]? lastData = null;
         for (var i = 0; i < 2; i++) {
@@ -125,7 +125,7 @@ public class ChatSerializationTests(ITestOutputHelper @out) : TestBase(@out)
         if (size == expectedSize)
             return;
 
-        Out.WriteLine($"Size of {typeof(T).GetName()} = {size} (expected: {expectedSize})");
+        WriteLine($"Size of {typeof(T).GetName()} = {size} (expected: {expectedSize})");
         size.Should().Be(expectedSize);
     }
 

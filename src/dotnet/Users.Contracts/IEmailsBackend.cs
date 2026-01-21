@@ -1,3 +1,4 @@
+using ActualLab.Resilience;
 using ActualLab.Rpc;
 using MemoryPack;
 
@@ -13,11 +14,13 @@ public interface IEmailsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailsBackend_SendDigest(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>, IHasTimeout
 {
     [property: DataMember, MemoryPackOrder(1)]
     public bool IsDiagnosticsEnabled { get; init; }
 
     [IgnoreDataMember, MemoryPackIgnore]
     public UserId ShardKey => UserId;
+
+    TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);
 }

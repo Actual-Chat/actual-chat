@@ -1,4 +1,5 @@
-@namespace ActualChat.UI.Blazor.Components
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, ChatActivityPanel.Model?>
 @{
     var m = State.Value;
@@ -9,49 +10,67 @@
     if (!isVisible)
         return;
 
-    var maxCount = 5;
     var chat = Chat;
     var chatId = chat?.Id;
     var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
     var isActive = m.IsAnyoneTalking;
-    var iconColor = IsListening ? "primary" : "text-03";
-    var btnCls = m is { IsAnyoneTalking: true, AudioState.IsListening: true } ? "c-glow" : "";
     var tooltip = IsListening ? "Listening..." : "Listen";
+    var cls = IsListening ? " listening" : "";
 }
 
-<div class="chat-activity-panel" @onclick:preventDefault="true" @onclick:stopPropagation="true">
-    <div class="c-icon">
-        <chat-activity-svg size="@iconSize" isActive="@isActive" activeColor="@iconColor" inactiveColor="text-03"/>
-    </div>
+<div @ref="Ref" class="chat-activity-panel @cls" @onclick:preventDefault="true" @onclick:stopPropagation="true">
+    @if (!m.IsAnyoneTalking) {
+        <div class="c-icon">
+            <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive"/>
+        </div>
+    }
     @if (m.IsAnyoneTalking && chatId is not null) {
         <ChatActivities
             @key="@chatId.Value"
             Chat="@chat"
-            MaxIconCount="@maxCount"
+            MaxCount="@MaxCount"
             IsListening="@IsListening"/>
     } else {
-        <div class="silence-text">You are listening...</div>
+        <div class="w-full"></div>
     }
     <div class="c-buttons">
-        <HeaderButton
-            Class="@btnCls"
-            StopPropagation="true"
-            PreventDefault="true"
-            Click="@OnListenClick"
-            Tooltip="@tooltip"
-            TooltipPosition="FloatingPosition.Bottom"
-            MustKeepAwake="@(!IsListening)">
-            <playback-toggle-svg isAnimated="@m.IsAnimated" isOn="@IsListening" isActivityPanel="true" class="activity-svg"/>
-            <div class="c-glow"></div>
-        </HeaderButton>
+        @if (!IsListening) {
+            <Button
+                Class="btn-sm btn-transparent unhovered not-listening"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnClick"
+                Tooltip="@tooltip"
+                TooltipPosition="FloatingPosition.Bottom"
+                MustKeepAwake="@(!IsListening)">
+                Join muted
+            </Button>
+        } else {
+            <ButtonRound
+                Class="btn-sm btn-transparent unhovered listening"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnClick"
+                Tooltip="@tooltip"
+                TooltipPosition="FloatingPosition.Bottom"
+                MustKeepAwake="@(!IsListening)">
+                <i class="icon-phone-off"></i>
+            </ButtonRound>
+        }
     </div>
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatActivityPanel.create";
+    private readonly TaskSerializer _taskSerializer = new();
+    private CpuTimestamp _lastActionAt;
+
+    private ElementReference Ref { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
-    private ChatUI ChatUI => Hub.ChatUI;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
     private ChatId? RecordingChatId {
@@ -65,8 +84,15 @@
     private bool IsUpdating => Chat?.Id is not null && State.Value?.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
-    [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter, EditorRequired] public Chat? Chat { get; set; }
+    [Parameter] public int MaxCount { get; set; } = 5;
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        await base.DisposeAsync();
+    }
 
     protected override async Task OnParametersSetAsync() {
         ChatRecordingActivity?.Dispose();
@@ -76,11 +102,16 @@
         await base.OnParametersSetAsync();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender && ScreenSize.IsNarrow()) {
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
+        }
+    }
+
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         if (ChatRecordingActivity == null)
             return null;
 
-        var isAnimated = false;
         var chat = Chat;
         var chatId = chat?.Id;
         if (chat is null || chatId is null)
@@ -88,21 +119,36 @@
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
-        if (!audioState.IsListening) {
-            var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chatInfo?.LastTextEntry is { IsStreaming: true, HasAudioEntry: true } lastTextEntry) {
-                var ownAuthor = chatInfo.Chat.Rules.Author;
-                isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
-            }
-        }
-        return new (chat, audioState, authorIds.Length > 0, isAnimated);
+        return new (chat, audioState, authorIds.Length > 0);
     }
 
-    private void OnListenClick() {
+    private void OnClick() {
         if (IsUpdating || Chat?.Id is not { } chatId)
             return;
 
+        if (IsListening && IsRecordingHere)
+            StopRecording();
+
         _ = ChatAudioUI.SetListeningState(chatId, !IsListening);
+    }
+
+    private void StopRecording() {
+        if (!IsValidAction())
+            return;
+
+        _ = _taskSerializer.Enqueue(async _ => {
+            // .ConfigureAwait(false) is fine here
+            if (RecordingChatId is not null)
+                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
+        }, mustAbortPreviousTasks: true);
+    }
+
+    private bool IsValidAction() {
+        if (_lastActionAt.Elapsed < TimeSpan.FromMilliseconds(500))
+            return false; // Rapid action sequence is likely a mistake
+
+        _lastActionAt = CpuTimestamp.Now;
+        return true;
     }
 
     // Nested types
@@ -110,6 +156,5 @@
     public sealed record Model(
         Chat Chat,
         ChatAudioState AudioState,
-        bool IsAnyoneTalking,
-        bool IsAnimated);
+        bool IsAnyoneTalking);
 }

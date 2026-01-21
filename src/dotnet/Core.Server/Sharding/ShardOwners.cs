@@ -8,21 +8,16 @@ public sealed class ShardOwners : ProcessorBase, IHasServices
     internal IMeshLocks OwnershipLocks { get; }
 
     public IServiceProvider Services { get; }
-    [field: AllowNull, MaybeNull]
     public BackendServiceDefs BackendServiceDefs => field ??= Services.BackendServiceDefs();
-    [field: AllowNull, MaybeNull]
     public MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
-    [field: AllowNull, MaybeNull]
     public MeshNode ThisNode => field ??= MeshWatcher.ThisNode;
-    [field: AllowNull, MaybeNull]
     public StateFactory StateFactory => field ??= Services.StateFactory();
-    [field: AllowNull, MaybeNull]
     public MomentClock Clock { get; }
 
     public ShardOwners(IServiceProvider services) : base(services.HostLifetimeIfExist().CreateStopTokenSource())
     {
         Services = services;
-        OwnershipLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(ShardOwners));
+        OwnershipLocks = services.MeshLocks().WithKeyPrefix(nameof(ShardOwners));
         Clock = OwnershipLocks.Clock;
     }
 

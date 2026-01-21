@@ -92,7 +92,6 @@
 
 @code {
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-    [field: AllowNull, MaybeNull]
     private IRecordingPermissionRequester RecordingPermissionRequester
         => field ??= Hub.Services.GetRequiredService<IRecordingPermissionRequester>();
 

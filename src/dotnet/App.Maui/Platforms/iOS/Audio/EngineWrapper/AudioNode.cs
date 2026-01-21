@@ -10,7 +10,6 @@ public abstract class AudioNode(AVAudioNode node, Action<AVAudioNode> disposer, 
     protected internal AVAudioNode Node => node;
     protected AppUIHub Hub => hub;
 
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= hub.LogFor(GetType());
 
     public void Dispose()

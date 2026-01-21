@@ -30,17 +30,11 @@ public class ThreadInsightExtractor(ThreadInsightExtractor.Options settings, ISe
     };
 
     private Options Settings { get; } = settings;
-    [field: AllowNull, MaybeNull]
     private Kernel Kernel => field ??= services.GetRequiredService<Kernel>();
-    [field: AllowNull, MaybeNull]
     private IChatCompletionService ChatCompletionService => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
-    [field: AllowNull, MaybeNull]
     private IPromptHelpers PromptHelpers => field ??= services.GetRequiredService<IPromptHelpers>();
-    [field: AllowNull, MaybeNull]
     private IChatDialogFormatter ChatDialogFormatter => field ??= services.GetRequiredService<IChatDialogFormatter>();
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= services.LogFor(GetType());
-    [field: AllowNull, MaybeNull]
     private string PromptTemplate => field ??= File.ReadAllText(Settings.PromptFile).Trim();
 
     public async Task<ThreadInsight> GetInsight(

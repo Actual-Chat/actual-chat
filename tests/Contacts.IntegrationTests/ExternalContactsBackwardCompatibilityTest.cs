@@ -45,18 +45,18 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
         var mExternalContactList = RpcMethodDef.ComposeFullName(nameof(IExternalContacts), "List");
 
         var r = serviceRegistry.GetServerMethodResolver(new VersionSet($"Api={ApiConstants.VersionString}"));
-        Out.WriteLine(r.ToString());
+        WriteLine(r.ToString());
         r.MethodByFullName.Should().BeNull();
 
         var testedVersions = new[] { "", "Api=1.5", "Api=1.10", "Api=1.10.0.0" };
         foreach (var version in testedVersions) {
             r = serviceRegistry.GetServerMethodResolver(new VersionSet(version));
-            Out.WriteLine(r.ToString());
+            WriteLine(r.ToString());
             r.MethodByFullName.SingleOrDefault(x => x.Key == mExternalContactList).Should().NotBeNull();
         }
 
         r = serviceRegistry.GetServerMethodResolver(new VersionSet("Api=1.11"));
-        Out.WriteLine(r.ToString());
+        WriteLine(r.ToString());
         (r.MethodByFullName?.SingleOrDefault(x => x.Key == mExternalContactList) ?? null).Should().BeNull();
     }
 

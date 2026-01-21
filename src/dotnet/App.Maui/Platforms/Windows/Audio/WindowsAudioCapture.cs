@@ -64,7 +64,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
             * Constants.Audio.ApmFrameDurationMs
             * Constants.Audio.Channels;
 
-        var graphCreate = await AudioGraph.CreateAsync(settings).AsTask(cancellationToken);
+        var graphCreate = await AudioGraph.CreateAsync(settings).AsTask(cancellationToken).ConfigureAwait(true);
         if (graphCreate.Status != AudioGraphCreationStatus.Success || graphCreate.Graph is null) {
             apm.DisposeSilently();
             throw new InvalidOperationException($"AudioGraph creation failed: {graphCreate.Status}");
@@ -74,7 +74,8 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
 
         var inputCreate = await graph
             .CreateDeviceInputNodeAsync(MediaCategory.Other, micEncoding)
-            .AsTask(cancellationToken);
+            .AsTask(cancellationToken)
+            .ConfigureAwait(true);
         if (inputCreate.Status != AudioDeviceNodeCreationStatus.Success || inputCreate.DeviceInputNode is null) {
             // Unable to get microphone stream
             graph.DisposeSilently();

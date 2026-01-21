@@ -7,6 +7,7 @@
         searchCls += " on";
     var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
+    var isPanelVisible = IsRecordingHere || IsListeningHere || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
 }
 
 @if (m.HasSelection) {
@@ -18,7 +19,7 @@
 
 <div class="c-content">
     @if (IsLeftNavigateButtonVisible && showBackBtn) {
-        <HeaderButton Click="@OnOpenLeftPanelClick" Class="chat-header-back">
+        <HeaderButton Click="@OnOpenLeftPanelClick" Class="chat-header-back hideable">
             <i class="icon-arrow-left"></i>
         </HeaderButton>
     }
@@ -57,30 +58,72 @@
         }
     </div>
     @if (chat is not null) {
-        <div class="chat-header-control-panel">
-            <TranslationButton ChatId="@chat.Id"/>
-            @* @if (m.EnableIncompleteUI) { *@
-                @* <HeaderButton Click="@OnSearchClick" Class="@searchCls"> *@
-                    @* <i class="icon-ai-search"></i> *@
-                @* </HeaderButton> *@
-            @* } *@
-            @if (chat.Id.IsThread(out var threadChatId)) {
-                <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId" />
-            }
-            @if (IsRightNavigateButtonVisible) {
-                <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
-            }
-        </div>
+        <div class="chat-header-control-panel hideable">
+        @if (m.EnableIncompleteUI) {
+            <HeaderButton Click="@OnJoinVideoCallClick">
+                <i class="icon-monitor text-xl"></i>
+            </HeaderButton>
+            <HeaderButton Click="@OnShowVideoPanel">
+                <i class="icon-video text-xl"></i>
+            </HeaderButton>
+        }
+        <TranslationButton ChatId="@chat.Id"/>
+        @* @if (m.EnableIncompleteUI) { *@
+        @* <HeaderButton Click="@OnSearchClick" Class="@searchCls"> *@
+        @* <i class="icon-ai-search"></i> *@
+        @* </HeaderButton> *@
+        @* } *@
+        @if (chat.Id.IsThread(out var threadChatId)) {
+            <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>
+        }
+        @if (IsRightNavigateButtonVisible) {
+            <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
+        }
+    </div>
     }
 </div>
+@if (ScreenSize.IsNarrow() && isPanelVisible) {
+    <div class="header-activity-panel-wrapper">
+        <ChatActivityPanel Chat="@chat" MaxCount="3"/>
+    </div>
+}
+
+<VideoPanel Show="@_showVideoPanel"/>
 
 @code {
+    private bool _showVideoPanel;
+
+    private IChats Chats => Hub.Chats;
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private ChatId? RecordingChatId {
+        get {
+            var activeChats = ActiveChatsUI.ActiveChats.Value;
+            return activeChats.Length > 0 ? activeChats[0].ChatId : null;
+        }
+    }
+
+    private bool IsRecordingHere => Chat?.Id is not null && RecordingChatId == Chat.Id;
+    private bool IsUpdating => Chat?.Id is not null && State.Value?.Chat?.Id != Chat.Id;
+    private bool IsListeningHere => !IsUpdating && State is { Value.AudioState.IsListening: true } && State.Value.AudioState.ChatId == Chat?.Id;
+
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
     [Parameter] public string NoChatTitle { get; set; } = "Loading...";
+
+    protected override async Task OnParametersSetAsync() {
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = Chat?.Id is not null
+            ? await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None)
+            : null;
+        await base.OnParametersSetAsync();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -91,10 +134,27 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat?.Id;
+
+        Chat? chat = null;
+        ChatAudioState? audioState = null;
+        if (chatId is not null)
+            chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+
+        AuthorId[] authorIds = [];
+        if (ChatRecordingActivity != null)
+            authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+
+        if (chatId is not null)
+            audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new() {
+            Chat = chat,
+            AudioState = audioState,
+            IsAnyoneTalking = authorIds.Length > 0,
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
             EnableIncompleteUI = enableIncompleteUI,
@@ -127,11 +187,25 @@
     private void OnSearchClick()
         => Hub.PanelsUI.Right.SearchToggle();
 
+    private void OnShowVideoPanel() {
+        _showVideoPanel = !_showVideoPanel;
+        StateHasChanged();
+    }
+
+    private void OnJoinVideoCallClick() {
+        if (Chat != null) {
+            _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat));
+        }
+    }
+
     // Nested types
 
     public sealed record Model {
         public static readonly Model None = new ();
 
+        public Chat? Chat { get; init; }
+        public ChatAudioState? AudioState { get; init; }
+        public bool IsAnyoneTalking { get; init; }
         public bool HasSelection { get; init; }
         public bool IsSearchMode { get; init; }
         public bool EnableIncompleteUI { get; init; }

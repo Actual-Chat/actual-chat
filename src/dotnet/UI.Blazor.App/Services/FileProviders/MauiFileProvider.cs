@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Services;
 using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -12,10 +14,8 @@ public partial class MauiFileProvider : IFileProvider
     [DataMember, MemoryPackOrder(1)]
     public string FileRef { get; init; } = "";
 
-    private FileUploader Uploader => _services.GetRequiredService<FileUploader>();
-    [field: AllowNull, MaybeNull]
+    private ChunkedFileUploader ChunkedFileUploader => _services.GetRequiredService<ChunkedFileUploader>();
     private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().Create(FileRef);
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= _services.LogFor<MauiFileProvider>();
 
     public void Initialize(IServiceProvider services)
@@ -27,20 +27,15 @@ public partial class MauiFileProvider : IFileProvider
     public Task PrepareForSaving()
         => Impl.PrepareForSaving();
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode", Justification = "Upload doesn't use reflection.")]
-    public async Task<IFileUploadOperation> CreateUploadOperation(ChatId chatId)
+    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
     {
-        var stream = await OpenRead().ConfigureAwait(false);
-        if (stream is null)
-            throw new InvalidOperationException("No file access.");
-        var fileUploadOperation = Uploader.CreateUploadOperation(chatId, stream, Metadata.FileType, Metadata.FileName);
-        var task = fileUploadOperation.ProgressTracker.Task;
-        _ = task.ContinueWith(async _ => {
-            await task.SilentAwait(false);
-            // NOTE: dispose stream when upload completed or canceled.
-            await stream.DisposeSilentlyAsync().ConfigureAwait(false);
-        }, TaskScheduler.Default);
-        return fileUploadOperation;
+        return ChunkedFileUploader.UploadData(uploadId, GetFile(), progressTracker, ct);
+
+        async Task<Stream> GetFile()
+        {
+            var stream = await OpenRead().ConfigureAwait(false);
+            return stream ?? throw StandardError.Internal("No file access.");
+        }
     }
 
     public async Task<bool> CheckAccess()
@@ -58,6 +53,12 @@ public partial class MauiFileProvider : IFileProvider
             return false;
         }
     }
+
+    public Task WhenFileStreamReady()
+        => Task.CompletedTask;
+
+    public Task<bool> WhenUserConsentGranted()
+        => Task.FromResult(true);
 
     public Task ClearForRemoving()
         => Impl.ClearBeforeRemoving();

@@ -20,7 +20,6 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
     protected IThreadSafeLruCache<string, byte[]?> ReadCache { get; }
     protected BatchProcessor<string, byte[]?> Reader { get; }
     protected LazyWriter<(string Key, byte[]? Value)> Writer { get; }
-    [field: AllowNull, MaybeNull]
     protected ILogger Log => field ??= Services.LogFor(GetType());
 
     public Options Settings { get; }

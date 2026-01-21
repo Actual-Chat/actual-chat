@@ -2,11 +2,8 @@ namespace ActualChat.Chat;
 
 public class Translations(IServiceProvider services) : ITranslations
 {
-    [field: AllowNull, MaybeNull]
     private ITranslationsBackend Backend => field ??= services.GetRequiredService<ITranslationsBackend>();
-    [field: AllowNull, MaybeNull]
     private IChats Chats => field ??= services.GetRequiredService<IChats>();
-    [field: AllowNull, MaybeNull]
     private IChatEntryLanguagesBackend ChatEntryLanguagesBackend => field ??= services.GetRequiredService<IChatEntryLanguagesBackend>();
 
     [Obsolete("2025.08: Use Get with translateIfMissing flag instead.")]

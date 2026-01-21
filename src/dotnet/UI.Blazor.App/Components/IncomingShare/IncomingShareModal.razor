@@ -64,10 +64,8 @@
     private string _comment = "";
 
     private SendingMessages SendingMessages => Hub.SendingMessages;
-    [field: AllowNull, MaybeNull]
     private ILogger Log => field ??= Hub.LogFor(GetType());
-    [field: AllowNull, MaybeNull]
-    private VisualMediaDimensions VisualMediaDimensions => field ??= new VisualMediaDimensions(Hub.JS);
+    private VisualMediaDimensions VisualMediaDimensions => field ??= new VisualMediaDimensions(Hub.JS, Hub.LogFor<VisualMediaDimensions>());
 
     private ImmutableHashSet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
@@ -176,7 +174,14 @@
                 width = dimensions.width;
                 height = dimensions.height;
             }
-            var attachment = new Attachment(fileMetadata.FileName, fileMetadata.FileType, fileMetadata.Length, previewUrl, width, height) {
+            var attachment = new Attachment(
+                fileMetadata.FileName,
+                fileMetadata.FileType,
+                fileMetadata.Length,
+                width,
+                height,
+                Task.FromResult(true),
+                Task.FromResult(previewUrl)) {
                 FileProvider = fileProvider,
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));

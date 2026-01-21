@@ -6,7 +6,6 @@ namespace ActualChat.UI.Blazor.App;
 
 public sealed class WebApp : AppBase
 {
-    [field: AllowNull, MaybeNull]
     private AppNonScopedServiceStarter AppNonScopedServiceStarter
         => field ??= Services.GetRequiredService<AppNonScopedServiceStarter>();
 

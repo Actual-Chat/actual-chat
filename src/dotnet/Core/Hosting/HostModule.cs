@@ -12,11 +12,8 @@ public interface IBlazorUIModule
 public abstract class HostModule(IServiceProvider moduleServices)
 {
     public IServiceProvider ModuleServices { get; } = moduleServices;
-    [field: AllowNull, MaybeNull]
     public HostInfo HostInfo => field ??= ModuleServices.HostInfo();
-    [field: AllowNull, MaybeNull]
     public IConfiguration Cfg => field ??= ModuleServices.Configuration();
-    [field: AllowNull, MaybeNull]
     public ILogger Log => field ??= ModuleServices.LogFor(GetType());
 
     public ModuleHost Host { get; private set; } = null!;
@@ -43,7 +40,6 @@ public abstract class HostModule<
     ) : HostModule(moduleServices)
     where TSettings : class, new()
 {
-    [field: AllowNull, MaybeNull]
     public TSettings Settings => field ??= GetSettings();
 
     protected virtual TSettings GetSettings()

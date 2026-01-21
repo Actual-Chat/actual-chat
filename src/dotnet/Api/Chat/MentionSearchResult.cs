@@ -10,7 +10,6 @@ public partial class MentionSearchResult : SearchResult
     public Picture Picture { get; }
 
     [IgnoreDataMember, MemoryPackIgnore]
-    [field: AllowNull, MaybeNull]
     public MentionId MentionId => field ??= MentionId.Parse(Id);
 
     public MentionSearchResult(MentionId id, SearchMatch searchMatch, Picture picture)
