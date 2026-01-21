@@ -125,12 +125,12 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<ServerAuth>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
         }
-        if (rpcHost.IsApiHost || usesAuthBackendImpl)
-            services.AddSingleton<UserNamer>(); // Used by AuthBackend
         if (usesAuthBackendImpl) {
             services.AddSingleton(_ => new AuthBackend.Options {
                 MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
             });
+
+            services.AddSingleton<UserNamer>(); // Used by AuthBackend
 
             // Session trimmer
             services.AddSingleton(_ => new DbSessionInfoTrimmer.Options {
