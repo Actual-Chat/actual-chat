@@ -52,6 +52,7 @@
     <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.5.0.3" />
     <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.5.0.3" />
     <PackageVersion Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.8.9" />
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Common" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Common.Java8" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Runtime" Version="$(XamarinAndroidLifecycle)" />
     <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Runtime.Ktx" Version="$(XamarinAndroidLifecycle)" />
