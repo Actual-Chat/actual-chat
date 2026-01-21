@@ -5,7 +5,7 @@ using Serilog.Events;
 using Serilog.Formatting;
 using Serilog.Formatting.Display;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.Maui;
 
 public class AndroidFirebaseCrashlyticsSink : ILogEventSink
 {

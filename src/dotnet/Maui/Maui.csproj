@@ -93,6 +93,10 @@
     <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
     <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
   </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <PackageReference Include="Serilog.Sinks.Debug" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />

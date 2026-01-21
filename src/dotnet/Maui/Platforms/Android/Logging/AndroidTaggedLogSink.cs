@@ -3,7 +3,7 @@ using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.Maui;
 
 // Writes events to Android.Util.Log.
 public class AndroidTaggedLogSink(string tag, ITextFormatter textFormatter) : ILogEventSink

@@ -5,7 +5,7 @@ using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.Maui;
 
 // Writes events to OSLog.
 public class AppleUnifiedLogSink(ITextFormatter textFormatter) : ILogEventSink, IDisposable

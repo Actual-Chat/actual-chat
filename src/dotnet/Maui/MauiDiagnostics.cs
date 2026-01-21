@@ -1,5 +1,3 @@
-// using ActualChat.App.Maui.Logging; // TODO(Frol): uncomment when you fix the underlying issue
-using ActualChat.App.Maui;
 using ActualChat.Audio.WebM;
 using ActualChat.Logging;
 using ActualChat.Maui.Sentry;
