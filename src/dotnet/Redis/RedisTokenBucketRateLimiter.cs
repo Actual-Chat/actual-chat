@@ -87,6 +87,12 @@ public class RedisTokenBucketRateLimiter(RedisDb redisDb, RedisTokenBucketRateLi
         return new AcquireResult(false, TimeSpan.FromMilliseconds(retryAfter.TotalMilliseconds));
     }
 
+    public async Task DeleteKey(CancellationToken cancellationToken = default)
+    {
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        await database.KeyDeleteAsync(options.Key).ConfigureAwait(false);
+    }
+
     public record AcquireResult(bool IsAcquired, TimeSpan RetryAfter)
     {
         public static readonly AcquireResult Success = new (true, TimeSpan.Zero);
