@@ -6,6 +6,11 @@ import { RecordingService, type RecordingConfig, type RecordingState } from '../
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPanel');
 
+export interface VideoDevice {
+    deviceId: string;
+    label: string;
+}
+
 export class VideoPanel {
     private blazorRef: DotNet.DotNetObject;
     private readonly videoPanel: HTMLElement;
@@ -20,6 +25,7 @@ export class VideoPanel {
     private recordingService: RecordingService | null = null;
     private isRecording = false;
     private animationFrameId: number | null = null;
+    private selectedCameraDeviceId: string | null = null;
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
@@ -70,6 +76,38 @@ export class VideoPanel {
     }
 
     /**
+     * Enumerate available video devices
+     */
+    public async enumerateVideoDevices(): Promise<VideoDevice[]> {
+        try {
+            // Request permission if not already granted
+            await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices
+                .filter(device => device.kind === 'videoinput')
+                .map(device => ({
+                    deviceId: device.deviceId,
+                    label: device.label || `Camera ${device.deviceId.slice(0, 8)}`
+                }));
+
+            infoLog?.log('Enumerated video devices:', videoDevices);
+            return videoDevices;
+        } catch (error) {
+            errorLog?.log('Failed to enumerate video devices:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Set the selected camera device
+     */
+    public setSelectedCamera(deviceId: string): void {
+        this.selectedCameraDeviceId = deviceId;
+        infoLog?.log('Selected camera device:', deviceId);
+    }
+
+    /**
      * Initialize and start video recording
      */
     public async startRecording(): Promise<void> {
@@ -93,6 +131,7 @@ export class VideoPanel {
                 latency: 0,
                 jitter: 0,
                 packetLoss: 0,
+                cameraDeviceId: this.selectedCameraDeviceId || undefined,
             };
 
             this.recordingService = new RecordingService(config);
