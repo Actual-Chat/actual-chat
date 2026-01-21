@@ -1,11 +1,10 @@
 using System.Security.Claims;
 using ActualChat.Users.Module;
-using ActualLab.Fusion.Authentication.Services;
 
 namespace ActualChat.Users.Db;
 
-public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceProvider services)
-    : DbUserRepo<UsersDbContext, DbUser, string>(options, services)
+public class DbUserRepo(AuthBackend.Options options, IServiceProvider services)
+    : DbUserRepoBase<DbUser, string>(options, services)
 {
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
 

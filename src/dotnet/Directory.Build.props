@@ -62,8 +62,8 @@
     <Using Include="ActualLab.Text" />
     <Using Include="ActualLab.Time" />
     <Using Include="ActualLab.Fusion" />
-    <Using Include="ActualLab.Fusion.Authentication" />
     <Using Include="ActualLab.Fusion.Operations" />
+    <Using Include="ActualChat.Users" />
     <Using Include="ActualLab.CommandR" />
     <Using Include="ActualLab.CommandR.Configuration" />
     <Using Include="ActualLab.CommandR.Commands" />

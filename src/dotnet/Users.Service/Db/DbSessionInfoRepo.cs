@@ -1,6 +1,4 @@
-﻿using ActualLab.Fusion.Authentication.Services;
-
 namespace ActualChat.Users.Db;
 
-public class DbSessionInfoRepo(DbAuthService<UsersDbContext>.Options settings, IServiceProvider services)
-    : DbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>(settings, services);
+public class DbSessionInfoRepo(AuthBackend.Options settings, IServiceProvider services)
+    : DbSessionInfoRepoBase<DbSessionInfo, string>(settings, services);

@@ -11,7 +11,7 @@ using ActualChat.Users.Flows;
 using ActualChat.Users.Models;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Phone.Internal;
-using ActualLab.Fusion.Authentication.Services;
+using ActualChat.Users.Services;
 using ActualLab.Fusion.Server;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -30,7 +30,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IAccountsBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IAccountsBackend>() is ServiceMode.Client;
         var rpc = rpcHost.Rpc;
         var commander = rpcHost.Commander;
         var fusion = rpcHost.Fusion;
@@ -115,9 +115,38 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ISecureTokens, SecureTokens>();
         services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>(); // Used by HttpSessionExt, server-side logic in AppBase, etc.
 
-        // IAuth
-        if (rpcHost.IsApiHost)
-            rpc.Configure<IAuth>().IsServer(typeof(IAuth)); // IAuth is registered below
+        // Auth and supporting services
+        rpcHost.AddLocalApi<IAuth, Auth>();
+        rpcHost.AddBackend<IAuthBackend, AuthBackend>();
+        commander.AddService<AuthCommandFilters>();
+
+        var usesAuthBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<IAuthBackend>().UsesImplementation();
+        if (rpcHost.IsApiHost) {
+            services.AddSingleton<ServerAuth>(); // Used by ApiHost-s
+            services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
+        }
+        if (rpcHost.IsApiHost || usesAuthBackendImpl)
+            services.AddSingleton<UserNamer>(); // Used by Auth and AuthBackend command filters
+        if (usesAuthBackendImpl) {
+            commander.AddService<AuthBackendCommandFilters>();
+            services.AddSingleton(_ => new AuthBackend.Options {
+                MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
+            });
+
+            // Session trimmer
+            services.AddSingleton(_ => new DbSessionInfoTrimmer.Options {
+                MaxSessionAge = TimeSpan.FromDays(180),
+            });
+            services.AddSingleton<DbSessionInfoTrimmer>()
+                .AddHostedService(c => c.GetRequiredService<DbSessionInfoTrimmer>());
+
+            // DbSessionInfoRepo
+            services.AddSingleton<DbSessionInfoRepo>();
+            services.AddAlias<IDbSessionInfoRepo<DbSessionInfo, string>, DbSessionInfoRepo>();
+            // DbUserRepo
+            services.AddSingleton<DbUserRepo>();
+            services.AddAlias<IDbUserRepo<DbUser, string>, DbUserRepo>();
+        }
 
         // Accounts
         rpcHost.AddLocalApi<IAccounts, Accounts>(); // Used by Chats, etc.
@@ -225,31 +254,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<ITextMessageSender, SMSToTextMessageSender>();
         }
 
-        // IAuth & IAuthBackend
-        fusion.AddDbAuthService<UsersDbContext, DbSessionInfo, DbUser, string>(auth => {
-            auth.ConfigureAuthService(_ => new() {
-                MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
-            });
-            auth.ConfigureSessionInfoTrimmer(_ => new DbSessionInfoTrimmer<UsersDbContext>.Options {
-                MaxSessionAge = TimeSpan.FromDays(180),
-            });
-        });
-        services.AddSingleton<UserNamer>();
-        services.AddSingleton<ClaimMapper>();
-        commander.AddService<AuthCommandFilters>();
-        commander.AddService<AuthBackendCommandFilters>();
-
-        // DbSessionInfoRepo replacement
-        services.AddSingleton<DbSessionInfoRepo>();
-        services.AddAlias<IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>, DbSessionInfoRepo>();
-        // DbUserRepo replacement
-        services.AddSingleton<DbUserRepo>();
-        services.AddAlias<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>();
-
-        // ServerAuth - we use it instead of Fusion's ServerAuthHelper.
-        // Fusion's service is scoped due to SessionResolver dependency, but ServerAuth doesn't have one.
-        services.AddSingleton<ServerAuth>();
-
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<UsersDbContext>(services);
@@ -258,9 +262,12 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, db => {
-            // Overriding / adding extra DbAuthentication services
+            // Auth-related services
             services.AddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             db.AddEntityConverter<DbSessionInfo, SessionInfo, DbSessionInfoConverter>();
+            db.AddEntityConverter<DbUser, User, DbUserConverter>();
+            db.AddEntityResolver<string, DbSessionInfo>();
+            db.AddEntityResolver<string, DbUser>();
             db.AddEntityResolver<string, DbUserIdentity<string>>();
             db.AddEntityResolver<string, DbKvasEntry>();
             db.AddEntityResolver<string, DbAccount>();

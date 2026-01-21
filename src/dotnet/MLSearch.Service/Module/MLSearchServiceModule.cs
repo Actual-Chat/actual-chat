@@ -38,7 +38,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices)
 
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<ISearchBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<ISearchBackend>() is ServiceMode.Client;
 
         rpcHost.AddApi<ISearch, Search>();
         rpcHost.AddApi<IMLSearch, MLSearchImpl>();

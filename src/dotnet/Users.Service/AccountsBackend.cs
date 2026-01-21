@@ -30,8 +30,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     {
         ArgumentNullException.ThrowIfNull(userId);
 
-        // We _must_ have a dependency on AuthBackend.GetUser here
-        var user = await AuthBackend.GetUser(DbShard.Single, userId.Value, cancellationToken).ConfigureAwait(false);
+        // We _must_ have a dependency on SessionsBackend.GetUser here
+        var user = await AuthBackend.GetUser(userId.Value, cancellationToken).ConfigureAwait(false);
         AccountFull? account;
         if (user == null) {
             account = GetGuestAccount(userId);

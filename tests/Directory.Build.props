@@ -93,7 +93,7 @@
     <Using Include="ActualLab.Text" />
     <Using Include="ActualLab.Time" />
     <Using Include="ActualLab.Fusion" />
-    <Using Include="ActualLab.Fusion.Authentication" />
+    <Using Include="ActualChat.Users" />
     <Using Include="ActualLab.Fusion.Operations" />
     <Using Include="ActualLab.Fusion.Testing" />
     <Using Include="ActualLab.CommandR" />

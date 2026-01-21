@@ -29,7 +29,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
     [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Fine for Fusion")]
     protected override void InjectServices(IServiceCollection services)
     {
-        var fusion = services.AddFusion().AddAuthClient();
+        var fusion = services.AddFusion();
         var rpc = fusion.Rpc;
 
         // Fusion & RestEase client
@@ -82,6 +82,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
 
         // Users
         rpc.AddClient<ISecureTokens>();
+        fusion.AddClient<IAuth>();
         fusion.AddClient<ISystemProperties>();
         fusion.AddClient<IMobileSessions>();
         if (HostInfo.HostKind.IsMauiApp())

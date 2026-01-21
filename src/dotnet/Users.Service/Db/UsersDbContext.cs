@@ -1,6 +1,5 @@
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
-using ActualLab.Fusion.Authentication.Services;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Fusion.EntityFramework.Operations;
 

@@ -27,7 +27,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IStreamingBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IStreamingBackend>() is ServiceMode.Client;
 
         // SignalR hub
         if (rpcHost.IsApiHost) {

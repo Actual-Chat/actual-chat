@@ -3,7 +3,6 @@ using ActualChat.Hashing;
 using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
-using ActualLab.Fusion.Authentication.Services;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Redis;
 using StackExchange.Redis;
@@ -21,7 +20,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     private TotpCodes Totps { get; }
     private TotpSecrets TotpSecrets { get; }
     private RedisDb<UsersDbContext> RedisDb { get; }
-    private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
+    private IDbUserRepo<DbUser, string> DbUsers { get; }
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
     private IDbEntityConverter<DbUser, User> UserConverter => field ??= Services.DbEntityConverter<DbUser, User>();
@@ -34,7 +33,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         Totps = services.GetRequiredService<TotpCodes>();
         TotpSecrets = services.GetRequiredService<TotpSecrets>();
         RedisDb = services.GetRequiredService<RedisDb<UsersDbContext>>();
-        DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
+        DbUsers = services.GetRequiredService<IDbUserRepo<DbUser, string>>();
         _blockedPhonePrefixes = new Lazy<string[]>(()
             => Settings.BlockedPhonePrefixes.Split([';', ','], StringSplitOptions.RemoveEmptyEntries));
     }
@@ -125,10 +124,9 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         // NOTE(AY): Add backend, implement IApiCommand
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
             var userId = context.Operation.Items.KeylessGet<UserId>();
             if (userId is not null)
-                _ = AuthBackend.GetUser(DbShard.Single, userId.Value, cancellationToken);
+                _ = AuthBackend.GetUser(userId.Value, cancellationToken);
             return default;
         }
 

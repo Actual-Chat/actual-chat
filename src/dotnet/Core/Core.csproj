@@ -26,7 +26,6 @@
     <PackageReference Include="ActualLab.Rpc" />
     <PackageReference Include="ActualLab.CommandR" />
     <PackageReference Include="ActualLab.Fusion" />
-    <PackageReference Include="ActualLab.Fusion.Ext.Contracts" />
   </ItemGroup>
 
 </Project>
