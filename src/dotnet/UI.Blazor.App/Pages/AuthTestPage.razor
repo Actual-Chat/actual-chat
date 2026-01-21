@@ -64,51 +64,10 @@
     </div>
 }
 
-@if (m.Sessions.Count != 0) {
-    <h3 class="section">Sessions:</h3>
-    <div>
-        <table class="table table-sm">
-            <thead>
-            <tr>
-                <th scope="col">SessionHash</th>
-                <th scope="col">IP</th>
-                <th scope="col">Browser</th>
-                <th scope="col">Created</th>
-                <th scope="col">Last Seen</th>
-                <th scope="col">Version</th>
-                <th scope="col"></th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var session in m.Sessions) {
-                <tr @key="@session.SessionHash">
-                    <td>@session.SessionHash</td>
-                    <td>@session.IPAddress</td>
-                    <td>@session.UserAgent</td>
-                    <td>@session.Created</td>
-                    <td>@session.LastSeen</td>
-                    <td>@session.Version.ToString()</td>
-                    <td>
-                        @if (session.IsCurrent) {
-                            <span>Current</span>
-                        } else {
-                            <Button
-                                Class="btn btn-sm"
-                                Click="@(_ => AccountUI.Kick(Session, session.SessionHash))">Kick</Button>
-                        }
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
-}
-
 @if (m.User.IsAuthenticated()) {
     <h3 class="section">Sign out</h3>
     <FormButtons IsEndAligned="false">
         <Button Click="@(_ => AccountUI.SignOut())">Sign out</Button>
-        <Button Click="@(_ => AccountUI.SignOutEverywhere())">Sign out everywhere</Button>
         @if (unusedAuthSchemas.Length != 0) {
             <span> or add account: </span>
             @foreach (var (name, displayName) in unusedAuthSchemas) {
@@ -124,50 +83,22 @@
 @code {
     private IAuth Auth => field ??= Hub.Services.GetRequiredService<IAuth>();
     private IAccounts Accounts => Hub.Accounts;
-    private LiveTime LiveTime => Hub.LiveTime;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken).ConfigureAwait(false);
         var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-        var sessions = await Auth.GetUserSessions(Session, cancellationToken).ConfigureAwait(false);
-        var sessionList = new List<SessionModel>();
-
-        foreach (var session in sessions) {
-            var model = new SessionModel {
-                SessionHash = session.SessionHash,
-                IPAddress = session.IPAddress,
-                UserAgent = session.UserAgent,
-                Created = await LiveTime.GetDeltaText(session.CreatedAt, cancellationToken).ConfigureAwait(false),
-                LastSeen = await LiveTime.GetDeltaText(session.LastSeenAt, cancellationToken).ConfigureAwait(false),
-                Version = session.Version,
-                IsCurrent = Session.Hash == session.SessionHash,
-            };
-            sessionList.Add(model);
-        }
         return new() {
             SessionInfo = sessionInfo,
             Account = account,
-            Sessions = sessionList.ToImmutableList(),
         };
     }
 
     // Nested types
 
-    public sealed record SessionModel {
-        public string SessionHash { get; init; } = "";
-        public string IPAddress { get; init; } = "";
-        public string UserAgent { get; init; } = "";
-        public string Created { get; init; } = "";
-        public string LastSeen { get; init; } = "";
-        public long Version { get; init; }
-        public bool IsCurrent { get; init; }
-    }
-
     public sealed record Model {
         public SessionInfo? SessionInfo { get; init; }
         public AccountFull Account { get; init; } = null!;
         public User User => Account.User;
-        public ImmutableList<SessionModel> Sessions { get; init; } = ImmutableList<SessionModel>.Empty;
 
         // This record relies on referential equality
         public bool Equals(Model? other) => ReferenceEquals(this, other);

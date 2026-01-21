@@ -26,7 +26,7 @@ public class BlazorTester : TestContext, IWebTester
     public ITranslations Translations => field ??= AppServices.GetRequiredService<ITranslations>();
     public IPlaces Places => field ??= AppServices.GetRequiredService<IPlaces>();
     public ISearch Search => field ??= AppServices.GetRequiredService<ISearch>();
-    public IAuthBackend AuthBackend => field ??= AppServices.GetRequiredService<IAuthBackend>();
+    public ISessionsBackend SessionsBackend => field ??= AppServices.GetRequiredService<ISessionsBackend>();
     public INotificationsBackend NotificationsBackend  => field ??= AppServices.GetRequiredService<INotificationsBackend>();
     public AccountSettings AccountSettings => field ??= ScopedAppServices.AccountSettings();
     public Session Session { get; }

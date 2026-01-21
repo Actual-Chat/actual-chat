@@ -22,8 +22,8 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
             : "";
 
         var session = Session.New();
-        var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress, userAgent);
-        await Commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
+        var upsertSessionCmd = new SessionsBackend_Upsert(session, ipAddress, userAgent);
+        await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
         return session;
     }
 

@@ -7,6 +7,8 @@ public interface IAccountsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 10)]
+    Task<User?> GetUser(string userId, CancellationToken cancellationToken = default);
     [ComputeMethod]
     Task<UserId?> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
     [ComputeMethod]
@@ -26,14 +28,29 @@ public interface IAccountsBackend : IComputeService, IBackendService
     // Commands
 
     [CommandHandler]
-    public Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);
+    Task OnSignIn(AccountsBackend_SignIn command, CancellationToken cancellationToken = default);
     [CommandHandler]
-    public Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken);
+    Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken);
 
     // Events
 
     [EventHandler]
     Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken);
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+// ReSharper disable once InconsistentNaming
+public sealed partial record AccountsBackend_SignIn(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] User User,
+    [property: DataMember, MemoryPackOrder(2)] UserIdentity AuthenticatedIdentity
+) : ISessionCommand<Unit>, IBackendCommand
+{
+    public AccountsBackend_SignIn(Session session, User user)
+        : this(session, user, user.Identities.Single().Key) { }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

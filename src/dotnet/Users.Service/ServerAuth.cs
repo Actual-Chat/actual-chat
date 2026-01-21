@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using System.Text;
-using ActualChat.Hashing;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Http;
 using ActualLab.Fusion.Server.Authentication;
@@ -102,9 +100,7 @@ public sealed class ServerAuth
     }
 
     public async Task UpdateAuthState(
-        Session session,
-        HttpContext httpContext,
-        bool assumeAllowed,
+        Session session, HttpContext httpContext, bool assumeAllowed,
         CancellationToken cancellationToken)
     {
         var httpUser = httpContext.User;
@@ -116,18 +112,19 @@ public sealed class ServerAuth
             ? userAgentValues.FirstOrDefault() ?? ""
             : "";
 
-        var sessionInfo = await GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var mustSetupSession =
             sessionInfo == null
             || !OrdinalEquals(sessionInfo.IPAddress, ipAddress)
             || !OrdinalEquals(sessionInfo.UserAgent, userAgent)
             || sessionInfo.LastSeenAt + SessionInfoUpdatePeriod < Clocks.SystemClock.Now;
-        if (mustSetupSession || sessionInfo == null)
-            sessionInfo = await SetupSession(session, sessionInfo, ipAddress, userAgent, cancellationToken)
-                .ConfigureAwait(false);
+        if (mustSetupSession || sessionInfo == null) {
+            var upsertSessionCmd = new SessionsBackend_Upsert(session, ipAddress, userAgent);
+            await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
+        }
 
-        var user = await GetUser(session, sessionInfo, cancellationToken).ConfigureAwait(false);
-        var isSignedIn = IsSignedIn(user);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var isSignedIn = user?.IsAuthenticated() == true;
         try {
             if (httpIsSignedIn) {
                 if (isSignedIn && IsSameUser(user, httpUser, httpAuthenticationSchema))
@@ -139,67 +136,35 @@ public sealed class ServerAuth
                 if (!isSignInAllowed)
                     return; // Sign-in or user change is not allowed for the current location
 
-                await SignIn(session, sessionInfo, user, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
+                await SignIn(session, user, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
             }
             else if (isSignedIn && (assumeAllowed || AllowSignOut(this, httpContext)))
-                await SignOut(session, sessionInfo, cancellationToken).ConfigureAwait(false);
+                await SignOut(session, cancellationToken).ConfigureAwait(false);
         }
         finally {
             // This should be done once important things are completed
-            await UpdatePresence(session, sessionInfo, cancellationToken).ConfigureAwait(false);
+            _ = Auth.UpdatePresence(session, CancellationToken.None);
         }
     }
 
     // Private methods
 
-    private Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken)
-        => Auth.GetSessionInfo(session, cancellationToken);
-
-    private Task<User?> GetUser(
-        Session session, SessionInfo sessionInfo,
-        CancellationToken cancellationToken)
-        => Auth.GetUser(session, cancellationToken);
-
-    private Task<SessionInfo> SetupSession(
-        Session session, SessionInfo? sessionInfo, string ipAddress, string userAgent,
-        CancellationToken cancellationToken)
-    {
-        var setupSessionCommand = new AuthBackend_SetupSession(session, ipAddress, userAgent);
-        return Commander.Call(setupSessionCommand, true, cancellationToken);
-    }
-
     private async Task SignIn(
-        Session session,
-        SessionInfo sessionInfo,
-        User? user,
-        ClaimsPrincipal httpUser,
-        string httpAuthenticationSchema,
+        Session session, User? user, ClaimsPrincipal httpUser, string httpAuthenticationSchema,
         CancellationToken cancellationToken)
     {
         var (newUser, authenticatedIdentity) =
             await CreateOrUpdateUser(user, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
-        var signInCommand = new AuthBackend_SignIn(session, newUser, authenticatedIdentity);
+
+        var signInCommand = new AccountsBackend_SignIn(session, newUser, authenticatedIdentity);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task SignOut(
-        Session session, SessionInfo sessionInfo,
-        CancellationToken cancellationToken)
+    private Task SignOut(Session session, CancellationToken cancellationToken)
     {
-        var signOutCommand = new AuthBackend_SignOut(session);
+        var signOutCommand = new SessionsBackend_SignOut(session);
         return Commander.Call(signOutCommand, true, cancellationToken);
     }
-
-    private Task UpdatePresence(
-        Session session, SessionInfo sessionInfo,
-        CancellationToken cancellationToken)
-    {
-        _ = Auth.UpdatePresence(session, CancellationToken.None);
-        return Task.CompletedTask;
-    }
-
-    private static bool IsSignedIn(User? user)
-        => user?.IsAuthenticated() == true;
 
     private bool IsSameUser(User? user, ClaimsPrincipal httpUser, string schema)
     {
@@ -213,7 +178,9 @@ public sealed class ServerAuth
         return user.Identities.ContainsKey(identity);
     }
 
-    private async Task<(User User, UserIdentity AuthenticatedIdentity)> CreateOrUpdateUser(User? user, ClaimsPrincipal httpUser, string schema, CancellationToken cancellationToken)
+    private async Task<(User User, UserIdentity AuthenticatedIdentity)> CreateOrUpdateUser(
+        User? user, ClaimsPrincipal httpUser, string schema,
+        CancellationToken cancellationToken)
     {
         var (newUser, userIdentity) = BaseCreateOrUpdateUser(user, httpUser, schema);
         var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value, StringComparer.Ordinal);

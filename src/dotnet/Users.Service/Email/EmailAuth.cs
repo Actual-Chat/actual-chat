@@ -18,7 +18,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private IAuthBackend AuthBackend { get; } = services.GetRequiredService<IAuthBackend>();
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
@@ -96,7 +96,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return false;
 
         var user = new User(Symbol.Empty, string.Empty).WithEmail(email);
-        var signInCommand = new AuthBackend_SignIn(session, user, user.GetEmailIdentity());
+        var signInCommand = new AccountsBackend_SignIn(session, user, user.GetEmailIdentity());
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -108,7 +108,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (Invalidation.IsActive) {
             var userId = context.Operation.Items.KeylessGet<UserId>();
             if (userId is not null)
-                _ = AuthBackend.GetUser(userId.Value, cancellationToken);
+                _ = AccountsBackend.GetUser(userId.Value, cancellationToken);
             return default;
         }
 

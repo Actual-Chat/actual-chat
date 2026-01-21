@@ -22,7 +22,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     private RedisDb<UsersDbContext> RedisDb { get; }
     private DbUserRepo DbUsers { get; }
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
-    private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
+    private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
 
     public PhoneAuth(IServiceProvider services) : base(services)
     {
@@ -112,7 +112,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
             return false;
 
         var user = new User(Symbol.Empty, string.Empty).WithPhone(phone);
-        var signInCommand = new AuthBackend_SignIn(session, user, user.GetPhoneIdentity());
+        var signInCommand = new AccountsBackend_SignIn(session, user, user.GetPhoneIdentity());
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -125,7 +125,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (Invalidation.IsActive) {
             var userId = context.Operation.Items.KeylessGet<UserId>();
             if (userId is not null)
-                _ = AuthBackend.GetUser(userId.Value, cancellationToken);
+                _ = AccountsBackend.GetUser(userId.Value, cancellationToken);
             return default;
         }
 

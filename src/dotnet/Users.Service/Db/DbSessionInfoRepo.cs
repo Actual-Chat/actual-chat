@@ -3,10 +3,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users.Db;
 
-public class DbSessionInfoRepo(
-    AuthBackend.Options settings,
-    IServiceProvider services
-    ) : DbServiceBase<UsersDbContext>(services)
+public class DbSessionInfoRepo(IServiceProvider services) : DbServiceBase<UsersDbContext>(services)
 {
     protected IDbEntityResolver<string, DbSessionInfo> SessionResolver { get; init; }
         = services.DbEntityResolver<string, DbSessionInfo>();

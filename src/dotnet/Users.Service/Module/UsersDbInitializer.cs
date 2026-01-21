@@ -148,7 +148,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
             user = user.WithPhone(ActualChat.Phone.Parse(userInfo.Phone));
         if (!userInfo.Email.IsNullOrEmpty())
             user = user.WithClaim(ClaimTypes.Email, userInfo.Email);
-        var signInCommand = new AuthBackend_SignIn(session, user, userIdentity);
+        var signInCommand = new AccountsBackend_SignIn(session, user, userIdentity);
         await commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
 
         // Fetch its account
