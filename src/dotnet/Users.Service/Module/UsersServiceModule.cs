@@ -257,7 +257,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, db => {
             // Auth-related services
-            services.AddSingleton<DbUserIdHandler>();
             db.AddEntityResolver<string, DbSessionInfo>();
             db.AddEntityResolver<string, DbUser>(_ => new() {
                 QueryTransformer = query => query.Include(u => u.Identities),

@@ -10,16 +10,10 @@ public class DbUserRepo(
     IServiceProvider services
     ) : DbServiceBase<UsersDbContext>(services)
 {
-    protected AuthBackend.Options Settings { get; init; } = settings;
-
-    private DbUserIdHandler DbUserIdHandler { get; init; }
-        = services.GetRequiredService<DbUserIdHandler>();
     private IDbEntityResolver<string, DbUser> UserResolver { get; init; }
         = services.DbEntityResolver<string, DbUser>();
 
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
-
-    public Type UserEntityType => typeof(DbUser);
 
     // Write methods
 
@@ -27,11 +21,8 @@ public class DbUserRepo(
         UsersDbContext dbContext, User user, CancellationToken cancellationToken = default)
     {
         // Creating "base" dbUser
-        var id = DbUserIdHandler.Parse(user.Id, true);
-        if (id.IsNullOrEmpty())
-            id = UserId.New().Value;
         var dbUser = new DbUser() {
-            Id = id,
+            Id = user.Id.NullIfEmpty() ?? UserId.New().Value,
             Version = VersionGenerator.NextVersion(),
             Name = user.Name,
             Claims = user.Claims.ToImmutableDictionary(StringComparer.Ordinal),
@@ -82,10 +73,9 @@ public class DbUserRepo(
     public virtual async Task<(DbUser DbUser, bool IsCreated)> GetOrCreateOnSignIn(
         UsersDbContext dbContext, User user, CancellationToken cancellationToken = default)
     {
-        var dbUserId = DbUserIdHandler.Parse(user.Id, true);
         DbUser? dbUser;
-        if (!dbUserId.IsNullOrEmpty()) {
-            dbUser = await Get(dbContext, dbUserId, false, cancellationToken).ConfigureAwait(false);
+        if (!user.Id.IsNullOrEmpty()) {
+            dbUser = await Get(dbContext, user.Id, false, cancellationToken).ConfigureAwait(false);
             if (dbUser is not null)
                 return (dbUser, false);
         }
