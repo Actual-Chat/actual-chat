@@ -22,8 +22,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
-    private IDbUserRepo<DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<DbUser, string>>();
-    private IDbEntityConverter<DbUser, User> UserConverter => field ??= Services.DbEntityConverter<DbUser, User>();
+    private DbUserRepo DbUsers { get; } = services.GetRequiredService<DbUserRepo>();
 
     // [ComputeMethod]
     public virtual Task<string> ValidateCanSendToEmail(Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
@@ -137,7 +136,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Email has already been taken by another account.");
 
-        UserConverter.UpdateEntity(user, dbUser);
+        dbUser.UpdateFrom(user, VersionGenerator);
         context.Operation.Items.KeylessSet(account.Id);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

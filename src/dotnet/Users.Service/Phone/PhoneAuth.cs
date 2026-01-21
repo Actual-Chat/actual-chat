@@ -20,10 +20,9 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     private TotpCodes Totps { get; }
     private TotpSecrets TotpSecrets { get; }
     private RedisDb<UsersDbContext> RedisDb { get; }
-    private IDbUserRepo<DbUser, string> DbUsers { get; }
+    private DbUserRepo DbUsers { get; }
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
-    private IDbEntityConverter<DbUser, User> UserConverter => field ??= Services.DbEntityConverter<DbUser, User>();
 
     public PhoneAuth(IServiceProvider services) : base(services)
     {
@@ -33,7 +32,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         Totps = services.GetRequiredService<TotpCodes>();
         TotpSecrets = services.GetRequiredService<TotpSecrets>();
         RedisDb = services.GetRequiredService<RedisDb<UsersDbContext>>();
-        DbUsers = services.GetRequiredService<IDbUserRepo<DbUser, string>>();
+        DbUsers = services.GetRequiredService<DbUserRepo>();
         _blockedPhonePrefixes = new Lazy<string[]>(()
             => Settings.BlockedPhonePrefixes.Split([';', ','], StringSplitOptions.RemoveEmptyEntries));
     }
@@ -155,7 +154,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");
 
-        UserConverter.UpdateEntity(user, dbUser);
+        dbUser.UpdateFrom(user, VersionGenerator);
         context.Operation.Items.KeylessSet(account.Id);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -16,16 +16,12 @@ public class AuthBackend(
     }
 
     protected Options Settings { get; } = settings;
-    protected IDbUserIdHandler<string> UserIdHandler { get; init; }
-        = services.GetRequiredService<IDbUserIdHandler<string>>();
-    protected IDbUserRepo<DbUser, string> Users { get; init; }
-        = services.GetRequiredService<IDbUserRepo<DbUser, string>>();
-    protected IDbEntityConverter<DbUser, User> UserConverter { get; init; }
-        = services.DbEntityConverter<DbUser, User>();
-    protected IDbSessionInfoRepo<DbSessionInfo, string> Sessions { get; init; }
-        = services.GetRequiredService<IDbSessionInfoRepo<DbSessionInfo, string>>();
-    protected IDbEntityConverter<DbSessionInfo, SessionInfo> SessionConverter { get; init; }
-        = services.DbEntityConverter<DbSessionInfo, SessionInfo>();
+    protected DbUserIdHandler UserIdHandler { get; init; }
+        = services.GetRequiredService<DbUserIdHandler>();
+    protected DbUserRepo Users { get; init; }
+        = services.GetRequiredService<DbUserRepo>();
+    protected DbSessionInfoRepo Sessions { get; init; }
+        = services.GetRequiredService<DbSessionInfoRepo>();
     protected UserNamer UserNamer { get; } = services.GetRequiredService<UserNamer>();
 
     // Commands
@@ -83,9 +79,8 @@ public class AuthBackend(
         await using var _1 = dbContext.ConfigureAwait(false);
 
         var dbSessionInfo = await Sessions.GetOrCreate(dbContext, session.Id, cancellationToken).ConfigureAwait(false);
-        var sessionInfo = SessionConverter.ToModel(dbSessionInfo);
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-        if (sessionInfo is null || sessionInfo.IsSignOutForced)
+        var sessionInfo = dbSessionInfo.ToModel(Log);
+        if (sessionInfo.IsSignOutForced)
             return;
 
         context.Operation.Items.KeylessSet(sessionInfo);
@@ -185,8 +180,8 @@ public class AuthBackend(
         await using var _1 = dbContext.ConfigureAwait(false);
 
         var dbSessionInfo = await Sessions.GetOrCreate(dbContext, session.Id, cancellationToken).ConfigureAwait(false);
-        var sessionInfo = SessionConverter.ToModel(dbSessionInfo);
-        if (sessionInfo!.IsSignOutForced)
+        var sessionInfo = dbSessionInfo.ToModel(Log);
+        if (sessionInfo.IsSignOutForced)
             throw StandardError.Unauthorized("Session unavailable.");
 
         var isNewUser = false;
@@ -198,22 +193,22 @@ public class AuthBackend(
                 .GetOrCreateOnSignIn(dbContext, user, cancellationToken)
                 .ConfigureAwait(false);
             if (isNewUser == false) {
-                UserConverter.UpdateEntity(user, dbUser);
+                dbUser.UpdateFrom(user, VersionGenerator);
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
         }
         else {
             user = user with {
-                Id = UserIdHandler.Format(dbUser.Id)
+                Id = dbUser.Id ?? ""
             };
-            UserConverter.UpdateEntity(user, dbUser);
+            dbUser.UpdateFrom(user, VersionGenerator);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
         sessionInfo = sessionInfo with {
             LastSeenAt = Clocks.SystemClock.Now,
             AuthenticatedIdentity = authenticatedIdentity,
-            UserId = UserIdHandler.Format(dbUser.Id)
+            UserId = dbUser.Id ?? ""
         };
         await Sessions.Upsert(dbContext, session.Id, sessionInfo, cancellationToken).ConfigureAwait(false);
 
@@ -265,8 +260,8 @@ public class AuthBackend(
         var dbSessionInfo = await Sessions.Get(dbContext, session.Id, true, cancellationToken).ConfigureAwait(false);
         var isNew = dbSessionInfo is null;
         var now = Clocks.SystemClock.Now;
-        var sessionInfo = SessionConverter.ToModel(dbSessionInfo)
-            ?? SessionConverter.NewModel() with { SessionHash = session.Hash };
+        var sessionInfo = dbSessionInfo?.ToModel(Log)
+            ?? new SessionInfo(now) { SessionHash = session.Hash };
         sessionInfo = sessionInfo with {
             LastSeenAt = now,
             IPAddress = ipAddress.IsNullOrEmpty() ? sessionInfo.IPAddress : ipAddress,
@@ -276,7 +271,7 @@ public class AuthBackend(
         dbSessionInfo = await Sessions
             .Upsert(dbContext, session.Id, sessionInfo, cancellationToken)
             .ConfigureAwait(false);
-        sessionInfo = SessionConverter.ToModel(dbSessionInfo);
+        sessionInfo = dbSessionInfo.ToModel(Log);
         context.Operation.Items.KeylessSet(sessionInfo); // invSessionInfo
         context.Operation.Items.KeylessSet(isNew); // invIsNew
         return sessionInfo!;
@@ -298,9 +293,9 @@ public class AuthBackend(
         await using var _1 = dbContext.ConfigureAwait(false);
 
         var dbSessionInfo = await Sessions.Get(dbContext, session.Id, true, cancellationToken).ConfigureAwait(false);
-        var sessionInfo = SessionConverter.ToModel(dbSessionInfo);
-        if (sessionInfo is null)
+        if (dbSessionInfo is null)
             throw new KeyNotFoundException();
+        var sessionInfo = dbSessionInfo.ToModel(Log);
         VersionChecker.RequireExpected(sessionInfo.Version, expectedVersion);
         sessionInfo = sessionInfo with {
             LastSeenAt = Clocks.SystemClock.Now,
@@ -335,7 +330,7 @@ public class AuthBackend(
     {
         session.RequireValid();
         var dbSessionInfo = await Sessions.Get(session.Id, cancellationToken).ConfigureAwait(false);
-        return dbSessionInfo is null ? null : SessionConverter.ToModel(dbSessionInfo);
+        return dbSessionInfo?.ToModel(Log);
     }
 
     // [ComputeMethod]
@@ -346,7 +341,7 @@ public class AuthBackend(
             return null;
 
         var dbUser = await Users.Get(dbUserId, cancellationToken).ConfigureAwait(false);
-        return UserConverter.ToModel(dbUser);
+        return dbUser?.ToModel();
     }
 
     // [ComputeMethod]
@@ -389,7 +384,7 @@ public class AuthBackend(
 
         var dbSessions = await Sessions.ListByUser(dbContext, dbUserId, cancellationToken).ConfigureAwait(false);
         var sessions = dbSessions
-            .Select(x => (x.Id, SessionConverter.ToModel(x)!))
+            .Select(x => (x.Id, x.ToModel(Log)!))
             .ToImmutableArray();
         return sessions;
     }
