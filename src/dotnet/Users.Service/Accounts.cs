@@ -70,7 +70,7 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         // NOTE(AY): This should go through the events / queues, let's discuss this.
 
         // Sign out to prevent unexpected UI invalidations
-        var signOutCommand = new Auth_SignOut(command.Session, null, false, false);
+        var signOutCommand = new AuthBackend_SignOut(command.Session, null, false, false);
         await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
 
         var deleteOwnChatsCommand = new ChatsBackend_RemoveOwnChats(ownAccount.Id);

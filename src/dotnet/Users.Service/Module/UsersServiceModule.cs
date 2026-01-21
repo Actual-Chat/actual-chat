@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ActualChat.Db.Module;
+using Microsoft.EntityFrameworkCore;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Redis.Module;
@@ -118,7 +119,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Auth and supporting services
         rpcHost.AddLocalApi<IAuth, Auth>();
         rpcHost.AddBackend<IAuthBackend, AuthBackend>();
-        commander.AddService<AuthCommandFilters>();
 
         var usesAuthBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<IAuthBackend>().UsesImplementation();
         if (rpcHost.IsApiHost) {
@@ -126,9 +126,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
         }
         if (rpcHost.IsApiHost || usesAuthBackendImpl)
-            services.AddSingleton<UserNamer>(); // Used by Auth and AuthBackend command filters
+            services.AddSingleton<UserNamer>(); // Used by AuthBackend
         if (usesAuthBackendImpl) {
-            commander.AddService<AuthBackendCommandFilters>();
             services.AddSingleton(_ => new AuthBackend.Options {
                 MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
             });
@@ -267,8 +266,12 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             db.AddEntityConverter<DbSessionInfo, SessionInfo, DbSessionInfoConverter>();
             db.AddEntityConverter<DbUser, User, DbUserConverter>();
             db.AddEntityResolver<string, DbSessionInfo>();
-            db.AddEntityResolver<string, DbUser>();
+            db.AddEntityResolver<string, DbUser>(_ => new() {
+                QueryTransformer = query => query.Include(u => u.Identities),
+            });
             db.AddEntityResolver<string, DbUserIdentity<string>>();
+
+            // Other services
             db.AddEntityResolver<string, DbKvasEntry>();
             db.AddEntityResolver<string, DbAccount>();
             db.AddEntityResolver<string, DbAvatar>();

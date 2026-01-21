@@ -186,7 +186,7 @@ public sealed class ServerAuth
         Session session, SessionInfo sessionInfo,
         CancellationToken cancellationToken)
     {
-        var signOutCommand = new Auth_SignOut(session);
+        var signOutCommand = new AuthBackend_SignOut(session);
         return Commander.Call(signOutCommand, true, cancellationToken);
     }
 
