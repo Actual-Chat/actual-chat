@@ -12,7 +12,7 @@ public interface IDbUserRepo<TDbUser, TDbUserId>
     public Task<(TDbUser DbUser, bool IsCreated)> GetOrCreateOnSignIn(
         UsersDbContext dbContext, User user, CancellationToken cancellationToken = default);
     public Task Edit(
-        UsersDbContext dbContext, TDbUser dbUser, Auth_EditUser command, CancellationToken cancellationToken = default);
+        UsersDbContext dbContext, TDbUser dbUser, AuthBackend_EditUser command, CancellationToken cancellationToken = default);
     public Task Remove(
         UsersDbContext dbContext, TDbUser dbUser, CancellationToken cancellationToken = default);
 

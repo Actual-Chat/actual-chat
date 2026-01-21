@@ -3,16 +3,21 @@ namespace ActualChat.Users;
 public class Auth(IServiceProvider services) : IAuth
 {
     private IAuthBackend AuthBackend => field ??= services.GetRequiredService<IAuthBackend>();
-
-    // Commands
-
-    // [CommandHandler]
-    public virtual Task OnSignOut(Auth_SignOut command, CancellationToken cancellationToken = default)
-        => AuthBackend.OnSignOut(command, cancellationToken);
+    private ICommander Commander => field ??= services.Commander();
 
     // [CommandHandler]
-    public virtual Task OnEditUser(Auth_EditUser command, CancellationToken cancellationToken = default)
-        => AuthBackend.OnEditUser(command, cancellationToken);
+    public virtual async Task OnSignOut(Auth_SignOut command, CancellationToken cancellationToken = default)
+    {
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
+
+        var backendCommand = new AuthBackend_SignOut(
+            command.Session,
+            command.KickUserSessionHash,
+            command.KickAllUserSessions,
+            command.Force);
+        await Commander.Call(backendCommand, cancellationToken).ConfigureAwait(false);
+    }
 
     public virtual Task UpdatePresence(Session session, CancellationToken cancellationToken = default)
         => AuthBackend.UpdatePresence(session, cancellationToken);

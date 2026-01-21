@@ -26,12 +26,13 @@ public class AuthBackend(
         = services.GetRequiredService<IDbSessionInfoRepo<DbSessionInfo, string>>();
     protected IDbEntityConverter<DbSessionInfo, SessionInfo> SessionConverter { get; init; }
         = services.DbEntityConverter<DbSessionInfo, SessionInfo>();
+    protected UserNamer UserNamer { get; } = services.GetRequiredService<UserNamer>();
 
     // Commands
 
     // [CommandHandler]
     public virtual async Task OnSignOut(
-        Auth_SignOut command, CancellationToken cancellationToken = default)
+        AuthBackend_SignOut command, CancellationToken cancellationToken = default)
     {
         var session = command.Session.RequireValid();
         var kickUserSessionHash = command.KickUserSessionHash;
@@ -56,6 +57,10 @@ public class AuthBackend(
             return;
         }
 
+        // Capture auth info before sign-out for event emission
+        var authInfo = await GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
+        var userId = UserId.ParseNullable(authInfo?.UserId);
+
         // Let's handle special kinds of sign-out first, which only trigger "primary" sign-out version
         if (isKickCommand) {
             var user = await GetSessionUser(session, cancellationToken).ConfigureAwait(false);
@@ -67,7 +72,7 @@ public class AuthBackend(
                 ? userSessions
                 : userSessions.Where(p => Equals(p.SessionInfo.SessionHash, kickUserSessionHash));
             foreach (var (sessionId, _) in signOutSessions) {
-                var otherSessionSignOutCommand = new Auth_SignOut(new Session(sessionId), force);
+                var otherSessionSignOutCommand = new AuthBackend_SignOut(new Session(sessionId), force);
                 await Commander.Run(otherSessionSignOutCommand, isOutermost: true, cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -91,10 +96,14 @@ public class AuthBackend(
             IsSignOutForced = force,
         };
         await Sessions.Upsert(dbContext, session.Id, sessionInfo, cancellationToken).ConfigureAwait(false);
+
+        // Emit UserSignedOutEvent if user was authenticated
+        if (authInfo?.IsAuthenticated() == true && userId is not null)
+            context.Operation.AddEvent(new UserSignedOutEvent(session.Id, force, userId));
     }
 
     // [CommandHandler]
-    public virtual async Task OnEditUser(Auth_EditUser command, CancellationToken cancellationToken = default)
+    public virtual async Task OnEditUser(AuthBackend_EditUser command, CancellationToken cancellationToken = default)
     {
         var session = command.Session.RequireValid();
 
@@ -104,6 +113,13 @@ public class AuthBackend(
             if (invSessionInfo is not null)
                 _ = GetUser(invSessionInfo.UserId, default);
             return;
+        }
+
+        // Validate user name
+        if (command.Name != null) {
+            var error = UserNamer.ValidateName(command.Name);
+            if (error != null)
+                throw error;
         }
 
         var sessionInfo = await GetSessionInfo(session, cancellationToken)
@@ -153,6 +169,9 @@ public class AuthBackend(
                 _ = GetUser(invSessionInfo.UserId, default);
                 _ = GetUserSessions(session, default);
             }
+            // Invalidate GetUser if name was normalized
+            if (context.Operation.Items.KeylessGet<UserNameChangedTag>() != null && invSessionInfo is not null)
+                _ = GetUser(invSessionInfo.UserId, default);
             return;
         }
 
@@ -200,7 +219,23 @@ public class AuthBackend(
 
         context.Operation.Items.KeylessSet(sessionInfo);
         context.Operation.Items.KeylessSet(isNewUser);
+
+        // Normalize user name if needed
+        var newName = UserNamer.NormalizeName(dbUser.Name);
+        if (!OrdinalEquals(newName, dbUser.Name)) {
+            context.Operation.Items.KeylessSet(new UserNameChangedTag());
+            dbUser.Name = newName;
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        // Emit NewUserEvent if this is a new user
+        if (isNewUser) {
+            var userId = UserId.Parse(sessionInfo.UserId);
+            context.Operation.AddEvent(new NewUserEvent(userId));
+        }
     }
+
+    private record UserNameChangedTag;
 
     // [CommandHandler]
     public virtual async Task<SessionInfo> OnSetupSession(

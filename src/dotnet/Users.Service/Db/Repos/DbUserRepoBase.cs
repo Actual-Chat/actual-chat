@@ -66,7 +66,7 @@ public class DbUserRepoBase<
         return (dbUser, true);
     }
 
-    public virtual async Task Edit(UsersDbContext dbContext, TDbUser dbUser, Auth_EditUser command,
+    public virtual async Task Edit(UsersDbContext dbContext, TDbUser dbUser, AuthBackend_EditUser command,
         CancellationToken cancellationToken = default)
     {
         if (command.Name is not null) {

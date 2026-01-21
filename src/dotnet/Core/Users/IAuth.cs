@@ -5,8 +5,8 @@ public interface IAuth : IComputeService
     // Commands
     [CommandHandler]
     Task OnSignOut(Auth_SignOut command, CancellationToken cancellationToken = default);
-    [CommandHandler]
-    Task OnEditUser(Auth_EditUser command, CancellationToken cancellationToken = default);
+
+    // Regular methods
     Task UpdatePresence(Session session, CancellationToken cancellationToken = default);
 
     // Queries
