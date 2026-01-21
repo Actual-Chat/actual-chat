@@ -29,15 +29,18 @@ public class AudioWidgetForegroundService : Service
     private const int NotificationId = 3001;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
+    private ILogger Log { get; } = StaticLog.For<AudioWidgetForegroundService>();
 
     public override void OnCreate()
     {
+        Log.LogDebug("OnCreate");
         base.OnCreate();
         CreateNotificationChannel();
     }
 
     public override void OnDestroy()
     {
+        Log.LogDebug("OnDestroy");
         _requestId = Guid.NewGuid().ToString();
         if (_mediaSession is not null) {
             _mediaSession.Active = false;
@@ -124,7 +127,7 @@ public class AudioWidgetForegroundService : Service
                 StartForeground1(notification);
             });
 
-        return StartCommandResult.Sticky;
+        return StartCommandResult.NotSticky;
 
         void StartForeground1(Android.App.Notification notification)
         {
