@@ -22,7 +22,7 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
         await tester.SignOut();
 
         var session = tester.Session;
-        await tester.Commander.Call(new AuthBackend_SetupSession(session));
+        await tester.Commander.Call(new SessionsBackend_Upsert(session));
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default);
         account.IsGuest.Should().BeTrue();
@@ -88,7 +88,7 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
         await tester.SignOut();
 
         var session = tester.Session;
-        await tester.Commander.Call(new AuthBackend_SetupSession(session));
+        await tester.Commander.Call(new SessionsBackend_Upsert(session));
 
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default);

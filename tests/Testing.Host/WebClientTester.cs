@@ -25,7 +25,7 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     ITranslations Translations { get; }
     IPlaces Places { get; }
     ISearch Search { get; }
-    IAuthBackend AuthBackend { get; }
+    ISessionsBackend SessionsBackend { get; }
     INotificationsBackend NotificationsBackend { get; }
     Session Session { get; }
     UrlMapper UrlMapper { get; }
@@ -55,7 +55,7 @@ public class WebClientTester : IWebClientTester
     public ITranslations Translations => field ??= AppServices.GetRequiredService<ITranslations>();
     public IPlaces Places => field ??= AppServices.GetRequiredService<IPlaces>();
     public ISearch Search => field ??= AppServices.GetRequiredService<ISearch>();
-    public IAuthBackend AuthBackend => field ??= AppServices.GetRequiredService<IAuthBackend>();
+    public ISessionsBackend SessionsBackend => field ??= AppServices.GetRequiredService<ISessionsBackend>();
     public INotificationsBackend NotificationsBackend  => field ??= AppServices.GetRequiredService<INotificationsBackend>();
     public UrlMapper UrlMapper => field ??= AppServices.UrlMapper();
     public ITestOutputHelper Out { get; }
@@ -73,7 +73,7 @@ public class WebClientTester : IWebClientTester
         AppHost = appHost;
         Out = @out;
         Session = Session.New();
-        var sessionInfo = Commander.Call(new AuthBackend_SetupSession(Session)).Result;
+        var sessionInfo = Commander.Call(new SessionsBackend_Upsert(Session)).Result;
         var guestId = sessionInfo.GetGuestId();
         guestId.Should().NotBeNull();
         guestId.IsGuest.Should().BeTrue();

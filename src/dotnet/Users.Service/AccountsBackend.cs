@@ -18,20 +18,23 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         "ustinovas@gmail.com",
     };
 
-    private IAuthBackend AuthBackend => field ??= Services.GetRequiredService<IAuthBackend>();
+    private ISessionsBackend SessionsBackend => field ??= Services.GetRequiredService<ISessionsBackend>();
     private IAvatarsBackend AvatarsBackend => field ??= Services.GetRequiredService<IAvatarsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private ContactGreeter ContactGreeter => field ??= Services.GetRequiredService<ContactGreeter>();
     private FlowHub FlowHub => field ??= Services.FlowHub();
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
+    private IDbEntityResolver<string, DbUser> DbUserResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbUser>>();
+    private DbUserRepo DbUsers => field ??= Services.GetRequiredService<DbUserRepo>();
+    private UserNamer UserNamer => field ??= Services.GetRequiredService<UserNamer>();
 
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(userId);
 
-        // We _must_ have a dependency on SessionsBackend.GetUser here
-        var user = await AuthBackend.GetUser(userId.Value, cancellationToken).ConfigureAwait(false);
+        // We _must_ have a dependency on GetUser here
+        var user = await GetUser(userId.Value, cancellationToken).ConfigureAwait(false);
         AccountFull? account;
         if (user == null) {
             account = GetGuestAccount(userId);
@@ -91,6 +94,17 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         return UserId.ParseNullable(accountId);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<User?> GetUser(
+        string userId, CancellationToken cancellationToken = default)
+    {
+        if (userId.IsNullOrEmpty())
+            return null;
+
+        var dbUser = await DbUserResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+        return dbUser?.ToModel();
+    }
+
     // Not a [ComputeMethod]!
     public async Task<UserId[]> ListChanged(
         long minVersion,
@@ -136,6 +150,85 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // [CommandHandler]
+    public virtual async Task OnSignIn(
+        AccountsBackend_SignIn command, CancellationToken cancellationToken = default)
+    {
+        var (session, user, authenticatedIdentity) = command;
+        session.RequireValid();
+
+        var context = CommandContext.GetCurrent();
+        if (Invalidation.IsActive) {
+            var invUserId = context.Operation.Items.KeylessGet<UserId>();
+            if (invUserId is not null) {
+                _ = GetUser(invUserId.Value, default);
+                _ = Get(invUserId, default);
+            }
+            // Invalidate GetUser if name was normalized
+            if (context.Operation.Items.KeylessGet<UserNameChangedMeta>()?.Changed == true && invUserId is not null)
+                _ = GetUser(invUserId.Value, default);
+            return;
+        }
+
+        if (!user.Identities.ContainsKey(authenticatedIdentity))
+#pragma warning disable MA0015
+            throw new ArgumentOutOfRangeException(
+                $"{nameof(command)}.{nameof(AccountsBackend_SignIn.AuthenticatedIdentity)}");
+#pragma warning restore MA0015
+
+        // Check if session is valid (not forced sign-out)
+        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo?.IsSignOutForced == true)
+            throw StandardError.Unauthorized("Session unavailable.");
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+
+        var isNewUser = false;
+        var dbUser = await DbUsers
+            .GetByUserIdentity(dbContext, authenticatedIdentity, true, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbUser is null) {
+            (dbUser, isNewUser) = await DbUsers
+                .GetOrCreateOnSignIn(dbContext, user, cancellationToken)
+                .ConfigureAwait(false);
+            if (isNewUser == false) {
+                dbUser.UpdateFrom(user, VersionGenerator);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        else {
+            user = user with {
+                Id = dbUser.Id ?? ""
+            };
+            dbUser.UpdateFrom(user, VersionGenerator);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var userId = UserId.Parse(dbUser.Id ?? "");
+        context.Operation.Items.KeylessSet(userId);
+        context.Operation.Items.KeylessSet(isNewUser);
+
+        // Normalize user name if needed
+        var newName = UserNamer.NormalizeName(dbUser.Name);
+        if (!OrdinalEquals(newName, dbUser.Name)) {
+            context.Operation.Items.KeylessSet(new UserNameChangedMeta(true));
+            dbUser.Name = newName;
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        // Update session with auth info
+        var upsertCommand = new SessionsBackend_Upsert(
+            session, "", "", default,
+            dbUser.Id ?? "",
+            authenticatedIdentity);
+        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+
+        // Emit NewUserEvent if this is a new user
+        if (isNewUser)
+            context.Operation.AddEvent(new NewUserEvent(userId));
+    }
+
+    // [CommandHandler]
     public virtual async Task OnUpdate(
         AccountsBackend_Update command,
         CancellationToken cancellationToken)
@@ -144,6 +237,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             _ = Get(account.Id, default);
+            // Invalidate GetUser if user name was changed
+            if (context.Operation.Items.KeylessGet<UserNameChangedMeta>()?.Changed == true)
+                _ = GetUser(account.Id.Value, default);
             var invAliasIds = context.Operation.Items.KeylessGet<List<AliasId>>();
             if (invAliasIds is not null)
                 foreach (var invAliasId in invAliasIds)
@@ -166,6 +262,19 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var mustGreet = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
         var mustResetDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
         dbAccount.UpdateFrom(account);
+
+        // Update User name if it changed (User and Account should stay in sync)
+        var existingUserName = existing?.User.Name ?? "";
+        var newUserName = account.User.Name;
+        if (!OrdinalEquals(existingUserName, newUserName)) {
+            var dbUser = await DbUsers.Get(dbContext, accountIdValue, true, cancellationToken).ConfigureAwait(false);
+            if (dbUser != null) {
+                dbUser.Name = newUserName;
+                dbUser.Version = VersionGenerator.NextVersion(dbUser.Version);
+                context.Operation.Items.KeylessSet(new UserNameChangedMeta(true));
+            }
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         context.Operation.AddEvent(
@@ -298,4 +407,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             AvatarKey = DefaultUserPicture.GetAvatarKey(account.Id.Value),
             Bio = "",
         };
+
+    // Nested types
+
+    // Must be Newtonsoft.Json serializable - stored in Operation.Items
+    private sealed record UserNameChangedMeta(bool Changed);
 }

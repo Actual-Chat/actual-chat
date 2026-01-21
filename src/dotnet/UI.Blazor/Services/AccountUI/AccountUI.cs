@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using ActualChat.Users;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -126,11 +125,6 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
 
 #pragma warning restore CS0618 // Type or member is obsolete
 
-    public Task SignOutEverywhere(bool force = true)
-        => Commander.Call(new Auth_SignOut(Session, force) { KickAllUserSessions = true });
-
-    public Task Kick(Session session, string otherSessionHash, bool force = false)
-        => Commander.Call(new Auth_SignOut(session, otherSessionHash, force));
 
     public void PostponeOnSignInWorkflow(Task taskToAwait)
     {

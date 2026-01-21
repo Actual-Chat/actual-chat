@@ -17,7 +17,7 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
         var session = tester.Session;
 
         var tasks = Enumerable.Range(0, 10)
-            .Select(_ => commander.Call(new AuthBackend_SetupSession(session)))
+            .Select(_ => commander.Call(new SessionsBackend_Upsert(session)))
             .ToArray();
         await Task.WhenAll(tasks);
 
@@ -41,7 +41,7 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
         var auth = services.GetRequiredService<IAuth>();
         await Parallel.ForEachAsync(Enumerable.Range(0, 10), async (_, cancellationToken) => {
             var session = Session.New();
-            await commander.Call(new AuthBackend_SetupSession(session), cancellationToken);
+            await commander.Call(new SessionsBackend_Upsert(session), cancellationToken);
             var sessionInfo = await auth.GetSessionInfo(session, cancellationToken);
             sessionInfo.Should().NotBeNull();
             var guestId = sessionInfo.GetGuestId();

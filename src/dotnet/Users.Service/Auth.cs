@@ -2,7 +2,8 @@ namespace ActualChat.Users;
 
 public class Auth(IServiceProvider services) : IAuth
 {
-    private IAuthBackend AuthBackend => field ??= services.GetRequiredService<IAuthBackend>();
+    private ISessionsBackend SessionsBackend => field ??= services.GetRequiredService<ISessionsBackend>();
+    private IAccountsBackend AccountsBackend => field ??= services.GetRequiredService<IAccountsBackend>();
     private ICommander Commander => field ??= services.Commander();
 
     // [CommandHandler]
@@ -11,42 +12,34 @@ public class Auth(IServiceProvider services) : IAuth
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var backendCommand = new AuthBackend_SignOut(
-            command.Session,
-            command.KickUserSessionHash,
-            command.KickAllUserSessions,
-            command.Force);
+        var backendCommand = new SessionsBackend_SignOut(command.Session, command.Force);
         await Commander.Call(backendCommand, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual Task UpdatePresence(Session session, CancellationToken cancellationToken = default)
-        => AuthBackend.UpdatePresence(session, cancellationToken);
+        => SessionsBackend.UpdatePresence(session, cancellationToken);
 
     // Compute methods
 
     // [ComputeMethod]
     public virtual Task<bool> IsSignOutForced(Session session, CancellationToken cancellationToken = default)
-        => AuthBackend.IsSignOutForced(session, cancellationToken);
+        => SessionsBackend.IsSignOutForced(session, cancellationToken);
 
     // [ComputeMethod]
     public virtual Task<SessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken = default)
-        => AuthBackend.GetAuthInfo(session, cancellationToken);
+        => SessionsBackend.GetAuthInfo(session, cancellationToken);
 
     // [ComputeMethod]
     public virtual Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken = default)
-        => AuthBackend.GetSessionInfo(session, cancellationToken);
+        => SessionsBackend.Get(session, cancellationToken);
 
     // [ComputeMethod]
     public virtual async Task<User?> GetUser(Session session, CancellationToken cancellationToken = default)
     {
-        var authInfo = await AuthBackend.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
+        var authInfo = await SessionsBackend.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
         if (!(authInfo?.IsAuthenticated() ?? false))
             return null;
 
-        return await AuthBackend.GetUser(authInfo.UserId, cancellationToken).ConfigureAwait(false);
+        return await AccountsBackend.GetUser(authInfo.UserId, cancellationToken).ConfigureAwait(false);
     }
-
-    // [ComputeMethod]
-    public virtual Task<ImmutableArray<SessionInfo>> GetUserSessions(Session session, CancellationToken cancellationToken = default)
-        => AuthBackend.GetUserSessions(session, cancellationToken);
 }

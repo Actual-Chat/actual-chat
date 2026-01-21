@@ -5,10 +5,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users.Db;
 
-public class DbUserRepo(
-    AuthBackend.Options settings,
-    IServiceProvider services
-    ) : DbServiceBase<UsersDbContext>(services)
+public sealed class DbUserRepo(IServiceProvider services) : DbServiceBase<UsersDbContext>(services)
 {
     private IDbEntityResolver<string, DbUser> UserResolver { get; init; }
         = services.DbEntityResolver<string, DbUser>();
@@ -17,7 +14,7 @@ public class DbUserRepo(
 
     // Write methods
 
-    public virtual async Task<DbUser> Create(
+    private async Task<DbUser> Create(
         UsersDbContext dbContext, User user, CancellationToken cancellationToken = default)
     {
         // Creating "base" dbUser
@@ -70,7 +67,7 @@ public class DbUserRepo(
         return dbUser;
     }
 
-    public virtual async Task<(DbUser DbUser, bool IsCreated)> GetOrCreateOnSignIn(
+    public async Task<(DbUser DbUser, bool IsCreated)> GetOrCreateOnSignIn(
         UsersDbContext dbContext, User user, CancellationToken cancellationToken = default)
     {
         DbUser? dbUser;
@@ -85,18 +82,7 @@ public class DbUserRepo(
         return (dbUser, true);
     }
 
-    public virtual async Task Edit(UsersDbContext dbContext, DbUser dbUser, AuthBackend_EditUser command,
-        CancellationToken cancellationToken = default)
-    {
-        if (command.Name is not null) {
-            dbUser.Name = command.Name;
-            dbUser.Version = VersionGenerator.NextVersion(dbUser.Version);
-        }
-        dbContext.Update(dbUser);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    public virtual async Task Remove(
+    public async Task Remove(
         UsersDbContext dbContext, DbUser dbUser, CancellationToken cancellationToken = default)
     {
         await dbContext.Entry(dbUser).Collection(nameof(DbUser.Identities))
@@ -109,10 +95,7 @@ public class DbUserRepo(
 
     // Read methods
 
-    public async Task<DbUser?> Get(string userId, CancellationToken cancellationToken = default)
-        => await UserResolver.Get(DbShard.Single, userId, cancellationToken).ConfigureAwait(false);
-
-    public virtual async Task<DbUser?> Get(
+    public async Task<DbUser?> Get(
         UsersDbContext dbContext, string userId, bool forUpdate, CancellationToken cancellationToken = default)
     {
         var dbUsers = forUpdate
@@ -127,7 +110,7 @@ public class DbUserRepo(
         return dbUser;
     }
 
-    public virtual async Task<DbUser?> GetByUserIdentity(
+    public async Task<DbUser?> GetByUserIdentity(
         UsersDbContext dbContext, UserIdentity userIdentity, bool forUpdate, CancellationToken cancellationToken = default)
     {
         if (!userIdentity.IsValid)

@@ -52,7 +52,7 @@ public static class TestAuthExt
         var commander = services.Commander();
         var accounts = services.GetRequiredService<IAccounts>();
 
-        var command = new AuthBackend_SignIn(session, user, userIdentity);
+        var command = new AccountsBackend_SignIn(session, user, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
         return await WaitTillAuthenticationHappened(accounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }
@@ -69,7 +69,7 @@ public static class TestAuthExt
         var commander = tester.AppServices.Commander();
 
         var session = tester.Session;
-        var command = new AuthBackend_SignIn(session, user, userIdentity);
+        var command = new AccountsBackend_SignIn(session, user, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
         var accounts = tester.ClientServices.GetRequiredService<IAccounts>();

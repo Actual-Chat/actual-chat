@@ -118,25 +118,23 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // Auth and supporting services
         rpcHost.AddLocalApi<IAuth, Auth>();
-        rpcHost.AddBackend<IAuthBackend, AuthBackend>();
-
-        var usesAuthBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<IAuthBackend>().UsesImplementation();
         if (rpcHost.IsApiHost) {
             services.AddSingleton<ServerAuth>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
         }
-        if (rpcHost.IsApiHost || usesAuthBackendImpl)
-            services.AddSingleton<DbUserRepo>(); // Used by AuthBackend, EmailAuth, PhoneAuth
-        if (usesAuthBackendImpl) {
-            // The services below are used only by AuthBackend
-            services.AddSingleton(_ => new AuthBackend.Options {
+
+        // Sessions backend
+        rpcHost.AddBackend<ISessionsBackend, SessionsBackend>();
+        var usesSessionsBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<ISessionsBackend>().UsesImplementation();
+        if (usesSessionsBackendImpl) {
+            // The services below are used only by SessionsBackend
+            services.AddSingleton(_ => new SessionsBackend.Options {
                 MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
             });
             services.AddSingleton(_ => new DbSessionInfoTrimmer.Options {
                 MaxSessionAge = TimeSpan.FromDays(180),
             });
 
-            services.AddSingleton<UserNamer>();
             services.AddSingleton<DbSessionInfoRepo>();
             services.AddSingleton<DbSessionInfoTrimmer>()
                 .AddHostedService(c => c.GetRequiredService<DbSessionInfoTrimmer>());
@@ -145,6 +143,11 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Accounts
         rpcHost.AddLocalApi<IAccounts, Accounts>(); // Used by Chats, etc.
         rpcHost.AddBackend<IAccountsBackend, AccountsBackend>();
+        var usesAccountsBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<IAccountsBackend>().UsesImplementation();
+        if (usesAccountsBackendImpl)
+            services.AddSingleton<UserNamer>(); // Used by AccountsBackend
+        if (rpcHost.IsApiHost || usesAccountsBackendImpl)
+            services.AddSingleton<DbUserRepo>(); // Used by AccountsBackend, EmailAuth, PhoneAuth
         rpcHost.AddBackend<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // UserPresences
@@ -195,7 +198,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<ICaptcha, Captcha>();
 
         // NOTE(AY): We don't have a clear separation between the backend and the front-end
-        // due to IAuth & IAuthBackend, so these services are always local, and thus
+        // due to IAuth, ISessionsBackend & IAccountsBackend, so these services are always local, and thus
         // they drag the DB, Redis & everything they depend on.
         // That's why we can't just exit here if we're operating as a backend client.
 

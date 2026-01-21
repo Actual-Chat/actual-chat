@@ -34,8 +34,8 @@ public class UserPresences(IServiceProvider services) : IUserPresences
 
         var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo != null && SystemNow - sessionInfo.LastSeenAt > SessionUpdatePeriod) {
-            var setupSessionCommand = new AuthBackend_SetupSession(session);
-            await Commander.Call(setupSessionCommand, true, cancellationToken).ConfigureAwait(false);
+            var upsertSessionCmd = new SessionsBackend_Upsert(session);
+            await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
         }
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
