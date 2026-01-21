@@ -1,5 +1,4 @@
 using ActualChat.Users.Db;
-using ActualLab.Fusion.Authentication.Services;
 using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
@@ -10,7 +9,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
     protected IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     protected UserNamer UserNamer { get; } = services.GetRequiredService<UserNamer>();
     protected IUserPresences UserPresences { get; } = services.GetRequiredService<IUserPresences>();
-    protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
+    protected IDbUserRepo<DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<DbUser, string>>();
 
     [CommandFilter(Priority = 1)]
     public virtual async Task OnSignIn(AuthBackend_SignIn command, CancellationToken cancellationToken)
@@ -26,7 +25,7 @@ public class AuthBackendCommandFilters(IServiceProvider services) : DbServiceBas
         var userId = UserId.Parse(sessionInfo.UserId);
         if (Invalidation.IsActive) {
             if (context.Operation.Items.KeylessGet<UserNameChangedTag>() != null)
-                _ = AuthBackend.GetUser(DbShard.Single, userId.Value, default);
+                _ = AuthBackend.GetUser(userId.Value, default);
             return;
         }
 

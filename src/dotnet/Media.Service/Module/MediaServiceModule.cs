@@ -14,7 +14,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IMediaBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IMediaBackend>() is ServiceMode.Client;
 
         // Link previews
         rpcHost.AddApi<IMediaLinkPreviews, MediaLinkPreviews>();

@@ -28,7 +28,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IChatsBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IChatsBackend>() is ServiceMode.Client;
 
         // Chats
         rpcHost.AddLocalApi<IChats, Chats>(); // Used by many

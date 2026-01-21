@@ -12,7 +12,7 @@ public sealed class InviteServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IInvitesBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IInvitesBackend>() is ServiceMode.Client;
 
         // Invites
         rpcHost.AddApi<IInvites, Invites>();

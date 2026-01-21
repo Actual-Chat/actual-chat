@@ -117,7 +117,7 @@ public readonly struct RpcHostBuilder
 
         var hostRoles = HostInfo.Roles;
         var serviceMode = hostRoles.GetBackendServiceMode(serviceType);
-        if (!serviceMode.IsDisabled()) {
+        if (serviceMode is not ServiceMode.Disabled) {
             var shardScheme = ShardScheme.ForType(serviceType) ?? ShardScheme.None;
             var serviceDef = new BackendServiceDef(serviceType, implementationType, serviceMode, shardScheme.HostRole);
             Services.Add(new ServiceDescriptor(typeof(BackendServiceDef), serviceDef));

@@ -1,8 +1,6 @@
-using ActualLab.Fusion.Authentication.Services;
-
 namespace ActualChat.Users.Db;
 
-public class DbUser : DbUser<string>, IRequirementTarget
+public class DbUser : DbUserBase<string>, IRequirementTarget
 {
     private DateTime _createdAt = CoarseSystemClock.Instance.Now;
 

@@ -5,7 +5,6 @@ using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Templates;
-using ActualLab.Fusion.Authentication.Services;
 using ActualLab.Redis;
 using Mjml.Net;
 using StackExchange.Redis;
@@ -23,7 +22,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
-    private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
+    private IDbUserRepo<DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<DbUser, string>>();
     private IDbEntityConverter<DbUser, User> UserConverter => field ??= Services.DbEntityConverter<DbUser, User>();
 
     // [ComputeMethod]
@@ -110,7 +109,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (Invalidation.IsActive) {
             var userId = context.Operation.Items.KeylessGet<UserId>();
             if (userId is not null)
-                _ = AuthBackend.GetUser(DbShard.Single, userId.Value, cancellationToken);
+                _ = AuthBackend.GetUser(userId.Value, cancellationToken);
             return default;
         }
 

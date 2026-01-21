@@ -11,14 +11,6 @@ public enum ServiceMode
 
 public static class ServiceModeExt
 {
-    public static bool IsDisabled(this ServiceMode serviceMode)
-        => serviceMode == ServiceMode.Disabled;
-    public static bool IsLocal(this ServiceMode serviceMode)
-        => serviceMode == ServiceMode.Local;
-    public static bool IsServer(this ServiceMode serviceMode)
-        => serviceMode == ServiceMode.Server;
-    public static bool IsClient(this ServiceMode serviceMode)
-        => serviceMode == ServiceMode.Client;
-    public static bool IsDistributed(this ServiceMode serviceMode)
-        => serviceMode == ServiceMode.Distributed;
+    public static bool UsesImplementation(this ServiceMode serviceMode)
+        => serviceMode is not (ServiceMode.Disabled or ServiceMode.Client);
 }

@@ -110,8 +110,6 @@
     <PackageVersion Include="ActualLab.Fusion.EntityFramework" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion.EntityFramework.Npgsql" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion.EntityFramework.Redis" Version="$(ActualLabFusionVersion)" />
-    <PackageVersion Include="ActualLab.Fusion.Ext.Contracts" Version="$(ActualLabFusionVersion)" />
-    <PackageVersion Include="ActualLab.Fusion.Ext.Services" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Interception" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Redis" Version="$(ActualLabFusionVersion)" />

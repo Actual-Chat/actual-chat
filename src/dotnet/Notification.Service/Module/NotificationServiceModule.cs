@@ -16,7 +16,7 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<INotificationsBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<INotificationsBackend>() is ServiceMode.Client;
 
         // Notifications
         rpcHost.AddApi<INotifications, Notifications>();

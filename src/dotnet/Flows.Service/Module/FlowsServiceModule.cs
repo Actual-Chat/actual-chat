@@ -13,7 +13,7 @@ public sealed class FlowsServiceModule(IServiceProvider moduleServices)
     {
         // RPC host
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IFlowBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IFlowBackend>() is ServiceMode.Client;
 
         // Flows
         rpcHost.AddBackend<IFlowBackend, FlowBackend>();

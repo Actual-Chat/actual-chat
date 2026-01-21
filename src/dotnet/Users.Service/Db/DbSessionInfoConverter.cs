@@ -1,9 +1,8 @@
 using Newtonsoft.Json;
-using ActualLab.Fusion.Authentication.Services;
 
 namespace ActualChat.Users.Db;
 
-public sealed class DbSessionInfoConverter : DbSessionInfoConverter<UsersDbContext, DbSessionInfo, string>
+public sealed class DbSessionInfoConverter : DbSessionInfoConverterBase<DbSessionInfo, string>
 {
     public DbSessionInfoConverter(IServiceProvider services) : base(services) { }
 
