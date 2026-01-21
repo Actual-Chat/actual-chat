@@ -3,7 +3,7 @@ using Serilog.Configuration;
 using Serilog.Events;
 using Serilog.Formatting.Display;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.Maui;
 
 // Adds WriteTo.AppleLog() to the logger configuration
 public static class LoggerConfigurationExtensions

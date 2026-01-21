@@ -177,8 +177,7 @@
     <PackageReference Include="ActualLab.Opus.MaciOS" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
-    <PackageReference Include="Serilog.Sinks.Debug" />
-    <PackageReference Include="Serilog.Sinks.File" />
+
 <!--    <PackageReference Include="Microsoft.ML.OnnxRuntime" />-->
 <!--    Commented out as both runtime and DirectML runtime have same biney names -->
 <!--    <PackageReference Include="Microsoft.ML.OnnxRuntime">-->
