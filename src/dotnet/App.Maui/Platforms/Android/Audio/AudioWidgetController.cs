@@ -43,7 +43,7 @@ public static class AudioWidgetController
         _shown = true;
     }
 
-    private static void Hide()
+    public static void Hide()
     {
         if (!_shown)
             return;

@@ -85,6 +85,10 @@ public static partial class MauiProgram
                     return;
 
                 AppNavigationQueue.Reset();
+                // NOTE(DF): Stop AudioWidgetForegroundService when MainActivity is destroyed,
+                // because playback and/or recording do not work anyway in this case.
+                Log.LogInformation("Stopping AudioWidgetForegroundService due to MainActivity destroy");
+                AudioWidgetController.Hide();
             });
             IntentHandler.Activate(android);
         });
