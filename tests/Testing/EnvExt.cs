@@ -14,10 +14,8 @@ public static class EnvExt
             && isRunningContainer;
     }
 
-    // "Claude mode" enables console logging for tests, making logs visible in terminal.
-    // Set CLAUDE_MODE=1 or CLAUDE_MODE=true to enable.
-    public static bool IsClaudeMode()
-        => bool.TryParse(Environment.GetEnvironmentVariable("CLAUDE_MODE"), out var isClaudeMode)
-            && isClaudeMode
-            || Environment.GetEnvironmentVariable("CLAUDE_MODE") == "1";
+    // "Agent mode" enables console logging for tests, making logs visible in terminal.
+    // Detected by presence of AC_OS environment variable (set by Claude Launcher).
+    public static bool IsAgentMode()
+        => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AC_OS"));
 }

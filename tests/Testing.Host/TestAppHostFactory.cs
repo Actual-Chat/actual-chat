@@ -135,8 +135,8 @@ public static class TestAppHostFactory
         };
         if (EnvExt.IsRunningInContainer())
             result.Add(("testsettings.docker.json", Optional: false));
-        if (EnvExt.IsClaudeMode())
-            result.Add(("testsettings.claude.json", Optional: true));
+        if (EnvExt.IsAgentMode())
+            result.Add(("testsettings.agent.json", Optional: true));
         return result;
     }
 }
