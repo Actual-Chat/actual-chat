@@ -28,4 +28,14 @@ public interface IStreamingBackend : IRpcService, IBackendService
         int preSkip,
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken);
+
+    Task<RpcStream<byte[]>?> GetVideo(
+        StreamId streamId,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken);
+
+    Task PushVideo(
+        VideoRecord record,
+        RpcStream<byte[]> videoStream,
+        CancellationToken cancellationToken);
 }

@@ -94,6 +94,7 @@ export type LogScope =
     | 'UserInterface'
     | 'VideoPanel'
     | 'VideoRecorder'
+    | 'VideoStreamer'
     | 'VisualMediaViewer'
     | 'WebAuth'
     | 'WebFileProvider';

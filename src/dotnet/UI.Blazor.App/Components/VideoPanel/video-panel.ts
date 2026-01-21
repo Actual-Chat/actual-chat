@@ -26,6 +26,8 @@ export class VideoPanel {
     private isRecording = false;
     private animationFrameId: number | null = null;
     private selectedCameraDeviceId: string | null = null;
+    private sessionToken: string | null = null;
+    private chatId: string | null = null;
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
@@ -108,6 +110,15 @@ export class VideoPanel {
     }
 
     /**
+     * Update session context for streaming
+     */
+    public setSessionContext(chatId: string, sessionToken: string): void {
+        this.chatId = chatId;
+        this.sessionToken = sessionToken;
+        infoLog?.log('Session context updated for video streaming:', { chatId });
+    }
+
+    /**
      * Initialize and start video recording
      */
     public async startRecording(): Promise<void> {
@@ -116,10 +127,14 @@ export class VideoPanel {
             return;
         }
 
+        if (!this.sessionToken || !this.chatId) {
+            throw new Error('Missing session context for video streaming');
+        }
+
         infoLog?.log('Starting video recording...');
 
         try {
-            // Create recording service with default config (uses video-pipeline internally)
+            // Create recording service with streaming config (uses video-pipeline internally)
             const config: RecordingConfig = {
                 mode: 'webcam',
                 codec: 'h264',
@@ -132,6 +147,12 @@ export class VideoPanel {
                 jitter: 0,
                 packetLoss: 0,
                 cameraDeviceId: this.selectedCameraDeviceId || undefined,
+                // Enable streaming to server for real-time viewing
+                streaming: {
+                    enabled: true,
+                    sessionToken: this.sessionToken,
+                    chatId: this.chatId,
+                }
             };
 
             this.recordingService = new RecordingService(config);

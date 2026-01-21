@@ -15,6 +15,7 @@ namespace ActualChat.Streaming;
 public partial class StreamingBackend : IStreamingBackend, IDisposable
 {
     private readonly StreamStore<byte[]> _audioStreams;
+    private readonly StreamStore<byte[]> _videoStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
 
@@ -49,6 +50,12 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
             Log = services.LogFor($"{typeFullName}.AudioStreams"),
         };
+        _videoStreams = new StreamStore<byte[]> {
+            StreamIdValidator = ValidateStreamId,
+            StreamCount = AppMeters.VideoStreamCount,
+            ExpirationDelay = Constants.Video.StreamExpirationDelay,
+            Log = services.LogFor($"{typeFullName}.VideoStreams"),
+        };
         _transcriptStreams = new StreamStore<TranscriptDiff> {
             StreamIdValidator = ValidateStreamId,
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
@@ -60,6 +67,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     public void Dispose()
     {
         _audioStreams.Dispose();
+        _videoStreams.Dispose();
         _transcriptStreams.Dispose();
     }
 
@@ -70,6 +78,16 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
             return null;
 
         stream = SkipTo(stream, skipTo, cancellationToken);
+        return RpcStream.New(stream);
+    }
+
+    public virtual async Task<RpcStream<byte[]>?> GetVideo(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    {
+        var stream = await _videoStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
+        if (stream == null)
+            return null;
+
+        stream = SkipToKeyFrame(stream, skipTo, cancellationToken);
         return RpcStream.New(stream);
     }
 
@@ -136,5 +154,16 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         return dataStream
             .SkipWhile((_, i) => i < skipToFrameN)
             .PrependOne(headerDataTask);
+    }
+
+    private static IAsyncEnumerable<byte[]> SkipToKeyFrame(
+        IAsyncEnumerable<byte[]> stream,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
+    {
+        // For video, we should ideally skip to the nearest keyframe
+        // For now, use the same logic as audio - can be improved later
+        // TODO: Implement proper keyframe detection and seeking
+        return SkipTo(stream, skipTo, cancellationToken);
     }
 }
