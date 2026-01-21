@@ -3,6 +3,7 @@ using ActualChat.Chat;
 using ActualChat.Diagnostics;
 using ActualChat.Kvas;
 using ActualChat.Streaming.Services;
+using ActualChat.Video;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
 using Microsoft.Extensions.Hosting;
@@ -15,7 +16,7 @@ namespace ActualChat.Streaming;
 public partial class StreamingBackend : IStreamingBackend, IDisposable
 {
     private readonly StreamStore<byte[]> _audioStreams;
-    private readonly StreamStore<byte[]> _videoStreams;
+    private readonly StreamStore<VideoFrame> _videoStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
 
@@ -50,7 +51,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
             Log = services.LogFor($"{typeFullName}.AudioStreams"),
         };
-        _videoStreams = new StreamStore<byte[]> {
+        _videoStreams = new StreamStore<VideoFrame> {
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.VideoStreamCount,
             ExpirationDelay = Constants.Video.StreamExpirationDelay,
@@ -81,7 +82,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         return RpcStream.New(stream);
     }
 
-    public virtual async Task<RpcStream<byte[]>?> GetVideo(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         var stream = await _videoStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         if (stream == null)
@@ -156,14 +157,17 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
             .PrependOne(headerDataTask);
     }
 
-    private static IAsyncEnumerable<byte[]> SkipToKeyFrame(
-        IAsyncEnumerable<byte[]> stream,
+    private static IAsyncEnumerable<VideoFrame> SkipToKeyFrame(
+        IAsyncEnumerable<VideoFrame> stream,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         // For video, we should ideally skip to the nearest keyframe
         // For now, use the same logic as audio - can be improved later
         // TODO: Implement proper keyframe detection and seeking
-        return SkipTo(stream, skipTo, cancellationToken);
+        if (skipTo <= TimeSpan.Zero)
+            return stream;
+
+        return stream.SkipWhile(frame => frame.Offset < skipTo || !frame.IsKeyFrame);
     }
 }
