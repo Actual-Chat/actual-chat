@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -7,7 +8,7 @@ public partial class StreamingBackend
 {
     public virtual async Task PushVideo(
         VideoRecord record,
-        RpcStream<byte[]> videoStream,
+        RpcStream<VideoFrame> videoStream,
         CancellationToken cancellationToken)
     {
         ValidateStreamId(record.StreamId);
@@ -32,7 +33,7 @@ public partial class StreamingBackend
 
     private async Task PushVideoInternal(
         VideoRecord record,
-        IAsyncEnumerable<byte[]> videoChunks,
+        IAsyncEnumerable<VideoFrame> videoFrames,
         CancellationToken cancellationToken)
     {
         var beginsAt = Clocks.SystemClock.Now;
@@ -46,20 +47,9 @@ public partial class StreamingBackend
 
         var recordedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
 
-        // Create video header with codec info
-        var header = new VideoStreamHeader(
-            beginsAt,
-            record.Codec,
-            record.Width,
-            record.Height,
-            record.AudioStreamId);
-
-        // Prepend header to video stream
-        var streamWithHeader = videoChunks.Prepend(header.Serialize());
-
         // Publish video stream for real-time viewing
         // No processing - just forward to StreamStore for memoization
-        await _videoStreams.Publish(record.StreamId, streamWithHeader).ConfigureAwait(false);
+        await _videoStreams.Publish(record.StreamId, videoFrames).ConfigureAwait(false);
 
 
         // Create video entry in chat (similar to audio entry)

@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Video;
 using ActualChat.Hosting;
 using ActualChat.Security;
 using ActualLab.Rpc;
@@ -54,7 +55,7 @@ public class StreamHub(IServiceProvider services) : Hub
         int height,
         double clientStartOffset,
         string? audioStreamId,
-        IAsyncEnumerable<byte[][]> videoStream)
+        IAsyncEnumerable<VideoFrame[]> videoStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         => PushVideo(
             sessionToken,
@@ -119,7 +120,7 @@ public class StreamHub(IServiceProvider services) : Hub
         int height,
         double clientStartOffset,
         string? audioStreamId,
-        IAsyncEnumerable<byte[]> videoStream)
+        IAsyncEnumerable<VideoFrame> videoStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
@@ -143,10 +144,10 @@ public class StreamHub(IServiceProvider services) : Hub
         var streamId = StreamId.New(nodeRef);
         var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, codec, width, height, audioStreamIdTyped);
         Log.LogInformation("PushVideo: {VideoRecord}", videoRecord);
-        var chunks = videoStream.SuppressCancellation(stopCts.Token);
-        var chunkStream = RpcStream.New(chunks);
+        var frames = videoStream.SuppressCancellation(stopCts.Token);
+        var frameStream = RpcStream.New(frames);
         await Backend
-            .PushVideo(videoRecord, chunkStream, CancellationToken.None)
+            .PushVideo(videoRecord, frameStream, CancellationToken.None)
             .SilentAwait(false);
     }
 

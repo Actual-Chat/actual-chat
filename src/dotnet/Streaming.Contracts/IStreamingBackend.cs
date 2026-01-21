@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Video;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
 
@@ -29,13 +30,13 @@ public interface IStreamingBackend : IRpcService, IBackendService
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken);
 
-    Task<RpcStream<byte[]>?> GetVideo(
+    Task<RpcStream<VideoFrame>?> GetVideo(
         StreamId streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken);
 
     Task PushVideo(
         VideoRecord record,
-        RpcStream<byte[]> videoStream,
+        RpcStream<VideoFrame> videoStream,
         CancellationToken cancellationToken);
 }

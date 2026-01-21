@@ -14,9 +14,18 @@ export interface VideoStreamConfig {
     audioStreamId?: string;
 }
 
+export interface VideoStreamFrame {
+    offset: number;
+    duration: number;
+    isKeyFrame: boolean;
+    width: number;
+    height: number;
+    data: Uint8Array;
+}
+
 export class VideoStream {
-    private readonly chunks = new Denque<Uint8Array>();
-    private readonly chunkAdded = new EventHandlerSet<void>();
+    private readonly frames = new Denque<VideoStreamFrame>();
+    private readonly frameAdded = new EventHandlerSet<void>();
 
     public isCompleted = false;
     public isDisposed = false;
@@ -31,15 +40,19 @@ export class VideoStream {
         this.whenDisposed = this.stream();
     }
 
-    public addChunk(chunk: Uint8Array): void {
+    public addFrame(frame: VideoStreamFrame): void {
         if (this.isCompleted) return;
-        this.chunks.push(chunk);
-        this.chunkAdded.trigger();
+        if (!frame.data?.length) {
+            warnLog?.log('skip empty video frame:', frame);
+            return;
+        }
+        this.frames.push(frame);
+        this.frameAdded.trigger();
     }
 
     public complete(): void {
         this.isCompleted = true;
-        this.chunkAdded.trigger();
+        this.frameAdded.trigger();
     }
 
     private async stream(): Promise<void> {
@@ -47,8 +60,8 @@ export class VideoStream {
             await this.streamAfter;
         }
 
-        let subject: signalR.Subject<Array<Uint8Array>> | null = null;
-        const chunksToSend = new Array<Uint8Array>();
+        let subject: signalR.Subject<VideoStreamFrame[]> | null = null;
+        const chunksToSend = new Array<VideoStreamFrame>();
 
         while (!this.isDisposed) {
             try {
@@ -56,7 +69,7 @@ export class VideoStream {
                     await VideoStreamer.ensureConnected();
                     if (this.isDisposed) return;
 
-                    subject = new signalR.Subject<Array<Uint8Array>>();
+                    subject = new signalR.Subject<VideoStreamFrame[]>();
                     // Use PushVideo - simple forwarding, no processing
                     await VideoStreamer.connection.send(
                         'PushVideo',
@@ -75,13 +88,13 @@ export class VideoStream {
                     chunksToSend.length = 0;
 
                     while (chunksToSend.length < 10) {
-                        const chunk = this.chunks.shift();
-                        if (chunk) {
-                            chunksToSend.push(chunk);
+                        const frame = this.frames.shift();
+                        if (frame) {
+                            chunksToSend.push(frame);
                         } else if (this.isCompleted || chunksToSend.length > 0) {
                             break;
                         } else {
-                            await this.chunkAdded.whenNext();
+                            await this.frameAdded.whenNext();
                         }
                     }
 
@@ -89,7 +102,7 @@ export class VideoStream {
                         subject.next(chunksToSend);
                     }
 
-                    if (this.isCompleted && this.chunks.length === 0) {
+                    if (this.isCompleted && this.frames.length === 0) {
                         subject.complete();
                         this.isDisposed = true;
                     }
