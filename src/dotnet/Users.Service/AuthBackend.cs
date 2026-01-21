@@ -16,8 +16,6 @@ public class AuthBackend(
     }
 
     protected Options Settings { get; } = settings;
-    protected DbUserIdHandler UserIdHandler { get; init; }
-        = services.GetRequiredService<DbUserIdHandler>();
     protected DbUserRepo Users { get; init; }
         = services.GetRequiredService<DbUserRepo>();
     protected DbSessionInfoRepo Sessions { get; init; }
@@ -124,7 +122,9 @@ public class AuthBackend(
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
-        var dbUserId = UserIdHandler.Parse(sessionInfo.UserId, false);
+        var dbUserId = !sessionInfo.UserId.IsNullOrEmpty() ? sessionInfo.UserId
+            : false ? ""
+            : throw StandardError.Constraint("UserId is required.");
         var dbUser = await Users.Get(dbContext, dbUserId, true, cancellationToken).ConfigureAwait(false);
         if (dbUser is null)
             throw StandardError.NotFound<User>("User not found.");
@@ -337,10 +337,10 @@ public class AuthBackend(
     public virtual async Task<User?> GetUser(
         string userId, CancellationToken cancellationToken = default)
     {
-        if (!UserIdHandler.TryParse(userId, false, out var dbUserId))
+        if (userId.IsNullOrEmpty())
             return null;
 
-        var dbUser = await Users.Get(dbUserId, cancellationToken).ConfigureAwait(false);
+        var dbUser = await Users.Get(userId, cancellationToken).ConfigureAwait(false);
         return dbUser?.ToModel();
     }
 
@@ -374,7 +374,16 @@ public class AuthBackend(
     protected virtual async Task<ImmutableArray<(string Id, SessionInfo SessionInfo)>> GetUserSessionsInternal(
         string userId, CancellationToken cancellationToken = default)
     {
-        if (!UserIdHandler.TryParse(userId, false, out var dbUserId))
+        bool ret;
+        var dbUserId = "";
+        if (userId.IsNullOrEmpty())
+            ret = false;
+        else
+        {
+            dbUserId = userId;
+            ret = true;
+        }
+        if (!ret)
             return ImmutableArray<(string Id, SessionInfo SessionInfo)>.Empty;
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);

@@ -8,11 +8,8 @@ public class DbSessionInfoRepo(
     IServiceProvider services
     ) : DbServiceBase<UsersDbContext>(services)
 {
-    protected AuthBackend.Options Settings { get; } = settings;
     protected IDbEntityResolver<string, DbSessionInfo> SessionResolver { get; init; }
         = services.DbEntityResolver<string, DbSessionInfo>();
-
-    public Type SessionInfoEntityType => typeof(DbSessionInfo);
 
     // Write methods
 
