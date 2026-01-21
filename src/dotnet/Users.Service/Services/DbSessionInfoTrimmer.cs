@@ -20,8 +20,8 @@ public class DbSessionInfoTrimmer(
     }
 
     protected Options Settings { get; } = settings;
-    protected IDbSessionInfoRepo<DbSessionInfo, string> Sessions { get; }
-        = services.GetRequiredService<IDbSessionInfoRepo<DbSessionInfo, string>>();
+    protected DbSessionInfoRepo Sessions { get; }
+        = services.GetRequiredService<DbSessionInfoRepo>();
     protected MomentClock SystemClock => services.Clocks().SystemClock;
     protected ILogger Log { get; } = services.LogFor<DbSessionInfoTrimmer>();
     protected ILogger? DefaultLog => Log.IfEnabled(Settings.LogLevel);

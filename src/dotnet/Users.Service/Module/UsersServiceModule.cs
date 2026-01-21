@@ -125,26 +125,21 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<ServerAuth>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
         }
+        if (rpcHost.IsApiHost || usesAuthBackendImpl)
+            services.AddSingleton<DbUserRepo>(); // Used by AuthBackend, EmailAuth, PhoneAuth
         if (usesAuthBackendImpl) {
+            // The services below are used only by AuthBackend
             services.AddSingleton(_ => new AuthBackend.Options {
                 MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
             });
-
-            services.AddSingleton<UserNamer>(); // Used by AuthBackend
-
-            // Session trimmer
             services.AddSingleton(_ => new DbSessionInfoTrimmer.Options {
                 MaxSessionAge = TimeSpan.FromDays(180),
             });
+
+            services.AddSingleton<UserNamer>();
+            services.AddSingleton<DbSessionInfoRepo>();
             services.AddSingleton<DbSessionInfoTrimmer>()
                 .AddHostedService(c => c.GetRequiredService<DbSessionInfoTrimmer>());
-
-            // DbSessionInfoRepo
-            services.AddSingleton<DbSessionInfoRepo>();
-            services.AddAlias<IDbSessionInfoRepo<DbSessionInfo, string>, DbSessionInfoRepo>();
-            // DbUserRepo
-            services.AddSingleton<DbUserRepo>();
-            services.AddAlias<IDbUserRepo<DbUser, string>, DbUserRepo>();
         }
 
         // Accounts
@@ -262,9 +257,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         dbModule.AddDbContextServices<UsersDbContext>(services, db => {
             // Auth-related services
-            services.AddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
-            db.AddEntityConverter<DbSessionInfo, SessionInfo, DbSessionInfoConverter>();
-            db.AddEntityConverter<DbUser, User, DbUserConverter>();
+            services.AddSingleton<DbUserIdHandler>();
             db.AddEntityResolver<string, DbSessionInfo>();
             db.AddEntityResolver<string, DbUser>(_ => new() {
                 QueryTransformer = query => query.Include(u => u.Identities),
