@@ -70,6 +70,16 @@ public static class ServiceCollectionExt
         if (!TestRunnerInfo.IsBuildAgent())
             logging.AddSeq();
 
+        // "Claude mode" - adds console logging so logs are visible in terminal
+        // Useful for debugging tests via Claude Code or when running tests manually
+        // Set CLAUDE_MODE=1 or CLAUDE_MODE=true environment variable to enable
+        if (EnvExt.IsClaudeMode())
+            logging.AddSimpleConsole(options => {
+                options.SingleLine = true;
+                options.TimestampFormat = "HH:mm:ss.fff ";
+                options.IncludeScopes = false;
+            });
+
         // XUnit logging requires weird setup b/c otherwise it filters out
         // everything below LogLevel.Information
  #pragma warning disable CS0618 // Type or member is obsolete
