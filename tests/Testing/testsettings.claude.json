@@ -1,0 +1,23 @@
+{
+  // Claude mode settings - enables detailed logging for debugging
+  // These override AddTestLogging filters where applicable
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft": "Warning",
+      "Microsoft.AspNetCore.SignalR.Internal": "Warning",
+      "Microsoft.EntityFrameworkCore.Database": "Warning",
+      // Enable detailed Fusion/Rpc logging for routing debugging
+      "ActualLab.Rpc": "Debug",
+      "ActualLab.Fusion": "Debug",
+      "ActualLab.Fusion.Client": "Debug",
+      // Enable mesh/sharding logging
+      "ActualChat.Mesh": "Debug",
+      "ActualChat.Sharding": "Debug",
+      "ActualChat.Redis": "Debug",
+      "Microsoft.Hosting.Lifetime": "Warning",
+      "NATS.Client.Core": "Warning",
+      "NATS.Client": "Warning"
+    }
+  }
+}
