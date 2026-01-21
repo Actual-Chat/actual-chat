@@ -70,10 +70,10 @@ public static class ServiceCollectionExt
         if (!TestRunnerInfo.IsBuildAgent())
             logging.AddSeq();
 
-        // "Claude mode" - adds console logging so logs are visible in terminal
+        // "Agent mode" - adds console logging so logs are visible in terminal
         // Useful for debugging tests via Claude Code or when running tests manually
-        // Set CLAUDE_MODE=1 or CLAUDE_MODE=true environment variable to enable
-        if (EnvExt.IsClaudeMode())
+        // Detected by presence of AC_OS environment variable (set by Claude Launcher)
+        if (EnvExt.IsAgentMode())
             logging.AddSimpleConsole(options => {
                 options.SingleLine = true;
                 options.TimestampFormat = "HH:mm:ss.fff ";
