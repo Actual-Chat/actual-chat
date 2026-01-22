@@ -130,7 +130,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (dbUser == null)
             return default; // Should never happen, but if it somehow does, there is no extra to do in this case
 
-        var user = account.User.WithEmail(email);
+        var user = account.ToUser().WithEmail(email);
         var conflictingDbUser = await dbContext.GetDbUserByUserIdentity(user.GetEmailIdentity(), false, cancellationToken).ConfigureAwait(false);
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Email has already been taken by another account.");

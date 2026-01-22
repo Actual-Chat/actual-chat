@@ -21,18 +21,18 @@ public static class AccountExt
     }
 
     public static bool HasVerifiedPhone(this AccountFull account)
-        => account.Phone is { } phone && phone.IsNormalized() && account.User.GetPhone() == phone;
+        => account.Phone is { } phone && phone.IsNormalized() && account.Identities.GetPhone() == phone;
 
     public static bool HasVerifiedEmail(this AccountFull account) {
         if (account.Email.IsNullOrEmpty())
             return false;
 
-        if (OrdinalIgnoreCaseEquals(account.User.GetEmail(), account.Email))
+        if (OrdinalIgnoreCaseEquals(account.Identities.GetEmail(), account.Email))
             return true;
 
         return account.IsEmailVerified;
     }
 
     public static string? GetVerifiedEmail(this AccountFull account)
-        => account.User.GetEmail();
+        => account.Identities.GetEmail();
 }

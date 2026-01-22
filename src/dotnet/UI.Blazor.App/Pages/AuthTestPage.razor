@@ -4,7 +4,7 @@
     #pragma warning disable IL2026
 
     var (m, error) = (State.LastNonErrorValue, State.Error);
-    var usedAuthSchemas = m?.User.Identities.Select(kv => kv.Key.Schema).ToHashSet() ?? new HashSet<string>();
+    var usedAuthSchemas = m?.Account.Identities.Select(kv => kv.Key.Schema).ToHashSet() ?? new HashSet<string>();
     var unusedAuthSchemas = AccountUI.GetAuthSchemas().Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
 }
 
@@ -24,28 +24,27 @@
     <li><code>SessionInfo</code>: <br/><pre class="whitespace-break-spaces">@(JsonFormatter.Format(m.SessionInfo!))</pre></li>
 </ul>
 
-<h3 class="section">User</h3>
+<h3 class="section">Account</h3>
 <ul>
-    <li><code>Id</code>: <b><code>@m.User.Id</code></b></li>
-    <li><code>Name</code>: <b><code>@m.User.Name</code></b></li>
-    <li><code>Version</code>: <b><code>@m.User.Version.ToString()</code></b></li>
-    <li><code>Account.IsAdmin</code>: <b><code>@m.Account.IsAdmin.ToString()</code></b></li>
-    <li><code>Account.Version</code>: <b><code>@m.Account.Version.ToString()</code></b></li>
+    <li><code>Id</code>: <b><code>@m.Account.Id</code></b></li>
+    <li><code>Name</code>: <b><code>@m.Account.Name</code></b></li>
+    <li><code>Version</code>: <b><code>@m.Account.Version.ToString()</code></b></li>
+    <li><code>IsAdmin</code>: <b><code>@m.Account.IsAdmin.ToString()</code></b></li>
 </ul>
 <h4>Claims:</h4>
 <ul>
-    @foreach (var (key, value) in m.User.Claims) {
+    @foreach (var (key, value) in m.Account.Claims) {
         <li><code>@key</code>: <b><code>@value</code></b></li>
     }
 </ul>
 <h4>Identities:</h4>
 <ul>
-    @foreach (var ((schema, schemaBoundId), _) in m.User.Identities) {
+    @foreach (var ((schema, schemaBoundId), _) in m.Account.Identities) {
         <li><code>@schema</code>: <b><code>@schemaBoundId</code></b></li>
     }
 </ul>
 
-<h3 class="section">Account</h3>
+<h3 class="section">Account (JSON)</h3>
 <pre class="whitespace-break-spaces">@(JsonFormatter.Format(m.Account))</pre>
 
 @if (m.Account.IsAdmin) {
@@ -64,7 +63,7 @@
     </div>
 }
 
-@if (m.User.IsAuthenticated()) {
+@if (!m.Account.IsGuest) {
     <h3 class="section">Sign out</h3>
     <FormButtons IsEndAligned="false">
         <Button Click="@(_ => AccountUI.SignOut())">Sign out</Button>
@@ -98,7 +97,6 @@
     public sealed record Model {
         public SessionInfo? SessionInfo { get; init; }
         public AccountFull Account { get; init; } = null!;
-        public User User => Account.User;
 
         // This record relies on referential equality
         public bool Equals(Model? other) => ReferenceEquals(this, other);

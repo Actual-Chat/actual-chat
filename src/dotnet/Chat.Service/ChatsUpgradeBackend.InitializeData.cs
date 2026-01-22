@@ -33,8 +33,7 @@ public partial class ChatsUpgradeBackend
             if (account == null)
                 continue;
 
-            var user = account.User;
-            if (user.Claims.Count == 0)
+            if (account.Claims.Count == 0)
                 continue;
 
             var email = account.GetVerifiedEmail();
