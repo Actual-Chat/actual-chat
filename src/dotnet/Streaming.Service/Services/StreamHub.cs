@@ -54,7 +54,6 @@ public class StreamHub(IServiceProvider services) : Hub
         int width,
         int height,
         double clientStartOffset,
-        string? audioStreamId,
         IAsyncEnumerable<VideoFrame[]> videoStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         => PushVideo(
@@ -64,7 +63,6 @@ public class StreamHub(IServiceProvider services) : Hub
             width,
             height,
             clientStartOffset,
-            audioStreamId,
             videoStream.SelectMany(c => c.AsAsyncEnumerable()));
 
     // Private methods
@@ -119,13 +117,11 @@ public class StreamHub(IServiceProvider services) : Hub
         int width,
         int height,
         double clientStartOffset,
-        string? audioStreamId,
         IAsyncEnumerable<VideoFrame> videoStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var chatIdTyped = ChatId.Parse(chatId);
-        var audioStreamIdTyped = StreamId.ParseNullable(audioStreamId);
         var httpContext = Context.GetHttpContext()!;
         var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSessionFromCookie();
 
@@ -142,7 +138,8 @@ public class StreamHub(IServiceProvider services) : Hub
 
         var nodeRef = _preferThisNode ? MeshWatcher.ThisNode.Ref : nodes.GetRandom().Ref;
         var streamId = StreamId.New(nodeRef);
-        var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, codec, width, height, audioStreamIdTyped);
+        var format = new VideoFormat { Codec = codec, Width = width, Height = height };
+        var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format);
         Log.LogInformation("PushVideo: {VideoRecord}", videoRecord);
         var frames = videoStream.SuppressCancellation(stopCts.Token);
         var frameStream = RpcStream.New(frames);

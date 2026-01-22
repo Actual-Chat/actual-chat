@@ -33,8 +33,9 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         // Fusion & RestEase client
         ConfigureFusionClients(fusion);
 
-        // Audio
+        // Audio & Video Streaming
         rpc.AddClient<IStreamServer>();
+        fusion.AddClient<IRealtimeStreaming>();
         services.AddSingleton<IStreamClient>(c => new StreamClient(c));
         services.AddSingleton<AudioDownloader>(c => new HttpClientAudioDownloader(c));
         fusion.AddClient<ILiveStreams>();
