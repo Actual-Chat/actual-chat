@@ -16,7 +16,7 @@
 }
 .stepper-footer {
     @apply z-20;
-    @apply py-8;
+    @apply pt-8 py-4;
 }
 .stepper-filler {
     @apply grow;

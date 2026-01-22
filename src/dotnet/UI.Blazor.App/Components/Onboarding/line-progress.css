@@ -1,23 +1,23 @@
 .line-progress {
-    @apply flex-x gap-x-3;
+    @apply flex-x gap-x-2;
 }
 .line-progress-item {
-    @apply w-2 h-2;
+    @apply flex-1;
+    @apply h-0.5;
     @apply rounded-full;
     transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
-}
-.line-progress-item.c-current {
-    @apply w-12;
 }
 .line-progress-item.blue {
     @apply bg-primary;
 }
 .line-progress-item.white {
+    @apply bg-white;
     @apply text-06;
 }
 .line-progress-item.gray {
     @apply bg-[var(--gray-80)];
 }
-.line-progress-item.c-current.gray {
+.line-progress-item.c-current.gray,
+.line-progress-item.c-current.white {
     @apply bg-primary;
 }

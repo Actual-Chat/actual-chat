@@ -20,6 +20,7 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(13)] public bool IsTranscriptPlaybackStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(14)] public bool IsPlacesFeatureStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(15)] public bool IsJoinPlaceStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(16)] public bool IsLanguagesStepCompleted { get; init; }
 
     public bool HasUncompletedSteps(bool enableChatRouletteUI)
     {
@@ -34,6 +35,7 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
             IsTranscriptPlaybackStepCompleted: true,
             IsPlacesFeatureStepCompleted: true,
             IsJoinPlaceStepCompleted: true,
+            IsLanguagesStepCompleted: true,
         };
         if (!areAllFeatureIndependentStepsCompleted)
             return true;

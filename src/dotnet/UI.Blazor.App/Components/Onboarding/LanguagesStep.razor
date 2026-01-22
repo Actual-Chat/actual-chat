@@ -1,0 +1,138 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits SimpleStep<AppUIHub>;
+@{
+    if (CurrentStep != this)
+        return;
+}
+
+<div class="languages-step">
+    <p class="text-title-1 text-center">Languages you speak</p>
+    <div class="step-tiles">
+        <div class="step-tile">
+            <Form Model="@_formModel" @ref="_formRef">
+                <DataAnnotationsValidator/>
+
+                <FormBlock Class="languages-form">
+                    <FormSection
+                        For="() => _formModel.PrimaryLanguageId"
+                        InputId="@_formModel.PrimaryLanguageFormId"
+                        IsLabelInsideInput="true"
+                        Label="Primary language"
+                        IsRequired="true">
+                        <InputSelect
+                            Value="_formModel.PrimaryLanguageId"
+                            ValueExpression="@(() => _formModel.PrimaryLanguageId)"
+                            ValueChanged="@((string languageId) => OnLanguageChanged(0, languageId))">
+                            @foreach (var language in Languages.All) {
+                                <option value="@language.Id">@language.Title</option>
+                            }
+                        </InputSelect>
+                    </FormSection>
+
+                    <FormSection
+                        For="() => _formModel.SecondaryLanguageId"
+                        InputId="@_formModel.SecondaryLanguageFormId"
+                        IsLabelInsideInput="true"
+                        Label="2nd language">
+                        <InputSelect
+                            Value="_formModel.SecondaryLanguageId"
+                            ValueExpression="@(() => _formModel.SecondaryLanguageId)"
+                            ValueChanged="@((string languageId) => OnLanguageChanged(1, languageId))">
+                            <option value="">None</option>
+                            @foreach (var language in Languages.All) {
+                                <option value="@language.Id">@language.Title</option>
+                            }
+                        </InputSelect>
+                    </FormSection>
+
+                    <FormSection
+                        For="() => _formModel.TertiaryLanguageId"
+                        InputId="@_formModel.TertiaryLanguageFormId"
+                        IsLabelInsideInput="true"
+                        Label="3rd language">
+                        <InputSelect
+                            Value="_formModel.TertiaryLanguageId"
+                            ValueExpression="@(() => _formModel.TertiaryLanguageId)"
+                            ValueChanged="@((string languageId) => OnLanguageChanged(2, languageId))">
+                            <option value="">None</option>
+                            @foreach (var language in Languages.All) {
+                                <option value="@language.Id">@language.Title</option>
+                            }
+                        </InputSelect>
+                    </FormSection>
+                </FormBlock>
+            </Form>
+        </div>
+    </div>
+</div>
+
+@code {
+    private FormModel _formModel = null!;
+    private Form? _formRef;
+
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsLanguagesStepCompleted;
+
+    protected override async Task OnInitializedAsync() {
+        _formModel = new FormModel(ComponentIdGenerator);
+
+        var languages = await LanguageUI.Settings
+            .Use(LanguageUI.WhenReady, CancellationToken.None);
+
+        var spoken = languages.ListSpoken();
+        _formModel.PrimaryLanguageId = spoken.GetOrDefault(0)?.Value ?? "";
+        _formModel.SecondaryLanguageId = spoken.GetOrDefault(1)?.Value ?? "";
+        _formModel.TertiaryLanguageId = spoken.GetOrDefault(2)?.Value ?? "";
+    }
+
+    protected override Task<bool> Validate() {
+        var isValid = _formRef?.EditContext?.Validate() ?? false;
+        return Task.FromResult(isValid);
+    }
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsLanguagesStepCompleted = true });
+
+    protected override async Task<bool> Save() {
+        await LanguageUI.UpdateSettings(x =>
+            x.With(0, Language.ParseNullable(_formModel.PrimaryLanguageId))
+                .With(1, Language.ParseNullable(_formModel.SecondaryLanguageId))
+                .With(2, Language.ParseNullable(_formModel.TertiaryLanguageId))
+        );
+        return true;
+    }
+
+    private Task OnLanguageChanged(int index, string languageId) {
+        switch (index) {
+            case 0: _formModel.PrimaryLanguageId = languageId;
+                break;
+            case 1: _formModel.SecondaryLanguageId = languageId;
+                break;
+            case 2: _formModel.TertiaryLanguageId = languageId;
+                break;
+        }
+        return Task.CompletedTask;
+    }
+
+    // Nested types
+
+    public sealed class FormModel {
+        public string PrimaryLanguageId { get; set; } = "";
+        public string SecondaryLanguageId { get; set; } = "";
+        public string TertiaryLanguageId { get; set; } = "";
+
+        private string FormId { get; }
+        public string PrimaryLanguageFormId { get; }
+        public string SecondaryLanguageFormId { get; }
+        public string TertiaryLanguageFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            PrimaryLanguageFormId = $"{FormId}-primary-language";
+            SecondaryLanguageFormId = $"{FormId}-secondary-language";
+            TertiaryLanguageFormId = $"{FormId}-tertiary-language";
+        }
+    }
+}

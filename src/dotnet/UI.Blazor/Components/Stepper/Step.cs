@@ -14,12 +14,9 @@ public abstract class Step<THub, TModel>
     [CascadingParameter] public Stepper Stepper { get; set; } = null!;
 
     protected override void OnInitialized() {
-        if (IsCompleted) {
-            MarkCompleted();
-            return;
-        }
-
         Stepper.AddStep(this);
+        if (IsCompleted)
+            MarkCompleted();
     }
 
     protected abstract Task<bool> Validate();
