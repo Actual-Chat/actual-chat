@@ -1,5 +1,6 @@
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users;
 
@@ -15,8 +16,8 @@ public class SessionsBackend(
     }
 
     protected Options Settings { get; } = settings;
-    protected DbSessionInfoRepo Sessions { get; init; }
-        = services.GetRequiredService<DbSessionInfoRepo>();
+    protected IDbEntityResolver<string, DbSessionInfo> SessionResolver { get; init; }
+        = services.DbEntityResolver<string, DbSessionInfo>();
 
     // Commands
 
@@ -39,7 +40,7 @@ public class SessionsBackend(
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
-        var dbSessionInfo = await Sessions.GetOrCreate(dbContext, session.Id, cancellationToken).ConfigureAwait(false);
+        var dbSessionInfo = await GetOrCreateDbSessionInfo(dbContext, session.Id, cancellationToken).ConfigureAwait(false);
         var sessionInfo = dbSessionInfo.ToModel(Log);
         if (sessionInfo.IsSignOutForced)
             return;
@@ -53,7 +54,7 @@ public class SessionsBackend(
             UserId = "",
             IsSignOutForced = force,
         };
-        await Sessions.Upsert(dbContext, session.Id, sessionInfo, cancellationToken).ConfigureAwait(false);
+        await UpsertDbSessionInfo(dbContext, session.Id, sessionInfo, cancellationToken).ConfigureAwait(false);
 
         // Emit UserSignedOutEvent if user was authenticated
         if (userId is not null)
@@ -85,7 +86,7 @@ public class SessionsBackend(
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
-        var dbSessionInfo = await Sessions.Get(dbContext, session.Id, true, cancellationToken).ConfigureAwait(false);
+        var dbSessionInfo = await GetDbSessionInfo(dbContext, session.Id, true, cancellationToken).ConfigureAwait(false);
         var isNew = dbSessionInfo is null;
         var now = Clocks.SystemClock.Now;
         var sessionInfo = dbSessionInfo?.ToModel(Log)
@@ -106,8 +107,7 @@ public class SessionsBackend(
             authChanged = true;
         }
 
-        dbSessionInfo = await Sessions
-            .Upsert(dbContext, session.Id, sessionInfo, cancellationToken)
+        dbSessionInfo = await UpsertDbSessionInfo(dbContext, session.Id, sessionInfo, cancellationToken)
             .ConfigureAwait(false);
         sessionInfo = dbSessionInfo.ToModel(Log);
         context.Operation.Items.KeylessSet(sessionInfo);
@@ -155,8 +155,59 @@ public class SessionsBackend(
     public virtual async Task<SessionInfo?> Get(Session session, CancellationToken cancellationToken = default)
     {
         session.RequireValid();
-        var dbSessionInfo = await Sessions.Get(session.Id, cancellationToken).ConfigureAwait(false);
+        var dbSessionInfo = await SessionResolver.Get(DbShard.Single, session.Id, cancellationToken).ConfigureAwait(false);
         return dbSessionInfo?.ToModel(Log);
+    }
+
+    // Private methods
+
+    private async Task<DbSessionInfo> GetOrCreateDbSessionInfo(
+        UsersDbContext dbContext, string sessionId, CancellationToken cancellationToken)
+    {
+        var dbSessionInfo = await GetDbSessionInfo(dbContext, sessionId, true, cancellationToken).ConfigureAwait(false);
+        if (dbSessionInfo is null) {
+            var session = new Session(sessionId);
+            var sessionInfo = new SessionInfo(session, Clocks.SystemClock.Now);
+            dbSessionInfo = dbContext.Add(
+                new DbSessionInfo() {
+                    Id = sessionId,
+                    CreatedAt = sessionInfo.CreatedAt,
+                }).Entity;
+            dbSessionInfo.UpdateFrom(sessionInfo, VersionGenerator);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        return dbSessionInfo;
+    }
+
+    private async Task<DbSessionInfo> UpsertDbSessionInfo(
+        UsersDbContext dbContext, string sessionId, SessionInfo sessionInfo, CancellationToken cancellationToken)
+    {
+        var dbSessionInfo = await dbContext.Set<DbSessionInfo>().ForNoKeyUpdate()
+            .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken)
+            .ConfigureAwait(false);
+        var isDbSessionInfoFound = dbSessionInfo is not null;
+        dbSessionInfo ??= new() {
+            Id = sessionId,
+            CreatedAt = sessionInfo.CreatedAt,
+        };
+        dbSessionInfo.UpdateFrom(sessionInfo, VersionGenerator);
+        if (isDbSessionInfoFound)
+            dbContext.Update(dbSessionInfo);
+        else
+            dbContext.Add(dbSessionInfo);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return dbSessionInfo;
+    }
+
+    private static async Task<DbSessionInfo?> GetDbSessionInfo(
+        UsersDbContext dbContext, string sessionId, bool forUpdate, CancellationToken cancellationToken)
+    {
+        var dbSessionInfos = forUpdate
+            ? dbContext.Set<DbSessionInfo>().ForNoKeyUpdate()
+            : dbContext.Set<DbSessionInfo>();
+        return await dbSessionInfos
+            .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Nested types

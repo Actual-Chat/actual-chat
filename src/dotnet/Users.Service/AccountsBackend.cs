@@ -1,9 +1,10 @@
 using System.Net.Mail;
+using System.Security.Claims;
 using ActualChat.Chat;
 using ActualChat.Flows;
-using ActualChat.Flows.Infrastructure;
 using ActualChat.Users.Db;
 using ActualChat.Users.Flows;
+using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private FlowHub FlowHub => field ??= Services.FlowHub();
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
     private IDbEntityResolver<string, DbUser> DbUserResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbUser>>();
-    private DbUserRepo DbUsers => field ??= Services.GetRequiredService<DbUserRepo>();
+    private UsersSettings UsersSettings => field ??= Services.GetRequiredService<UsersSettings>();
     private UserNamer UserNamer => field ??= Services.GetRequiredService<UserNamer>();
 
     // [ComputeMethod]
@@ -184,12 +185,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await using var _1 = dbContext.ConfigureAwait(false);
 
         var isNewUser = false;
-        var dbUser = await DbUsers
-            .GetByUserIdentity(dbContext, authenticatedIdentity, true, cancellationToken)
+        var dbUser = await dbContext.GetDbUserByUserIdentity(authenticatedIdentity, true, cancellationToken)
             .ConfigureAwait(false);
         if (dbUser is null) {
-            (dbUser, isNewUser) = await DbUsers
-                .GetOrCreateOnSignIn(dbContext, user, cancellationToken)
+            (dbUser, isNewUser) = await GetOrCreateDbUserOnSignIn(dbContext, user, cancellationToken)
                 .ConfigureAwait(false);
             if (isNewUser == false) {
                 dbUser.UpdateFrom(user, VersionGenerator);
@@ -267,7 +266,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var existingUserName = existing?.User.Name ?? "";
         var newUserName = account.User.Name;
         if (!OrdinalEquals(existingUserName, newUserName)) {
-            var dbUser = await DbUsers.Get(dbContext, accountIdValue, true, cancellationToken).ConfigureAwait(false);
+            var dbUser = await dbContext.GetDbUser(accountIdValue, true, cancellationToken).ConfigureAwait(false);
             if (dbUser != null) {
                 dbUser.Name = newUserName;
                 dbUser.Version = VersionGenerator.NextVersion(dbUser.Version);
@@ -407,6 +406,76 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             AvatarKey = DefaultUserPicture.GetAvatarKey(account.Id.Value),
             Bio = "",
         };
+
+    // DbUser methods (inlined from DbUserRepo)
+
+    private async Task<DbUser> CreateDbUser(
+        UsersDbContext dbContext, User user, CancellationToken cancellationToken)
+    {
+        // Creating "base" dbUser
+        var dbUser = new DbUser() {
+            Id = user.Id.NullIfEmpty() ?? UserId.New().Value,
+            Version = VersionGenerator.NextVersion(),
+            Name = user.Name,
+            Claims = user.Claims.ToImmutableDictionary(StringComparer.Ordinal),
+        };
+        dbContext.Add(dbUser);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        user = user with {
+            Id = dbUser.Id ?? ""
+        };
+        // Updating dbUser from the model to persist user.Identities
+        dbUser.UpdateFrom(user, VersionGenerator);
+        dbContext.Update(dbUser);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // ActualChat-specific: Create DbAccount for new user
+        user = dbUser.ToModel();
+
+        var context = CommandContext.GetCurrent();
+        var isAdmin = IsAdmin(user);
+        var name = user.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
+        var lastName = user.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
+        if (!lastName.IsNullOrEmpty())
+            name = $"{name} {lastName}";
+        var dbAccount = new DbAccount {
+            Id = user.Id,
+            Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
+            Version = VersionGenerator.NextVersion(),
+            Name = name,
+            Email = user.Claims.GetValueOrDefault(ClaimTypes.Email, ""),
+            Phone = user.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
+            CreatedAt = dbUser.CreatedAt,
+        };
+        dbContext.Accounts.Add(dbAccount);
+
+        var emailString = dbAccount.Email;
+        if (!emailString.IsNullOrEmpty() && ActualChat.Email.TryParse(emailString, out var email)) {
+            user = user.WithEmailIdentities(email);
+            dbUser.UpdateFrom(user, VersionGenerator);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation.AddEvent(
+            new AccountChangedEvent(dbAccount.ToModel(user), null, ChangeKind.Create));
+        return dbUser;
+    }
+
+    private async Task<(DbUser DbUser, bool IsCreated)> GetOrCreateDbUserOnSignIn(
+        UsersDbContext dbContext, User user, CancellationToken cancellationToken)
+    {
+        DbUser? dbUser;
+        if (!user.Id.IsNullOrEmpty()) {
+            dbUser = await dbContext.GetDbUser(user.Id, false, cancellationToken).ConfigureAwait(false);
+            if (dbUser is not null)
+                return (dbUser, false);
+        }
+
+        // No user found, let's create it
+        dbUser = await CreateDbUser(dbContext, user, cancellationToken).ConfigureAwait(false);
+        return (dbUser, true);
+    }
 
     // Nested types
 
