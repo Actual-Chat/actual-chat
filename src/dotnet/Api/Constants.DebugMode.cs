@@ -31,6 +31,9 @@ public static partial class Constants
         // Audio
         public static readonly bool WebMReader = false;
         public static readonly bool AudioSource = false;
+
+        // Video
+        public static readonly bool VideoSource = false;
         public static readonly bool AudioProcessor = false;
         public static readonly bool AudioTrackPlayer = false;
         public static readonly bool NativeAudioPlayer = false;
