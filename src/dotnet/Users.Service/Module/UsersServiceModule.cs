@@ -9,10 +9,10 @@ using ActualChat.Security;
 using ActualChat.Users.Db;
 using ActualChat.Users.Email;
 using ActualChat.Users.Flows;
+using ActualChat.Users.Internal;
 using ActualChat.Users.Models;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Phone.Internal;
-using ActualChat.Users.Services;
 using ActualLab.Fusion.Server;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -134,8 +134,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddSingleton(_ => new DbSessionInfoTrimmer.Options {
                 MaxSessionAge = TimeSpan.FromDays(180),
             });
-
-            services.AddSingleton<DbSessionInfoRepo>();
             services.AddSingleton<DbSessionInfoTrimmer>()
                 .AddHostedService(c => c.GetRequiredService<DbSessionInfoTrimmer>());
         }
@@ -146,8 +144,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         var usesAccountsBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<IAccountsBackend>().UsesImplementation();
         if (usesAccountsBackendImpl)
             services.AddSingleton<UserNamer>(); // Used by AccountsBackend
-        if (rpcHost.IsApiHost || usesAccountsBackendImpl)
-            services.AddSingleton<DbUserRepo>(); // Used by AccountsBackend, EmailAuth, PhoneAuth
         rpcHost.AddBackend<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // UserPresences

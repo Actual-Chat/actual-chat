@@ -20,7 +20,6 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     private TotpCodes Totps { get; }
     private TotpSecrets TotpSecrets { get; }
     private RedisDb<UsersDbContext> RedisDb { get; }
-    private DbUserRepo DbUsers { get; }
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
 
@@ -32,7 +31,6 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         Totps = services.GetRequiredService<TotpCodes>();
         TotpSecrets = services.GetRequiredService<TotpSecrets>();
         RedisDb = services.GetRequiredService<RedisDb<UsersDbContext>>();
-        DbUsers = services.GetRequiredService<DbUserRepo>();
         _blockedPhonePrefixes = new Lazy<string[]>(()
             => Settings.BlockedPhonePrefixes.Split([';', ','], StringSplitOptions.RemoveEmptyEntries));
     }
@@ -145,12 +143,12 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUser = await DbUsers.Get(dbContext, account.Id.Value, true, cancellationToken).ConfigureAwait(false);
+        var dbUser = await dbContext.GetDbUser(account.Id.Value, true, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return default; // Should never happen, but if it somehow does, there is no extra to do in this case
 
         var user = account.User.WithPhone(phone);
-        var conflictingDbUser = await DbUsers.GetByUserIdentity(dbContext, user.GetPhoneIdentity(), false, cancellationToken).ConfigureAwait(false);
+        var conflictingDbUser = await dbContext.GetDbUserByUserIdentity(user.GetPhoneIdentity(), false, cancellationToken).ConfigureAwait(false);
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");
 

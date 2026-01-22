@@ -2,11 +2,71 @@
 
 ## Overview
 
-This document outlines the plan to merge the `User` and `Account` types into a single unified `User` type. The current `Account`/`AccountsBackend` will be renamed to `Users`/`UsersBackend`.
+This document outlines the plan to merge the `User` and `Account` types into a single unified type. The migration will be performed incrementally. Additional steps will be added later to complete the full migration (DB schema changes, renaming backends, etc.), but those are out of scope for now.
 
-## Current State
+## Current Scope
 
-### Type Hierarchy
+The following two steps are currently in scope:
+
+### Step 1: Inline Repository Types
+
+**Goal**: Eliminate standalone repository classes by inlining them into their respective backends.
+
+1. **SessionInfoDbRepo → SessionBackend**
+   - Inline `SessionInfoDbRepo` type and its repository code directly into `SessionBackend`
+   - The session info DB repository becomes part of the session backend implementation
+
+2. **DbUserRepo → AccountBackend**
+   - Inline `DbUserRepo` type and its repository code directly into `AccountBackend`
+   - If there are other types using these repositories, inline the relevant code there as well
+   - Result: no standalone repository classes for these entities
+
+### Step 2: Inline User Type into AccountFull
+
+**Goal**: Merge `User` type into `AccountFull` without modifying database structures.
+
+Since `AccountFull` already exposes `User` type, these two types can be merged. The approach:
+
+1. **Type Merge**
+   - Flatten all `User` properties directly into `AccountFull`
+   - Remove the nested `User` property from `AccountFull`
+   - The result is a single `AccountFull` type containing all user data
+
+2. **Write Operations (Double-Write)**
+   - For any operation that modifies the account, also update the corresponding `users` table entry
+   - For operations that previously only updated the user, use a combined operation (e.g., `UpsertAccount` or similar)
+   - Decision needed: Should this be a single operation (like `UpsertAccount`) or separate operations for create vs update? (Requires code analysis)
+
+3. **Read Operations (Double-Read + Merge)**
+   - For any account read, read from both `accounts` and `users` tables
+   - Merge the data from both tables into the unified `AccountFull` type
+
+4. **Events**
+   - All events should be on `AccountBackend` only
+   - Remove any separate user-related events if they exist
+
+5. **Enumeration**
+   - If there is logic that enumerates users/accounts, enumerate through the `accounts` table in the database
+
+**Important**: Database schema remains unchanged in this step. Both `users` and `accounts` tables continue to exist and are kept in sync via double-writes.
+
+## Out of Scope (For Now)
+
+The following are planned for future steps but are NOT part of the current scope:
+
+- Database schema migration (merging/renaming tables)
+- Renaming `AccountBackend` → `UsersBackend`
+- Renaming `Account`/`AccountFull` → `User`/`UserFull`
+- Removing the `users` table
+- API contract changes
+
+---
+
+## Reference Material
+
+The sections below document the current state and the target state for the full migration (future steps). This is for reference only.
+
+### Current Type Hierarchy
 
 ```
 User (Core/Users/User.cs)
@@ -37,7 +97,7 @@ AccountFull : Account (Api/Users/AccountFull.cs)
 └── AliasId: AliasId?
 ```
 
-### Database Schema
+### Current Database Schema
 
 ```
 DbUser (users table)
@@ -66,11 +126,9 @@ DbAccount (accounts table)
 └── CreatedAt                             # Duplicated from users
 ```
 
-## Target State
+### Future Target State (Out of Scope for Now)
 
-### Type Hierarchy
-
-The new type hierarchy mirrors the current Account/AccountFull pattern:
+The eventual target type hierarchy mirrors the current Account/AccountFull pattern:
 
 ```
 User (public/trimmed data - like current Account)
@@ -88,7 +146,7 @@ UserFull : User (complete data - like current AccountFull)
 └── Metadata: CreatedAt
 ```
 
-### User Type (Public/Trimmed Data)
+#### User Type (Public/Trimmed Data)
 
 Used when viewing other users - minimal safe-to-share information:
 
@@ -108,7 +166,7 @@ public partial record User(
 }
 ```
 
-### UserFull Type (Complete Data)
+#### UserFull Type (Complete Data)
 
 Returned by UsersBackend - contains all user information:
 
@@ -143,7 +201,7 @@ public sealed partial record UserFull(
 }
 ```
 
-### Type Usage Pattern
+#### Type Usage Pattern
 
 | Context | Type | Example |
 |---------|------|---------|
@@ -152,16 +210,16 @@ public sealed partial record UserFull(
 | Own user data | `UserFull` | `IUsers.GetOwn(session)` → `UserFull` |
 | User lists/search | `User` | Public info only |
 
-### What's Removed
+#### What's Removed
 
 - **Claims** (`ApiMap<string, string>`): Not needed - all useful claims are extracted to dedicated properties (Email, Phone, roles via IsAdmin)
 - **Old Core User type**: Replaced by UserFull
 - **Nested User object in AccountFull**: Data is now flattened into UserFull
 - **Duplicate Name/CreatedAt**: Single source of truth in UserFull
 
-## Database Migration
+### Future Database Migration (Out of Scope for Now)
 
-### Phase 1: Schema Preparation
+#### Phase 1: Schema Preparation
 
 1. **Add missing columns to `accounts` table** (if any)
 2. **Migrate data from `users` table to `accounts`**:
@@ -175,7 +233,7 @@ public sealed partial record UserFull(
    ALTER TABLE users_new RENAME TO users;
    ```
 
-### Phase 2: Merge Tables
+#### Phase 2: Merge Tables
 
 Option A: **Keep accounts as the main table, drop users table**
 - `accounts` already has all profile data
@@ -189,7 +247,7 @@ Option B: **Merge into a single new table**
 
 **Recommended: Option A** - Less data movement, accounts already has most fields.
 
-### Migration Script Outline
+#### Migration Script Outline
 
 ```sql
 -- Step 1: Ensure all users have accounts (should already be true)
@@ -212,9 +270,9 @@ ALTER TABLE accounts RENAME TO users;
 -- DROP TABLE _users_deprecated;
 ```
 
-## Code Migration
+### Future Code Migration (Out of Scope for Now)
 
-### Phase 1: Rename Types
+#### Phase 1: Rename Types
 
 | Old Name | New Name | Notes |
 |----------|----------|-------|
@@ -228,7 +286,7 @@ ALTER TABLE accounts RENAME TO users;
 | `DbAccount` | `DbUser` | Merge with existing DbUser |
 | Old `User` (Core) | — | Deleted, replaced by UserFull |
 
-### Phase 2: Remove Old User Type (Core/Users/User.cs)
+#### Phase 2: Remove Old User Type (Core/Users/User.cs)
 
 The old `User` type in Core project is eliminated:
 
@@ -238,7 +296,7 @@ The old `User` type in Core project is eliminated:
 4. `User.Claims` is dropped entirely (not needed)
 5. Update `ToModel()` methods in DB entities to return `UserFull`
 
-### Phase 3: Update Services
+#### Phase 3: Update Services
 
 1. **Auth flow** (`ServerAuth.cs`):
    - `CreateOrUpdateUser()` → creates/updates `UserFull` directly
@@ -256,7 +314,7 @@ The old `User` type in Core project is eliminated:
 4. **Conversion methods**:
    - `UserFull.ToUser()` → converts to trimmed `User` (like current `AccountFull.ToAccount()`)
 
-### Phase 4: Update Contracts
+#### Phase 4: Update Contracts
 
 1. `User` and `UserFull` stay in `Api` project (like Account/AccountFull)
 2. Update all `IAccounts` → `IUsers` method signatures:
@@ -275,26 +333,26 @@ The old `User` type in Core project is eliminated:
    - `AccountsBackend_SignIn` → `UsersBackend_SignIn`
    - etc.
 
-## Files to Modify
+### Future Files to Modify (Out of Scope for Now)
 
-### Core Changes
+#### Core Changes
 - `src/dotnet/Core/Users/User.cs` - Delete or completely rewrite
 - `src/dotnet/Core/Users/UserId.cs` - Keep as-is
 - `src/dotnet/Core/Users/UserIdentity.cs` - Keep as-is
 - `src/dotnet/Core/Users/IAuth.cs` - Update return types
 
-### Api Changes
+#### Api Changes
 - `src/dotnet/Api/Users/Account.cs` → Rename to `User.cs`
 - `src/dotnet/Api/Users/AccountFull.cs` → Delete or merge
 - `src/dotnet/Api/Users/AccountStatus.cs` → Rename to `UserStatus.cs`
 - `src/dotnet/Api/Users/AccountExt.cs` → Rename to `UserExt.cs`
 
-### Contracts Changes
+#### Contracts Changes
 - `src/dotnet/Api.Contracts/Users/IAccounts.cs` → Rename to `IUsers.cs`
 - `src/dotnet/Users.Contracts/IAccountsBackend.cs` → Rename to `IUsersBackend.cs`
 - Update all command types (e.g., `Accounts_Update` → `Users_Update`)
 
-### Service Changes
+#### Service Changes
 - `src/dotnet/Users.Service/Accounts.cs` → Rename to `Users.cs`
 - `src/dotnet/Users.Service/AccountsBackend.cs` → Rename to `UsersBackend.cs`
 - `src/dotnet/Users.Service/Db/DbAccount.cs` → Merge with `DbUser.cs`
@@ -302,10 +360,10 @@ The old `User` type in Core project is eliminated:
 - `src/dotnet/Users.Service/ServerAuth.cs` - Update auth flow
 - `src/dotnet/Users.Service/Auth.cs` - Update return types
 
-### Migration
+#### Migration
 - `src/dotnet/Users.Service.Migration/` - Add migration for schema changes
 
-## Migration Order
+### Future Migration Order (Out of Scope for Now)
 
 1. **Create new unified `User` type** alongside existing types
 2. **Create database migration** to merge tables
@@ -315,7 +373,7 @@ The old `User` type in Core project is eliminated:
 6. **Remove old types** (User, Account, AccountFull)
 7. **Rename** Accounts → Users throughout
 
-## Risks and Considerations
+### Risks and Considerations
 
 1. **Breaking API changes**: All Account references become User references
 2. **Database migration**: Need careful handling of existing data
@@ -323,7 +381,7 @@ The old `User` type in Core project is eliminated:
 4. **External integrations**: Any external systems using Account API need updates
 5. **Caching/Invalidation**: Ensure computed method invalidation still works
 
-## Testing Strategy
+### Testing Strategy
 
 1. Run all existing integration tests after each phase
 2. Specific tests for:
@@ -333,7 +391,7 @@ The old `User` type in Core project is eliminated:
    - Admin operations
    - Contact sync with users
 
-## Open Questions
+### Open Questions
 
 1. Do we need `User` vs `UserFull` distinction, or just one `User` type?
 2. Should `User` stay in `Core` project or move to `Api`?

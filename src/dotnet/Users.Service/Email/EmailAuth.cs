@@ -22,7 +22,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
-    private DbUserRepo DbUsers { get; } = services.GetRequiredService<DbUserRepo>();
 
     // [ComputeMethod]
     public virtual Task<string> ValidateCanSendToEmail(Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
@@ -127,12 +126,12 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUser = await DbUsers.Get(dbContext, account.Id.Value, true, cancellationToken).ConfigureAwait(false);
+        var dbUser = await dbContext.GetDbUser(account.Id.Value, true, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return default; // Should never happen, but if it somehow does, there is no extra to do in this case
 
         var user = account.User.WithEmail(email);
-        var conflictingDbUser = await DbUsers.GetByUserIdentity(dbContext, user.GetEmailIdentity(), false, cancellationToken).ConfigureAwait(false);
+        var conflictingDbUser = await dbContext.GetDbUserByUserIdentity(user.GetEmailIdentity(), false, cancellationToken).ConfigureAwait(false);
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Email has already been taken by another account.");
 
