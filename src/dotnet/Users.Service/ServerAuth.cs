@@ -17,7 +17,6 @@ public sealed class ServerAuth
     public Func<ServerAuth, HttpContext, bool> AllowSignOut = AllowOnCloseFlow;
 
     public HostInfo HostInfo { get; }
-    public IAuth Auth { get; }
     public IAccounts Accounts { get; }
     public IAccountsBackend AccountsBackend { get; }
     public ICommander Commander { get; }
@@ -32,7 +31,6 @@ public sealed class ServerAuth
         Clocks = services.Clocks();
 
         HostInfo = services.HostInfo();
-        Auth = services.GetRequiredService<IAuth>();
         Accounts = services.GetRequiredService<IAccounts>();
         AccountsBackend = services.GetRequiredService<IAccountsBackend>();
         ClaimMapper = services.GetRequiredService<ClaimMapper>();
@@ -112,7 +110,7 @@ public sealed class ServerAuth
             ? userAgentValues.FirstOrDefault() ?? ""
             : "";
 
-        var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var mustSetupSession =
             sessionInfo == null
             || !OrdinalEquals(sessionInfo.IPAddress, ipAddress)
@@ -123,8 +121,12 @@ public sealed class ServerAuth
             await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
         }
 
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var isSignedIn = user?.IsAuthenticated() == true;
+        var authInfo = await Accounts.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
+        var isSignedIn = authInfo?.IsAuthenticated() == true;
+        User? user = null;
+        if (isSignedIn)
+            user = await AccountsBackend.GetUser(authInfo!.UserId, cancellationToken).ConfigureAwait(false);
+
         try {
             if (httpIsSignedIn) {
                 if (isSignedIn && IsSameUser(user, httpUser, httpAuthenticationSchema))
@@ -143,7 +145,7 @@ public sealed class ServerAuth
         }
         finally {
             // This should be done once important things are completed
-            _ = Auth.UpdatePresence(session, CancellationToken.None);
+            _ = Accounts.UpdatePresence(session, CancellationToken.None);
         }
     }
 

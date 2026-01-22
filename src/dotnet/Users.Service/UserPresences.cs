@@ -5,7 +5,6 @@ public class UserPresences(IServiceProvider services) : IUserPresences
     private static readonly TimeSpan SessionUpdatePeriod = TimeSpan.FromHours(1);
 
     private IUserPresencesBackend Backend { get; } = services.GetRequiredService<IUserPresencesBackend>();
-    private IAuth Auth { get; } = services.GetRequiredService<IAuth>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks { get; } = services.Clocks();
@@ -32,7 +31,7 @@ public class UserPresences(IServiceProvider services) : IUserPresences
 
         var (session, isActive) = command;
 
-        var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo != null && SystemNow - sessionInfo.LastSeenAt > SessionUpdatePeriod) {
             var upsertSessionCmd = new SessionsBackend_Upsert(session);
             await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);

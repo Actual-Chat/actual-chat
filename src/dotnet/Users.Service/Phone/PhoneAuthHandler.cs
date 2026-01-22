@@ -16,18 +16,20 @@ public sealed class PhoneAuthHandler(
         ILoggerFactory logger,
         UrlEncoder encoder,
         ISystemClock clock,
-        IAuth auth,
+        IAccounts accounts,
+        IAccountsBackend accountsBackend,
         UrlMapper urlMapper)
     : RemoteAuthenticationHandler<PhoneAuthOptions>(options, logger, encoder, clock)
 #pragma warning restore CS0618 // Type or member is obsolete
 {
-    private IAuth Auth { get; } = auth;
+    private IAccounts Accounts { get; } = accounts;
+    private IAccountsBackend AccountsBackend { get; } = accountsBackend;
     private UrlMapper UrlMapper { get; } = urlMapper;
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
         var session = Context.GetSessionFromCookie();
-        var authInfo = await Auth.GetSessionInfo(session, CancellationToken.None).ConfigureAwait(false);
+        var authInfo = await Accounts.GetAuthInfo(session, CancellationToken.None).ConfigureAwait(false);
         if (authInfo?.IsAuthenticated() == true) {
             Response.Redirect(properties.RedirectUri ?? UrlMapper.BaseUrl);
             return;
@@ -40,8 +42,12 @@ public sealed class PhoneAuthHandler(
     protected override async Task<HandleRequestResult> HandleRemoteAuthenticateAsync()
     {
         var session = Context.GetSessionFromCookie();
-        var user = await Auth.GetUser(session, Context.RequestAborted).ConfigureAwait(false);
-        if (user?.IsAuthenticated() != true)
+        var authInfo = await Accounts.GetAuthInfo(session, Context.RequestAborted).ConfigureAwait(false);
+        if (authInfo?.IsAuthenticated() != true)
+            return HandleRequestResult.NoResult();
+
+        var user = await AccountsBackend.GetUser(authInfo.UserId, Context.RequestAborted).ConfigureAwait(false);
+        if (user == null)
             return HandleRequestResult.NoResult();
 
         user = user.WithClaim(ClaimTypes.NameIdentifier, user.GetPhoneIdentity().SchemaBoundId);

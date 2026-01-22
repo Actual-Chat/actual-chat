@@ -16,7 +16,7 @@ public interface IWebTester : IDisposable, IAsyncDisposable
     AppHost AppHost { get; }
     IServiceProvider AppServices { get; }
     ICommander Commander { get; }
-    IAuth Auth { get; }
+    ILegacyAuth Auth { get; }
     IAccounts Accounts { get; }
     IAuthors Authors { get; }
     IAuthorsBackend AuthorsBackend { get; }
@@ -36,7 +36,7 @@ public interface IWebClientTester : IWebTester
 {
     IServiceProvider ClientServices { get; }
     ICommander ClientCommander { get; }
-    IAuth ClientAuth { get; }
+    ILegacyAuth ClientAuth { get; }
 }
 
 public class WebClientTester : IWebClientTester
@@ -46,7 +46,7 @@ public class WebClientTester : IWebClientTester
     public AppHost AppHost { get; }
     public IServiceProvider AppServices => AppHost.Services;
     public ICommander Commander => field ??= AppServices.Commander();
-    public IAuth Auth => field ??= AppServices.GetRequiredService<IAuth>();
+    public ILegacyAuth Auth => field ??= AppServices.GetRequiredService<ILegacyAuth>();
     public IAuthors Authors => field ??= AppServices.GetRequiredService<IAuthors>();
     public IAuthorsBackend AuthorsBackend => field ??= AppServices.GetRequiredService<IAuthorsBackend>();
     public IAccounts Accounts => field ??= AppServices.GetRequiredService<IAccounts>();
@@ -63,7 +63,7 @@ public class WebClientTester : IWebClientTester
 
     public IServiceProvider ClientServices => _clientServicesLazy.Value;
     public ICommander ClientCommander => field ??= ClientServices.Commander();
-    public IAuth ClientAuth => field ??= ClientServices.GetRequiredService<IAuth>();
+    public ILegacyAuth ClientAuth => field ??= ClientServices.GetRequiredService<ILegacyAuth>();
 
     public WebClientTester(
         AppHost appHost,

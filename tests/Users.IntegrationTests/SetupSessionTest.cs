@@ -21,7 +21,7 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
             .ToArray();
         await Task.WhenAll(tasks);
 
-        var auth = services.GetRequiredService<IAuth>();
+        var auth = services.GetRequiredService<ILegacyAuth>();
         var sessionInfo = await auth.GetSessionInfo(session);
         sessionInfo.Should().NotBeNull();
         var guestId = sessionInfo.GetGuestId();
@@ -38,7 +38,7 @@ public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         await using var tester = appHost.NewWebClientTester(Out);
 
-        var auth = services.GetRequiredService<IAuth>();
+        var auth = services.GetRequiredService<ILegacyAuth>();
         await Parallel.ForEachAsync(Enumerable.Range(0, 10), async (_, cancellationToken) => {
             var session = Session.New();
             await commander.Call(new SessionsBackend_Upsert(session), cancellationToken);

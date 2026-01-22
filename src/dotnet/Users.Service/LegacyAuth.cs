@@ -1,13 +1,18 @@
 namespace ActualChat.Users;
 
-public class Auth(IServiceProvider services) : IAuth
+/// <summary>
+/// Legacy IAuth implementation for backwards compatibility with old Fusion clients.
+/// Use Accounts instead.
+/// </summary>
+[Obsolete("Use Accounts instead.")]
+public class LegacyAuth(IServiceProvider services) : ILegacyAuth
 {
     private ISessionsBackend SessionsBackend => field ??= services.GetRequiredService<ISessionsBackend>();
     private IAccountsBackend AccountsBackend => field ??= services.GetRequiredService<IAccountsBackend>();
     private ICommander Commander => field ??= services.Commander();
 
     // [CommandHandler]
-    public virtual async Task OnSignOut(Auth_SignOut command, CancellationToken cancellationToken = default)
+    public virtual async Task OnSignOut(LegacyAuth_SignOut command, CancellationToken cancellationToken = default)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here

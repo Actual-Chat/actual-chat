@@ -8,7 +8,7 @@ namespace ActualChat.Users;
 
 public class MobileSessions(IServiceProvider services) : IMobileSessions
 {
-    private IAuth Auth { get; } = services.GetRequiredService<IAuth>();
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private ICommander Commander { get; } = services.Commander();
 
     // Not a [ComputeMethod]!
@@ -33,7 +33,7 @@ public class MobileSessions(IServiceProvider services) : IMobileSessions
         if (!session.IsValid())
             return await CreateSession(cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         return sessionInfo.IsStored()
             ? session
             : await CreateSession(cancellationToken).ConfigureAwait(false);
