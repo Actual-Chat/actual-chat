@@ -162,12 +162,12 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        // For video, we should ideally skip to the nearest keyframe
-        // For now, use the same logic as audio - can be improved later
-        // TODO: Implement proper keyframe detection and seeking
+        _ = cancellationToken; // Reserved for future use
         if (skipTo <= TimeSpan.Zero)
             return stream;
 
+        // Skip frames until we find a keyframe at or after the requested position.
+        // For video, we must start from a keyframe to decode correctly.
         return stream.SkipWhile(frame => frame.Offset < skipTo || !frame.IsKeyFrame);
     }
 }
