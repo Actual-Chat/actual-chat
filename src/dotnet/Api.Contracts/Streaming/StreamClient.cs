@@ -1,6 +1,7 @@
 using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.Transcription;
+using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -12,7 +13,9 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     private IServiceProvider Services { get; } = services;
 
     private IStreamServer StreamServer => field ??= Services.GetRequiredService<IStreamServer>();
+    private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
+    private ILogger VideoSourceLog => field ??= Services.LogFor<VideoSource>();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<AudioSource> GetAudio(
@@ -43,6 +46,29 @@ public class StreamClient(IServiceProvider services) : IStreamClient
             frameStream,
             TimeSpan.Zero,
             AudioSourceLog,
+            cancellationToken);
+    }
+
+    public async Task<VideoSource> GetVideo(
+        string streamId,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
+    {
+        Log.LogDebug("GetVideo({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
+        var rpcStream = await StreamServer.GetVideo(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        var stream = rpcStream?.AsAsyncEnumerable() ?? AsyncEnumerable.Empty<VideoFrame>();
+        var frameStream = stream
+            .SuppressException<VideoFrame, RpcReconnectFailedException>(cancellationToken)
+            .WithBuffer(StreamBufferSize, cancellationToken);
+
+        // For video, we use a simpler approach - the VideoSource will handle skipTo internally
+        var format = VideoSource.DefaultFormat;
+        return new VideoSource(
+            Clocks.SystemClock.Now,
+            format,
+            frameStream,
+            skipTo,
+            VideoSourceLog,
             cancellationToken);
     }
 

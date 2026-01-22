@@ -2,20 +2,26 @@ using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.Diagnostics;
 using ActualChat.Transcription;
+using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming.Services;
 
 public sealed class StreamBackendClient : IStreamClient
 {
+    private IServiceProvider Services { get; }
     private IStreamingBackend Backend { get; }
     private ILogger Log { get; }
     private ILogger AudioSourceLog { get; }
+    private ILogger VideoSourceLog { get; }
+    private MomentClockSet Clocks => field ??= Services.Clocks();
 
     public StreamBackendClient(IServiceProvider services)
     {
+        Services = services;
         Log = services.LogFor(GetType());
         AudioSourceLog = services.LogFor<AudioSource>();
+        VideoSourceLog = services.LogFor<VideoSource>();
         Backend = services.GetRequiredService<IStreamingBackend>();
     }
 
@@ -43,6 +49,27 @@ public sealed class StreamBackendClient : IStreamClient
             frameStream,
             TimeSpan.Zero,
             AudioSourceLog,
+            cancellationToken);
+    }
+
+    public async Task<VideoSource> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    {
+        Log.LogDebug("GetVideo({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
+        var rpcStream = await Backend.GetVideo(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
+        var stream = rpcStream?.AsAsyncEnumerable() ?? AsyncEnumerable.Empty<VideoFrame>();
+        var frameStream = stream
+            .SuppressException<VideoFrame, RpcReconnectFailedException>(cancellationToken)
+            .SuppressCancellation(cancellationToken);
+
+        // For video, we use a simpler approach - the first frame contains format info
+        // The VideoSource will handle skipTo internally
+        var format = VideoSource.DefaultFormat;
+        return new VideoSource(
+            Clocks.SystemClock.Now,
+            format,
+            frameStream,
+            skipTo,
+            VideoSourceLog,
             cancellationToken);
     }
 
