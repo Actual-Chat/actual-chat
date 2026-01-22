@@ -27,6 +27,7 @@
 
     private IAuthors Authors => Hub.Authors;
     private IRoles Roles => Hub.Roles;
+    private EditMembersUI EditMembersUI => Hub.EditMembersUI;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 

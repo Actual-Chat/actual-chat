@@ -75,6 +75,7 @@
 
     private IChats Chats => Hub.Chats;
     private IContacts Contacts => Hub.Contacts;
+    private EditMembersUI EditMembersUI => Hub.EditMembersUI;
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<RightPanelHeader> BlazorRef { get; set; } = null!;
@@ -124,7 +125,7 @@
         if (chatId is null)
             return Model.Loading;
 
-        var authorRules = await Chats.GetRules(Session, chatId, default).ConfigureAwait(false);
+        var authorRules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
         Contact? peerContact = null;
         if (chatId is PeerChatId)

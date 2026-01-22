@@ -10,6 +10,7 @@
 }
 
 @code {
+    private EditMembersUI EditMembersUI => Hub.EditMembersUI;
     private Chat Chat => ChatState.Chat;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
