@@ -32,11 +32,26 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     }
 
     public AccountFull ToModel(User user)
-    {
-        if (!OrdinalEquals(user.Id, Id))
-            throw new ArgumentOutOfRangeException(nameof(user));
+        => new(UserId.Parse(Id), Version) {
+            Status = Status,
+            Email = Email,
+            IsEmailVerified = IsEmailVerified,
+            Phone = !Phone.IsNullOrEmpty() ? ActualChat.Phone.Parse(Phone) : null,
+            SyncContacts = SyncContacts,
+            Name = user.Name, // Use user's name from users table for consistency
+            Username = Username,
+            IsGreetingCompleted = IsGreetingCompleted,
+            CreatedAt = CreatedAt,
+            TimeZone = TimeZone,
+            AliasId = AliasId.IsNullOrEmpty() ? null : ActualChat.AliasId.Parse(AliasId),
+            Identities = user.Identities,
+            Claims = user.Claims,
+        };
 
-        return new(user, Version) {
+    public AccountFull ToModel(
+        ApiMap<UserIdentity, string> identities,
+        ApiMap<string, string> claims)
+        => new(UserId.Parse(Id), Version) {
             Status = Status,
             Email = Email,
             IsEmailVerified = IsEmailVerified,
@@ -48,8 +63,9 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             CreatedAt = CreatedAt,
             TimeZone = TimeZone,
             AliasId = AliasId.IsNullOrEmpty() ? null : ActualChat.AliasId.Parse(AliasId),
+            Identities = identities,
+            Claims = claims,
         };
-    }
 
     public void UpdateFrom(AccountFull model)
     {

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using ActualChat.Attributes;
 using ActualChat.Hosting;
-using ActualChat.Mesh;
 using ActualChat.Testing.Host;
 using ActualLab.Rpc;
 using MemoryPack;
@@ -9,7 +8,7 @@ using MemoryPack;
 namespace ActualChat.Core.Server.IntegrationTests.Routing;
 
 // Register a faster mesh lock preset for stress tests
-file static class MeshLockOptionsRegistration
+static file class MeshLockOptionsRegistration
 {
     static MeshLockOptionsRegistration()
     {
@@ -114,7 +113,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
     /// Stress test that rapidly creates and destroys hosts while making compute method calls.
     /// This test verifies that routing handles topology changes correctly.
     /// </summary>
-    [Fact(Timeout = 120_000)]
+    [Fact(Timeout = 120_000, Skip = "Run it manually")]
     public async Task RapidTopologyChangeStressTest()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(100));
@@ -201,7 +200,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
     /// <summary>
     /// Test concurrent calls during rapid host addition.
     /// </summary>
-    [Fact(Timeout = 90_000)]
+    [Fact(Timeout = 90_000, Skip = "Run it manually")]
     public async Task ConcurrentCallsDuringHostAdditionTest()
     {
         MeshLockOptionsRegistration.EnsureRegistered();

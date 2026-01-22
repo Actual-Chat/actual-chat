@@ -56,7 +56,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         if (account is null)
             return "";
 
-        var links = GetLinksFor(account.User);
+        var links = GetLinksFor(account);
         if (links.Length == 0)
             return "";
 
@@ -111,7 +111,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var links = GetLinksFor(account.User);
+        var links = GetLinksFor(account);
         var externalContactIds = await dbContext.ExternalContactLinks
             .Where(x => links.Contains(x.Value))
             .Select(x => x.DbExternalContactId)
@@ -121,13 +121,13 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         return [..externalContactIds.Select(ExternalContactId.Parse)];
     }
 
-    private static ImmutableArray<string> GetLinksFor(User user)
+    private static ImmutableArray<string> GetLinksFor(AccountFull account)
     {
         var list = ImmutableArray<string>.Empty;
-        var phoneHash = user.GetPhoneHash();
+        var phoneHash = account.Identities.GetPhoneHash();
         if (!phoneHash.IsNullOrEmpty())
             list = list.Add(DbExternalContactLink.GetPhoneLink(phoneHash));
-        var emailHash = user.GetEmailHash();
+        var emailHash = account.Identities.GetEmailHash();
         if (!emailHash.IsNullOrEmpty())
             list = list.Add(DbExternalContactLink.GetEmailLink(emailHash));
         return list;

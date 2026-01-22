@@ -263,8 +263,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         dbAccount.UpdateFrom(account);
 
         // Update User name if it changed (User and Account should stay in sync)
-        var existingUserName = existing?.User.Name ?? "";
-        var newUserName = account.User.Name;
+        var existingUserName = existing?.Name ?? "";
+        var newUserName = account.Name;
         if (!OrdinalEquals(existingUserName, newUserName)) {
             var dbUser = await dbContext.GetDbUser(accountIdValue, true, cancellationToken).ConfigureAwait(false);
             if (dbUser != null) {
@@ -277,7 +277,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         context.Operation.AddEvent(
-            new AccountChangedEvent(dbAccount.ToModel(account.User), existing, ChangeKind.Update));
+            new AccountChangedEvent(dbAccount.ToModel(account.Identities, account.Claims), existing, ChangeKind.Update));
         if (mustGreet)
             ContactGreeter.Activate();
 
