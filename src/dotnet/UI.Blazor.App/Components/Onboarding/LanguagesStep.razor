@@ -40,7 +40,9 @@
                             ValueChanged="@((string languageId) => OnLanguageChanged(1, languageId))">
                             <option value="">None</option>
                             @foreach (var language in Languages.All) {
-                                <option value="@language.Id">@language.Title</option>
+                                if (!IsPrimary(language.Id)) {
+                                    <option value="@language.Id">@language.Title</option>
+                                }
                             }
                         </InputSelect>
                     </FormSection>
@@ -53,10 +55,13 @@
                         <InputSelect
                             Value="_formModel.TertiaryLanguageId"
                             ValueExpression="@(() => _formModel.TertiaryLanguageId)"
-                            ValueChanged="@((string languageId) => OnLanguageChanged(2, languageId))">
+                            ValueChanged="@((string languageId) => OnLanguageChanged(2, languageId))"
+                            disabled="@IsTertiaryDisabled">
                             <option value="">None</option>
                             @foreach (var language in Languages.All) {
-                                <option value="@language.Id">@language.Title</option>
+                                if (!IsPrimary(language.Id) && !IsSecondary(language.Id)) {
+                                    <option value="@language.Id">@language.Title</option>
+                                }
                             }
                         </InputSelect>
                     </FormSection>
@@ -106,15 +111,35 @@
 
     private Task OnLanguageChanged(int index, string languageId) {
         switch (index) {
-            case 0: _formModel.PrimaryLanguageId = languageId;
+            case 0:
+                _formModel.PrimaryLanguageId = languageId;
+                if (_formModel.SecondaryLanguageId == languageId)
+                    _formModel.SecondaryLanguageId = "";
+
+                if (_formModel.TertiaryLanguageId == languageId)
+                    _formModel.TertiaryLanguageId = "";
                 break;
-            case 1: _formModel.SecondaryLanguageId = languageId;
+            case 1:
+                _formModel.SecondaryLanguageId = languageId;
+                if (string.IsNullOrEmpty(languageId))
+                    _formModel.TertiaryLanguageId = "";
                 break;
-            case 2: _formModel.TertiaryLanguageId = languageId;
+            case 2:
+                _formModel.TertiaryLanguageId = languageId;
                 break;
         }
+
         return Task.CompletedTask;
     }
+
+    private bool IsPrimary(string languageId)
+        => languageId == _formModel.PrimaryLanguageId;
+
+    private bool IsSecondary(string languageId)
+        => languageId == _formModel.SecondaryLanguageId;
+
+    private bool IsTertiaryDisabled
+        => string.IsNullOrEmpty(_formModel.SecondaryLanguageId);
 
     // Nested types
 
