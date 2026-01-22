@@ -18,8 +18,7 @@ public partial class StreamingBackend
         var delayedCancellationToken = delayedCts.Token;
 
         try {
-            var stream = videoStream.AsAsyncEnumerable();
-            await PushVideoInternal(record, stream, delayedCancellationToken)
+            await PushVideoInternal(record, videoStream, delayedCancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -45,30 +44,26 @@ public partial class StreamingBackend
             .EnsureJoined(record.Session, record.ChatId, cancellationToken)
             .ConfigureAwait(false);
 
-        var recordedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
+        // Register stream for real-time signaling
+        var streamInfo = new VideoStreamInfo(
+            record.StreamId,
+            record.ChatId,
+            author.Id,
+            record.Format,
+            beginsAt);
+        await Commander.Call(new RealtimeStreamingBackend_RegisterVideoStream(streamInfo), cancellationToken)
+            .ConfigureAwait(false);
 
-        // Publish video stream for real-time viewing
-        // No processing - just forward to StreamStore for memoization
-        await _videoStreams.Publish(record.StreamId, videoFrames).ConfigureAwait(false);
-
-
-        // Create video entry in chat (similar to audio entry)
-        // var videoEntryId = VideoEntryId.New(record.ChatId, 0);
-        // var command = new ChatsBackend_ChangeEntry(
-        //     videoEntryId,
-        //     null,
-        //     Change.Create(new ChatEntryDiff {
-        //         AuthorId = author.Id,
-        //         Content = "",
-        //         StreamId = record.StreamId.Value,
-        //         BeginsAt = beginsAt,
-        //         ClientSideBeginsAt = recordedAt,
-        //     }));
-        //
-        // var videoEntry = await Commander.Call(command, true, cancellationToken)
-        //     .ConfigureAwait(false);
-
-        // Wait for stream to complete and finalize entry
-        // ... similar to audio finalization
+        try {
+            // Publish video stream for real-time viewing
+            // No processing - just forward to StreamStore for memoization
+            await _videoStreams.Publish(record.StreamId, videoFrames).ConfigureAwait(false);
+        }
+        finally {
+            // Unregister stream when it ends
+            await Commander.Call(
+                new RealtimeStreamingBackend_UnregisterVideoStream(record.StreamId, record.ChatId),
+                CancellationToken.None).ConfigureAwait(false);
+        }
     }
 }
