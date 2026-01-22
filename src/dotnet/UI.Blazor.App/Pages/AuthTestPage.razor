@@ -80,11 +80,10 @@
 }
 
 @code {
-    private IAuth Auth => field ??= Hub.Services.GetRequiredService<IAuth>();
     private IAccounts Accounts => Hub.Accounts;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var sessionInfo = await Auth.GetSessionInfo(Session, cancellationToken).ConfigureAwait(false);
+        var sessionInfo = await Accounts.GetSessionInfo(Session, cancellationToken).ConfigureAwait(false);
         var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
         return new() {
             SessionInfo = sessionInfo,

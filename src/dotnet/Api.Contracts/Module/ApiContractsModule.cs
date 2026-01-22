@@ -13,7 +13,6 @@ using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
-using ActualChat.Users;
 using ActualLab.RestEase;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
@@ -82,7 +81,9 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
 
         // Users
         rpc.AddClient<ISecureTokens>();
-        fusion.AddClient<IAuth>();
+#pragma warning disable CS0618 // Obsolete
+        fusion.AddClient<ILegacyAuth>("IAuth");
+#pragma warning restore CS0618
         fusion.AddClient<ISystemProperties>();
         fusion.AddClient<IMobileSessions>();
         if (HostInfo.HostKind.IsMauiApp())

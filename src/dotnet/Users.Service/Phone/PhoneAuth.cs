@@ -148,7 +148,9 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
             return default; // Should never happen, but if it somehow does, there is no extra to do in this case
 
         var user = account.ToUser().WithPhone(phone);
-        var conflictingDbUser = await dbContext.GetDbUserByUserIdentity(user.GetPhoneIdentity(), false, cancellationToken).ConfigureAwait(false);
+        var conflictingDbUser = await dbContext
+            .GetDbUserByUserIdentity(user.GetPhoneIdentity(), false, cancellationToken)
+            .ConfigureAwait(false);
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");
 

@@ -12,15 +12,3 @@ public class TestFeature_ServerTime : FeatureDef<Moment>, IServerFeatureDef
         return time;
     }
 }
-
-// ReSharper disable once InconsistentNaming
-public class TestFeature_ClientUser : FeatureDef<User?>, IClientFeatureDef
-{
-    public override async Task<User?> Compute(IServiceProvider services, CancellationToken cancellationToken)
-    {
-        var session = services.Session();
-        var auth = services.GetRequiredService<IAuth>();
-        var user = await auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return user;
-    }
-}

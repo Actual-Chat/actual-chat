@@ -116,8 +116,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ISecureTokens, SecureTokens>();
         services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>(); // Used by HttpSessionExt, server-side logic in AppBase, etc.
 
-        // Auth and supporting services
-        rpcHost.AddLocalApi<IAuth, Auth>();
+        // Legacy IAuth for old clients
+#pragma warning disable CS0618 // Obsolete
+        rpcHost.AddLocalApi<ILegacyAuth, LegacyAuth>("IAuth");
+#pragma warning restore CS0618
         if (rpcHost.IsApiHost) {
             services.AddSingleton<ServerAuth>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth

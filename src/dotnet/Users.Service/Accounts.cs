@@ -8,41 +8,17 @@ namespace ActualChat.Users;
 
 public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccounts
 {
-    private IAuth Auth { get; } = services.GetRequiredService<IAuth>();
+    private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();
     private IAccountsBackend Backend { get; } = services.GetRequiredService<IAccountsBackend>();
 
-    // [ComputeMethod]
-    public virtual async Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken)
+    // [CommandHandler]
+    public virtual async Task OnSignOut(Accounts_SignOut command, CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        UserId userId;
-        if (user != null)
-            userId = UserId.Parse(user.Id);
-        else {
-            var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-            if (sessionInfo?.GetGuestId() is not { } guestId)
-                throw StandardError.Internal("Invalid session or GuestId is not set.");
+        if (Invalidation.IsActive)
+            return; // It just spawns other commands, so nothing to do here
 
-            userId = guestId;
-        }
-
-        var account = await Backend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
-        return account;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken)
-    {
-        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
-        return account.ToAccount();
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
-    {
-        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
-        await this.AssertCanRead(session, account, cancellationToken).ConfigureAwait(false);
-        return account;
+        var backendCommand = new SessionsBackend_SignOut(command.Session, command.Force);
+        await Commander.Call(backendCommand, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -93,5 +69,56 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
 
         var deleteOwnAccountCommand = new AccountsBackend_Delete(ownAccount.Id);
         await Commander.Call(deleteOwnAccountCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual Task UpdatePresence(Session session, CancellationToken cancellationToken)
+        => SessionsBackend.UpdatePresence(session, cancellationToken);
+
+    // Compute methods
+
+    // [ComputeMethod]
+    public virtual Task<bool> IsSignOutForced(Session session, CancellationToken cancellationToken)
+        => SessionsBackend.IsSignOutForced(session, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual Task<SessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken)
+        => SessionsBackend.GetAuthInfo(session, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken)
+        => SessionsBackend.Get(session, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual async Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken)
+    {
+        var authInfo = await SessionsBackend.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
+        UserId userId;
+        if (authInfo?.IsAuthenticated() ?? false)
+            userId = UserId.Parse(authInfo.UserId);
+        else {
+            var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+            if (sessionInfo?.GetGuestId() is not { } guestId)
+                throw StandardError.Internal("Invalid session or GuestId is not set.");
+
+            userId = guestId;
+        }
+
+        var account = await Backend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
+        return account;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Account?> Get(Session session, UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        return account.ToAccount();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<AccountFull?> GetFull(Session session, UserId userId, CancellationToken cancellationToken)
+    {
+        var account = await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
+        await this.AssertCanRead(session, account, cancellationToken).ConfigureAwait(false);
+        return account;
     }
 }

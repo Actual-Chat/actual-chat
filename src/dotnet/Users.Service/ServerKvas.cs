@@ -4,7 +4,7 @@ namespace ActualChat.Users;
 
 public class ServerKvas : IServerKvas
 {
-    private IAuth Auth { get; }
+    private IAccounts Accounts { get; }
     private IServerKvasBackend Backend { get; }
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
@@ -14,7 +14,7 @@ public class ServerKvas : IServerKvas
     {
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
-        Auth = services.GetRequiredService<IAuth>();
+        Accounts = services.GetRequiredService<IAccounts>();
         Backend = services.GetRequiredService<IServerKvasBackend>();
         Commander = services.Commander();
     }
@@ -117,14 +117,14 @@ public class ServerKvas : IServerKvas
         try {
             await Clocks.Timeout(3).ApplyTo(
                 async ct => {
-                    var c = await Computed.Capture(() => Auth.GetUser(session, ct), ct).ConfigureAwait(false);
-                    return await c.When(u => u?.IsGuest() == false, ct).ConfigureAwait(false);
+                    var c = await Computed.Capture(() => Accounts.GetAuthInfo(session, ct), ct).ConfigureAwait(false);
+                    return await c.When(info => info?.IsAuthenticated() == true, ct).ConfigureAwait(false);
                 },
                 cancellationToken
                 ).ConfigureAwait(false);
         }
         catch (TimeoutException) {
-            Log.LogWarning("MigrateGuestKeys: Auth.GetUser couldn't complete in 3 seconds");
+            Log.LogWarning("MigrateGuestKeys: Accounts.GetAuthInfo couldn't complete in 3 seconds");
             return;
         }
 
@@ -150,13 +150,15 @@ public class ServerKvas : IServerKvas
 
     private async ValueTask<string?> GetUserPrefix(Session session, CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return user is null ? null : ServerKvasBackendExt.GetUserPrefix(UserId.Parse(user.Id));
+        var authInfo = await Accounts.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
+        return authInfo?.IsAuthenticated() == true
+            ? ServerKvasBackendExt.GetUserPrefix(UserId.Parse(authInfo.UserId))
+            : null;
     }
 
     private async ValueTask<string?> GetGuestPrefix(Session session, CancellationToken cancellationToken)
     {
-        var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         var guestId = sessionInfo.GetGuestId();
         return guestId is null ? null : ServerKvasBackendExt.GetUserPrefix(guestId);
     }
