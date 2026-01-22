@@ -82,11 +82,25 @@ body.hoverable .analytics-step > .c-content > a:hover {
 
 .step-tile > .c-docs {
     @apply flex;
-    @apply flex-y gap-y-2;
+    @apply flex-y;
     @apply flex-1;
 }
-
+.step-tile > .c-docs .c-doc-wrapper {
+    @apply flex-x items-center;
+    @apply min-h-12;
+}
+.step-tile > .c-docs .c-doc-wrapper:not(:last-child) {
+    @apply border-b border-separator;
+}
+.step-tile > .c-docs .c-doc-wrapper .c-doc-icon {
+    @apply w-6 h-6;
+}
+.step-tile > .c-docs .c-doc-wrapper .c-doc-text {
+    @apply ml-2;
+    @apply text-caption-2;
+}
 .step-tile > .c-docs a {
+    @apply flex-1;
     @apply bg-transparent;
     @apply underline;
 }
@@ -118,7 +132,6 @@ body.narrow .stepper-image-filler {
 }
 .stepper-image-filler img {
     @apply max-h-full;
-    transform: scaleX(-1);
 }
 
 .stepper:has(.onboarding-tutorial) {
@@ -274,11 +287,26 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 }
 
 .onboarding-footer {
-    @apply flex-y gap-y-2;
+    @apply -flex-y gap-y-2;
 }
 .onboarding-footer .line-progress {
     @apply self-center;
+    @apply w-full;
     @apply p-1;
     @apply rounded-full;
-    @apply bg-[var(--white-80)];
+}
+
+/* Specific styles */
+.onboarding-stepper .form.form-y section .form-section-content.label-inside-input {
+    @apply bg-white;
+}
+.onboarding-stepper .form-section-validation:not(:empty) {
+    @apply bg-white;
+}
+.onboarding-stepper .avatar-step .btn.btn-modal {
+    @apply bg-white;
+}
+
+.languages-step .form.form-y {
+    @apply w-full;
 }

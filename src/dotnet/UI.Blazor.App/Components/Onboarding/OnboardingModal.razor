@@ -21,7 +21,7 @@
         <Filler>
             @if (stepper.CurrentStep is PhoneStep) {
                 <div class="stepper-image-filler">
-                    <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="">
+                    <img draggable="false" src="/dist/images/onboarding/voice-and-text.svg" alt="">
                 </div>
             } else {
                 <div class="stepper-filler"></div>
@@ -37,6 +37,7 @@
             <TimeZoneStep Account="m.AccountFull"/>
             <AvatarStep/>
             <PermissionsStep NextButtonRef="@_nextButtonRef"/>
+            <LanguagesStep/>
             <DataCollectionStep IsConfigured="m.IsDataCollectionConfigured"/>
             <CreateChatsStep/>
             @if (m.EnableChatRouletteUI) {
@@ -62,8 +63,7 @@
                 @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep)) {
                     <LineProgress
                         StepCount="@stepper.StepCount"
-                        CurrentStepIndex="@stepper.CurrentStepIndex"
-                        Decoration="LineProgress.LineProgressDecoration.Gray">
+                        CurrentStepIndex="@stepper.CurrentStepIndex">
                     </LineProgress>
                 }
                 <div class="btn-group">
