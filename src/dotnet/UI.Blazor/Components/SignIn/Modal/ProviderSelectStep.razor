@@ -226,7 +226,7 @@
 
                 if (emailId is null) {
                     _validationState = ValidationState.CannotSend;
-                    UICommander.ShowError("Invalid email address.");
+                    UICommander.ShowError("Invalid phone number or email address.");
                 } else {
                     var emailCheck = await TotpUI.ValidateCanSendToEmail(emailId, TotpPurpose.SignInEmail, CancellationToken.None);
                     if (!emailCheck.IsNullOrEmpty()) {
