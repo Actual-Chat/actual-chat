@@ -11,7 +11,7 @@ public sealed class PhoneNumberAttribute : AsyncValidationAttribute
     public override async Task<ValidationResult?> IsValidAsync(object? value, ValidationContext validationContext, CancellationToken cancellationToken)
     {
         if (value is not string sValue)
-            return validationContext.Error(ErrorMessage ?? "Your phone number is incorrect");
+            return validationContext.Error(ErrorMessage ?? "Phone number is incorrect");
 
         if (IsOptional && sValue.IsNullOrEmpty())
             return ValidationResult.Success;
@@ -19,19 +19,24 @@ public sealed class PhoneNumberAttribute : AsyncValidationAttribute
         if (!sValue.StartsWith("+", StringComparison.OrdinalIgnoreCase))
             return validationContext.Error(ErrorMessage ?? "Phone number must start with '+'");
 
-        var digits = new string(sValue.Skip(1).Where(char.IsDigit).ToArray());
+        if (!sValue.Skip(1).All(IsValidCharacter))
+            return validationContext.Error(ErrorMessage ?? "Phone number contains invalid characters");
 
-        if (digits.Length < 8)
+        var digitCount = sValue.Skip(1).Count(char.IsDigit);
+        switch (digitCount) {
+        case < 8:
             return validationContext.Error(ErrorMessage ?? "Phone number is too short");
-
-        if (digits.Length > 15)
+        case > 15:
             return validationContext.Error(ErrorMessage ?? "Phone number is too long");
-
+        }
 
         var phones = validationContext.GetRequiredService<IPhones>();
         var phone = await phones.Parse(sValue, cancellationToken);
         return phone != null
             ? ValidationResult.Success
-            : validationContext.Error(ErrorMessage ?? "Your phone number is incorrect");
+            : validationContext.Error(ErrorMessage ?? "Phone number is incorrect");
     }
+
+    private static bool IsValidCharacter(char c)
+        => char.IsDigit(c) || c == '-' || c == '(' || c == ')' || c == ' ';
 }
