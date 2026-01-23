@@ -11,7 +11,6 @@ export interface VideoStreamConfig {
     codec: string;
     width: number;
     height: number;
-    audioStreamId?: string;
 }
 
 export interface VideoStreamFrame {
@@ -79,7 +78,6 @@ export class VideoStream {
                         this.config.width,
                         this.config.height,
                         Date.now() / 1000,
-                        this.config.audioStreamId,
                         subject
                     );
                 }

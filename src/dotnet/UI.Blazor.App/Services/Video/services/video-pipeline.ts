@@ -59,7 +59,6 @@ export interface PipelineConfig {
     enabled: boolean;
     sessionToken: string;
     chatId: string;
-    audioStreamId?: string;
   };
 }
 
@@ -362,11 +361,15 @@ export class VideoPipeline implements IVideoPipeline {
     // Initialize video streaming if enabled
     if (this.config.streaming?.enabled) {
       console.log('[Pipeline] Initializing video streaming to server');
+
+      // Initialize VideoStreamer SignalR connection
+      const hubUrl = new URL('/api/hub/streams', window.location.origin).toString();
+      VideoStreamer.init(hubUrl);
+
       const streamConfig: VideoStreamConfig = {
         codec: this.config.encoderConfig.codec,
         width: this.config.encoderConfig.width,
         height: this.config.encoderConfig.height,
-        audioStreamId: this.config.streaming.audioStreamId
       };
       this.videoStream = VideoStreamer.addStream(
         this.config.streaming.sessionToken,

@@ -386,6 +386,16 @@ export class RecordingService extends EventTarget {
       console.log(`RecordingService: WebSocket transfer enabled, server: ${this.config.websocketConfig.serverUrl}, role: ${this.config.websocketConfig.role}`);
     }
 
+    // Add streaming configuration if enabled
+    if (this.config.streaming?.enabled) {
+      pipelineConfig.streaming = {
+        enabled: true,
+        sessionToken: this.config.streaming.sessionToken,
+        chatId: this.config.streaming.chatId,
+      };
+      console.log(`RecordingService: Streaming enabled to chat ${this.config.streaming.chatId}`);
+    }
+
     return pipelineConfig;
   }
 
