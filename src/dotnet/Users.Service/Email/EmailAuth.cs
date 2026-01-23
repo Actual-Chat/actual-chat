@@ -107,7 +107,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (Invalidation.IsActive) {
             var userId = context.Operation.Items.KeylessGet<UserId>();
             if (userId is not null)
-                _ = AccountsBackend.GetUser(userId.Value, cancellationToken);
+                _ = AccountsBackend.Get(userId, cancellationToken);
             return default;
         }
 

@@ -39,7 +39,8 @@ public class DbUser : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     } = CoarseSystemClock.Instance.Now;
 
-    public User ToModel()
+#pragma warning disable CS0618 // Type or member is obsolete
+    public LegacyUser ToModel()
         => new(Id ?? "", Name) {
             Version = Version,
             Claims = Claims.ToApiMap(),
@@ -47,6 +48,7 @@ public class DbUser : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 ui => new UserIdentity(ui.Id),
                 ui => ui.Secret)
         };
+#pragma warning restore CS0618
 
     public void UpdateFrom(AccountFull source, VersionGenerator<long> versionGenerator)
     {

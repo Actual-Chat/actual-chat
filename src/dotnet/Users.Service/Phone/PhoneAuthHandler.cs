@@ -46,8 +46,9 @@ public sealed class PhoneAuthHandler(
         if (account.IsGuest)
             return HandleRequestResult.NoResult();
 
-        var user = account.ToUser().WithClaim(ClaimTypes.NameIdentifier, account.ToUser().GetPhoneIdentity().SchemaBoundId);
-        var claims = user.Claims.Select(x => new Claim(x.Key, x.Value));
+        var claims = account.Claims
+            .With(ClaimTypes.NameIdentifier, account.GetPhoneIdentity().SchemaBoundId)
+            .Select(x => new Claim(x.Key, x.Value));
         var authenticationType = Options.ClaimsIssuer.NullIfEmpty() ?? AuthSchema.Phone;
         var identity = new ClaimsIdentity(claims, authenticationType);
         return HandleRequestResult.Success(

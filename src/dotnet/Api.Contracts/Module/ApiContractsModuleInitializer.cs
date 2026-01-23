@@ -1,3 +1,4 @@
+using ActualChat.Users;
 using ActualLab.Generators;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
@@ -19,13 +20,15 @@ internal static class ApiContractsModuleInitializer
 #pragma warning restore CA2000
         Session.Validator = session => session.Id.Length >= 20;
 
-        // Overrides default requirements for User type
-        User.MustExist = Requirement.New(
-            (User? u) => u != null,
+        // Overrides default requirements for LegacyUser type (kept for backwards compatibility)
+#pragma warning disable CS0618 // Type or member is obsolete
+        LegacyUser.MustExist = Requirement.New(
+            (LegacyUser? u) => u != null,
             new(() => StandardError.Account.Guest()));
-        User.MustBeAuthenticated = Requirement.New(
-            (User? u) => u?.IsAuthenticated() == true,
+        LegacyUser.MustBeAuthenticated = Requirement.New(
+            (LegacyUser? u) => u?.IsAuthenticated() == true,
             new(() => StandardError.Account.Guest()));
+#pragma warning restore CS0618
 
         // Any AccountException isn't a transient error
         var oldPreferTransient = TransiencyResolvers.PreferTransient;

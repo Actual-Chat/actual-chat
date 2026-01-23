@@ -23,8 +23,10 @@ public interface ILegacyAuth : IComputeService
     Task<SessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken = default);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken = default);
+#pragma warning disable CS0618 // Type or member is obsolete
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<User?> GetUser(Session session, CancellationToken cancellationToken = default);
+    Task<LegacyUser?> GetUser(Session session, CancellationToken cancellationToken = default);
+#pragma warning restore CS0618
 }
 
 [Obsolete("Use Accounts_SignOut instead.")]

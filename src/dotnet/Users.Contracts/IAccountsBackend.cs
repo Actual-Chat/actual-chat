@@ -7,8 +7,6 @@ public interface IAccountsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 10)]
-    Task<User?> GetUser(string userId, CancellationToken cancellationToken = default);
     [ComputeMethod]
     Task<UserId?> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken);
     [ComputeMethod]

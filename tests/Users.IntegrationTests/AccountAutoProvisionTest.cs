@@ -54,7 +54,9 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
         // assert
         account2.Should().BeEquivalentTo(account, options => options
             .ExcludingSystemProperties()
+ #pragma warning disable CS0618 // Type or member is obsolete
             .Excluding(x => x.User)
+ #pragma warning restore CS0618 // Type or member is obsolete
             .Excluding(x => x.IsGreetingCompleted));
     }
 }
