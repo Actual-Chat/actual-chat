@@ -8,9 +8,10 @@
     @apply bg-transparent;
 }
 body.wide .chat-activity-panel {
-    @apply h-11;
-    @apply px-1;
-    @apply border rounded-full border-[var(--violet-90)];
+    @apply h-12;
+    @apply px-1.5;
+    @apply border rounded-full border-[var(--header-fog-color-1)];
+    background: linear-gradient(240deg, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 70%);
 }
 
 .chat-activity-panel:after,
@@ -133,8 +134,8 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
 }
 .chat-activity-panel .btn.listening {
     @apply md:-mr-0.5;
-    @apply text-[var(--magenta-60)] text-caption-3;
-    @apply bg-[var(--leave-btn)];
+    @apply text-white text-caption-3;
+    background: linear-gradient(180deg, #2970FF -116.66%, #FF3880 66.08%);
 }
 
 .chat-activity-subheader:empty {
@@ -219,11 +220,7 @@ body.narrow .chat-activity-panel.listening:after {
     @apply absolute z-10 bottom-0.5 left-1 right-1;
     @apply h-13 w-auto;
     @apply pl-2 pr-1.5;
-    @apply rounded-full;
-    box-shadow: 0 0 0.25rem var(--violet-90);
-}
-.header-activity-panel-wrapper .chat-activity-panel.listening {
-    @apply border-transparent;
+    @apply rounded-full border border-[var(--header-fog-color-1)];
 }
 @keyframes smoothShow {
     0% {

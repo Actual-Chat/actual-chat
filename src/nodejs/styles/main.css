@@ -267,21 +267,8 @@ body.narrow .layout-header > .c-content.selection-header {
 .list-view-layout:has(.chat-activity-panel.listening) .layout-subheader {
     @apply bg-transparent;
 }
-/*.list-view-layout:has(.chat-activity-panel.listening):after {*/
-/*    @apply content-empty;*/
-/*    @apply absolute z-minus inset-x-0 -top-4;*/
-/*    @apply h-32;*/
-/*    @apply opacity-90;*/
-/*    background: linear-gradient(180deg, var(--header-fog-color-1) 0%, var(--header-fog-color-2) 100%);*/
-/*    transition: transform 0.5s ease-in;*/
-/*    animation: smoothOpacity 1s ease forwards, headerWave 2s ease-in 1s infinite;*/
-/*}*/
-/*body.wide .list-view-layout:has(.chat-activity-panel.listening):after {*/
-/*    @apply h-40;*/
-/*    background: radial-gradient(56.91% 105.88% at 50% 0%, var(--header-fog-color-1) 0%, var(--header-fog-color-2) 100%);*/
-/*}*/
 /* Colorized footer */
-body.wide .list-view-layout:has(.chat-activity-panel.listening):before {
+.list-view-layout:has(.chat-activity-panel.listening) .layout-subfooter:before {
     @apply content-empty;
     @apply absolute z-minus inset-x-0 bottom-0;
     @apply h-40;
