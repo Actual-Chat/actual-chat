@@ -1,6 +1,7 @@
 using System.Net.Mail;
 using System.Security.Claims;
 using ActualChat.Chat;
+using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Users.Db;
 using ActualChat.Users.Flows;
@@ -423,46 +424,51 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (name.IsNullOrEmpty())
             name = account.Name;
 
-        // Creating "base" dbUser
+        // Generate user ID in code - no need for a DB roundtrip
+        var userId = account.Id?.Value.NullIfEmpty() ?? UserId.New().Value;
+
+        // Acquire lock before creating User and Account
+        await dbContext.Users.Lock(userId, cancellationToken).ConfigureAwait(false);
+
+        account = account with {
+            Id = UserId.Parse(userId),
+            Name = name,
+        };
+
+        // Create DbUser
         var dbUser = new DbUser() {
-            Id = account.Id?.Value.NullIfEmpty() ?? UserId.New().Value,
+            Id = userId,
             Version = VersionGenerator.NextVersion(),
             Name = name,
             Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal),
         };
-        dbContext.Add(dbUser);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        account = account with {
-            Id = UserId.Parse(dbUser.Id ?? ""),
-            Name = name, // Ensure account.Name matches DbUser.Name
-        };
-        // Updating dbUser from the model to persist account.Identities
+        // Handle email identities
+        var emailString = account.Claims.GetValueOrDefault(ClaimTypes.Email, "");
+        if (!emailString.IsNullOrEmpty() && ActualChat.Email.TryParse(emailString, out var email))
+            account = account.WithEmailIdentities(email);
+
+        // Update dbUser with identities
         dbUser.UpdateFrom(account, VersionGenerator);
-        dbContext.Update(dbUser);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        dbContext.Add(dbUser);
 
-        // ActualChat-specific: Create DbAccount for new user
+        // Create DbAccount
         var context = CommandContext.GetCurrent();
         var isAdmin = IsAdmin(account);
         var dbAccount = new DbAccount {
-            Id = account.Id.Value,
+            Id = userId,
             Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
             Name = name,
-            Email = account.Claims.GetValueOrDefault(ClaimTypes.Email, ""),
+            Email = emailString,
             Phone = account.Phone?.Value ?? account.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
             CreatedAt = dbUser.CreatedAt,
         };
         dbContext.Accounts.Add(dbAccount);
 
-        var emailString = dbAccount.Email;
-        if (!emailString.IsNullOrEmpty() && ActualChat.Email.TryParse(emailString, out var email)) {
-            account = account.WithEmailIdentities(email);
-            dbUser.UpdateFrom(account, VersionGenerator);
-        }
-
+        // Single commit for both User and Account
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
         var accountModel = dbAccount.ToModel(account.Identities, account.Claims);
         context.Operation.AddEvent(new AccountChangedEvent(accountModel, null, ChangeKind.Create));
         return dbUser;
