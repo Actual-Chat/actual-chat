@@ -188,24 +188,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         dbAccount.Identities.Should().NotBeEmpty();
     }
 
-    private async Task SetFormatVersionToZero(UserId userId)
-    {
-        var dbContext = await DbHub.CreateDbContext(default);
-        await using var _ = dbContext;
-        var dbAccount = await dbContext.Accounts.FirstAsync(a => a.Id == userId.Value);
-        dbAccount.FormatVersion = 0;
-        await dbContext.SaveChangesAsync();
-    }
-
-    private async Task SetFormatVersionToZeroAndClearClaims(UserId userId)
-    {
-        var dbContext = await DbHub.CreateDbContext(default);
-        await using var _ = dbContext;
-        var dbAccount = await dbContext.Accounts.FirstAsync(a => a.Id == userId.Value);
-        dbAccount.FormatVersion = 0;
-        dbAccount.Claims = ImmutableDictionary<string, string>.Empty;
-        await dbContext.SaveChangesAsync();
-    }
+    // Helpers
 
     private async Task<DbAccount> GetDbAccount(UserId userId)
     {
@@ -223,9 +206,30 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
             .FirstAsync(a => a.Id == userId.Value);
     }
 
+    private async Task SetFormatVersionToZero(UserId userId)
+    {
+        var dbContext = await DbHub.CreateDbContext(readWrite: true, default);
+        await using var _ = dbContext;
+        var dbAccount = await dbContext.Accounts.FirstAsync(a => a.Id == userId.Value);
+        dbAccount.FormatVersion = 0;
+        await dbContext.SaveChangesAsync();
+        InvalidateAccount(userId);
+    }
+
+    private async Task SetFormatVersionToZeroAndClearClaims(UserId userId)
+    {
+        var dbContext = await DbHub.CreateDbContext(readWrite: true, default);
+        await using var _ = dbContext;
+        var dbAccount = await dbContext.Accounts.FirstAsync(a => a.Id == userId.Value);
+        dbAccount.FormatVersion = 0;
+        dbAccount.Claims = ImmutableDictionary<string, string>.Empty;
+        await dbContext.SaveChangesAsync();
+        InvalidateAccount(userId);
+    }
+
     private async Task SetFormatVersionToZeroAndClearIdentities(UserId userId)
     {
-        var dbContext = await DbHub.CreateDbContext(default);
+        var dbContext = await DbHub.CreateDbContext(readWrite: true, default);
         await using var _ = dbContext;
         var dbAccount = await dbContext.Accounts
             .Include(a => a.Identities)
@@ -233,5 +237,12 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         dbAccount.FormatVersion = 0;
         dbAccount.Identities.Clear();
         await dbContext.SaveChangesAsync();
+        InvalidateAccount(userId);
+    }
+
+    private void InvalidateAccount(UserId userId)
+    {
+        using (Invalidation.Begin())
+            _ = AccountsBackend.Get(userId, default);
     }
 }
