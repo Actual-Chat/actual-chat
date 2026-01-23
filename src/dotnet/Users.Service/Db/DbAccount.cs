@@ -31,7 +31,8 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public AccountFull ToModel(User user)
+#pragma warning disable CS0618 // Type or member is obsolete
+    public AccountFull ToModel(LegacyUser user)
         => new(UserId.Parse(Id), Version) {
             Status = Status,
             Email = Email,
@@ -47,6 +48,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Identities = user.Identities,
             Claims = user.Claims,
         };
+#pragma warning restore CS0618
 
     public AccountFull ToModel(
         ApiMap<UserIdentity, string> identities,

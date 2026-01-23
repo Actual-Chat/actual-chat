@@ -39,12 +39,19 @@ public class LegacyAuth(IServiceProvider services) : ILegacyAuth
         => SessionsBackend.Get(session, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<User?> GetUser(Session session, CancellationToken cancellationToken = default)
+#pragma warning disable CS0618 // Type or member is obsolete
+    public virtual async Task<LegacyUser?> GetUser(Session session, CancellationToken cancellationToken = default)
     {
         var authInfo = await SessionsBackend.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
         if (!(authInfo?.IsAuthenticated() ?? false))
             return null;
 
-        return await AccountsBackend.GetUser(authInfo.UserId, cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(UserId.Parse(authInfo.UserId), cancellationToken).ConfigureAwait(false);
+        return account != null ? (LegacyUser)new(account.Id.Value, account.Name) {
+            Version = account.Version,
+            Claims = account.Claims,
+            Identities = account.Identities,
+        } : null;
     }
+#pragma warning restore CS0618
 }

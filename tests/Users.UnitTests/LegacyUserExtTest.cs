@@ -1,6 +1,7 @@
 namespace ActualChat.Users.UnitTests;
 
-public class UserExtTest
+#pragma warning disable CS0618 // Type or member is obsolete
+public class LegacyUserExtTest
 {
     [Theory]
     [InlineData("1-2187303414", "jjj.bbb@gmail.com", "tr/lL/pjB5kWvzY8dWhnQ45qCmAlrNGQE3Y6PrM75xk=", "KBHWN6oFNDXdTI6kkY7X7PaHM3AgJa+EoXUKV38bssU=")]
@@ -9,7 +10,7 @@ public class UserExtTest
     {
         // act
         var emailId = ActualChat.Email.Parse(email);
-        var user = new User("user1", "User 1").WithPhoneIdentities(ActualChat.Phone.Parse(phone)).WithEmailIdentities(emailId);
+        var user = new LegacyUser("user1", "User 1").WithPhoneIdentities(ActualChat.Phone.Parse(phone)).WithEmailIdentities(emailId);
 
         // assert
         user.Identities.Keys.Select(x => x.Id)
@@ -21,3 +22,4 @@ public class UserExtTest
                 $"phone-hash/{expectedPhoneHash.OrdinalReplace("/", "\\/")}");
     }
 }
+#pragma warning restore CS0618

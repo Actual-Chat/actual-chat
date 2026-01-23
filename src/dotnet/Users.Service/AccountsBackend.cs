@@ -95,8 +95,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         return UserId.ParseNullable(accountId);
     }
 
-    // [ComputeMethod]
-    public virtual async Task<User?> GetUser(
+    /// <summary>
+    /// Internal method to get user data from DbUser table.
+    /// Used by Get() to establish compute dependency - when DbUser changes, Get() is invalidated.
+    /// </summary>
+#pragma warning disable CS0618 // Type or member is obsolete
+    [ComputeMethod(MinCacheDuration = 10)]
+    internal virtual async Task<LegacyUser?> GetUser(
         string userId, CancellationToken cancellationToken = default)
     {
         if (userId.IsNullOrEmpty())
@@ -105,6 +110,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var dbUser = await DbUserResolver.Get(userId, cancellationToken).ConfigureAwait(false);
         return dbUser?.ToModel();
     }
+#pragma warning restore CS0618
 
     // Not a [ComputeMethod]!
     public async Task<UserId[]> ListChanged(
@@ -161,12 +167,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (Invalidation.IsActive) {
             var invUserId = context.Operation.Items.KeylessGet<UserId>();
             if (invUserId is not null) {
-                _ = GetUser(invUserId.Value, default);
+                _ = GetUser(invUserId.Value, default); // Internal - for compute dependency
                 _ = Get(invUserId, default);
             }
-            // Invalidate GetUser if name was normalized
-            if (context.Operation.Items.KeylessGet<UserNameChangedMeta>()?.Changed == true && invUserId is not null)
-                _ = GetUser(invUserId.Value, default);
             return;
         }
 
@@ -236,7 +239,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             _ = Get(account.Id, default);
-            // Invalidate GetUser if user name was changed
+            // Invalidate GetUser (internal) if user name was changed - for compute dependency
             if (context.Operation.Items.KeylessGet<UserNameChangedMeta>()?.Changed == true)
                 _ = GetUser(account.Id.Value, default);
             var invAliasIds = context.Operation.Items.KeylessGet<List<AliasId>>();

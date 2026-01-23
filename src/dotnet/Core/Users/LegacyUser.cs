@@ -7,16 +7,22 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Legacy User type - use AccountFull instead.
+/// This type is kept for backwards compatibility with code that requires User objects.
+/// Use AccountFull.ToUser() to get a LegacyUser when needed for database operations.
+/// </summary>
+[Obsolete("Use AccountFull instead. This type will be removed in a future version.")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
-public partial record User : IHasId<string>, IHasVersion<long>, IRequirementTarget
+public partial record LegacyUser : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public static string GuestName { get; set; } = "Guest";
-    public static Requirement<User> MustExist { get; set; }
-        = new MustExistRequirement<User>().With("You must sign-in to perform this action.", m => new SecurityException(m));
-    public static Requirement<User> MustBeAuthenticated { get; set; }
+    public static Requirement<LegacyUser> MustExist { get; set; }
+        = new MustExistRequirement<LegacyUser>().With("You must sign-in to perform this action.", m => new SecurityException(m));
+    public static Requirement<LegacyUser> MustBeAuthenticated { get; set; }
         = Requirement.New(
-            (User? u) => u?.IsAuthenticated() ?? false,
+            (LegacyUser? u) => u?.IsAuthenticated() ?? false,
             new("User is not authenticated.", m => new SecurityException(m)));
 
     private Lazy<ClaimsPrincipal>? _claimsPrincipalLazy;
@@ -42,11 +48,11 @@ public partial record User : IHasId<string>, IHasVersion<long>, IRequirementTarg
         init => Identities = value.ToApiMap(p => new UserIdentity(p.Key), p => p.Value);
     }
 
-    public static User NewGuest(string? name = null)
+    public static LegacyUser NewGuest(string? name = null)
         => new(name ?? GuestName);
 
-    public User(string name) : this("", name) { }
-    public User(string id, string name)
+    public LegacyUser(string name) : this("", name) { }
+    public LegacyUser(string id, string name)
     {
         Id = id;
         Name = name;
@@ -55,7 +61,7 @@ public partial record User : IHasId<string>, IHasVersion<long>, IRequirementTarg
     }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public User(
+    public LegacyUser(
         string id,
         string name,
         long version,
@@ -72,7 +78,7 @@ public partial record User : IHasId<string>, IHasVersion<long>, IRequirementTarg
 
     // Record copy constructor.
     // Overriden to ensure _claimsPrincipalLazy is recreated.
-    protected User(User other)
+    protected LegacyUser(LegacyUser other)
     {
         Id = other.Id;
         Version = other.Version;
@@ -82,9 +88,9 @@ public partial record User : IHasId<string>, IHasVersion<long>, IRequirementTarg
         _claimsPrincipalLazy = new(CreateClaimsPrincipal);
     }
 
-    public User WithClaim(string name, string value)
+    public LegacyUser WithClaim(string name, string value)
         => this with { Claims = Claims.With(name, value) };
-    public User WithIdentity(UserIdentity identity, string secret = "")
+    public LegacyUser WithIdentity(UserIdentity identity, string secret = "")
         => this with { Identities = Identities.With(identity, secret) };
 
     public bool IsAuthenticated()
@@ -94,7 +100,7 @@ public partial record User : IHasId<string>, IHasVersion<long>, IRequirementTarg
     public virtual bool IsInRole(string role)
         => Claims.ContainsKey($"{ClaimTypes.Role}/{role}");
 
-    public virtual User ToClientSideUser()
+    public virtual LegacyUser ToClientSideUser()
     {
         if (Identities.IsEmpty)
             return this;
@@ -110,7 +116,7 @@ public partial record User : IHasId<string>, IHasVersion<long>, IRequirementTarg
 
     // Equality is changed back to reference-based
 
-    public virtual bool Equals(User? other) => ReferenceEquals(this, other);
+    public virtual bool Equals(LegacyUser? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 
     // Protected methods

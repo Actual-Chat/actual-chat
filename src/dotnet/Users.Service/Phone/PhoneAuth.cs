@@ -123,7 +123,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (Invalidation.IsActive) {
             var userId = context.Operation.Items.KeylessGet<UserId>();
             if (userId is not null)
-                _ = AccountsBackend.GetUser(userId.Value, cancellationToken);
+                _ = AccountsBackend.Get(userId, cancellationToken);
             return default;
         }
 

@@ -42,21 +42,6 @@ public sealed partial record AccountFull : Account
 
     [DataMember, MemoryPackOrder(18)] public ApiMap<string, string> Claims { get; init; }
 
-    // User - computed property for backwards compatibility
-    [Obsolete("Use ToUser() method, or Identities, Claims, Name properties directly.")]
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public User User => ToUser();
-
-    /// <summary>
-    /// Creates a User instance from this AccountFull.
-    /// Use this when you need a User object for operations that require it (e.g., updating DbUser).
-    /// </summary>
-    public User ToUser() => new(Id.Value, Name) {
-        Version = Version,
-        Claims = Claims,
-        Identities = Identities,
-    };
-
     // Account properties
     [DataMember, MemoryPackOrder(5)] public bool IsAdmin { get; init; }
     [DataMember, MemoryPackOrder(7)] public bool SyncContacts { get; init; }
@@ -70,8 +55,20 @@ public sealed partial record AccountFull : Account
     [DataMember, MemoryPackOrder(16)] public string TimeZone { get; init; } = "";
     [DataMember, MemoryPackOrder(17)] public AliasId? AliasId { get; init; }
 
+    // Computed properties
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public AliasInfo<UserId> AliasInfo => field ??= new(Id, AliasId);
+
+    [Obsolete("This property is for backward compatibility. Use Identities, Claims, Name properties directly.")]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+#pragma warning disable CS0618 // Type or member is obsolete
+    public LegacyUser User => new(Id.Value, Name) {
+        Version = Version,
+        Claims = Claims,
+        Identities = Identities,
+    };
+#pragma warning restore CS0618
 
     public AccountFull(UserId id, long version = 0) : base(id, version)
     {
@@ -88,12 +85,14 @@ public sealed partial record AccountFull : Account
     }
 
     [Obsolete("Use constructor with UserId parameter.")]
-    public AccountFull(User user, long version = 0) : base(UserId.ParseNullable(user.Id)!, version)
+#pragma warning disable CS0618 // Type or member is obsolete
+    public AccountFull(LegacyUser user, long version = 0) : base(UserId.ParseNullable(user.Id)!, version)
     {
         Identities = user.Identities;
         Claims = user.Claims;
         Name = user.Name;
     }
+#pragma warning restore CS0618
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public AccountFull(

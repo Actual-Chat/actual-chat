@@ -18,7 +18,7 @@ public static class ActualFluentFormatters
             if (_isUsed)
                 return;
 
-            Add<UserFormatter>();
+            Add<LegacyUserFormatter>();
             Add<AccountFullFormatter>();
             Add<ChatFormatter>();
             Add<ContactFormatter>();
@@ -38,7 +38,7 @@ public static class ActualFluentFormatters
             if (!_isUsed)
                 return;
 
-            Remove<UserFormatter>();
+            Remove<LegacyUserFormatter>();
             Remove<AccountFullFormatter>();
             Remove<ChatFormatter>();
             Remove<ContactFormatter>();
