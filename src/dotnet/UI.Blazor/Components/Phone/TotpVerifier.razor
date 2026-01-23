@@ -62,19 +62,27 @@
         => _totpInput?.Focus() ?? ValueTask.CompletedTask;
 
     private async Task OnInputCompleted(int totp) {
-        _isVerifying = true;
-        StateHasChanged();
-        ICommand<bool> cmd = Purpose switch {
-            TotpPurpose.SignInPhone => new PhoneAuth_ValidateTotp(Session, Phone!, totp),
-            TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone!, totp),
-            TotpPurpose.SignInEmail => new EmailAuth_ValidateTotp(Session, Email!, totp),
-            TotpPurpose.VerifyEmail => new EmailAuth_VerifyEmail(Session, Email!, totp),
-            _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
-        };
+        bool isValid;
+        Exception? error;
+        try {
+            if (_isVerifying)
+                return;
+            _isVerifying = true;
+            StateHasChanged();
+            ICommand<bool> cmd = Purpose switch {
+                TotpPurpose.SignInPhone => new PhoneAuth_ValidateTotp(Session, Phone!, totp),
+                TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, Phone!, totp),
+                TotpPurpose.SignInEmail => new EmailAuth_ValidateTotp(Session, Email!, totp),
+                TotpPurpose.VerifyEmail => new EmailAuth_VerifyEmail(Session, Email!, totp),
+                _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
+            };
+            (isValid, error) = await UICommander.Run(cmd);
+        }
+        finally {
+            _isVerifying = false;
+            StateHasChanged();
+        }
 
-        var (isValid, error) = await UICommander.Run(cmd);
-        _isVerifying = false;
-        StateHasChanged();
         if (error != null) {
             if (_totpInput != null) {
                 await _totpInput.Clear();
