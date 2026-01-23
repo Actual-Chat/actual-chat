@@ -39,23 +39,14 @@ public class DbUser : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     } = CoarseSystemClock.Instance.Now;
 
-#pragma warning disable CS0618 // Type or member is obsolete
-    public LegacyUser ToModel()
-        => new(Id ?? "", Name) {
-            Version = Version,
-            Claims = Claims.ToApiMap(),
-            Identities = Identities.ToApiMap(
-                ui => new UserIdentity(ui.Id),
-                ui => ui.Secret)
-        };
-#pragma warning restore CS0618
-
-    public void UpdateFrom(AccountFull source, VersionGenerator<long> versionGenerator)
+    public void UpdateFrom(AccountFull source)
     {
         var targetId = Id ?? "";
         if (!string.Equals(targetId, source.Id.Value, StringComparison.Ordinal))
             throw new ArgumentOutOfRangeException(nameof(source));
-        Version = versionGenerator.NextVersion(Version);
+
+        Version = source.Version;
+        Name = source.Name;
 
         // Add + update claims
         Claims = Claims.SetItems(source.Claims);

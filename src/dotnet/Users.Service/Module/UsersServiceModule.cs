@@ -268,7 +268,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
             // Other services
             db.AddEntityResolver<string, DbKvasEntry>();
-            db.AddEntityResolver<string, DbAccount>();
+            db.AddEntityResolver<string, DbAccount>(_ => new() {
+                QueryTransformer = query => query.Include(a => a.Identities),
+            });
+            db.AddEntityResolver<string, DbAccountIdentity>();
             db.AddEntityResolver<string, DbAvatar>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbChatPosition>();

@@ -35,20 +35,27 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     {
         ArgumentNullException.ThrowIfNull(userId);
 
-        // We _must_ have a dependency on GetUser here
-        var user = await GetUser(userId.Value, cancellationToken).ConfigureAwait(false);
+        var dbAccount = await DbAccountResolver.Get(userId.Value, cancellationToken).ConfigureAwait(false);
+
         AccountFull? account;
-        if (user == null) {
+        if (dbAccount == null) {
             account = GetGuestAccount(userId);
             if (account == null)
                 return null;
         }
+        else if (dbAccount.FormatVersion >= 1) {
+            // FormatVersion >= 1: all data is in DbAccount, no need to fetch DbUser
+            account = dbAccount.ToModel();
+            if (IsAdmin(account))
+                account = account with { IsAdmin = true };
+        }
         else {
-            var dbAccount = await DbAccountResolver.Get(userId.Value, cancellationToken).ConfigureAwait(false);
-            account = dbAccount?.ToModel(user);
-            if (account == null)
+            // FormatVersion == 0: need to fall back to DbUser for Name/Claims/Identities
+            var dbUser = await DbUserResolver.Get(userId.Value, cancellationToken).ConfigureAwait(false);
+            if (dbUser == null)
                 return null;
 
+            account = dbAccount.ToModel(dbUser);
             if (IsAdmin(account))
                 account = account with { IsAdmin = true };
         }
@@ -75,6 +82,15 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await using var _ = dbContext.ConfigureAwait(false);
 
         var id = identity.Id;
+
+        // Try DbAccountIdentity first (for FormatVersion >= 1 accounts)
+        var dbAccountIdentity = await dbContext.AccountIdentities
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbAccountIdentity is not null)
+            return UserId.ParseNullable(dbAccountIdentity.DbAccountId);
+
+        // Fall back to DbUserIdentity (for FormatVersion == 0 accounts)
         var dbUserIdentity = await dbContext.UserIdentities
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
@@ -95,23 +111,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ConfigureAwait(false);
         return UserId.ParseNullable(accountId);
     }
-
-    /// <summary>
-    /// Internal method to get user data from DbUser table.
-    /// Used by Get() to establish compute dependency - when DbUser changes, Get() is invalidated.
-    /// </summary>
-#pragma warning disable CS0618 // Type or member is obsolete
-    [ComputeMethod(MinCacheDuration = 10)]
-    internal virtual async Task<LegacyUser?> GetUser(
-        string userId, CancellationToken cancellationToken = default)
-    {
-        if (userId.IsNullOrEmpty())
-            return null;
-
-        var dbUser = await DbUserResolver.Get(userId, cancellationToken).ConfigureAwait(false);
-        return dbUser?.ToModel();
-    }
-#pragma warning restore CS0618
 
     // Not a [ComputeMethod]!
     public async Task<UserId[]> ListChanged(
@@ -166,10 +165,11 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            var invUserId = context.Operation.Items.KeylessGet<UserId>();
-            if (invUserId is not null) {
-                _ = GetUser(invUserId.Value, default); // Internal - for compute dependency
-                _ = Get(invUserId, default);
+            var invAccount = context.Operation.Items.KeylessGet<AccountFull>();
+            if (invAccount is not null) {
+                _ = Get(invAccount.Id, default);
+                foreach (var (invIdentity, _) in invAccount.Identities)
+                    _ = GetIdByUserIdentity(invIdentity, default);
             }
             return;
         }
@@ -188,61 +188,72 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
-        var isNewUser = false;
-        var dbUser = await dbContext.GetDbUserByUserIdentity(authenticatedIdentity, true, cancellationToken)
+        var isNew = false;
+        var userId = await dbContext
+            .GetUserIdByIdentity(authenticatedIdentity, true, cancellationToken)
             .ConfigureAwait(false);
-        if (dbUser is null) {
-            (dbUser, isNewUser) = await GetOrCreateDbUserOnSignIn(dbContext, account, cancellationToken)
-                .ConfigureAwait(false);
-            if (isNewUser == false) {
-                dbUser.UpdateFrom(account, VersionGenerator);
-                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        if (userId is null) {
+            // No user found by identity - try by account ID or create new
+            var dbAccount = account.HasId()
+                ? await dbContext.GetDbAccount(account.Id, true, cancellationToken).ConfigureAwait(false)
+                : null;
+            if (dbAccount is not null) {
+                // Existing account found by ID - update and normalize name
+                userId = UserId.Parse(dbAccount.Id);
+                var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
+                dbUser.Require();
+                account = account with {
+                    Name = GetNewAccountName(account)
+                };
+                await dbContext.Accounts.Lock(dbUser.Id, cancellationToken).ConfigureAwait(false);
+                await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
+            }
+            else {
+                // No account found - create new
+                dbAccount = await CreateDbAccount(dbContext, account, cancellationToken).ConfigureAwait(false);
+                userId = UserId.Parse(dbAccount.Id);
+                account = dbAccount.ToModel();
+                isNew = true;
             }
         }
         else {
+            // Existing user found by identity - load DbAccount and update
+            var dbAccount = await dbContext.GetDbAccount(userId, true, cancellationToken).ConfigureAwait(false);
+            dbAccount.Require();
+            var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
+            dbUser.Require();
             account = account with {
-                Id = UserId.Parse(dbUser.Id ?? "")
+                Id = userId,
+                Name = GetNewAccountName(account),
             };
-            dbUser.UpdateFrom(account, VersionGenerator);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Accounts.Lock(dbUser.Id, cancellationToken).ConfigureAwait(false);
+            await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
         }
 
-        var userId = UserId.Parse(dbUser.Id ?? "");
-        context.Operation.Items.KeylessSet(userId);
-        context.Operation.Items.KeylessSet(isNewUser);
-
-        // Normalize user name if needed
-        var newName = UserNamer.NormalizeName(dbUser.Name);
-        if (!OrdinalEquals(newName, dbUser.Name)) {
-            context.Operation.Items.KeylessSet(new UserNameChangedMeta(true));
-            dbUser.Name = newName;
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
+        context.Operation.Items.KeylessSet(account);
+        context.Operation.Items.KeylessSet(isNew);
 
         // Update session with auth info
-        var upsertCommand = new SessionsBackend_Upsert(
-            session, "", "", default,
-            dbUser.Id ?? "",
-            authenticatedIdentity);
+        var upsertCommand = new SessionsBackend_Upsert(session, "", "", default, userId.Value, authenticatedIdentity);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
         // Emit NewUserEvent if this is a new user
-        if (isNewUser)
-            context.Operation.AddEvent(new NewUserEvent(userId));
+        if (isNew)
+            context.Operation.AddEvent(new NewAccountEvent(userId));
     }
 
     // [CommandHandler]
-    public virtual async Task OnUpdate(
-        AccountsBackend_Update command,
-        CancellationToken cancellationToken)
+    public virtual async Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken)
     {
         var (account, expectedVersion) = command;
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            _ = Get(account.Id, default);
-            // Invalidate GetUser (internal) if user name was changed - for compute dependency
-            if (context.Operation.Items.KeylessGet<UserNameChangedMeta>()?.Changed == true)
-                _ = GetUser(account.Id.Value, default);
+            var invAccount = context.Operation.Items.KeylessGet<AccountFull>();
+            if (invAccount is not null) {
+                _ = Get(invAccount.Id, default);
+                foreach (var (invIdentity, _) in invAccount.Identities)
+                    _ = GetIdByUserIdentity(invIdentity, default);
+            }
             var invAliasIds = context.Operation.Items.KeylessGet<List<AliasId>>();
             if (invAliasIds is not null)
                 foreach (var invAliasId in invAliasIds)
@@ -250,49 +261,35 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return;
         }
 
+        var userId = account.Id;
+        var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
+        existingAccount.Require().RequireVersion(expectedVersion);
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+        await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
 
-        var accountIdValue = account.Id.Value;
-        var dbAccount = await dbContext.Accounts.ForUpdate()
-            .FirstOrDefaultAsync(a => a.Id == accountIdValue, cancellationToken)
+        var dbAccount = await dbContext.Accounts.Include(a => a.Identities)
+            .FirstOrDefaultAsync(a => a.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
-        dbAccount = dbAccount.RequireVersion(expectedVersion);
-        var existing = await Get(account.Id, cancellationToken).ConfigureAwait(false);
+        dbAccount = dbAccount.Require().RequireVersion(expectedVersion);
+        var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
+        dbUser.Require();
+
+        var mustGreet = !account.IsGreetingCompleted && dbAccount.IsGreetingCompleted;
+        var mustResetDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
         account = account with {
             Version = VersionGenerator.NextVersion(dbAccount.Version),
+            Name = UserNamer.NormalizeName(account.Name),
         };
-        var mustGreet = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
-        var mustResetDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
         dbAccount.UpdateFrom(account);
-
-        // Update User name if it changed (User and Account should stay in sync)
-        var existingUserName = existing?.Name ?? "";
-        var newUserName = account.Name;
-        if (!OrdinalEquals(existingUserName, newUserName)) {
-            var dbUser = await dbContext.GetDbUser(accountIdValue, true, cancellationToken).ConfigureAwait(false);
-            if (dbUser != null) {
-                dbUser.Name = newUserName;
-                dbUser.Version = VersionGenerator.NextVersion(dbUser.Version);
-                context.Operation.Items.KeylessSet(new UserNameChangedMeta(true));
-            }
-        }
+        dbUser.UpdateFrom(account);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        var accountModel = dbAccount.ToModel(account.Identities, account.Claims);
-        context.Operation.AddEvent(
-            new AccountChangedEvent(accountModel, existing, ChangeKind.Update));
-        if (mustGreet)
-            ContactGreeter.Activate();
-
-        if (mustResetDigestFlow) {
-            Log.LogInformation("Scheduling DigestFlow reset for {AccountId}", account.Id);
-            var flowId = FlowHub.NewId<DigestFlow>(account.Id.Value);
-            context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId).WithReset());
-        }
-
-        var oldAliasId = existing?.AliasId;
+        account = dbAccount.ToModel();
+        context.Operation.Items.KeylessSet(account);
+        var oldAliasId = existingAccount.AliasId;
         var newAliasId = account.AliasId;
         if (oldAliasId != newAliasId) {
             var aliasesToInvalidate = new List<AliasId>();
@@ -302,23 +299,35 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 aliasesToInvalidate.Add(newAliasId);
             context.Operation.Items.KeylessSet(aliasesToInvalidate);
         }
+        context.Operation.AddEvent(new AccountChangedEvent(account, existingAccount, ChangeKind.Update));
+
+        if (mustGreet)
+            ContactGreeter.Activate();
+        if (mustResetDigestFlow) {
+            Log.LogInformation("Scheduling DigestFlow reset for {AccountId}", account.Id);
+            var flowId = FlowHub.NewId<DigestFlow>(account.Id.Value);
+            context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId).WithReset());
+        }
     }
 
     // [CommandHandler]
-    public virtual async Task OnDelete(
-        AccountsBackend_Delete command,
-        CancellationToken cancellationToken)
+    public virtual async Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
+        var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
-            _ = Get(userId, default);
+            var invAccount = context.Operation.Items.KeylessGet<AccountFull>();
+            if (invAccount is not null) {
+                _ = Get(invAccount.Id, default);
+                foreach (var (invIdentity, _) in invAccount.Identities)
+                    _ = GetIdByUserIdentity(invIdentity, default);
+                if (invAccount.AliasId is { } invAliasId)
+                    _ = GetIdByAlias(invAliasId, default);
+            }
             return;
         }
 
-        var context = CommandContext.GetCurrent();
-        var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
-        if (existingAccount is null)
-            return;
+        var account = await Get(userId, cancellationToken).Require().ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -333,13 +342,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        await dbContext.UserIdentities
-            .Where(a => a.DbUserId == userId.Value)
+        await dbContext.AccountIdentities
+            .Where(a => a.DbAccountId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        await dbContext.Users
-            .Where(a => a.Id == userId.Value)
+        await dbContext.UserIdentities
+            .Where(a => a.DbUserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -348,11 +357,16 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.AddEvent(
-            new AccountChangedEvent(existingAccount, existingAccount, ChangeKind.Remove));
+        await dbContext.Users
+            .Where(a => a.Id == userId.Value)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
 
-        // authors
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        context.Operation.AddEvent(new AccountChangedEvent(account, account, ChangeKind.Remove));
+
+        // Authors
         var removeAuthorsCommand = new AuthorsBackend_Remove(null, null, userId);
         await Commander.Call(removeAuthorsCommand, true, cancellationToken).ConfigureAwait(false);
     }
@@ -360,7 +374,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // Event handlers
 
     // [EventHandler]
-    public virtual Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task OnNewAccountEvent(NewAccountEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return Task.CompletedTask; // It just notifies GreetingDispatcher
@@ -410,11 +424,56 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Bio = "",
         };
 
-    // DbUser methods (inlined from DbUserRepo)
+    // DbUser/DbAccount sync helpers
 
-    private async Task<DbUser> CreateDbUser(
+    private string GetNewAccountName(AccountFull account)
+    {
+        var name = account.Name;
+        if (!name.IsNullOrEmpty())
+            return UserNamer.NormalizeName(name);
+
+        name = account.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
+        var surname = account.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
+        if (!surname.IsNullOrEmpty())
+            name = $"{name} {surname}";
+        return UserNamer.NormalizeName(name);
+    }
+
+    private async Task UpdateDbAccount(
+        UsersDbContext dbContext,
+        DbAccount dbAccount,
+        DbUser dbUser,
+        AccountFull account,
+        CancellationToken cancellationToken)
+    {
+        // Update DbAccount with all properties (double write)
+        dbAccount.Version = VersionGenerator.NextVersion(dbAccount.Version);
+        dbAccount.FormatVersion = 1; // Upgrade to format version 1
+        dbAccount.Status = account.Status;
+        dbAccount.Email = account.Email;
+        dbAccount.IsEmailVerified = account.IsEmailVerified;
+        dbAccount.Phone = account.Phone?.Value ?? "";
+        dbAccount.SyncContacts = account.SyncContacts;
+        dbAccount.Name = account.Name;
+        dbAccount.IsGreetingCompleted = account.IsGreetingCompleted;
+        dbAccount.TimeZone = account.TimeZone;
+        dbAccount.AliasId = account.AliasId?.NormalizedValue ?? "";
+        dbAccount.Claims = dbUser.Claims; // Sync claims from DbUser
+
+        // Update DbUser
+        dbUser.UpdateFrom(account);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    // DbUser/DbAccount creation
+
+    private async Task<DbAccount> CreateDbAccount(
         UsersDbContext dbContext, AccountFull account, CancellationToken cancellationToken)
     {
+        // Generate user ID in code - no need for a DB roundtrip
+        var userId = account.Id?.Value.NullIfEmpty() ?? UserId.New().Value;
+
         // Construct display name from claims - used for both DbUser and DbAccount
         var name = account.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
         var lastName = account.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
@@ -423,17 +482,16 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         // Fall back to account.Name if no claims-based name is available
         if (name.IsNullOrEmpty())
             name = account.Name;
-
-        // Generate user ID in code - no need for a DB roundtrip
-        var userId = account.Id?.Value.NullIfEmpty() ?? UserId.New().Value;
-
-        // Acquire lock before creating User and Account
-        await dbContext.Users.Lock(userId, cancellationToken).ConfigureAwait(false);
+        // Normalize name
+        name = UserNamer.NormalizeName(name);
 
         account = account with {
             Id = UserId.Parse(userId),
             Name = name,
         };
+
+        // Acquire lock before creating User and Account
+        await dbContext.Users.Lock(userId, cancellationToken).ConfigureAwait(false);
 
         // Create DbUser
         var dbUser = new DbUser() {
@@ -449,21 +507,33 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             account = account.WithEmailIdentities(email);
 
         // Update dbUser with identities
-        dbUser.UpdateFrom(account, VersionGenerator);
+        dbUser.UpdateFrom(account);
         dbContext.Add(dbUser);
 
-        // Create DbAccount
+        // Create DbAccount with same data as DbUser (FormatVersion=1 means all data is in DbAccount)
         var context = CommandContext.GetCurrent();
         var isAdmin = IsAdmin(account);
         var dbAccount = new DbAccount {
             Id = userId,
+            FormatVersion = 1, // New accounts start with format version 1
             Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
-            Name = name,
+            Name = name, // Same normalized name as DbUser
             Email = emailString,
             Phone = account.Phone?.Value ?? account.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
             CreatedAt = dbUser.CreatedAt,
+            Claims = dbUser.Claims, // Sync claims to DbAccount
         };
+        // Sync identities to DbAccount
+        foreach (var (userIdentity, secret) in account.Identities) {
+            if (!userIdentity.IsValid)
+                continue;
+            dbAccount.Identities.Add(new DbAccountIdentity {
+                Id = userIdentity.Id,
+                DbAccountId = userId,
+                Secret = secret ?? "",
+            });
+        }
         dbContext.Accounts.Add(dbAccount);
 
         // Single commit for both User and Account
@@ -471,26 +541,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         var accountModel = dbAccount.ToModel(account.Identities, account.Claims);
         context.Operation.AddEvent(new AccountChangedEvent(accountModel, null, ChangeKind.Create));
-        return dbUser;
+        return dbAccount;
     }
-
-    private async Task<(DbUser DbUser, bool IsCreated)> GetOrCreateDbUserOnSignIn(
-        UsersDbContext dbContext, AccountFull account, CancellationToken cancellationToken)
-    {
-        DbUser? dbUser;
-        if (account.Id is not null && !account.Id.Value.IsNullOrEmpty()) {
-            dbUser = await dbContext.GetDbUser(account.Id.Value, false, cancellationToken).ConfigureAwait(false);
-            if (dbUser is not null)
-                return (dbUser, false);
-        }
-
-        // No user found, let's create it
-        dbUser = await CreateDbUser(dbContext, account, cancellationToken).ConfigureAwait(false);
-        return (dbUser, true);
-    }
-
-    // Nested types
-
-    // Must be Newtonsoft.Json serializable - stored in Operation.Items
-    private sealed record UserNameChangedMeta(bool Changed);
 }

@@ -118,46 +118,31 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
     // [CommandHandler]
     public virtual async Task<bool> OnVerifyPhone(PhoneAuth_VerifyPhone command, CancellationToken cancellationToken)
     {
-        // NOTE(AY): Add backend, implement IApiCommand
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var userId = context.Operation.Items.KeylessGet<UserId>();
-            if (userId is not null)
-                _ = AccountsBackend.Get(userId, cancellationToken);
-            return default;
-        }
+        if (Invalidation.IsActive)
+            return false; // It just spawns other commands, so nothing to do here
 
         var (session, phone, totp) = command;
-        if (! await ValidateCode(session, phone, totp, TotpPurpose.VerifyPhone, cancellationToken).ConfigureAwait(false))
+        if (!await ValidateCode(session, phone, totp, TotpPurpose.VerifyPhone, cancellationToken).ConfigureAwait(false))
             return false;
 
         // save phone to account
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         account = account with { Phone = phone, IsGreetingCompleted = false };
         await Accounts.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
-
-        var cmd = new AccountsBackend_Update(account, account.Version);
-        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        var updatedAccount = account.WithPhoneIdentities(phone);
 
         // save phone identity + phone claim
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUser = await dbContext.GetDbUser(account.Id.Value, true, cancellationToken).ConfigureAwait(false);
-        if (dbUser == null)
-            return default; // Should never happen, but if it somehow does, there is no extra to do in this case
-
-        var updatedAccount = account.WithPhoneIdentities(phone);
-        var conflictingDbUser = await dbContext
-            .GetDbUserByUserIdentity(updatedAccount.Identities.GetPhoneIdentity(), false, cancellationToken)
+        var conflictingUserId = await dbContext
+            .GetUserIdByIdentity(updatedAccount.Identities.GetPhoneIdentity(), false, cancellationToken)
             .ConfigureAwait(false);
-        if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
+        if (conflictingUserId != null && !OrdinalEquals(conflictingUserId.Value, account.Id.Value))
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");
 
-        dbUser.UpdateFrom(updatedAccount, VersionGenerator);
-        context.Operation.Items.KeylessSet(account.Id);
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var cmd = new AccountsBackend_Update(updatedAccount, account.Version);
+        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         return true;
     }
 

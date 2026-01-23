@@ -38,4 +38,4 @@ public sealed partial record PhoneAuth_VerifyPhone(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Phone Phone,
     [property: DataMember, MemoryPackOrder(2)] int Totp
-) : ISessionCommand<bool>; // NOTE(AY): Add backend, implement IApiCommand
+) : ISessionCommand<bool>, IApiCommand; // NOTE(AY): Add backend, implement IApiCommand

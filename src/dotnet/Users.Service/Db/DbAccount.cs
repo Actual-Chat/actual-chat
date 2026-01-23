@@ -11,8 +11,14 @@ namespace ActualChat.Users.Db;
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    private NewtonsoftJsonSerialized<ImmutableDictionary<string, string>> _claims
+        = ImmutableDictionary<string, string>.Empty;
+
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
+
+    // FormatVersion: 0 = legacy (need to read Claims from DbUser), 1 = all data in DbAccount
+    public int FormatVersion { get; set; }
 
     [Column(TypeName = "smallint")]
     public AccountStatus Status { get; set; }
@@ -29,28 +35,63 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-#pragma warning disable CS0618 // Type or member is obsolete
-    public AccountFull ToModel(LegacyUser user)
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "We assume server-side code is fully preserved")]
+    public string ClaimsJson {
+        get => _claims.Data;
+        set => _claims = value;
+    }
+
+    [NotMapped]
+    public ImmutableDictionary<string, string> Claims {
+        get => _claims.Value;
+        set => _claims = value;
+    }
+
+    public List<DbAccountIdentity> Identities { get; } = new();
+
+    // ToModel: for FormatVersion >= 1 accounts that have all data in DbAccount
+    public AccountFull ToModel()
         => new(UserId.Parse(Id), Version) {
+            FormatVersion = FormatVersion,
             Status = Status,
             Email = Email,
             IsEmailVerified = IsEmailVerified,
             Phone = !Phone.IsNullOrEmpty() ? ActualChat.Phone.Parse(Phone) : null,
             SyncContacts = SyncContacts,
-            Name = user.Name, // Use user's name from users table for consistency
+            Name = Name,
             IsGreetingCompleted = IsGreetingCompleted,
             CreatedAt = CreatedAt,
             TimeZone = TimeZone,
             AliasId = AliasId.IsNullOrEmpty() ? null : ActualChat.AliasId.Parse(AliasId),
-            Identities = user.Identities,
-            Claims = user.Claims,
+            Identities = Identities.ToApiMap(ai => new UserIdentity(ai.Id), ai => ai.Secret),
+            Claims = Claims.ToApiMap(),
         };
-#pragma warning restore CS0618
+
+    // ToModel: uses DbUser for Identities/Name/Claims when FormatVersion == 0
+    public AccountFull ToModel(DbUser dbUser)
+        => new(UserId.Parse(Id), Version) {
+            FormatVersion = FormatVersion,
+            Status = Status,
+            Email = Email,
+            IsEmailVerified = IsEmailVerified,
+            Phone = !Phone.IsNullOrEmpty() ? ActualChat.Phone.Parse(Phone) : null,
+            SyncContacts = SyncContacts,
+            Name = FormatVersion >= 1 ? Name : dbUser.Name,
+            IsGreetingCompleted = IsGreetingCompleted,
+            CreatedAt = CreatedAt,
+            TimeZone = TimeZone,
+            AliasId = AliasId.IsNullOrEmpty() ? null : ActualChat.AliasId.Parse(AliasId),
+            Identities = FormatVersion >= 1
+                ? Identities.ToApiMap(ai => new UserIdentity(ai.Id), ai => ai.Secret)
+                : dbUser.Identities.ToApiMap(ui => new UserIdentity(ui.Id), ui => ui.Secret),
+            Claims = FormatVersion >= 1 ? Claims.ToApiMap() : dbUser.Claims.ToApiMap(),
+        };
 
     public AccountFull ToModel(
         ApiMap<UserIdentity, string> identities,
         ApiMap<string, string> claims)
         => new(UserId.Parse(Id), Version) {
+            FormatVersion = FormatVersion,
             Status = Status,
             Email = Email,
             IsEmailVerified = IsEmailVerified,
@@ -71,19 +112,37 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         this.RequireSameOrEmptyId(id.Value);
         model.RequireSomeVersion();
 
-        var name = model.Name;
         Id = id.Value;
         Version = model.Version;
+        FormatVersion = 1; // Always upgrade to format version 1 on write
         Status = model.Status;
         Phone = model.Phone?.Value ?? "";
         SyncContacts = model.SyncContacts;
         Email = model.Email;
         IsEmailVerified = model.IsEmailVerified;
-        Name = name;
+        Name = model.Name;
         IsGreetingCompleted = model.IsGreetingCompleted;
         CreatedAt = model.CreatedAt;
         TimeZone = model.TimeZone;
         AliasId = model.AliasId?.NormalizedValue ?? "";
+        Claims = model.Claims.ToImmutableDictionary(StringComparer.Ordinal);
+
+        // Add + update identities
+        var identities = Identities.ToDictionary(ai => ai.Id, StringComparer.Ordinal);
+        foreach (var (userIdentity, secret) in model.Identities) {
+            if (!userIdentity.IsValid)
+                continue;
+            var foundIdentity = identities.GetValueOrDefault(userIdentity.Id);
+            if (foundIdentity is not null) {
+                foundIdentity.Secret = secret;
+                continue;
+            }
+            Identities.Add(new DbAccountIdentity {
+                Id = userIdentity.Id,
+                DbAccountId = Id,
+                Secret = secret ?? "",
+            });
+        }
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbAccount>

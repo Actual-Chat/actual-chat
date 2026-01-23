@@ -1909,7 +1909,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // Event handlers
 
     // [EventHandler]
-    public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnNewAccountEvent(NewAccountEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here

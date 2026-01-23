@@ -35,7 +35,7 @@ public interface IAccountsBackend : IComputeService, IBackendService
     // Events
 
     [EventHandler]
-    Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken);
+    Task OnNewAccountEvent(NewAccountEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
