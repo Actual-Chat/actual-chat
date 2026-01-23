@@ -4,6 +4,19 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Users;
 
+// Note: Id can be null in certain scenarios:
+//
+// 1. Sign-in flow (production): When a new user signs in via OAuth, phone, or email,
+//    a "template" AccountFull is created with null Id before being passed to the
+//    AccountsBackend_SignIn command. The actual UserId is assigned inside the command
+//    handler when the account is persisted to the database.
+//    Locations: ServerAuth.cs, PhoneAuth.cs, EmailAuth.cs.
+//
+// 2. Tests: The AccountFull(string name) constructor creates accounts with null Id
+//    for testing purposes. These get assigned real IDs when signed in via test helpers.
+//
+// All computed properties that access Id must handle the null case to avoid
+// NullReferenceException during command tracing/logging (which calls ToString()).
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Account(
