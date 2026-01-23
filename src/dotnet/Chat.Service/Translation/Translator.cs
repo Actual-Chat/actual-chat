@@ -191,6 +191,9 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                 chatHistory.AddAssistantMessage("Yes");
                 chatHistory.AddUserMessage("Bien");
                 chatHistory.AddAssistantMessage("Right");
+                // Example showing no translation needed when text is already in target language
+                chatHistory.AddUserMessage("Hello, how are you?");
+                chatHistory.AddAssistantMessage(Constants.Translation.NoTranslationNeededText);
             }
             if (targetLanguage.IsAnySpanish) {
                 chatHistory.AddUserMessage("Good.");
@@ -199,6 +202,9 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                 chatHistory.AddAssistantMessage("Sí");
                 chatHistory.AddUserMessage("Right");
                 chatHistory.AddAssistantMessage("Bien");
+                // Example showing no translation needed when text is already in target language
+                chatHistory.AddUserMessage("Hola, ¿cómo estás?");
+                chatHistory.AddAssistantMessage(Constants.Translation.NoTranslationNeededText);
             }
             if (targetLanguage == Languages.Russian) {
                 chatHistory.AddUserMessage("Alright.");
@@ -207,6 +213,9 @@ public class Translator(IServiceProvider services, [ServiceKey] string serviceKe
                 chatHistory.AddAssistantMessage("Да");
                 chatHistory.AddUserMessage("Bien");
                 chatHistory.AddAssistantMessage("Хорошо");
+                // Example showing no translation needed when text is already in target language
+                chatHistory.AddUserMessage("Привет, как дела?");
+                chatHistory.AddAssistantMessage(Constants.Translation.NoTranslationNeededText);
             }
         }
         foreach (var (text, translated) in context) {
