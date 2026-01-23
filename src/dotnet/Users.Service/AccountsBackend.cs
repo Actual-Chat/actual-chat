@@ -129,6 +129,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .Take(limit)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
         return dbAccounts.Select(x => UserId.Parse(x.Id)).ToArray();
     }
 
@@ -275,8 +276,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        var accountModel = dbAccount.ToModel(account.Identities, account.Claims);
         context.Operation.AddEvent(
-            new AccountChangedEvent(dbAccount.ToModel(account.Identities, account.Claims), existing, ChangeKind.Update));
+            new AccountChangedEvent(accountModel, existing, ChangeKind.Update));
         if (mustGreet)
             ContactGreeter.Activate();
 
@@ -409,18 +411,28 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private async Task<DbUser> CreateDbUser(
         UsersDbContext dbContext, AccountFull account, CancellationToken cancellationToken)
     {
+        // Construct display name from claims - used for both DbUser and DbAccount
+        var name = account.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
+        var lastName = account.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
+        if (!lastName.IsNullOrEmpty())
+            name = $"{name} {lastName}";
+        // Fall back to account.Name if no claims-based name is available
+        if (name.IsNullOrEmpty())
+            name = account.Name;
+
         // Creating "base" dbUser
         var dbUser = new DbUser() {
             Id = account.Id?.Value.NullIfEmpty() ?? UserId.New().Value,
             Version = VersionGenerator.NextVersion(),
-            Name = account.Name,
+            Name = name,
             Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal),
         };
         dbContext.Add(dbUser);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         account = account with {
-            Id = UserId.Parse(dbUser.Id ?? "")
+            Id = UserId.Parse(dbUser.Id ?? ""),
+            Name = name, // Ensure account.Name matches DbUser.Name
         };
         // Updating dbUser from the model to persist account.Identities
         dbUser.UpdateFrom(account, VersionGenerator);
@@ -430,10 +442,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         // ActualChat-specific: Create DbAccount for new user
         var context = CommandContext.GetCurrent();
         var isAdmin = IsAdmin(account);
-        var name = account.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
-        var lastName = account.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
-        if (!lastName.IsNullOrEmpty())
-            name = $"{name} {lastName}";
         var dbAccount = new DbAccount {
             Id = account.Id.Value,
             Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
@@ -452,8 +460,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation.AddEvent(
-            new AccountChangedEvent(dbAccount.ToModel(account.Identities, account.Claims), null, ChangeKind.Create));
+        var accountModel = dbAccount.ToModel(account.Identities, account.Claims);
+        context.Operation.AddEvent(new AccountChangedEvent(accountModel, null, ChangeKind.Create));
         return dbUser;
     }
 

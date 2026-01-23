@@ -28,7 +28,18 @@ public sealed partial record AccountFull : Account
         => field ??= typeof(AccountFull).GetProperty(nameof(Phone))!.GetSetter<AccountFull, Phone>();
 
     // User properties (flattened from User type)
-    [DataMember, MemoryPackOrder(4)] public ApiMap<UserIdentity, string> Identities { get; init; }
+    // Identities is hidden from JSON/DataContract, JsonCompatibleIdentities is used instead
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public ApiMap<UserIdentity, string> Identities { get; init; }
+
+    // This property is used for JSON serialization - converts UserIdentity keys to strings
+    [DataMember(Name = nameof(Identities)), MemoryPackOrder(4)]
+    [JsonPropertyName(nameof(Identities)), Newtonsoft.Json.JsonProperty(nameof(Identities))]
+    public ApiMap<string, string> JsonCompatibleIdentities {
+        get => Identities.UnorderedItems.ToApiMap(p => p.Key.Id, p => p.Value, StringComparer.Ordinal);
+        init => Identities = value.ToApiMap(p => new UserIdentity(p.Key), p => p.Value);
+    }
+
     [DataMember, MemoryPackOrder(18)] public ApiMap<string, string> Claims { get; init; }
 
     // User - computed property for backwards compatibility
@@ -84,13 +95,13 @@ public sealed partial record AccountFull : Account
         Name = user.Name;
     }
 
-    [MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public AccountFull(
         UserId id,
         long version,
         AccountStatus status,
         Avatar avatar,
-        ApiMap<UserIdentity, string> identities,
+        ApiMap<string, string> jsonCompatibleIdentities,
         ApiMap<string, string> claims,
         bool isAdmin,
         bool syncContacts,
@@ -107,7 +118,8 @@ public sealed partial record AccountFull : Account
     {
         Status = status;
         Avatar = avatar;
-        Identities = identities;
+        Identities = null!;
+        JsonCompatibleIdentities = jsonCompatibleIdentities;
         Claims = claims;
         IsAdmin = isAdmin;
         SyncContacts = syncContacts;
