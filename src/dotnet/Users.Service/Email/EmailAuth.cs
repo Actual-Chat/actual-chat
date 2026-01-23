@@ -103,13 +103,8 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     // [CommandHandler]
     public virtual async Task<bool> OnVerifyEmail(EmailAuth_VerifyEmail command, CancellationToken cancellationToken)
     {
-        var context = CommandContext.GetCurrent();
-        if (Invalidation.IsActive) {
-            var userId = context.Operation.Items.KeylessGet<UserId>();
-            if (userId is not null)
-                _ = AccountsBackend.Get(userId, cancellationToken);
-            return default;
-        }
+        if (Invalidation.IsActive)
+            return false; // It just spawns other commands, so nothing to do here
 
         var (session, email, totp) = command;
         if (!await ValidateCode(session, email.Value, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
@@ -118,29 +113,19 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         account = account with { IsEmailVerified = true };
         await Accounts.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
+        var updatedAccount = account.WithEmailIdentities(email);
 
-        var cmd = new AccountsBackend_Update(account, account.Version);
-        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
-
-        // save email identity + email claim
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUser = await dbContext.GetDbUser(account.Id.Value, true, cancellationToken).ConfigureAwait(false);
-        if (dbUser == null)
-            return default; // Should never happen, but if it somehow does, there is no extra to do in this case
-
-        var updatedAccount = account.WithEmailIdentities(email);
-        var conflictingDbUser = await dbContext
-            .GetDbUserByUserIdentity(updatedAccount.Identities.GetEmailIdentity(), false, cancellationToken)
+        var conflictingUserId = await dbContext
+            .GetUserIdByIdentity(updatedAccount.Identities.GetEmailIdentity(), false, cancellationToken)
             .ConfigureAwait(false);
-        if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
+        if (conflictingUserId != null && !OrdinalEquals(conflictingUserId.Value, account.Id.Value))
             throw StandardError.Unauthorized("Email has already been taken by another account.");
 
-        dbUser.UpdateFrom(updatedAccount, VersionGenerator);
-        context.Operation.Items.KeylessSet(account.Id);
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var cmd = new AccountsBackend_Update(updatedAccount, account.Version);
+        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         return true;
     }
 

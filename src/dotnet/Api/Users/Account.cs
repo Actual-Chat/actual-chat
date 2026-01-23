@@ -25,10 +25,10 @@ public partial record Account(
 ) : IHasId<UserId>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly Requirement<Account> MustExist = Requirement.New(
-        (Account? a) => a?.Id is not null,
+        (Account? a) => a?.HasId() == true,
         new(() => StandardError.NotFound<Account>()));
     public static readonly Requirement<Account> MustNotBeGuest = Requirement.New(
-        (Account? a) => a?.Id is not null && !a.Id.IsGuest,
+        (Account? a) => a?.HasId() == true && !a.Id.IsGuest,
         new(() => StandardError.Account.Guest()));
 
     [DataMember, MemoryPackOrder(2)] public AccountStatus Status { get; init; }

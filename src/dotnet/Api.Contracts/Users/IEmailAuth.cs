@@ -36,4 +36,4 @@ public sealed partial record EmailAuth_VerifyEmail(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] Email Email,
     [property: DataMember, MemoryPackOrder(2)] int Token
-) : ISessionCommand<bool>; // NOTE(AY): Add backend, implement IApiCommand
+) : ISessionCommand<bool>, IApiCommand; // NOTE(AY): Add backend, implement IApiCommand
