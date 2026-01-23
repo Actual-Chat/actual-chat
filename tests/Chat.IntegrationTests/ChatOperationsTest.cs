@@ -493,12 +493,12 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var session = ownerTester.Session;
 
         var (chatId, _) = await ownerTester.CreateChat(true);
-        await Task.Delay(TimeSpan.FromSeconds(1)); // Allow async event processing to complete
+        await services.Queues().WhenProcessing();
         await ComputedTest.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().Contain(chatId);
-        }, TimeSpan.FromSeconds(10));
+        });
 
         var commander = services.Commander();
         var removeChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
@@ -508,12 +508,12 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var chat = await chats.Get(session, chatId, default);
         chat.Should().BeNull();
 
-        await Task.Delay(TimeSpan.FromSeconds(1)); // Allow async event processing to complete
+        await services.Queues().WhenProcessing();
         await ComputedTest.When(services, async ct => {
             var contactIds = await contacts.ListIds(session, null, ct);
             var chatIds = contactIds.Select(c => c.ChatId).ToArray();
             chatIds.Should().NotContain(chatId);
-        }, TimeSpan.FromSeconds(10));
+        });
     }
 
     [Fact]
