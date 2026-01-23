@@ -1,23 +1,22 @@
 using System.Numerics;
-using ActualLab.Rpc;
 
 namespace ActualChat;
 
 // ReSharper disable once PossibleInterfaceMemberAmbiguity
 public interface IStringIdentifier : IHasId<string>, IHasId<Symbol>
 {
-    public string Value { get; }
-    public int HashCode { get; }
+    string Value { get; }
+    int HashCode { get; }
 }
 
 public interface IStringIdentifier<TSelf> : IStringIdentifier,
     IEquatable<TSelf>, IComparable<TSelf>, IEqualityOperators<TSelf, TSelf, bool>
     where TSelf : StringIdentifier, IStringIdentifier<TSelf>
 {
-    public static abstract TSelf Parse(string s); // Must rely on TryParse(s, out result)
-    public static abstract TSelf? ParseNullable(string? s); // Must rely on Parse(s)
-    public static abstract TSelf? TryParse(string? s, bool allowNull = false); // Must rely on TryParse(s, out result)
-    public static abstract bool TryParse(string? s, [NotNullWhen(true)] out TSelf? result);
+    static abstract TSelf Parse(string s); // Must rely on TryParse(s, out result)
+    static abstract TSelf? ParseNullable(string? s); // Must rely on Parse(s)
+    static abstract TSelf? TryParse(string? s, bool allowNull = false); // Must rely on TryParse(s, out result)
+    static abstract bool TryParse(string? s, [NotNullWhen(true)] out TSelf? result);
 
     int IComparable<TSelf>.CompareTo(TSelf? other)
         => string.CompareOrdinal(Value, other?.Value);
