@@ -1,5 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.UI.Blazor.App.Services
 @inherits ComputedStateComponent<AppUIHub, bool>
 @{
     var isRightPanelVisible = State.Value;
@@ -12,6 +14,9 @@
         <div class="c-content">
             <div class="video-frame">
                 <canvas class="call-video"></canvas>
+            </div>
+            <div class="remote-streams">
+                @* Remote video canvases are dynamically added here by TypeScript *@
             </div>
             <div class="video-controls show-with-delay">
                 @if (_videoDevices.Count > 1) {
@@ -51,12 +56,15 @@
 
     private List<VideoDevice> _videoDevices = new();
     private string _selectedCameraDeviceId = "";
+    private VideoPlaybackEngineFactory? _engineFactory;
+
     private async Task OnSelectedCameraChanged(string deviceId) {
         if (JSRef is not null) {
             await JSRef.InvokeVoidAsync("setSelectedCamera", deviceId);
         }
     }
 
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ElementReference Ref { get; set; }
     private DotNetObjectReference<VideoPanel> BlazorRef { get; set; } = null!;
     private IJSObjectReference? JSRef { get; set; }
@@ -76,6 +84,12 @@
         if (_rendered && JSRef is null) {
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+
+            // Set up the VideoPlaybackEngineFactory for incoming video streams
+            _engineFactory = new VideoPlaybackEngineFactory(Hub.Services);
+            _engineFactory.SetVideoPanelJsRef(JSRef);
+            ChatVideoUI.SetEngineFactory(_engineFactory);
+
             await UpdateSessionContext();
             await LoadVideoDevices();
         }
