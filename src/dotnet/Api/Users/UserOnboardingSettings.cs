@@ -19,8 +19,8 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(12)] public bool IsSpeechTranscriptionStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(13)] public bool IsTranscriptPlaybackStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(14)] public bool IsPlacesFeatureStepCompleted { get; init; }
-    [DataMember, MemoryPackOrder(15)] public bool IsSummarizationStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(16)] public bool IsLanguagesStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(17)] public bool IsSummarizationStepCompleted { get; init; }
 
     public bool HasUncompletedSteps(bool enableChatRouletteUI)
     {
