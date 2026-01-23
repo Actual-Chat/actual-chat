@@ -94,8 +94,8 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (!await ValidateCode(session, email.Value, totp, TotpPurpose.SignInEmail, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var user = new User(Symbol.Empty, string.Empty).WithEmail(email);
-        var signInCommand = new AccountsBackend_SignIn(session, user, user.GetEmailIdentity());
+        var account = new AccountFull("").WithEmailIdentities(email);
+        var signInCommand = new AccountsBackend_SignIn(session, account, account.GetEmailIdentity());
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -130,14 +130,14 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (dbUser == null)
             return default; // Should never happen, but if it somehow does, there is no extra to do in this case
 
-        var user = account.ToUser().WithEmail(email);
+        var updatedAccount = account.WithEmailIdentities(email);
         var conflictingDbUser = await dbContext
-            .GetDbUserByUserIdentity(user.GetEmailIdentity(), false, cancellationToken)
+            .GetDbUserByUserIdentity(updatedAccount.GetEmailIdentity(), false, cancellationToken)
             .ConfigureAwait(false);
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Email has already been taken by another account.");
 
-        dbUser.UpdateFrom(user, VersionGenerator);
+        dbUser.UpdateFrom(updatedAccount, VersionGenerator);
         context.Operation.Items.KeylessSet(account.Id);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

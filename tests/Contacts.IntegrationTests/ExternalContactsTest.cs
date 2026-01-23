@@ -434,7 +434,9 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         => SignInAsUniqueJack(_tester, identities);
 
     private Task<AccountFull> SignInAsUniqueJack(WebClientTester tester, Identities identities)
-        => tester.SignInAsNew("Jack", x => x.WithPhone(identities.Phone).WithClaim(ClaimTypes.Email, identities.Email));
+        => tester.SignInAsNew("Jack", x => x
+            .WithPhoneIdentities(identities.Phone)
+            .WithClaim(ClaimTypes.Email, identities.Email));
 
     private Identities NewJackIdentities()
         => NewIdentities("jack");

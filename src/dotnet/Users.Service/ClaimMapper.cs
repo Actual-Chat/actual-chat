@@ -10,7 +10,7 @@ public class ClaimMapper
     public const string OwnNameClaim = $"urn:{Constants.Hosts.Voxt}:name";
     public const string OwnFullNameClaim = $"urn:{Constants.Hosts.Voxt}:fullname";
 
-    public virtual User UpdateClaims(User user, Dictionary<string, string> httpClaims)
+    public virtual AccountFull UpdateClaims(AccountFull account, Dictionary<string, string> httpClaims)
     {
         var surname = Capitalize(httpClaims.GetValueOrDefault(SurnameClaim) ?? "").Trim();
         var givenName = Capitalize(httpClaims.GetValueOrDefault(GivenNameClaim) ?? "").Trim();
@@ -22,15 +22,15 @@ public class ClaimMapper
         if (name.IsNullOrEmpty())
             name = fullName;
 
-        var newClaims = user.Claims.Clone();
+        var newClaims = account.Claims.Clone();
         if (!name.IsNullOrEmpty()) {
-            user = user with { Name = name };
+            account = account with { Name = name };
             newClaims.Add(OwnNameClaim, name);
         }
         if (!fullName.IsNullOrEmpty())
             newClaims.Add(OwnFullNameClaim, name);
 
-        return user with { Claims = newClaims };
+        return account with { Claims = newClaims };
     }
 
     private static string Capitalize(string s)

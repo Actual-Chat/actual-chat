@@ -137,7 +137,7 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         var userId = Constants.User.Walle.UserId;
         var chatId = Constants.Chat.AnnouncementsChatId;
         var authorId = AuthorId.New(chatId, 1L);
-        var account = new AccountFull(new User(userId.Value, "User"), 1);
+        var account = new AccountFull(userId, 1) { Name = "User" };
         Warmup(PlaceId.New());
         Warmup(new Chat.Chat(chatId) { Rules = new AuthorRules(chatId, new AuthorFull(userId, authorId), account) });
         Warmup(new UserLanguageSettings() {

@@ -137,18 +137,19 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         var isAdmin = userId == Constants.User.Admin.UserId;
         var userIdentity = new UserIdentity("internal", userId.Value);
 
-        // Create & sign in the user
+        // Create & sign in the account
         var session = Session.New();
-        var user = new User(userId.Value, userName).WithIdentity(userIdentity);
+        var signInAccount = new AccountFull(userId, 0) { Name = userName }
+            .WithIdentity(userIdentity);
         if (!userInfo.FirstName.IsNullOrEmpty())
-            user = user.WithClaim(ClaimTypes.GivenName, userInfo.FirstName);
+            signInAccount = signInAccount.WithClaim(ClaimTypes.GivenName, userInfo.FirstName);
         if (!userInfo.LastName.IsNullOrEmpty())
-            user = user.WithClaim(ClaimTypes.Surname, userInfo.LastName);
+            signInAccount = signInAccount.WithClaim(ClaimTypes.Surname, userInfo.LastName);
         if (!userInfo.Phone.IsNullOrEmpty())
-            user = user.WithPhone(ActualChat.Phone.Parse(userInfo.Phone));
+            signInAccount = signInAccount.WithPhoneIdentities(ActualChat.Phone.Parse(userInfo.Phone));
         if (!userInfo.Email.IsNullOrEmpty())
-            user = user.WithClaim(ClaimTypes.Email, userInfo.Email);
-        var signInCommand = new AccountsBackend_SignIn(session, user, userIdentity);
+            signInAccount = signInAccount.WithClaim(ClaimTypes.Email, userInfo.Email);
+        var signInCommand = new AccountsBackend_SignIn(session, signInAccount, userIdentity);
         await commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
 
         // Fetch its account

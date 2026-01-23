@@ -7,21 +7,13 @@ namespace ActualChat.Testing.Host;
 public static class UserOperations
 {
     public static Task<AccountFull> SignInAsAlice(this IWebTester tester, string identity = "")
-        => tester.SignIn("Alice", identity);
+        => tester.SignIn(NewAccount("Alice", identity));
 
     public static Task<AccountFull> SignInAsBob(this IWebTester tester, string identity = "")
-        => tester.SignIn("Bob", identity);
-
-    public static Task<AccountFull> SignIn(this IWebTester tester, string name, string identity = "")
-    {
-        var user = new User("", name).WithClaim(ClaimTypes.GivenName, name);
-        if (!identity.IsNullOrEmpty())
-            user = user.WithIdentity(identity);
-        return tester.SignIn(user);
-    }
+        => tester.SignIn(NewAccount("Bobby", identity));
 
     public static Task<AccountFull> SignInAsUniqueBob(this IWebTester tester)
-        => tester.SignInAsNew("Bob");
+        => tester.SignInAsNew("Bobby");
 
     public static Task<AccountFull> SignInAsUniqueAlice(this IWebTester tester)
         => tester.SignInAsNew("Alice");
@@ -34,9 +26,15 @@ public static class UserOperations
         var googleId = UniqueNames.GoogleId();
         return tester.SignIn(NewAdmin(email: $"bob.admin.{googleId}{Constants.Team.EmailSuffix}", googleId: googleId));
     }
-    
-    public static User NewAdmin(string name = "BobAdmin", string email = $"bob{Constants.Team.EmailSuffix}", string googleId = "123")
-        => new User("", name)
+
+    public static AccountFull NewAccount(string name, string identity = "")
+    {
+        var account = new AccountFull(name).WithClaim(ClaimTypes.GivenName, name);
+        return identity.IsNullOrEmpty() ? account : account.WithIdentity(identity);
+    }
+
+    public static AccountFull NewAdmin(string name = "BobAdmin", string email = $"bob{Constants.Team.EmailSuffix}", string googleId = "123")
+        => new AccountFull(name)
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, googleId))
             .WithClaim(ClaimTypes.Email, email);
 }

@@ -102,10 +102,11 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         var accounts = await CreateAccounts(10);
-        await Tester.SaveExternalContacts(accounts.Take(5).Select(x => NewExternalContact(bob).WithDisplayName($"Friend {x.Name}").WithPhone(x.Phone)));
+        // Display name format: "{x.Name} Friend" ensures unique part comes first for phrase prefix search
+        await Tester.SaveExternalContacts(accounts.Take(5).Select(x => NewExternalContact(bob).WithDisplayName($"{x.Name} Friend").WithPhone(x.Phone)));
 
         // act, assert
-        var expected = bob.BuildSearchResults(accounts[..5].Select(x => x with { Name = $"Friend {x.Name}" }));
+        var expected = bob.BuildSearchResults(accounts[..5].Select(x => x with { Name = $"{x.Name} Friend" }));
         var searchByContactNameResults = await Find("Friend", true, null, expected.Count);
         searchByContactNameResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
@@ -129,10 +130,11 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
         var accounts = await CreateAccounts(10);
-        await Tester.SaveExternalContacts(accounts.Take(5).Select(x => NewExternalContact(bob).WithDisplayName($"Friend - External Contact {x.Name}").WithPhone(x.Phone)));
+        // Display name format: "{x.Name} Friend External Contact" ensures unique part comes first for phrase prefix search
+        await Tester.SaveExternalContacts(accounts.Take(5).Select(x => NewExternalContact(bob).WithDisplayName($"{x.Name} Friend External Contact").WithPhone(x.Phone)));
 
         // act, assert
-        var expected = bob.BuildSearchResults(accounts[..5].Select(x => x with { Name = $"Friend - External Contact {x.Name}" }));
+        var expected = bob.BuildSearchResults(accounts[..5].Select(x => x with { Name = $"{x.Name} Friend External Contact" }));
         var searchByExternalContactNameResults = await Find("Ext", true, null, expected.Count);
         searchByExternalContactNameResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
@@ -390,10 +392,13 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         => UniqueNames.Prefix();
 
     private async Task<AccountFull[]> CreateAccounts(int count)
-        => await Tester.CreateAccounts(count, secondNameFactory: i => $"{i} {UniquePart}");
+        => await Tester.CreateAccounts(count,
+            userNameFactory: i => $"{UniquePart} User {i}",
+            nameFactory: i => $"{UniquePart} User",
+            secondNameFactory: i => $"{i}");
 
     private Task<AccountFull> CreateAccount(string name)
-        => Tester.CreateAccount($"{name} {UniquePart}");
+        => Tester.CreateAccount($"{UniquePart} {name}");
 
     private Task<ContactSearchResult[]> Find(
         string criteria,

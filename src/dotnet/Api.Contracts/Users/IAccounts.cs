@@ -25,8 +25,6 @@ public interface IAccounts : IComputeService
 
     // From IAuth
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<SessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken);
-    [ComputeMethod(MinCacheDuration = 10)]
     Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<bool> IsSignOutForced(Session session, CancellationToken cancellationToken);

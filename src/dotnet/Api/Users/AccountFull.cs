@@ -68,8 +68,16 @@ public sealed partial record AccountFull : Account
         Claims = ApiMap<string, string>.Empty;
     }
 
-    // Constructor for backwards compatibility - creates AccountFull from User
-    public AccountFull(User user, long version = 0) : base(UserId.Parse(user.Id), version)
+    // Constructor for tests - creates AccountFull with just a name
+    public AccountFull(string name) : base(null!, 0)
+    {
+        Name = name;
+        Identities = ApiMap<UserIdentity, string>.Empty;
+        Claims = ApiMap<string, string>.Empty;
+    }
+
+    [Obsolete("Use constructor with UserId parameter.")]
+    public AccountFull(User user, long version = 0) : base(UserId.ParseNullable(user.Id)!, version)
     {
         Identities = user.Identities;
         Claims = user.Claims;

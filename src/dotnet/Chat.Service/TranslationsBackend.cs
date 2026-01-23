@@ -130,7 +130,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             await FlowHub
                 .NewResumeEvent<TranslationCleanupFlow>()
                 .WithDelay(now + Settings.Translation.HangingTimeout, TimeSpan.FromMinutes(1))
-                .Schedule(cancellationToken);
+                .Schedule(cancellationToken)
+                .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbTranslation.ToModel();
 

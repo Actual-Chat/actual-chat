@@ -15,7 +15,7 @@ public class HistoricalChatPlayerTest(ChatAppHostFixture fixture, ITestOutputHel
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
         var services = tester.ScopedAppServices;
-        var account = await tester.SignIn(new User(Constants.User.Admin.Name));
+        var account = await tester.SignIn(new AccountFull(Constants.User.Admin.Name));
         var clocks = services.Clocks();
         var today = clocks.SystemClock.Now.ToDateTime().Date;
         var yesterday = today.AddDays(-1);

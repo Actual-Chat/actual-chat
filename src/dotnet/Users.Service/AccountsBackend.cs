@@ -48,7 +48,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             if (account == null)
                 return null;
 
-            if (IsAdmin(user))
+            if (IsAdmin(account))
                 account = account with { IsAdmin = true };
         }
 
@@ -151,10 +151,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // [CommandHandler]
-    public virtual async Task OnSignIn(
-        AccountsBackend_SignIn command, CancellationToken cancellationToken = default)
+    public virtual async Task OnSignIn(AccountsBackend_SignIn command, CancellationToken cancellationToken = default)
     {
-        var (session, user, authenticatedIdentity) = command;
+        var (session, account, authenticatedIdentity) = command;
         session.RequireValid();
 
         var context = CommandContext.GetCurrent();
@@ -170,7 +169,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return;
         }
 
-        if (!user.Identities.ContainsKey(authenticatedIdentity))
+        if (!account.Identities.ContainsKey(authenticatedIdentity))
 #pragma warning disable MA0015
             throw new ArgumentOutOfRangeException(
                 $"{nameof(command)}.{nameof(AccountsBackend_SignIn.AuthenticatedIdentity)}");
@@ -188,18 +187,18 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var dbUser = await dbContext.GetDbUserByUserIdentity(authenticatedIdentity, true, cancellationToken)
             .ConfigureAwait(false);
         if (dbUser is null) {
-            (dbUser, isNewUser) = await GetOrCreateDbUserOnSignIn(dbContext, user, cancellationToken)
+            (dbUser, isNewUser) = await GetOrCreateDbUserOnSignIn(dbContext, account, cancellationToken)
                 .ConfigureAwait(false);
             if (isNewUser == false) {
-                dbUser.UpdateFrom(user, VersionGenerator);
+                dbUser.UpdateFrom(account, VersionGenerator);
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
         }
         else {
-            user = user with {
-                Id = dbUser.Id ?? ""
+            account = account with {
+                Id = UserId.Parse(dbUser.Id ?? "")
             };
-            dbUser.UpdateFrom(user, VersionGenerator);
+            dbUser.UpdateFrom(account, VersionGenerator);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -366,28 +365,28 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
     // Private methods
 
-    internal static bool IsAdmin(User user)
+    internal static bool IsAdmin(AccountFull account)
     {
         // TODO(AY): Remove the check relying on test/internal auth providers in the production code
-        if (HasIdentity(user, "internal") && OrdinalEquals(user.Id, Constants.User.Admin.UserId.Value))
+        if (HasIdentity(account, "internal") && account.Id == Constants.User.Admin.UserId)
             return true;
 
-        var email = user.GetEmail();
+        var email = account.Identities.GetEmail();
         if (email.IsNullOrEmpty() || !MailAddress.TryCreate(email, out var emailAddress))
             return false;
 
         if (AdminEmails.Contains(email))
             return true; // Predefined admin email
-        if (HasGoogleIdentity(user) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
+        if (HasGoogleIdentity(account) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
             return true; // company email
         return false;
     }
 
-    private static bool HasGoogleIdentity(User user)
-        => HasIdentity(user, GoogleDefaults.AuthenticationScheme);
+    private static bool HasGoogleIdentity(AccountFull account)
+        => HasIdentity(account, GoogleDefaults.AuthenticationScheme);
 
-    private static bool HasIdentity(User user, string provider)
-        => user.Identities.Keys.Select(x => x.Schema).Contains(provider, StringComparer.Ordinal);
+    private static bool HasIdentity(AccountFull account, string provider)
+        => account.Identities.Keys.Select(x => x.Schema).Contains(provider, StringComparer.Ordinal);
 
     private static AccountFull? GetGuestAccount(UserId userId)
     {
@@ -395,9 +394,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return null;
 
         var name = RandomNameGenerator.Default.Generate(userId.Value);
-        var user = new User(userId.Value, name);
-        var account = new AccountFull(user);
-        return account;
+        return new AccountFull(userId, 0) { Name = name };
     }
 
     private static AvatarFull GetFallbackAvatar(AccountFull account)
@@ -410,70 +407,68 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // DbUser methods (inlined from DbUserRepo)
 
     private async Task<DbUser> CreateDbUser(
-        UsersDbContext dbContext, User user, CancellationToken cancellationToken)
+        UsersDbContext dbContext, AccountFull account, CancellationToken cancellationToken)
     {
         // Creating "base" dbUser
         var dbUser = new DbUser() {
-            Id = user.Id.NullIfEmpty() ?? UserId.New().Value,
+            Id = account.Id?.Value.NullIfEmpty() ?? UserId.New().Value,
             Version = VersionGenerator.NextVersion(),
-            Name = user.Name,
-            Claims = user.Claims.ToImmutableDictionary(StringComparer.Ordinal),
+            Name = account.Name,
+            Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal),
         };
         dbContext.Add(dbUser);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        user = user with {
-            Id = dbUser.Id ?? ""
+        account = account with {
+            Id = UserId.Parse(dbUser.Id ?? "")
         };
-        // Updating dbUser from the model to persist user.Identities
-        dbUser.UpdateFrom(user, VersionGenerator);
+        // Updating dbUser from the model to persist account.Identities
+        dbUser.UpdateFrom(account, VersionGenerator);
         dbContext.Update(dbUser);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         // ActualChat-specific: Create DbAccount for new user
-        user = dbUser.ToModel();
-
         var context = CommandContext.GetCurrent();
-        var isAdmin = IsAdmin(user);
-        var name = user.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
-        var lastName = user.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
+        var isAdmin = IsAdmin(account);
+        var name = account.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
+        var lastName = account.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
         if (!lastName.IsNullOrEmpty())
             name = $"{name} {lastName}";
         var dbAccount = new DbAccount {
-            Id = user.Id,
+            Id = account.Id.Value,
             Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
             Name = name,
-            Email = user.Claims.GetValueOrDefault(ClaimTypes.Email, ""),
-            Phone = user.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
+            Email = account.Claims.GetValueOrDefault(ClaimTypes.Email, ""),
+            Phone = account.Phone?.Value ?? account.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
             CreatedAt = dbUser.CreatedAt,
         };
         dbContext.Accounts.Add(dbAccount);
 
         var emailString = dbAccount.Email;
         if (!emailString.IsNullOrEmpty() && ActualChat.Email.TryParse(emailString, out var email)) {
-            user = user.WithEmailIdentities(email);
-            dbUser.UpdateFrom(user, VersionGenerator);
+            account = account.WithEmailIdentities(email);
+            dbUser.UpdateFrom(account, VersionGenerator);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.AddEvent(
-            new AccountChangedEvent(dbAccount.ToModel(user), null, ChangeKind.Create));
+            new AccountChangedEvent(dbAccount.ToModel(account.Identities, account.Claims), null, ChangeKind.Create));
         return dbUser;
     }
 
     private async Task<(DbUser DbUser, bool IsCreated)> GetOrCreateDbUserOnSignIn(
-        UsersDbContext dbContext, User user, CancellationToken cancellationToken)
+        UsersDbContext dbContext, AccountFull account, CancellationToken cancellationToken)
     {
         DbUser? dbUser;
-        if (!user.Id.IsNullOrEmpty()) {
-            dbUser = await dbContext.GetDbUser(user.Id, false, cancellationToken).ConfigureAwait(false);
+        if (account.Id is not null && !account.Id.Value.IsNullOrEmpty()) {
+            dbUser = await dbContext.GetDbUser(account.Id.Value, false, cancellationToken).ConfigureAwait(false);
             if (dbUser is not null)
                 return (dbUser, false);
         }
 
         // No user found, let's create it
-        dbUser = await CreateDbUser(dbContext, user, cancellationToken).ConfigureAwait(false);
+        dbUser = await CreateDbUser(dbContext, account, cancellationToken).ConfigureAwait(false);
         return (dbUser, true);
     }
 

@@ -22,7 +22,7 @@ public class PlaywrightTest(AppHostFixture fixture, ITestOutputHelper @out)
         const float timeout = 20_000f;
         var appHost = AppHost;
         await using var tester = appHost.NewPlaywrightTester(Out);
-        var account = await tester.SignIn(new User("", "it-works"));
+        var account = await tester.SignIn(new AccountFull("it-works"));
         var (page, _) = await tester.NewPage("chat/the-actual-one");
         await page.WaitForLoadStateAsync(LoadState.Load,
             new PageWaitForLoadStateOptions() { Timeout = timeout });
@@ -75,12 +75,12 @@ public class PlaywrightTest(AppHostFixture fixture, ITestOutputHelper @out)
     {
         var appHost = AppHost;
         await using var tester = appHost.NewPlaywrightTester(Out);
-        var account = await tester.SignIn(new User(Symbol.Empty, "ChatPageTester"));
+        var account = await tester.SignIn(new AccountFull("ChatPageTester"));
         var (page, _) = await tester.NewPage("chat/the-actual-one");
 
         await Task.Delay(1000);
         account.Id.Value.Should().NotBeNullOrEmpty();
-        account.User.Name.Should().Be("ChatPageTester");
+        account.Name.Should().Be("ChatPageTester");
         var messages = await page.QuerySelectorAllAsync(".list-view-layout .content");
         messages.Count.Should().BeGreaterThan(0);
         await Task.Delay(200);

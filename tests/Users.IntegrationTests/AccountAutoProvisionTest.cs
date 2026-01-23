@@ -49,7 +49,7 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
         await _tester.SignOut();
 
         // act
-        var account2 = await _tester.SignIn(account.User);
+        var account2 = await _tester.SignIn(account);
 
         // assert
         account2.Should().BeEquivalentTo(account, options => options

@@ -30,7 +30,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         aliceNotification.Should()
             .BeEquivalentTo(
                 new Notification(null!) {
-                    Title = "Bob @ Good chat",
+                    Title = "Bobby @ Good chat",
                     Content = "Ok!",
                 },
                 o => o.Text());
@@ -67,7 +67,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         aliceNotification.Should()
             .BeEquivalentTo(
                 new Notification(null!) {
-                    Title = "Bob @ Good chat",
+                    Title = "Bobby @ Good chat",
                     Content = "Sent an image",
                 },
                 o => o.Text());

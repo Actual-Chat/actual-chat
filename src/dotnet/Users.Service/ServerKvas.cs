@@ -117,14 +117,14 @@ public class ServerKvas : IServerKvas
         try {
             await Clocks.Timeout(3).ApplyTo(
                 async ct => {
-                    var c = await Computed.Capture(() => Accounts.GetAuthInfo(session, ct), ct).ConfigureAwait(false);
-                    return await c.When(info => info?.IsAuthenticated() == true, ct).ConfigureAwait(false);
+                    var c = await Computed.Capture(() => Accounts.GetOwn(session, ct), ct).ConfigureAwait(false);
+                    return await c.When(account => !account.IsGuest, ct).ConfigureAwait(false);
                 },
                 cancellationToken
                 ).ConfigureAwait(false);
         }
         catch (TimeoutException) {
-            Log.LogWarning("MigrateGuestKeys: Accounts.GetAuthInfo couldn't complete in 3 seconds");
+            Log.LogWarning("MigrateGuestKeys: Accounts.GetOwn couldn't complete in 3 seconds");
             return;
         }
 
@@ -150,9 +150,9 @@ public class ServerKvas : IServerKvas
 
     private async ValueTask<string?> GetUserPrefix(Session session, CancellationToken cancellationToken)
     {
-        var authInfo = await Accounts.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
-        return authInfo?.IsAuthenticated() == true
-            ? ServerKvasBackendExt.GetUserPrefix(UserId.Parse(authInfo.UserId))
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return !account.IsGuest
+            ? ServerKvasBackendExt.GetUserPrefix(account.Id)
             : null;
     }
 

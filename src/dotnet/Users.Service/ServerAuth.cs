@@ -121,15 +121,13 @@ public sealed class ServerAuth
             await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
         }
 
-        var authInfo = await Accounts.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
-        var isSignedIn = authInfo?.IsAuthenticated() == true;
-        User? user = null;
-        if (isSignedIn)
-            user = await AccountsBackend.GetUser(authInfo!.UserId, cancellationToken).ConfigureAwait(false);
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var isSignedIn = !account.IsGuest;
+        AccountFull? existingAccount = isSignedIn ? account : null;
 
         try {
             if (httpIsSignedIn) {
-                if (isSignedIn && IsSameUser(user, httpUser, httpAuthenticationSchema))
+                if (isSignedIn && IsSameAccount(existingAccount, httpUser, httpAuthenticationSchema))
                     return; // Nothing to change
 
                 var isSignInAllowed = !isSignedIn
@@ -138,7 +136,7 @@ public sealed class ServerAuth
                 if (!isSignInAllowed)
                     return; // Sign-in or user change is not allowed for the current location
 
-                await SignIn(session, user, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
+                await SignIn(session, existingAccount, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
             }
             else if (isSignedIn && (assumeAllowed || AllowSignOut(this, httpContext)))
                 await SignOut(session, cancellationToken).ConfigureAwait(false);
@@ -152,13 +150,13 @@ public sealed class ServerAuth
     // Private methods
 
     private async Task SignIn(
-        Session session, User? user, ClaimsPrincipal httpUser, string httpAuthenticationSchema,
+        Session session, AccountFull? existingAccount, ClaimsPrincipal httpUser, string httpAuthenticationSchema,
         CancellationToken cancellationToken)
     {
-        var (newUser, authenticatedIdentity) =
-            await CreateOrUpdateUser(user, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
+        var (account, authenticatedIdentity) =
+            await CreateOrUpdateAccount(existingAccount, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
 
-        var signInCommand = new AccountsBackend_SignIn(session, newUser, authenticatedIdentity);
+        var signInCommand = new AccountsBackend_SignIn(session, account, authenticatedIdentity);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -168,27 +166,27 @@ public sealed class ServerAuth
         return Commander.Call(signOutCommand, true, cancellationToken);
     }
 
-    private bool IsSameUser(User? user, ClaimsPrincipal httpUser, string schema)
+    private bool IsSameAccount(AccountFull? account, ClaimsPrincipal httpUser, string schema)
     {
-        if (user == null)
+        if (account == null)
             return false;
 
         var httpUserIdentityName = httpUser.Identity?.Name ?? "";
         var claims = httpUser.Claims.ToImmutableDictionary(c => c.Type, c => c.Value);
         var id = FirstClaimOrDefault(claims, IdClaimKeys) ?? httpUserIdentityName;
         var identity = new UserIdentity(schema, id);
-        return user.Identities.ContainsKey(identity);
+        return account.Identities.ContainsKey(identity);
     }
 
-    private async Task<(User User, UserIdentity AuthenticatedIdentity)> CreateOrUpdateUser(
-        User? user, ClaimsPrincipal httpUser, string schema,
+    private async Task<(AccountFull Account, UserIdentity AuthenticatedIdentity)> CreateOrUpdateAccount(
+        AccountFull? existingAccount, ClaimsPrincipal httpUser, string schema,
         CancellationToken cancellationToken)
     {
-        var (newUser, userIdentity) = BaseCreateOrUpdateUser(user, httpUser, schema);
+        var (account, userIdentity) = BaseCreateOrUpdateAccount(existingAccount, httpUser, schema);
         var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value, StringComparer.Ordinal);
-        newUser = ClaimMapper.UpdateClaims(newUser, httpClaims);
+        account = ClaimMapper.UpdateClaims(account, httpClaims);
         await UseExistingEmailIdentity().ConfigureAwait(false);
-        return (newUser, userIdentity);
+        return (account, userIdentity);
 
         async Task UseExistingEmailIdentity()
         {
@@ -206,13 +204,13 @@ public sealed class ServerAuth
             if (userId is null)
                 return;
 
-            newUser = newUser.WithEmailIdentities(email);
-            userIdentity = newUser.GetEmailIdentity();
+            account = account.WithEmailIdentities(email);
+            userIdentity = account.GetEmailIdentity();
         }
     }
 
-    private (User User, UserIdentity AuthenticatedIdentity) BaseCreateOrUpdateUser(
-        User? user, ClaimsPrincipal httpUser, string schema)
+    private (AccountFull Account, UserIdentity AuthenticatedIdentity) BaseCreateOrUpdateAccount(
+        AccountFull? existingAccount, ClaimsPrincipal httpUser, string schema)
     {
         var httpUserIdentityName = httpUser.Identity?.Name ?? "";
         var claims = httpUser.Claims.ToApiMap(c => c.Type, c => c.Value, StringComparer.Ordinal);
@@ -223,20 +221,22 @@ public sealed class ServerAuth
             { identity, "" },
         };
 
-        if (user == null)
+        AccountFull account;
+        if (existingAccount == null)
             // Create
-            user = new User(Symbol.Empty, name) {
+            account = new AccountFull("") {
+                Name = name,
                 Claims = claims,
                 Identities = identities,
             };
         else {
             // Update
-            user = user with {
-                Claims = claims.WithMany(user.Claims),
+            account = existingAccount with {
+                Claims = claims.WithMany(existingAccount.Claims),
                 Identities = identities,
             };
         }
-        return (user, identity);
+        return (account, identity);
     }
 
     private static string? FirstClaimOrDefault(IReadOnlyDictionary<string, string> claims, string[] keys)

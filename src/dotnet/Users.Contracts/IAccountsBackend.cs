@@ -45,21 +45,19 @@ public interface IAccountsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_SignIn(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] User User,
+    [property: DataMember, MemoryPackOrder(1)] AccountFull Account,
     [property: DataMember, MemoryPackOrder(2)] UserIdentity AuthenticatedIdentity
 ) : ISessionCommand<Unit>, IBackendCommand
 {
-    public AccountsBackend_SignIn(Session session, User user)
-        : this(session, user, user.Identities.Single().Key) { }
+    public AccountsBackend_SignIn(Session session, AccountFull account)
+        : this(session, account, account.Identities.Single().Key) { }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Update(
-    [property: DataMember, MemoryPackOrder(0)]
-    AccountFull Account,
-    [property: DataMember, MemoryPackOrder(1)]
-    long? ExpectedVersion
+    [property: DataMember, MemoryPackOrder(0)] AccountFull Account,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
     [IgnoreDataMember, MemoryPackIgnore]

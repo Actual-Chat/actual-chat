@@ -87,7 +87,7 @@ public class Avatars(IServiceProvider services) : IAvatars
         await kvas.UserAvatarSettings().Set(settings, cancellationToken).ConfigureAwait(false);
     }
 
-    internal static async Task UpdateAvatarList(IKvas<User> kvas, Change<AvatarFull> change, Symbol avatarId)
+    internal static async Task UpdateAvatarList(IKvas<Account> kvas, Change<AvatarFull> change, Symbol avatarId)
     {
         // We don't cancel anything from here
         CancellationToken cancellationToken = default;
