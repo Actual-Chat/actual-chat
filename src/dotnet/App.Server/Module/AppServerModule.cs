@@ -16,6 +16,7 @@ using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualLab.CommandR.Diagnostics;
 using ActualLab.Fusion.Diagnostics;
+using ActualChat.Authentication;
 using ActualLab.Fusion.Server;
 using ActualLab.IO;
 using ActualLab.Rpc.Diagnostics;

@@ -21,8 +21,6 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Phone { get; set; } = "";
     public bool SyncContacts { get; set; }
     public string Name { get; set; } = "";
-    public string Username { get; set; } = "";
-    public string? UsernameNormalized { get; set; }
     public bool IsGreetingCompleted { get; set; }
     public string TimeZone { get; set; } = "";
     public string AliasId { get; set; } = "";
@@ -40,7 +38,6 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Phone = !Phone.IsNullOrEmpty() ? ActualChat.Phone.Parse(Phone) : null,
             SyncContacts = SyncContacts,
             Name = user.Name, // Use user's name from users table for consistency
-            Username = Username,
             IsGreetingCompleted = IsGreetingCompleted,
             CreatedAt = CreatedAt,
             TimeZone = TimeZone,
@@ -60,7 +57,6 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Phone = !Phone.IsNullOrEmpty() ? ActualChat.Phone.Parse(Phone) : null,
             SyncContacts = SyncContacts,
             Name = Name,
-            Username = Username,
             IsGreetingCompleted = IsGreetingCompleted,
             CreatedAt = CreatedAt,
             TimeZone = TimeZone,
@@ -84,22 +80,16 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Email = model.Email;
         IsEmailVerified = model.IsEmailVerified;
         Name = name;
-        Username = model.Username;
         IsGreetingCompleted = model.IsGreetingCompleted;
         CreatedAt = model.CreatedAt;
         TimeZone = model.TimeZone;
         AliasId = model.AliasId?.NormalizedValue ?? "";
-        if (!model.Username.IsNullOrEmpty())
-            UsernameNormalized = model.Username.ToUpper(CultureInfo.InvariantCulture);
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbAccount>
     {
         public void Configure(EntityTypeBuilder<DbAccount> builder) {
             builder.Property(a => a.Id).IsRequired();
-            builder.HasIndex(a => a.UsernameNormalized)
-                .HasFilter("username_normalized is not null")
-                .IsUnique();
             builder.HasIndex(a => new { a.Id, a.TimeZone });
             builder.HasIndex(a => new { a.AliasId })
                 .HasFilter("alias_id <> ''")

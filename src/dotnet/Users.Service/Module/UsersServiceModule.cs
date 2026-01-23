@@ -13,6 +13,7 @@ using ActualChat.Users.Internal;
 using ActualChat.Users.Models;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Phone.Internal;
+using ActualChat.Authentication;
 using ActualLab.Fusion.Server;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;

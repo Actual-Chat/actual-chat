@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>11.4.3</ActualLabFusionVersion>
+    <ActualLabFusionVersion>11.4.127</ActualLabFusionVersion>
     <AspNetCoreVersion>9.0.8</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>9.0.8</EntityFrameworkCoreVersion>
@@ -106,7 +106,6 @@
     <PackageVersion Include="ActualLab.CommandR" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion.Blazor" Version="$(ActualLabFusionVersion)" />
-    <PackageVersion Include="ActualLab.Fusion.Blazor.Authentication" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion.EntityFramework" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion.EntityFramework.Npgsql" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Fusion.EntityFramework.Redis" Version="$(ActualLabFusionVersion)" />

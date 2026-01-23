@@ -48,6 +48,7 @@ public sealed partial record AccountFull : Account
     [DataMember, MemoryPackOrder(12)] public Phone? Phone { get; init; }
     [DataMember, MemoryPackOrder(8)] public string Email { get; init; } = "";
     [DataMember, MemoryPackOrder(9)] public string Name { get; init; } = "";
+    [Obsolete("2025.01: Unused, will be removed soon.")]
     [DataMember, MemoryPackOrder(11)] public string Username { get; init; } = "";
     [DataMember, MemoryPackOrder(13)] public bool IsGreetingCompleted { get; init; }
     [DataMember, MemoryPackOrder(14)] public bool IsEmailVerified { get; init; }

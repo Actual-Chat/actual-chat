@@ -9,7 +9,6 @@
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="ActualLab.Fusion.Blazor" />
-    <PackageReference Include="ActualLab.Fusion.Blazor.Authentication" />
     <PackageReference Include="Serilog" />
   </ItemGroup>
 
