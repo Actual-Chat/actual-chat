@@ -347,6 +347,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldTakeOnlyFromSpecifiedPlace()
     {
         // arrange
+        var alice = await Tester.SignInAsUniqueAlice(); // Initialize session before creating accounts
         var friendFromPlace1 = await CreateAccount("Place 1 member - Bob's friend");
         var strangerFromPlace1 = await CreateAccount("Place 1 member - Not Bob's friend");
         var friendFromPlace2 = await CreateAccount("Place 2 member - Bob's friend");
@@ -354,7 +355,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         var friendFromBothPlaces = await CreateAccount("Both places member - Bob's friend");
         var strangerFromBothPlaces = await CreateAccount("Both places member - Not Bob's friend");
         var bob = await Tester.SignInAsBob();
-        await Tester.SignInAsUniqueAlice();
+
+        await Tester.SignIn(alice);
         await Tester.CreatePlace(false,
             nameof(ShouldTakeOnlyFromSpecifiedPlace),
             bob,
