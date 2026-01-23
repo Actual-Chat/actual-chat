@@ -76,24 +76,23 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             .With("email", "test@example.com")
             .With("name", "Test User");
 
-        var accountFull = new AccountFull(
-            userId,
-            version: 1,
-            status: AccountStatus.Active,
-            avatar: new Avatar("avatar-1"),
-            jsonCompatibleIdentities: identities.UnorderedItems.ToApiMap(p => p.Key.Id, p => p.Value, StringComparer.Ordinal),
-            claims: claims,
-            isAdmin: false,
-            syncContacts: true,
-            phone: null,
-            email: "test@example.com",
-            name: "Test User",
-            username: "testuser",
-            isGreetingCompleted: false,
-            isEmailVerified: true,
-            createdAt: new Moment(DateTime.UtcNow),
-            timeZone: "UTC",
-            aliasId: null);
+        var accountFull = new AccountFull(userId, 1) {
+            Status = AccountStatus.Active,
+            Avatar = new Avatar("avatar-1"),
+            JsonCompatibleIdentities = identities.UnorderedItems.ToApiMap(p => p.Key.Id, p => p.Value, StringComparer.Ordinal),
+            Claims = claims,
+            IsAdmin = false,
+            SyncContacts = true,
+            Phone = null,
+            Email = "test@example.com",
+            Name = "Test User",
+            Username = "testuser",
+            IsGreetingCompleted = false,
+            IsEmailVerified = true,
+            CreatedAt = new Moment(DateTime.UtcNow),
+            TimeZone = "UTC",
+            AliasId = null,
+        };
 
         var s = accountFull.PassThroughAllSerializers(Out);
 

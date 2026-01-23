@@ -70,6 +70,7 @@ public sealed partial record AccountFull : Account
     };
 #pragma warning restore CS0618
 
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public AccountFull(UserId id, long version = 0) : base(id, version)
     {
         Identities = ApiMap<UserIdentity, string>.Empty;
@@ -93,45 +94,6 @@ public sealed partial record AccountFull : Account
         Name = user.Name;
     }
 #pragma warning restore CS0618
-
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public AccountFull(
-        UserId id,
-        long version,
-        AccountStatus status,
-        Avatar avatar,
-        ApiMap<string, string> jsonCompatibleIdentities,
-        ApiMap<string, string> claims,
-        bool isAdmin,
-        bool syncContacts,
-        Phone? phone,
-        string email,
-        string name,
-        string username,
-        bool isGreetingCompleted,
-        bool isEmailVerified,
-        Moment createdAt,
-        string timeZone,
-        AliasId? aliasId)
-        : base(id, version)
-    {
-        Status = status;
-        Avatar = avatar;
-        Identities = null!;
-        JsonCompatibleIdentities = jsonCompatibleIdentities;
-        Claims = claims;
-        IsAdmin = isAdmin;
-        SyncContacts = syncContacts;
-        Phone = phone;
-        Email = email;
-        Name = name;
-        Username = username;
-        IsGreetingCompleted = isGreetingCompleted;
-        IsEmailVerified = isEmailVerified;
-        CreatedAt = createdAt;
-        TimeZone = timeZone;
-        AliasId = aliasId;
-    }
 
     // This record relies on referential equality
     public bool Equals(AccountFull? other) => ReferenceEquals(this, other);
