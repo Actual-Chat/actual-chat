@@ -119,6 +119,48 @@ body.hoverable .btn-h.record-btn.recording:hover {
     @apply max-w-xs text-center;
 }
 
+/* Remote video streams */
+.video-panel .remote-streams {
+    @apply absolute inset-0;
+    @apply grid gap-1;
+    @apply p-1;
+    pointer-events: none;
+}
+.video-panel .remote-streams:empty {
+    @apply hidden;
+}
+.video-panel.has-remote-streams .video-frame {
+    @apply absolute;
+    @apply w-1/4 h-1/4;
+    @apply bottom-2 right-2;
+    @apply z-10;
+    @apply rounded-lg overflow-hidden;
+    border: 2px solid var(--white-40);
+}
+.video-panel .remote-streams canvas.remote-video {
+    @apply w-full h-full;
+    @apply object-contain;
+    @apply bg-gray-900;
+    @apply rounded-lg;
+    pointer-events: auto;
+}
+
+/* Grid layouts for multiple remote streams */
+.video-panel[data-remote-stream-count="1"] .remote-streams {
+    @apply grid-cols-1 grid-rows-1;
+}
+.video-panel[data-remote-stream-count="2"] .remote-streams {
+    @apply grid-cols-2 grid-rows-1;
+}
+.video-panel[data-remote-stream-count="3"] .remote-streams,
+.video-panel[data-remote-stream-count="4"] .remote-streams {
+    @apply grid-cols-2 grid-rows-2;
+}
+.video-panel[data-remote-stream-count="5"] .remote-streams,
+.video-panel[data-remote-stream-count="6"] .remote-streams {
+    @apply grid-cols-3 grid-rows-2;
+}
+
 @keyframes recordingPulse {
     0%, 100% {
         opacity: 1;

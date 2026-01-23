@@ -34,6 +34,7 @@ public static partial class Constants
 
         // Video
         public static readonly bool VideoSource = false;
+        public static readonly bool VideoPlayback = false;
         public static readonly bool AudioProcessor = false;
         public static readonly bool AudioTrackPlayer = false;
         public static readonly bool NativeAudioPlayer = false;

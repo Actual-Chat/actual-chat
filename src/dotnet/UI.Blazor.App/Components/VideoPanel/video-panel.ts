@@ -3,6 +3,7 @@
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 import { Log } from 'logging';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
+import { VideoPlayer, type RemoteVideoStream } from './video-player';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPanel');
 
@@ -28,6 +29,10 @@ export class VideoPanel {
     private selectedCameraDeviceId: string | null = null;
     private sessionToken: string | null = null;
     private chatId: string | null = null;
+
+    // Remote video streams (incoming from other users)
+    private remoteStreams: Map<string, RemoteVideoStream> = new Map();
+    private remoteContainer: HTMLElement | null = null;
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
@@ -323,12 +328,165 @@ export class VideoPanel {
         await this.toggleRecording();
     }
 
+    // ==========================================
+    // Remote Video Stream Methods
+    // ==========================================
+
+    /**
+     * Start a remote video stream (called from Blazor when VideoStreamEvent.Started is received)
+     */
+    public async startRemoteStream(
+        blazorRef: DotNet.DotNetObject,
+        streamId: string,
+        authorId: string,
+        codec: string,
+        width: number,
+        height: number,
+        codecSettings: string
+    ): Promise<void> {
+        if (this.remoteStreams.has(streamId)) {
+            warnLog?.log(`Remote stream ${streamId} already exists`);
+            return;
+        }
+
+        infoLog?.log(`Starting remote stream ${streamId} from author ${authorId}`);
+
+        // Create canvas for remote stream
+        const canvas = this.createRemoteCanvas(streamId, authorId);
+
+        // Create VideoPlayer
+        const player = new VideoPlayer(
+            blazorRef,
+            streamId,
+            authorId,
+            codec,
+            width,
+            height,
+            codecSettings,
+            canvas
+        );
+
+        // Store remote stream info
+        this.remoteStreams.set(streamId, {
+            streamId,
+            authorId,
+            player,
+            canvas
+        });
+
+        // Start the player
+        player.start();
+
+        // Update layout
+        this.updateLayout();
+
+        debugLog?.log(`Remote stream ${streamId} started`);
+    }
+
+    /**
+     * Push a video frame to a remote stream (called from Blazor)
+     */
+    public async pushRemoteFrame(
+        streamId: string,
+        frameData: Uint8Array,
+        timestampMs: number,
+        durationMs: number,
+        isKeyFrame: boolean
+    ): Promise<void> {
+        const stream = this.remoteStreams.get(streamId);
+        if (!stream) {
+            warnLog?.log(`Remote stream ${streamId} not found for frame push`);
+            return;
+        }
+
+        await stream.player.pushFrame(frameData, timestampMs, durationMs, isKeyFrame);
+    }
+
+    /**
+     * Stop a remote video stream (called from Blazor when VideoStreamEvent.Ended is received)
+     */
+    public async stopRemoteStream(streamId: string): Promise<void> {
+        const stream = this.remoteStreams.get(streamId);
+        if (!stream) {
+            return;
+        }
+
+        infoLog?.log(`Stopping remote stream ${streamId}`);
+
+        // Stop the player
+        await stream.player.stop();
+
+        // Remove canvas from container
+        if (stream.canvas.parentElement) {
+            stream.canvas.parentElement.removeChild(stream.canvas);
+        }
+
+        // Remove from map
+        this.remoteStreams.delete(streamId);
+
+        // Update layout
+        this.updateLayout();
+
+        debugLog?.log(`Remote stream ${streamId} stopped`);
+    }
+
+    /**
+     * Create a canvas element for a remote stream
+     */
+    private createRemoteCanvas(streamId: string, authorId: string): HTMLCanvasElement {
+        const canvas = document.createElement('canvas');
+        canvas.className = 'remote-video';
+        canvas.dataset.streamId = streamId;
+        canvas.dataset.authorId = authorId;
+
+        // Get or create remote container
+        if (!this.remoteContainer) {
+            this.remoteContainer = this.videoPanel.querySelector('.remote-streams');
+            if (!this.remoteContainer) {
+                this.remoteContainer = document.createElement('div');
+                this.remoteContainer.className = 'remote-streams';
+                this.videoPanel.querySelector('.c-content')?.appendChild(this.remoteContainer);
+            }
+        }
+
+        this.remoteContainer.appendChild(canvas);
+        return canvas;
+    }
+
+    /**
+     * Update the panel layout based on active streams
+     */
+    private updateLayout(): void {
+        const hasRemoteStreams = this.remoteStreams.size > 0;
+
+        if (hasRemoteStreams) {
+            this.videoPanel.classList.add('has-remote-streams');
+            this.videoPanel.dataset.remoteStreamCount = String(this.remoteStreams.size);
+        } else {
+            this.videoPanel.classList.remove('has-remote-streams');
+            delete this.videoPanel.dataset.remoteStreamCount;
+        }
+    }
+
+    /**
+     * Stop all remote streams
+     */
+    private async stopAllRemoteStreams(): Promise<void> {
+        const streamIds = Array.from(this.remoteStreams.keys());
+        for (const streamId of streamIds) {
+            await this.stopRemoteStream(streamId);
+        }
+    }
+
     public dispose() {
         if (this.disposed$.isStopped)
             return;
 
         // Stop rendering
         this.stopRenderingStream();
+
+        // Stop all remote streams
+        this.stopAllRemoteStreams().catch(() => {});
 
         // Stop recording service
         if (this.recordingService) {

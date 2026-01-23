@@ -93,6 +93,7 @@ export type LogScope =
     | 'TooltipHost'
     | 'UserInterface'
     | 'VideoPanel'
+    | 'VideoPlayer'
     | 'VideoRecorder'
     | 'VideoStreamer'
     | 'VisualMediaViewer'
