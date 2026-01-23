@@ -33,7 +33,7 @@ public sealed class UsersSettings
     public int TotpTimestepCount { get; set; } = 2;
     public int TotpRandomSecretLength { get; set; } = 32;
     public TimeSpan TotpLifetime => TotpTimestep * TotpTimestepCount;
-    public TimeSpan TotpUIThrottling => TotpTimestep;
+    public TimeSpan TotpUIThrottling => TotpTimestep.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
     public bool IsTwilioEnabled => !TwilioAccountSid.IsNullOrEmpty()
         && !TwilioApiKey.IsNullOrEmpty()
         && !TwilioApiSecret.IsNullOrEmpty()

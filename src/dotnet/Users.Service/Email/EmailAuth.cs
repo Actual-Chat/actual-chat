@@ -46,7 +46,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var email = command.Email.Value;
 
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
-            return GetExpiresAt();
+            return NextSendAt();
 
         var canSendValidationMessage = await ValidateCanSendToEmail(session, command.Email, purpose, cancellationToken).ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
@@ -54,7 +54,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
         var totp = TotpCodes.Generate(securityToken, modifier);
-        var expiresAt = GetExpiresAt();
+        var nextSendAt = NextSendAt();
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
         var parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
@@ -78,9 +78,9 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
                 renderResult.Html,
                 cancellationToken)
             .ConfigureAwait(false);
-        return expiresAt;
+        return nextSendAt;
 
-        DateTimeOffset GetExpiresAt()
+        DateTimeOffset NextSendAt()
             => Clocks.SystemClock.UtcNow + UsersSettings.TotpUIThrottling;
     }
 
