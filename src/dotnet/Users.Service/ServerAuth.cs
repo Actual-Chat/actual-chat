@@ -1,7 +1,7 @@
 using System.Security.Claims;
+using ActualChat.AspNetCore;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Http;
-using ActualLab.Fusion.Server.Authentication;
 
 namespace ActualChat.Users;
 

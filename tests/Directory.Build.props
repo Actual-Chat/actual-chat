@@ -131,7 +131,6 @@
     <Using Include="Microsoft.AspNetCore.Components.WebAssembly.Http" />
     <Using Include="Microsoft.JSInterop" />
     <Using Include="ActualLab.Fusion.Blazor" />
-    <Using Include="ActualLab.Fusion.Blazor.Authentication" />
     <Using Include="ActualLab.Fusion.Extensions" />
     <Using Include="ActualLab.Fusion.UI" />
     <Using Include="System.Net.Http" />

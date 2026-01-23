@@ -87,12 +87,11 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
     // [ComputeMethod]
     public virtual async Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken)
     {
-        var authInfo = await SessionsBackend.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
+        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
         UserId userId;
-        if (authInfo?.IsAuthenticated() ?? false)
-            userId = UserId.Parse(authInfo.UserId);
+        if (sessionInfo?.IsAuthenticated() ?? false)
+            userId = UserId.Parse(sessionInfo.UserId);
         else {
-            var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
             if (sessionInfo?.GetGuestId() is not { } guestId)
                 throw StandardError.Internal("Invalid session or GuestId is not set.");
 

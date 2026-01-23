@@ -3,11 +3,12 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+[Obsolete("2025.01: Use SessionInfo instead.")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record SessionAuthInfo : IRequirementTarget
+public partial record LegacySessionAuthInfo : IRequirementTarget
 {
-    public static Requirement<SessionAuthInfo> MustBeAuthenticated { get; set; } = Requirement.New(
-        (SessionAuthInfo? i) => i?.IsAuthenticated() ?? false,
+    public static Requirement<LegacySessionAuthInfo> MustBeAuthenticated { get; set; } = Requirement.New(
+        (LegacySessionAuthInfo? i) => i?.IsAuthenticated() ?? false,
         new("Session is not authenticated.", m => new SecurityException(m)));
 
     [DataMember(Order = 0), MemoryPackOrder(0)] public string SessionHash { get => field ?? ""; init; }
@@ -24,9 +25,9 @@ public partial record SessionAuthInfo : IRequirementTarget
     public bool IsSignOutForced { get; init; }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public SessionAuthInfo()
+    public LegacySessionAuthInfo()
         => SessionHash = "";
-    public SessionAuthInfo(Session? session)
+    public LegacySessionAuthInfo(Session? session)
         => SessionHash = session?.Hash ?? "";
 
     public bool IsAuthenticated()

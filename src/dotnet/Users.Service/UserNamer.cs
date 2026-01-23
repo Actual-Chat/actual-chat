@@ -1,11 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using Cysharp.Text;
 
 namespace ActualChat.Users;
 
-public class UserNamer
+public sealed class UserNamer
 {
-    public virtual ValidationException? ValidateName(in ReadOnlySpan<char> name)
+    public ValidationException? ValidateName(in ReadOnlySpan<char> name)
     {
         if (name.Length == 0)
             return new ValidationException("Name is empty.");
@@ -20,23 +19,14 @@ public class UserNamer
         return null;
     }
 
-    public virtual string NormalizeName(string name)
+    public string NormalizeName(string name)
     {
         if (ValidateName(name) == null)
             return name;
 
-        // Normalizing name
-        var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        foreach (var c in name) {
-            if (IsValidCharacter(c))
-                sb.Append(c);
-            else if (sb.Length == 0 || char.IsLetterOrDigit(sb[^1]))
-                sb.Append('_');
-        }
-        name = sb.ToStringAndRelease();
-        if (name.Length < 4 || !char.IsLetter(name[0]))
-            name = "user-" + name;
-        return name;
+        // Name doesn't pass validation, generate a prefix
+        var generatedName = RandomNameGenerator.Default.Generate();
+        return $"{generatedName} {name}".Trim();
     }
 
     private static bool IsValidCharacter(char c)

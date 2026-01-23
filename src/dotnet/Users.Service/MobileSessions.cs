@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using ActualLab.Fusion.Server.Authentication;
+﻿using ActualChat.AspNetCore;
+using Microsoft.AspNetCore.Http;
 using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Users;

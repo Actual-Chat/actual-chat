@@ -20,7 +20,7 @@ public interface ILegacyAuth : IComputeService
     [ComputeMethod(MinCacheDuration = 10)]
     Task<bool> IsSignOutForced(Session session, CancellationToken cancellationToken = default);
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<SessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken = default);
+    Task<LegacySessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken = default);
     [ComputeMethod(MinCacheDuration = 10)]
     Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken = default);
 #pragma warning disable CS0618 // Type or member is obsolete

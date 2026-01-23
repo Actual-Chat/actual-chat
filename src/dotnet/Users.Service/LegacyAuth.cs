@@ -31,8 +31,23 @@ public class LegacyAuth(IServiceProvider services) : ILegacyAuth
         => SessionsBackend.IsSignOutForced(session, cancellationToken);
 
     // [ComputeMethod]
-    public virtual Task<SessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken = default)
-        => SessionsBackend.GetAuthInfo(session, cancellationToken);
+    public virtual async Task<LegacySessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken = default)
+    {
+        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo == null)
+            return null;
+
+        return (LegacySessionAuthInfo)(sessionInfo.IsSignOutForced
+            ? new () {
+                SessionHash = sessionInfo.SessionHash,
+                IsSignOutForced = true,
+            }
+            : new () {
+                SessionHash = sessionInfo.SessionHash,
+                AuthenticatedIdentity = sessionInfo.AuthenticatedIdentity,
+                UserId = sessionInfo.UserId,
+            });
+    }
 
     // [ComputeMethod]
     public virtual Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken = default)
@@ -42,11 +57,11 @@ public class LegacyAuth(IServiceProvider services) : ILegacyAuth
 #pragma warning disable CS0618 // Type or member is obsolete
     public virtual async Task<LegacyUser?> GetUser(Session session, CancellationToken cancellationToken = default)
     {
-        var authInfo = await SessionsBackend.GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
-        if (!(authInfo?.IsAuthenticated() ?? false))
+        var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
+        if (!(sessionInfo?.IsAuthenticated() ?? false))
             return null;
 
-        var account = await AccountsBackend.Get(UserId.Parse(authInfo.UserId), cancellationToken).ConfigureAwait(false);
+        var account = await AccountsBackend.Get(UserId.Parse(sessionInfo.UserId), cancellationToken).ConfigureAwait(false);
         return account != null ? (LegacyUser)new(account.Id.Value, account.Name) {
             Version = account.Version,
             Claims = account.Claims,

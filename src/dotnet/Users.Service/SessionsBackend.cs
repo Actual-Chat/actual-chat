@@ -31,7 +31,6 @@ public class SessionsBackend(
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
             _ = Get(session, default);
-            _ = GetAuthInfo(session, default);
             if (force)
                 _ = IsSignOutForced(session, default);
             return;
@@ -75,11 +74,6 @@ public class SessionsBackend(
                 return null!;
 
             _ = Get(session, default);
-            // Invalidate GetAuthInfo when session is new or auth state changed
-            var meta = context.Operation.Items.KeylessGet<SessionUpsertMeta>();
-            var (invIsNew, invAuthChanged) = meta != null ? (meta.IsNew, meta.AuthChanged) : (false, false);
-            if (invIsNew || invAuthChanged)
-                _ = GetAuthInfo(session, default);
             return null!;
         }
 
@@ -87,7 +81,6 @@ public class SessionsBackend(
         await using var _1 = dbContext.ConfigureAwait(false);
 
         var dbSessionInfo = await GetDbSessionInfo(dbContext, session.Id, true, cancellationToken).ConfigureAwait(false);
-        var isNew = dbSessionInfo is null;
         var now = Clocks.SystemClock.Now;
         var sessionInfo = dbSessionInfo?.ToModel(Log)
             ?? new SessionInfo(now) { SessionHash = session.Hash };
@@ -98,20 +91,15 @@ public class SessionsBackend(
             Options = options.SetMany(sessionInfo.Options),
         };
         // Update auth state if provided
-        var authChanged = false;
-        if (userId is not null || authenticatedIdentity is not null) {
-            if (userId is not null)
-                sessionInfo = sessionInfo with { UserId = userId };
-            if (authenticatedIdentity is not null)
-                sessionInfo = sessionInfo with { AuthenticatedIdentity = authenticatedIdentity };
-            authChanged = true;
-        }
+        if (userId is not null)
+            sessionInfo = sessionInfo with { UserId = userId };
+        if (authenticatedIdentity is not null)
+            sessionInfo = sessionInfo with { AuthenticatedIdentity = authenticatedIdentity };
 
         dbSessionInfo = await UpsertDbSessionInfo(dbContext, session.Id, sessionInfo, cancellationToken)
             .ConfigureAwait(false);
         sessionInfo = dbSessionInfo.ToModel(Log);
         context.Operation.Items.KeylessSet(sessionInfo);
-        context.Operation.Items.KeylessSet(new SessionUpsertMeta(isNew, authChanged));
         return sessionInfo!;
     }
 
@@ -137,18 +125,8 @@ public class SessionsBackend(
         Session session, CancellationToken cancellationToken = default)
     {
         using var _ = Computed.BeginIsolation();
-        var sessionInfo = await GetAuthInfo(session, cancellationToken).ConfigureAwait(false);
-        return sessionInfo?.IsSignOutForced ?? false;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<SessionAuthInfo?> GetAuthInfo(
-        Session session, CancellationToken cancellationToken = default)
-    {
-        session.RequireValid();
-        using var _ = Computed.BeginIsolation();
         var sessionInfo = await Get(session, cancellationToken).ConfigureAwait(false);
-        return sessionInfo?.ToAuthInfo();
+        return sessionInfo?.IsSignOutForced ?? false;
     }
 
     // [ComputeMethod]
@@ -210,8 +188,4 @@ public class SessionsBackend(
             .ConfigureAwait(false);
     }
 
-    // Nested types
-
-    // Must be Newtonsoft.Json serializable - stored in Operation.Items
-    private sealed record SessionUpsertMeta(bool IsNew, bool AuthChanged);
-}
+    }

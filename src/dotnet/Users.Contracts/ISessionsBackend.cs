@@ -9,8 +9,6 @@ public interface ISessionsBackend : IComputeService, IBackendService
     [ComputeMethod(MinCacheDuration = 10)]
     Task<SessionInfo?> Get(Session session, CancellationToken cancellationToken = default);
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<SessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken = default);
-    [ComputeMethod(MinCacheDuration = 10)]
     Task<bool> IsSignOutForced(Session session, CancellationToken cancellationToken = default);
 
     // Non-compute methods
