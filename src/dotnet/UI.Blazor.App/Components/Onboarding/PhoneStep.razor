@@ -1,8 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using System.ComponentModel.DataAnnotations
 @inherits SimpleStep<AppUIHub>;
-@if (CurrentStep != this) {
-    return;
+@{
+    if (CurrentStep != this)
+        return;
+    var showVerificationStatus = !_model.Phone.IsNullOrWhiteSpace() && _showVerificationStatus;
 }
 
 <div class="phone-verifier">
@@ -14,6 +15,7 @@
         We collect this information to help you find friends in your contacts list who are already using @CoreConstants.AppName.
     </p>
     <Form
+        @ref="@_formRef"
         Class="mt-6"
         Model="@_model">
         <AsyncDataAnnotationsValidator @ref="_validator"/>
@@ -22,35 +24,37 @@
             InputId="phone"
             Label="Phone"
             Class="grow"
-            IsLabelInsideInput="true"
-            IsRequired="true">
+            IsLabelInsideInput="true">
             <ChildContent>
                 <TextBox
                     Id="phone"
                     @bind-Value="_model.Phone"
                     Autocomplete="tel"
+                    readonly="@_isVerified"
                     type="tel"
                     inputmode="tel"/>
             </ChildContent>
             <Right>
-                @if (_showVerificationStatus) {
+                @if (showVerificationStatus) {
                     <VerificationStatus
-                        IsVerified="_isVerified ?? false"
+                        IsVerified="@_isVerified"
                         Class="w-8 h-8" />
                 }
             </Right>
         </FormSection>
-        <div class="c-incut">
-            <Button
-                Class="verify-btn btn-w-full"
-                IsDisabled="@(!IsPhoneValid)"
-                Click="@OnVerifyClick">
-                Verify
-            </Button>
-            <div class="c-info">
-                You can skip this step. The phone number can be filled in later.
+        @if (!_isVerified) {
+            <div class="c-incut">
+                <Button
+                    Class="verify-btn btn-w-full"
+                    IsDisabled="@(_validationState is ValidationState.Invalid || !_formRef.IsValid || _model.Phone.IsNullOrWhiteSpace())"
+                    Click="@OnVerifyClick">
+                    @(_validationState is ValidationState.Invalid ? "Unavailable" : "Verify")
+                </Button>
+                <div class="c-info">
+                    You can skip this step. The phone number can be filled in later.
+                </div>
             </div>
-        </div>
+        }
 
         @if (CaptchaUI.IsConfigured) {
             <div class="c-recaptcha-info">
@@ -63,11 +67,11 @@
 </div>
 
 @code {
+    private Form _formRef = null!;
     private readonly Model _model = new();
     private ValidationState _validationState = ValidationState.None;
     private bool _showVerificationStatus;
-    private bool? _isVerified;
-    private bool? _skipped;
+    private bool _isVerified;
     private AsyncDataAnnotationsValidator _validator = null!;
 
     private IAccounts Accounts => Hub.Accounts;
@@ -78,55 +82,51 @@
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
-    [Parameter] public EventCallback OnVerifyClick { get; set; }
 
     public override bool CanSkip => false;
 
-    public override bool IsCompleted {
-        get {
-            if (Account.HasVerifiedPhone())
-                return true;
-
-            // Can move forward if already verified in case when Skip and Back were pressed
-            if (_isVerified is true)
-                return true;
-
-            // Can't move forward if skipped in case when Skip and Back were pressed
-            if (_skipped is true)
-                return false;
-
-            return OnboardingUI.UserSettings.Value.IsVerifyPhoneStepCompleted;
-        }
-    }
+    public override bool IsCompleted
+        => Account.HasVerifiedPhone() || OnboardingUI.UserSettings.Value.IsVerifyPhoneStepCompleted;
 
     protected override void MarkCompleted()
         => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsVerifyPhoneStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, default);
-        _showVerificationStatus = !account.HasVerifiedPhone();
-        if (account.Phone != null)
+        _isVerified = account.HasVerifiedPhone();
+        if (account.Phone != null) {
+            _showVerificationStatus = true;
             _model.Phone = account.Phone.ToReadable();
+        }
 
         await CaptchaUI.EnsureInitialized();
     }
 
-    private bool IsPhoneValid =>
-        _model.Phone.StartsWith("+") &&
-        _model.Phone.Count(char.IsDigit) is >= 8 and <= 15;
+    protected override Task<bool> Validate()
+        => Task.FromResult(true);
 
-    protected override async Task<bool> Validate() {
-        var isValid = _validationState != ValidationState.Invalid
-            && await _validator.Validate().ConfigureAwait(false);
+    protected override Task<bool> Save()
+        => Task.FromResult(true);
+
+    private async Task OnVerifyClick() {
+        var isValid = await InnerValidate();
+        if (!isValid)
+            return;
+
+        var isSaved = await InnerSave();
+        if (!isSaved)
+            return;
+
+        await Stepper.TryMoveForward();
+    }
+
+    private async Task<bool> InnerValidate() {
+        var isValid = _validationState != ValidationState.Invalid // reCaptcha blocks verification
+                      && await _validator.Validate().ConfigureAwait(false);
         return isValid;
     }
 
-    protected override ValueTask OnSkip() {
-        _skipped = true;
-        return ValueTask.CompletedTask;
-    }
-
-    protected override async Task<bool> Save() {
+    private async Task<bool> InnerSave() {
         var phone = await Phones.Parse(_model.Phone, default);
         if (phone is null)
             return false;
@@ -137,36 +137,35 @@
         if (error is not null)
             return false;
 
-        if (!account.HasVerifiedPhone()) {
-            var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
-            if (hasSentCodeRecently) {
-                _validationState = ValidationState.CodeSentRecently;
-                StateHasChanged();
-                return await ShowTotpVerificationModal();
-            }
+        if (account.HasVerifiedPhone())
+            return true;
 
-            if (CaptchaUI.IsConfigured) {
-                _validationState = ValidationState.Validating;
-                StateHasChanged();
-                try {
-                    var captchaToken = await CaptchaUI.GetActionToken(Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
-                    var validationResult = await Captcha.Validate(captchaToken, Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
-                    _validationState = validationResult.Success
-                        ? ValidationState.Valid
-                        : ValidationState.Invalid;
-                }
-                catch {
-                    _validationState = ValidationState.Invalid;
-                }
-                finally {
-                    StateHasChanged();
-                }
-            }
-
+        var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);
+        if (hasSentCodeRecently) {
+            _validationState = ValidationState.CodeSentRecently;
+            StateHasChanged();
             return await ShowTotpVerificationModal();
         }
 
-        return true;
+        if (CaptchaUI.IsConfigured) {
+            _validationState = ValidationState.Validating;
+            StateHasChanged();
+            try {
+                var captchaToken = await CaptchaUI.GetActionToken(Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+                var validationResult = await Captcha.Validate(captchaToken, Constants.Recaptcha.Actions.PhoneSignIn, CancellationToken.None);
+                _validationState = validationResult.Success
+                    ? ValidationState.Valid
+                    : ValidationState.Invalid;
+            }
+            catch {
+                _validationState = ValidationState.Invalid;
+            }
+            finally {
+                StateHasChanged();
+            }
+        }
+
+        return await ShowTotpVerificationModal();
 
         async Task<bool> ShowTotpVerificationModal() {
             if (_validationState == ValidationState.Invalid)
@@ -185,6 +184,6 @@
     }
 
     public class Model {
-        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+        [PhoneNumber(IsOptional = true)] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
     }
 }
