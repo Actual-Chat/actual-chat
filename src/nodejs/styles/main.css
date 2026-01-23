@@ -267,19 +267,19 @@ body.narrow .layout-header > .c-content.selection-header {
 .list-view-layout:has(.chat-activity-panel.listening) .layout-subheader {
     @apply bg-transparent;
 }
-.list-view-layout:has(.chat-activity-panel.listening):after {
-    @apply content-empty;
-    @apply absolute z-minus inset-x-0 -top-4;
-    @apply h-32;
-    @apply opacity-90;
-    background: linear-gradient(180deg, var(--header-fog-color-1) 0%, var(--header-fog-color-2) 100%);
-    transition: transform 0.5s ease-in;
-    animation: smoothOpacity 1s ease forwards, headerWave 2s ease-in 1s infinite;
-}
-body.wide .list-view-layout:has(.chat-activity-panel.listening):after {
-    @apply h-40;
-    background: radial-gradient(56.91% 105.88% at 50% 0%, var(--header-fog-color-1) 0%, var(--header-fog-color-2) 100%);
-}
+/*.list-view-layout:has(.chat-activity-panel.listening):after {*/
+/*    @apply content-empty;*/
+/*    @apply absolute z-minus inset-x-0 -top-4;*/
+/*    @apply h-32;*/
+/*    @apply opacity-90;*/
+/*    background: linear-gradient(180deg, var(--header-fog-color-1) 0%, var(--header-fog-color-2) 100%);*/
+/*    transition: transform 0.5s ease-in;*/
+/*    animation: smoothOpacity 1s ease forwards, headerWave 2s ease-in 1s infinite;*/
+/*}*/
+/*body.wide .list-view-layout:has(.chat-activity-panel.listening):after {*/
+/*    @apply h-40;*/
+/*    background: radial-gradient(56.91% 105.88% at 50% 0%, var(--header-fog-color-1) 0%, var(--header-fog-color-2) 100%);*/
+/*}*/
 /* Colorized footer */
 body.wide .list-view-layout:has(.chat-activity-panel.listening):before {
     @apply content-empty;
@@ -287,7 +287,7 @@ body.wide .list-view-layout:has(.chat-activity-panel.listening):before {
     @apply h-40;
     @apply opacity-90;
     background: radial-gradient(56.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
-    animation: smoothOpacity 1s ease forwards;
+    animation: smoothOpacity 1s ease forwards, bottomWave 3s ease-in 1s infinite;
 }
 @keyframes smoothOpacity {
     0% {
@@ -299,12 +299,12 @@ body.wide .list-view-layout:has(.chat-activity-panel.listening):before {
         filter: brightness(1);
     }
 }
-@keyframes headerWave {
+@keyframes bottomWave {
     0%, 100% {
         transform: translateY(0);
     }
     50% {
-        transform: translateY(1rem);
+        transform: translateY(2rem);
     }
 }
 .list-view-layout > .layout-header > .c-content {
