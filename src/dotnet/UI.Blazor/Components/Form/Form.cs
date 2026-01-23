@@ -88,7 +88,7 @@ public class Form : EditForm, IDisposable
 #pragma warning restore MA0123
     }
 
-    private void OnEditContextValidationStateChanged(object? o, object? sender)
+    private void OnEditContextValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
     {
         if (sender is not EditContext editContext)
             return;
