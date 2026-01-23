@@ -79,15 +79,15 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         var (session, phone, purpose) = command;
         if (TryGetPredefined(phone, out _))
-            return GetExpiresAt(); // no need to send predefined totp
+            return NextSendAt(); // no need to send predefined totp
 
         // Throttle to prevent SMS pumping: limit by phone and by session
         if (await IsThrottled(session, phone, cancellationToken).ConfigureAwait(false))
-            return GetExpiresAt();
+            return NextSendAt();
 
         var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose, cancellationToken).ConfigureAwait(false);
         var totp = Totps.Generate(securityToken, modifier); // generate totp with the newest one
-        var expiresAt = GetExpiresAt();
+        var nextSendAt = NextSendAt();
 
         var canSendValidationMessage = await ValidateCanSendToPhone(session, phone, purpose, cancellationToken).ConfigureAwait(false);
         if (!canSendValidationMessage.IsNullOrEmpty())
@@ -95,9 +95,9 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
         await TextMessage.Send(phone, $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
-        return expiresAt;
+        return nextSendAt;
 
-        DateTimeOffset GetExpiresAt()
+        DateTimeOffset NextSendAt()
             => Clocks.SystemClock.UtcNow + Settings.TotpUIThrottling;
     }
 
