@@ -1,6 +1,5 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
-@using ActualChat
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComponentBase<UIHub>
 @{
@@ -13,11 +12,11 @@
         Enter the code we've sent to <span class="whitespace-nowrap">@(address)</span>
     </span>
     <TotpInput @ref="_totpInput" Completed="OnInputCompleted" IsVerifying="@_isVerifying"/>
-    @if (_totpExpiresAt is { } totpExpiresAt) {
-        @if (Clocks.SystemClock.Now < totpExpiresAt) {
+    @if (_totpNextSendAt is { } totpNextSendAt) {
+        @if (Clocks.SystemClock.Now < totpNextSendAt) {
             <div class="c-resend-code">
                 <span>You can request a new code in</span>
-                <Countdown Class="w-9" EndsAt="totpExpiresAt"/>
+                <Countdown Class="w-9" EndsAt="totpNextSendAt"/>
             </div>
         } else {
             <Button Class="btn-modal sign-in" Click="@SendTotp">Resend</Button>
@@ -28,7 +27,7 @@
 @code {
     private object? _timerKey = new();
     private TotpInput? _totpInput;
-    private Moment? _totpExpiresAt;
+    private Moment? _totpNextSendAt;
     private bool _isVerifying;
 
     private TotpUI TotpUI => Hub.TotpUI;
@@ -42,18 +41,18 @@
     [Parameter] public EventCallback IncorrectCodeEntered { get; set; }
 
     private TimeSpan TimerPeriod
-        => _totpExpiresAt is { } totpExpiresAt
-            ? totpExpiresAt - Clocks.SystemClock.Now + TimeSpan.FromMilliseconds(10)
+        => _totpNextSendAt is { } totpNextSendAt
+            ? totpNextSendAt - Clocks.SystemClock.Now + TimeSpan.FromMilliseconds(10)
             : default; // No ticks
 
     protected override Task OnInitializedAsync() {
         var now = Clocks.ServerClock.Now;
-        var totpExpiresAt = TotpUI.TotpExpiresAt.Value;
-        if (totpExpiresAt > now) {
-            _totpExpiresAt = totpExpiresAt;
+        var totpNextSendAt = TotpUI.TotpNextSendAt.Value;
+        if (totpNextSendAt > now) {
+            _totpNextSendAt = totpNextSendAt;
             _timerKey = new(); // To make sure the timer is renewed
         } else {
-            _totpExpiresAt = null;
+            _totpNextSendAt = null;
             return SendTotp();
         }
         return Task.CompletedTask;
@@ -102,7 +101,7 @@
         if (!codeSent)
             return;
 
-        _totpExpiresAt = TotpUI.TotpExpiresAt.Value;
+        _totpNextSendAt = TotpUI.TotpNextSendAt.Value;
         _timerKey = new(); // To make sure the timer is renewed
         StateHasChanged();
     }

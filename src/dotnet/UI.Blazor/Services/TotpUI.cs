@@ -4,8 +4,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
 {
-    private readonly IMutableState<Moment> _totpExpiresAt = hub.StateFactory.NewMutable<Moment>();
-    public IState<Moment> TotpExpiresAt => _totpExpiresAt;
+    private readonly IMutableState<Moment> _totpNextSendAt = hub.StateFactory.NewMutable<Moment>();
+    public IState<Moment> TotpNextSendAt => _totpNextSendAt;
 
     private IPhoneAuth PhoneAuth => field ??= Services.GetRequiredService<IPhoneAuth>();
 
@@ -21,12 +21,11 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
     public virtual async Task<bool> HasSentCodeRecently(CancellationToken cancellationToken)
     {
         var now = Clocks.ServerClock.Now;
-        var expiresAt = await _totpExpiresAt.Use(cancellationToken).ConfigureAwait(false);
-        var canExpire = expiresAt > now;
-        if (canExpire)
-            Computed.GetCurrent().Invalidate(expiresAt - now + TimeSpan.FromSeconds(1));
-
-        return canExpire;
+        var nextSendAt = await _totpNextSendAt.Use(cancellationToken).ConfigureAwait(false);
+        var hasSentRecently = nextSendAt > now;
+        if (hasSentRecently)
+            Computed.GetCurrent().Invalidate(nextSendAt - now + TimeSpan.FromSeconds(1));
+        return hasSentRecently;
     }
 
     public async Task<bool> SendPhoneCode(TotpPurpose purpose, Phone phone, CancellationToken cancellationToken)
@@ -35,21 +34,21 @@ public class TotpUI(UIHub hub): UIServiceBase<UIHub>(hub), IComputeService
             TotpPurpose.SignInPhone or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, phone, purpose),
             _ => throw new ArgumentOutOfRangeException(nameof(purpose)),
         };
-        var (totpExpiresAt, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
+        var (totpNextSendAt, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         if (error != null)
             return false;
 
-        _totpExpiresAt.Value = totpExpiresAt;
+        _totpNextSendAt.Value = totpNextSendAt;
         return true;
     }
 
     public async Task<bool> SendEmailCode(TotpPurpose purpose, Email email, CancellationToken cancellationToken)
     {
-        var (totpExpiresAt, error) = await UICommander.Run(new EmailAuth_SendTotp(Session, email, purpose), cancellationToken).ConfigureAwait(false);
+        var (totpNextSendAt, error) = await UICommander.Run(new EmailAuth_SendTotp(Session, email, purpose), cancellationToken).ConfigureAwait(false);
         if (error != null)
             return false;
 
-        _totpExpiresAt.Value = totpExpiresAt;
+        _totpNextSendAt.Value = totpNextSendAt;
         return true;
     }
 }
