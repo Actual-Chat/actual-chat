@@ -31,7 +31,7 @@
             <SpeechTranscriptionStep/>
             <TranscriptPlaybackStep/>
             <PlacesFeatureStep/>
-            <JoinPlaceStep/>
+            <SummarizationStep/>
             <PhoneStep Account="m.AccountFull" OnVerifyClick="@(() => OnNext(stepper))"/>
             <EmailStep Account="m.AccountFull"/>
             <TimeZoneStep Account="m.AccountFull"/>
@@ -60,7 +60,7 @@
         </Header>
         <Footer>
             <div class="onboarding-footer">
-                @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep)) {
+                @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or SummarizationStep)) {
                     <LineProgress
                         StepCount="@stepper.StepCount"
                         CurrentStepIndex="@stepper.CurrentStepIndex">
@@ -68,7 +68,7 @@
                 }
                 <div class="btn-group">
                     @if (stepper.CanSkip) {
-                        if (stepper.CurrentStep is SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep) {
+                        if (stepper.CurrentStep is SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or SummarizationStep) {
                             <TutorialSkipButton Stepper="@stepper" Click="@(() => OnSkip(stepper))"/>
                         } else {
                             <Button
@@ -78,7 +78,7 @@
                             </Button>
                         }
                     }
-                    @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or JoinPlaceStep)) {
+                    @if (stepper.CurrentStep is not (SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or SummarizationStep)) {
                         @if (stepper.CurrentStep is PhoneStep) {
                             <Button
                                 Class="btn-primary"

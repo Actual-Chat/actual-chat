@@ -8,14 +8,14 @@
     <img draggable="false" src="/dist/images/onboarding/tutorial-4.svg" alt="Tutorial slide #4">
     <div class="c-title">
         <p>
-            Chats connect,
+            Surf and Chat
         </p>
         <p>
-            Places create communities.
+            easier with summarization
         </p>
     </div>
     <p class="c-description">
-        Connect with like-minded people by joining a Place.
+        Catch the key points of conversations and know what’s going on anytime
     </p>
 </div>
 
@@ -26,10 +26,10 @@
 
     public override bool CanSkip => true;
 
-    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsJoinPlaceStepCompleted;
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsSummarizationStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsJoinPlaceStepCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsSummarizationStepCompleted = true });
 
     protected override Task<bool> Validate()
         => Task.FromResult(true);
