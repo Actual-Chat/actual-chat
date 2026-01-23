@@ -95,7 +95,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return false;
 
         var account = new AccountFull("").WithEmailIdentities(email);
-        var signInCommand = new AccountsBackend_SignIn(session, account, account.GetEmailIdentity());
+        var signInCommand = new AccountsBackend_SignIn(session, account, account.Identities.GetEmailIdentity());
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -132,7 +132,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         var updatedAccount = account.WithEmailIdentities(email);
         var conflictingDbUser = await dbContext
-            .GetDbUserByUserIdentity(updatedAccount.GetEmailIdentity(), false, cancellationToken)
+            .GetDbUserByUserIdentity(updatedAccount.Identities.GetEmailIdentity(), false, cancellationToken)
             .ConfigureAwait(false);
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Email has already been taken by another account.");

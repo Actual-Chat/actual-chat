@@ -47,7 +47,7 @@ public sealed class PhoneAuthHandler(
             return HandleRequestResult.NoResult();
 
         var claims = account.Claims
-            .With(ClaimTypes.NameIdentifier, account.GetPhoneIdentity().SchemaBoundId)
+            .With(ClaimTypes.NameIdentifier, account.Identities.GetPhoneIdentity().SchemaBoundId)
             .Select(x => new Claim(x.Key, x.Value));
         var authenticationType = Options.ClaimsIssuer.NullIfEmpty() ?? AuthSchema.Phone;
         var identity = new ClaimsIdentity(claims, authenticationType);

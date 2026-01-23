@@ -3,10 +3,10 @@ namespace ActualChat.Users;
 public static class AccountsBackendExt
 {
     public static Task<UserId?> GetIdByPhoneHash(this IAccountsBackend accountsBackend, string phoneHash, CancellationToken cancellationToken)
-        => accountsBackend.GetIdByUserIdentity(UserIdentityExt.ToHashedPhoneIdentity(phoneHash), cancellationToken);
+        => accountsBackend.GetIdByUserIdentity(UserIdentityExt.NewHashedPhoneIdentity(phoneHash), cancellationToken);
 
     public static Task<UserId?> GetIdByEmailHash(this IAccountsBackend accountsBackend, string emailHash, CancellationToken cancellationToken)
-        => accountsBackend.GetIdByUserIdentity(UserIdentityExt.ToHashedEmailIdentity(emailHash), cancellationToken);
+        => accountsBackend.GetIdByUserIdentity(UserIdentityExt.NewHashedEmailIdentity(emailHash), cancellationToken);
 
     public static async Task<AccountFull[]> ListChangedFull(
         this IAccountsBackend accountsBackend,
