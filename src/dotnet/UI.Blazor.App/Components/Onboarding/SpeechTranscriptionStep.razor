@@ -22,8 +22,6 @@
 @code {
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
 
-    [Parameter] public EventCallback OnVerifyClick { get; set; }
-
     public override bool CanSkip => true;
 
     public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsSpeechTranscriptionStepCompleted;
