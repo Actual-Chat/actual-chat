@@ -2,11 +2,11 @@ namespace ActualChat.Users;
 
 public static class UserIdentityExt
 {
-    // Core method to get identity by schema
+    // GetXxxIdentity
+
     public static UserIdentity GetIdentity(this ApiMap<UserIdentity, string> identities, string schema)
         => identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, schema)).Key;
 
-    // Get specific identity types
     public static UserIdentity GetPhoneIdentity(this ApiMap<UserIdentity, string> identities)
         => identities.GetIdentity(AuthSchema.Phone);
 
@@ -19,14 +19,8 @@ public static class UserIdentityExt
     public static UserIdentity GetHashedEmailIdentity(this ApiMap<UserIdentity, string> identities)
         => identities.GetIdentity(AuthSchema.HashedEmail);
 
-    // Check for identity presence
-    public static bool HasPhoneIdentity(this ApiMap<UserIdentity, string> identities)
-        => identities.GetPhoneIdentity().IsValid;
+    // GetXxx (extract values from identities)
 
-    public static bool HasEmailIdentity(this ApiMap<UserIdentity, string> identities)
-        => identities.GetEmailIdentity().IsValid;
-
-    // Extract values from identities
     public static string? GetEmail(this ApiMap<UserIdentity, string> identities)
         => identities.GetEmailIdentity().SchemaBoundId.NullIfEmpty();
 
@@ -40,15 +34,16 @@ public static class UserIdentityExt
         => identities.GetHashedEmailIdentity().SchemaBoundId.NullIfEmpty();
 
     // Factory methods for creating identities
-    public static UserIdentity ToPhoneIdentity(Phone phone)
+
+    public static UserIdentity NewPhoneIdentity(Phone phone)
         => new(AuthSchema.Phone, phone.Value);
 
-    public static UserIdentity ToEmailIdentity(Email email)
+    public static UserIdentity NewEmailIdentity(Email email)
         => new(AuthSchema.Email, email.Value);
 
-    public static UserIdentity ToHashedPhoneIdentity(string phoneHash)
+    public static UserIdentity NewHashedPhoneIdentity(string phoneHash)
         => new(AuthSchema.HashedPhone, phoneHash);
 
-    public static UserIdentity ToHashedEmailIdentity(string emailHash)
+    public static UserIdentity NewHashedEmailIdentity(string emailHash)
         => new(AuthSchema.HashedEmail, emailHash);
 }

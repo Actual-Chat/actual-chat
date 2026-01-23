@@ -110,7 +110,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
             return false;
 
         var account = new AccountFull("").WithPhoneIdentities(phone);
-        var signInCommand = new AccountsBackend_SignIn(session, account, account.GetPhoneIdentity());
+        var signInCommand = new AccountsBackend_SignIn(session, account, account.Identities.GetPhoneIdentity());
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -149,7 +149,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         var updatedAccount = account.WithPhoneIdentities(phone);
         var conflictingDbUser = await dbContext
-            .GetDbUserByUserIdentity(updatedAccount.GetPhoneIdentity(), false, cancellationToken)
+            .GetDbUserByUserIdentity(updatedAccount.Identities.GetPhoneIdentity(), false, cancellationToken)
             .ConfigureAwait(false);
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");

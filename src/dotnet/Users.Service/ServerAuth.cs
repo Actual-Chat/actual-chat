@@ -205,7 +205,7 @@ public sealed class ServerAuth
                 return;
 
             account = account.WithEmailIdentities(email);
-            userIdentity = account.GetEmailIdentity();
+            userIdentity = account.Identities.GetEmailIdentity();
         }
     }
 

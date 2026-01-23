@@ -41,8 +41,8 @@ public static class AccountFullExt
             throw StandardError.Constraint("Cannot change phone identity - already set to a different phone number.");
 
         return account
-            .WithIdentity(UserIdentityExt.ToPhoneIdentity(phone))
-            .WithIdentity(UserIdentityExt.ToHashedPhoneIdentity(phone.Hash))
+            .WithIdentity(UserIdentityExt.NewPhoneIdentity(phone))
+            .WithIdentity(UserIdentityExt.NewHashedPhoneIdentity(phone.Hash))
             .WithClaim(ClaimTypes.MobilePhone, phone.Value)
             .WithPhone(phone);
     }
@@ -54,35 +54,10 @@ public static class AccountFullExt
             throw StandardError.Constraint("Cannot change email identity - already set to a different email address.");
 
         return account
-            .WithIdentity(UserIdentityExt.ToEmailIdentity(email))
-            .WithIdentity(UserIdentityExt.ToHashedEmailIdentity(email.Hash))
+            .WithIdentity(UserIdentityExt.NewEmailIdentity(email))
+            .WithIdentity(UserIdentityExt.NewHashedEmailIdentity(email.Hash))
             .WithEmail(email.Value);
     }
-
-    // GetXxxIdentity
-
-    public static UserIdentity GetPhoneIdentity(this AccountFull account)
-        => account.Identities.GetPhoneIdentity();
-
-    public static UserIdentity GetEmailIdentity(this AccountFull account)
-        => account.Identities.GetEmailIdentity();
-
-    public static UserIdentity GetHashedPhoneIdentity(this AccountFull account)
-        => account.Identities.GetHashedPhoneIdentity();
-
-    public static UserIdentity GetHashedEmailIdentity(this AccountFull account)
-        => account.Identities.GetHashedEmailIdentity();
-
-    public static UserIdentity GetIdentity(this AccountFull account, string schema)
-        => account.Identities.GetIdentity(schema);
-
-    // HasXxxIdentity
-
-    public static bool HasPhoneIdentity(this AccountFull account)
-        => account.Identities.HasPhoneIdentity();
-
-    public static bool HasEmailIdentity(this AccountFull account)
-        => account.Identities.HasEmailIdentity();
 
     // GetVerifiedXxx
 
