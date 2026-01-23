@@ -102,6 +102,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             });
             */
 
+            fusionWebServer.AddAuthEndpoints();
             fusionWebServer.ConfigureAuthEndpoint(_ => new() {
                 DefaultSignInScheme = GoogleDefaults.AuthenticationScheme,
                 SignInPropertiesBuilder = (_, properties) => {
