@@ -23,7 +23,7 @@ public partial record Account(
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsGuest => Id.IsGuest;
+    public bool IsGuest => Id?.IsGuest ?? true;
 
     // This record relies on referential equality
     public virtual bool Equals(Account? other) => ReferenceEquals(this, other);

@@ -58,12 +58,12 @@ public sealed partial record AccountFull : Account
     // Computed properties
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public AliasInfo<UserId> AliasInfo => field ??= new(Id, AliasId);
+    public AliasInfo<UserId> AliasInfo => field ??= new(Id!, AliasId);
 
     [Obsolete("This property is for backward compatibility. Use Identities, Claims, Name properties directly.")]
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
 #pragma warning disable CS0618 // Type or member is obsolete
-    public LegacyUser User => new(Id.Value, Name) {
+    public LegacyUser User => new(Id?.Value ?? "", Name) {
         Version = Version,
         Claims = Claims,
         Identities = Identities,
