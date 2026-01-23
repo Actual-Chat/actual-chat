@@ -109,8 +109,8 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (!await ValidateCode(session, phone, totp, TotpPurpose.SignInPhone, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var user = new User(Symbol.Empty, string.Empty).WithPhone(phone);
-        var signInCommand = new AccountsBackend_SignIn(session, user, user.GetPhoneIdentity());
+        var account = new AccountFull("").WithPhoneIdentities(phone);
+        var signInCommand = new AccountsBackend_SignIn(session, account, account.GetPhoneIdentity());
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -147,14 +147,14 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (dbUser == null)
             return default; // Should never happen, but if it somehow does, there is no extra to do in this case
 
-        var user = account.ToUser().WithPhone(phone);
+        var updatedAccount = account.WithPhoneIdentities(phone);
         var conflictingDbUser = await dbContext
-            .GetDbUserByUserIdentity(user.GetPhoneIdentity(), false, cancellationToken)
+            .GetDbUserByUserIdentity(updatedAccount.GetPhoneIdentity(), false, cancellationToken)
             .ConfigureAwait(false);
         if (conflictingDbUser != null && !OrdinalEquals(conflictingDbUser.Id, dbUser.Id))
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");
 
-        dbUser.UpdateFrom(user, VersionGenerator);
+        dbUser.UpdateFrom(updatedAccount, VersionGenerator);
         context.Operation.Items.KeylessSet(account.Id);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

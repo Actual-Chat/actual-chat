@@ -79,7 +79,7 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
         CancellationToken cancellationToken = default)
         where TFlow : Flow
     {
-        var flow = await Get(flowId, addDependency: true, cancellationToken);
+        var flow = await Get(flowId, addDependency: true, cancellationToken).ConfigureAwait(false);
         return (TFlow)flow;
     }
 

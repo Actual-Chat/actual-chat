@@ -21,7 +21,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     private static Phone BobPhone { get; } = Phone.Parse("1-2345678901");
     private static string BobEmail => $"bob{Constants.Team.EmailSuffix}";
 
-    private static User Bob { get; } = new User("", "BobAdmin")
+    private static AccountFull Bob { get; } = new AccountFull("BobAdmin")
         .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "111"))
         .WithPhone(BobPhone)
         .WithClaim(ClaimTypes.Email, BobEmail);
@@ -50,7 +50,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
             services.AddSingleton(deviceContacts.Object);
         });
 
-        await _tester.AppHost.SignIn(_tester.Session, new User("BobAdmin"));
+        await _tester.AppHost.SignIn(_tester.Session, new AccountFull("BobAdmin"));
         await _tester.SignOut();
     }
 

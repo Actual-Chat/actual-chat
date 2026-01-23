@@ -48,10 +48,10 @@ public class DbUser : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 ui => ui.Secret)
         };
 
-    public void UpdateFrom(User source, VersionGenerator<long> versionGenerator)
+    public void UpdateFrom(AccountFull source, VersionGenerator<long> versionGenerator)
     {
         var targetId = Id ?? "";
-        if (!string.Equals(targetId, source.Id, StringComparison.Ordinal))
+        if (!string.Equals(targetId, source.Id.Value, StringComparison.Ordinal))
             throw new ArgumentOutOfRangeException(nameof(source));
         Version = versionGenerator.NextVersion(Version);
 

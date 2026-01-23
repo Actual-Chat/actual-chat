@@ -19,6 +19,7 @@ public static class ActualFluentFormatters
                 return;
 
             Add<UserFormatter>();
+            Add<AccountFullFormatter>();
             Add<ChatFormatter>();
             Add<ContactFormatter>();
             Add<ContactSearchResultFormatter>();
@@ -38,6 +39,7 @@ public static class ActualFluentFormatters
                 return;
 
             Remove<UserFormatter>();
+            Remove<AccountFullFormatter>();
             Remove<ChatFormatter>();
             Remove<ContactFormatter>();
             Remove<ContactSearchResultFormatter>();

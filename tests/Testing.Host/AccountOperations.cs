@@ -21,13 +21,15 @@ public static class AccountOperations
         userNameFactory ??= UniqueNames.User;
         nameFactory ??= _ => "User";
         secondNameFactory ??= i => $"{i}";
-        phoneFactory ??= i => UniqueNames.Phone();
+        phoneFactory ??= _ => UniqueNames.Phone();
         var accounts = new AccountFull[count];
         for (int i = 0; i < count; i++) {
-            var user = new User("", userNameFactory(i)).WithClaim(ClaimTypes.GivenName, nameFactory(i))
+            var phone = phoneFactory(i);
+            var account = new AccountFull(userNameFactory(i))
+                .WithClaim(ClaimTypes.GivenName, nameFactory(i))
                 .WithClaim(ClaimTypes.Surname, secondNameFactory(i))
-                .WithPhone(phoneFactory(i));
-            accounts[i] = await tester.SignIn(user, cancellationToken);
+                .WithPhoneIdentities(phone);
+            accounts[i] = await tester.SignIn(account, cancellationToken);
         }
         return accounts;
     }
@@ -40,13 +42,14 @@ public static class AccountOperations
         Phone? phone = null)
     {
         await using var __ = await tester.BackupAuth();
-        var user = new User("", name).WithClaim(ClaimTypes.GivenName, name)
+        var account = new AccountFull(name)
+            .WithClaim(ClaimTypes.GivenName, name)
             .WithClaim(ClaimTypes.Surname, secondName);
-        if (email.IsNullOrEmpty())
-            user = user.WithClaim(ClaimTypes.Email, email);
+        if (!email.IsNullOrEmpty())
+            account = account.WithClaim(ClaimTypes.Email, email);
         if (phone != null)
-            user = user.WithPhone(phone);
-        return await tester.SignIn(user);
+            account = account.WithPhoneIdentities(phone);
+        return await tester.SignIn(account);
     }
 
     public static async Task<AccountFull> UpdateAccount(
@@ -73,13 +76,13 @@ public static class AccountOperations
         return await tester.Accounts.GetOwn(tester.Session, cancellationToken);
     }
 
-    public static async Task<AsyncDisposable<User?>> BackupAuth(this IWebTester tester)
+    public static async Task<AsyncDisposable<AccountFull?>> BackupAuth(this IWebTester tester)
     {
-        var userToRestore = await tester.Auth.GetUser(tester.Session);
+        var accountToRestore = await tester.Accounts.GetOwn(tester.Session, CancellationToken.None);
         return AsyncDisposable.New(
-            x => x != null
+            x => x != null && !x.IsGuest
                 ? new ValueTask(tester.SignIn(x))
                 : ValueTask.CompletedTask,
-            userToRestore);
+            accountToRestore.IsGuest ? null : accountToRestore);
     }
 }

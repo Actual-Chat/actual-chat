@@ -334,7 +334,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
     [Theory]
     [InlineData(null)]
-    [InlineData("Bob")]
+    [InlineData("Bobby")]
     public async Task ShouldNotAllowJoinOrLeaveAnnouncementsChat(string? userName)
     {
         // arrange
@@ -345,7 +345,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var chatId = Constants.Chat.AnnouncementsChatId;
         await tester.SignOut();
         if (!userName.IsNullOrEmpty())
-            await tester.SignIn(new User(userName).WithIdentity("no-admin"));
+            await tester.SignIn(new AccountFull(userName).WithIdentity("no-admin"));
 
         // act
         var rules = await chats.GetRules(session, chatId, default);

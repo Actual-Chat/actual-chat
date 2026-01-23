@@ -62,7 +62,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         // act
         await _tester.InviteToPlace(publicPlace.Id, bob.Id);
         await _tester.InviteToPlace(privatePlace.Id, bob.Id);
-        await _tester.SignIn(bob.ToUser());
+        await _tester.SignIn(bob);
         await _tester.JoinChat(publicChatId, publicChatInviteId);
         await _tester.JoinChat(privateChatId, privateChatInviteId);
         await _tester.JoinChat(publicPlacePublicChatId, publicPlacePublicChatInviteId);

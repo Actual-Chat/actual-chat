@@ -22,7 +22,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var appHost = AppHost;
         var services = appHost.Services;
         var session = Session.New();
-        _ = await appHost.SignIn(session, new User("Bob"));
+        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var accountSettings = services.AccountSettings(session);
@@ -54,7 +54,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
-        _ = await appHost.SignIn(session, new User("Bob"));
+        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
@@ -103,7 +103,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
-        _ = await appHost.SignIn(session, new User("Bob"));
+        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var chats = services.GetRequiredService<IChatsBackend>();
@@ -171,7 +171,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
-        _ = await appHost.SignIn(session, new User("Bob"));
+        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var chats = services.GetRequiredService<IChatsBackend>();
@@ -241,7 +241,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
-        _ = await appHost.SignIn(session, new User("Bob"));
+        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();
@@ -283,7 +283,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
-        _ = await appHost.SignIn(session, new User("Bob"));
+        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var backend = services.GetRequiredService<IStreamingBackend>();
         var client = services.GetRequiredService<IStreamClient>();
         var log = services.LogFor<StreamingBackendTest>();

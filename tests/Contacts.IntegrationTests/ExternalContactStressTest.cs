@@ -48,14 +48,14 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         for (int i = 0; i < accounts.Length; i++) {
             using var _1 = tracer.Region($"Sign in as user #{i + 1} {prefix}");
             // TODO: find the way of fast user creation to perform real stress test 🙂
-            accounts[i] = await _tester.SignIn(BuildUser(prefix, i + 1));
+            accounts[i] = await _tester.SignIn(BuildAccount(prefix, i + 1));
         }
 
         // act
         for (var i = 0; i < accounts.Length; i++) {
             var account = accounts[i];
-            using var _2 = tracer.Region("Create external contacts " + account.User.Name);
-            await _tester.SignIn(account.User);
+            using var _2 = tracer.Region("Create external contacts " + account.Name);
+            await _tester.SignIn(account);
             var externalContacts = Enumerable.Range(1, count)
                 .Select(idx => NewExternalContact(account, deviceIds[i], prefix, idx))
                 .ToArray();
@@ -64,11 +64,11 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 
         // assert
         using var _3 = tracer.Region($"Assert {count} accounts");
-        var userMap = accounts.ToDictionary(x => x.Id, x => x.User);
+        var accountMap = accounts.ToDictionary(x => x.Id);
         foreach (var account in accounts) {
-            using var _4 = tracer.Region($"Assert contacts of {account.User.Name} #({account.User.Id})");
-            await _tester.SignIn(account.User);
-            await AssertConnectedUsers(account, userMap);
+            using var _4 = tracer.Region($"Assert contacts of {account.Name} #({account.Id})");
+            await _tester.SignIn(account);
+            await AssertConnectedUsers(account, accountMap);
         }
     }
 
@@ -84,17 +84,17 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
 
         // act
         for (int i = 0; i < accounts.Length; i++) {
-            var account = accounts[i] = await _tester.SignIn(BuildUser(prefix, i + 1));
+            var account = accounts[i] = await _tester.SignIn(BuildAccount(prefix, i + 1));
             var externalContacts = Enumerable.Range(1, count)
                 .Select(idx => NewExternalContact(account, deviceIds[i], prefix, idx))
                 .ToArray();
             await Add(externalContacts);
         }
 
-        var userMap = accounts.ToDictionary(x => x.Id, x => x.User);
-        foreach (var u in accounts.Select(x => x.User)) {
+        var accountMap = accounts.ToDictionary(x => x.Id);
+        foreach (var acc in accounts) {
             // act
-            var account = await _tester.SignIn(u);
+            var account = await _tester.SignIn(acc);
 
             // assert
             await TestExt.When(async () => {
@@ -102,7 +102,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
                     acc.IsGreetingCompleted.Should().BeTrue();
                 },
                 TimeSpan.FromSeconds(5));
-            await AssertConnectedUsers(account, userMap);
+            await AssertConnectedUsers(account, accountMap);
         }
     }
 
@@ -118,19 +118,19 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
             throw new AggregateException("Failed to create external contacts", errors);
     }
 
-    private async Task AssertConnectedUsers(AccountFull account, Dictionary<UserId, User> userMap)
+    private async Task AssertConnectedUsers(AccountFull account, Dictionary<UserId, AccountFull> accountMap)
     {
-        var contactIds = await ListContactIds(account, userMap.Count - 1);
-        var connectedUsers = contactIds.ConvertAll(GetUser).OrderBy(x => x.Name);
-        var otherUsers = userMap.Values.Where(x => x.Id != account.Id.Value).OrderBy(x => x.Name);
-        connectedUsers.Should().BeEquivalentTo(otherUsers);
+        var contactIds = await ListContactIds(account, accountMap.Count - 1);
+        var connectedAccounts = contactIds.ConvertAll(GetAccount).OrderBy(x => x.Name);
+        var otherAccounts = accountMap.Values.Where(x => x.Id != account.Id).OrderBy(x => x.Name);
+        connectedAccounts.Should().BeEquivalentTo(otherAccounts, o => o.Including(x => x.Id).Including(x => x.Name));
         return;
 
-        User GetUser(ContactId x) {
+        AccountFull GetAccount(ContactId x) {
             var userId = x.ChatId is PeerChatId peerChatId
                 ? peerChatId.UserIds.OtherThan(account.Id)
                 : throw new Exception("Peer chat contact was expected");
-            return userMap[userId];
+            return accountMap[userId];
         }
     }
 
@@ -138,7 +138,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     {
         await TestExt.When(async () => {
                 var peerContactIds = await ListContactIds();
-                peerContactIds.Should().HaveCountGreaterThanOrEqualTo(expectedCount, $"for {account.User.Name}");
+                peerContactIds.Should().HaveCountGreaterThanOrEqualTo(expectedCount, $"for {account.Name}");
             },
             TimeSpan.FromSeconds(10));
 
@@ -165,10 +165,10 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     private static Symbol NewDeviceContactId()
         => new (Guid.NewGuid().ToString());
 
-    private static User BuildUser(string prefix, int i)
-        => new User("", BuildUserName(prefix, i))
-            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme,  $"{prefix}-{i.ToString("00000", CultureInfo.InvariantCulture)}"))
-            .WithPhone(BuildPhone(prefix, i))
+    private static AccountFull BuildAccount(string prefix, int i)
+        => new AccountFull(BuildUserName(prefix, i))
+            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, $"{prefix}-{i.ToString("00000", CultureInfo.InvariantCulture)}"))
+            .WithPhoneIdentities(BuildPhone(prefix, i))
             .WithClaim(ClaimTypes.Email, BuildEmail(prefix, i));
 
     private static string BuildUserName(string prefix, int i)

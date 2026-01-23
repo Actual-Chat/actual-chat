@@ -32,14 +32,14 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         var searchResults = await Find("chat", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
         searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicChat1(), UniquePart, [(19, 23)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(48, 52)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(49, 53)]), o => o.ExcludingRank());
 
         expected = bob.BuildSearchResults(chats.OtherPublicGroups2());
         searchResults = await Find("chat", false, null, expected.Count);
         searchResults.Should()
             .BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
         searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicChat1(), UniquePart, [(19, 23)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicPlace1OtherPublicChat1(), UniquePart, [(51, 55)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicPlace1OtherPublicChat1(), UniquePart, [(52, 56)]), o => o.ExcludingRank());
 
         expected = bob.BuildSearchResults(
             chats.JoinedPublicPlace1JoinedPrivateChat1(),
@@ -75,8 +75,8 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         var expected = bob.BuildSearchResults(chats.JoinedPrivatePlace1JoinedChats());
         var searchResults = await Find("ch", true, places.JoinedPrivatePlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPrivateChat2(), UniquePart, [(50, 54)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPublicChat1(), UniquePart, [(49, 53)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPrivateChat2(), UniquePart, [(51, 55)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPublicChat1(), UniquePart, [(50, 54)]), o => o.ExcludingRank());
 
         searchResults = await Find("ch", false, places.JoinedPrivatePlace1().Id, 0);
         searchResults.Should().BeEmpty("private groups are not visible while public groups are 'joined' automatically");
@@ -85,8 +85,8 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         expected = bob.BuildSearchResults(chats.JoinedPublicPlace1JoinedChats());
         searchResults = await Find("ch", true, places.JoinedPublicPlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPrivateChat2(), UniquePart, [(49, 53)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(48, 52)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPrivateChat2(), UniquePart, [(50, 54)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(49, 53)]), o => o.ExcludingRank());
 
         searchResults = await Find("ch", false, places.JoinedPublicPlace1().Id, 0);
         searchResults.Should().BeEmpty("private groups are not visible while public groups are 'joined' automatically");

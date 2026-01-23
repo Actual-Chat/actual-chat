@@ -17,7 +17,6 @@ public class BlazorTester : TestContext, IWebTester
     public IServiceProvider AppServices => field ??= AppHost.Services;
     public IServiceProvider ScopedAppServices => _serviceScope.ServiceProvider;
     public ICommander Commander => field ??= AppServices.Commander();
-    public ILegacyAuth Auth => field ??= AppServices.GetRequiredService<ILegacyAuth>();
     public IAccounts Accounts => field ??= AppServices.GetRequiredService<IAccounts>();
     public IAuthors Authors => field ??= AppServices.GetRequiredService<IAuthors>();
     public IAuthorsBackend AuthorsBackend => field ??= AppServices.GetRequiredService<IAuthorsBackend>();

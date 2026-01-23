@@ -23,7 +23,7 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
         _accounts = AppHost.Services.GetRequiredService<IAccounts>();
         _tester = AppHost.NewPlaywrightTester(Out);
         _adminSession = Session.New();
-        await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
+        await _tester.AppHost.SignIn(_adminSession, new AccountFull("BobAdmin"));
     }
 
     protected override async Task DisposeAsync()

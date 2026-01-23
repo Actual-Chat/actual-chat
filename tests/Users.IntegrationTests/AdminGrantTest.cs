@@ -27,15 +27,15 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task UserWithActualChatDomainAndGoogleIdentityShouldBeGrantedWithAdminRights()
     {
         // arrange
-        var user = new User("", "BobAdmin")
+        var accountToSignIn = new AccountFull("BobAdmin")
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "123"))
             .WithClaim(ClaimTypes.Email, $"bob{Constants.Team.EmailSuffix}");
 
         // act
-        var account = await _tester.SignIn(user);
+        var account = await _tester.SignIn(accountToSignIn);
 
         // assert
-        user.Should().NotBeNull();
+        account.Should().NotBeNull();
         account.IsAdmin.Should().BeTrue();
     }
 
@@ -43,15 +43,15 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task UserWithoutGoogleIdentityShouldNotBeGrantedWithAdminRights()
     {
         // arrange
-        var user = new User("", "JackNotAdmin")
-            .WithIdentity(MicrosoftAccountDefaults.AuthenticationScheme)
+        var accountToSignIn = new AccountFull("JackNotAdmin")
+            .WithIdentity(new UserIdentity(MicrosoftAccountDefaults.AuthenticationScheme, Ulid.NewUlid().ToString()))
             .WithClaim(ClaimTypes.Email, $"jack{Constants.Team.EmailSuffix}");
 
         // act
-        var account = await _tester.SignIn(user);
+        var account = await _tester.SignIn(accountToSignIn);
 
         // assert
-        user.Should().NotBeNull();
+        account.Should().NotBeNull();
         account.IsAdmin.Should().BeFalse();
     }
 
@@ -59,13 +59,14 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task UserWithNotActualChatDomainShouldNotBeGrantedWithAdminRights()
     {
         // arrange
-        var user = new User("", "AnnNotAdmin").WithIdentity(GoogleDefaults.AuthenticationScheme);
+        var accountToSignIn = new AccountFull("AnnNotAdmin")
+            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, Ulid.NewUlid().ToString()));
 
         // act
-        var account = await _tester.SignIn(user);
+        var account = await _tester.SignIn(accountToSignIn);
 
         // assert
-        user.Should().NotBeNull();
+        account.Should().NotBeNull();
         account.IsAdmin.Should().BeFalse();
     }
 }

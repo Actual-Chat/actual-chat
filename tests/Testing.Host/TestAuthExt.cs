@@ -13,46 +13,41 @@ public static class TestAuthExt
         this IWebTester tester,
         AccountFull account,
         CancellationToken cancellationToken = default)
-        => tester.AppHost.SignIn(tester.Session, account.User, cancellationToken);
-
-    public static Task<AccountFull> SignIn(
-        this IWebTester tester,
-        User user,
-        CancellationToken cancellationToken = default)
-        => tester.AppHost.SignIn(tester.Session, user, cancellationToken);
+        => tester.AppHost.SignIn(tester.Session, account, cancellationToken);
 
     public static Task<AccountFull> SignInAsNew(
         this IWebTester tester,
         string namePrefix,
         CancellationToken cancellationToken = default)
-        => SignInAsNew(tester, namePrefix, null, cancellationToken);
+        => tester.SignInAsNew(namePrefix, null, cancellationToken);
 
     public static Task<AccountFull> SignInAsNew(
         this IWebTester tester,
         string namePrefix,
-        Func<User, User>? setupUser,
+        Func<AccountFull, AccountFull>? setup,
         CancellationToken cancellationToken = default)
     {
-        var user = new User("", UniqueNames.Name(namePrefix)).WithClaim(ClaimTypes.GivenName, namePrefix);
-        return tester.AppHost.SignIn(tester.Session,
-            setupUser?.Invoke(user) ?? user,
-            cancellationToken);
+        var account = NewAccount(namePrefix);
+        return tester.AppHost.SignIn(tester.Session, setup?.Invoke(account) ?? account, cancellationToken);
     }
+
+    public static AccountFull NewAccount(string name)
+        => new AccountFull(name).WithClaim(ClaimTypes.GivenName, name);
 
     public static async Task<AccountFull> SignIn(
         this AppHost appHost,
         Session session,
-        User user,
+        AccountFull account,
         CancellationToken cancellationToken = default)
     {
         var services = appHost.Services;
-        if (user.Identities.IsEmpty)
-            user = user.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
-        var userIdentity = user.Identities.Keys.First();
+        if (account.Identities.IsEmpty)
+            account = account.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
+        var userIdentity = account.Identities.Keys.First();
         var commander = services.Commander();
         var accounts = services.GetRequiredService<IAccounts>();
 
-        var command = new AccountsBackend_SignIn(session, user, userIdentity);
+        var command = new AccountsBackend_SignIn(session, account, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
         return await WaitTillAuthenticationHappened(accounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }
@@ -60,16 +55,16 @@ public static class TestAuthExt
     // TODO: (FC) Remove when AY takes a look at hanging Account.GetOwn on client side
     public static async Task<AccountFull> SignInClientSide(
         this IWebClientTester tester,
-        User user,
+        AccountFull account,
         CancellationToken cancellationToken = default)
     {
-        if (user.Identities.IsEmpty)
-            user = user.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
-        var userIdentity = user.Identities.Keys.First();
+        if (account.Identities.IsEmpty)
+            account = account.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
+        var userIdentity = account.Identities.Keys.First();
         var commander = tester.AppServices.Commander();
 
         var session = tester.Session;
-        var command = new AccountsBackend_SignIn(session, user, userIdentity);
+        var command = new AccountsBackend_SignIn(session, account, userIdentity);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
         var accounts = tester.ClientServices.GetRequiredService<IAccounts>();
@@ -117,7 +112,7 @@ public static class TestAuthExt
             .Capture(() => accounts.GetOwn(session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         cAccount = await cAccount
-            .When(x => !x.IsGuestOrNull() && x.User.Identities.Keys.Contains(userIdentity), cancellationToken)
+            .When(x => !x.IsGuestOrNull() && x.Identities.Keys.Contains(userIdentity), cancellationToken)
             .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
             .ConfigureAwait(false);
         return cAccount.Value;

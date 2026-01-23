@@ -160,5 +160,5 @@ public static class TestSearchDataGenerator
         => (mustJoin ? "with" : "without") + $" {member.Name.NullIfEmpty() ?? "Bob"} as member";
 
     private static string GetIndexString(int index)
-        => (index + 1).ToInvariantString() + " " + index switch { 0 => " one", 1 => "two", _ => "" };
+        => (index + 1).ToInvariantString() + " " + index switch { 0 => "one", 1 => "two", _ => "" };
 }

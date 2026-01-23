@@ -81,10 +81,6 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         => SessionsBackend.IsSignOutForced(session, cancellationToken);
 
     // [ComputeMethod]
-    public virtual Task<SessionAuthInfo?> GetAuthInfo(Session session, CancellationToken cancellationToken)
-        => SessionsBackend.GetAuthInfo(session, cancellationToken);
-
-    // [ComputeMethod]
     public virtual Task<SessionInfo?> GetSessionInfo(Session session, CancellationToken cancellationToken)
         => SessionsBackend.Get(session, cancellationToken);
 

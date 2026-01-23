@@ -29,8 +29,8 @@ public sealed class PhoneAuthHandler(
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
         var session = Context.GetSessionFromCookie();
-        var authInfo = await Accounts.GetAuthInfo(session, CancellationToken.None).ConfigureAwait(false);
-        if (authInfo?.IsAuthenticated() == true) {
+        var account = await Accounts.GetOwn(session, CancellationToken.None).ConfigureAwait(false);
+        if (!account.IsGuest) {
             Response.Redirect(properties.RedirectUri ?? UrlMapper.BaseUrl);
             return;
         }
@@ -42,15 +42,11 @@ public sealed class PhoneAuthHandler(
     protected override async Task<HandleRequestResult> HandleRemoteAuthenticateAsync()
     {
         var session = Context.GetSessionFromCookie();
-        var authInfo = await Accounts.GetAuthInfo(session, Context.RequestAborted).ConfigureAwait(false);
-        if (authInfo?.IsAuthenticated() != true)
+        var account = await Accounts.GetOwn(session, Context.RequestAborted).ConfigureAwait(false);
+        if (account.IsGuest)
             return HandleRequestResult.NoResult();
 
-        var user = await AccountsBackend.GetUser(authInfo.UserId, Context.RequestAborted).ConfigureAwait(false);
-        if (user == null)
-            return HandleRequestResult.NoResult();
-
-        user = user.WithClaim(ClaimTypes.NameIdentifier, user.GetPhoneIdentity().SchemaBoundId);
+        var user = account.ToUser().WithClaim(ClaimTypes.NameIdentifier, account.ToUser().GetPhoneIdentity().SchemaBoundId);
         var claims = user.Claims.Select(x => new Claim(x.Key, x.Value));
         var authenticationType = Options.ClaimsIssuer.NullIfEmpty() ?? AuthSchema.Phone;
         var identity = new ClaimsIdentity(claims, authenticationType);
