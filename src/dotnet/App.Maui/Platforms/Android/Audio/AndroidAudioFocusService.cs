@@ -2,7 +2,7 @@ using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using Android.Media;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.App.Maui.Audio;
 
 public class AndroidAudioFocusService : MauiAudioFocusService
 {
@@ -18,27 +18,26 @@ public class AndroidAudioFocusService : MauiAudioFocusService
         _focusHelper.OnOutputDevicesChanged += OnOutputDevicesChanged;
     }
 
-    protected override Task<AudioFocusHandle?> RequestAudioFocus(AudioMode mode)
+    protected override async Task<AudioFocusHandle?> RequestAudioFocus(AudioMode mode)
     {
         Log.LogInformation("-> RequestAudioFocus, requested mode: '{Mode}', active focus handle id: '{Id}'", mode, _handle?.Id);
 
-        var success = mode switch
-        {
-            AudioMode.Recording => _focusHelper.RequestFocusForCall(),
+        var success = mode switch {
+            AudioMode.Recording => await _focusHelper.RequestFocusForCallAsync().ConfigureAwait(false),
             AudioMode.Tunes => _focusHelper.RequestFocusForNotification(),
-            _ => _focusHelper.RequestFocusForPlayback()
+            _ => await _focusHelper.RequestFocusForPlaybackAsync().ConfigureAwait(false)
         };
         if (!success) {
             Log.LogInformation("Failed to get audio focus");
             _handle = null;
-            return Task.FromResult<AudioFocusHandle?>(null);
+            return null;
         }
 
         var id = Interlocked.Increment(ref _idSeed);
         var handle = new AudioFocusHandle(id, OnRelease);
         _handle = handle;
-        Log.LogInformation("-- RequestFocusForPlayback: Success. Active focus handle id: {Id}, mode: {Mode}", handle.Id, mode);
-        return Task.FromResult<AudioFocusHandle?>(handle);
+        Log.LogInformation("-- RequestAudioFocus: Success. Active focus handle id: {Id}, mode: {Mode}", handle.Id, mode);
+        return handle;
 
         void OnRelease(AudioFocusHandle self)
         {
@@ -67,8 +66,8 @@ public class AndroidAudioFocusService : MauiAudioFocusService
 
     private void OnOutputDevicesChanged()
     {
+        // Note: Audio routing is now handled internally by AudioFocusHelper's device router
+        // when devices change during active focus. This callback is kept for logging/monitoring.
         Log.LogInformation("-> OnOutputDevicesChanged. Active focus handle id: {Id}", _handle?.Id);
-        if (_handle != null)
-            _focusHelper.ApplyPreferredRoute();
     }
 }
