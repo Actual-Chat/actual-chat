@@ -1,19 +1,16 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using System.ComponentModel.DataAnnotations
 @inherits SimpleStep<AppUIHub>;
-
 @if (CurrentStep != this) {
     return;
 }
 
 <div class="phone-verifier">
-    @if (Stepper.CurrentStepIndex == 0) {
-        <p class="text-title-1 text-center">Welcome to @CoreConstants.AppName!</p>
-    }
-    <p class="text-headline-1 mt-6">
-        Please verify your phone number.
+    <p class="step-title">Welcome to @CoreConstants.AppName!</p>
+    <p class="step-subtitle">
+        Please verify your phone number
     </p>
-    <p class="text-text-1 mt-2">
+    <p class="step-comment">
         We collect this information to help you find friends in your contacts list who are already using @CoreConstants.AppName.
     </p>
     <Form
@@ -31,7 +28,6 @@
                 <TextBox
                     Id="phone"
                     @bind-Value="_model.Phone"
-                    @bind-Value:after="OnPhoneChanged"
                     Autocomplete="tel"
                     type="tel"
                     inputmode="tel"/>
@@ -47,7 +43,7 @@
         <div class="c-incut">
             <Button
                 Class="verify-btn btn-w-full"
-                IsDisabled="@(_validationState != ValidationState.Valid)"
+                IsDisabled="@(!IsPhoneValid)"
                 Click="@OnVerifyClick">
                 Verify
             </Button>
@@ -113,40 +109,11 @@
             _model.Phone = account.Phone.ToReadable();
 
         await CaptchaUI.EnsureInitialized();
-        await OnPhoneChanged();
     }
 
-    private async Task OnPhoneChanged() {
-        _validationState = ValidationState.None;
-        _showVerificationStatus = false;
-
-        var phoneString = _model.Phone;
-        if (string.IsNullOrWhiteSpace(phoneString)) {
-            _validationState = ValidationState.Invalid;
-            StateHasChanged();
-            return;
-        }
-
-        if (!phoneString.StartsWith("+", StringComparison.Ordinal)) {
-            _validationState = ValidationState.Invalid;
-            StateHasChanged();
-            return;
-        }
-
-        var digits = new string(phoneString.Skip(1).Where(char.IsDigit).ToArray());
-        if (digits.Length < 8 || digits.Length > 15) {
-            _validationState = ValidationState.Invalid;
-            StateHasChanged();
-            return;
-        }
-
-        var parsedPhone = await Phones.Parse(phoneString, CancellationToken.None);
-        _validationState = parsedPhone != null
-            ? ValidationState.Valid
-            : ValidationState.Invalid;
-
-        StateHasChanged();
-    }
+    private bool IsPhoneValid =>
+        _model.Phone.StartsWith("+") &&
+        _model.Phone.Count(char.IsDigit) is >= 8 and <= 15;
 
     protected override async Task<bool> Validate() {
         var isValid = _validationState != ValidationState.Invalid

@@ -1,5 +1,5 @@
 .onboarding-modal.modal-frame {
-    @apply md:w-80 lg:w-96 2xl:w-96;
+    @apply w-96;
     @apply p-0;
     @apply text-01;
 }
@@ -65,7 +65,7 @@
 .analytics-step > .c-content {
     @apply p-4;
     @apply rounded-lg;
-    @apply bg-input;
+    @apply bg-white;
     @apply text-justify text-headline-1 font-normal;
 }
 .analytics-step > .c-content > a {
@@ -144,7 +144,7 @@ body.narrow .stepper-image-filler {
     @apply hidden;
 }
 .stepper-body:has(.onboarding-tutorial) {
-    @apply justify-end;
+    @apply justify-center;
     @apply overflow-y-auto;
     mask-image: linear-gradient(to bottom,
         rgba(0, 0, 0, 0) 0,
@@ -306,7 +306,19 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 .onboarding-stepper .avatar-step .btn.btn-modal {
     @apply bg-white;
 }
-
 .languages-step .form.form-y {
     @apply w-full;
+}
+.onboarding-modal .stepper-footer .btn.btn-cancel {
+    @apply bg-white;
+}
+.step-title {
+    @apply mb-8;
+    @apply text-headline-5 text-center;
+}
+.step-subtitle {
+    @apply text-headline-7 text-center;
+}
+.step-comment {
+    @apply text-caption-2 mt-2;
 }
