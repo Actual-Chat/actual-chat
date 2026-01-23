@@ -53,7 +53,6 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Phone = ActualChat.Phone.Parse("1-2345678901"),
             Email = "test@example.com",
             Name = "Test User",
-            Username = "testuser",
             IsGreetingCompleted = true,
             IsEmailVerified = true,
             CreatedAt = new Moment(DateTime.UtcNow),
@@ -86,7 +85,6 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             Phone = null,
             Email = "test@example.com",
             Name = "Test User",
-            Username = "testuser",
             IsGreetingCompleted = false,
             IsEmailVerified = true,
             CreatedAt = new Moment(DateTime.UtcNow),
@@ -145,7 +143,6 @@ public class AccountSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         actual.Phone.Should().Be(expected.Phone);
         actual.Email.Should().Be(expected.Email);
         actual.Name.Should().Be(expected.Name);
-        actual.Username.Should().Be(expected.Username);
         actual.IsGreetingCompleted.Should().Be(expected.IsGreetingCompleted);
         actual.IsEmailVerified.Should().Be(expected.IsEmailVerified);
         actual.CreatedAt.Should().Be(expected.CreatedAt);
