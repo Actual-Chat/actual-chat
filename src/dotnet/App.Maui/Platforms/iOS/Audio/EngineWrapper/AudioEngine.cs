@@ -67,7 +67,11 @@ public class AudioEngine : IDisposable
             if (!_wasStarted)
                 return;
 
-            EnsureEngineRunningUnsafe();
+            if (!TryEnsureEngineRunningUnsafe()) {
+                Log.LogWarning("{Mode}.Resume: Engine failed, attempting reset", Mode);
+                ResetEngineUnsafe();
+                EnsureEngineRunningUnsafe();
+            }
         }
         _isRunning.Invalidate();
     }
@@ -149,6 +153,28 @@ public class AudioEngine : IDisposable
             nsError.Assert();
         }
         _wasStarted = true;
+    }
+
+    private bool TryEnsureEngineRunningUnsafe()
+    {
+        if (_engine.Running)
+            return true;
+
+        Log.LogInformation("{Mode}.TryEnsureEngineRunningUnsafe: Engine not running, attempting to start", Mode);
+        var success = _engine.StartAndReturnError(out var nsError);
+        if (!success || nsError != null) {
+            Log.LogWarning("{Mode}.TryEnsureEngineRunningUnsafe: Failed to start: {Error}", Mode, nsError?.LocalizedDescription);
+            return false;
+        }
+        _wasStarted = true;
+        return true;
+    }
+
+    private void ResetEngineUnsafe()
+    {
+        Log.LogInformation("{Mode}.ResetEngineUnsafe: Resetting engine", Mode);
+        _engine.Stop();
+        _engine.Reset();
     }
 
     private Task<bool> GetIsRunning(CancellationToken cancellationToken)

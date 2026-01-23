@@ -8,6 +8,8 @@ namespace ActualChat.App.Maui.Audio;
 
 public class IosAudioFocusService : MauiAudioFocusService
 {
+    private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.2, 3);
+
     private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
     private readonly ConcurrentDictionary<AudioMode, AudioMode> _modes = new () {
         [AudioMode.Tunes] = AudioMode.Tunes,
@@ -81,7 +83,16 @@ public class IosAudioFocusService : MauiAudioFocusService
     }
 
     private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
-        => Log.LogInformation("Audio engine configuration change");
+    {
+        Log.LogInformation("Audio engine configuration change detected");
+        _ = BackgroundTask.Run(async () => {
+            using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
+            if (_handle != null) {
+                var currentMode = _modes.Keys.DefaultIfEmpty(AudioMode.Tunes).Max();
+                AudioEngines.Resume(currentMode);
+            }
+        }, Log, "Failed to handle configuration change", StopToken);
+    }
 
     private async Task HandleInterruption(AVAudioSessionInterruptionType type,
         AVAudioSessionInterruptionReason reason, bool? wasSuspended, AVAudioSessionInterruptionOptions option)
@@ -99,11 +110,34 @@ public class IosAudioFocusService : MauiAudioFocusService
             _handle?.RaiseLostFocus(true, false);
             break;
         case AVAudioSessionInterruptionType.Ended:
-            if (option == AVAudioSessionInterruptionOptions.ShouldResume)
-                _handle?.RaiseRecoverFocus();
+            // Always attempt recovery - ShouldResume flag is unreliable for phone calls
+            await RecoverFromInterruption().ConfigureAwait(false);
             break;
         default:
             throw new ArgumentOutOfRangeException(nameof(type), type, "Invalid interruption type");
         }
+    }
+
+    private async Task RecoverFromInterruption()
+    {
+        const int maxRetries = 3;
+
+        for (var attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                await Task.Delay(RetryDelays.GetDelay(attempt), StopToken).ConfigureAwait(false);
+
+                var currentMode = _modes.Keys.DefaultIfEmpty(AudioMode.Tunes).Max();
+                await AudioSession.ReactivateAfterInterruption(currentMode).ConfigureAwait(false);
+                AudioEngines.Resume(currentMode);
+                _handle?.RaiseRecoverFocus();
+
+                Log.LogInformation("Recovery successful on attempt {Attempt}", attempt + 1);
+                return;
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogWarning(e, "Recovery attempt {Attempt} failed", attempt + 1);
+            }
+        }
+        Log.LogError("All recovery attempts failed after {MaxRetries} retries", maxRetries);
     }
 }

@@ -20,6 +20,24 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task Reconfigure(AudioMode mode)
         => MainThread.InvokeOnMainThreadAsync(() => ReconfigureUnsafe(mode));
 
+    public Task ReactivateAfterInterruption(AudioMode mode)
+        => MainThread.InvokeOnMainThreadAsync(() => ReactivateAfterInterruptionUnsafe(mode));
+
+    private void ReactivateAfterInterruptionUnsafe(AudioMode mode)
+    {
+        var session = AVAudioSession.SharedInstance();
+        ConfigureUnsafe(session, mode);
+
+        var success = session.SetActive(true, out var error);
+        if (!success) {
+            Log.LogWarning("Failed to re-activate audio session: {Error}", error?.LocalizedDescription);
+            // Deactivate and retry
+            session.SetActive(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation, out _);
+            session.SetActive(true, out error);
+            error.Assert("Failed to re-activate audio session after retry");
+        }
+    }
+
     private void ReconfigureUnsafe(AudioMode minMode)
     {
         var session = AVAudioSession.SharedInstance();
