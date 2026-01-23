@@ -22,31 +22,48 @@
 
     private string[]? _fontSizes;
     private string? _fontSize;
+    private bool _isJsInitialized;
 
     private FontSizeUI FontSizeUI => Hub.FontSizeUI;
+
+    public void Dispose() {
+        BlazorRef?.Dispose();
+    }
 
     protected override async Task OnInitializedAsync() {
         await FontSizeUI.FontSize.WhenFirstTimeRead;
         _fontSizes = await FontSizeUI.List(CancellationToken.None);
         _fontSize = FontSizeUI.FontSize.Value;
+        if (_fontSizes != null && _fontSizes.Length > 0) {
+            if (_fontSize == null || !_fontSizes.Contains(_fontSize)) {
+                _fontSize = _fontSizes[0];
+            }
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                JSCreateMethod,
-                Ref,
-                BlazorRef,
-                _fontSizes,
-                _fontSize
-            );
+        if (_isJsInitialized || _fontSizes == null || _fontSizes.Length == 0)
+            return;
+
+        if (_fontSize == null || !_fontSizes.Contains(_fontSize)) {
+            _fontSize = _fontSizes[0];
         }
+
+        BlazorRef = DotNetObjectReference.Create(this);
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(
+            JSCreateMethod,
+            Ref,
+            BlazorRef,
+            _fontSizes,
+            _fontSize
+        );
+        _isJsInitialized = true;
     }
 
     [JSInvokable]
     public async Task OnFontSizeChangedFromJs(int index) {
-        if (_fontSizes == null)
+        if (_fontSizes == null || index < 0 || index >= _fontSizes.Length)
             return;
 
         var newValue = _fontSizes[index];
