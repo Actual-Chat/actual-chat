@@ -107,12 +107,12 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 
 .playback-wrapper.listen-off-to-on,
 .playback-wrapper.listen-on {
-    @apply outline outline-2 outline-[var(--violet-60)] outline-offset-[-1px];
+    @apply outline outline-2 outline-primary outline-offset-[-1px];
     @apply bg-round-focus;
 }
 .list-view-layout:has(.chat-activity-panel.listening) .playback-wrapper.listen-off-to-on,
 .list-view-layout:has(.chat-activity-panel.listening) .playback-wrapper.listen-on {
-    @apply outline-[var(--violet-60)] outline-offset-[-1px];
+    @apply outline-primary outline-offset-[-1px];
 }
 .playback-wrapper.listen-off-to-on {
     animation: off-to-on-outline 1000ms ease-in-out forwards;
@@ -136,7 +136,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
         box-shadow: 0 0 0 0 var(--transparent);
     }
     50% {
-        box-shadow: 0 0 0.5rem 0 var(--violet-60);
+        box-shadow: 0 0 0.5rem 0 var(--primary);
     }
 }
 
@@ -855,8 +855,8 @@ body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings
     @apply text-primary;
 }
 .list-view-layout:has(.chat-activity-panel.listening) .playback-toggle-svg.on {
-    @apply text-[var(--violet-60)];
+    @apply text-primary;
 }
 .header-activity-panel-wrapper .playback-toggle-svg {
-    @apply text-[var(--violet-60)];
+    @apply text-primary;
 }
