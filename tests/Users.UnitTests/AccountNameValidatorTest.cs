@@ -44,7 +44,7 @@ public class AccountNameValidatorTest
     public void Normalize_ShouldPrependGeneratedName_WhenTooShort(string name)
     {
         var result = _validator.Normalize(name);
-        result.Should().MatchRegex(@"^[A-Z][a-z]+\s[A-Z][a-z]+"); // Matches "Word Word" pattern
+        result.Should().MatchRegex(@"^[A-Z][a-z.]+\s[A-Z][a-z]+"); // Matches "Word Word" or "Dr. Word" pattern
         result.Length.Should().BeGreaterThanOrEqualTo(4);
     }
 
