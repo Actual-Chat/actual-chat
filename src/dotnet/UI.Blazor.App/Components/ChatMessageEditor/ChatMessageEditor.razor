@@ -298,7 +298,7 @@
 
     private async Task OnCancel(CancellationToken cancellationToken = default)
     {
-        await ChatEditorUI.HideRelatedEntry();
+        await ChatEditorUI.HideRelatedEntry().WaitAsync(cancellationToken);
         await MarkupEditorRef.Clear(mustFocus: true);
     }
 

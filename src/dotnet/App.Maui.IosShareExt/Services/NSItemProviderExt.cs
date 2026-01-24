@@ -1,4 +1,4 @@
-using ActualChat.Media;
+using ActualChat.Maui;
 using UniformTypeIdentifiers;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
@@ -12,52 +12,35 @@ public static class NSItemProviderExt
     ];
     public static readonly IReadOnlyList<UTType> TextTypes = PlainTextTypes.Concat([UTTypes.Url]).ToArray();
 
-    public static bool HasText(this NSItemProvider item)
-        => item.RegisteredContentTypes.Intersect(TextTypes).Any();
-
-    public static async Task<string> GetText(this NSItemProvider item)
+    extension(NSItemProvider item)
     {
-        if (item.RegisteredContentTypes.Intersect(PlainTextTypes).Any())
-            return await item.Read<NSString>(UTTypes.PlainText).ConfigureAwait(false);
+        public bool HasText()
+            => item.RegisteredContentTypes.Intersect(TextTypes).Any();
 
-        if (item.HasItemConformingTo(UTTypes.Url.Identifier)) {
-            var url = await item.Read<NSUrl>(UTTypes.Url).ConfigureAwait(false);
-            return url.ToString();
-        }
-
-        throw new InvalidOperationException("Unexpected content types: "
-            + string.Join(", ", item.RegisteredContentTypes));
-    }
-
-    public static async Task<T> Read<T>(this NSItemProvider item, UTType contentType)
-        where T : NSObject
-    {
-        return (T)await item.LoadItemAsync(contentType.Identifier, null).ConfigureAwait(false);
-    }
-
-    public static async Task<UploadInput> ToUploadInput(this NSItemProvider item)
-    {
-        var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(item.RegisteredContentTypes.First().Identifier).ConfigureAwait(false);
-        var path = inPlaceResult.FileUrl.Path!;
-        return new UploadInput(ImplyContentType(), Path.GetFileName(path), File.OpenRead(path));
-
-        string ImplyContentType()
+        public async Task<string> GetText()
         {
-            var fileName = Path.GetFileName(path);
-            if (MediaMimeTypes.TryGetMimeType(fileName, out var mimeType))
-                return mimeType;
+            if (item.RegisteredContentTypes.Intersect(PlainTextTypes).Any())
+                return await item.Read<NSString>(UTTypes.PlainText).ConfigureAwait(false);
 
-            foreach (var utType in item.RegisteredContentTypes) {
-                var ext = utType.PreferredFilenameExtension;
-                if (!ext.IsNullOrEmpty() && MediaMimeTypes.TryGetMimeType(ext, out mimeType))
-                    return mimeType;
-
-                var preferredMimeType = utType.PreferredMimeType;
-                if (!preferredMimeType.IsNullOrEmpty() && MediaMimeTypes.TryGetExtension(preferredMimeType, out _))
-                    return preferredMimeType;
+            if (item.HasItemConformingTo(UTTypes.Url.Identifier)) {
+                var url = await item.Read<NSUrl>(UTTypes.Url).ConfigureAwait(false);
+                return url.ToString();
             }
 
-            return "application/octet-stream";
+            throw new InvalidOperationException("Unexpected content types: "
+                + string.Join(", ", item.RegisteredContentTypes));
         }
+
+        public async Task<UploadInput> ToUploadInput()
+        {
+            var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(item.RegisteredContentTypes.First().Identifier).ConfigureAwait(false);
+            return new UploadInput(inPlaceResult.ImplyMimeType(item),
+                inPlaceResult.Path.FileName,
+                File.OpenRead(inPlaceResult.Path));
+        }
+
+        private async Task<T> Read<T>(UTType contentType)
+            where T : NSObject
+            => (T)await item.LoadItemAsync(contentType.Identifier, null).ConfigureAwait(false);
     }
 }

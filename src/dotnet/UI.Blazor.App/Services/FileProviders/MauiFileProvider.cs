@@ -1,5 +1,5 @@
-using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Services;
+using ActualLab.IO;
 using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -12,7 +12,7 @@ public partial class MauiFileProvider : IFileProvider
     [DataMember, MemoryPackOrder(0)]
     public FileMetadata Metadata { get; init; } = new ();
     [DataMember, MemoryPackOrder(1)]
-    public string FileRef { get; init; } = "";
+    public FilePath FileRef { get; init; } = "";
 
     private ChunkedFileUploader ChunkedFileUploader => _services.GetRequiredService<ChunkedFileUploader>();
     private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().Create(FileRef);
