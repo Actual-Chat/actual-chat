@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
@@ -210,6 +211,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     {
         var dbContext = await DbHub.CreateDbContext(readWrite: true, default);
         await using var _ = dbContext;
+        await dbContext.Accounts.Lock(userId, default);
         var dbAccount = await dbContext.Accounts.FirstAsync(a => a.Id == userId.Value);
         dbAccount.FormatVersion = 0;
         await dbContext.SaveChangesAsync();
@@ -220,6 +222,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     {
         var dbContext = await DbHub.CreateDbContext(readWrite: true, default);
         await using var _ = dbContext;
+        await dbContext.Accounts.Lock(userId, default);
         var dbAccount = await dbContext.Accounts.FirstAsync(a => a.Id == userId.Value);
         dbAccount.FormatVersion = 0;
         dbAccount.Claims = ImmutableDictionary<string, string>.Empty;
@@ -231,6 +234,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     {
         var dbContext = await DbHub.CreateDbContext(readWrite: true, default);
         await using var _ = dbContext;
+        await dbContext.Accounts.Lock(userId, default);
         var dbAccount = await dbContext.Accounts
             .Include(a => a.Identities)
             .FirstAsync(a => a.Id == userId.Value);
