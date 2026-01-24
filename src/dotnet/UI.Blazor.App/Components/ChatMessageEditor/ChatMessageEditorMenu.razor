@@ -4,7 +4,8 @@
 @inherits Menu<AppUIHub>
 
 <div class="chat-message-editor-menu">
-    @if (HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Android) {
+    @if (HostInfo.HostKind.IsMauiApp()
+        && HostInfo.AppKind is AppKind.Android or AppKind.Ios) {
         <MenuEntry
             Icon="icon-image"
             Text="Choose Photo"
@@ -29,12 +30,12 @@
 
 @code {
     private async Task OnAttachClick(string acceptTypes = "") {
-        await WhenClosed;
+        await WhenClosed.ConfigureAwait(false);
         _ = UIEventHub.Publish(new AttachButtonClickEvent(acceptTypes));
     }
 
     private async Task OnMentionClick() {
-        await WhenClosed;
+        await WhenClosed.ConfigureAwait(false);
         _ = UIEventHub.Publish(new MentionButtonClickEvent());
     }
 }

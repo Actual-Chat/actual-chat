@@ -1,21 +1,22 @@
+using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
+using ActualLab.IO;
 
 namespace ActualChat.App.Maui.Services;
 
 public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFilePicker
 {
-    private static ILogger Log { get; } = StaticLog.For<MauiAttachmentFilePicker>();
+    protected IServiceProvider Services => services;
+    protected ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<AttachFileInfo[]> PickFiles(string acceptTypes)
     {
-#if ANDROID
-        if (!acceptTypes.IsNullOrEmpty()) {
+        if (MediaTypeExt.IsVisualMedia(acceptTypes)) {
             var visualMediaFileInfos = await TryPickVisualMediaFiles(acceptTypes).ConfigureAwait(false);
             if (visualMediaFileInfos is not null)
                 return visualMediaFileInfos;
         }
-#endif
 
         var temp = await FilePicker.Default.PickMultipleAsync().ConfigureAwait(true);
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
@@ -27,19 +28,13 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
             return [];
 
         var fileInfos = new List<AttachFileInfo>();
-        var fileRefs = new List<string>();
+        var fileRefs = new List<FilePath>();
         foreach (var fileResult in filesResults) {
             long fileLength;
             var stream = await fileResult.OpenReadAsync().ConfigureAwait(false);
             await using (stream.ConfigureAwait(false))
                 fileLength = stream.Length;
-#if ANDROID
-            var javaFile = new Java.IO.File(fileResult.FullPath);
-            var androidUri = Android.Net.Uri.FromFile(javaFile)!;
-            var filePath = androidUri.ToString()!;
-#else
-            var filePath = fileResult.FullPath;
-#endif
+            var filePath = GetFullPath(fileResult);
             var fileProvider = new MauiFileProvider {
                 Metadata = new () {
                     FileName = fileResult.FileName,
@@ -59,23 +54,9 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
         return fileInfos.ToArray();
     }
 
-#if ANDROID
-    private VisualMediaFileChooser VisualMediaFileChooser => field ??= new VisualMediaFileChooser(MainActivity.Current);
+    protected virtual FilePath GetFullPath(FileResult fileResult)
+        => fileResult.FullPath;
 
-    private AndroidContentDownloader Downloader => field ??= services.GetRequiredService<AndroidContentDownloader>();
-
-    private async Task<AttachFileInfo[]?> TryPickVisualMediaFiles(string acceptTypes)
-    {
-        var tcs = TaskCompletionSourceExt.New<Android.Net.Uri[]>();
-        if (!VisualMediaFileChooser.OnShowFileChooser(acceptTypes, c => tcs.TrySetResult(c)))
-            return null;
-
-        var uris = await tcs.Task.ConfigureAwait(false);
-        Log.LogDebug("Picked {Count} visual media files. Uris:\n{Uris}",
-            uris.Length,
-            string.Join(Environment.NewLine, uris.Select(c => "'" + c + "'"))
-        );
-        return Downloader.ConvertToAttachFileInfos(uris);
-    }
-#endif
+    protected virtual Task<AttachFileInfo[]?> TryPickVisualMediaFiles(string acceptTypes)
+        => Task.FromResult<AttachFileInfo[]?>(null);
 }
