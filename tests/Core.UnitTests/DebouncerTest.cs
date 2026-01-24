@@ -88,7 +88,7 @@ public class DebouncerTest(ITestOutputHelper @out) : TestBase(@out)
         clock.OffsetBy(100);
         debouncer.Throttle(2);
         clock.OffsetBy(2000);
-        await Task.Delay(300); // Just to make sure async ops complete
+        await debouncer.WhenCompleted(); // Wait for first throttle to complete
         debouncer.Throttle(3);
         clock.OffsetBy(2000);
 
@@ -102,7 +102,7 @@ public class DebouncerTest(ITestOutputHelper @out) : TestBase(@out)
         clock.OffsetBy(100);
         debouncer.Throttle(2, true);
         clock.OffsetBy(2000);
-        await Task.Delay(300); // Just to make sure async ops complete
+        await debouncer.WhenCompleted(); // Wait for first throttle to complete
         debouncer.Throttle(3, true);
         clock.OffsetBy(2000);
 
