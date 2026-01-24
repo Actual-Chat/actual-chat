@@ -28,7 +28,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
     private IDbEntityResolver<string, DbUser> DbUserResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbUser>>();
     private UsersSettings UsersSettings => field ??= Services.GetRequiredService<UsersSettings>();
-    private UserNamer UserNamer => field ??= Services.GetRequiredService<UserNamer>();
+    private AccountNameValidator AccountNameValidator => field ??= Services.GetRequiredService<AccountNameValidator>();
 
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
@@ -280,7 +280,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var mustResetDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
         account = account with {
             Version = VersionGenerator.NextVersion(dbAccount.Version),
-            Name = UserNamer.NormalizeName(account.Name),
+            Name = AccountNameValidator.Normalize(account.Name),
         };
         dbAccount.UpdateFrom(account);
         dbUser.UpdateFrom(account);
@@ -430,13 +430,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     {
         var name = account.Name;
         if (!name.IsNullOrEmpty())
-            return UserNamer.NormalizeName(name);
+            return AccountNameValidator.Normalize(name);
 
         name = account.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
         var surname = account.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
         if (!surname.IsNullOrEmpty())
             name = $"{name} {surname}";
-        return UserNamer.NormalizeName(name);
+        return AccountNameValidator.Normalize(name);
     }
 
     private async Task UpdateDbAccount(
@@ -483,7 +483,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (name.IsNullOrEmpty())
             name = account.Name;
         // Normalize name
-        name = UserNamer.NormalizeName(name);
+        name = AccountNameValidator.Normalize(name);
 
         account = account with {
             Id = UserId.Parse(userId),
