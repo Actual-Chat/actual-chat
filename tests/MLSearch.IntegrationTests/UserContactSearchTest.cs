@@ -2,7 +2,6 @@ using ActualChat.Contacts;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using ActualChat.Testing.Host.Assertion;
-using ActualChat.Users;
 
 namespace ActualChat.MLSearch.IntegrationTests;
 
@@ -221,7 +220,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     {
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
-        await Tester.SignInAsAlice();
+        await Tester.SignInAsUniqueAlice();
         var places = await Tester.CreatePlaceContacts(bob, UniquePart);
         var people = await Tester.CreateUserContacts(bob, places, UniquePart);
         await Tester.SignIn(bob);
@@ -354,7 +353,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         var strangerFromPlace2 = await CreateAccount("Place 2 member - Not Bob's friend");
         var friendFromBothPlaces = await CreateAccount("Both places member - Bob's friend");
         var strangerFromBothPlaces = await CreateAccount("Both places member - Not Bob's friend");
-        var bob = await Tester.SignInAsBob();
+        var bob = await Tester.SignInAsUniqueBob();
 
         await Tester.SignIn(alice);
         await Tester.CreatePlace(false,
