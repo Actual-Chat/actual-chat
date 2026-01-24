@@ -10,8 +10,8 @@ public static class UsersDbContextExt
         CancellationToken cancellationToken)
     {
         var dbAccounts = forUpdate
-            ? dbContext.Set<DbAccount>().ForNoKeyUpdate()
-            : dbContext.Set<DbAccount>();
+            ? dbContext.Accounts.ForNoKeyUpdate()
+            : dbContext.Accounts;
         var dbAccount = await dbAccounts
             .FirstOrDefaultAsync(a => Equals(a.Id, userId.Value), cancellationToken)
             .ConfigureAwait(false);
@@ -26,8 +26,8 @@ public static class UsersDbContextExt
         CancellationToken cancellationToken)
     {
         var dbUsers = forUpdate
-            ? dbContext.Set<DbUser>().ForNoKeyUpdate()
-            : dbContext.Set<DbUser>();
+            ? dbContext.Users.ForNoKeyUpdate()
+            : dbContext.Users;
         var dbUser = await dbUsers
             .FirstOrDefaultAsync(u => Equals(u.Id, userId.Value), cancellationToken)
             .ConfigureAwait(false);
@@ -49,8 +49,8 @@ public static class UsersDbContextExt
 
         // Try DbAccountIdentity first (for FormatVersion >= 1 accounts)
         var dbAccountIdentities = forUpdate
-            ? dbContext.Set<DbAccountIdentity>().ForNoKeyUpdate()
-            : dbContext.Set<DbAccountIdentity>();
+            ? dbContext.AccountIdentities.ForNoKeyUpdate()
+            : dbContext.AccountIdentities;
         var dbAccountIdentity = await dbAccountIdentities
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
@@ -59,8 +59,8 @@ public static class UsersDbContextExt
 
         // Fall back to DbUserIdentity (for FormatVersion == 0 accounts)
         var dbUserIdentities = forUpdate
-            ? dbContext.Set<DbUserIdentity<string>>().ForNoKeyUpdate()
-            : dbContext.Set<DbUserIdentity<string>>();
+            ? dbContext.UserIdentities.ForNoKeyUpdate()
+            : dbContext.UserIdentities;
         var dbUserIdentity = await dbUserIdentities
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);

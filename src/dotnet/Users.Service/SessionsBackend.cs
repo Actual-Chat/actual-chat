@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,9 @@ public class SessionsBackend(
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
+        // Acquire advisory lock first to prevent deadlocks
+        await dbContext.Sessions.Lock(session.Id, cancellationToken).ConfigureAwait(false);
+
         var dbSessionInfo = await GetOrCreateDbSessionInfo(dbContext, session.Id, cancellationToken).ConfigureAwait(false);
         var sessionInfo = dbSessionInfo.ToModel(Log);
         if (sessionInfo.IsSignOutForced)
@@ -79,6 +83,9 @@ public class SessionsBackend(
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
+
+        // Acquire advisory lock first to prevent deadlocks
+        await dbContext.Sessions.Lock(session.Id, cancellationToken).ConfigureAwait(false);
 
         var dbSessionInfo = await GetDbSessionInfo(dbContext, session.Id, true, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
@@ -160,7 +167,7 @@ public class SessionsBackend(
     private async Task<DbSessionInfo> UpsertDbSessionInfo(
         UsersDbContext dbContext, string sessionId, SessionInfo sessionInfo, CancellationToken cancellationToken)
     {
-        var dbSessionInfo = await dbContext.Set<DbSessionInfo>().ForNoKeyUpdate()
+        var dbSessionInfo = await dbContext.Sessions.ForNoKeyUpdate()
             .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken)
             .ConfigureAwait(false);
         var isDbSessionInfoFound = dbSessionInfo is not null;
@@ -181,8 +188,8 @@ public class SessionsBackend(
         UsersDbContext dbContext, string sessionId, bool forUpdate, CancellationToken cancellationToken)
     {
         var dbSessionInfos = forUpdate
-            ? dbContext.Set<DbSessionInfo>().ForNoKeyUpdate()
-            : dbContext.Set<DbSessionInfo>();
+            ? dbContext.Sessions.ForNoKeyUpdate()
+            : dbContext.Sessions;
         return await dbSessionInfos
             .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken)
             .ConfigureAwait(false);

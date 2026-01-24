@@ -55,7 +55,7 @@ public sealed class DbSessionInfoTrimmer(DbSessionInfoTrimmer.Options settings, 
         await using var _ = dbContext.ConfigureAwait(false);
         dbContext.EnableChangeTracking(false);
 
-        return await dbContext.Set<DbSessionInfo>()
+        return await dbContext.Sessions
             .Where(o => o.LastSeenAt < maxLastSeenAt)
             .OrderBy(o => o.LastSeenAt)
             .Take(maxCount)

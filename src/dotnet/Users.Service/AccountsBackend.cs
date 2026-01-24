@@ -198,14 +198,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 ? await dbContext.GetDbAccount(account.Id, true, cancellationToken).ConfigureAwait(false)
                 : null;
             if (dbAccount is not null) {
-                // Existing account found by ID - update and normalize name
+                // Existing account found by ID - acquire lock first, then update
                 userId = UserId.Parse(dbAccount.Id);
+                await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
                 var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
                 dbUser.Require();
                 account = account with {
                     Name = GetNewAccountName(account)
                 };
-                await dbContext.Accounts.Lock(dbUser.Id, cancellationToken).ConfigureAwait(false);
                 await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
             }
             else {
@@ -217,7 +217,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             }
         }
         else {
-            // Existing user found by identity - load DbAccount and update
+            // Existing user found by identity - acquire lock first, then load and update
+            await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
             var dbAccount = await dbContext.GetDbAccount(userId, true, cancellationToken).ConfigureAwait(false);
             dbAccount.Require();
             var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
@@ -226,7 +227,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 Id = userId,
                 Name = GetNewAccountName(account),
             };
-            await dbContext.Accounts.Lock(dbUser.Id, cancellationToken).ConfigureAwait(false);
             await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
         }
 
@@ -331,6 +331,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        // Acquire lock before deleting to prevent conflicts with concurrent updates
+        await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
 
         await dbContext.UserPresences
             .Where(a => a.UserId == userId.Value)
@@ -490,8 +493,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Name = name,
         };
 
-        // Acquire lock before creating User and Account
-        await dbContext.Users.Lock(userId, cancellationToken).ConfigureAwait(false);
+        // Acquire lock before creating User and Account (use Accounts for consistency)
+        await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
 
         // Create DbUser
         var dbUser = new DbUser() {
