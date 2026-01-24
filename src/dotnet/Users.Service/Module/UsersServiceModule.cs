@@ -208,7 +208,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
             services.AddFlows()
                 .Add<MasterFlow>()
-                .Add<DigestFlow>();
+                .Add<DigestFlow>()
+                .Add<AccountTouchFlow>();
         }
 
         // TOTP codes - used by IPhoneAuth (API)

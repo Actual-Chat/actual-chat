@@ -18,6 +18,10 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
             await StartDigestFlows(cancellationToken).ConfigureAwait(false);
             AppliedMigrations.Add(nameof(StartDigestFlows));
         }
+        if (!AppliedMigrations.Contains(nameof(StartAccountTouchFlow))) {
+            await StartAccountTouchFlow(cancellationToken).ConfigureAwait(false);
+            AppliedMigrations.Add(nameof(StartAccountTouchFlow));
+        }
     }
 
     // Private methods
@@ -37,5 +41,13 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);
         }
+    }
+
+    private async Task StartAccountTouchFlow(CancellationToken cancellationToken)
+    {
+        // Start a single AccountTouchFlow that will iterate through all accounts
+        await Hub.NewResumeEvent<AccountTouchFlow>()
+            .Schedule(cancellationToken)
+            .ConfigureAwait(false);
     }
 }
