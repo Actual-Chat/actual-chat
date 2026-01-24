@@ -24,7 +24,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     public async Task NewAccountsShouldHaveFormatVersion1()
     {
         // Arrange & Act
-        var account = await Tester.SignInAsBob();
+        var account = await Tester.SignInAsUniqueBob();
 
         // Assert
         account.FormatVersion.Should().Be(1);
@@ -34,7 +34,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     public async Task ShouldReadAccountWithFormatVersion0()
     {
         // Arrange - create account with FormatVersion=1
-        var account = await Tester.SignInAsBob();
+        var account = await Tester.SignInAsUniqueBob();
         account.FormatVersion.Should().Be(1);
 
         // Downgrade to FormatVersion=0 to simulate legacy data
@@ -54,7 +54,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     public async Task ShouldUpgradeFormatVersionOnUpdate()
     {
         // Arrange - create account with FormatVersion=1
-        var account = await Tester.SignInAsBob();
+        var account = await Tester.SignInAsUniqueBob();
         account.FormatVersion.Should().Be(1);
 
         // Downgrade to FormatVersion=0 to simulate legacy data
@@ -80,7 +80,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     public async Task ShouldSyncClaimsOnFormatVersionUpgrade()
     {
         // Arrange - create account with claims
-        var account = await Tester.SignInAsBob();
+        var account = await Tester.SignInAsUniqueBob();
         account.Claims.Should().NotBeEmpty();
 
         // Downgrade to FormatVersion=0 and clear Claims in DbAccount
@@ -110,7 +110,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     public async Task ShouldUpgradeFormatVersionOnSignIn()
     {
         // Arrange - create account
-        var account = await Tester.SignInAsBob();
+        var account = await Tester.SignInAsUniqueBob();
         account.FormatVersion.Should().Be(1);
 
         // Downgrade to FormatVersion=0
@@ -128,7 +128,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     public async Task NewAccountsShouldHaveIdentitiesInDbAccount()
     {
         // Arrange & Act
-        var account = await Tester.SignInAsBob();
+        var account = await Tester.SignInAsUniqueBob();
 
         // Assert
         account.Identities.Should().NotBeEmpty();
@@ -143,7 +143,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     public async Task ShouldReadIdentitiesFromDbUserWhenFormatVersion0()
     {
         // Arrange - create account with identities
-        var account = await Tester.SignInAsBob();
+        var account = await Tester.SignInAsUniqueBob();
         account.Identities.Should().NotBeEmpty();
 
         // Downgrade to FormatVersion=0 and clear identities in DbAccount
@@ -163,7 +163,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     public async Task ShouldSyncIdentitiesOnFormatVersionUpgrade()
     {
         // Arrange - create account with identities
-        var account = await Tester.SignInAsBob();
+        var account = await Tester.SignInAsUniqueBob();
         account.Identities.Should().NotBeEmpty();
 
         // Downgrade to FormatVersion=0 and clear identities in DbAccount

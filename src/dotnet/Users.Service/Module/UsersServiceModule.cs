@@ -147,7 +147,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IAccountsBackend, AccountsBackend>();
         var usesAccountsBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<IAccountsBackend>().UsesImplementation();
         if (usesAccountsBackendImpl)
-            services.AddSingleton<UserNamer>(); // Used by AccountsBackend
+            services.AddSingleton<AccountNameValidator>(); // Used by AccountsBackend
         rpcHost.AddBackend<IUsersUpgradeBackend, UsersUpgradeBackend>();
 
         // UserPresences
