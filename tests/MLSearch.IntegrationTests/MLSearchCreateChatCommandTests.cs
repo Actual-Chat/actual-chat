@@ -14,7 +14,7 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        var someUserAccount = await tester.SignInAsBob();
+        var someUserAccount = await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var command1 = new MLSearch_CreateChat(session, "Any-title", default);
         var command2 = new MLSearch_CreateChat(session, "Any-title", default);
@@ -38,7 +38,7 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        var someUserAccount = await tester.SignInAsBob();
+        var someUserAccount = await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var command = new MLSearch_CreateChat(session, "Any-title", default);
         var commander = tester.Commander;
@@ -62,7 +62,7 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        var someUserAccount = await tester.SignInAsBob();
+        var someUserAccount = await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var command = new MLSearch_CreateChat(session, "Any-title", default);
         var commander = tester.Commander;
@@ -83,7 +83,7 @@ public class MLSearchCreateChatCommandTests(AppHostFixture fixture, ITestOutputH
         // Arrange
         var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        var someUserAccount = await tester.SignInAsBob();
+        var someUserAccount = await tester.SignInAsUniqueBob();
         var session = tester.Session;
         var command = new MLSearch_CreateChat(session, "Any-title", default);
         var commander = tester.Commander;
