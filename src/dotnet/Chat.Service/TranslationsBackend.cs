@@ -22,6 +22,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
     private IDbEntityResolver<string, DbTranslation> EntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbTranslation>>();
+    private IDbEntityResolver<string, DbChatEntryLanguage> LanguageEntityResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatEntryLanguage>>();
     private Translator Translator => field ??= Services.GetRequiredService<Translator>();
     private Translator RealtimeTranslator => field ??= Services.GetRequiredKeyedService<Translator>(Constants.Translation.RealtimeServiceKey);
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
@@ -161,6 +162,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (!translationSource.NeedsTranslation(translation, isRetranslation))
             return translation;
 
+        // Check if source language matches target language - if so, return original content
+        if (await IsSourceLanguageMatchesTarget(translationSource, targetLanguage, cancellationToken).ConfigureAwait(false))
+            return await SaveTranslationAsOriginal().ConfigureAwait(false);
+
         return skipRealtime || translationSource.Content.Length < Settings.Translation.StreamingMinContentLength
             ? await TranslateWithoutStreaming().ConfigureAwait(false)
             : await StreamTranslation().ConfigureAwait(false);
@@ -247,6 +252,24 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             var chatEntryId = id.SourceId.GetChatEntryId();
             return await GetTranslationContext(chatEntryId, targetLanguage, cancellationToken).ConfigureAwait(false);
         }
+
+        async Task<Translation?> SaveTranslationAsOriginal()
+        {
+            var contentHash = translationSource.ContentHash.IsNone
+                ? ChatEntryHashExt.GetContentHashString(translationSource.Content)
+                : translationSource.ContentHash;
+            var translationDiff = new TranslationDiff {
+                StreamId = null,
+                Content = translationSource.Content,
+                SourceContentHash = contentHash,
+            };
+            var change = translation is null
+                ? Change.Create(translationDiff)
+                : Change.Update(translationDiff);
+            var version = ignoreVersion ? null : translation?.Version;
+            var cmd = new TranslationsBackend_Change(id, version, change);
+            return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // [CommandHandler]
@@ -305,6 +328,41 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 foreach (var entry in foundEntries.Where(e => e.LocalId < maxLidExclusive))
                     yield return entry;
             }
+        }
+    }
+
+    protected virtual async Task<bool> IsSourceLanguageMatchesTarget(
+        TranslationSource? source,
+        Language targetLanguage,
+        CancellationToken cancellationToken)
+    {
+        if (source is not TextEntryTranslationSource textEntrySource)
+            return false;
+
+        var entryId = textEntrySource.ChatEntry.Id;
+        var dbEntryLanguage = await LanguageEntityResolver.Get(entryId.Value, cancellationToken).ConfigureAwait(false);
+        if (dbEntryLanguage is null)
+            return false;
+
+        // Only check if language has already been detected - don't trigger detection here
+        var detectedLanguages = dbEntryLanguage.ToModel().Languages;
+        if (detectedLanguages.Length == 0)
+            return false;
+
+        return detectedLanguages.Any(lang => IsLanguageMatch(lang, targetLanguage));
+
+        static bool IsLanguageMatch(Language source, Language target)
+        {
+            // Direct match
+            if (source == target)
+                return true;
+            // Match English variants (en-US, en-GB, en-IN) to any English target
+            if (source.IsAnyEnglish && target.IsAnyEnglish)
+                return true;
+            // Match Spanish variants (es-ES, es-MX, es-US) to any Spanish target
+            if (source.IsAnySpanish && target.IsAnySpanish)
+                return true;
+            return false;
         }
     }
 

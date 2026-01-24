@@ -48,12 +48,9 @@ internal class ConversationTranslationSource(Conversation conversation, Translat
     };
 }
 
-internal class ThreadTranslationSource : TranslationSource
+internal class ThreadTranslationSource(Chat treadChat, TranslationSourceId sourceId)
+    : TranslationSource(ValidateKind(sourceId))
 {
-    public ThreadTranslationSource(Chat treadChat, TranslationSourceId sourceId)
-        :base(ValidateKind(sourceId))
-        => ThreadChat = treadChat;
-
     private static TranslationSourceId ValidateKind(TranslationSourceId sourceId)
     {
         var kind = sourceId.Kind;
@@ -66,7 +63,7 @@ internal class ThreadTranslationSource : TranslationSource
         return sourceId;
     }
 
-    public Chat ThreadChat { get; }
+    public Chat ThreadChat { get; } = treadChat;
 
     // Surrogate hash.
     // If ThreadChat is updated => version id is updated, and we consider that we need to update translations.
@@ -77,6 +74,6 @@ internal class ThreadTranslationSource : TranslationSource
     public override string Content => TranslationSourceId.Kind switch {
         TranslationIdKind.ThreadTitle => ThreadChat.Title,
         TranslationIdKind.ThreadDescription => ThreadChat.Description,
-        _ => throw new NotSupportedException()
+        _ => throw new NotSupportedException(),
     };
 }
