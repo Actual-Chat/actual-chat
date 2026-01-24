@@ -65,8 +65,8 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         accountBeforeUpdate!.FormatVersion.Should().Be(0);
 
         // Act - update the account (this should trigger upgrade to FormatVersion=1)
-        var updatedName = account.Name + " Updated";
-        var updateCommand = new Accounts_Update(Tester.Session, account with { Name = updatedName }, account.Version);
+        var updatedName = accountBeforeUpdate!.Name + " Updated";
+        var updateCommand = new Accounts_Update(Tester.Session, accountBeforeUpdate with { Name = updatedName }, null);
         await Tester.Commander.Call(updateCommand);
 
         // Assert - FormatVersion should now be 1
@@ -92,7 +92,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         accountBeforeUpdate.Claims.Should().NotBeEmpty();
 
         // Act - update the account (this should trigger upgrade and sync claims)
-        var updateCommand = new Accounts_Update(Tester.Session, accountBeforeUpdate, accountBeforeUpdate.Version);
+        var updateCommand = new Accounts_Update(Tester.Session, accountBeforeUpdate, null);
         await Tester.Commander.Call(updateCommand);
 
         // Assert - FormatVersion should now be 1 and Claims should be in DbAccount
@@ -174,7 +174,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         accountBeforeUpdate!.Identities.Should().NotBeEmpty();
 
         // Act - update the account (should trigger upgrade and sync identities)
-        var updateCommand = new Accounts_Update(Tester.Session, accountBeforeUpdate, accountBeforeUpdate.Version);
+        var updateCommand = new Accounts_Update(Tester.Session, accountBeforeUpdate, null);
         await Tester.Commander.Call(updateCommand);
 
         // Assert - FormatVersion should now be 1 and identities should be in DbAccount
