@@ -156,7 +156,9 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
         var entries = await Enumerable.Range(0, count)
             .Select(async i => {
                 var entry = await Tester.CreateTextEntry(chatId, original);
-                await Tester.CreateEntryLanguage(entry.Id.ToTextEntryId(), null, entry.ContentHash);
+                // Set the language to English - this allows the translation system to skip
+                // unnecessary LLM calls when translating English to English
+                await Tester.CreateEntryLanguage(entry.Id.ToTextEntryId(), Languages.English, entry.ContentHash);
                 _ = Tester.GetTranslation(TranslationId.New((TextEntryId)entry.Id, targetLanguage), true, CancellationToken.None);
                 return entry;
             })
