@@ -14,7 +14,7 @@ public sealed class UserNamer
             return new ValidationException("Name must start with a letter.");
         foreach (var c in name[1..]) {
             if (!IsValidCharacter(c))
-                return new ValidationException("Name may contain only letters, digits, '-', '_' and spaces.");
+                return new ValidationException("Name may contain only letters, digits, '-', '_', ':', apostrophes, and spaces.");
         }
         return null;
     }
@@ -30,5 +30,5 @@ public sealed class UserNamer
     }
 
     private static bool IsValidCharacter(char c)
-        => char.IsLetterOrDigit(c) || c == '_' || c == '-' || c == ' ';
+        => char.IsLetterOrDigit(c) || c == '_' || c == '-' || c == ' ' || c == '\'' || c == ':';
 }

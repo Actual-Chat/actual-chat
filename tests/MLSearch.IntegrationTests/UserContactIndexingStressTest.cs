@@ -1,8 +1,6 @@
-using System.Diagnostics;
 using ActualChat.Chat;
 using ActualChat.Search;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 
 namespace ActualChat.MLSearch.IntegrationTests;
 
