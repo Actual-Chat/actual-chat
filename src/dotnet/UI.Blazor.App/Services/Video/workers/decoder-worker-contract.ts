@@ -46,13 +46,6 @@ export interface DecoderWorker {
      * @param useWasm Whether to use WASM (dav1d.js) decoder or built-in decoder
      */
     toggleDecoderType(useWasm: boolean): Promise<void>;
-
-    /**
-     * Initialize direct connection from encoder worker
-     * Sets up an RPC server on the provided port for direct worker-to-worker communication
-     * @param encoderPort MessagePort for receiving chunks directly from encoder
-     */
-    initDirectConnection(encoderPort: MessagePort): Promise<void>;
 }
 
 /**

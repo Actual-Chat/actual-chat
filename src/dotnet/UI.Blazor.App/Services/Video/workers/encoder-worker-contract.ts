@@ -20,13 +20,6 @@ export interface EncoderWorker {
     initialize(config: EncoderConfig, timeout?: RpcTimeout): Promise<void>;
 
     /**
-     * Initialize direct connection to decoder worker (optional optimization)
-     * Enables worker-to-worker RPC communication via MessagePort
-     * @param decoderPort MessagePort for direct communication with decoder
-     */
-    initDecoderConnection(decoderPort: MessagePort): Promise<void>;
-
-    /**
      * Stop the encoder and clean up resources
      */
     stop(): Promise<void>;

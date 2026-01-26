@@ -23,9 +23,6 @@ let startTimestamp: number | undefined = undefined;
 // RPC callbacks to main thread (initialized below)
 let callbacks: EncoderWorkerCallbacks;
 
-// Optional: Direct RPC client to decoder worker
-let decoderClient: (DecoderWorker & Disposable) | null = null;
-
 // Resize frame to match encoder dimensions while preserving aspect ratio
 function resizeFrame(frame: VideoFrame, targetWidth: number, targetHeight: number): VideoFrame {
   const frameWidth = frame.displayWidth;
@@ -162,14 +159,9 @@ const serverImpl: EncoderWorker = {
             sequenceNumber: chunkData.sequenceNumber
           };
 
-          if (decoderClient) {
-            // Direct worker-to-worker RPC communication (bypasses main thread)
-            // console.log(`[Encoder Worker] Sending chunk #${chunkData.sequenceNumber} directly to decoder via RPC`);
-            await decoderClient.decodeChunk(enrichedChunkData);
-          } else {
-            // Send to main thread via RPC callback (traditional path)
-            await callbacks.onEncodedChunk(enrichedChunkData, rpcNoWait);
-          }
+
+          // Send to main thread via RPC callback (traditional path)
+          await callbacks.onEncodedChunk(enrichedChunkData, rpcNoWait);
         },
         (error) => {
           console.error('[Encoder Worker] Encoder error:', error);
@@ -332,21 +324,6 @@ const serverImpl: EncoderWorker = {
     };
     return stats;
   },
-
-  /**
-   * Initialize direct connection to decoder worker (optional optimization)
-   */
-  initDecoderConnection: async (decoderPort: MessagePort): Promise<void> => {
-    console.log('[Encoder Worker] Initializing direct RPC connection to decoder...');
-
-    // Create RPC client for direct decoder communication
-    decoderClient = rpcClient<DecoderWorker>(
-      'EncoderWorker.decoder',
-      decoderPort
-    ) as DecoderWorker & Disposable;
-
-    console.log('[Encoder Worker] Direct RPC connection to decoder established');
-  }
 };
 
 // Initialize RPC communication (bidirectional)
