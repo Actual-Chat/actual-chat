@@ -12,5 +12,5 @@ public partial class AudioFrame : MediaFrame
     public override TimeSpan Offset { get; init; }
 
     public override TimeSpan Duration { get; init; } = Constants.Audio.OpusFrameDuration;
-    public override bool IsKeyFrame => true;
+    public override bool IsKeyFrame { get; init; } = true;
 }

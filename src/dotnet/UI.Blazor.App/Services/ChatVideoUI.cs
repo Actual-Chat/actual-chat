@@ -182,9 +182,9 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
             if (skipTo < TimeSpan.Zero)
                 skipTo = TimeSpan.Zero;
 
-            // Get video source from server with format from stream info
+            // Get video source from server - format is extracted from the first keyframe
             var videoSource = await StreamClient
-                .GetVideo(streamId.Value, streamInfo.Format, skipTo, cancellationToken)
+                .GetVideo(streamId.Value, skipTo, cancellationToken)
                 .ConfigureAwait(false);
 
             // Create and start video player

@@ -20,7 +20,7 @@ import { TransferSimulator, type TransferConfig, type TransferStats } from '../u
 import { WebSocketTransferAdapter } from '../utils/websocket-transfer';
 import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
 import { MediaStreamRecorder } from '../utils/mp4-muxer';
-import { VideoStreamer, type VideoStreamConfig, type VideoStreamFrame } from '../video-streamer';
+import { VideoStreamer, type VideoStreamConfig, type VideoStreamFrame, microsecondsToTicks } from '../video-streamer';
 import { Versioning } from 'versioning';
 
 export interface PipelineConfig {
@@ -167,9 +167,10 @@ export class VideoPipeline implements IVideoPipeline {
     if (this.config.streaming?.enabled) {
       const chunkBytes = new Uint8Array(chunkData.byteLength);
       chunkData.chunk.copyTo(chunkBytes);
+      // Convert microseconds to .NET TimeSpan ticks (100-nanosecond units)
       const frame: VideoStreamFrame = {
-        offset: chunkData.chunk.timestamp ?? chunkData.timestamp,
-        duration: chunkData.chunk.duration ?? 0,
+        offset: microsecondsToTicks(chunkData.chunk.timestamp ?? chunkData.timestamp),
+        duration: microsecondsToTicks(chunkData.chunk.duration ?? 0),
         isKeyFrame: chunkData.type === 'key',
         width: this.config.encoderConfig.width,
         height: this.config.encoderConfig.height,

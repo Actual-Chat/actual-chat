@@ -51,7 +51,6 @@ public class StreamClient(IServiceProvider services) : IStreamClient
 
     public async Task<VideoSource> GetVideo(
         string streamId,
-        VideoFormat format,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
@@ -62,11 +61,26 @@ public class StreamClient(IServiceProvider services) : IStreamClient
             .SuppressException<VideoFrame, RpcReconnectFailedException>(cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
 
-        // Use the format provided by the caller (from VideoStreamInfo)
+        // Extract format from the first keyframe
+        var (firstFrameTask, restStream) = frameStream.SplitHead(cancellationToken);
+        var firstFrame = await firstFrameTask.ConfigureAwait(false);
+
+        var format = new VideoFormat {
+            Codec = firstFrame.Codec ?? "avc1",
+            Width = firstFrame.Width,
+            Height = firstFrame.Height,
+            CodecSettings = firstFrame.Description != null
+                ? Convert.ToBase64String(firstFrame.Description)
+                : "",
+        };
+
+        // Prepend first frame back to stream
+        var fullStream = restStream.Prepend(firstFrame);
+
         return new VideoSource(
             Clocks.SystemClock.Now,
             format,
-            frameStream,
+            fullStream,
             skipTo,
             VideoSourceLog,
             cancellationToken);
