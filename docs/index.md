@@ -13,6 +13,9 @@ hero:
       text: Development
       link: /running-voxt
     - theme: alt
+      text: Testing
+      link: /testing
+    - theme: alt
       text: Plans
       link: /plans/BigTasks
     - theme: alt
