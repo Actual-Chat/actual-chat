@@ -1,6 +1,7 @@
 @using ActualChat.UI.Blazor.App.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
+@implements IAsyncDisposable
 
 <div @ref="Ref" class="font-size-slider">
     <label>
@@ -16,20 +17,25 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.FontSizeSlider.create";
 
-    private DotNetObjectReference<FontSizeSlider> BlazorRef { get; set; } = null!;
+    private DotNetObjectReference<FontSizeSlider>? BlazorRef { get; set; }
     private IJSObjectReference? JSRef { get; set; }
     private ElementReference Ref { get; set; }
 
     private string[]? _fontSizes;
     private string? _fontSize;
-    private bool _isJsInitialized;
 
     private readonly TaskCompletionSource _whenFontSizeInfoReady = TaskCompletionSourceExt.New();
 
     private FontSizeUI FontSizeUI => Hub.FontSizeUI;
 
-    public void Dispose() {
-        BlazorRef?.Dispose();
+    public async ValueTask DisposeAsync() {
+        if (BlazorRef is null)
+            return;
+
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null;
+        BlazorRef.Dispose();
+        BlazorRef = null;
     }
 
     protected override async Task OnInitializedAsync() {
@@ -40,12 +46,12 @@
             if (_fontSize == null || !_fontSizes.Contains(_fontSize)) {
                 _fontSize = _fontSizes[0];
             }
+            _whenFontSizeInfoReady.TrySetResult();
         }
-        _whenFontSizeInfoReady.TrySetResult();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_isJsInitialized)
+        if (BlazorRef is not null)
             return;
 
         await _whenFontSizeInfoReady.Task;
@@ -58,15 +64,11 @@
             _fontSizes,
             _fontSize
         );
-        _isJsInitialized = true;
     }
 
     [JSInvokable]
     public async Task OnFontSizeChangedFromJs(int index) {
-        if (_fontSizes == null)
-            return;
-
-        var newValue = _fontSizes[index];
+        var newValue = _fontSizes![index];
         if (newValue == FontSizeUI.FontSize.Value)
             return;
 
@@ -74,6 +76,6 @@
         await FontSizeUI.FontSize.WhenWritten(CancellationToken.None);
 
         _fontSize = newValue;
-        await InvokeAsync(StateHasChanged);
+        StateHasChanged();
     }
 }
