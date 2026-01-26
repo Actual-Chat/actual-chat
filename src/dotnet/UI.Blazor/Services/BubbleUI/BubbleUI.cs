@@ -47,4 +47,23 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
         UpdateSettings(Settings.Value.WithAllUnread());
         await Host.ResetBubbles().ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Resets bubble state.
+    /// </summary>
+    /// <param name="enable">
+    /// If true, resets all bubbles to unread (re-enables all bubbles).
+    /// If false, marks all bubbles as read (skips all bubbles).
+    /// </param>
+    public async Task ResetBubbles(bool enable) {
+        await WhenReady.ConfigureAwait(true);
+        if (enable) {
+            UpdateSettings(Settings.Value.WithAllUnread());
+            await Host.ResetBubbles().ConfigureAwait(false);
+        }
+        else {
+            // Skip all bubbles by calling SkipBubbles on the host
+            await Host.SkipBubbles().ConfigureAwait(false);
+        }
+    }
 }

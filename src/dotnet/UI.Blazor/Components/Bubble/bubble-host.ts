@@ -25,6 +25,7 @@ export class BubbleHost {
 
     private _bubbles: BubbleModel[] = [];
     private _clearAutoUpdate?: () => void;
+    private _suppressAll: boolean = false;
 
     public static create(blazorRef: DotNet.DotNetObject, readBubbles: string[]): BubbleHost {
         return new BubbleHost(blazorRef, readBubbles);
@@ -98,6 +99,9 @@ export class BubbleHost {
     public async skipBubbles(): Promise<string[]> {
         debugLog?.log(`skipBubbles`);
 
+        // Set suppress flag to prevent any future bubbles from showing
+        this._suppressAll = true;
+
         this.clearAutoUpdate();
 
         const unreadBubbles = this._bubbles.filter(x => !x.isRead);
@@ -128,6 +132,9 @@ export class BubbleHost {
 
     public async resetBubbles(readBubbles: string[]): Promise<void> {
         debugLog?.log(`resetBubbles`);
+
+        // Clear suppress flag to allow bubbles to show again
+        this._suppressAll = false;
 
         while (this.readBubbles.length)
             this.readBubbles.pop();
@@ -283,6 +290,9 @@ export class BubbleHost {
 
     private showNextBubble(): void {
         debugLog?.log(`showNextBubble`);
+
+        if (this._suppressAll)
+            return;
 
         const notReadBubbles = this._bubbles.filter(x => !x.isRead);
         const bubbleToShow = notReadBubbles.find(x => x.isInViewport && x.isTopElement);

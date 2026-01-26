@@ -99,4 +99,12 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
         onboardingUI.ResetOnboarding(enable);
         Log.LogInformation("ResetOnboarding({Enable}): done", enable);
     }
+
+    [JSInvokable]
+    public async Task ResetBubbles(bool enable)
+    {
+        var bubbleUI = Services.GetRequiredService<BubbleUI>();
+        await bubbleUI.ResetBubbles(enable).ConfigureAwait(false);
+        Log.LogInformation("ResetBubbles({Enable}): done", enable);
+    }
 }

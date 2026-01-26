@@ -41,4 +41,8 @@ export class DebugUI {
     public static resetOnboarding(enable: boolean): void {
         this.backendRef.invokeMethodAsync('ResetOnboarding', enable);
     };
+
+    public static resetBubbles(enable: boolean): void {
+        this.backendRef.invokeMethodAsync('ResetBubbles', enable);
+    };
 }
