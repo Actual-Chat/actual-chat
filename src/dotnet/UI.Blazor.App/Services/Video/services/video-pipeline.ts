@@ -173,7 +173,7 @@ export class VideoPipeline implements IVideoPipeline {
         height: this.config.encoderConfig.height,
         data: chunkBytes
       };
-      this.videoStream.addChunk(frame);
+      this.videoStream.addFrame(frame);
       // console.log(`[Pipeline] Chunk (${chunkData.type}) streamed to server: ${chunkBytes.length} bytes`);
     }
 
