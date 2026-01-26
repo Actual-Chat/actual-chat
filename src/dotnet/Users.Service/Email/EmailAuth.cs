@@ -21,7 +21,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
