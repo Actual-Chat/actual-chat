@@ -37,4 +37,8 @@ export class DebugUI {
     public static disconnectRpc(): void {
         this.backendRef.invokeMethodAsync('DisconnectRpc');
     };
+
+    public static resetOnboarding(enable: boolean): void {
+        this.backendRef.invokeMethodAsync('ResetOnboarding', enable);
+    };
 }

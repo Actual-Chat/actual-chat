@@ -127,4 +127,34 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         _userSettings.Value = new UserOnboardingSettings();
         _localSettings.Value = new LocalOnboardingSettings();
     }
+
+    public void ResetOnboarding(bool enable)
+    {
+        if (enable) {
+            // Reset all steps to uncompleted (re-enable onboarding)
+            _userSettings.Value = new UserOnboardingSettings();
+            _localSettings.Value = new LocalOnboardingSettings();
+        }
+        else {
+            // Mark all steps as completed (skip onboarding)
+            _userSettings.Value = new UserOnboardingSettings {
+                IsAvatarStepCompleted = true,
+                IsCreateChatsStepCompleted = true,
+                IsVerifyPhoneStepCompleted = true,
+                IsVerifyEmailStepCompleted = true,
+                IsTimeZoneStepCompleted = true,
+                IsDataCollectionStepCompleted = true,
+                IsChatRouletteStepCompleted = true,
+                IsSpeechTranscriptionStepCompleted = true,
+                IsTranscriptPlaybackStepCompleted = true,
+                IsPlacesFeatureStepCompleted = true,
+                IsLanguagesStepCompleted = true,
+                IsSummarizationStepCompleted = true,
+            };
+            _localSettings.Value = new LocalOnboardingSettings {
+                IsPermissionsStepCompleted = true,
+                AreCookiesAccepted = true,
+            };
+        }
+    }
 }

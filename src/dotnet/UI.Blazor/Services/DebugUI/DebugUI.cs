@@ -91,4 +91,12 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
         var clientPeer = rpcHub.GetClientPeer(RpcPeerRef.Default);
         _ = clientPeer.Disconnect();
     }
+
+    [JSInvokable]
+    public void ResetOnboarding(bool enable)
+    {
+        var onboardingUI = Services.GetRequiredService<IOnboardingUI>();
+        onboardingUI.ResetOnboarding(enable);
+        Log.LogInformation("ResetOnboarding({Enable}): done", enable);
+    }
 }
