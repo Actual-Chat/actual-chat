@@ -41,7 +41,7 @@ For automated testing and AI agent authentication, special test accounts are ava
 
 | Email Pattern | OTP Code | Notes |
 |---------------|----------|-------|
-| `test-*@actual.chat` | `111111` | Works on all hosts except voxt.ai and dev.voxt.ai |
+| `test-*@actual.chat` | `111111` | Works on local domains and localhost only |
 
 **Examples of valid test emails:**
 - `test-agent1@actual.chat`
@@ -54,8 +54,12 @@ For automated testing and AI agent authentication, special test accounts are ava
 3. No actual email is sent for these accounts
 
 **Restrictions:**
-- Does NOT work on production (`voxt.ai`) or staging (`dev.voxt.ai`)
-- Works on `actual.chat`, `dev.actual.chat`, `local.actual.chat`, and localhost
+- Does NOT work on production or staging domains:
+  - Production: `voxt.ai`, `actual.chat`
+  - Staging: `dev.voxt.ai`, `dev.actual.chat`
+- Works on local dev domains and localhost:
+  - `local.voxt.ai`, `local.actual.chat`
+  - `localhost`
 
 ### Phone Auth Test Accounts
 

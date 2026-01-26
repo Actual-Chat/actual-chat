@@ -191,7 +191,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private bool IsTestAgentBypassAllowed()
     {
         var host = UrlMapper.BaseUri.Host;
-        // Not allowed on any official domains (voxt.ai, actual.chat and their dev/local variants)
+        // Not allowed on prod or dev domains, but allowed on local domains and localhost
         return !Constants.Hosts.AllProd.Contains(host)
             && !Constants.Hosts.AllDev.Contains(host);
     }
