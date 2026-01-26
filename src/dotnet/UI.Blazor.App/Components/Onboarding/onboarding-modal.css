@@ -3,10 +3,15 @@
     @apply p-0;
     @apply text-01;
 }
+body.narrow .onboarding-modal.modal-frame.phone-verification-modal {
+    @apply px-4;
+}
 .stepper.onboarding-stepper {
     @apply md:h-192;
     background: linear-gradient(89deg, #FFEFFF 5.09%, #DAD2FF 94.69%);
-
+}
+body.narrow .stepper.onboarding-stepper {
+    @apply px-8;
 }
 .step-tiles {
     @apply mt-6 flex-y gap-y-4;
