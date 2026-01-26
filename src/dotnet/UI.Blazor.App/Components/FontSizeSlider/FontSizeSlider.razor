@@ -24,7 +24,7 @@
     private string? _fontSize;
     private bool _isJsInitialized;
 
-    private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
+    private readonly TaskCompletionSource _whenFontSizeInfoReady = TaskCompletionSourceExt.New();
 
     private FontSizeUI FontSizeUI => Hub.FontSizeUI;
 
@@ -41,17 +41,14 @@
                 _fontSize = _fontSizes[0];
             }
         }
-        _whenFirstTimeReadSource.TrySetResult();
+        _whenFontSizeInfoReady.TrySetResult();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_isJsInitialized)
             return;
 
-        await _whenFirstTimeReadSource.Task;
-
-        if (_fontSizes == null || _fontSizes.Length == 0)
-            return;
+        await _whenFontSizeInfoReady.Task;
 
         BlazorRef = DotNetObjectReference.Create(this);
         JSRef = await JS.InvokeAsync<IJSObjectReference>(
