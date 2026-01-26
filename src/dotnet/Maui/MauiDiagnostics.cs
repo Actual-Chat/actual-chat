@@ -147,7 +147,13 @@ public static class MauiDiagnostics
     }
 
     public static void CreateSentryTraceProvider()
-        => TracerProvider = SentryExt.CreateSentryTraceProvider("MauiApp");
+    {
+        // TODO: fix PlatformNotSupportedException inside OpenTelemetry.
+        if (OperatingSystem.IsIOS())
+            return;
+
+        TracerProvider = SentryExt.CreateSentryTraceProvider("MauiApp");
+    }
 
     public static ILoggingBuilder AddFilteringSerilog(
         this ILoggingBuilder builder,
