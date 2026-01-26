@@ -24,6 +24,8 @@
     private string? _fontSize;
     private bool _isJsInitialized;
 
+    private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
+
     private FontSizeUI FontSizeUI => Hub.FontSizeUI;
 
     public void Dispose() {
@@ -34,21 +36,22 @@
         await FontSizeUI.FontSize.WhenFirstTimeRead;
         _fontSizes = await FontSizeUI.List(CancellationToken.None);
         _fontSize = FontSizeUI.FontSize.Value;
-        if (_fontSizes != null && _fontSizes.Length > 0) {
+        if (_fontSizes is { Length: > 0 }) {
             if (_fontSize == null || !_fontSizes.Contains(_fontSize)) {
                 _fontSize = _fontSizes[0];
             }
-            await InvokeAsync(StateHasChanged);
         }
+        _whenFirstTimeReadSource.TrySetResult();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_isJsInitialized || _fontSizes == null || _fontSizes.Length == 0)
+        if (_isJsInitialized)
             return;
 
-        if (_fontSize == null || !_fontSizes.Contains(_fontSize)) {
-            _fontSize = _fontSizes[0];
-        }
+        await _whenFirstTimeReadSource.Task;
+
+        if (_fontSizes == null || _fontSizes.Length == 0)
+            return;
 
         BlazorRef = DotNetObjectReference.Create(this);
         JSRef = await JS.InvokeAsync<IJSObjectReference>(
@@ -63,7 +66,7 @@
 
     [JSInvokable]
     public async Task OnFontSizeChangedFromJs(int index) {
-        if (_fontSizes == null || index < 0 || index >= _fontSizes.Length)
+        if (_fontSizes == null)
             return;
 
         var newValue = _fontSizes[index];
