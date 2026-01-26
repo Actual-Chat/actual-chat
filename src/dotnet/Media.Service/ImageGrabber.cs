@@ -16,7 +16,7 @@ public class ImageGrabber(IServiceProvider services)
     private IGrabStatusesBackend GrabStatusesBackend => field ??= services.GetRequiredService<IGrabStatusesBackend>();
     private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
     private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient(Crawler.HttpClientName);
-    private IReadOnlyList<IUploadProcessor> UploadProcessors => field ??= services.GetServices<IUploadProcessor>().ToList();
+    private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
     private IMeshLocks MeshLocks => field ??= services.MeshLocks().WithKeyPrefix(nameof(ImageGrabber));
     private ICommander Commander => field ??= services.Commander();
     private FlowHub FlowHub => field ??= services.FlowHub();
@@ -104,17 +104,26 @@ public class ImageGrabber(IServiceProvider services)
         }
 
         // TODO: image size limit
-        var processedFile = await DownloadImageToFile(new Uri(imageUrl), cancellationToken).ConfigureAwait(false);
-        return await SaveFileToMedia(imageUrl, processedFile, cancellationToken).ConfigureAwait(false);
+        var downloadedFile = await DownloadImageToFile(new Uri(imageUrl), cancellationToken).ConfigureAwait(false);
+        if (downloadedFile is null)
+            return null;
+
+        var processedFile = await MediaProcessor.ProcessUpload(downloadedFile, cancellationToken).ConfigureAwait(false);
+        if (!MediaTypeExt.IsSupportedImage(processedFile.File.ContentType))
+            return null;
+
+        var mediaId = await SaveFileToMedia(imageUrl, processedFile, cancellationToken).ConfigureAwait(false);
+        await SaveGrabStatus(imageUrl, true, cancellationToken).ConfigureAwait(false);
+        return mediaId;
     }
 
-    private async Task<ProcessedFile?> DownloadImageToFile(Uri uri, CancellationToken cancellationToken)
+    private async Task<UploadedFile?> DownloadImageToFile(Uri uri, CancellationToken cancellationToken)
     {
         using var cts = cancellationToken.CreateLinkedTokenSource();
         cts.CancelAfter(Settings.ImageDownloadTimeout);
         return await Download(cts.Token).ConfigureAwait(false);
 
-        async Task<ProcessedFile?> Download(CancellationToken cancellationToken1)
+        async Task<UploadedFile?> Download(CancellationToken cancellationToken1)
         {
             HttpResponseMessage response;
             try {
@@ -130,11 +139,11 @@ public class ImageGrabber(IServiceProvider services)
                 return null;
             }
 
-            return await SaveImageToFile(response, cancellationToken1).ConfigureAwait(false);
+            return ConvertResponseToFile(response, cancellationToken1);
         }
     }
 
-    private async Task<ProcessedFile?> SaveImageToFile(HttpResponseMessage response, CancellationToken cancellationToken1)
+    private static UploadedFile? ConvertResponseToFile(HttpResponseMessage response, CancellationToken cancellationToken1)
     {
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
         var ext = MediaTypeExt.GetFileExtension(contentType); // TODO: convert if icon is not supported
@@ -143,33 +152,34 @@ public class ImageGrabber(IServiceProvider services)
 
         var lastSegment = response.RequestMessage!.RequestUri!.Segments[^1].TrimSuffix(ext);
         FilePath fileName = new string(lastSegment.Where(Alphabet.AlphaNumeric.IsMatch).ToArray()) + ext;
-        var file = new UploadedStreamFile(fileName, contentType, response.Content.Headers.ContentLength ?? 0, () => response.Content.ReadAsStreamAsync(cancellationToken1));
-        return await UploadProcessors.Process(file, cancellationToken1).ConfigureAwait(false);
+        return new UploadedStreamFile(fileName, contentType, response.Content.Headers.ContentLength ?? 0, () => response.Content.ReadAsStreamAsync(cancellationToken1));
     }
 
-    private async Task<MediaId?> SaveFileToMedia(
+    private async Task<MediaId> SaveFileToMedia(
         string imageUrl,
-        ProcessedFile? processedFile,
+        ProcessedFile processedFile,
         CancellationToken cancellationToken)
     {
-        if (processedFile is null || !MediaTypeExt.IsSupportedImage(processedFile.File.ContentType))
-            return null;
+        var mediaId = await GetMediaId(imageUrl, processedFile.File, cancellationToken).ConfigureAwait(false);
+        // NOTE: mediaId is constructed from imageUrl hash and from the file content hash.
+        // So it should be unique for the same image content and url.
+        // If there is existing media with the same id, it means that the image was already grabbed and saved.
+        var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media is not null)
+            return media.Id;
 
+        await MediaSaver.Save(mediaId, processedFile.File, processedFile.Size, cancellationToken).ConfigureAwait(false);
+        return mediaId;
+    }
+
+    private static async Task<MediaId> GetMediaId(string imageUrl, UploadedFile file, CancellationToken cancellationToken)
+    {
         var mediaIdScope = GetMediaIdScope(imageUrl);
-        var mediaLid = await processedFile.File.Process(async stream => {
+        var mediaLid = await file.Process(async stream => {
             var hash = await stream.Hash().SHA256(cancellationToken).ConfigureAwait(false);
             return hash.AlphaNumeric();
         }).ConfigureAwait(false);
         var mediaId = MediaId.New(mediaIdScope, mediaLid);
-        var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-        if (media is not null) {
-            await SaveGrabStatus(imageUrl, true, cancellationToken).ConfigureAwait(false);
-            return media.Id;
-        }
-
-        await MediaSaver.Save(mediaId, processedFile.File, processedFile.Size, cancellationToken).ConfigureAwait(false);
-        await SaveGrabStatus(imageUrl, true, cancellationToken).ConfigureAwait(false);
-
         return mediaId;
     }
 

@@ -24,7 +24,7 @@
     <div class="pic-upload-picker @(sizeClass) @picUploadCls">
         <FileUpload
             id="@_inputId"
-            UploadUrl="@UploadUrl"
+            Scope="@Scope"
             Uploaded="OnUploaded"
             MaxSize="Constants.Attachments.AvatarPictureFileSizeLimit"
             accept="image/*"
@@ -69,7 +69,7 @@
     [Parameter] public AvatarKind AvatarKind { get; set; } = AvatarKind.Beam;
     [Parameter] public bool IsSquare { get; set; }
     [Parameter] public string? AvatarKey { get; set; }
-    [Parameter] public string UploadUrl { get; set; } = "";
+    [Parameter, EditorRequired] public string Scope { get; set; } = "";
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public EventCallback<MediaContent> Picked { get; set; }

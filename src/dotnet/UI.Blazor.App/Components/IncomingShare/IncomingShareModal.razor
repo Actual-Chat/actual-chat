@@ -92,13 +92,9 @@
         var text = ModalModel.Text;
         CancellationToken cancellationToken = default;
         foreach (var chatId in selectedChatIds) {
-            if (!comment.IsNullOrEmpty()) {
-                var cmd2 = new SendMessageRequest(chatId, null, comment);
-                _ = SendingMessages.Post(cmd2, cancellationToken);
-            }
-
-            var cmd = new SendMessageRequest(chatId, null, text);
-            _ = SendingMessages.Post(cmd, cancellationToken);
+            if (!comment.IsNullOrEmpty())
+                await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, comment), cancellationToken);
+            await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, text), cancellationToken);
         }
 
         Modal.Close(true);
@@ -124,16 +120,17 @@
         Modal.Close(true);
         try {
             var postTasks = new List<(Task, ChatId, int)>();
-            foreach (var chatId in selectedChatIds) {
-                var comment = _comment;
-                foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                    var attachmentList = await CreateAttachmentList(filesChunk);
-                    var postTask = PostMessage(chatId, comment, attachmentList);
-                    comment = "";
+            var comment = _comment;
+            foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
+                var attachments = await CreateAttachmentList(filesChunk);
+                var uploads = (await SendingMessages.Upload(attachments))!;
+                foreach (var chatId in selectedChatIds) {
+                    var postTask = PostMessage(chatId, comment, uploads, attachments.Length);
                     postTasks.Add((postTask, chatId, filesChunk.Length));
                 }
+                uploads.Dispose();
+                comment = "";
             }
-
             await Task.WhenAll(postTasks.Select(c => c.Item1));
             var failedTasks = postTasks
                 .Where(c => !c.Item1.IsCompletedSuccessfully)
@@ -152,7 +149,7 @@
         }
     }
 
-    private async Task<ReadonlyAttachmentList> CreateAttachmentList(IEnumerable<AttachFileInfo> fileInfos) {
+    private async Task<ImmutableArray<Attachment>> CreateAttachmentList(IEnumerable<AttachFileInfo> fileInfos) {
         Exception? fileSizeLimitError = null;
         var attachments = new List<Attachment>();
         foreach (var fileInfo in fileInfos) {
@@ -174,14 +171,13 @@
                 width = dimensions.width;
                 height = dimensions.height;
             }
-            var attachment = new Attachment(
+            var attachment = new SourceAttachment(
                 fileMetadata.FileName,
                 fileMetadata.FileType,
                 fileMetadata.Length,
                 width,
                 height,
-                Task.FromResult(true),
-                Task.FromResult(previewUrl)) {
+                previewUrl) {
                 FileProvider = fileProvider,
             };
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));
@@ -189,18 +185,15 @@
         }
         if (fileSizeLimitError != null)
             Services.UICommander().ShowError(fileSizeLimitError);
-        return new ReadonlyAttachmentList(attachments);
+        return [..attachments];
     }
 
-    private async Task PostMessage(ChatId chatId, string comment, IAttachmentList attachments)
-    {
-        var cmd = new SendMessageRequest(chatId, null, comment) {
-            RepliedEntryLid = null,
-            Attachments = attachments,
-            AfterSendMessageHandlerKey = SendingMessages.AfterSendMessageHandlerKeys.IncomingShare,
-            AfterSendMessageHandlerArgs = attachments.Count.ToInvariantString(),
-        };
-        var postTask = await SendingMessages.Post(cmd, default).ConfigureAwait(false);
+    private async Task PostMessage(ChatId chatId, string text, FilesUploadHandle uploads, int attachmentCount) {
+        var afterHandler = new AfterSendMessageHandler(
+            SendingMessages.AfterSendMessageHandlerKeys.IncomingShare,
+            attachmentCount.ToInvariantString());
+        var cmd = SendMessageRequest.NewMessage(chatId, text, uploads, afterHandler);
+        var postTask = await SendingMessages.Send(cmd, default).ConfigureAwait(false);
         await postTask.SilentAwait(); // IncomingShareAfterSendMessageHandler will handle a send result.
     }
 

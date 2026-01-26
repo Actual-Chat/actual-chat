@@ -41,7 +41,7 @@ public sealed class MediaUploader(Type ownerType)
                 ? contentType
                 : throw StandardError.Internal($"Unknown content type: {resource.Name}.");
             var contentId = $"media/{mediaIdHash}/{mediaId.LocalId}{extension}";
-            var media = new Media(mediaId) {
+            var media = new MediaFull(mediaId) {
                 ContentId = contentId,
                 FileName = resource.Name,
                 Length = resourceStream.Length,

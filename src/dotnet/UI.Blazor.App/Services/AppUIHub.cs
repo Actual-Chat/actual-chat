@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Media;
@@ -27,10 +28,13 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IChatUsages ChatUsages => field ??= Services.GetRequiredService<IChatUsages>();
     public INotifications Notifications => field ??= Services.GetRequiredService<INotifications>();
     public IMLSearch MLSearch => field ??= Services.GetRequiredService<IMLSearch>();
+    public IMedias Medias => field ??= Services.GetRequiredService<IMedias>();
 
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
+    public AttachmentsState AttachmentsState => field ??= Services.GetRequiredService<AttachmentsState>();
     public SendingMessages SendingMessages => field ??= Services.GetRequiredService<SendingMessages>();
     public UploadSessions UploadSessions => field ??= Services.GetRequiredService<UploadSessions>();
+    public UploadSessionsState UploadSessionsState => field ??= Services.GetRequiredService<UploadSessionsState>();
     public IUploads Uploads => field ??= Services.GetRequiredService<IUploads>();
     public ConversationUI ConversationUI => field ??= Services.GetRequiredService<ConversationUI>();
     public ActiveChatsUI ActiveChatsUI => field ??= Services.GetRequiredService<ActiveChatsUI>();

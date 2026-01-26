@@ -19,8 +19,18 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             return null;
 
         var dbMedia = await DbMediaResolver.Get(mediaId.Value, cancellationToken).ConfigureAwait(false);
-        var media = dbMedia?.ToModel();
+        var media = dbMedia?.ToModel().ToMedia();
         return media;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<MediaFull?> GetFull(MediaId? mediaId, CancellationToken cancellationToken)
+    {
+        if (mediaId == null)
+            return null;
+
+        var dbMedia = await DbMediaResolver.Get(mediaId.Value, cancellationToken).ConfigureAwait(false);
+        return dbMedia?.ToModel();
     }
 
     // [ComputeMethod]
@@ -35,7 +45,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         var dbMedia = await dbContext.Media.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id.StartsWith($"{mediaIdScope}{MediaId.Delimiter}"), cancellationToken)
             .ConfigureAwait(false);
-        return dbMedia?.ToModel();
+        return dbMedia?.ToModel().ToMedia();
     }
 
     // [ComputeMethod]
@@ -51,15 +61,16 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             .Where(x => x.ContentId == contentId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbMedia?.ToModel();
+        return dbMedia?.ToModel().ToMedia();
     }
 
     // [CommandHandler]
-    public virtual async Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken)
+    public virtual async Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken)
     {
-        var (mediaId, change) = command;
+        var (mediaId, expectedVersion, change) = command;
         if (Invalidation.IsActive) {
             _ = Get(mediaId, default);
+            _ = GetFull(mediaId, default);
             return default!;
         }
 
@@ -68,24 +79,36 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         await using var __ = dbContext.ConfigureAwait(false);
 
         if (change.IsCreate(out var media)) {
+            media = media with {
+                Version = VersionGenerator.NextVersion()
+            };
             var dbMedia = new DbMedia(media);
             dbContext.Media.Add(dbMedia);
+        }
+        else if (change.IsUpdate(out media)) {
+            var dbMedia = await dbContext.Media
+                .Get(mediaId.Value, cancellationToken)
+                .RequireVersion(expectedVersion)
+                .ConfigureAwait(false);
+            media = media with {
+                Version = VersionGenerator.NextVersion(dbMedia.Version)
+            };
+            dbMedia.UpdateFrom(media);
         }
         else if (change.IsRemove()) {
             var dbMedia = await dbContext.Media
                 .Get(mediaId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            media = dbMedia?.ToModel();
-            if (dbMedia != null) {
+            if (dbMedia is not null) {
+                dbMedia.RequireVersion(expectedVersion);
+                media = dbMedia.ToModel();
                 if (!dbMedia.ContentId.IsNullOrEmpty())
-                    await ContentSaver.Remove(dbMedia.ContentId, cancellationToken)
-                        .ConfigureAwait(false);
-
+                    await ContentSaver.Remove(dbMedia.ContentId, cancellationToken).ConfigureAwait(false);
                 dbContext.Remove(dbMedia);
             }
         }
         else
-            throw new NotSupportedException("Update is not supported.");
+            throw new NotSupportedException("Invalid change.");
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

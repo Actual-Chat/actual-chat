@@ -6,6 +6,7 @@
         <VisualMediaAttachmentLine Row="@row" Class="@cls">
             <ItemTemplate>
                 <UploadAttachmentItem
+                    @key="@context.Id"
                     Attachment="@context"
                     RestartClick="@(() => OnRestartClick(context))"
                     RemoveClick="@(() => OnRemoveClick(context))"/>

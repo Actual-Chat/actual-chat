@@ -1,65 +1,59 @@
 import { Disposable } from 'disposable';
-import { filter, from, fromEvent, map, Subject, switchMap, takeUntil } from 'rxjs';
-import { BrowserInit } from "../../Services/BrowserInit/browser-init";
-import { SessionTokens } from "../../Services/Security/session-tokens";
+import { filter, fromEvent, Subject, takeUntil } from 'rxjs';
 import { Log } from 'logging';
-const { errorLog } = Log.get('FileUpload');
+import { ChunkedFileUpload } from './chunked-file-upload';
+
+const { debugLog, errorLog } = Log.get('FileUpload');
 
 export interface Options {
     maxSize?: number;
-    uploadUrl: string;
 }
 
 export class FileUpload implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();
+    private pendingFile: File | null = null;
 
     public static create(
         input: HTMLInputElement,
-        blazorRef: DotNet.DotNetObject,
-        options: Options): FileUpload {
-        return new FileUpload(input, blazorRef, options);
+        blazorRef: DotNet.DotNetObject): FileUpload {
+        return new FileUpload(input, blazorRef);
     }
 
     constructor(
         private readonly input: HTMLInputElement,
-        private readonly blazorRef: DotNet.DotNetObject,
-        private readonly options: Options)
+        blazorRef: DotNet.DotNetObject)
     {
-        let url = BrowserInit.getUrl(options.uploadUrl);
-
         fromEvent(input, 'change')
             .pipe(
                 takeUntil(this.disposed$),
-                map(() => this.input.files?.[0]),
-                filter((file: File) => !!file),
-                filter((file: File) => {
-                    if (options.maxSize != null && file.size > (options.maxSize ?? 0)) {
-                        input.value = null!;
-                        void blazorRef.invokeMethodAsync('OnInvalidSize');
-                        return false;
-                    }
-                    return true;
-                }),
-                map((file: File) => {
-                    const formData = new FormData();
-                    formData.append('file', file, file.name);
-                    return formData;
-                }),
-                map((formData: FormData) => fetch(url, {
-                    method: 'POST',
-                    body: formData,
-                    headers: { [SessionTokens.headerName]: SessionTokens.current },
-                })),
-                switchMap((promise: Promise<Response>) => from(promise)),
+                filter(() => !!this.input.files?.[0]),
             )
-            .subscribe(async (response: Response) => {
-                if (!response.ok) {
-                    errorLog?.log(`failed to upload file: statusCode=${response.status}, '${response.statusText}'`);
-                    return;
-                }
-                const mediaContent = await response.json();
-                await blazorRef.invokeMethodAsync('OnUploaded', mediaContent);
+            .subscribe(() => {
+                const file = this.input.files![0];
+                this.pendingFile = file;
+                void blazorRef.invokeMethodAsync(
+                    'FileSelected',
+                    file.name,
+                    file.type || 'application/octet-stream',
+                    file.size
+                );
             });
+    }
+
+    public startUpload(uploadId: string, blazorRef: DotNet.DotNetObject): void {
+        const file = this.pendingFile;
+        if (!file) {
+            errorLog?.log('startUpload called but no pending file');
+            return;
+        }
+
+        ChunkedFileUpload.startWithReporter(uploadId, file, blazorRef, () => { this.clear() } );
+    }
+
+    public clear()
+    {
+        this.pendingFile = null;
+        this.input.value = null!;
     }
 
     public dispose(): void {

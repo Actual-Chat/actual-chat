@@ -1,19 +1,26 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits AttachmentItemBase
 
 @{
     var attachment = Attachment;
-    var progress = attachment.Progress;
+    var m = State.Value;
+    var progress = m.Progress;
+    var progressValue = progress.Progress;
+    var stageDetails = progress.Details;
+    // NOTE: For attachment item preview state should always be in OK state, so we can use previewUrl.
+    var previewUrl = m.Preview.PreviewUrl;
     var uploadProgressClass = "attachment-upload-progress";
     var plugClass = "blurred-plug";
-    if (attachment.Failed) {
-        progress = Math.Max(progress, 30);
+    if (progress.IsFailed) {
+        progressValue = Math.Max(progressValue, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (attachment.Uploaded) {
+    } else if (progress.IsReady) {
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
 
-    var uploadStyle = $"width: {progress}%;";
+    var uploadStyle = $"width: {progressValue}%;";
+    var isUploading = progress.IsInProgress;
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -22,19 +29,19 @@
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
             @if (attachment.IsImage) {
-                <img src="@attachment.PreviewUrl" alt="Image attachment" class="@plugClass"/>
+                <img src="@previewUrl" alt="Image attachment" class="@plugClass"/>
             } else if (attachment.IsVideo) {
                 <video preload="metadata" class="@plugClass">
-                    <source src="@attachment.PreviewUrl#t=0.5"/>
+                    <source src="@previewUrl#t=0.5"/>
                 </video>
             } else {
                 <FileAttachmentView FileType="@attachment.FileType"/>
             }
-            @if (!attachment.Uploaded) {
+            @if (!progress.IsReady) {
                 <span class="spinner-icon-wrapper">
-                    @if (attachment.IsUploading) {
+                    @if (isUploading) {
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                    } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
+                    } else if (progress.IsFailed && !m.NoAccess && RestartClick.HasDelegate) {
                         <ButtonRound Click="@RestartClick">
                             <i class="icon-sync text-2xl"></i>
                         </ButtonRound>
@@ -49,12 +56,9 @@
                 <span>&nbsp;</span>
             }
         </div>
-        <div class="@uploadProgressClass" style="@uploadStyle"></div>
+        <div class="@uploadProgressClass"
+             style="@uploadStyle"
+             title="@stageDetails">
+        </div>
     </div>
 </li>
-
-@code {
-    [Parameter] public Attachment Attachment { get; set; } = null!;
-    [Parameter] public EventCallback RemoveClick { get; set; }
-    [Parameter] public EventCallback RestartClick { get; set; }
-}

@@ -3,35 +3,58 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public record Attachment(string FileName, string FileType, long Length, int Width, int Height, Task<bool> WhenFilePermissionGranted, Task<string> GetPreviewUrl)
+public abstract record Attachment(string FileName, string FileType, long Length, int Width, int Height)
 {
-    public string Id { get; init; } = Guid.NewGuid().ToString();
-    public int Progress { get; init; }
-    public MediaId? MediaId { get; init; }
-    public MediaId? ThumbnailMediaId { get; init; }
-    [MemberNotNullWhen(true, nameof(MediaId))]
-    public bool Uploaded => MediaId != null;
-    public bool Failed { get; init; }
-    public bool NoAccess { get; init; }
-    public string PreviewUrl {
-        get {
-            if (!GetPreviewUrl.IsCompleted)
-                throw StandardError.Constraint("Preview not yet resolved.");
-
-            if (!GetPreviewUrl.IsCompletedSuccessfully)
-                return "";
- #pragma warning disable VSTHRD002
-            return GetPreviewUrl.Result;
- #pragma warning restore VSTHRD002
-        }
-    }
-
-    public AttachmentCleanupCollection Cleanups { get; } = new ();
+    public AttachmentId Id { get; init; } = AttachmentId.New();
 
     public IFileProvider? FileProvider { get; init; }
     public string UploadSessionId { get; init; } = "";
+    public AttachmentCleanupCollection Cleanups { get; } = new ();
 
     public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
-    public bool IsUploading => UploadSessionId != "" && !(Uploaded || Failed);
+
+    public string DemandUploadSessionId()
+        => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");
+
+    public PropertyBag GetMetadataForUploadSession()
+    {
+        var metadata = new PropertyBag()
+            .Set(nameof(Media.Media.FileName), FileName)
+            .Set(nameof(Media.Media.ContentType), FileType)
+            .Set(nameof(Media.Media.Length), Length);
+        if (IsImage || IsVideo)
+            metadata = metadata
+                .Set(nameof(Media.Media.Width), Width)
+                .Set(nameof(Media.Media.Height), Height);
+        return metadata;
+    }
 }
+
+public record SourceAttachment(
+    string FileName,
+    string FileType,
+    long Length,
+    int Width,
+    int Height,
+    string PreviewUrl)
+    : Attachment(FileName,
+        FileType,
+        Length,
+        Width,
+        Height);
+
+// public record AttachExtra(string PreviewUrl);
+//
+// public record AttachmentWithExtras<TExtra>(
+//     string FileName,
+//     string FileType,
+//     long Length,
+//     int Width,
+//     int Height,
+//     TExtra Extras)
+//     : Attachment(FileName,
+//         FileType,
+//         Length,
+//         Width,
+//         Height);

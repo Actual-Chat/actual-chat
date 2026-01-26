@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -9,23 +8,26 @@ public class FileUploaderService
     private readonly Dictionary<string, UploadJob> _jobs = new (StringComparer.Ordinal);
     private readonly OperationQueue _operationQueue;
     private readonly Func<string, CancellationToken, Task<UploadId>> _getUploadId;
-    private readonly Func<UploadId, CancellationToken, Task<MediaContent>> _convertUpload;
+    private readonly Func<string, CancellationToken, Task<MediaId>> _getMediaId;
+    private readonly Func<UploadId, MediaId, CancellationToken, Task> _startProcessing;
     private readonly Func<string, CancellationToken, Task> _clearUploadId;
     private ILogger Log { get; }
 
     public event Func<string, double, Task>? ProgressChanged;
-    public event Func<string, MediaContent, Task>? Completed;
+    public event Func<string, UploadId, MediaId, Task>? Uploaded;
     public event Func<string, Exception, Task>? Failed;
     public event Func<string, Task>? Canceled;
 
     public FileUploaderService(
         ILogger log,
         Func<string, CancellationToken, Task<UploadId>> getUploadId,
-        Func<UploadId, CancellationToken, Task<MediaContent>> convertUpload,
+        Func<string, CancellationToken, Task<MediaId>> getMediaId,
+        Func<UploadId, MediaId, CancellationToken, Task> startProcessing,
         Func<string, CancellationToken, Task> clearUploadId)
     {
         _getUploadId = getUploadId;
-        _convertUpload = convertUpload;
+        _getMediaId = getMediaId;
+        _startProcessing = startProcessing;
         _clearUploadId = clearUploadId;
         // TODO: add queues with different priorities for small and big files.
         _operationQueue = new OperationQueue();
@@ -68,8 +70,11 @@ public class FileUploaderService
     private Task<UploadId> GetUploadId(string sessionId, CancellationToken cancellationToken)
         => _getUploadId(sessionId, cancellationToken);
 
-    private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken cancellationToken)
-        => _convertUpload(uploadId, cancellationToken);
+    private Task<MediaId> GetMediaId(string sessionId, CancellationToken cancellationToken)
+        => _getMediaId(sessionId, cancellationToken);
+
+    private Task StartProcessing(UploadId uploadId, MediaId mediaId, CancellationToken cancellationToken)
+        => _startProcessing(uploadId, mediaId, cancellationToken);
 
     private Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
         => _clearUploadId(sessionId, cancellationToken);
@@ -138,15 +143,15 @@ public class FileUploaderService
         {
             var fileProvider = Session.FileProvider;
             var whenFileStreamReady = fileProvider.WhenFileStreamReady();
-            var progress = new UploadProgressTracker();
-            var uploadOperation = new FileUploadOperation(whenFileStreamReady, StartFunc, progress);
+            var progressTracker = new FileUploadProgressTracker();
+            var uploadOperation = new FileUploadOperation(whenFileStreamReady, StartFunc, progressTracker);
             PropagateFileUploadProgress(uploadOperation, Session, Owner);
             return uploadOperation;
 
-            async Task<MediaContent> StartFunc(CancellationToken ct)
+            async Task<(UploadId, MediaId)> StartFunc(CancellationToken ct)
             {
                 try {
-                    return await UploadAndConvert(ct, fileProvider, progress).ConfigureAwait(false);
+                    return await UploadAndStartProcessing(fileProvider, progressTracker, ct).ConfigureAwait(false);
                 }
                 catch (UploadNotFoundException) {
                     await Owner.ClearUploadId(Session.SessionId, ct).ConfigureAwait(false);
@@ -155,11 +160,14 @@ public class FileUploaderService
             }
         }
 
-        private async Task<MediaContent> UploadAndConvert(CancellationToken ct, IFileProvider fileProvider, UploadProgressTracker progress)
+        private async Task<(UploadId, MediaId)> UploadAndStartProcessing(IFileProvider fileProvider, FileUploadProgressTracker progress, CancellationToken ct)
         {
+            var mediaId = await Owner.GetMediaId(Session.SessionId, ct).ConfigureAwait(false);
+            mediaId.Require();
             var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
             await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
-            return await Owner.ConvertUpload(uploadId, ct).ConfigureAwait(false);
+            await Owner.StartProcessing(uploadId, mediaId, ct).ConfigureAwait(false);
+            return (uploadId, mediaId);
         }
 
         private void PropagateFileUploadProgress(
@@ -178,9 +186,9 @@ public class FileUploaderService
             progressTracker.ProgressChanged += (_, value) => progressChangedThrottler.Throttle(value);
             _ = progressTracker.Task.ContinueWith(async t => {
                 if (t.IsCompletedSuccessfully) {
-                    Log.LogInformation("**** Uploaded file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
-                    var mediaContent = t.Result;
-                    await (owner.Completed?.Invoke(sessionId, mediaContent) ?? Task.CompletedTask).ConfigureAwait(false);
+                    Log.LogInformation("**** Uploaded file '{FileName}' for '{SessionId}', processing started", session.FileName, sessionId);
+                    var (uploadId, mediaId) = t.Result;
+                    await (owner.Uploaded?.Invoke(sessionId, uploadId, mediaId) ?? Task.CompletedTask).ConfigureAwait(false);
                 }
                 else if (t.IsFaulted) {
                     foreach (var ex in t.Exception.Flatten().InnerExceptions)

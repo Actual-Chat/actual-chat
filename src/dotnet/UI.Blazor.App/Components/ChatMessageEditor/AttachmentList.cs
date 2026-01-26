@@ -18,16 +18,6 @@ public class AttachmentList : IAttachmentList
         RaiseChanged();
     }
 
-    public void UpdateAttachment(string id, Func<Attachment, Attachment> updater) {
-        var i = _attachments.FindIndex(x => OrdinalEquals(x.Id, id));
-        if (i < 0)
-            return;
-
-        var attachment = _attachments[i];
-        _attachments = _attachments.SetItem(i, updater(attachment));
-        RaiseChanged();
-    }
-
     public async Task Remove(Attachment attachment) {
         EnsureBelongsToList(attachment);
         _attachments = _attachments.Remove(attachment);

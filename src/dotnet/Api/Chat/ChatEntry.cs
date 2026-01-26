@@ -104,6 +104,7 @@ public sealed partial record ChatEntry(
     // Populated only on reads
     [DataMember(Order = 50), MemoryPackOrder(50)] public TextEntryAttachment[] Attachments { get; init; } = [];
     [DataMember(Order = 52), MemoryPackOrder(52)] public LinkPreview[] LinkPreviews { get; init; } = [];
+    [DataMember(Order = 53), MemoryPackOrder(53)] public TextEntryAttachment[] AttachmentUploads { get; init; } = [];
     // Used on the client side only.
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string ClientUid { get; init; } = "";

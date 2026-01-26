@@ -14,18 +14,21 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
     public bool Supports(string contentType)
         => MediaTypeExt.IsVideo(contentType);
 
-    public async Task<ProcessedFile> Process(UploadedTempFile upload, CancellationToken cancellationToken)
+    public async Task<ProcessedFile> Process(UploadedTempFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
+        progress?.Report(0);
         var (mustConvert, size, duration) = await GetVideoInfo(upload, upload.TempFilePath, cancellationToken).ConfigureAwait(false);
         if (size is null)
             // we consider it as a file not as a video
             return new ProcessedFile(upload with { ContentType = MediaTypeNames.Application.Octet }, null);
 
+        progress?.Report(10);
         var thumbnail = await GetThumbnail(upload, upload.TempFilePath, duration).ConfigureAwait(false);
         if (thumbnail is null)
             // we consider it as a file not as a video
             return new ProcessedFile(upload with { ContentType = MediaTypeNames.Application.Octet }, null);
 
+        progress?.Report(20);
         if (!mustConvert)
             return new ProcessedFile(upload, size, thumbnail);
 
@@ -33,14 +36,24 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
             var tempDir = FilePath.GetApplicationTempDirectory();
             var convertedFileName = Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(Path.ChangeExtension(upload.FileName, ".mp4"));
             var convertedFilePath = tempDir | convertedFileName;
-            await FFMpegArguments.FromFileInput(upload.TempFilePath)
+            var ffMpegArguments = FFMpegArguments.FromFileInput(upload.TempFilePath)
                 .OutputToFile(convertedFilePath,
                     false,
                     options => options.WithVideoCodec(VideoCodec.LibX264)
                         .WithFastStart()
-                        .WithVariableBitrate(4))
+                        .WithVariableBitrate(4));
+            if (progress is not null) {
+                // Progress from 20% to 98% during conversion
+                Action<double> onPercentageProgress = p => {
+                    var reportProgress = 20 + (0.78 * p);
+                    progress.Report(reportProgress);
+                };
+                ffMpegArguments = ffMpegArguments.NotifyOnProgress(onPercentageProgress, duration);
+            }
+            await ffMpegArguments
                 .ProcessAsynchronously()
                 .ConfigureAwait(false);
+            progress?.Report(98);
             return new ProcessedFile(
                 new UploadedTempFile(
                     Path.ChangeExtension(upload.FileName, ".mp4"),

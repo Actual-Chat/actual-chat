@@ -28,7 +28,7 @@
                 <FileUpload
                     @key="@_model.AvatarId.Value"
                     id="fileUpload"
-                    UploadUrl="/api/avatars/upload-picture"
+                    Scope="@MediaUploadScopes.ForAccount(AccountUI.OwnAccount.Value)"
                     Uploaded="OnImagePicked"
                     MaxSize="Constants.Attachments.AvatarPictureFileSizeLimit"
                     accept="image/*"

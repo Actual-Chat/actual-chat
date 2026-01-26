@@ -16,17 +16,20 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         var rpcHost = services.AddRpcHost(HostInfo);
         var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IMediaBackend>() is ServiceMode.Client;
 
+        // Medias
+        rpcHost.AddApi<IMedias, Medias>();
+        rpcHost.AddBackend<IMediaBackend, MediaBackend>();
+        rpcHost.AddBackend<IMediaStatusBackend, MediaStatusBackend>();
+
         // Link previews
         rpcHost.AddApi<IMediaLinkPreviews, MediaLinkPreviews>();
         rpcHost.AddBackend<ILinkPreviewsBackend, LinkPreviewsBackend>();
-        rpcHost.AddBackend<IMediaBackend, MediaBackend>();
         rpcHost.AddBackend<IGrabStatusesBackend, GrabStatusesBackend>();
 
         // Uploads
         rpcHost.AddApi<IUploads, Uploads>();
         rpcHost.AddBackend<IUploadsBackend, UploadsBackend>();
-        services.AddSingleton<IMediaSaver>(c => new MediaSaver(c.Commander(), c.GetRequiredService<IContentSaver>()));
-        services.AddSingleton<IMediaProcessor, MediaProcessor>();
+        services.AddSingleton<IMediaSaver, MediaSaver>();
 
         if (isBackendClient)
             return;
@@ -52,12 +55,16 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<IDbInitializer, MediaDbInitializer>();
         dbModule.AddDbContextServices<MediaDbContext>(services, db => {
             db.AddEntityResolver<string, DbMedia>();
+            db.AddEntityResolver<string, DbMediaStatus>();
             db.AddEntityResolver<string, DbGrabStatus>();
             db.AddEntityResolver<string, DbLinkPreview>();
         });
 
         // Flows
-        services.AddFlows().Add<LinkPreviewFlow>().Add<PreviewThumbnailUpdateFlow>();
+        services.AddFlows()
+            .Add<LinkPreviewFlow>()
+            .Add<PreviewThumbnailUpdateFlow>()
+            .Add<UploadProcessingFlow>();
 
         // Uploads
         services.AddSingleton<UploadsStorage>();

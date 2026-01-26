@@ -1,30 +1,37 @@
 @using ActualChat.Media
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits AttachmentItemBase
+
 @{
     var attachment = Attachment;
-    var progress = attachment.Progress;
+    var state = State.Value;
+    var previewState = state.Preview.State;
+    var progress = state.Progress;
+    var progressValue = progress.Progress;
+    var stageDetails = progress.Details;
     var uploadProgressClass = "attachment-upload-progress";
     MediaMimeTypes.TryGetExtension(attachment.FileType, out var extension);
     var fileExtension = extension != null ? extension.Replace(".", "") : "";
     var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
     var iconOnlyCls = IconOnly ? "icon-only" : "";
     var tooltipTitle = IconOnly ? GetTooltipTitle() : "";
-    if (attachment.Failed) {
-        progress = Math.Max(progress, 30);
+    if (progress.IsFailed) {
+        progressValue = Math.Max(progressValue, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (attachment.Uploaded) {
+    } else if (progress.IsReady) {
         uploadProgressClass += " attachment-upload-completed";
     }
-    var uploadStyle = $"width: {progress}%;";
+    var uploadStyle = $"width: {progressValue}%;";
+    var isUploading = progress.IsInProgress;
 }
 
 <div class="file-attachment upload-file unfocusable @iconOnlyCls"
    data-tooltip="@tooltipTitle"
    data-tooltip-position="@FloatingPosition.Top.ToPositionString()">
     <div class="c-file-icon @fileCls">
-        @if (_showWaitingPlug) {
+        @if (previewState is PreviewAccessState.PendingGetAccessRequest) {
             <i class="icon-file-blocked text-2xl text-02"></i>
-        } else if (_showBrokenPlug) {
+        } else if (previewState is PreviewAccessState.NoFileAccess) {
             <i class="icon-file-broken text-2xl text-02"></i>
         } else {
             if (fileCls == FileTypeHelper.FileClasses[FileType.Multimedia]) {
@@ -33,8 +40,8 @@
                 <i class="icon-file text-xl"></i>
             }
         }
-        @if (!attachment.Uploaded && !(_showBrokenPlug || _showWaitingPlug)) {
-            @if (attachment.IsUploading) {
+        @if (!progress.IsReady && previewState is PreviewAccessState.Ok) {
+            @if (isUploading) {
                 <span class="spinner-icon-wrapper">
                     <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
                 </span>
@@ -48,12 +55,15 @@
                 <div class="c-size">
                     <span>@FileSizeFormatter.Format(Attachment.Length)</span>
                 </div>
-                <div class="@uploadProgressClass" style="@uploadStyle"></div>
+                <div class="@uploadProgressClass"
+                     style="@uploadStyle"
+                     title="@stageDetails">
+                </div>
             </div>
         </div>
     }
-    @if (!attachment.Uploaded) {
-        @if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
+    @if (!progress.IsReady) {
+        @if (progress.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
             <span class="reload-icon-wrapper">
                 <ButtonRound Click="@RestartClick" Class="btn-sm">
                     <i class="icon-sync text-2xl"></i>
@@ -67,23 +77,7 @@
 </div>
 
 @code {
-    private bool _showBrokenPlug;
-    private bool _showWaitingPlug;
-
-    [Parameter, EditorRequired] public Attachment Attachment { get; set; } = null!;
     [Parameter] public bool IconOnly { get; set; }
-    [Parameter] public EventCallback RemoveClick { get; set; }
-    [Parameter] public EventCallback RestartClick { get; set; }
-
-    protected override void OnParametersSet() {
-        _showBrokenPlug = false;
-        _showWaitingPlug = false;
-        if (!Attachment.GetPreviewUrl.IsCompleted) {
-            _showBrokenPlug = true;
-        } else if (Attachment.GetPreviewUrl.IsCompleted && !Attachment.WhenFilePermissionGranted.IsCompleted) {
-            _showWaitingPlug = true;
-        }
-    }
 
     private string GetTooltipTitle() {
         var name = Attachment.FileName;
