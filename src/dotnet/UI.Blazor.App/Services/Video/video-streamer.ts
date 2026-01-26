@@ -15,6 +15,8 @@ export interface VideoStreamConfig {
 }
 
 export interface VideoStreamFrame {
+    // offset and duration are in .NET TimeSpan ticks (100-nanosecond units)
+    // Convert from microseconds: ticks = microseconds * 10
     offset: number;
     duration: number;
     isKeyFrame: boolean;
@@ -22,6 +24,12 @@ export interface VideoStreamFrame {
     height: number;
     data: Uint8Array;
     description?: Uint8Array; // Codec-specific data (SPS/PPS for H.264)
+    codec?: string; // Codec identifier (e.g., "avc1" for H.264), only on keyframes
+}
+
+// Helper to convert microseconds to .NET TimeSpan ticks
+export function microsecondsToTicks(microseconds: number): number {
+    return microseconds * 10;
 }
 
 export class VideoStream {

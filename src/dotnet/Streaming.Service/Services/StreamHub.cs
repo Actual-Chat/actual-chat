@@ -3,51 +3,12 @@ using ActualChat.Video;
 using ActualChat.Hosting;
 using ActualChat.Security;
 using ActualLab.Rpc;
-using MessagePack;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Hub = Microsoft.AspNetCore.SignalR.Hub;
 
 namespace ActualChat.Streaming.Services;
-
-// DTO that matches the TypeScript VideoStreamFrame interface exactly
-// Uses camelCase property names and primitive types for MessagePack compatibility
-[MessagePackObject]
-public class VideoStreamFrameDto
-{
-    [MessagePack.Key("offset")]
-    public double Offset { get; set; }
-
-    [MessagePack.Key("duration")]
-    public double Duration { get; set; }
-
-    [MessagePack.Key("isKeyFrame")]
-    public bool IsKeyFrame { get; set; }
-
-    [MessagePack.Key("width")]
-    public int Width { get; set; }
-
-    [MessagePack.Key("height")]
-    public int Height { get; set; }
-
-    [MessagePack.Key("data")]
-    public byte[] Data { get; set; } = [];
-
-    [MessagePack.Key("description")]
-    public byte[]? Description { get; set; }
-
-    public VideoFrame ToVideoFrame()
-        => new(IsKeyFrame) {
-            // TypeScript sends microseconds, convert to TimeSpan
-            Offset = TimeSpan.FromMicroseconds(Offset),
-            Duration = TimeSpan.FromMicroseconds(Duration),
-            Width = Width,
-            Height = Height,
-            Data = Data,
-            Description = Description,
-        };
-}
 
 /// <summary>
 /// SignalR hub for real-time audio streaming from clients.
@@ -86,6 +47,7 @@ public class StreamHub(IServiceProvider services) : Hub
             audioStream.SelectMany(c => c.AsAsyncEnumerable()));
 
     // Video streaming method for JS client
+    // VideoFrame is deserialized directly via MessagePack with camelCase keys
     public Task PushVideo(
         string sessionToken,
         string? chatId,
@@ -94,14 +56,14 @@ public class StreamHub(IServiceProvider services) : Hub
         int height,
         string? codecSettings, // Base64 encoded SPS/PPS for H.264
         double clientStartOffset,
-        IAsyncEnumerable<VideoStreamFrameDto[]> videoStream)
+        IAsyncEnumerable<VideoFrame[]> videoStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         Log.LogInformation("PushVideo: Started with codec={Codec}, {Width}x{Height}, codecSettings={CodecSettingsLen} chars",
             codec, width, height, codecSettings?.Length ?? 0);
 
-        // Debug wrapper to count incoming batches
-        async IAsyncEnumerable<VideoStreamFrameDto> LogBatches(IAsyncEnumerable<VideoStreamFrameDto[]> source)
+        // Debug wrapper to count incoming batches and add codec to keyframes
+        async IAsyncEnumerable<VideoFrame> LogBatches(IAsyncEnumerable<VideoFrame[]> source)
         {
             var batchCount = 0;
             var frameCount = 0;
@@ -112,12 +74,25 @@ public class StreamHub(IServiceProvider services) : Hub
                     continue;
                 }
                 Log.LogInformation("PushVideo: received batch #{BatchCount} with {FrameCount} frames", batchCount, batch.Length);
-                foreach (var dto in batch) {
+                foreach (var frame in batch) {
                     frameCount++;
-                    if (frameCount <= 3 || frameCount % 30 == 0 || dto.IsKeyFrame)
-                        Log.LogInformation("PushVideo frame #{Count}: Offset={Offset}, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
-                            frameCount, dto.Offset, dto.IsKeyFrame, dto.Data?.Length ?? 0, dto.Description?.Length ?? 0);
-                    yield return dto;
+                    if (frameCount <= 3 || frameCount % 30 == 0 || frame.IsKeyFrame)
+                        Log.LogInformation("PushVideo frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
+                            frameCount, frame.Offset.TotalMilliseconds, frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Description?.Length ?? 0);
+
+                    // Add codec to keyframes so receivers can extract format from stream
+                    if (frame.IsKeyFrame && frame.Codec == null)
+                        yield return new VideoFrame(true) {
+                            Data = frame.Data,
+                            Offset = frame.Offset,
+                            Duration = frame.Duration,
+                            Width = frame.Width,
+                            Height = frame.Height,
+                            Description = frame.Description,
+                            Codec = codec,
+                        };
+                    else
+                        yield return frame;
                 }
             }
             Log.LogInformation("PushVideo: stream ended after {BatchCount} batches, {FrameCount} total frames", batchCount, frameCount);
@@ -131,7 +106,7 @@ public class StreamHub(IServiceProvider services) : Hub
             height,
             codecSettings,
             clientStartOffset,
-            LogBatches(videoStream).Select(dto => dto.ToVideoFrame()));
+            LogBatches(videoStream));
     }
 
     // Private methods
