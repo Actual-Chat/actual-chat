@@ -16,7 +16,7 @@
     <RedisVersion>2.9.32</RedisVersion>
     <SignalRVersion>[9.0.8,)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <OpenTelemetryVersion>1.12.0</OpenTelemetryVersion>
+    <OpenTelemetryVersion>1.15.0</OpenTelemetryVersion>
     <SentryVersion>5.14.1</SentryVersion>
     <MemoryPackVersion>1.21.4</MemoryPackVersion>
     <MessagePackVersion>3.1.3</MessagePackVersion>
