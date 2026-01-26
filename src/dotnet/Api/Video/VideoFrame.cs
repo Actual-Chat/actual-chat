@@ -20,4 +20,10 @@ public partial class VideoFrame(bool isKeyFrame) : MediaFrame
 
     [DataMember(Order = 5), MemoryPackOrder(5)]
     public int Height { get; init; }
+
+    /// <summary>
+    /// Codec-specific data (SPS/PPS for H.264). Only present on keyframes.
+    /// </summary>
+    [DataMember(Order = 6), MemoryPackOrder(6)]
+    public byte[]? Description { get; init; }
 }

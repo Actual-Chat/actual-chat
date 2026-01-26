@@ -57,7 +57,23 @@ public partial class StreamingBackend
         try {
             // Publish video stream for real-time viewing
             // No processing - just forward to StreamStore for memoization
-            await _videoStreams.Publish(record.StreamId, videoFrames).ConfigureAwait(false);
+            Log.LogInformation("PushVideoInternal: Publishing stream {StreamId} to StreamStore", record.StreamId);
+
+            // Debug: wrap stream to count frames being published
+            var frameCount = 0;
+            async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
+            {
+                await foreach (var frame in source.WithCancellation(cancellationToken)) {
+                    frameCount++;
+                    if (frameCount <= 3 || frameCount % 30 == 0 || frame.IsKeyFrame)
+                        Log.LogInformation("PushVideoInternal memoizing frame #{Count}: Offset={Offset}ms, Size={Size}, IsKey={IsKey}, DescLen={DescLen}",
+                            frameCount, frame.Offset.TotalMilliseconds, frame.Data?.Length ?? 0, frame.IsKeyFrame, frame.Description?.Length ?? 0);
+                    yield return frame;
+                }
+                Log.LogInformation("PushVideoInternal stream completed with {Count} frames", frameCount);
+            }
+
+            await _videoStreams.Publish(record.StreamId, LogFrames(videoFrames)).ConfigureAwait(false);
         }
         finally {
             // Unregister stream when it ends

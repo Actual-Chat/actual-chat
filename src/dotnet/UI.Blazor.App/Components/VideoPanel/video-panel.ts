@@ -391,7 +391,8 @@ export class VideoPanel {
         frameData: Uint8Array,
         timestampMs: number,
         durationMs: number,
-        isKeyFrame: boolean
+        isKeyFrame: boolean,
+        description?: Uint8Array // Codec description (SPS/PPS for H.264) - only present on keyframes
     ): Promise<void> {
         const stream = this.remoteStreams.get(streamId);
         if (!stream) {
@@ -399,7 +400,7 @@ export class VideoPanel {
             return;
         }
 
-        await stream.player.pushFrame(frameData, timestampMs, durationMs, isKeyFrame);
+        await stream.player.pushFrame(frameData, timestampMs, durationMs, isKeyFrame, description);
     }
 
     /**

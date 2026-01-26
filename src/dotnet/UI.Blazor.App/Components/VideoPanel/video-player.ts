@@ -9,6 +9,14 @@ export interface RemoteVideoStream {
     canvas: HTMLCanvasElement;
 }
 
+interface PendingChunk {
+    frameData: Uint8Array;
+    timestampMs: number;
+    durationMs: number;
+    isKeyFrame: boolean;
+    description?: Uint8Array;
+}
+
 export class VideoPlayer {
     private blazorRef: DotNet.DotNetObject;
     private streamId: string;
@@ -21,6 +29,10 @@ export class VideoPlayer {
     private decoderConfig: VideoDecoderConfig | null = null;
     private pendingFrames: VideoFrame[] = [];
     private isPlaying = false;
+
+    // Buffer chunks until we receive a keyframe with description
+    private waitingForKeyframe = true;
+    private pendingChunks: PendingChunk[] = [];
 
     // Buffering state
     private bufferSize = 0;
@@ -63,21 +75,26 @@ export class VideoPlayer {
         }
 
         try {
-            // Map codec name to WebCodecs codec string
-            const codecString = this.mapCodecToWebCodecs(codec);
-            debugLog?.log(`Initializing WebCodecs decoder with codec: ${codecString}`);
-
             // Decode codec settings (base64 encoded SPS/PPS for H.264)
             let description: ArrayBuffer | undefined;
             if (codecSettings) {
+                console.log(`[VideoPlayer] Received codecSettings: ${codecSettings.length} base64 chars`);
+                console.log(`[VideoPlayer] codecSettings base64: ${codecSettings}`);
                 const binaryString = atob(codecSettings);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
                 }
                 description = bytes.buffer;
-                debugLog?.log(`Codec settings decoded: ${bytes.length} bytes`);
+                // Log first few bytes for debugging
+                const hexBytes = Array.from(bytes.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                console.log(`[VideoPlayer] Decoded description: ${bytes.length} bytes`);
+                console.log(`[VideoPlayer] Description first 20 bytes (hex): ${hexBytes}`);
             }
+
+            // Map codec name to WebCodecs codec string (pass description to extract actual profile)
+            const codecString = this.mapCodecToWebCodecs(codec, description);
+            debugLog?.log(`Initializing WebCodecs decoder with codec: ${codecString}`);
 
             this.decoderConfig = {
                 codec: codecString,
@@ -102,6 +119,12 @@ export class VideoPlayer {
 
             this.decoder.configure(this.decoderConfig);
             debugLog?.log('WebCodecs decoder configured');
+
+            // If we have codec settings, we don't need to wait for keyframe with description
+            if (codecSettings) {
+                this.waitingForKeyframe = false;
+                console.log('[VideoPlayer] Decoder configured with codecSettings from VideoFormat, not waiting for keyframe with description');
+            }
         } catch (error) {
             errorLog?.log('Failed to initialize WebCodecs decoder:', error);
         }
@@ -111,11 +134,23 @@ export class VideoPlayer {
         return typeof VideoDecoder !== 'undefined';
     }
 
-    private mapCodecToWebCodecs(codec: string): string {
+    private mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): string {
+        // If we have an avcC description, extract the actual codec profile from it
+        if (description && description.byteLength >= 4 && (codec.toLowerCase() === 'h264' || codec.toLowerCase() === 'avc1')) {
+            const bytes = new Uint8Array(description);
+            // avcC structure: configurationVersion(1), profileIndication(1), profileCompatibility(1), levelIndication(1), ...
+            const profileIndication = bytes[1];
+            const profileCompatibility = bytes[2];
+            const levelIndication = bytes[3];
+            const codecString = `avc1.${profileIndication.toString(16).padStart(2, '0')}${profileCompatibility.toString(16).padStart(2, '0')}${levelIndication.toString(16).padStart(2, '0')}`;
+            console.log(`[VideoPlayer] Built codec string from avcC: ${codecString} (profile=${profileIndication}, compat=${profileCompatibility}, level=${levelIndication})`);
+            return codecString;
+        }
+
         // Map common codec names to WebCodecs codec strings
         const codecMap: Record<string, string> = {
-            'h264': 'avc1.42E01E', // H.264 Baseline profile
-            'avc1': 'avc1.42E01E',
+            'h264': 'avc1.640028', // H.264 High profile, Level 4.0 (common default)
+            'avc1': 'avc1.640028',
             'h265': 'hvc1.1.6.L93.90',
             'hevc': 'hvc1.1.6.L93.90',
             'vp8': 'vp8',
@@ -131,7 +166,7 @@ export class VideoPlayer {
         if (codec.includes('.')) {
             return codec;
         }
-        return 'avc1.42E01E'; // Default to H.264 Baseline
+        return 'avc1.640028'; // Default to H.264 High profile
     }
 
     private onFrameDecoded(frame: VideoFrame): void {
@@ -188,12 +223,82 @@ export class VideoPlayer {
         frameData: Uint8Array,
         timestampMs: number,
         durationMs: number,
-        isKeyFrame: boolean
+        isKeyFrame: boolean,
+        description?: Uint8Array // Codec description (SPS/PPS for H.264) - only present on keyframes
     ): Promise<void> {
         if (!this.isPlaying) {
             return;
         }
 
+        // If we're waiting for a keyframe with description, buffer chunks
+        if (this.waitingForKeyframe) {
+            console.log(`[VideoPlayer] Received frame: isKey=${isKeyFrame}, descLen=${description?.length ?? 0}, dataLen=${frameData.length}`);
+            if (isKeyFrame && description && description.length > 0) {
+                // Got the keyframe with description - configure decoder and process buffered chunks
+                console.log(`[VideoPlayer] GOT KEYFRAME WITH DESCRIPTION: ${description.length} bytes, processing ${this.pendingChunks.length} buffered chunks`);
+                this.waitingForKeyframe = false;
+
+                // Configure decoder with description
+                // Note: description.buffer may be larger than the actual data if it's a view,
+                // so we need to slice it properly
+                if (this.decoder && this.decoderConfig) {
+                    const descBuffer = description.buffer.slice(
+                        description.byteOffset,
+                        description.byteOffset + description.byteLength
+                    );
+                    const newConfig: VideoDecoderConfig = {
+                        ...this.decoderConfig,
+                        description: descBuffer,
+                    };
+                    this.decoder.configure(newConfig);
+                    this.decoderConfig = newConfig;
+                }
+
+                // Process the keyframe first
+                this.decodeChunk(frameData, timestampMs, durationMs, isKeyFrame);
+
+                // Clear buffered delta frames (they're useless without the keyframe before them)
+                this.pendingChunks = [];
+            } else {
+                // Buffer delta frames while waiting (but limit buffer size)
+                if (this.pendingChunks.length < 30) {
+                    this.pendingChunks.push({ frameData, timestampMs, durationMs, isKeyFrame, description });
+                }
+                if (this.pendingChunks.length <= 5 || this.pendingChunks.length % 30 === 0)
+                    console.log(`[VideoPlayer] Waiting for keyframe with description, buffered ${this.pendingChunks.length} chunks (isKey=${isKeyFrame}, hasDesc=${!!description})`);
+            }
+            return;
+        }
+
+        // If we receive a new keyframe with description, reconfigure the decoder
+        // Note: description.buffer may be larger than the actual data if it's a view,
+        // so we need to slice it properly
+        if (isKeyFrame && description && description.length > 0) {
+            debugLog?.log(`Reconfiguring decoder with new description: ${description.length} bytes`);
+            if (this.decoder && this.decoderConfig) {
+                // Create a proper ArrayBuffer from the Uint8Array (handles views correctly)
+                const descBuffer = description.buffer.slice(
+                    description.byteOffset,
+                    description.byteOffset + description.byteLength
+                );
+                const newConfig: VideoDecoderConfig = {
+                    ...this.decoderConfig,
+                    description: descBuffer,
+                };
+                this.decoder.configure(newConfig);
+                this.decoderConfig = newConfig;
+            }
+        }
+
+        this.decodeChunk(frameData, timestampMs, durationMs, isKeyFrame);
+    }
+
+    private decodeChunk(
+        frameData: Uint8Array,
+        timestampMs: number,
+        durationMs: number,
+        isKeyFrame: boolean
+    ): void {
         if (this.decoder && this.decoder.state === 'configured') {
             try {
                 const chunk = new EncodedVideoChunk({
@@ -208,8 +313,6 @@ export class VideoPlayer {
                 errorLog?.log('Error decoding chunk:', error);
             }
         } else {
-            // Fallback: try to decode with canvas-based approach
-            // For now, just log - full fallback would require separate implementation
             warnLog?.log('Decoder not available, frame dropped');
         }
     }

@@ -79,7 +79,8 @@ public sealed class VideoPlaybackEngine(
             frame.Data,
             frame.Offset.TotalMilliseconds,
             frame.Duration.TotalMilliseconds,
-            videoFrame.IsKeyFrame);
+            videoFrame.IsKeyFrame,
+            videoFrame.Description); // Codec description (SPS/PPS for H.264) - only present on keyframes
 
         return ValueTask.CompletedTask;
     }

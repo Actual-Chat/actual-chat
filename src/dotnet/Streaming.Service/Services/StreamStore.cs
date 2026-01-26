@@ -27,27 +27,37 @@ public class StreamStore<TItem> : ProcessorBase
         => Get(streamId, true, cancellationToken);
     public async Task<IAsyncEnumerable<TItem>?> Get(StreamId streamId, bool waitForShare, CancellationToken cancellationToken)
     {
+        Log?.LogInformation("StreamStore.Get({StreamId}, waitForShare={WaitForShare}): starting", streamId, waitForShare);
         StreamIdValidator.Invoke(streamId);
-        if (StopToken.IsCancellationRequested)
+        if (StopToken.IsCancellationRequested) {
+            Log?.LogWarning("StreamStore.Get({StreamId}): StopToken is cancelled", streamId);
             return null;
+        }
 
         if (!waitForShare && _streams.TryGetValue(streamId.Value, out var entry)) {
-            if (!entry.Value.Task.IsCompleted)
+            if (!entry.Value.Task.IsCompleted) {
+                Log?.LogInformation("StreamStore.Get({StreamId}): entry exists but task not completed", streamId);
                 return null;
+            }
 
             var memoizer = await entry.Value.Task.ConfigureAwait(false);
+            Log?.LogInformation("StreamStore.Get({StreamId}): returning memoizer (waitForShare=false), memoizer={Memoizer}", streamId, memoizer != null ? "exists" : "null");
             return memoizer?.Replay(cancellationToken);
         }
 
         // If waitForShare is false and the stream doesn't exist, return null immediately
-        if (!waitForShare)
+        if (!waitForShare) {
+            Log?.LogInformation("StreamStore.Get({StreamId}): stream not found and waitForShare=false", streamId);
             return null;
+        }
 
+        Log?.LogInformation("StreamStore.Get({StreamId}): waiting for stream with timeout {Timeout}s", streamId, ShareWaitDelay.TotalSeconds);
         entry = GetOrAddStream(streamId);
         try {
             var memoizer = await entry.Value.Task
                 .WaitAsync(ShareWaitDelay, cancellationToken)
                 .ConfigureAwait(false);
+            Log?.LogInformation("StreamStore.Get({StreamId}): got memoizer={Memoizer}", streamId, memoizer != null ? "exists" : "null");
             return memoizer?.Replay(cancellationToken);
 #if false
             if (memoizer == null)
@@ -65,6 +75,7 @@ public class StreamStore<TItem> : ProcessorBase
 #endif
         }
         catch (TimeoutException) {
+            Log?.LogWarning("StreamStore.Get({StreamId}): TIMEOUT waiting for stream after {Timeout}s", streamId, ShareWaitDelay.TotalSeconds);
             return null;
         }
     }
@@ -76,6 +87,8 @@ public class StreamStore<TItem> : ProcessorBase
         StreamIdValidator.Invoke(streamId);
         StopToken.ThrowIfCancellationRequested();
 
+        Log?.LogInformation("StreamStore.Publish({StreamId}): registering stream", streamId);
+
         // No need to wait for write completion here, it's enough to just register the stream
         StreamCount?.Add(1);
         var entry = GetOrAddStream(streamId);
@@ -84,14 +97,18 @@ public class StreamStore<TItem> : ProcessorBase
             return Task.CompletedTask;
         }
 
+        Log?.LogInformation("StreamStore.Publish({StreamId}): stream registered successfully", streamId);
+
         var writeTask = memoizer.WriteTask;
         _ = BackgroundTask.Run(async () => {
             var bumpExpirationPeriod = ExpirationDelay / 2;
             while (true) {
                 await Task.Delay(bumpExpirationPeriod).SilentAwait(false);
                 entry.BumpExpiresAt(ExpirationDelay);
-                if (writeTask.IsCompleted)
+                if (writeTask.IsCompleted) {
+                    Log?.LogInformation("StreamStore.Publish({StreamId}): write completed", streamId);
                     return;
+                }
             }
         }, CancellationToken.None);
         return writeTask;

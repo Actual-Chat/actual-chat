@@ -20,6 +20,7 @@ public class VideoSource(
                 Duration = vf.Duration,
                 Width = vf.Width,
                 Height = vf.Height,
+                Description = vf.Description,
             }),
         log,
         cancellationToken)

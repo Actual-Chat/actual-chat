@@ -11,6 +11,7 @@ export interface VideoStreamConfig {
     codec: string;
     width: number;
     height: number;
+    codecSettings?: string; // Base64 encoded codec-specific data (SPS/PPS for H.264)
 }
 
 export interface VideoStreamFrame {
@@ -20,6 +21,7 @@ export interface VideoStreamFrame {
     width: number;
     height: number;
     data: Uint8Array;
+    description?: Uint8Array; // Codec-specific data (SPS/PPS for H.264)
 }
 
 export class VideoStream {
@@ -40,12 +42,18 @@ export class VideoStream {
     }
 
     public addFrame(frame: VideoStreamFrame): void {
-        if (this.isCompleted) return;
+        if (this.isCompleted) {
+            console.warn('[VideoStream] addFrame: skipping, stream is completed');
+            return;
+        }
         if (!frame.data?.length) {
-            warnLog?.log('skip empty video frame:', frame);
+            console.warn('[VideoStream] addFrame: skipping empty frame');
             return;
         }
         this.frames.push(frame);
+        // Always log frame additions for debugging
+        if (this.frames.length <= 3 || this.frames.length % 30 === 0)
+            console.log('[VideoStream] addFrame: added frame, queue size:', this.frames.length, 'isKey:', frame.isKeyFrame, 'size:', frame.data.length);
         this.frameAdded.trigger();
     }
 
@@ -55,8 +63,12 @@ export class VideoStream {
     }
 
     private async stream(): Promise<void> {
+        console.log('[VideoStream] stream() started, isCompleted:', this.isCompleted, 'isDisposed:', this.isDisposed);
+
         if (this.streamAfter) {
+            debugLog?.log('[VideoStream] Waiting for previous stream to complete...');
             await this.streamAfter;
+            debugLog?.log('[VideoStream] Previous stream completed');
         }
 
         let subject: signalR.Subject<VideoStreamFrame[]> | null = null;
@@ -65,9 +77,14 @@ export class VideoStream {
         while (!this.isDisposed) {
             try {
                 if (subject === null || !VideoStreamer.isConnected) {
+                    debugLog?.log('[VideoStream] Connecting to SignalR...');
                     await VideoStreamer.ensureConnected();
-                    if (this.isDisposed) return;
+                    if (this.isDisposed) {
+                        debugLog?.log('[VideoStream] Disposed while connecting, exiting');
+                        return;
+                    }
 
+                    console.log('[VideoStream] Connected, creating subject and calling PushVideo with codecSettings:', this.config.codecSettings?.length ?? 0, 'chars');
                     subject = new signalR.Subject<VideoStreamFrame[]>();
                     // Use PushVideo - simple forwarding, no processing
                     await VideoStreamer.connection.send(
@@ -77,9 +94,11 @@ export class VideoStream {
                         this.config.codec,
                         this.config.width,
                         this.config.height,
+                        this.config.codecSettings ?? '', // Base64 encoded SPS/PPS for H.264
                         Date.now() / 1000,
                         subject
                     );
+                    console.log('[VideoStream] PushVideo called successfully with codecSettings');
                 }
 
                 while (VideoStreamer.isConnected && !this.isDisposed) {
@@ -90,26 +109,33 @@ export class VideoStream {
                         if (frame) {
                             chunksToSend.push(frame);
                         } else if (this.isCompleted || chunksToSend.length > 0) {
+                            debugLog?.log('[VideoStream] Breaking inner loop: isCompleted=', this.isCompleted, 'chunksToSend.length=', chunksToSend.length);
                             break;
                         } else {
+                            // debugLog?.log('[VideoStream] Waiting for frames...');
                             await this.frameAdded.whenNext();
                         }
                     }
 
                     if (chunksToSend.length > 0) {
-                        subject.next(chunksToSend);
+                        console.log('[VideoStream] Sending', chunksToSend.length, 'frames to server');
+                        // Send a copy of the array to avoid race condition with clearing
+                        subject.next([...chunksToSend]);
                     }
 
                     if (this.isCompleted && this.frames.length === 0) {
+                        console.log('[VideoStream] Stream completed, calling subject.complete()');
                         subject.complete();
                         this.isDisposed = true;
                     }
                 }
+                debugLog?.log('[VideoStream] Exited inner while loop, isConnected:', VideoStreamer.isConnected, 'isDisposed:', this.isDisposed);
             } catch (error) {
                 subject = null;
-                warnLog?.log('stream error:', error);
+                errorLog?.log('[VideoStream] stream error:', error);
             }
         }
+        debugLog?.log('[VideoStream] stream() exiting');
     }
 }
 

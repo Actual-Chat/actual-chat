@@ -109,6 +109,8 @@ export class VideoPipeline implements IVideoPipeline {
 
   // Video streaming
   private videoStream: any = null; // VideoStream instance
+  private pendingStreamFrames: VideoStreamFrame[] = []; // Buffer frames until we get codec description
+  private codecSettings: string | null = null; // Base64 encoded codec description (SPS/PPS for H.264)
 
   // Canvas fallbacks (when MSTG not available)
   private outputCanvas: HTMLCanvasElement | null = null;
@@ -162,7 +164,7 @@ export class VideoPipeline implements IVideoPipeline {
     // console.log(`[Pipeline] Encoded chunk #${chunkSeq} received from sender via RPC: ${chunkData.type}, size: ${chunkData.byteLength}`);
 
     // Stream to server if enabled
-    if (this.config.streaming?.enabled && this.videoStream) {
+    if (this.config.streaming?.enabled) {
       const chunkBytes = new Uint8Array(chunkData.byteLength);
       chunkData.chunk.copyTo(chunkBytes);
       const frame: VideoStreamFrame = {
@@ -173,8 +175,75 @@ export class VideoPipeline implements IVideoPipeline {
         height: this.config.encoderConfig.height,
         data: chunkBytes
       };
-      this.videoStream.addFrame(frame);
-      // console.log(`[Pipeline] Chunk (${chunkData.type}) streamed to server: ${chunkBytes.length} bytes`);
+
+      // Extract codec description from keyframes (required for H.264 decoder)
+      if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
+        const desc = chunkData.metadata.decoderConfig.description;
+        let descBytes: Uint8Array;
+        if (desc instanceof ArrayBuffer) {
+          descBytes = new Uint8Array(desc);
+        } else if (ArrayBuffer.isView(desc)) {
+          descBytes = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
+        } else {
+          descBytes = new Uint8Array(0);
+        }
+        frame.description = descBytes;
+
+        // If we don't have codecSettings yet, capture it from this keyframe
+        if (!this.codecSettings && descBytes.length > 0) {
+          // Convert to base64 for transmission
+          let binary = '';
+          for (let i = 0; i < descBytes.length; i++) {
+            binary += String.fromCharCode(descBytes[i]);
+          }
+          this.codecSettings = btoa(binary);
+          // Log first few bytes for debugging
+          const hexBytes = Array.from(descBytes.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+          console.log(`[Pipeline] Captured codec description (SPS/PPS): ${descBytes.length} bytes -> ${this.codecSettings.length} base64 chars`);
+          console.log(`[Pipeline] Description first 20 bytes (hex): ${hexBytes}`);
+          console.log(`[Pipeline] Description base64: ${this.codecSettings}`);
+        }
+      }
+
+      // If videoStream doesn't exist yet, check if we can create it now
+      if (!this.videoStream) {
+        if (this.codecSettings) {
+          // We have the codec description, create the stream now
+          console.log(`[Pipeline] Creating VideoStream with codecSettings (${this.codecSettings.length} chars)`);
+          const streamConfig: VideoStreamConfig = {
+            codec: this.config.encoderConfig.codec,
+            width: this.config.encoderConfig.width,
+            height: this.config.encoderConfig.height,
+            codecSettings: this.codecSettings,
+          };
+          this.videoStream = VideoStreamer.addStream(
+            this.config.streaming.sessionToken,
+            this.config.streaming.chatId,
+            streamConfig
+          );
+          console.log(`[Pipeline] VideoStream created, sending ${this.pendingStreamFrames.length} buffered frames`);
+
+          // Send all buffered frames
+          for (const bufferedFrame of this.pendingStreamFrames) {
+            this.videoStream.addFrame(bufferedFrame);
+          }
+          this.pendingStreamFrames = [];
+
+          // Send the current frame
+          console.log(`[Pipeline] Streaming frame to server: type=${chunkData.type}, size=${chunkBytes.length}`);
+          this.videoStream.addFrame(frame);
+        } else {
+          // Buffer the frame until we get the codec description
+          this.pendingStreamFrames.push(frame);
+          if (this.pendingStreamFrames.length <= 3 || this.pendingStreamFrames.length % 30 === 0) {
+            console.log(`[Pipeline] Buffering frame (waiting for codec description): ${this.pendingStreamFrames.length} frames buffered`);
+          }
+        }
+      } else {
+        // Stream exists, send the frame directly
+        console.log(`[Pipeline] Streaming frame to server: type=${chunkData.type}, size=${chunkBytes.length}`);
+        this.videoStream.addFrame(frame);
+      }
     }
 
     if (this.websocketTransfer) {
@@ -358,25 +427,17 @@ export class VideoPipeline implements IVideoPipeline {
       console.log('[Pipeline] Transfer simulator initialized in main thread (network boundary)');
     }
 
-    // Initialize video streaming if enabled
+    // Initialize video streaming if enabled (stream will be created when first keyframe with description arrives)
     if (this.config.streaming?.enabled) {
-      console.log('[Pipeline] Initializing video streaming to server');
+      console.log('[Pipeline] Initializing video streaming to server (will wait for first keyframe with codec description)');
 
       // Initialize VideoStreamer SignalR connection
       const hubUrl = new URL('/api/hub/streams', window.location.origin).toString();
       VideoStreamer.init(hubUrl);
 
-      const streamConfig: VideoStreamConfig = {
-        codec: this.config.encoderConfig.codec,
-        width: this.config.encoderConfig.width,
-        height: this.config.encoderConfig.height,
-      };
-      this.videoStream = VideoStreamer.addStream(
-        this.config.streaming.sessionToken,
-        this.config.streaming.chatId,
-        streamConfig
-      );
-      console.log('[Pipeline] Video streaming initialized');
+      // VideoStream will be created when first keyframe with description arrives
+      // This ensures we can pass codecSettings to the server
+      console.log('[Pipeline] Video streaming SignalR initialized, waiting for first keyframe');
     }
 
 

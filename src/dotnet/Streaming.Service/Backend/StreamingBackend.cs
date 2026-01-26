@@ -84,11 +84,30 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
 
     public virtual async Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
+        Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}", streamId, skipTo);
         var stream = await _videoStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
-        if (stream == null)
+        if (stream == null) {
+            Log.LogWarning("GetVideo: Stream {StreamId} not found in StreamStore", streamId);
             return null;
+        }
 
-        stream = SkipToKeyFrame(stream, skipTo, cancellationToken);
+        Log.LogInformation("GetVideo: Stream {StreamId} found, wrapping with logging", streamId);
+
+        // Debug: wrap stream to count and log frames being sent to client
+        var frameCount = 0;
+        async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
+        {
+            await foreach (var frame in source.WithCancellation(cancellationToken)) {
+                frameCount++;
+                if (frameCount <= 3 || frameCount % 30 == 0)
+                    Log.LogInformation("GetVideo sending frame #{Count}: Offset={Offset}ms, Size={Size}, IsKey={IsKey}",
+                        frameCount, frame.Offset.TotalMilliseconds, frame.Data?.Length ?? 0, frame.IsKeyFrame);
+                yield return frame;
+            }
+            Log.LogInformation("GetVideo stream ended after {Count} frames", frameCount);
+        }
+
+        stream = SkipToKeyFrame(LogFrames(stream), skipTo, cancellationToken);
         return RpcStream.New(stream);
     }
 
