@@ -439,18 +439,6 @@ export class VideoPipeline implements IVideoPipeline {
     console.log('[Pipeline] Encoder worker ready via RPC');
     console.log('[Pipeline] Decoder worker ready via RPC');
 
-    // Optional: Setup direct worker-to-worker RPC communication
-    if (this.encoder && this.decoder) {
-      console.log('[Pipeline] Setting up direct worker-to-worker RPC communication...');
-      const encoderToDecoderChannel = new MessageChannel();
-
-      // Send ports to workers to establish direct connection
-      // IMPORTANT: Decoder must set up RPC server first BEFORE encoder creates client
-      await this.decoder.initDirectConnection(encoderToDecoderChannel.port2);
-      await this.encoder.initDecoderConnection(encoderToDecoderChannel.port1);
-      console.log('[Pipeline] Direct RPC connection established: Encoder → Decoder (bypasses main thread)');
-    }
-
     // Start pumping frames to encoder worker
     // Note: this.processing was already set to true earlier (before frame extractor creation)
     this.pumpFrames();

@@ -214,17 +214,6 @@ export class VideoRecorder implements IVideoRecorder {
         await this.decoderClient.initialize(decoderConfig);
         this.updateState({ decoderReady: true });
 
-        // Set up direct worker-to-worker communication (optional optimization)
-        // This bypasses main thread for encoded chunks
-        try {
-            const channel = new MessageChannel();
-            await this.encoderClient.initDecoderConnection(channel.port1);
-            await this.decoderClient.initDirectConnection(channel.port2);
-            infoLog?.log('Direct worker-to-worker communication established');
-        } catch (error) {
-            warnLog?.log('Failed to set up direct worker communication, using main thread relay:', error);
-        }
-
         infoLog?.log('Workers initialized successfully');
     }
 

@@ -405,24 +405,6 @@ const serverImpl: DecoderWorker = {
   },
 
   /**
-   * Initialize direct connection from encoder worker
-   * Sets up an RPC server on the provided port for direct worker-to-worker communication
-   */
-  initDirectConnection: async (encoderPort: MessagePort): Promise<void> => {
-    console.log('[Decoder Worker] Initializing direct RPC connection from encoder...');
-
-    // Create an RPC server on the encoder port
-    // This allows the encoder to call decodeChunk directly without going through main thread
-    rpcServer(
-      'DecoderWorker.direct',
-      encoderPort,
-      serverImpl
-    );
-
-    console.log('[Decoder Worker] Direct RPC connection from encoder established');
-  },
-
-  /**
    * Toggle between WASM and built-in decoders
    */
   toggleDecoderType: async (useWasm: boolean): Promise<void> => {
