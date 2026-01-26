@@ -86,7 +86,7 @@ dotnet test ActualChat.CI.slnf
 dotnet test tests/Chat.IntegrationTests/Chat.IntegrationTests.csproj
 ```
 
-For detailed information on test accounts, Playwright, and browser automation, see the [Testing Guide](/testing).
+For detailed information on test accounts, Playwright, and browser automation, see the [Testing Guide](/testing/overview).
 
 ## Running Documentation Site
 

@@ -100,9 +100,18 @@ export default withMermaid(defineConfig({
             collapsed: false,
             items: [
               { text: "Running Voxt", link: "/running-voxt" },
-              { text: "Testing", link: "/testing" },
               { text: "Coding Style", link: "/CODING_STYLE" },
               { text: "AI Agent Guide", link: "/AGENTS" },
+            ],
+          },
+          {
+            text: "Testing",
+            collapsed: false,
+            items: [
+              { text: "Overview", link: "/testing/overview" },
+              { text: "Playwright (C#)", link: "/testing/playwright-csharp" },
+              { text: "Playwright (AI)", link: "/testing/playwright-ai" },
+              { text: "Login Flow", link: "/testing/login-flow" },
             ],
           },
           {

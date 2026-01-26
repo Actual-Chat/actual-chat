@@ -14,7 +14,7 @@ hero:
       link: /running-voxt
     - theme: alt
       text: Testing
-      link: /testing
+      link: /testing/overview
     - theme: alt
       text: Plans
       link: /plans/BigTasks
@@ -23,12 +23,14 @@ hero:
       link: https://github.com/ActualChat/ActualChat
 
 features:
-  - title: Real-Time Sync
-    details: Powered by ActualLab.Fusion for transparent real-time state synchronization between server and clients.
-  - title: Two-Tier Services
-    details: Clean separation between Frontend services (session-based auth) and Backend services (resolved identities).
-  - title: Modern Stack
-    details: .NET 9, C# 13, Blazor, PostgreSQL, Redis, NATS, and .NET MAUI for cross-platform mobile.
+  - title: Real-Time Voice & Text
+    details: Seamless voice and text messaging with live audio streaming, real-time transcription, and instant message delivery.
+  - title: Live Transcription
+    details: Speech-to-text powered by Deepgram and OpenAI Whisper, enabling searchable voice messages and accessibility.
+  - title: AI-Powered Features
+    details: Integrated AI capabilities including chat summarization, smart notifications, and context-aware assistance.
+  - title: Cross-Platform
+    details: Single codebase serving Web (Blazor), iOS, Android, and Windows via .NET MAUI with shared UI components.
 ---
 
 ## Key Technologies
