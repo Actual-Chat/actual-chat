@@ -52,18 +52,16 @@ public sealed class StreamBackendClient : IStreamClient
             cancellationToken);
     }
 
-    public async Task<VideoSource> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public async Task<VideoSource> GetVideo(string streamId, VideoFormat format, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         Log.LogDebug("GetVideo({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
         var rpcStream = await Backend.GetVideo(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
-        var stream = rpcStream?.AsAsyncEnumerable() ?? AsyncEnumerable.Empty<VideoFrame>();
+        var stream = rpcStream ?? AsyncEnumerable.Empty<VideoFrame>();
         var frameStream = stream
             .SuppressException<VideoFrame, RpcReconnectFailedException>(cancellationToken)
             .SuppressCancellation(cancellationToken);
 
-        // For video, we use a simpler approach - the first frame contains format info
-        // The VideoSource will handle skipTo internally
-        var format = VideoSource.DefaultFormat;
+        // Use the format provided by the caller (from VideoStreamInfo)
         return new VideoSource(
             Clocks.SystemClock.Now,
             format,

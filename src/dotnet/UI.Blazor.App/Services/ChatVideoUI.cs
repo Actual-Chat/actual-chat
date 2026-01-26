@@ -160,9 +160,9 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
                 "Starting video playback for stream {StreamId} from author {AuthorId}",
                 streamId, streamInfo.AuthorId);
 
-            // Get video source from server
+            // Get video source from server with format from stream info
             var videoSource = await StreamClient
-                .GetVideo(streamId.Value, TimeSpan.Zero, cancellationToken)
+                .GetVideo(streamId.Value, streamInfo.Format, TimeSpan.Zero, cancellationToken)
                 .ConfigureAwait(false);
 
             // Create and start video player

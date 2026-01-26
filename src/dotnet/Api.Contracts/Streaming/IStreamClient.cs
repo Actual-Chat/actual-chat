@@ -10,7 +10,7 @@ namespace ActualChat.Streaming;
 public interface IStreamClient
 {
     Task<AudioSource> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
-    Task<VideoSource> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
+    Task<VideoSource> GetVideo(string streamId, VideoFormat format, TimeSpan skipTo, CancellationToken cancellationToken);
     IAsyncEnumerable<TranscriptDiff> GetTranscript(string streamId, CancellationToken cancellationToken);
     Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken);
 }

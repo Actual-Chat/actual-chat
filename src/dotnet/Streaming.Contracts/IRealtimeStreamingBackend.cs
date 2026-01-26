@@ -1,8 +1,12 @@
+using ActualChat.Attributes;
+using ActualChat.Hosting;
 using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Streaming;
 
+[BackendService(nameof(HostRole.VideoBackend), ServiceMode.Distributed)]
+[BackendShardScheme(nameof(HostRole.VideoBackend))]
 public interface IRealtimeStreamingBackend : IComputeService, IBackendService
 {
     // State queries (no session check)

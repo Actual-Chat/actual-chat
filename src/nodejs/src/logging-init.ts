@@ -235,6 +235,12 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('MarkupEditor', LogLevel.Debug);
     // minLevels.set('ChatMessageEditor', LogLevel.Debug);
 
+    // Video debugging
+    minLevels.set('VideoStreamer', LogLevel.Debug);
+    minLevels.set('VideoPlayer', LogLevel.Debug);
+    minLevels.set('VideoRecorder', LogLevel.Debug);
+    minLevels.set('VideoPanel', LogLevel.Debug);
+
     // minLevels.clear(); // To quickly discard any tweaks :)
     persist(minLevels);
 }
