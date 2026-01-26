@@ -30,6 +30,15 @@ public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>
         var (session, account, expectedVersion) = command;
         await this.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
 
+        // Preserve Claims and Identities from existing account
+        // Old apps don't have these properties, so they send empty values
+        // which would otherwise wipe out the existing data
+        var existingAccount = await Backend.Get(account.Id, cancellationToken).Require().ConfigureAwait(false);
+        account = account with {
+            Claims = existingAccount.Claims,
+            Identities = existingAccount.Identities,
+        };
+
         var updateCommand = new AccountsBackend_Update(account, expectedVersion);
         await Commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }

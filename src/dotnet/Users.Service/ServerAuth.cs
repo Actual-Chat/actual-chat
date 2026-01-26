@@ -230,10 +230,10 @@ public sealed class ServerAuth
                 Identities = identities,
             };
         else {
-            // Update
+            // Update - merge identities instead of replacing to preserve phone/email identities
             account = existingAccount with {
-                Claims = claims.WithMany(existingAccount.Claims),
-                Identities = identities,
+                Claims = existingAccount.Claims.WithMany(claims),
+                Identities = existingAccount.Identities.WithMany(identities),
             };
         }
         return (account, identity);

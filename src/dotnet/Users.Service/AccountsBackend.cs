@@ -200,12 +200,12 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             if (dbAccount is not null) {
                 // Existing account found by ID - acquire lock first, then update
                 userId = UserId.Parse(dbAccount.Id);
+                var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
                 await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
                 var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
                 dbUser.Require();
-                account = account with {
-                    Name = GetNewAccountName(account)
-                };
+
+                account = MergeWithExistingOnSignIn(account, existingAccount);
                 await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
             }
             else {
@@ -218,15 +218,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
         else {
             // Existing user found by identity - acquire lock first, then load and update
+            var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
             await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
             var dbAccount = await dbContext.GetDbAccount(userId, true, cancellationToken).ConfigureAwait(false);
             dbAccount.Require();
             var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
             dbUser.Require();
-            account = account with {
-                Id = userId,
-                Name = GetNewAccountName(account),
-            };
+
+            account = MergeWithExistingOnSignIn(account, existingAccount, userId);
             await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
         }
 
@@ -441,6 +440,19 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             name = $"{name} {surname}";
         return AccountNameValidator.Normalize(name);
     }
+
+    private AccountFull MergeWithExistingOnSignIn(AccountFull account, AccountFull? existingAccount, UserId? userId = null)
+        => account with {
+            Id = userId ?? account.Id,
+            Name = GetNewAccountName(account),
+            Phone = account.Phone ?? existingAccount?.Phone,
+            Email = account.Email.NullIfEmpty() ?? existingAccount?.Email ?? "",
+            IsEmailVerified = account.IsEmailVerified || (existingAccount?.IsEmailVerified ?? false),
+            SyncContacts = account.SyncContacts || (existingAccount?.SyncContacts ?? false),
+            IsGreetingCompleted = account.IsGreetingCompleted || (existingAccount?.IsGreetingCompleted ?? false),
+            TimeZone = account.TimeZone.NullIfEmpty() ?? existingAccount?.TimeZone ?? "",
+            AliasId = account.AliasId ?? existingAccount?.AliasId,
+        };
 
     private async Task UpdateDbAccount(
         UsersDbContext dbContext,
