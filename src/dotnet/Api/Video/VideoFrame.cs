@@ -9,7 +9,7 @@ public partial class VideoFrame(bool isKeyFrame) : MediaFrame
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public override TimeSpan Offset { get; init; }
 
-    [DataMember(Order = 2), MemoryPackOrder(5)]
+    [DataMember(Order = 2), MemoryPackOrder(2)]
     public override TimeSpan Duration { get; init; }
 
     [DataMember(Order = 3), MemoryPackOrder(3)]
