@@ -155,6 +155,8 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
                 IsPermissionsStepCompleted = true,
                 AreCookiesAccepted = true,
             };
+            // Close the onboarding modal if it's open
+            _lastModalRef?.Close(true);
         }
     }
 }
