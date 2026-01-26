@@ -2,10 +2,8 @@
     @echo off
     cd /d "%~dp0"
 
-    if not exist node_modules (
-        echo Installing dependencies...
-        call npm install
-    )
+    echo Installing dependencies...
+    call npm install
 
     echo Building documentation site...
     call npm run docs:build
@@ -20,10 +18,8 @@ BATCH
 #!/bin/sh
 cd "$(dirname "$0")"
 
-if [ ! -d "node_modules" ]; then
-    echo "Installing dependencies..."
-    npm install
-fi
+echo "Installing dependencies..."
+npm install
 
 echo "Building documentation site..."
 npm run docs:build
