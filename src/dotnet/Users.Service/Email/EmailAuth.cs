@@ -49,7 +49,8 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var email = command.Email.Value;
 
         // Skip sending email for AI agent test accounts - they use predefined code 111111
-        if (IsTestAgentEmail(email) && UrlMapper is { IsVoxt: false, IsDevVoxt: false })
+        // Only works on localhost, not on any prod/dev/local domains
+        if (IsTestAgentEmail(email) && IsTestAgentBypassAllowed())
             return NextSendAt();
 
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
@@ -146,17 +147,13 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         CancellationToken cancellationToken)
     {
         // Bypass for AI agent test accounts: test-*@actual.chat with code 111111
-        // Not allowed on voxt.ai or dev.voxt.ai
-        if (totp == TestAgentTotp && IsTestAgentEmail(email) && !UrlMapper.IsVoxt && !UrlMapper.IsDevVoxt)
+        // Only works on localhost, not on any prod/dev/local domains
+        if (totp == TestAgentTotp && IsTestAgentEmail(email) && IsTestAgentBypassAllowed())
             return true;
 
         var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
         return TotpCodes.Validate(securityToken, totp, modifier);
     }
-
-    private static bool IsTestAgentEmail(string email)
-        => email.OrdinalIgnoreCaseStartsWith(TestAgentEmailPrefix)
-            && email.OrdinalIgnoreCaseEndsWith(TestAgentEmailDomain);
 
     private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
         Session session,
@@ -186,4 +183,16 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             .Hash()
             .SHA256()
             .ToBase64HashString(HashAlgorithm.SHA256);
+
+    private static bool IsTestAgentEmail(string email)
+        => email.OrdinalIgnoreCaseStartsWith(TestAgentEmailPrefix)
+            && email.OrdinalIgnoreCaseEndsWith(TestAgentEmailDomain);
+
+    private bool IsTestAgentBypassAllowed()
+    {
+        var host = UrlMapper.BaseUri.Host;
+        // Not allowed on any official domains (voxt.ai, actual.chat and their dev/local variants)
+        return !Constants.Hosts.AllProd.Contains(host)
+            && !Constants.Hosts.AllDev.Contains(host);
+    }
 }
