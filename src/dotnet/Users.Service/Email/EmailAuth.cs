@@ -14,6 +14,9 @@ namespace ActualChat.Users.Email;
 public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IEmailAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Email.TotpLength);
+    private const string TestAgentEmailPrefix = "test-";
+    private const string TestAgentEmailDomain = "@actual.chat";
+    private const int TestAgentTotp = 111111;
 
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
@@ -22,6 +25,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private TotpCodes TotpCodes { get; } = services.GetRequiredService<TotpCodes>();
     private TotpSecrets TotpSecrets { get; } = services.GetRequiredService<TotpSecrets>();
     private RedisDb<UsersDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<UsersDbContext>>();
+    private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
     // [ComputeMethod]
     public virtual Task<string> ValidateCanSendToEmail(Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
@@ -44,6 +48,10 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var session = command.Session;
         var purpose = command.Purpose;
         var email = command.Email.Value;
+
+        // Skip sending email for AI agent test accounts - they use predefined code 111111
+        if (IsTestAgentEmail(email) && UrlMapper is { IsVoxt: false, IsDevVoxt: false })
+            return NextSendAt();
 
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
             return NextSendAt();
@@ -138,9 +146,18 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         TotpPurpose purpose,
         CancellationToken cancellationToken)
     {
+        // Bypass for AI agent test accounts: test-*@actual.chat with code 111111
+        // Not allowed on voxt.ai or dev.voxt.ai
+        if (totp == TestAgentTotp && IsTestAgentEmail(email) && !UrlMapper.IsVoxt && !UrlMapper.IsDevVoxt)
+            return true;
+
         var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
         return TotpCodes.Validate(securityToken, totp, modifier);
     }
+
+    private static bool IsTestAgentEmail(string email)
+        => email.OrdinalIgnoreCaseStartsWith(TestAgentEmailPrefix)
+            && email.OrdinalIgnoreCaseEndsWith(TestAgentEmailDomain);
 
     private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
         Session session,
