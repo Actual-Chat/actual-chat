@@ -107,6 +107,22 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
         DebugLog?.LogDebug("Subscribing to video stream events for chat {ChatId}", chatId);
 
         try {
+            // First, check for existing active streams and start players for them
+            var activeStreams = await RealtimeStreaming
+                .GetActiveVideoStreams(Session, chatId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (activeStreams.Streams.Length > 0) {
+                DebugLog?.LogDebug(
+                    "Found {Count} existing active video streams for chat {ChatId}",
+                    activeStreams.Streams.Length, chatId);
+
+                foreach (var streamInfo in activeStreams.Streams) {
+                    await OnVideoStreamStarted(streamInfo, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            // Then subscribe to new events
             var eventStream = await RealtimeStreaming
                 .SubscribeToVideoStreamEvents(Session, chatId, cancellationToken)
                 .ConfigureAwait(false);
