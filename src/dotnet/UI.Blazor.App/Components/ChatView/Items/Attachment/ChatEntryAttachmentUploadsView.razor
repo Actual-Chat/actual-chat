@@ -9,6 +9,7 @@
 <div class="message-file-attachments">
     @foreach (var attachment in fileList) {
         <FileUploadAttachment
+            @key="@attachment.Id"
             Attachment="@attachment"
             RestartClick="@(() => OnRestartClick(attachment))"
             RemoveClick="@(() => OnRemoveClick(attachment))"/>

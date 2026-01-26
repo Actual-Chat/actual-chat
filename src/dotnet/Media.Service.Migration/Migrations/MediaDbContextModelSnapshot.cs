@@ -130,6 +130,20 @@ namespace ActualChat.Media.Migrations
                         .HasColumnName("scope")
                         .UseCollation("C");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("UploadId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("upload_id");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
+
                     b.HasKey("Id")
                         .HasName("pk_media");
 
@@ -137,6 +151,36 @@ namespace ActualChat.Media.Migrations
                         .HasDatabaseName("ix_media_content_id");
 
                     b.ToTable("media");
+                });
+
+            modelBuilder.Entity("ActualChat.Media.Db.DbMediaStatus", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id")
+                        .UseCollation("C");
+
+                    b.Property<string>("ErrorMessage")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("error_message");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer")
+                        .HasColumnName("stage");
+
+                    b.Property<double>("StageProgress")
+                        .HasColumnType("double precision")
+                        .HasColumnName("stage_progress");
+
+                    b.Property<string>("ThumbnailContentId")
+                        .HasColumnType("text")
+                        .HasColumnName("thumbnail_content_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_media_statuses");
+
+                    b.ToTable("media_statuses");
                 });
 
             modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbEvent", b =>

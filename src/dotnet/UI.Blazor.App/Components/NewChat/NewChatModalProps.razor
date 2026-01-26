@@ -17,7 +17,7 @@
         <DataAnnotationsValidator/>
 
         <PicUpload
-            UploadUrl="@UploadUrl"
+            Scope="@MediaUploadScopes.ForAccount(AccountUI.OwnAccount.Value)"
             Size="@SquareSize.Size24"
             Title="@_form.Title"
             Picture="@_form.Picture"
@@ -135,7 +135,6 @@
 </Form>
 
 @code {
-    private static readonly string UploadUrl = "/api/avatars/upload-picture";
     private static readonly AvatarKind AvatarKind = AvatarKind.Marble;
     private static readonly string AvatarKey = "a-random-string";
     private Form _formRef = null!;

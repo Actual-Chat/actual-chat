@@ -4,6 +4,7 @@ public enum UploadStatus
 {
     Pending,
     Uploading,
+    Uploaded,  // Data uploaded, server-side processing started
     Completed,
     Failed,
     Canceled
@@ -17,10 +18,14 @@ public partial class UploadSession
     [DataMember, MemoryPackOrder(2)] public UploadStatus Status { get; set; } = UploadStatus.Pending;
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; set; } = Moment.EpochStart;
     [DataMember, MemoryPackOrder(4)] public Moment LastUpdatedAt { get; set; } = Moment.EpochStart;
-    [DataMember, MemoryPackOrder(5)] public ChatId ChatId { get; set; } = null!;
+    // [DataMember, MemoryPackOrder(5)] public ChatId ChatId { get; set; } = null!; Obsolete
     [DataMember, MemoryPackOrder(6)] public UploadId? UploadId { get; set; }
     [DataMember, MemoryPackOrder(7)] public MediaContent? MediaContent { get; set; }
+    [DataMember, MemoryPackOrder(8)] public MediaId? ReservedMediaId { get; set; }
+    [DataMember, MemoryPackOrder(9)] public PropertyBag Metadata { get; set; }
 
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public string FileName => FileProvider.Metadata.FileName;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public UploadProgressTracker ProgressTracker { get; set; } = new ();
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public CancellationTokenSource? MonitoringCts { get; set; }
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public int ReferenceCount = 0; // For Interlocked operations
 }

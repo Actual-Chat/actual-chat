@@ -109,6 +109,8 @@ public interface IChatsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task<TextEntryAttachment[]> OnCreateAttachments(ChatsBackend_CreateAttachments command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnRemoveAttachments(ChatsBackend_RemoveAttachments command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnRemoveOwnChats(ChatsBackend_RemoveOwnChats command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveOwnEntries(ChatsBackend_RemoveOwnEntries command, CancellationToken cancellationToken);
@@ -155,6 +157,17 @@ public sealed partial record ChatsBackend_CreateAttachments(
 /// Command to create, update, or delete a chat.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_RemoveAttachments(
+    [property: DataMember, MemoryPackOrder(0)]
+    ChatEntryId EntryId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => EntryId.ChatId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] ChatId? ChatId,

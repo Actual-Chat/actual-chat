@@ -48,7 +48,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             file.ContentType,
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
-        var media = await MediaSaver.Save(mediaId, uploadedFile, null, cancellationToken).ConfigureAwait(false);
-        return Ok(new MediaContent(media.Id, media.ContentId));
+        var mediaContent = await MediaSaver.Save(mediaId, uploadedFile, null, cancellationToken).ConfigureAwait(false);
+        return Ok(mediaContent);
     }
 }

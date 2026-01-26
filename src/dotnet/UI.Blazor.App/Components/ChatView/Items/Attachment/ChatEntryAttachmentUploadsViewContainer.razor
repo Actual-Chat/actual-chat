@@ -1,0 +1,35 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+@if (!_ready)
+    return;
+
+@if (_mediaUploads is {} mediaUploads) {
+    <div class="message-attachments">
+        <ChatEntryAttachmentUploadsView Uploads="@mediaUploads.Attachments"/>
+        <ChatMessageSendingStatus
+            Status="@ChatMessageSendingStatus.MessageStatus.Sending"
+            IsDotOnly="@true"/>
+    </div>
+    @if (!_hasShownUploads) {
+        _hasShownUploads = true;
+        ShownUploads?.Invoke();
+    }
+} else {
+    <UploadPlug />
+}
+
+@code {
+    private bool _ready;
+    private AttachmentUploads? _mediaUploads;
+    private bool _hasShownUploads;
+
+    [Parameter, EditorRequired] public AppUIHub Hub { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public Action? ShownUploads { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        await Hub.SendingMessages.WhenStoredRequestsProcessed;
+        _mediaUploads = Hub.SendingMessages.GetMediaUploads(Entry);
+        _ready = true;
+    }
+}

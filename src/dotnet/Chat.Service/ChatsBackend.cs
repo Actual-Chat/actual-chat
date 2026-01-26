@@ -1328,6 +1328,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             attachmentsProto = attachments2;
 
         if (attachmentsProto is not null) {
+            if (change.Kind is ChangeKind.Update) {
+                var removeAttachmentsCmd = new ChatsBackend_RemoveAttachments(chatEntryId.ToTextEntryId());
+                await Commander.Call(removeAttachmentsCmd, cancellationToken).ConfigureAwait(false);
+            }
             var textEntryAttachments = attachmentsProto
                 .Select((x, i) => new TextEntryAttachment {
                     EntryId = chatEntryId.ToTextEntryId(),
@@ -1479,6 +1483,29 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbAttachments.Select(x => x.ToModel()).ToArray();
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnRemoveAttachments(
+        ChatsBackend_RemoveAttachments command,
+        CancellationToken cancellationToken)
+    {
+        var entryId = command.EntryId.ToTextEntryId();
+
+        if (Invalidation.IsActive) {
+            _ = GetEntryAttachments(entryId, default);
+            InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update, false);
+            return;
+        }
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = DbTextEntryAttachment.IdPrefix(entryId);
+        await dbContext.TextEntryAttachments
+            .Where(x => x.Id.StartsWith(idPrefix))
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -2452,7 +2479,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         var removeCommand = new MediaBackend_Change(
             mediaId,
-            new Change<Media.Media> { Remove = true });
+            null,
+            new Change<MediaFull> { Remove = true });
         await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

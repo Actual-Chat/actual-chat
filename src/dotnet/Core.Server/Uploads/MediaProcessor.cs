@@ -1,21 +1,24 @@
 using ActualLab.IO;
-
 namespace ActualChat.Uploads;
 
-public static class UploadProcessorsExt
+public class MediaProcessor(IServiceProvider services) : IMediaProcessor
 {
-    public static async Task<ProcessedFile> Process(this IEnumerable<IUploadProcessor> processors, UploadedFile file, CancellationToken cancellationToken)
+    private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
+        = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
+
+    public async Task<ProcessedFile> ProcessUpload(UploadedFile uploadedFile, IProgress<double>? progress, CancellationToken cancellationToken)
     {
-        var processor = processors.FirstOrDefault(x => x.Supports(file.ContentType));
+        var processor = UploadProcessors.FirstOrDefault(x => x.Supports(uploadedFile.ContentType));
         if (processor is null)
             // no need to dump file to file system
-            return new ProcessedFile(file, null);
+            return new ProcessedFile(uploadedFile, null);
 
-        var tempFile = await DumpToTempFile(file, cancellationToken).ConfigureAwait(false);
-        var processedFile = await processor.Process(tempFile, cancellationToken).ConfigureAwait(false);
+        var tempFile = await DumpToTempFile(uploadedFile, cancellationToken).ConfigureAwait(false);
+        var processedFile = await processor.Process(tempFile, progress, cancellationToken).ConfigureAwait(false);
         if (tempFile != processedFile.File)
             tempFile.Delete();
 
+        progress?.Report(100);
         return processedFile;
     }
 

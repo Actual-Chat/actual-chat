@@ -1,7 +1,6 @@
 using ActualChat.Controllers;
 using ActualChat.Security;
 using ActualChat.Uploads;
-using ActualChat.Users;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Chat.Controllers;
@@ -11,6 +10,7 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
+    private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
 
     [HttpPost("{chatId}/upload")]
     [DisableFormValueModelBinding]
@@ -47,7 +47,8 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             file.ContentType,
             file.Length,
             () => Task.FromResult(file.OpenReadStream()));
-        var mediaContent = await MediaProcessor.ProcessAttachment(chatId, uploadedFile, cancellationToken).ConfigureAwait(false);
+        using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
+        var mediaContent = await MediaSaver.Save(MediaId.New(chatId.Value), processedFile, isUpdate:false, cancellationToken).ConfigureAwait(false);
         return Ok(mediaContent);
     }
 }

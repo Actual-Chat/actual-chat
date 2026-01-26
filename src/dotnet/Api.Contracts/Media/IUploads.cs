@@ -17,6 +17,8 @@ public interface IUploads : IComputeService
     Task<long> OnAppend(Uploads_Append command, CancellationToken cancellationToken);
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<MediaContent> OnConvertToMediaContent(Uploads_ConvertToMediaContent command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnStartProcessUpload(Uploads_StartProcessUpload command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
@@ -50,3 +52,11 @@ public sealed partial record Uploads_ConvertToMediaContent(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] UploadId UploadId
 ) : ISessionCommand<MediaContent>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Uploads_StartProcessUpload(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] UploadId UploadId,
+    [property: DataMember, MemoryPackOrder(2)] MediaId MediaId
+) : ISessionCommand<Unit>, IApiCommand;
