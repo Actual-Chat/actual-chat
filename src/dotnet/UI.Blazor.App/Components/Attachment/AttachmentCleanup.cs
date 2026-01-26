@@ -26,8 +26,5 @@ public static class AttachmentCleanupFactory
 
     public static AttachmentCleanup ForUploadSession(UploadSessions uploadSessions, string uploadSessionId)
         => new (AttachmentCleanupKind.UploadSession,
-            async () => {
-                await uploadSessions.CancelSessionIfNotCompleted(uploadSessionId).ConfigureAwait(false);
-                await uploadSessions.DeleteSession(uploadSessionId).ConfigureAwait(false);
-            });
+            () => uploadSessions.ReleaseReference(uploadSessionId));
 }

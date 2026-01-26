@@ -5,5 +5,7 @@ namespace ActualChat.Uploads;
 /// </summary>
 public interface IMediaProcessor
 {
-    Task<MediaContent> ProcessAttachment(ChatId chatId, UploadedFile uploadedFile, CancellationToken cancellationToken);
+    Task<ProcessedFile> ProcessUpload(UploadedFile uploadedFile, IProgress<double>? progress, CancellationToken cancellationToken);
+    Task<ProcessedFile> ProcessUpload(UploadedFile uploadedFile, CancellationToken cancellationToken)
+        => ProcessUpload(uploadedFile, null, cancellationToken);
 }

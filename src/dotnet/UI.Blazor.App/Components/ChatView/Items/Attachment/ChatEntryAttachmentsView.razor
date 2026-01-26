@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-
 @if (Entry.Attachments.Length > 0) {
     if (_hasShownUploads) {
         Hub.SendingMessages.NotifyAttachmentsLoaded(Entry.Id);
@@ -22,35 +21,16 @@
 }
 else if (Entry.HasAttachmentUploads) {
     if (IsOwnMessage) {
-        if (_mediaUploads is {} mediaUploads) {
-            <div class="message-attachments">
-                <ChatEntryAttachmentUploadsView Uploads="@mediaUploads.Attachments"/>
-                <ChatMessageSendingStatus
-                    Status="@ChatMessageSendingStatus.MessageStatus.Sending"
-                    IsDotOnly="@true"/>
-            </div>
-            _hasShownUploads = true;
-        }
+        <ChatEntryAttachmentUploadsViewContainer
+            Hub="@Hub"
+            Entry="@Entry"
+            ShownUploads="@(() => _hasShownUploads = true)" />
     } else {
-        <div class="upload-plug">
-            <div class="upload-plug-icons">
-                <div class="c-image c-icon">
-                    <i class="icon-image"></i>
-                </div>
-                <div class="c-video c-icon">
-                    <i class="icon-video"></i>
-                </div>
-                <div class="c-file c-icon">
-                    <i class="icon-file"></i>
-                </div>
-            </div>
-            <div class="upload-plug-text">Sending attachments…</div>
-        </div>
+        <UploadPlug />
     }
 }
 
 @code {
-    private AttachmentUploads? _mediaUploads;
     private bool _hasShownUploads;
 
     [Parameter, EditorRequired] public AppUIHub Hub { get; set; } = null!;
@@ -58,10 +38,6 @@ else if (Entry.HasAttachmentUploads) {
     [Parameter, EditorRequired] public bool IsOwnMessage { get; set; }
     [Parameter] public bool IsUnreadByOthers { get; set; }
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
-
-    protected override void OnParametersSet() {
-        _mediaUploads = Entry.HasAttachmentUploads && IsOwnMessage ? Hub.SendingMessages.GetMediaUploads(Entry) : null;
-    }
 
     private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(ChatEntry entry)
         => (entry.Attachments.Where(a => a.IsVisualMedia()).ToArray(),

@@ -97,4 +97,65 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         editedReplyChatEntry.Content.Should().Be(cmd3.Text);
         editedReplyChatEntry.RepliedEntryLid.Should().Be(chatEntry.LocalId);
     }
+
+    [Fact]
+    public async Task UpdateAttachments()
+    {
+        var appHost = AppHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        _ = await tester.SignInAsBob();
+        var session = tester.Session;
+        var commander = tester.Commander;
+        var chats = tester.AppServices.GetRequiredService<IChats>();
+
+        var (chatId, _) = await tester.CreateChat(true);
+
+        // Create 3 media files for attachments
+        var media1 = await SaveTextFile(tester, chatId, "file1.txt");
+        var media2 = await SaveTextFile(tester, chatId, "file2.txt");
+        var media3 = await SaveTextFile(tester, chatId, "file3.txt");
+
+        // Create an entry with 3 attachments
+        var attachments = new[] {
+            new TextEntryAttachment { MediaId = media1 },
+            new TextEntryAttachment { MediaId = media2 },
+            new TextEntryAttachment { MediaId = media3 },
+        };
+        var createCmd = new Chats_UpsertTextEntry(session, chatId, null, "Message with 3 attachments") {
+            EntryAttachments = attachments,
+        };
+        var chatEntry = await commander.Call(createCmd);
+
+        chatEntry.ChatId.Should().Be(chatId);
+        chatEntry.Content.Should().Be(createCmd.Text);
+
+        // Get entry to verify attachments
+        var entryId = TextEntryId.New(chatId, chatEntry.LocalId);
+        var entryWith3Attachments = await chats.GetEntry(session, entryId);
+        entryWith3Attachments.Should().NotBeNull();
+        entryWith3Attachments.Attachments.Should().HaveCount(3);
+        entryWith3Attachments.Attachments.Select(a => a.MediaId).Should().BeEquivalentTo(new[] { media1, media2, media3 });
+
+        // Update entry to 2 attachments (remove the third one)
+        var updatedAttachments = new[] {
+            new TextEntryAttachment { MediaId = media1 },
+            new TextEntryAttachment { MediaId = media3 },
+        };
+        var updateCmd = new Chats_UpsertTextEntry(session, chatId, chatEntry.LocalId, "Message with 2 attachments") {
+            EntryAttachments = updatedAttachments,
+        };
+        var updatedEntry = await commander.Call(updateCmd);
+
+        updatedEntry.LocalId.Should().Be(chatEntry.LocalId);
+        updatedEntry.Content.Should().Be(updateCmd.Text);
+
+        // Get entry to verify attachments were updated
+        var entryWith2Attachments = await chats.GetEntry(session, entryId);
+        entryWith2Attachments.Should().NotBeNull();
+        entryWith2Attachments.Attachments.Should().HaveCount(2);
+        entryWith2Attachments.Attachments.Select(a => a.MediaId).Should().BeEquivalentTo(new[] { media1, media3 });
+    }
+
+    private static Task<MediaId> SaveTextFile(IWebTester tester, ChatId chatId, string fileName)
+        => tester.SaveTextFile(chatId, fileName, $"Test content for {fileName}");
 }

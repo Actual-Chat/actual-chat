@@ -10,12 +10,14 @@ public class FileAttachments : UIServiceBase<AppUIHub>
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
 
     private AttachmentsController AttachmentsController { get; }
+    private AttachmentsState AttachmentsState { get; }
     private VisualMediaDimensions VisualMediaDimensions { get; }
     public ChatId ChatId { get; }
 
     public FileAttachments(AppUIHub hub, ChatId chatId) : base(hub)
     {
         AttachmentsController = Hub.Services.GetRequiredService<AttachmentsController>();
+        AttachmentsState = Hub.AttachmentsState;
         VisualMediaDimensions = new VisualMediaDimensions(Hub.JS, Hub.LogFor<VisualMediaDimensions>());
         ChatId = chatId;
     }
@@ -129,11 +131,11 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             UICommander.ShowError("Failed to add file attachment.");
             return false;
         }
-
-        await AttachmentsController.AddAttachment(list, attachment);
         // NOTE: Start upload immediately after adding attachments.
-        await AttachmentsController.InitUpload(list, attachment.Id, ChatId);
-        await AttachmentsController.ResumeUpload(list, attachment.Id);
+        attachment = await AttachmentsController.InitUploadSession(attachment);
+        AttachmentsState.Register(attachment);
+        await AttachmentsController.ResumeUpload(attachment);
+        list.Add(attachment);
         return true;
     }
 
@@ -149,14 +151,13 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             width = dimensions.width;
             height = dimensions.height;
         }
-        var attachment = new Attachment(
+        var attachment = new SourceAttachment(
             fileMetadata.FileName,
             fileMetadata.FileType,
             fileMetadata.Length,
             width,
             height,
-            Task.FromResult(true),
-            Task.FromResult(previewUrl)) {
+            previewUrl) {
             FileProvider = fileProvider,
         };
         attachment.Cleanups.Add(AttachmentCleanupFactory.ForFile(fileProvider));

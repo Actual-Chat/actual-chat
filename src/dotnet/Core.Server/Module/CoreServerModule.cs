@@ -45,6 +45,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         // Upload processors
         services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
         services.AddSingleton<IUploadProcessor, VideoUploadProcessor>();
+        services.AddSingleton<IMediaProcessor, MediaProcessor>();
 
         // Blob storages & IContentSaver
         var storageBucket = Settings.GoogleStorageBucket;

@@ -10,12 +10,14 @@ public interface IMediaBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Media?> Get(MediaId? mediaId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<MediaFull?> GetFull(MediaId? mediaId, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<Media?> GetByMediaIdScope(string mediaIdScope, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Media?> GetByContentId(string contentId, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);
+    Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnCopyChat(MediaBackend_CopyChat command, CancellationToken cancellationToken);
 }
@@ -27,8 +29,9 @@ public interface IMediaBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] MediaId Id,
-    [property: DataMember, MemoryPackOrder(1)] Change<Media> Change
-) : ICommand<Media?>, IBackendCommand, IHasShardKey<MediaId>
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<MediaFull> Change
+) : ICommand<MediaFull?>, IBackendCommand, IHasShardKey<MediaId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public MediaId ShardKey => Id;
