@@ -176,9 +176,15 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
                 "Starting video playback for stream {StreamId} from author {AuthorId}",
                 streamId, streamInfo.AuthorId);
 
+            // Calculate how much to skip to catch up to real-time
+            // This avoids replaying all historical frames when joining an ongoing stream
+            var skipTo = Hub.Services.Clocks().SystemClock.Now - streamInfo.StartedAt;
+            if (skipTo < TimeSpan.Zero)
+                skipTo = TimeSpan.Zero;
+
             // Get video source from server with format from stream info
             var videoSource = await StreamClient
-                .GetVideo(streamId.Value, streamInfo.Format, TimeSpan.Zero, cancellationToken)
+                .GetVideo(streamId.Value, streamInfo.Format, skipTo, cancellationToken)
                 .ConfigureAwait(false);
 
             // Create and start video player
