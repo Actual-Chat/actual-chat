@@ -9,6 +9,8 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
     private readonly ConcurrentDictionary<ChatId, long> _versions = new();
     private readonly ConcurrentDictionary<ChatId, HashSet<ChannelWriter<VideoStreamEvent>>> _subscribers = new();
     private readonly object _subscribersLock = new();
+    private readonly ConcurrentDictionary<ChatId, HashSet<string>> _streamMembers = new();
+    private readonly object _streamMembersLock = new();
 
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
@@ -52,6 +54,16 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
             .Distinct()
             .ToArray();
         return Task.FromResult(authorIds);
+    }
+
+    // [ComputeMethod]
+    public virtual Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken)
+    {
+        int count;
+        lock (_streamMembersLock) {
+            count = _streamMembers.TryGetValue(chatId, out var sessions) ? sessions.Count : 0;
+        }
+        return Task.FromResult(count);
     }
 
     // [ComputeMethod]
@@ -166,6 +178,59 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
             _ = IsAuthorVideoStreaming(chatId, removedInfo.AuthorId, default);
 
         Log.LogInformation("Video stream unregistered: {StreamId} in chat {ChatId}", streamId, chatId);
+    }
+
+    // [CommandHandler]
+    public virtual Task OnRegisterVideoStreamMember(
+        RealtimeStreamingBackend_RegisterVideoStreamMember command,
+        CancellationToken cancellationToken)
+    {
+        var chatId = command.ChatId;
+        var sessionId = command.SessionId;
+
+        if (Invalidation.IsActive) {
+            _ = GetVideoStreamMemberCount(chatId, default);
+            return Task.CompletedTask;
+        }
+
+        lock (_streamMembersLock) {
+            var sessions = _streamMembers.GetOrAdd(chatId, _ => new HashSet<string>(StringComparer.Ordinal));
+            sessions.Add(sessionId);
+        }
+
+        using (Invalidation.Begin())
+            _ = GetVideoStreamMemberCount(chatId, default);
+
+        Log.LogInformation("Video stream member registered: session {SessionId} in chat {ChatId}", sessionId, chatId);
+        return Task.CompletedTask;
+    }
+
+    // [CommandHandler]
+    public virtual Task OnUnregisterVideoStreamMember(
+        RealtimeStreamingBackend_UnregisterVideoStreamMember command,
+        CancellationToken cancellationToken)
+    {
+        var chatId = command.ChatId;
+        var sessionId = command.SessionId;
+
+        if (Invalidation.IsActive) {
+            _ = GetVideoStreamMemberCount(chatId, default);
+            return Task.CompletedTask;
+        }
+
+        lock (_streamMembersLock) {
+            if (_streamMembers.TryGetValue(chatId, out var sessions)) {
+                sessions.Remove(sessionId);
+                if (sessions.Count == 0)
+                    _streamMembers.TryRemove(chatId, out _);
+            }
+        }
+
+        using (Invalidation.Begin())
+            _ = GetVideoStreamMemberCount(chatId, default);
+
+        Log.LogInformation("Video stream member unregistered: session {SessionId} in chat {ChatId}", sessionId, chatId);
+        return Task.CompletedTask;
     }
 
     private Task BroadcastEvent(ChatId chatId, VideoStreamEvent evt)

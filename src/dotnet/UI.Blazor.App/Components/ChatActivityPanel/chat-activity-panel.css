@@ -129,6 +129,12 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
     @apply pt-0.5;
     @apply rounded-full;
 }
+.chat-activity-panel > .c-member-count {
+    @apply flex-none;
+    @apply text-caption-3 text-03;
+    @apply whitespace-nowrap;
+    @apply px-1;
+}
 .activity-svg {
     @apply md:mt-1;
 }

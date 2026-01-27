@@ -7,6 +7,7 @@ public class RealtimeStreaming(IServiceProvider services) : IRealtimeStreaming
 {
     private IRealtimeStreamingBackend Backend { get; } = services.GetRequiredService<IRealtimeStreamingBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
     public virtual async Task<ActiveVideoStreams> GetActiveVideoStreams(
@@ -55,6 +56,39 @@ public class RealtimeStreaming(IServiceProvider services) : IRealtimeStreaming
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
         return await Backend.IsAuthorVideoStreaming(chatId, authorId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<int> GetVideoStreamMemberCount(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Read);
+        return await Backend.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task RegisterVideoStreamMember(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Read);
+        var command = new RealtimeStreamingBackend_RegisterVideoStreamMember(chatId, session.Id);
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task UnregisterVideoStreamMember(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Read);
+        var command = new RealtimeStreamingBackend_UnregisterVideoStreamMember(chatId, session.Id);
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<RpcStream<VideoStreamEvent>> SubscribeToVideoStreamEvents(
