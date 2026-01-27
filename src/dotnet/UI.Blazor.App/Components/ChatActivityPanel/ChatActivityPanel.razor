@@ -18,7 +18,11 @@
     var cls = IsListening ? " listening" : "";
 }
 
-<div @ref="Ref" class="chat-activity-panel @cls" @onclick:preventDefault="true" @onclick:stopPropagation="true">
+<div @ref="Ref"
+     class="chat-activity-panel @cls"
+     @onclick:preventDefault="true"
+     @onclick:stopPropagation="true"
+     @onclick="@Click">
     @if (!m.IsAnyoneTalking) {
         <div class="c-icon">
             <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive"/>
@@ -87,6 +91,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public Chat? Chat { get; set; }
     [Parameter] public int MaxCount { get; set; } = 5;
+    [Parameter] public EventCallback Click { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");

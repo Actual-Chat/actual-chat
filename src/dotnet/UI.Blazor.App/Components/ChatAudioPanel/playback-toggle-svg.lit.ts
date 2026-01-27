@@ -58,11 +58,12 @@ class PlaybackToggleSvg extends LitElement {
                             dur="0.45s"
                             repeatCount="1"
                             values="
-                                #898989;
-                                #89898980;
-                                #A533FF80;
-                                #A533FFBF;
-                                #A533FF;"
+                            values="
+                                #898989FF;
+                                #898989FF;
+                                #4582C4FF;
+                                #227EE2FF;
+                                #007AFF;"
                         />
                     </path>
                 </svg>
