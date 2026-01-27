@@ -243,6 +243,16 @@ public static partial class Constants
         {
             public const int TotpLength = 6;
         }
+
+        public static class TestAgent
+        {
+            public const string EmailPrefix = "test-";
+            public const string EmailDomain = "@actual.chat";
+
+            public static bool IsTestAgentEmail(string email)
+                => email.OrdinalIgnoreCaseStartsWith(EmailPrefix)
+                    && email.OrdinalIgnoreCaseEndsWith(EmailDomain);
+        }
     }
 
     public static class Notification

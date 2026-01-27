@@ -14,8 +14,6 @@ namespace ActualChat.Users.Email;
 public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IEmailAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Email.TotpLength);
-    private const string TestAgentEmailPrefix = "test-";
-    private const string TestAgentEmailDomain = "@actual.chat";
     private const int TestAgentTotp = 111111;
 
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
@@ -50,7 +48,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         // Skip sending email for AI agent test accounts - they use predefined code 111111
         // Only works on localhost, not on any prod/dev/local domains
-        if (IsTestAgentEmail(email) && IsTestAgentBypassAllowed())
+        if (Constants.Auth.TestAgent.IsTestAgentEmail(email) && IsTestAgentBypassAllowed())
             return NextSendAt();
 
         if (await IsThrottled(session, email, cancellationToken).ConfigureAwait(false))
@@ -103,6 +101,8 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return false;
 
         var account = new AccountFull("").WithEmailIdentities(email);
+        if (Constants.Auth.TestAgent.IsTestAgentEmail(email.Value) && IsTestAgentBypassAllowed())
+            account = account with { IsEmailVerified = true };
         var signInCommand = new AccountsBackend_SignIn(session, account, account.Identities.GetEmailIdentity());
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
@@ -148,7 +148,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     {
         // Bypass for AI agent test accounts: test-*@actual.chat with code 111111
         // Only works on localhost, not on any prod/dev/local domains
-        if (totp == TestAgentTotp && IsTestAgentEmail(email) && IsTestAgentBypassAllowed())
+        if (totp == TestAgentTotp && Constants.Auth.TestAgent.IsTestAgentEmail(email) && IsTestAgentBypassAllowed())
             return true;
 
         var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
@@ -183,10 +183,6 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             .Hash()
             .SHA256()
             .ToBase64HashString(HashAlgorithm.SHA256);
-
-    private static bool IsTestAgentEmail(string email)
-        => email.OrdinalIgnoreCaseStartsWith(TestAgentEmailPrefix)
-            && email.OrdinalIgnoreCaseEndsWith(TestAgentEmailDomain);
 
     private bool IsTestAgentBypassAllowed()
     {

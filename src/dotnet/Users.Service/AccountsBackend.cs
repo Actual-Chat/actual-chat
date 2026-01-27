@@ -237,8 +237,19 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
         // Emit NewUserEvent if this is a new user
-        if (isNew)
+        if (isNew) {
             context.Operation.AddEvent(new NewAccountEvent(userId));
+
+            // Auto-enable early access settings for test agent accounts
+            var email = account.Identities.GetEmail();
+            if (!email.IsNullOrEmpty() && Constants.Auth.TestAgent.IsTestAgentEmail(email)) {
+                var kvas = ServerKvasBackend.GetUserClient(userId);
+                await kvas.UserAppSettings().Set(new UserAppSettings {
+                    AreExperimentalFeaturesEnabled = true,
+                    IsIncompleteUIEnabled = true,
+                }, cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     // [CommandHandler]
@@ -401,6 +412,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return true; // Predefined admin email
         if (HasGoogleIdentity(account) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
             return true; // company email
+        if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
+            return true; // test agent email
         return false;
     }
 
@@ -517,7 +530,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         };
 
         // Handle email identities
-        var emailString = account.Claims.GetValueOrDefault(ClaimTypes.Email, "");
+        var emailString = account.Claims.GetValueOrDefault(ClaimTypes.Email, "").NullIfEmpty()
+            ?? account.Email.NullIfEmpty()
+            ?? "";
         if (!emailString.IsNullOrEmpty() && ActualChat.Email.TryParse(emailString, out var email))
             account = account.WithEmailIdentities(email);
 
@@ -535,6 +550,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Version = VersionGenerator.NextVersion(),
             Name = name, // Same normalized name as DbUser
             Email = emailString,
+            IsEmailVerified = account.IsEmailVerified,
             Phone = account.Phone?.Value ?? account.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
             CreatedAt = dbUser.CreatedAt,
             Claims = dbUser.Claims, // Sync claims to DbAccount
