@@ -243,7 +243,7 @@ body.narrow .layout-header > .c-content.selection-header {
     border: none;
 }
 .list-view-layout .layout-header:has(.header-activity-panel-wrapper) .hideable {
-    transition-property: opacity, transform;
+    transition-property: opacity, transform, max-width;
     transition-duration: 0.5s;
     transition-timing-function: ease;
 }
@@ -257,6 +257,15 @@ body.narrow .layout-header > .c-content.selection-header {
 }
 .list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) .author-circle:not(:first-child) {
     @apply -ml-5;
+}
+body.narrow .list-view-layout .layout-header.expanded .chat-header-control-panel {
+    @apply max-w-32;
+}
+body.narrow .list-view-layout .layout-header.collapsed .chat-header-control-panel {
+    @apply max-w-0;
+}
+body.narrow .list-view-layout .layout-header.collapsed .chat-header-title {
+    @apply pr-8;
 }
 .header-activity-panel-wrapper {
     @apply flex-x items-center;
