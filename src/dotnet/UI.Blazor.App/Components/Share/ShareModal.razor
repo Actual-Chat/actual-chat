@@ -6,7 +6,7 @@
     var canSend = HasSelectedItems;
     var shareExternallyButtonClass = !canSend && !_hideShareExternallyButton ? "" : "hidden";
     var shareButtonClass = !canSend ? "hidden" : "";
-    shareButtonClass += " btn-modal btn-primary share-button";
+    shareButtonClass += " btn-modal btn-primary btn-share-action";
     var cls = "share-modal fixed-height";
     if (_selectorKind == SelectorKind.Contact)
         cls += " share-modal-with-contact-selector";
@@ -61,6 +61,7 @@
     <Buttons>
         <ShareExternallyButton
             Class="@shareExternallyButtonClass"
+            HideWhenCopyLink="@true"
             Request="@RequestWithComment"
             />
         <Button Class="@shareButtonClass" IsDisabled="@(!canSend)" Click="OnSendClicked">

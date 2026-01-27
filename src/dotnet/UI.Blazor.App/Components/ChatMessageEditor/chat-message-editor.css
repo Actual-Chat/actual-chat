@@ -697,9 +697,6 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .rounded-sub-f
 .bell-svg.active path {
     fill: var(--primary);
 }
-.list-view-layout:has(.chat-activity-panel.listening) .bell-svg.active path {
-    fill: var(--violet-60);
-}
 body.hoverable .notify-call-btn:hover .bell-svg.active,
 body.touch-capable .notify-call-btn:active .bell-svg.active {
     animation: bell-shake 0.7s ease-in-out;

@@ -29,7 +29,7 @@
 .share-incoming-modal .dialog-buttons > * {
     @apply flex-1 max-w-none;
 }
-.share-button.hidden {
+.btn-share-action.hidden {
     display: none;
 }
 .share-externally-button {

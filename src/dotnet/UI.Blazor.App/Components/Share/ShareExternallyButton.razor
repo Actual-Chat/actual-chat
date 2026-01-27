@@ -1,8 +1,10 @@
 ﻿@using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
+@if (HideWhenCopyLink && (MauiShare is null || !_canUseWebShare))
+    return;
 
-<div class="share-button share-externally-button @Class">
+<div class="btn-share-action share-externally-button @Class">
     @if (MauiShare != null) {
         <Button Class="btn-modal" Click="OnMauiShareClick">
             <Icon><i class="icon-share-more"></i></Icon>
@@ -39,6 +41,7 @@
     private IMauiShare? MauiShare { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool HideWhenCopyLink { get; set; }
     [Parameter, EditorRequired] public ShareRequest Request { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
