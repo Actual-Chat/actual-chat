@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.App.Components.AudioPlayer;
+using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.App.Components.MarkupParts;
 using ActualChat.UI.Blazor.App.Components.MarkupParts.CodeBlockMarkupView;
 using ActualChat.UI.Blazor.App.Components.Settings;
@@ -49,6 +50,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatVideoUI>(ServiceLifetime.Scoped);
+        services.AddScoped(c => new VideoPlaybackEngineFactory(c));
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);
         fusion.AddService<LinkPreviewUI>(ServiceLifetime.Scoped);

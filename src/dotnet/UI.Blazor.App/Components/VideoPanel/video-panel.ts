@@ -13,6 +13,8 @@ export interface VideoDevice {
 }
 
 export class VideoPanel {
+    private static activeInstance: VideoPanel | null = null;
+
     private blazorRef: DotNet.DotNetObject;
     private readonly videoPanel: HTMLElement;
     private readonly canvas: HTMLCanvasElement | null = null;
@@ -35,7 +37,14 @@ export class VideoPanel {
     private remoteContainer: HTMLElement | null = null;
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
-        return new VideoPanel(videoPanel, blazorRef);
+        const instance = new VideoPanel(videoPanel, blazorRef);
+        VideoPanel.activeInstance = instance;
+        return instance;
+    }
+
+    /** Returns the active VideoPanel instance, or null if not yet created */
+    static getActiveInstance(): VideoPanel | null {
+        return VideoPanel.activeInstance;
     }
 
     constructor(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject) {
@@ -496,6 +505,9 @@ export class VideoPanel {
         }
 
         this.isRecording = false;
+
+        if (VideoPanel.activeInstance === this)
+            VideoPanel.activeInstance = null;
 
         this.disposed$.next();
         this.disposed$.complete();

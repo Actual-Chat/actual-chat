@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.App.Components.VideoPanel
+@using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.App.Services
 @inherits ComputedStateComponent<AppUIHub, bool>
 @{
@@ -56,7 +56,6 @@
 
     private List<VideoDevice> _videoDevices = new();
     private string _selectedCameraDeviceId = "";
-    private VideoPlaybackEngineFactory? _engineFactory;
 
     private async Task OnSelectedCameraChanged(string deviceId) {
         if (JSRef is not null) {
@@ -85,11 +84,9 @@
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
 
-            // Set up the VideoPlaybackEngineFactory for incoming video streams
-            _engineFactory = new VideoPlaybackEngineFactory(Hub.Services);
-            _engineFactory.SetVideoPanelJsRef(JSRef);
-            ChatVideoUI.SetEngineFactory(_engineFactory);
-
+            // TODO(AK): Suspicious initialization of VideoPlaybackEngineFactory
+            var factory = Hub.Services.GetRequiredService<VideoPlaybackEngineFactory>();
+            await factory.EnsureInitialized().ConfigureAwait(false);
             await UpdateSessionContext();
             await LoadVideoDevices();
         }

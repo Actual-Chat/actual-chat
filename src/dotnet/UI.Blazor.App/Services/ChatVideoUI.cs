@@ -14,8 +14,6 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
     private new ILogger? DebugLog => DebugMode ? Log : null;
 
     private readonly ConcurrentDictionary<StreamId, VideoTrackPlayer> _activePlayers = new();
-    private readonly Lock _factoryLock = new();
-    private VideoPlaybackEngineFactory? _engineFactory;
 
     private IRealtimeStreaming RealtimeStreaming => Hub.Services.GetRequiredService<IRealtimeStreaming>();
     private IStreamClient StreamClient => Hub.StreamClient;
@@ -23,12 +21,6 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
 
     void INotifyInitialized.Initialized()
         => this.Start();
-
-    public void SetEngineFactory(VideoPlaybackEngineFactory factory)
-    {
-        lock (_factoryLock)
-            _engineFactory = factory;
-    }
 
     [ComputeMethod]
     public virtual async Task<ActiveVideoStreams?> GetActiveVideoStreams(ChatId? chatId, CancellationToken cancellationToken = default)
@@ -170,12 +162,10 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
             return;
         }
 
-        VideoPlaybackEngineFactory? factory;
-        lock (_factoryLock)
-            factory = _engineFactory;
-
-        if (factory == null) {
-            Log.LogWarning("VideoPlaybackEngineFactory not set, cannot play video stream {StreamId}", streamId);
+        var factory = Hub.Services.GetRequiredService<VideoPlaybackEngineFactory>();
+        await factory.EnsureInitialized(cancellationToken).ConfigureAwait(false);
+        if (!factory.IsInitialized) {
+            Log.LogWarning("VideoPanel is not active, cannot play video stream {StreamId}", streamId);
             return;
         }
 
