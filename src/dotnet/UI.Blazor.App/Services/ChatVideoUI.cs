@@ -162,6 +162,14 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
             return;
         }
 
+        // Skip our own stream - it's already shown in local preview
+        var ownAuthor = await Hub.Authors.GetOwn(Session, streamInfo.ChatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (ownAuthor?.Id == streamInfo.AuthorId) {
+            DebugLog?.LogDebug("Skipping own video stream {StreamId}", streamId);
+            return;
+        }
+
         VideoPlaybackEngineFactory? factory;
         lock (_factoryLock)
             factory = _engineFactory;
