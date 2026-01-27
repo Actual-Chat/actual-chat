@@ -27,6 +27,7 @@ public sealed class VideoTrackPlayer : IVideoPlayerBackend, IAsyncDisposable
     private ILogger Log => field ??= _services.LogFor<VideoTrackPlayer>();
 
     public StreamId StreamId => _streamInfo.StreamId;
+    public ChatId ChatId => _streamInfo.ChatId;
     public Task WhenCompleted => _whenCompletedSource.Task;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VideoTrackPlayer))]

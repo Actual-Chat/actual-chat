@@ -25,12 +25,22 @@ public interface IRealtimeStreamingBackend : IComputeService, IBackendService
     // Event subscription
     Task<RpcStream<VideoStreamEvent>> SubscribeToVideoStreamEvents(ChatId chatId, CancellationToken cancellationToken);
 
+    // Viewer count
+    [ComputeMethod]
+    Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken);
+
     // Commands (for stream registration)
     [CommandHandler]
     Task OnRegisterVideoStream(RealtimeStreamingBackend_RegisterVideoStream command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnUnregisterVideoStream(RealtimeStreamingBackend_UnregisterVideoStream command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnRegisterVideoStreamMember(RealtimeStreamingBackend_RegisterVideoStreamMember command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnUnregisterVideoStreamMember(RealtimeStreamingBackend_UnregisterVideoStreamMember command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -48,6 +58,28 @@ public sealed partial record RealtimeStreamingBackend_RegisterVideoStream(
 public sealed partial record RealtimeStreamingBackend_UnregisterVideoStream(
     [property: DataMember, MemoryPackOrder(0)] StreamId StreamId,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record RealtimeStreamingBackend_RegisterVideoStreamMember(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] string SessionId
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => ChatId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record RealtimeStreamingBackend_UnregisterVideoStreamMember(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] string SessionId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore]

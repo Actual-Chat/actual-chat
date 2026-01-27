@@ -1,8 +1,5 @@
-using System.Collections.Concurrent;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
-using ActualChat.UI.Blazor.Services;
-using ActualChat.Video;
 using ActualLab.Interception;
 using ActualLab.Resilience;
 
@@ -14,6 +11,7 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
     private new ILogger? DebugLog => DebugMode ? Log : null;
 
     private readonly ConcurrentDictionary<StreamId, VideoTrackPlayer> _activePlayers = new();
+    private readonly ConcurrentDictionary<ChatId, int> _streamMemberChats = new();
 
     private IRealtimeStreaming RealtimeStreaming => Hub.Services.GetRequiredService<IRealtimeStreaming>();
     private IStreamClient StreamClient => Hub.StreamClient;
@@ -52,6 +50,29 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
 
         return await RealtimeStreaming
             .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsAnyoneVideoStreaming(ChatId? chatId, CancellationToken cancellationToken = default)
+    {
+        if (chatId is null)
+            return false;
+
+        var authorIds = await RealtimeStreaming
+            .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
+            .ConfigureAwait(false);
+        return authorIds.Length > 0;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<int> GetVideoStreamMemberCount(ChatId? chatId, CancellationToken cancellationToken = default)
+    {
+        if (chatId is null)
+            return 0;
+
+        return await RealtimeStreaming
+            .GetVideoStreamMemberCount(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -109,9 +130,8 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
                     "Found {Count} existing active video streams for chat {ChatId}",
                     activeStreams.Streams.Length, chatId);
 
-                foreach (var streamInfo in activeStreams.Streams) {
+                foreach (var streamInfo in activeStreams.Streams)
                     await OnVideoStreamStarted(streamInfo, cancellationToken).ConfigureAwait(false);
-                }
             }
 
             // Then subscribe to new events
@@ -198,15 +218,23 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
             if (_activePlayers.TryAdd(streamId, player)) {
                 _ = player.Play();
 
+                // Track viewer registration per chat
+                var newCount = _streamMemberChats.AddOrUpdate(streamInfo.ChatId, 1, (_, c) => c + 1);
+                if (newCount == 1) {
+                    var chatIdForViewer = streamInfo.ChatId;
+                    _ = BackgroundTask.Run(
+                        () => RealtimeStreaming.RegisterVideoStreamMember(Session, chatIdForViewer, CancellationToken.None),
+                        Log, "Failed to register video stream member");
+                }
+
                 // Invalidate computed state
                 using (Invalidation.Begin())
                     _ = GetActiveVideoStreams(streamInfo.ChatId);
 
                 DebugLog?.LogDebug("Video player started for stream {StreamId}", streamId);
             }
-            else {
+            else
                 await player.DisposeAsync().ConfigureAwait(false);
-            }
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to start video playback for stream {StreamId}", streamId);
@@ -216,6 +244,7 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
     private async Task OnVideoStreamEnded(StreamId streamId)
     {
         if (_activePlayers.TryRemove(streamId, out var player)) {
+            var chatId = player.ChatId;
             DebugLog?.LogDebug("Stopping video player for stream {StreamId}", streamId);
 
             try {
@@ -225,13 +254,18 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
                 Log.LogError(ex, "Error disposing video player for stream {StreamId}", streamId);
             }
 
-            // Invalidate computed state - we need the ChatId but it's in VideoStreamInfo
-            // We'll just invalidate for current chat
-            var chatId = await ChatUI.SelectedChatId.Use(CancellationToken.None).ConfigureAwait(false);
-            if (chatId is not null) {
-                using (Invalidation.Begin())
-                    _ = GetActiveVideoStreams(chatId);
+            // Unregister viewer if no more players for this chat
+            var newCount = _streamMemberChats.AddOrUpdate(chatId, 0, (_, c) => c - 1);
+            if (newCount <= 0) {
+                _streamMemberChats.TryRemove(chatId, out _);
+                _ = BackgroundTask.Run(
+                    () => RealtimeStreaming.UnregisterVideoStreamMember(Session, chatId, CancellationToken.None),
+                    Log, "Failed to unregister video stream member");
             }
+
+            // Invalidate computed state
+            using (Invalidation.Begin())
+                _ = GetActiveVideoStreams(chatId);
         }
     }
 
@@ -239,6 +273,14 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
     {
         var players = _activePlayers.Values.ToList();
         _activePlayers.Clear();
+
+        // Unregister from all viewing chats
+        var viewingChatIds = _streamMemberChats.Keys.ToList();
+        _streamMemberChats.Clear();
+        foreach (var chatId in viewingChatIds)
+            _ = BackgroundTask.Run(
+                () => RealtimeStreaming.UnregisterVideoStreamMember(Session, chatId, CancellationToken.None),
+                Log, "Failed to unregister video stream member");
 
         foreach (var player in players) {
             try {

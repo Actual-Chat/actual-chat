@@ -17,6 +17,14 @@ public interface IRealtimeStreaming : IComputeService
     [ComputeMethod]
     Task<bool> IsAuthorVideoStreaming(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
 
+    // Viewer count
+    [ComputeMethod]
+    Task<int> GetVideoStreamMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
+
+    // Viewer registration (non-compute)
+    Task RegisterVideoStreamMember(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task UnregisterVideoStreamMember(Session session, ChatId chatId, CancellationToken cancellationToken);
+
     // Real-time event subscription (RpcStream - push events)
     Task<RpcStream<VideoStreamEvent>> SubscribeToVideoStreamEvents(
         Session session, ChatId chatId, CancellationToken cancellationToken);
