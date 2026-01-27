@@ -7,7 +7,7 @@
     var selectedChatIds = SelectedChatIds;
     var destinationSelected = selectedChatIds.Count > 0;
     var shareButtonClass = !destinationSelected ? "hidden" : "";
-    shareButtonClass += " btn-modal btn-primary share-button";
+    shareButtonClass += " btn-modal btn-primary btn-share-action";
     var showFilePreview = selectedChatIds.Count == 1 && ModalModel.Files.Length <= Constants.Attachments.FileCountLimit;
     var showCommentEditor = destinationSelected && (!ModalModel.HasFiles || !showFilePreview);
 }
