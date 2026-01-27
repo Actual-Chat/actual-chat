@@ -1,8 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
 @implements IModalView<JoinVideoCallModal.Model>
+@implements IAsyncDisposable
+@using ActualChat.UI.Blazor.App.Module
 
 <DialogFrame
     Class="join-video-call-modal modal-sm"
+    ButtonsClass="wide-dialog-buttons"
     Title="Join the video call">
     <Body>
     <FormBlock Class="">
@@ -14,42 +18,140 @@
                 IsListening="true"/>
             <span class="c-text">Lena J, Ethan Y and 8 others on the call</span>
         </div>
-        <div class="c-video">
+        <div class="c-rules">
+            <span class="c-rules-link">Chat Rules</span>
+        </div>
+        <div @ref="_containerRef" class="c-video">
             <div class="video-frame">
                 <span class="plug-text">
                     Camera inactive
                 </span>
             </div>
         </div>
+        <div class="c-camera-select">
+            <select @bind="_selectedDeviceId" @bind:after="OnCameraChanged" class="camera-select" disabled="@(!_isVideoOn)">
+                <option value="">Default Camera</option>
+                @foreach (var device in _videoDevices) {
+                    <option value="@device.DeviceId">@device.Label</option>
+                }
+            </select>
+        </div>
         <div class="c-buttons">
+            <ButtonRound Class="recording-btn">
+                <i class="icon-radio-button-on-fill text-2xl"></i>
+            </ButtonRound>
             <ButtonRound Class="transcription-btn">
                 <i class="icon-transcription text-2xl"></i>
             </ButtonRound>
-            <ButtonRound Class="recording-btn">
+            <ButtonRound Class="mic-btn">
                 <i class="icon-mic-2 text-2xl"></i>
-            </ButtonRound>
-            <ButtonRound Class="video-btn">
-                <i class="icon-video text-2xl"></i>
             </ButtonRound>
             <ButtonRound Class="cast-btn">
                 <i class="icon-cast text-2xl"></i>
             </ButtonRound>
-        </div>
-        <div class="c-rules">
-            <span class="c-title">Rules</span>
-            <span class="c-text">No transcription, no anonymous</span>
+            <div class="@VideoWrapperClass() video-wrapper">
+                <ButtonRound Class="video-btn" Click="@OnVideoToggle">
+                    <i class="icon-video text-2xl"></i>
+                </ButtonRound>
+            </div>
         </div>
     </FormBlock>
     </Body>
     <Buttons>
+        <Button Class="btn-modal btn-primary">Join</Button>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
-        <Button>Join</Button>
     </Buttons>
 </DialogFrame>
 
 @code {
+    private record VideoDevice(string DeviceId, string Label);
+
+    private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.create";
+
+    private ElementReference _containerRef;
+    private DotNetObjectReference<JoinVideoCallModal>? _blazorRef;
+    private IJSObjectReference? _jsRef;
+
+    private bool _isVideoOn;
+    private List<VideoDevice> _videoDevices = new();
+    private string _selectedDeviceId = "";
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        await EnsureJsRef();
+        if (_jsRef is null)
+            return;
+
+        var success = await _jsRef.InvokeAsync<bool>("startPreview", (string?)null);
+        if (success) {
+            _isVideoOn = true;
+            await LoadVideoDevices();
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync() {
+        if (_jsRef is not null) {
+            await _jsRef.InvokeVoidAsync("dispose");
+            await _jsRef.DisposeAsync();
+            _jsRef = null;
+        }
+        _blazorRef?.Dispose();
+        _blazorRef = null;
+    }
+
+    private async Task EnsureJsRef() {
+        if (_jsRef is not null)
+            return;
+
+        _blazorRef = DotNetObjectReference.Create(this);
+        _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _containerRef, _blazorRef);
+    }
+
+    private async Task OnVideoToggle() {
+        await EnsureJsRef();
+        if (_jsRef is null)
+            return;
+
+        if (_isVideoOn) {
+            await _jsRef.InvokeVoidAsync("stopPreview");
+            _isVideoOn = false;
+        } else {
+            var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+            var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
+            if (success) {
+                _isVideoOn = true;
+                await LoadVideoDevices();
+            }
+        }
+    }
+
+    private async Task OnCameraChanged() {
+        if (_jsRef is null || !_isVideoOn)
+            return;
+
+        await _jsRef.InvokeAsync<bool>("switchCamera", _selectedDeviceId);
+    }
+
+    private async Task LoadVideoDevices() {
+        if (_jsRef is null)
+            return;
+
+        try {
+            var devices = await _jsRef.InvokeAsync<VideoDevice[]>("enumerateVideoDevices");
+            _videoDevices = devices.ToList();
+        } catch {
+            _videoDevices = new();
+        }
+    }
+
+    private string VideoWrapperClass()
+        => _isVideoOn ? "video-on" : "video-off";
 
     // Nested types
 
