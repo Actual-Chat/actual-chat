@@ -40,6 +40,9 @@ export class ChatMessageEditor {
     private hasContent: boolean | null = null; // Intended: updateHasContent needs this on the first run
     private chatId: string;
     private hasAttachments: boolean;
+    private dragDropOverlay: HTMLDivElement | null = null;
+    private dragCounter: number = 0;
+    private chatPanel: HTMLElement | null = null;
 
     static create(editorDiv: HTMLDivElement, filePickerBlazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, filePickerBlazorRef);
@@ -88,6 +91,35 @@ export class ChatMessageEditor {
                 }
             });
         }
+
+        // Drag-and-drop file attachment
+        this.chatPanel = this.editorDiv.closest('.list-view-layout');
+        if (this.chatPanel) {
+            this.dragDropOverlay = document.createElement('div');
+            this.dragDropOverlay.className = 'drag-drop-overlay';
+            this.dragDropOverlay.innerHTML =
+                '<div class="drag-drop-overlay-content">' +
+                '<i class="icon-upload-cloud text-4xl"></i>' +
+                '<span>Drop files to attach</span>' +
+                '</div>';
+            const panelStyle = getComputedStyle(this.chatPanel);
+            if (panelStyle.position === 'static')
+                (this.chatPanel as HTMLElement).style.position = 'relative';
+            this.chatPanel.appendChild(this.dragDropOverlay);
+
+            fromEvent<DragEvent>(this.chatPanel, 'dragenter')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(e => this.onDragEnter(e));
+            fromEvent<DragEvent>(this.chatPanel, 'dragover')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(e => this.onDragOver(e));
+            fromEvent<DragEvent>(this.chatPanel, 'dragleave')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(e => this.onDragLeave(e));
+            fromEvent<DragEvent>(this.chatPanel, 'drop')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(e => this.onDrop(e));
+        }
     }
 
     public dispose() {
@@ -104,6 +136,10 @@ export class ChatMessageEditor {
         this.sideNavs.forEach(_ => {
             this.sideNavObserver.disconnect();
         });
+        if (this.dragDropOverlay) {
+            this.dragDropOverlay.remove();
+            this.dragDropOverlay = null;
+        }
     }
 
     // Public methods
@@ -257,6 +293,48 @@ export class ChatMessageEditor {
         }
         void this.filePickerBackend.add(fileResults);
     };
+
+    // Drag-and-drop handlers
+
+    private hasFiles(e: DragEvent): boolean {
+        return e.dataTransfer?.types?.includes('Files') ?? false;
+    }
+
+    private onDragEnter(e: DragEvent) {
+        e.preventDefault();
+        this.dragCounter++;
+        if (this.hasFiles(e) && this.dragDropOverlay)
+            this.dragDropOverlay.classList.add('active');
+    }
+
+    private onDragOver(e: DragEvent) {
+        e.preventDefault();
+        if (e.dataTransfer)
+            e.dataTransfer.dropEffect = 'copy';
+    }
+
+    private onDragLeave(e: DragEvent) {
+        this.dragCounter--;
+        if (this.dragCounter <= 0) {
+            this.dragCounter = 0;
+            this.dragDropOverlay?.classList.remove('active');
+        }
+    }
+
+    private onDrop(e: DragEvent) {
+        e.preventDefault();
+        this.dragCounter = 0;
+        this.dragDropOverlay?.classList.remove('active');
+
+        const files = e.dataTransfer?.files;
+        if (!files || files.length === 0)
+            return;
+
+        const fileResults: PickFileResult[] = [];
+        for (let i = 0; i < files.length; i++)
+            fileResults.push({ file: files[i], fileHandle: null });
+        void this.filePickerBackend.add(fileResults);
+    }
 
     // Private methods
 
