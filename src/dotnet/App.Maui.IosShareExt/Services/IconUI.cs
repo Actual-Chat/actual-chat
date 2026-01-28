@@ -29,11 +29,18 @@ public class IconUI(IosHub hub) : UIServiceBase(hub), IComputeService
         if (url.IsNullOrEmpty())
             return null;
 
-        var bytes = await HttpClient.GetByteArrayAsync(url, cancellationToken).ConfigureAwait(false);
-        if (!url.OrdinalIgnoreCaseEndsWith(".svg") || bytes.Length == 0)
-            return bytes;
+        try {
+            var bytes = await HttpClient.GetByteArrayAsync(url, cancellationToken).ConfigureAwait(false);
+            if (!url.OrdinalIgnoreCaseEndsWith(".svg") || bytes.Length == 0)
+                return bytes;
 
-        return await ConvertSvgToPng(bytes).ConfigureAwait(false);
+            return await ConvertSvgToPng(bytes).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            if (!e.IsCancellationOf(cancellationToken))
+                Log.LogError(e, "Failed to fetch external image: '{Url}'", url);
+            return null;
+        }
     }
 
     [ComputeMethod]
