@@ -83,19 +83,27 @@ await browser.close();
 
 Before running Playwright scripts:
 
-1. **Install Playwright package:**
+1. **For host browser:** Ensure Chrome is running with `c chrome`
+
+2. **For headless in Docker:** No additional setup needed — Playwright and Chromium are pre-installed in the Docker image. Both the global installation (`/usr/lib/node_modules/playwright`) and the project's `node_modules/playwright` are available.
+
+3. **For headless outside Docker:** Install the Playwright package if not already available:
    ```bash
    npm install playwright
    ```
 
-2. **For host browser:** Ensure Chrome is running with `c chrome`
-
-3. **For headless:** No additional setup needed in Docker environment
-
 ## Running Scripts
 
+Scripts using `require('playwright')` or `import ... from 'playwright'` must be able to resolve the module. Two approaches:
+
 ```bash
-# Run a TypeScript Playwright script
+# Option 1: Run from the project root (node_modules/playwright is found automatically)
+node path/to/script.js
+
+# Option 2: Set NODE_PATH for scripts located outside the project tree
+NODE_PATH=/usr/lib/node_modules node /path/to/external/script.js
+
+# Option 3: Run TypeScript scripts via npx tsx
 npx tsx path/to/script.ts
 ```
 
