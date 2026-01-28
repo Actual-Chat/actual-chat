@@ -8,6 +8,8 @@ public interface IMediaBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Media?> Get(MediaId? mediaId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<MediaFull?> GetFull(MediaId? mediaId, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<Media?> GetByMediaIdScope(string mediaIdScope, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Media?> GetByContentId(string contentId, CancellationToken cancellationToken);

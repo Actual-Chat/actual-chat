@@ -24,6 +24,16 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     }
 
     // [ComputeMethod]
+    public virtual async Task<MediaFull?> GetFull(MediaId? mediaId, CancellationToken cancellationToken)
+    {
+        if (mediaId == null)
+            return null;
+
+        var dbMedia = await DbMediaResolver.Get(mediaId.Value, cancellationToken).ConfigureAwait(false);
+        return dbMedia?.ToModel();
+    }
+
+    // [ComputeMethod]
     public virtual async Task<Media?> GetByMediaIdScope(string mediaIdScope, CancellationToken cancellationToken)
     {
         if (mediaIdScope.IsNullOrEmpty())
@@ -60,6 +70,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         var (mediaId, change) = command;
         if (Invalidation.IsActive) {
             _ = Get(mediaId, default);
+            _ = GetFull(mediaId, default);
             return default!;
         }
 
