@@ -1,4 +1,3 @@
-using System.Threading.Channels;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -8,9 +7,9 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
     private readonly ConcurrentDictionary<ChatId, ConcurrentDictionary<StreamId, VideoStreamInfo>> _activeStreams = new();
     private readonly ConcurrentDictionary<ChatId, long> _versions = new();
     private readonly ConcurrentDictionary<ChatId, HashSet<ChannelWriter<VideoStreamEvent>>> _subscribers = new();
-    private readonly object _subscribersLock = new();
+    private readonly Lock _subscribersLock = new();
     private readonly ConcurrentDictionary<ChatId, HashSet<string>> _streamMembers = new();
-    private readonly object _streamMembersLock = new();
+    private readonly Lock _streamMembersLock = new();
 
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
@@ -35,10 +34,10 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
     // [ComputeMethod]
     public virtual Task<VideoStreamInfo?> GetVideoStreamInfo(StreamId streamId, CancellationToken cancellationToken)
     {
-        foreach (var chatStreams in _activeStreams.Values) {
+        foreach (var chatStreams in _activeStreams.Values)
             if (chatStreams.TryGetValue(streamId, out var info))
                 return Task.FromResult<VideoStreamInfo?>(info);
-        }
+
         return Task.FromResult<VideoStreamInfo?>(null);
     }
 
@@ -60,21 +59,9 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
     public virtual Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken)
     {
         int count;
-        lock (_streamMembersLock) {
+        lock (_streamMembersLock)
             count = _streamMembers.TryGetValue(chatId, out var sessions) ? sessions.Count : 0;
-        }
         return Task.FromResult(count);
-    }
-
-    // [ComputeMethod]
-    public virtual Task<bool> IsAuthorVideoStreaming(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
-    {
-        var chatStreams = _activeStreams.GetValueOrDefault(chatId);
-        if (chatStreams == null || chatStreams.IsEmpty)
-            return Task.FromResult(false);
-
-        var isStreaming = chatStreams.Values.Any(s => s.AuthorId == authorId);
-        return Task.FromResult(isStreaming);
     }
 
     public Task<RpcStream<VideoStreamEvent>> SubscribeToVideoStreamEvents(ChatId chatId, CancellationToken cancellationToken)
@@ -116,14 +103,6 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
         var streamInfo = command.StreamInfo;
         var chatId = streamInfo.ChatId;
 
-        if (Invalidation.IsActive) {
-            _ = GetActiveVideoStreams(chatId, default);
-            _ = GetVideoStreamInfo(streamInfo.StreamId, default);
-            _ = GetVideoStreamingAuthorIds(chatId, default);
-            _ = IsAuthorVideoStreaming(chatId, streamInfo.AuthorId, default);
-            return;
-        }
-
         // Add stream to active streams
         var chatStreams = _activeStreams.GetOrAdd(chatId, _ => new ConcurrentDictionary<StreamId, VideoStreamInfo>());
         chatStreams[streamInfo.StreamId] = streamInfo;
@@ -136,6 +115,13 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
         await BroadcastEvent(chatId, evt).ConfigureAwait(false);
 
         Log.LogInformation("Video stream registered: {StreamId} in chat {ChatId}", streamInfo.StreamId, chatId);
+
+        using (Invalidation.Begin()) {
+            // There is no automatic invalidation as we do not use DB operations
+            _ = GetActiveVideoStreams(chatId, default);
+            _ = GetVideoStreamInfo(streamInfo.StreamId, default);
+            _ = GetVideoStreamingAuthorIds(chatId, default);
+        }
     }
 
     // [CommandHandler]
@@ -145,15 +131,6 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
     {
         var streamId = command.StreamId;
         var chatId = command.ChatId;
-
-        if (Invalidation.IsActive) {
-            _ = GetActiveVideoStreams(chatId, default);
-            _ = GetVideoStreamInfo(streamId, default);
-            _ = GetVideoStreamingAuthorIds(chatId, default);
-            // Note: We don't know the AuthorId here, so we invalidate all authors
-            // The actual implementation would need to track this
-            return;
-        }
 
         // Remove stream from active streams
         if (!_activeStreams.TryGetValue(chatId, out var chatStreams))
@@ -173,11 +150,14 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
         var evt = new VideoStreamEvent(VideoStreamEventKind.Ended, removedInfo);
         await BroadcastEvent(chatId, evt).ConfigureAwait(false);
 
-        // Invalidate IsAuthorVideoStreaming for the removed stream's author
-        using (Invalidation.Begin())
-            _ = IsAuthorVideoStreaming(chatId, removedInfo.AuthorId, default);
-
         Log.LogInformation("Video stream unregistered: {StreamId} in chat {ChatId}", streamId, chatId);
+
+        using (Invalidation.Begin()) {
+            // There is no automatic invalidation as we do not use DB operations
+            _ = GetActiveVideoStreams(chatId, default);
+            _ = GetVideoStreamInfo(streamId, default);
+            _ = GetVideoStreamingAuthorIds(chatId, default);
+        }
     }
 
     // [CommandHandler]
@@ -188,20 +168,17 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
         var chatId = command.ChatId;
         var sessionId = command.SessionId;
 
-        if (Invalidation.IsActive) {
-            _ = GetVideoStreamMemberCount(chatId, default);
-            return Task.CompletedTask;
-        }
-
         lock (_streamMembersLock) {
             var sessions = _streamMembers.GetOrAdd(chatId, _ => new HashSet<string>(StringComparer.Ordinal));
             sessions.Add(sessionId);
         }
 
-        using (Invalidation.Begin())
-            _ = GetVideoStreamMemberCount(chatId, default);
-
         Log.LogInformation("Video stream member registered: session {SessionId} in chat {ChatId}", sessionId, chatId);
+
+        using (Invalidation.Begin()) {
+            // There is no automatic invalidation as we do not use DB operations
+            _ = GetVideoStreamMemberCount(chatId, default);
+        }
         return Task.CompletedTask;
     }
 
@@ -213,23 +190,19 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
         var chatId = command.ChatId;
         var sessionId = command.SessionId;
 
-        if (Invalidation.IsActive) {
-            _ = GetVideoStreamMemberCount(chatId, default);
-            return Task.CompletedTask;
-        }
-
-        lock (_streamMembersLock) {
+        lock (_streamMembersLock)
             if (_streamMembers.TryGetValue(chatId, out var sessions)) {
                 sessions.Remove(sessionId);
                 if (sessions.Count == 0)
                     _streamMembers.TryRemove(chatId, out _);
             }
-        }
-
-        using (Invalidation.Begin())
-            _ = GetVideoStreamMemberCount(chatId, default);
 
         Log.LogInformation("Video stream member unregistered: session {SessionId} in chat {ChatId}", sessionId, chatId);
+
+        using (Invalidation.Begin()) {
+            // There is no automatic invalidation as we do not use DB operations
+            _ = GetVideoStreamMemberCount(chatId, default);
+        }
         return Task.CompletedTask;
     }
 
@@ -242,11 +215,9 @@ public class RealtimeStreamingBackend : IRealtimeStreamingBackend
             writers = new HashSet<ChannelWriter<VideoStreamEvent>>(writers); // Copy to avoid lock during iteration
         }
 
-        foreach (var writer in writers) {
-            if (!writer.TryWrite(evt)) {
+        foreach (var writer in writers)
+            if (!writer.TryWrite(evt))
                 Log.LogWarning("Failed to write video stream event to subscriber channel");
-            }
-        }
         return Task.CompletedTask;
     }
 }

@@ -19,9 +19,6 @@ public interface IRealtimeStreamingBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<AuthorId[]> GetVideoStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    Task<bool> IsAuthorVideoStreaming(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
-
     // Event subscription
     Task<RpcStream<VideoStreamEvent>> SubscribeToVideoStreamEvents(ChatId chatId, CancellationToken cancellationToken);
 

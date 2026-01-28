@@ -5,7 +5,7 @@
     if (!ScreenSize.IsNarrow())
         return;
 
-    var isVisible = (m?.IsAnyoneTalking ?? false) || (m?.AudioState.IsListening ?? false) || IsRecordingHere;
+    var isVisible = (m?.IsAnyoneTalking ?? false) || (m?.IsAnyoneVideoStreaming ?? false) || (m?.AudioState.IsListening ?? false) || IsRecordingHere;
 }
 
 <SubHeader Class="chat-activity-subheader" IsVisible="@(m is not null && isVisible)">
@@ -16,6 +16,7 @@
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
     private ChatId? RecordingChatId {
@@ -42,8 +43,9 @@
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
 
-        return new (chat, audioState, isAnyoneTalking);
+        return new (chat, audioState, isAnyoneTalking, isAnyoneVideoStreaming);
     }
 
     // Nested types
@@ -51,5 +53,6 @@
     public sealed record Model(
         Chat Chat,
         ChatAudioState AudioState,
-        bool IsAnyoneTalking);
+        bool IsAnyoneTalking,
+        bool IsAnyoneVideoStreaming);
 }
