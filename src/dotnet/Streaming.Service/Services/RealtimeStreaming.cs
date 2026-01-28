@@ -47,18 +47,6 @@ public class RealtimeStreaming(IServiceProvider services) : IRealtimeStreaming
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> IsAuthorVideoStreaming(
-        Session session,
-        ChatId chatId,
-        AuthorId authorId,
-        CancellationToken cancellationToken)
-    {
-        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
-        chatRules.Require(ChatPermissions.Read);
-        return await Backend.IsAuthorVideoStreaming(chatId, authorId, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [ComputeMethod]
     public virtual async Task<int> GetVideoStreamMemberCount(
         Session session,
         ChatId chatId,

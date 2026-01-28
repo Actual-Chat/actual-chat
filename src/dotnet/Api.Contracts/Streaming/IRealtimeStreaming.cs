@@ -14,9 +14,6 @@ public interface IRealtimeStreaming : IComputeService
     [ComputeMethod]
     Task<AuthorId[]> GetVideoStreamingAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    Task<bool> IsAuthorVideoStreaming(Session session, ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
-
     // Viewer count
     [ComputeMethod]
     Task<int> GetVideoStreamMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);

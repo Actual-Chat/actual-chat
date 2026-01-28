@@ -32,17 +32,6 @@ public partial class ChatVideoUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IC
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsAuthorVideoStreaming(ChatId? chatId, AuthorId? authorId, CancellationToken cancellationToken = default)
-    {
-        if (chatId is null || authorId is null)
-            return false;
-
-        return await RealtimeStreaming
-            .IsAuthorVideoStreaming(Session, chatId, authorId, cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    [ComputeMethod]
     public virtual async Task<AuthorId[]> GetVideoStreamingAuthorIds(ChatId? chatId, CancellationToken cancellationToken = default)
     {
         if (chatId is null)

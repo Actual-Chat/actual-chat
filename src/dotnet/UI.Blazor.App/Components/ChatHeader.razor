@@ -7,7 +7,7 @@
         searchCls += " on";
     var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
-    var isPanelVisible = IsRecordingHere || IsListeningHere || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
+    var isPanelVisible = IsRecordingHere || IsListeningHere || m.IsAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
 }
 
 @if (m.HasSelection) {
@@ -106,6 +106,7 @@
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
     private ChatId? RecordingChatId {
@@ -150,6 +151,8 @@
         if (chatId is not null)
             audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
 
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
+
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
@@ -157,6 +160,7 @@
             Chat = chat,
             AudioState = audioState,
             IsAnyoneTalking = authorIds.Length > 0,
+            IsAnyoneVideoStreaming = isAnyoneVideoStreaming,
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
             EnableIncompleteUI = enableIncompleteUI,
@@ -208,6 +212,7 @@
         public Chat? Chat { get; init; }
         public ChatAudioState? AudioState { get; init; }
         public bool IsAnyoneTalking { get; init; }
+        public bool IsAnyoneVideoStreaming { get; init; }
         public bool HasSelection { get; init; }
         public bool IsSearchMode { get; init; }
         public bool EnableIncompleteUI { get; init; }
