@@ -10,7 +10,7 @@
 
 <div class="author-circle-group">
     @{
-        var zIndex = 10;
+        var zIndex = 1;
         for (var i = 0; i < maxLength; i++) {
             var color = circles[i];
             <div class="author-circle" style="z-index: @zIndex;">
@@ -18,7 +18,7 @@
                     <div class="avatar-circle @color"></div>
                 </div>
             </div>
-            zIndex--;
+            zIndex++;
         }
         if (currentCount > MaxCount) {
             <div class="author-circle">

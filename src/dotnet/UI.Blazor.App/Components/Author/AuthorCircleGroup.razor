@@ -13,7 +13,7 @@
 
 <div class="author-circle-group @Class @groupCls">
     @{
-        var zIndex = 10;
+        var zIndex = 1;
         for (var i = 0; i < maxLength; i++) {
             var authorId = authorIds[i];
             var lastAuthorCls = i == maxLength - 1 ? "last-author" : "";
@@ -22,11 +22,11 @@
                     <AuthorCircle AuthorId="@authorId" Size="@avatarSize"/>
                 </div>
             </div>
-            zIndex--;
+            zIndex++;
         }
 
         if (authorIds.Count > MaxCount) {
-            <div class="@size author-circle-group-item last">
+            <div class="@size author-circle-group-item author-circle last" style="z-index: @(zIndex + 1);">
                 <div class="author-circle">
                     <div class="author-wrapper">
                         @{
