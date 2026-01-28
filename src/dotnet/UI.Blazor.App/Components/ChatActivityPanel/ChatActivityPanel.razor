@@ -18,6 +18,7 @@
     var iconMode = showVideoIcon ? "video" : "audio";
     var tooltip = IsListening ? "Listening..." : "Listen";
     var cls = IsListening ? " listening" : "";
+    var joinButtonText = m.IsAnyoneVideoStreaming ? "Join" : "Join muted";
 }
 
 <div @ref="Ref"
@@ -25,28 +26,22 @@
      @onclick:preventDefault="true"
      @onclick:stopPropagation="true"
      @onclick="@Click">
+    @* Camera icon - shown when anyone is video streaming *@
     <div class="c-icon hideable">
         <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive" mode="@iconMode"/>
     </div>
-    @if (m.IsAnyoneVideoStreaming && m.VideoStreamMemberCount > 0) {
-        <div class="c-member-count">@m.VideoStreamMemberCount watching</div>
-    }
+    @* Talking heads - shown when anyone is talking *@
     @if (m.IsAnyoneTalking && chatId is not null) {
         <ChatActivities
             @key="@chatId.Value"
             Chat="@chat"
             MaxCount="@MaxCount"
             IsListening="@IsListening"/>
-    } else {
-        <div class="activity-placeholder">
-            <div class="placeholder-circle"></div>
-            <div class="placeholder-circle"></div>
-            <div class="placeholder-circle"></div>
-            @if (!ScreenSize.IsNarrow()) {
-                <div class="placeholder-circle"></div>
-            }
-        </div>
     }
+    @if (m.IsAnyoneVideoStreaming && m.VideoStreamMemberCount > 0) {
+        <div class="c-member-count">@m.VideoStreamMemberCount watching</div>
+    }
+    <div class="flex-1"></div>
     <div class="c-buttons">
         @if (!IsListening && !IsRecordingHere) {
             <Button
@@ -57,7 +52,7 @@
                 Tooltip="@tooltip"
                 TooltipPosition="FloatingPosition.Bottom"
                 MustKeepAwake="@(!IsListening)">
-                Join muted
+                @joinButtonText
             </Button>
         } else if (IsRecordingHere) {
             <HeaderButton
@@ -149,6 +144,12 @@
         if (IsListening && IsRecordingHere)
             StopRecording();
 
+        var isVideoStreaming = State.Value?.IsAnyoneVideoStreaming == true;
+        if (isVideoStreaming) {
+            // When joining a video call: open modal AND start listening
+            _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat!));
+        }
+        // Normal audio join/leave behavior
         _ = ChatAudioUI.SetListeningState(chatId, !IsListening);
     }
 
