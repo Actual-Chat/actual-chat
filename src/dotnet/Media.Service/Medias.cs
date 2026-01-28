@@ -78,6 +78,35 @@ public class Medias(IServiceProvider services) : IMedias
         await Commander.Call(new MediaStatusBackend_Change(mediaId, change), cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
+    public virtual async Task<MediaContent> OnProcessUpload(Medias_ProcessUpload command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return default!;
+
+        var (session, mediaId, uploadId) = command;
+
+        // Verify ownership
+        var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media == null)
+            throw StandardError.NotFound<Media>();
+
+        await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
+
+        // Process upload and bind to media
+        var mediaContent = await Commander.Call(new MediaBackend_ProcessUpload(mediaId, uploadId), cancellationToken).ConfigureAwait(false);
+
+        // Update status to Ready
+        var statusInfo = new MediaStatusInfo(mediaId, MediaStatus.Ready, MediaPreparingStage.None, 100);
+        var statusChange = new Change<MediaStatusInfo> { Update = statusInfo };
+        await Commander.Call(new MediaStatusBackend_Change(mediaId, statusChange), cancellationToken).ConfigureAwait(false);
+
+        // Remove the upload
+        await Commander.Call(new UploadsBackend_Remove(uploadId), cancellationToken).ConfigureAwait(false);
+
+        return mediaContent;
+    }
+
     // Private methods
 
     private async Task RequireOwner(Session session, MediaFull media, CancellationToken cancellationToken)

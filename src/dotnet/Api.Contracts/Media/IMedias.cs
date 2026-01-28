@@ -13,6 +13,8 @@ public interface IMedias : IComputeService
     Task OnRemoveMedia(Medias_RemoveMedia command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnUpdateStatus(Medias_UpdateStatus command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<MediaContent> OnProcessUpload(Medias_ProcessUpload command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -38,3 +40,11 @@ public sealed partial record Medias_UpdateStatus(
     [property: DataMember, MemoryPackOrder(3)] MediaPreparingStage PreparingStage = MediaPreparingStage.None,
     [property: DataMember, MemoryPackOrder(4)] double StageProgress = 0
 ) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Medias_ProcessUpload(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] MediaId MediaId,
+    [property: DataMember, MemoryPackOrder(2)] UploadId UploadId
+) : ISessionCommand<MediaContent>, IApiCommand;
