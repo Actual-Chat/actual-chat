@@ -19,7 +19,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             return null;
 
         var dbMedia = await DbMediaResolver.Get(mediaId.Value, cancellationToken).ConfigureAwait(false);
-        var media = dbMedia?.ToModel();
+        var media = dbMedia?.ToModel().ToMedia();
         return media;
     }
 
@@ -35,7 +35,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         var dbMedia = await dbContext.Media.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id.StartsWith($"{mediaIdScope}{MediaId.Delimiter}"), cancellationToken)
             .ConfigureAwait(false);
-        return dbMedia?.ToModel();
+        return dbMedia?.ToModel().ToMedia();
     }
 
     // [ComputeMethod]
@@ -51,11 +51,11 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             .Where(x => x.ContentId == contentId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbMedia?.ToModel();
+        return dbMedia?.ToModel().ToMedia();
     }
 
     // [CommandHandler]
-    public virtual async Task<Media?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken)
+    public virtual async Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken)
     {
         var (mediaId, change) = command;
         if (Invalidation.IsActive) {

@@ -11,7 +11,7 @@ public sealed class MediaSaver(ICommander commander, IContentSaver contentSaver)
         Size? size,
         CancellationToken cancellationToken)
     {
-        var media = new Media(mediaId) {
+        var media = new MediaFull(mediaId) {
             ContentId = mediaId.GetContentId(Path.GetExtension(file.FileName)),
             FileName = file.FileName,
             Length = file.Length,
@@ -27,7 +27,7 @@ public sealed class MediaSaver(ICommander commander, IContentSaver contentSaver)
 
         var changeCommand = new MediaBackend_Change(
             mediaId,
-            new Change<Media> {
+            new Change<MediaFull> {
                 Create = media,
             });
         return (await commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false))!;

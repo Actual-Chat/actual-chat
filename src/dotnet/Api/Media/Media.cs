@@ -7,7 +7,7 @@ namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirementTarget
+public partial record Media : IHasId<MediaId>, IHasMetadata, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
     [DataMember, MemoryPackOrder(1)] public string ContentId { get; init; } = "";
@@ -57,6 +57,6 @@ public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirement
     }
 
     // This record relies on referential equality
-    public bool Equals(Media? other) => ReferenceEquals(this, other);
+    public virtual bool Equals(Media? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

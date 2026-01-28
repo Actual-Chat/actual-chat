@@ -10,22 +10,24 @@ namespace ActualChat.Media.Db;
 public class DbMedia : IHasId<string>, IRequirementTarget
 {
     public DbMedia() { }
-    public DbMedia(Media model) => UpdateFrom(model);
+    public DbMedia(MediaFull model) => UpdateFrom(model);
 
     [Key] public string Id { get; set; } = "";
 
     public string Scope { get; set; } = "";
     public string LocalId { get; set; } = "";
     public string ContentId { get; set; } = "";
+    public string UserId { get; set; } = "";
     public string MetadataJson { get; set; } = "";
 
-    public Media ToModel()
+    public MediaFull ToModel()
         => new (MediaId.Parse(Id)) {
             ContentId = ContentId,
+            UserId = ActualChat.UserId.ParseNullable(UserId),
             Metadata = MetadataSerializer.Read(MetadataJson),
         };
 
-    public void UpdateFrom(Media model)
+    public void UpdateFrom(MediaFull model)
     {
         this.RequireSameOrEmptyId(model.Id.Value);
 
@@ -36,6 +38,7 @@ public class DbMedia : IHasId<string>, IRequirementTarget
         Scope = model.Id.Scope;
         LocalId = model.Id.LocalId;
         ContentId = model.ContentId;
+        UserId = model.UserId?.Value ?? "";
         MetadataJson = MetadataSerializer.Write(model.Metadata);
     }
 
