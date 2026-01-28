@@ -38,7 +38,15 @@ public static class NSItemProviderExt
 
     public static async Task<UploadInput> ToUploadInput(this NSItemProvider item)
     {
-        var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(item.RegisteredContentTypes.First().Identifier).ConfigureAwait(false);
+        // For images on iOS < 26, LoadInPlaceFileRepresentationAsync doesn't work reliably
+        // Use LoadItemAsync to load data directly instead
+        if (!OperatingSystem.IsIOSVersionAtLeast(26) && item.RegisteredContentTypes[0].ConformsTo(UTTypes.Image)) {
+            var input = await LoadImageInput(item).ConfigureAwait(false);
+            if (input != null)
+                return input;
+        }
+
+        var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(item.RegisteredContentTypes[0].Identifier).ConfigureAwait(false);
         FilePath path = inPlaceResult.FileUrl.Path!;
         FilePath fileName = item.SuggestedName.NullIfEmpty() ?? path.FileNameWithoutExtension;
         if (!fileName.HasExtension)
@@ -62,5 +70,27 @@ public static class NSItemProviderExt
 
             return "application/octet-stream";
         }
+    }
+
+    private static async Task<UploadInput?> LoadImageInput(NSItemProvider item)
+    {
+        var loadedItem = await item.LoadItemAsync(item.RegisteredContentTypes[0].Identifier, null).ConfigureAwait(false);
+        UIImage? image = loadedItem switch {
+            UIImage uiImage => uiImage,
+            NSUrl { Path: { } path } => UIImage.FromFile(path),
+            NSData data => UIImage.LoadFromData(data),
+            _ => null,
+        };
+
+        if (image == null)
+            return null;
+
+        if (image.AsJPEG() is { } jpeg)
+            return new UploadInput("image/jpeg", item.SuggestedName!, jpeg.AsStream());
+
+        if (image.AsPNG() is { } png)
+            return new UploadInput("image/png", item.SuggestedName!, png.AsStream());
+
+        return null;
     }
 }
