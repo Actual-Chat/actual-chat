@@ -14,7 +14,8 @@ public static class NSItemProviderExt
     public static readonly IReadOnlyList<UTType> TextTypes = PlainTextTypes.Concat([UTTypes.Url]).ToArray();
 
     public static bool HasText(this NSItemProvider item)
-        => item.RegisteredContentTypes.Intersect(TextTypes).Any();
+        // File URLs (like .txt files) should be treated as files, not as inline text
+        => !item.HasItemConformingTo(UTTypes.FileUrl.Identifier) && item.RegisteredContentTypes.Intersect(TextTypes).Any();
 
     public static async Task<string> GetText(this NSItemProvider item)
     {
