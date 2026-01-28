@@ -1,5 +1,9 @@
 .mention-list-manager {
     --mention-shadow: var(--post-panel);
+    @apply absolute inset-x-0 top-0 z-minus;
+}
+.mention-list-manager > div {
+    @apply absolute inset-x-0 bottom-0;
 }
 @media screen and (min-width: 820px) {
     .mention-list-manager {
@@ -7,73 +11,40 @@
     }
 }
 
-.mention-list-manager {
-    @apply absolute inset-x-0 top-0 z-0;
-}
-.mention-list-manager.show-mention-list {
-    @apply z-0 md:z-minus;
-}
-.mention-list-manager > div {
-    @apply absolute inset-x-0 bottom-0;
-}
-
 .mention-list {
     @apply flex-y;
     @apply max-h-40 md:max-h-64;
     @apply overflow-x-hidden overflow-y-auto;
     @apply bg-01 text-03;
+    @apply translate-y-0;
     box-shadow: 0 -1px 0 1px var(--separator);
-    filter: opacity(1);
-    transform: translateY(0);
     animation: show-mention-list 400ms ease-in-out forwards;
+}
+/* Firefox workaround: it somehow displays the border otherwise */
+.mention-list.non-visible {
+    @apply hidden border-y-0;
+    @apply translate-y-full;
 }
 body.narrow .mention-list {
     @apply border-b border-separator;
     @apply bg-post-panel text-post-panel-text;
+    transition: max-height 300ms ease-out;
+}
+body.narrow .mention-list.expanded {
+    @apply max-h-64;
 }
 body.narrow .narrow-panel .mention-list {
     @apply max-h-32;
 }
-.mention-list.non-visible {
-    @apply hidden;
-    filter: opacity(0);
-    transform: translateY(100%);
+body.narrow .narrow-panel .mention-list.expanded {
+    @apply max-h-48;
 }
-@keyframes show-mention-list {
-    0% {
-        filter: opacity(0);
-        transform: translateY(100%);
-        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
-    }
-    80% {
-        filter: opacity(1);
-        transform: translateY(-1rem);
-        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
-    }
-    99% {
-        filter: opacity(1);
-        transform: translateY(0);
-        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
-    }
-    100% {
-        filter: opacity(1);
-        transform: translateY(0);
-        box-shadow: 0 -1px 0 1px var(--separator);
-    }
-}
-
-/* Firefox workaround: it somehow displays the border otherwise */
-.mention-list.non-visible {
-    @apply border-y-0;
-}
-
 .mention-list .mention-list-item {
     @apply flex-none truncate cursor-pointer;
 }
 .mention-list .mention-list-item.selected {
     @apply bg-mention-list-item-selected;
 }
-
 .mention-list .mention-list-item > .c-content {
     @apply flex-x items-center gap-x-2;
     @apply h-9;
@@ -83,4 +54,22 @@ body.narrow .narrow-panel .mention-list {
     @apply flex-auto;
     @apply truncate;
     @apply text-headline-1;
+}
+@keyframes show-mention-list {
+    0% {
+        transform: translateY(100%);
+        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
+    }
+    80% {
+        transform: translateY(-1rem);
+        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
+    }
+    99% {
+        transform: translateY(0);
+        box-shadow: 0 2rem 1rem 1rem var(--mention-shadow);
+    }
+    100% {
+        transform: translateY(0);
+        box-shadow: 0 -1px 0 1px var(--separator);
+    }
 }
