@@ -12,7 +12,8 @@ public static class BeamAvatars
         var data = GenerateData(key, DefaultColors);
         var mouth = GetMouthSvg(data);
 
-        return $@"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {SIZE} {SIZE}' fill='none' role='img' width='100%' height='100%' preserveAspectRatio='none'>
+        // Use InvariantCulture to ensure decimal points are always "." regardless of locale
+        return string.Create(CultureInfo.InvariantCulture, $@"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {SIZE} {SIZE}' fill='none' role='img' width='100%' height='100%' preserveAspectRatio='none'>
     <mask id='{maskId}' maskUnits='userSpaceOnUse' x='0' y='0' width='{SIZE}' height='{SIZE}'>
         <rect width='{SIZE}' height='{SIZE}' rx='{(square ? "0" : (SIZE * 2).ToString())}' fill='#FFFFFF' />
     </mask>
@@ -25,7 +26,7 @@ public static class BeamAvatars
             <rect x='{20 + data.EyeSpread}' y='14' width='1.5' height='2' rx='1' stroke='none' fill='#{data.FaceColor}' />
         </g>
     </g>
-</svg>";
+</svg>");
     }
 
     private static string GetMouthSvg(AvatarData data)
