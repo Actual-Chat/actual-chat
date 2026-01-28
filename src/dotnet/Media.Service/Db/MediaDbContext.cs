@@ -8,6 +8,7 @@ namespace ActualChat.Media.Db;
 public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContextBase(options)
 {
     public DbSet<DbMedia> Media { get; protected set; } = null!;
+    public DbSet<DbMediaStatus> MediaStatuses { get; protected set; } = null!;
     public DbSet<DbLinkPreview> LinkPreviews { get; protected set; } = null!;
     public DbSet<DbGrabStatus> GrabStatuses { get; protected set; } = null!;
 
@@ -31,6 +32,9 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
         media.Property(e => e.LocalId).UseCollation("C");
         media.Property(e => e.ContentId).UseCollation("C");
         media.Property(e => e.UserId).UseCollation("C");
+
+        var mediaStatus = model.Entity<DbMediaStatus>();
+        mediaStatus.Property(e => e.Id).UseCollation("C");
 
         var grabStatus = model.Entity<DbGrabStatus>();
         grabStatus.Property(e => e.Id).UseCollation("C");

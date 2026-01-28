@@ -130,6 +130,10 @@ namespace ActualChat.Media.Migrations
                         .HasColumnName("scope")
                         .UseCollation("C");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("text")

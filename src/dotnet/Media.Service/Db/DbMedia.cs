@@ -29,16 +29,16 @@ public class DbMedia : IHasId<string>, IRequirementTarget
 
     public void UpdateFrom(MediaFull model)
     {
+        var isNew = Id.IsNullOrEmpty();
         this.RequireSameOrEmptyId(model.Id.Value);
 
-        if (!Id.IsNullOrEmpty())
-            return;
-
-        Id = model.Id.Value;
-        Scope = model.Id.Scope;
-        LocalId = model.Id.LocalId;
+        if (isNew) {
+            Id = model.Id.Value;
+            Scope = model.Id.Scope;
+            LocalId = model.Id.LocalId;
+            UserId = model.UserId?.Value ?? "";
+        }
         ContentId = model.ContentId;
-        UserId = model.UserId?.Value ?? "";
         MetadataJson = MetadataSerializer.Write(model.Metadata);
     }
 

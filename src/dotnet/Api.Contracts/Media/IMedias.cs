@@ -4,10 +4,15 @@ namespace ActualChat.Media;
 
 public interface IMedias : IComputeService
 {
+    [ComputeMethod]
+    Task<MediaStatusInfo?> GetStatus(Session session, MediaId mediaId, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task<MediaId> OnReserveMedia(Medias_ReserveMedia command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveMedia(Medias_RemoveMedia command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnUpdateStatus(Medias_UpdateStatus command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -22,4 +27,14 @@ public sealed partial record Medias_ReserveMedia(
 public sealed partial record Medias_RemoveMedia(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] MediaId MediaId
+) : ISessionCommand<Unit>, IApiCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Medias_UpdateStatus(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] MediaId MediaId,
+    [property: DataMember, MemoryPackOrder(2)] MediaStatus Status,
+    [property: DataMember, MemoryPackOrder(3)] MediaPreparingStage PreparingStage = MediaPreparingStage.None,
+    [property: DataMember, MemoryPackOrder(4)] double StageProgress = 0
 ) : ISessionCommand<Unit>, IApiCommand;

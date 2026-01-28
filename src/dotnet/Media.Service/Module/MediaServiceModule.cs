@@ -19,6 +19,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         // Medias
         rpcHost.AddApi<IMedias, Medias>();
         rpcHost.AddBackend<IMediaBackend, MediaBackend>();
+        rpcHost.AddBackend<IMediaStatusBackend, MediaStatusBackend>();
 
         // Link previews
         rpcHost.AddApi<IMediaLinkPreviews, MediaLinkPreviews>();
@@ -55,6 +56,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<IDbInitializer, MediaDbInitializer>();
         dbModule.AddDbContextServices<MediaDbContext>(services, db => {
             db.AddEntityResolver<string, DbMedia>();
+            db.AddEntityResolver<string, DbMediaStatus>();
             db.AddEntityResolver<string, DbGrabStatus>();
             db.AddEntityResolver<string, DbLinkPreview>();
         });

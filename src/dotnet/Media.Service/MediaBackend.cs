@@ -82,6 +82,13 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             var dbMedia = new DbMedia(media);
             dbContext.Media.Add(dbMedia);
         }
+        else if (change.IsUpdate(out media)) {
+            var dbMedia = await dbContext.Media
+                .Get(mediaId.Value, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbMedia != null)
+                dbMedia.UpdateFrom(media);
+        }
         else if (change.IsRemove()) {
             var dbMedia = await dbContext.Media
                 .Get(mediaId.Value, cancellationToken)
@@ -96,7 +103,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             }
         }
         else
-            throw new NotSupportedException("Update is not supported.");
+            throw new NotSupportedException("Invalid change.");
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

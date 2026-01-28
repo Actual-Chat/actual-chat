@@ -4,7 +4,19 @@ public class Medias(IServiceProvider services) : IMedias
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
+    private IMediaStatusBackend MediaStatusBackend { get; } = services.GetRequiredService<IMediaStatusBackend>();
     private ICommander Commander { get; } = services.Commander();
+
+    // [ComputeMethod]
+    public virtual async Task<MediaStatusInfo?> GetStatus(Session session, MediaId mediaId, CancellationToken cancellationToken)
+    {
+        var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media == null)
+            return null;
+
+        await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
+        return await MediaStatusBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+    }
 
     // [CommandHandler]
     public virtual async Task<MediaId> OnReserveMedia(Medias_ReserveMedia command, CancellationToken cancellationToken)
@@ -17,9 +29,13 @@ public class Medias(IServiceProvider services) : IMedias
 
         var mediaId = MediaId.New(scope);
         var media = new MediaFull(mediaId) { UserId = account.Id };
-        var change = new Change<MediaFull> { Create = media };
+        var mediaChange = new Change<MediaFull> { Create = media };
 
-        await Commander.Call(new MediaBackend_Change(mediaId, change), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaBackend_Change(mediaId, mediaChange), cancellationToken).ConfigureAwait(false);
+
+        var statusInfo = new MediaStatusInfo(mediaId, MediaStatus.Reserved);
+        var statusChange = new Change<MediaStatusInfo> { Create = statusInfo };
+        await Commander.Call(new MediaStatusBackend_Change(mediaId, statusChange), cancellationToken).ConfigureAwait(false);
 
         return mediaId;
     }
@@ -35,15 +51,42 @@ public class Medias(IServiceProvider services) : IMedias
         if (media == null)
             return;
 
-        // If Media has UserId set, only that user can delete it
+        await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
+
+        var mediaChange = new Change<MediaFull> { Remove = true };
+        await Commander.Call(new MediaBackend_Change(mediaId, mediaChange), cancellationToken).ConfigureAwait(false);
+
+        var statusChange = new Change<MediaStatusInfo> { Remove = true };
+        await Commander.Call(new MediaStatusBackend_Change(mediaId, statusChange), cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnUpdateStatus(Medias_UpdateStatus command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (session, mediaId, status, preparingStage, stageProgress) = command;
+        var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media == null)
+            throw StandardError.NotFound<Media>();
+
+        await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
+
+        var statusInfo = new MediaStatusInfo(mediaId, status, preparingStage, stageProgress);
+        var change = new Change<MediaStatusInfo> { Update = statusInfo };
+        await Commander.Call(new MediaStatusBackend_Change(mediaId, change), cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task RequireOwner(Session session, MediaFull media, CancellationToken cancellationToken)
+    {
         if (media.UserId == null)
-            throw StandardError.Unauthorized("You don't have permission to delete this media.");
+            throw StandardError.Unauthorized("You don't have permission to access this media.");
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (media.UserId != account.Id)
-            throw StandardError.Unauthorized("You don't have permission to delete this media.");
-
-        var change = new Change<MediaFull> { Remove = true };
-        await Commander.Call(new MediaBackend_Change(mediaId, change), cancellationToken).ConfigureAwait(false);
+            throw StandardError.Unauthorized("You don't have permission to access this media.");
     }
 }
