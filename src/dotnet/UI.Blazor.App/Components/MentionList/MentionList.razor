@@ -39,7 +39,6 @@
 
     private string? _lastFilter;
     private MentionSearchResult? _selection;
-    private DotNetObjectReference<MentionList> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
@@ -64,8 +63,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
         }
     }
 
@@ -109,8 +107,6 @@
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
         await base.DisposeAsync();
     }
 

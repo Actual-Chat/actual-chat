@@ -1,21 +1,25 @@
+import { fromEvent, Subject, takeUntil } from 'rxjs';
+
 export class MentionList {
-    private blazorRef: DotNet.DotNetObject;
     private readonly mentionList: HTMLElement;
+    private readonly disposed$: Subject<void> = new Subject<void>();
     private mentionListObserver: MutationObserver;
 
-    static create(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject): MentionList {
-        return new MentionList(mentionList, blazorRef);
+    static create(mentionList: HTMLElement): MentionList {
+        return new MentionList(mentionList);
     }
 
-    constructor(mentionList: HTMLElement, blazorRef: DotNet.DotNetObject) {
+    constructor(mentionList: HTMLElement) {
         this.mentionList = mentionList;
-        this.blazorRef = blazorRef;
         this.mentionListObserver = new MutationObserver(this.scrollToCurrentItem);
         this.mentionListObserver.observe(this.mentionList, {
             attributes: true,
             childList: true,
             subtree: true,
-        })
+        });
+        fromEvent(this.mentionList, 'scroll')
+            .pipe(takeUntil(this.disposed$),
+        ).subscribe(() => this.mentionList.classList.add('expanded'));
     }
 
     private scrollToCurrentItem = (mutations, observer) => {
@@ -38,7 +42,11 @@ export class MentionList {
     };
 
     public dispose() {
+        if (this.disposed$.closed)
+            return;
+
+        this.disposed$.next();
+        this.disposed$.complete();
         this.mentionListObserver.disconnect();
     }
 }
-
