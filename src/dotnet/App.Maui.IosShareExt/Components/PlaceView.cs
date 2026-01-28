@@ -6,7 +6,7 @@ namespace ActualChat.App.Maui.IosShareExt.Components;
 
 public sealed class PlaceView(Place? place, IosHub hub) : ComputedStateView<bool>(hub)
 {
-    private AvatarView? _iconView;
+    private ContactIconView? _iconView;
     private UIView _underlineView = null!;
 
     private ShareUI ShareUI => Hub.ShareUI;
@@ -16,7 +16,7 @@ public sealed class PlaceView(Place? place, IosHub hub) : ComputedStateView<bool
         TranslatesAutoresizingMaskIntoConstraints = false;
 
         // Icon view
-        _iconView = new AvatarView(place?.GetIconQuery(), UIImage.GetSystemImage("message"), place?.Title ?? "", false, Hub);
+        _iconView = new ContactIconView(place?.GetIconQuery(), UIImage.GetSystemImage("message"), place?.Title ?? "", false, Hub);
 
         // Underline indicator
         _underlineView = new UIView

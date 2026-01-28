@@ -39,10 +39,10 @@ public class IconUI(IosHub hub) : UIServiceBase(hub), IComputeService
     [ComputeMethod]
     protected virtual async Task<LoadedImage?> GenerateAvatar(string key, AvatarKind kind, CancellationToken cancellationToken)
     {
-        var svg = kind is AvatarKind.Marble
-            ? MarbleAvatars.GenerateSvg(key, "")
-            : BeamAvatars.GenerateSvg(key);
-        Log.LogInformation("Generated {Kind} avatar for {Key}: {svg}", kind, key, svg.Replace("\n", ""));
+        if (kind is AvatarKind.Marble)
+            return new (MarbleAvatars.GeneratePng(key), kind);
+
+        var svg = BeamAvatars.GenerateSvg(key);
         var xmlBytes = System.Text.Encoding.UTF8.GetBytes(svg);
         var bytes = await ConvertSvgToPng(xmlBytes).ConfigureAwait(false);
         return bytes is null || bytes.Length == 0 ? null : new (bytes, kind);
