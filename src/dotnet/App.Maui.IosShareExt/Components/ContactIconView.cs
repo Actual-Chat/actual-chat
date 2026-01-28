@@ -4,7 +4,7 @@ using ActualChat.UI;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
-public sealed class AvatarView(IconQuery? iconQuery, UIImage? defaultImage, string title, bool isRound, IosHub hub)
+public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage, string title, bool isRound, IosHub hub)
     : ComputedStateView<LoadedImage?>(hub)
 {
     private const int Size = 40;
