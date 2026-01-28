@@ -1,4 +1,5 @@
 using ActualChat.Media;
+using ActualLab.IO;
 using UniformTypeIdentifiers;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
@@ -38,13 +39,15 @@ public static class NSItemProviderExt
     public static async Task<UploadInput> ToUploadInput(this NSItemProvider item)
     {
         var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(item.RegisteredContentTypes.First().Identifier).ConfigureAwait(false);
-        var path = inPlaceResult.FileUrl.Path!;
-        return new UploadInput(ImplyContentType(), Path.GetFileName(path), File.OpenRead(path));
+        FilePath path = inPlaceResult.FileUrl.Path!;
+        FilePath fileName = item.SuggestedName.NullIfEmpty() ?? path.FileNameWithoutExtension;
+        if (!fileName.HasExtension)
+            fileName = fileName.ChangeExtension(path.Extension);
+        return new UploadInput(ImplyContentType(), fileName, File.OpenRead(path));
 
         string ImplyContentType()
         {
-            var fileName = Path.GetFileName(path);
-            if (MediaMimeTypes.TryGetMimeType(fileName, out var mimeType))
+            if (MediaMimeTypes.TryGetMimeType(path, out var mimeType))
                 return mimeType;
 
             foreach (var utType in item.RegisteredContentTypes) {
