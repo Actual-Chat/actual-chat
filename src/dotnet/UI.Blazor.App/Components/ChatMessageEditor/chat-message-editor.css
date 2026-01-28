@@ -711,3 +711,23 @@ body.touch-capable .notify-call-btn:active .bell-svg.active {
     60%  { transform: rotate(0deg); }
     100% { transform: rotate(0deg); }
 }
+
+/* Drag-and-drop overlay */
+.drag-drop-overlay {
+    @apply absolute inset-0 z-50;
+    @apply hidden items-center justify-center;
+}
+.drag-drop-overlay.active {
+    @apply flex;
+    @apply rounded-lg border-2 border-dashed border-primary;
+    @apply bg-[var(--black-60)];
+}
+.drag-drop-overlay-content {
+    @apply flex-x items-center gap-x-2;
+    @apply py-2 px-4;
+    @apply rounded-full;
+    @apply bg-black;
+    @apply text-white font-medium text-lg;
+    @apply pointer-events-none;
+    @apply select-none;
+}
