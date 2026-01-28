@@ -37,13 +37,13 @@ Check AC_OS environment variable to determine the environment:
 
 ### Docker (AC_OS = "Linux in Docker")
 ```bash
-ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/dotnet/App.Server/App.Server.csproj --no-launch-profile > /tmp/server.log 2>&1 &
+ASPNETCORE_ENVIRONMENT=Development ActualChat_CaptchaBypassEnabled=true dotnet run --project src/dotnet/App.Server/App.Server.csproj --no-launch-profile > /tmp/server.log 2>&1 &
 echo $! > /tmp/server.pid
 ```
 
 ### Host OS (Windows, WSL, Linux, macOS)
 ```bash
-dotnet run --project src/dotnet/App.Server/App.Server.csproj > /tmp/server.log 2>&1 &
+ActualChat_CaptchaBypassEnabled=true dotnet run --project src/dotnet/App.Server/App.Server.csproj > /tmp/server.log 2>&1 &
 echo $! > /tmp/server.pid
 ```
 
