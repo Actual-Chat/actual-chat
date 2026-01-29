@@ -77,7 +77,7 @@
             <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>
         }
         @if (IsRightNavigateButtonVisible) {
-            <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
+            <ChatHeaderRightPanelToggle Chat="@Chat" Click="@OnToggleRightPanelClick"/>
         }
     </div>
     }

@@ -1,0 +1,9 @@
+.translation-menu-entry {
+    @apply flex-x;
+}
+.translation-menu-entry span:not(.menu-entry-selected-language) {
+    @apply flex-1;
+}
+.translation-menu-entry span.menu-entry-selected-language {
+    @apply text-primary;
+}

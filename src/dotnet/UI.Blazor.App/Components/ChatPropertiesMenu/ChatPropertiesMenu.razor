@@ -1,0 +1,74 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, ChatState?>
+@{
+    var m = State.Value;
+    if (m == null)
+        return;
+
+    var rules = m.Chat.Rules;
+}
+
+<CascadingValue Value="m">
+    <MenuEntry
+        Icon="icon-layout"
+        Class="important-item"
+        Text="Open right panel"
+        Click="@OnOpenRightPanelClick">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-phone-call"
+        Text="Start Voice call">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-video"
+        Text="Start Video call">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-screen-share"
+        Text="Start Screen share">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-ai-search"
+        Text="Search in chat">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-translation">
+        <TextContent>
+            <div class="translation-menu-entry">
+                <span>Translate to</span>
+                <span class="menu-entry-selected-language">Russian</span>
+            </div>
+        </TextContent>
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-person-add"
+        Text="Add member">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-share"
+        Text="Share chat">
+    </MenuEntry>
+    @if (rules.CanLeave()) {
+        <ChatMenuLeave/>
+    }
+</CascadingValue>
+
+@code {
+    private ChatId _chatId = null!;
+
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sChatId])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _chatId = ChatId.Parse(sChatId);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override Task<ChatState?> ComputeState(CancellationToken cancellationToken)
+        => ChatUI.GetState(_chatId, false, cancellationToken);
+
+    private void OnOpenRightPanelClick()
+        => Hub.PanelsUI.Right.Toggle();
+}
