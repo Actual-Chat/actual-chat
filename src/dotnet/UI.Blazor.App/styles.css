@@ -29,6 +29,7 @@
 @import './Components/ChatView/Navigation/navigate-to-unread-or-end.css';
 @import './Components/ChatView/Navigation/chat-view-search-results-navigator.css';
 @import './Components/ChatMessageEditor/chat-message-editor.css';
+@import './Components/ChatPropertiesMenu/chat-properties-menu.css';
 @import './Components/DateVisor/date-visor.css';
 @import './Components/Discover/discover.css';
 @import './Components/FontSizeSlider/font-size-slider.css';

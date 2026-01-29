@@ -1,43 +1,100 @@
-@inherits ComputedStateComponent<AppUIHub, bool>
+@inherits ComputedStateComponent<AppUIHub, ChatHeaderRightPanelToggle.Model>
 @{
-    var isVisible = State.Value;
+    var m = State.Value;
+    var chat = m.Chat;
+    var isRightPanelVisible = m.IsRightPanelVisible;
     var cls = ScreenSize.IsNarrow() ? "btn-sm" : "";
 }
 
-@if (isVisible) {
-    <HeaderButton
-        data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
-        data-bubble-priority="401"
-        data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
-        Class="@cls"
-        Click="Click"
-        Tooltip="Chat properties"
-        TooltipPosition="FloatingPosition.Bottom">
-        @if (!ScreenSize.IsNarrow()) {
-            <i class="icon-layout"></i>
-        } else {
+@if (ScreenSize.IsNarrow()) {
+    @if (chat is not null && m.EnableIncompleteUI) {
+        <HeaderButton
+            data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
+            data-bubble-priority="401"
+            data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
+            data-menu="@(MenuRef.New<ChatPropertiesMenu>(chat.Id.Value).ToString())"
+            data-menu-trigger="@MenuTrigger.Primary"
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
+            Class="@cls"
+            Tooltip="Chat properties"
+            TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-more-vertical"></i>
-        }
-    </HeaderButton>
+        </HeaderButton>
+    } else {
+        <HeaderButton
+            data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
+            data-bubble-priority="401"
+            data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
+            Class="@cls"
+            Click="Click"
+            Tooltip="Chat properties"
+            TooltipPosition="FloatingPosition.Bottom">
+            <i class="icon-layout"></i>
+        </HeaderButton>
+    }
+} else {
+    @if (!isRightPanelVisible) {
+        <HeaderButton
+            data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
+            data-bubble-priority="401"
+            data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
+            Class="@cls"
+            Click="Click"
+            Tooltip="Chat properties"
+            TooltipPosition="FloatingPosition.Bottom">
+            <i class="icon-layout"></i>
+        </HeaderButton>
+    }
 }
 
 @code {
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
+    [Parameter] public Chat? Chat { get; set; }
     [Parameter] public EventCallback Click { get; set; }
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    private IChats Chats => Hub.Chats;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<bool>.Options() {
-                InitialValue = ScreenSize.IsNarrow() || !PanelsUI.Right.IsVisible.Value,
+            t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        if (ScreenSize.IsNarrow())
-            return true; // Do not hide button on narrow screen. Right panel will hide middle column with chat header entirely.
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat?.Id;
+        Chat? chat = null;
+        if (chatId is not null)
+            chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 
-        return !await PanelsUI.Right.IsVisible.Use(cancellationToken);
+        var isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
+        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+
+        if (ScreenSize.IsNarrow())
+            return new Model() {
+                Chat = chat,
+                IsRightPanelVisible = true,
+                EnableIncompleteUI = enableIncompleteUI,
+            }; // Do not hide button on narrow screen. Right panel will hide middle column with chat header entirely.
+
+
+
+        return new Model {
+            Chat = chat,
+            IsRightPanelVisible = isRightPanelVisible,
+            EnableIncompleteUI = enableIncompleteUI,
+        };
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+
+        public Chat? Chat { get; init; }
+        public bool IsRightPanelVisible { get; init; }
+        public bool EnableIncompleteUI { get; init; }
     }
 }
