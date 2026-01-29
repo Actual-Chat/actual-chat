@@ -252,6 +252,7 @@ body.narrow .layout-header > .c-content.selection-header {
     transform: scale(1);
 }
 .list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) .hideable {
+    @apply overflow-hidden;
     @apply opacity-0;
     transform: scale(0);
 }
