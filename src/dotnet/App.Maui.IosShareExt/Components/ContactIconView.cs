@@ -63,7 +63,7 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
 
     private void SetImage(LoadedImage? model)
     {
-        var image = model?.FilePath.Value.IsNullOrEmpty() != false
+        var image = model?.FilePath.IsEmpty != false
             ? defaultImage
             : UIImage.FromFile(model.FilePath);
         var old = _image.Image;
