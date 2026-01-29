@@ -16,6 +16,7 @@ public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
     {
         using var releaser = await _asyncLock.Lock(CancellationToken.None).ConfigureAwait(false);
         releaser.MarkLockedLocally();
+
         Log.LogInformation("Trying to gain audio focus: {Kind}", consumer.Kind);
         if (_lastAudioFocusHolder is not null && !_lastAudioFocusHolder.IsSuspended) {
             if (_lastAudioFocusHolder.Activations.TryGetValue(consumer, out var activation)) {
@@ -39,6 +40,9 @@ public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
 
     public async Task ReleaseAudioFocus(AudioFocusConsumer consumer)
     {
+        using var releaser = await _asyncLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+
         if (_lastAudioFocusHolder is null)
             return;
 
