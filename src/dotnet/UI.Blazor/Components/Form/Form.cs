@@ -94,7 +94,11 @@ public class Form : EditForm, IDisposable
             return;
 
         // handling async validation results
-        IsValid = !editContext.GetValidationMessages().Any();
+        var isValid = !editContext.GetValidationMessages().Any();
+        if (IsValid == isValid)
+            return;
+
+        IsValid = isValid;
         StateHasChanged();
     }
 
@@ -105,7 +109,11 @@ public class Form : EditForm, IDisposable
 
         // NOTE: though it triggers async validation as well, but only synchronous validation results are returned here.
         // For async results we listen ValidationStateChanged event below
-        IsValid = editContext.Validate();
+        var isValid = editContext.Validate();
+        if (IsValid == isValid)
+            return;
+
+        IsValid = isValid;
         StateHasChanged();
     }
 }
