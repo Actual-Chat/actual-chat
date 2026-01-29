@@ -63,7 +63,9 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
 
     private void SetImage(LoadedImage? model)
     {
-        var image = model?.Data is null ? defaultImage : UIImage.LoadFromData(NSData.FromArray(model.Data));
+        var image = model?.FilePath.Value.IsNullOrEmpty() != false
+            ? defaultImage
+            : UIImage.FromFile(model.FilePath);
         var old = _image.Image;
         if (image is null) {
             _image.BackgroundColor = UIColor.SystemBlue;

@@ -6,6 +6,7 @@ public static class BeamAvatars
     private static readonly string[] DefaultColors = ["FFDBA0", "BBBEFF", "9294E1", "FF9BC0", "0F2FE8"];
     private static int _maskIdCounter = 0;
 
+    // TODO: optimize
     public static string GenerateSvg(string key, bool square = false)
     {
         var maskId = $"beam-avatar-{++_maskIdCounter}";
