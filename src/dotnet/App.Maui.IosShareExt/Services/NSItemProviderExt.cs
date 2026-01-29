@@ -5,8 +5,6 @@ namespace ActualChat.App.Maui.IosShareExt.Services;
 
 public static class NSItemProviderExt
 {
-    private static ILogger Log => field ??= StaticLog.For(typeof(NSItemProviderExt));
-
     public static readonly IReadOnlyList<UTType> PlainTextTypes = [
         UTTypes.PlainText,
         UTTypes.Utf8PlainText,
@@ -40,13 +38,15 @@ public static class NSItemProviderExt
 
         public async Task<UploadInput> ToUploadInput()
         {
-            var input = await GetInputFromInMemoryImage(item).ConfigureAwait(false);
+            var input = await item.GetInputFromInMemoryImage().ConfigureAwait(false);
             if (input is not null)
                 return input;
 
             var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(UTTypes.Item.Identifier).ConfigureAwait(false);
             var fileName = inPlaceResult.GetSuggestedFileName(item);
-            return new UploadInput(inPlaceResult.ImplyMimeType(item), fileName, File.OpenRead(inPlaceResult.Path));
+            return new UploadInput(inPlaceResult.ImplyMimeType(item),
+                fileName,
+                Disposable.New<Stream>(File.OpenRead(inPlaceResult.Path), x => x.DisposeSilently()));
         }
 
         private bool IsInMemoryImage()
@@ -69,10 +69,20 @@ public static class NSItemProviderExt
                 return null;
 
             if (image.AsJPEG() is { } jpeg)
-                return new UploadInput("image/jpeg", fileName.NullIfEmpty() ?? "image.jpg", jpeg.AsStream());
+                return new UploadInput("image/jpeg", fileName.NullIfEmpty() ?? "image.jpg", Disposable.New(jpeg.AsStream(),
+                    x => {
+                        x.DisposeSilently();
+                        jpeg.DisposeSilently();
+                        image.DisposeSilently();
+                    }));
 
             if (image.AsPNG() is { } png)
-                return new UploadInput("image/png", fileName.NullIfEmpty() ?? "image.png", png.AsStream());
+                return new UploadInput("image/png", fileName.NullIfEmpty() ?? "image.png", Disposable.New(png.AsStream(),
+                    x => {
+                        x.DisposeSilently();
+                        png.DisposeSilently();
+                        image.DisposeSilently();
+                    }));
 
             return null;
         }

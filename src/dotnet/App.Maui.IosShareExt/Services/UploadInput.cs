@@ -1,7 +1,7 @@
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
-public record UploadInput(string ContentType, string FileName, Stream Stream) : IAsyncDisposable
+public record UploadInput(string ContentType, string FileName, Disposable<Stream> Stream) : IDisposable
 {
-    public ValueTask DisposeAsync()
-        => Stream.DisposeAsync();
+    public void Dispose()
+        => Stream.DisposeSilently();
 }
