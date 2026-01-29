@@ -43,7 +43,7 @@ public static class NSItemProviderExt
         if (input is not null)
             return input;
 
-        var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(item.RegisteredContentTypes[0].Identifier).ConfigureAwait(false);
+        var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(UTTypes.Item.Identifier).ConfigureAwait(false);
         FilePath path = inPlaceResult.FileUrl.Path!;
         FilePath fileName = item.SuggestedName.NullIfEmpty() ?? path.FileNameWithoutExtension;
         if (!fileName.HasExtension)
