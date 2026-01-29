@@ -183,13 +183,12 @@ public class ShareUI : UIServiceBase, IComputeService
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
-        var uploadInput = await fileInput.ToUploadInput().ConfigureAwait(false);
-        await using var _1 = uploadInput.ConfigureAwait(false);
+        using var uploadInput = await fileInput.ToUploadInput().ConfigureAwait(false);
         var metadata = new PropertyBag()
             .Set(nameof(Media.Media.FileName), uploadInput.FileName)
             .Set(nameof(Media.Media.ContentType), uploadInput.ContentType);
         var uploadId = await InitUpload().ConfigureAwait(false);
-        await FileUploader.UploadData(uploadId, Task.FromResult(uploadInput.Stream), progress, cancellationToken).ConfigureAwait(false);
+        await FileUploader.UploadData(uploadId, Task.FromResult(uploadInput.Stream.Resource), progress, cancellationToken).ConfigureAwait(false);
         var mediaContent = await CompleteUpload().ConfigureAwait(false);
         return new TextEntryAttachment {
             MediaId = mediaContent.MediaId,
@@ -198,7 +197,7 @@ public class ShareUI : UIServiceBase, IComputeService
 
         Task<UploadId> InitUpload()
         {
-            var cmd = new Uploads_Create(Session, uploadInput.Stream.Length, UploadExt.BuildTag(chatId), metadata);
+            var cmd = new Uploads_Create(Session, uploadInput.Stream.Resource.Length, UploadExt.BuildTag(chatId), metadata);
             return UICommander.Call(cmd, cancellationToken);
         }
 
