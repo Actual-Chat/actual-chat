@@ -44,7 +44,7 @@
             </div>
             <div class="c-center">
                 <PicUpload
-                    UploadUrl="@_form.ImageUploadUrl"
+                    Scope="@_form.ImageScope"
                     Size="@SquareSize.Size16"
                     Title="@_form.Title"
                     Picture="@_form.Picture"
@@ -55,7 +55,7 @@
                 <div class="c-buttons">
                     <PicUploadButton
                         Class="btn btn-round btn-sm"
-                        UploadUrl="@_form.ImageUploadUrl"
+                        Scope="@_form.ImageScope"
                         Picked="@OnImagePicked"/>
 
                     @if (m.EnableIncompleteUI) {
@@ -186,7 +186,7 @@
             Title = chat.Title,
             Description = chat.Description,
             Picture = chat.Picture?.ToPicture(),
-            ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
+            ImageScope = MediaUploadScopes.ForChat(chat.Id),
         };
         _placeId = (chat.Id as PlaceChatId)?.PlaceId;
         if (_placeId is not null)
@@ -291,7 +291,7 @@
 
         public string Description { get; set; } = "";
         public Picture? Picture { get; set; }
-        public string ImageUploadUrl { get; init; } = "";
+        public string ImageScope { get; init; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }

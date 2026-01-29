@@ -52,7 +52,7 @@
         </div>
         <div class="c-center">
             <PicUpload
-                UploadUrl="@_form.ImageUploadUrl"
+                Scope="@_form.ImageScope"
                 IsSquare="true"
                 Size="@SquareSize.Size16"
                 Title="@_form.Title"
@@ -63,11 +63,11 @@
 
             <div class="c-buttons">
                 <PicUploadButton
-                    UploadUrl="@_form.ImageUploadUrl"
+                    Scope="@_form.ImageScope"
                     Picked="@OnImagePicked"/>
 
                 <PicUploadButton
-                    UploadUrl="@_form.ImageUploadUrl"
+                    Scope="@_form.ImageScope"
                     Picked="@OnBackgroundPicked">
                     <Icon>
                         <i class="icon-image text-2xl"></i>
@@ -171,7 +171,7 @@
             Description = place.Description,
             Picture = place.Picture?.ToPicture(),
             Background = place.Background?.ToPicture(),
-            ImageUploadUrl = $"/api/chat-media/{place.Id.RootChatId}/upload",
+            ImageScope = @MediaUploadScopes.ForPlace(place.Id),
         };
         Context.Items.KeylessSet(_form);
     }
@@ -258,7 +258,7 @@
         public string Description { get; set; } = "";
         public Picture? Picture { get; set; }
         public Picture? Background { get; set; }
-        public string ImageUploadUrl { get; init; } = "";
+        public string ImageScope { get; init; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }

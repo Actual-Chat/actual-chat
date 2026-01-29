@@ -1,5 +1,5 @@
 @using ActualChat.UI.Blazor.Module
-@using ActualChat.UI.Blazor.Services
+@using ActualChat.Media
 @using System.Diagnostics.CodeAnalysis
 @inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
@@ -13,9 +13,7 @@
     private DotNetObjectReference<FileUpload> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
 
-    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
-
-    [Parameter, EditorRequired] public string UploadUrl { get; set; } = "";
+    [Parameter, EditorRequired] public string Scope { get; set; } = "";
     [Parameter] public int? MaxSize { get; set; }
     [Parameter] public EventCallback<MediaContent> Uploaded { get; set; }
 
@@ -32,7 +30,6 @@
         BlazorRef = DotNetObjectReference.Create(this);
         var options = new JSOptions {
             MaxSize = MaxSize,
-            UploadUrl = UploadUrl,
         };
         JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, InputRef, BlazorRef, options);
     }
@@ -42,6 +39,32 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
+    }
+
+    [JSInvokable]
+    public async Task<string> ReserveMediaId()
+    {
+        var mediaId = await UICommander.Call(new Medias_ReserveMedia(Session, Scope));
+        return mediaId.Value;
+    }
+
+    [JSInvokable]
+    public async Task<string> CreateUpload(string fileName, string contentType, long length)
+    {
+        var tag = $"FileUpload/v1/{Scope}";
+        var metadata = new PropertyBag()
+            .Set("FileName", fileName)
+            .Set("ContentType", contentType);
+        var uploadId = await UICommander.Call(new Uploads_Create(Session, length, tag, metadata));
+        return uploadId.Value;
+    }
+
+    [JSInvokable]
+    public async Task<MediaContent> ProcessUpload(string mediaSid, string uploadSid)
+    {
+        var mediaId = MediaId.Parse(mediaSid);
+        var uploadId = UploadId.Parse(uploadSid);
+        return await UICommander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId));
     }
 
     [JSInvokable]
@@ -57,11 +80,15 @@
         UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {size}."));
     }
 
+    [JSInvokable]
+    public void OnUploadError(string message) {
+        UICommander.ShowError(StandardError.External(message));
+    }
+
     // Nested types
 
     public class JSOptions
     {
         public int? MaxSize { get; set; }
-        public string? UploadUrl { get; set; }
     }
 }

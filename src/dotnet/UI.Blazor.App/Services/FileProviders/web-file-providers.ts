@@ -247,7 +247,7 @@ export class FileUploadProgressReporter {
     }
 }
 
-class ChunkedFileUpload {
+export class ChunkedFileUpload {
     private readonly whenCompletedSource: PromiseSource<void> = new PromiseSource<void>();
     private readonly uploadUrl: string;
     private readonly abortController: AbortController = new AbortController();
