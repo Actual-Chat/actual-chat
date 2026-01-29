@@ -56,6 +56,7 @@ export * from './Components/AudioRecorder/opus-media-recorder';
 export * from './Components/AudioRecorder/opus-media-recorder-contracts';
 export * from './Components/AudioRecorder/recorder-state-hub';
 export * from './Components/VideoPanel/video-panel';
+export * from './Components/VideoPanel/video-player';
 export * from './Pages/AudioRecorderTestPage/audio-recorder-test-page';
 export * from './Pages/AudioPlayerTestPage/audio-player-test-page';
 export * from './Services/audio-context-source';
