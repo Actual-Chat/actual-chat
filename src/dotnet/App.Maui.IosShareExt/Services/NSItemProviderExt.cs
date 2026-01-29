@@ -70,7 +70,7 @@ public static class NSItemProviderExt
     }
 
     private static bool IsInMemoryImage(this NSItemProvider item)
-        => item.RegisteredContentTypes[0].ConformsTo(UTTypes.Image) && !item.HasItemConformingTo(UTTypes.FileUrl.Identifier);
+        => item.HasItemConformingTo(UTTypes.Image.Identifier) && !item.HasItemConformingTo(UTTypes.FileUrl.Identifier);
 
     private static async Task<UploadInput?> GetInputFromInMemoryImage(NSItemProvider item)
     {
