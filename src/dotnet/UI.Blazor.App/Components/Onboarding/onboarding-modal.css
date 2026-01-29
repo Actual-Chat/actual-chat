@@ -171,6 +171,13 @@ body.narrow .stepper-image-filler {
     @apply pb-8;
     @apply overflow-y-auto overflow-x-hidden;
 }
+.onboarding-stepper .stepper-content {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+.onboarding-stepper .stepper-content::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
 .onboarding-tutorial {
     @apply flex-y gap-y-4;
 }
