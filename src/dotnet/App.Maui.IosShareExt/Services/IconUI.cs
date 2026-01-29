@@ -59,18 +59,18 @@ public class IconUI(IosHub hub) : UIServiceBase(hub), IComputeService
     }
 
     [ComputeMethod]
-    protected virtual async Task<LoadedImage?> GenerateAvatar(string key, AvatarKind kind, CancellationToken cancellationToken)
+    protected virtual Task<LoadedImage?> GenerateAvatar(string key, AvatarKind kind, CancellationToken cancellationToken)
     {
         var filePath = GetCacheFilePath($"avatar:{kind}:{key}", ".png");
         if (File.Exists(filePath))
-            return new LoadedImage(filePath, kind);
+            return Task.FromResult<LoadedImage?>(new LoadedImage(filePath, kind));
 
-        var pngBytes = kind is AvatarKind.Marble
-            ? MarbleAvatars.GeneratePng(key)
-            : BeamAvatars.GeneratePng(key);
         EnsureIconCacheDir();
-        await File.WriteAllBytesAsync(filePath, pngBytes, cancellationToken).ConfigureAwait(false);
-        return new LoadedImage(filePath, kind);
+        if (kind is AvatarKind.Marble)
+            MarbleAvatars.GeneratePng(key, filePath);
+        else
+            BeamAvatars.GeneratePng(key, filePath);
+        return Task.FromResult<LoadedImage?>(new LoadedImage(filePath, kind));
     }
 
     private void SaveSvgAsPng(Stream svgStream, FilePath filePath)

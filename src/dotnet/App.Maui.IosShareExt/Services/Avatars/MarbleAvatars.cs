@@ -1,3 +1,4 @@
+using ActualLab.IO;
 using SkiaSharp;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
@@ -12,7 +13,7 @@ public static class MarbleAvatars
     private const string BasePathData = "M32.414 59.35L50.376 70.5H72.5v-71H33.728L26.5 13.381l19.057 27.08L32.414 59.35z";
     private const string OverlayPathData = "M22.216 24L0 46.75l14.108 38.129L78 86l-3.081-59.276-22.378 4.005 12.972 20.186-23.35 27.395L22.215 24z";
 
-    public static byte[] GeneratePng(string key, string title = "", bool doNotBlur = false)
+    public static void GeneratePng(string key, FilePath filePath, string title = "", bool doNotBlur = false)
     {
         var properties = GenerateColors(key, DefaultColors);
         var imageInfo = new SKImageInfo(Size, Size, SKColorType.Rgba8888, SKAlphaType.Premul);
@@ -37,9 +38,9 @@ public static class MarbleAvatars
 
         canvas.Restore();
 
-        using var image = surface.Snapshot();
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        return data.ToArray();
+        using var pixmap = surface.PeekPixels();
+        using var stream = new SKFileWStream(filePath);
+        pixmap.Encode(stream, SKEncodedImageFormat.Png, 100);
     }
 
     private static void DrawBackground(SKCanvas canvas, ColorProperty background)
@@ -96,8 +97,7 @@ public static class MarbleAvatars
         var numFromName = (long)AvatarUtils.HashCode(key);
         var range = colors.Length;
         return Enumerable.Range(0, Elements)
-            .Select(i => new ColorProperty
-            {
+            .Select(i => new ColorProperty {
                 Color = AvatarUtils.GetRandomColor((int)(numFromName + i), colors, range),
                 TranslateX = AvatarUtils.GetUnit(numFromName * (i + 1), Size / 10, 1),
                 TranslateY = AvatarUtils.GetUnit(numFromName * (i + 1), Size / 10, 2),
@@ -134,4 +134,3 @@ public static class MarbleAvatars
         public required int Rotate { get; init; }
     }
 }
-
