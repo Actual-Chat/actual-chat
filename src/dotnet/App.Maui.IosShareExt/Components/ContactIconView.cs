@@ -64,6 +64,7 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
     private void SetImage(LoadedImage? model)
     {
         var image = model?.Data is null ? defaultImage : UIImage.LoadFromData(NSData.FromArray(model.Data));
+        var old = _image.Image;
         if (image is null) {
             _image.BackgroundColor = UIColor.SystemBlue;
             _image.Image = null;
@@ -74,6 +75,8 @@ public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage,
             _image.Image = image;
             _initialLabel.Hidden = model?.AvatarKind is not AvatarKind.Marble;
         }
+        if (!ReferenceEquals(old, image))
+            old.DisposeSilently();
     }
 
     protected override Task<LoadedImage?> ComputeState(CancellationToken cancellationToken)

@@ -55,8 +55,10 @@ public sealed class PlaceListView(IosHub hub) : ComputedStateView<PlaceListView.
         // Register cell
         var cellRegistration =
             UICollectionViewCellRegistrationExt.GetRegistration<UICollectionViewListCell, NSPlace>((cell, _, place) => {
-                foreach (var subview in cell.ContentView.Subviews)
+                foreach (var subview in cell.ContentView.Subviews) {
                     subview.RemoveFromSuperview();
+                    subview.DisposeSilently();
+                }
 
                 var placeCellView = new PlaceView(place.Value, Hub);
                 cell.AddSubview(placeCellView);
