@@ -33,19 +33,13 @@ public static class NSItemProviderExt
 
     public static async Task<T> Read<T>(this NSItemProvider item, UTType contentType)
         where T : NSObject
-    {
-        return (T)await item.LoadItemAsync(contentType.Identifier, null).ConfigureAwait(false);
-    }
+        => (T)await item.LoadItemAsync(contentType.Identifier, null).ConfigureAwait(false);
 
     public static async Task<UploadInput> ToUploadInput(this NSItemProvider item)
     {
-        // For images on iOS < 26, LoadInPlaceFileRepresentationAsync doesn't work reliably
-        // Use LoadItemAsync to load data directly instead
-        if (!OperatingSystem.IsIOSVersionAtLeast(26) && item.RegisteredContentTypes[0].ConformsTo(UTTypes.Image)) {
-            var input = await LoadImageInput(item).ConfigureAwait(false);
-            if (input != null)
-                return input;
-        }
+        var input = await GetInputFromInMemoryImage(item).ConfigureAwait(false);
+        if (input is not null)
+            return input;
 
         var inPlaceResult = await item.LoadInPlaceFileRepresentationAsync(item.RegisteredContentTypes[0].Identifier).ConfigureAwait(false);
         FilePath path = inPlaceResult.FileUrl.Path!;
@@ -73,24 +67,29 @@ public static class NSItemProviderExt
         }
     }
 
-    private static async Task<UploadInput?> LoadImageInput(NSItemProvider item)
+    private static bool IsInMemoryImage(this NSItemProvider item)
+        => item.RegisteredContentTypes[0].ConformsTo(UTTypes.Image) && !item.HasItemConformingTo(UTTypes.FileUrl.Identifier);
+
+    private static async Task<UploadInput?> GetInputFromInMemoryImage(NSItemProvider item)
     {
+        if (!item.IsInMemoryImage())
+            return null;
+
         var loadedItem = await item.LoadItemAsync(item.RegisteredContentTypes[0].Identifier, null).ConfigureAwait(false);
-        UIImage? image = loadedItem switch {
-            UIImage uiImage => uiImage,
-            NSUrl { Path: { } path } => UIImage.FromFile(path),
-            NSData data => UIImage.LoadFromData(data),
-            _ => null,
+        var (image, fileName) = loadedItem switch {
+            UIImage uiImage => (uiImage, item.SuggestedName),
+            NSData data => (UIImage.LoadFromData(data), item.SuggestedName),
+            _ => (null, null),
         };
 
-        if (image == null)
+        if (image is null)
             return null;
 
         if (image.AsJPEG() is { } jpeg)
-            return new UploadInput("image/jpeg", item.SuggestedName!, jpeg.AsStream());
+            return new UploadInput("image/jpeg", fileName.NullIfEmpty() ?? "image.jpg", jpeg.AsStream());
 
         if (image.AsPNG() is { } png)
-            return new UploadInput("image/png", item.SuggestedName!, png.AsStream());
+            return new UploadInput("image/png", fileName.NullIfEmpty() ?? "image.png", png.AsStream());
 
         return null;
     }
