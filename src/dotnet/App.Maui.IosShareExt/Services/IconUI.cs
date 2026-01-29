@@ -65,17 +65,11 @@ public class IconUI(IosHub hub) : UIServiceBase(hub), IComputeService
         if (File.Exists(filePath))
             return new LoadedImage(filePath, kind);
 
-        if (kind is AvatarKind.Marble) {
-            var pngBytes = MarbleAvatars.GeneratePng(key);
-            EnsureIconCacheDir();
-            await File.WriteAllBytesAsync(filePath, pngBytes, cancellationToken).ConfigureAwait(false);
-            return new LoadedImage(filePath, kind);
-        }
-
-        var svg = BeamAvatars.GenerateSvg(key);
-        var svgStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svg));
-        await using var _1 = svgStream.ConfigureAwait(false);
-        SaveSvgAsPng(svgStream, filePath);
+        var pngBytes = kind is AvatarKind.Marble
+            ? MarbleAvatars.GeneratePng(key)
+            : BeamAvatars.GeneratePng(key);
+        EnsureIconCacheDir();
+        await File.WriteAllBytesAsync(filePath, pngBytes, cancellationToken).ConfigureAwait(false);
         return new LoadedImage(filePath, kind);
     }
 

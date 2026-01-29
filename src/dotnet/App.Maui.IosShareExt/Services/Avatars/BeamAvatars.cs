@@ -1,44 +1,125 @@
+using SkiaSharp;
+
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
 public static class BeamAvatars
 {
-    private const int SIZE = 36;
+    private const int Size = 36;
     private static readonly string[] DefaultColors = ["FFDBA0", "BBBEFF", "9294E1", "FF9BC0", "0F2FE8"];
-    private static int _maskIdCounter = 0;
 
-    // TODO: optimize
-    public static string GenerateSvg(string key, bool square = false)
+    public static byte[] GeneratePng(string key)
     {
-        var maskId = $"beam-avatar-{++_maskIdCounter}";
         var data = GenerateData(key, DefaultColors);
-        var mouth = GetMouthSvg(data);
+        var imageInfo = new SKImageInfo(Size, Size, SKColorType.Rgba8888, SKAlphaType.Premul);
+        using var surface = SKSurface.Create(imageInfo);
+        var canvas = surface.Canvas;
+        canvas.Clear(SKColors.Transparent);
 
-        // Use InvariantCulture to ensure decimal points are always "." regardless of locale
-        return string.Create(CultureInfo.InvariantCulture, $@"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {SIZE} {SIZE}' fill='none' role='img' width='100%' height='100%' preserveAspectRatio='none'>
-    <mask id='{maskId}' maskUnits='userSpaceOnUse' x='0' y='0' width='{SIZE}' height='{SIZE}'>
-        <rect width='{SIZE}' height='{SIZE}' rx='{(square ? "0" : (SIZE * 2).ToString())}' fill='#FFFFFF' />
-    </mask>
-    <g mask='url(#{maskId})'>
-        <rect width='{SIZE}' height='{SIZE}' fill='#{data.BackgroundColor}' />
-        <rect x='0' y='0' width='{SIZE}' height='{SIZE}' transform='translate({data.WrapperTranslateX} {data.WrapperTranslateY}) rotate({data.WrapperRotate} {SIZE / 2} {SIZE / 2}) scale({data.WrapperScale})' fill='#{data.WrapperColor}' rx='{(data.IsCircle ? SIZE : SIZE / 6)}' />
-        <g transform='translate({data.FaceTranslateX} {data.FaceTranslateY}) rotate({data.FaceRotate} {SIZE / 2} {SIZE / 2})'>
-            {mouth}
-            <rect x='{14 - data.EyeSpread}' y='14' width='1.5' height='2' rx='1' stroke='none' fill='#{data.FaceColor}' />
-            <rect x='{20 + data.EyeSpread}' y='14' width='1.5' height='2' rx='1' stroke='none' fill='#{data.FaceColor}' />
-        </g>
-    </g>
-</svg>");
+        // Draw background
+        DrawBackground(canvas, data.BackgroundColor);
+
+        // Draw wrapper shape with transformations
+        DrawWrapper(canvas, data);
+
+        // Draw face (eyes and mouth) with transformations
+        DrawFace(canvas, data);
+
+        using var image = surface.Snapshot();
+        using var pngData = image.Encode(SKEncodedImageFormat.Png, 100);
+        return pngData.ToArray();
     }
 
-    private static string GetMouthSvg(AvatarData data)
+    private static void DrawBackground(SKCanvas canvas, string colorHex)
     {
-        if (data.IsMouthOpen)
+        using var paint = new SKPaint();
+        paint.Color = ParseColor(colorHex);
+        paint.IsAntialias = true;
+        paint.Style = SKPaintStyle.Fill;
+
+        canvas.DrawRect(new SKRect(0, 0, Size, Size), paint);
+    }
+
+    private static void DrawWrapper(SKCanvas canvas, AvatarData data)
+    {
+        using var paint = new SKPaint();
+        paint.Color = ParseColor(data.WrapperColor);
+        paint.IsAntialias = true;
+        paint.Style = SKPaintStyle.Fill;
+
+        canvas.Save();
+        canvas.Translate((float)data.WrapperTranslateX, (float)data.WrapperTranslateY);
+        canvas.RotateDegrees(data.WrapperRotate, Size / 2f, Size / 2f);
+        canvas.Scale((float)data.WrapperScale);
+
+        if (data.IsCircle)
         {
-            return $"<path d='M15 {19 + data.MouthSpread}c2 1 4 1 6 0' stroke='#{data.FaceColor}' fill='none' stroke-linecap='round' />";
+            canvas.DrawCircle(Size / 2f, Size / 2f, Size / 2f, paint);
         }
         else
         {
-            return $"<path d='M13,{19 + data.MouthSpread} a1,0.75 0 0,0 10,0' fill='#{data.FaceColor}' />";
+            var cornerRadius = Size / 6f;
+            canvas.DrawRoundRect(new SKRect(0, 0, Size, Size), cornerRadius, cornerRadius, paint);
+        }
+
+        canvas.Restore();
+    }
+
+    private static void DrawFace(SKCanvas canvas, AvatarData data)
+    {
+        using var paint = new SKPaint();
+        paint.Color = ParseColor(data.FaceColor);
+        paint.IsAntialias = true;
+        paint.Style = SKPaintStyle.Fill;
+
+        canvas.Save();
+        canvas.Translate((float)data.FaceTranslateX, (float)data.FaceTranslateY);
+        canvas.RotateDegrees(data.FaceRotate, Size / 2f, Size / 2f);
+
+        // Draw eyes (small rounded rectangles)
+        var eyeWidth = 1.5f;
+        var eyeHeight = 2f;
+        var eyeCornerRadius = 1f;
+
+        // Left eye
+        var leftEyeX = 14 - data.EyeSpread;
+        canvas.DrawRoundRect(new SKRect(leftEyeX, 14, leftEyeX + eyeWidth, 14 + eyeHeight), eyeCornerRadius, eyeCornerRadius, paint);
+
+        // Right eye
+        var rightEyeX = 20 + data.EyeSpread;
+        canvas.DrawRoundRect(new SKRect(rightEyeX, 14, rightEyeX + eyeWidth, 14 + eyeHeight), eyeCornerRadius, eyeCornerRadius, paint);
+
+        // Draw mouth
+        DrawMouth(canvas, data, paint);
+
+        canvas.Restore();
+    }
+
+    private static void DrawMouth(SKCanvas canvas, AvatarData data, SKPaint paint)
+    {
+        var mouthY = 19 + data.MouthSpread;
+
+        if (data.IsMouthOpen)
+        {
+            // Open mouth: curved line stroke
+            paint.Style = SKPaintStyle.Stroke;
+            paint.StrokeWidth = 1f;
+            paint.StrokeCap = SKStrokeCap.Round;
+
+            using var path = new SKPath();
+            path.MoveTo(15, mouthY);
+            path.QuadTo(18, mouthY + 1, 21, mouthY);
+            canvas.DrawPath(path, paint);
+        }
+        else
+        {
+            // Closed mouth: filled arc/smile
+            paint.Style = SKPaintStyle.Fill;
+
+            using var path = new SKPath();
+            path.MoveTo(13, mouthY);
+            path.ArcTo(new SKRect(13, mouthY - 0.75f, 23, mouthY + 0.75f), 180, -180, false);
+            path.Close();
+            canvas.DrawPath(path, paint);
         }
     }
 
@@ -48,9 +129,9 @@ public static class BeamAvatars
         var range = colors.Length;
         var wrapperColor = AvatarUtils.GetRandomColor(numFromName, colors, range);
         var preTranslateX = AvatarUtils.GetUnit(numFromName, 10, 1);
-        var wrapperTranslateX = preTranslateX < 5 ? preTranslateX + SIZE / 9.0 : preTranslateX;
+        var wrapperTranslateX = preTranslateX < 5 ? preTranslateX + Size / 9.0 : preTranslateX;
         var preTranslateY = AvatarUtils.GetUnit(numFromName, 10, 2);
-        var wrapperTranslateY = preTranslateY < 5 ? preTranslateY + SIZE / 9.0 : preTranslateY;
+        var wrapperTranslateY = preTranslateY < 5 ? preTranslateY + Size / 9.0 : preTranslateY;
 
         return new AvatarData
         {
@@ -60,15 +141,27 @@ public static class BeamAvatars
             WrapperTranslateX = wrapperTranslateX,
             WrapperTranslateY = wrapperTranslateY,
             WrapperRotate = AvatarUtils.GetUnit(numFromName, 360),
-            WrapperScale = 1 + AvatarUtils.GetUnit(numFromName, SIZE / 12) / 10.0,
+            WrapperScale = 1 + AvatarUtils.GetUnit(numFromName, Size / 12) / 10.0,
             IsMouthOpen = AvatarUtils.GetBoolDigit(numFromName, 2),
             IsCircle = AvatarUtils.GetBoolDigit(numFromName, 1),
             EyeSpread = AvatarUtils.GetUnit(numFromName, 5),
             MouthSpread = AvatarUtils.GetUnit(numFromName, 3),
             FaceRotate = AvatarUtils.GetUnit(numFromName, 10, 3),
-            FaceTranslateX = wrapperTranslateX > SIZE / 6.0 ? wrapperTranslateX / 2 : AvatarUtils.GetUnit(numFromName, 8, 1),
-            FaceTranslateY = wrapperTranslateY > SIZE / 6.0 ? wrapperTranslateY / 2 : AvatarUtils.GetUnit(numFromName, 7, 2),
+            FaceTranslateX = wrapperTranslateX > Size / 6.0 ? wrapperTranslateX / 2 : AvatarUtils.GetUnit(numFromName, 8, 1),
+            FaceTranslateY = wrapperTranslateY > Size / 6.0 ? wrapperTranslateY / 2 : AvatarUtils.GetUnit(numFromName, 7, 2),
         };
+    }
+
+    private static SKColor ParseColor(string hex)
+    {
+        if (hex.StartsWith("#", StringComparison.Ordinal))
+            hex = hex[1..];
+
+        var r = byte.Parse(hex.Substring(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var g = byte.Parse(hex.Substring(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var b = byte.Parse(hex.Substring(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+
+        return new SKColor(r, g, b);
     }
 
     private record AvatarData
@@ -88,5 +181,4 @@ public static class BeamAvatars
         public required double FaceTranslateX { get; init; }
         public required double FaceTranslateY { get; init; }
     }
-
 }
