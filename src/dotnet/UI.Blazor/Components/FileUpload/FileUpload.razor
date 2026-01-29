@@ -1,6 +1,5 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.Media
-@using System.Diagnostics.CodeAnalysis
 @inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 
@@ -20,18 +19,12 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> InputAttributes { get; set; } = new();
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FileUpload))]
-    public FileUpload() { }
-
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
             return;
 
         BlazorRef = DotNetObjectReference.Create(this);
-        var options = new JSOptions {
-            MaxSize = MaxSize,
-        };
-        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, InputRef, BlazorRef, options);
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, InputRef, BlazorRef);
     }
 
     public async ValueTask DisposeAsync() {
@@ -42,53 +35,41 @@
     }
 
     [JSInvokable]
-    public async Task<string> ReserveMediaId()
+    public async Task FileSelected(string fileName, string contentType, long size)
     {
-        var mediaId = await UICommander.Call(new Medias_ReserveMedia(Session, Scope));
-        return mediaId.Value;
-    }
-
-    [JSInvokable]
-    public async Task<string> CreateUpload(string fileName, string contentType, long length)
-    {
-        var tag = $"FileUpload/v1/{Scope}";
-        var metadata = new PropertyBag()
-            .Set("FileName", fileName)
-            .Set("ContentType", contentType);
-        var uploadId = await UICommander.Call(new Uploads_Create(Session, length, tag, metadata));
-        return uploadId.Value;
-    }
-
-    [JSInvokable]
-    public async Task<MediaContent> ProcessUpload(string mediaSid, string uploadSid)
-    {
-        var mediaId = MediaId.Parse(mediaSid);
-        var uploadId = UploadId.Parse(uploadSid);
-        return await UICommander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId));
-    }
-
-    [JSInvokable]
-    public Task OnUploaded(MediaContent mediaContent)
-        => Uploaded.InvokeAsync(mediaContent);
-
-    [JSInvokable]
-    public void OnInvalidSize() {
-        if (!MaxSize.HasValue)
+        if (MaxSize.HasValue && size > MaxSize.Value) {
+            var sizeStr = FileSizeFormatter.Format(MaxSize.Value);
+            UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {sizeStr}."));
+            await JSRef.InvokeVoidAsync("clear");
             return;
+        }
 
-        var size = FileSizeFormatter.Format(MaxSize.Value);
-        UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {size}."));
-    }
+        WebFileUploaderBackend? uploaderBackend = null;
+        try {
+            // Reserve MediaId
+            var mediaId = await UICommander.Call(new Medias_ReserveMedia(Session, Scope));
 
-    [JSInvokable]
-    public void OnUploadError(string message) {
-        UICommander.ShowError(StandardError.External(message));
-    }
+            // Create Upload
+            var tag = $"FileUpload/v1/{Scope}";
+            var metadata = new PropertyBag()
+                .Set("FileName", fileName)
+                .Set("ContentType", contentType);
+            var uploadId = await UICommander.Call(new Uploads_Create(Session, size, tag, metadata));
 
-    // Nested types
+            // Start chunked upload in JS with progress tracking
+            uploaderBackend = new WebFileUploaderBackend(new Progress<double>());
+            await JSRef.InvokeVoidAsync("startUpload", uploadId.Value, uploaderBackend.BlazorRef);
+            await uploaderBackend.WhenUploadCompleted;
 
-    public class JSOptions
-    {
-        public int? MaxSize { get; set; }
+            // Process upload
+            var mediaContent = await UICommander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId));
+            await Uploaded.InvokeAsync(mediaContent);
+        }
+        catch (Exception e) {
+            UICommander.ShowError(e);
+        }
+        finally {
+            uploaderBackend?.DisposeSilently();
+        }
     }
 }
