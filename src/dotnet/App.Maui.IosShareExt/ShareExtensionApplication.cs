@@ -4,38 +4,38 @@ using ActualChat.Hosting;
 using ActualChat.Maui;
 using ActualChat.Maui.Module;
 using ActualChat.Module;
-using ActualChat.Security;
 using ActualChat.UI.Module;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 
 namespace ActualChat.App.Maui.IosShareExt;
 
 #pragma warning disable VSTHRD002, IL2026
-public static class App
+public class ShareExtensionApplication(ServiceProvider services) : IHasServices
 {
-    private static readonly ILogger BootstrapLog = new OSLogLogger(nameof(App));
+    public IServiceProvider Services => services;
 
-    public static ServiceProvider Bootstrap()
+    public static ShareExtensionApplication? Bootstrap(UIViewController controller)
     {
-        try
-        {
+        var log = new OSLogLogger(nameof(ShareViewController));
+
+        try {
+            Platform.Init(() => controller);
             MauiDiagnostics.Initialize();
             ClientStartup.Initialize();
             MauiDiagnostics.InitSentrySdk();
             MauiDiagnostics.CreateSentryTraceProvider();
-            // TODO: StaticLog bootstrap
             var services = CreateServiceProvider();
             _ = services.GetRequiredService<SessionInitializer>().SetSession();
-
-            return services;
+            return new ShareExtensionApplication(services);
         }
         catch (Exception e)
         {
-            BootstrapLog.LogCritical(e, "App bootstrap failed.");
-            throw;
+            log.LogCritical(e, "Failed to bootstrap the app");
+            return null;
         }
     }
 

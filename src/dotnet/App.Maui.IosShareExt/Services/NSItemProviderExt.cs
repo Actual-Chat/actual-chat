@@ -6,6 +6,8 @@ namespace ActualChat.App.Maui.IosShareExt.Services;
 
 public static class NSItemProviderExt
 {
+    private static ILogger Log => field ??= StaticLog.For(typeof(NSItemProviderExt));
+
     public static readonly IReadOnlyList<UTType> PlainTextTypes = [
         UTTypes.PlainText,
         UTTypes.Utf8PlainText,
@@ -75,6 +77,7 @@ public static class NSItemProviderExt
         if (!item.IsInMemoryImage())
             return null;
 
+        Log.LogInformation("!!! Loading image from NSItemProvider !!!");
         var loadedItem = await item.LoadItemAsync(item.RegisteredContentTypes[0].Identifier, null).ConfigureAwait(false);
         var (image, fileName) = loadedItem switch {
             UIImage uiImage => (uiImage, item.SuggestedName),
