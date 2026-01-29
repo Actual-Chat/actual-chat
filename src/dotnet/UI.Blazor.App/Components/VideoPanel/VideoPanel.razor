@@ -1,22 +1,27 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Streaming
 @using ActualChat.UI.Blazor.App.Components.VideoPanel
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.App.Services
-@inherits ComputedStateComponent<AppUIHub, bool>
+@inherits ComputedStateComponent<AppUIHub, VideoPanel.Model>
 @{
-    var isRightPanelVisible = State.Value;
-    var cls = isRightPanelVisible ? "rp-visible" : "";
+    var m = State.Value;
+    var cls = m.IsRightPanelVisible ? "rp-visible" : "";
     var recordingCls = _isRecording ? "recording" : "";
+    var hasRemoteStreams = m.RemoteStreams.Length > 0;
+    var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
 }
 
 @if (_rendered) {
-    <div @ref="Ref" class="video-panel first-time-open @cls @recordingCls">
+    <div @ref="Ref" class="video-panel first-time-open @cls @recordingCls @remoteStreamsCls" data-remote-stream-count="@m.RemoteStreams.Length">
         <div class="c-content">
             <div class="video-frame">
                 <canvas class="call-video"></canvas>
             </div>
             <div class="remote-streams">
-                @* Remote video canvases are dynamically added here by TypeScript *@
+                @foreach (var streamInfo in m.RemoteStreams) {
+                    <VideoTrackPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" />
+                }
             </div>
             <div class="video-controls show-with-delay">
                 @if (_videoDevices.Count > 1) {
@@ -45,6 +50,13 @@
 }
 
 @code {
+    public sealed record Model(
+        bool IsRightPanelVisible,
+        VideoStreamInfo[] RemoteStreams
+    ) {
+        public static readonly Model None = new(false, []);
+    }
+
     private record VideoDevice(string DeviceId, string Label);
 
     private bool _rendered;
@@ -84,9 +96,6 @@
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
 
-            // TODO(AK): Suspicious initialization of VideoPlaybackEngineFactory
-            var factory = Hub.Services.GetRequiredService<VideoPlaybackEngineFactory>();
-            await factory.EnsureInitialized().ConfigureAwait(false);
             await UpdateSessionContext();
             await LoadVideoDevices();
         }
@@ -172,18 +181,35 @@
     }
 
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            t => new ComputedState<bool>.Options {
-                InitialValue = !ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value,
+            t => new ComputedState<Model>.Options {
+                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, []),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        if (ScreenSize.IsNarrow())
-            return false;
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isRightPanelVisible = false;
+        if (!ScreenSize.IsNarrow())
+            isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
 
-        return await PanelsUI.Right.IsVisible.Use(cancellationToken);
+        // Get current chat
+        var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
+        if (chatId is null)
+            return new Model(isRightPanelVisible, []);
+
+        // Get active video streams for this chat
+        var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
+        if (activeStreams is null || activeStreams.Streams.Length == 0)
+            return new Model(isRightPanelVisible, []);
+
+        // Filter out own stream (shown in local preview)
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken);
+        var remoteStreams = activeStreams.Streams
+            .Where(s => ownAuthor?.Id != s.AuthorId)
+            .ToArray();
+
+        return new Model(isRightPanelVisible, remoteStreams);
     }
 }

@@ -2,13 +2,6 @@ import { Log } from 'logging';
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
-export interface RemoteVideoStream {
-    streamId: string;
-    authorId: string;
-    player: VideoPlayer;
-    canvas: HTMLCanvasElement;
-}
-
 interface PendingChunk {
     frameData: Uint8Array;
     timestampMs: number;
@@ -41,6 +34,20 @@ export class VideoPlayer {
 
     // Animation frame for rendering
     private animationFrameId: number | null = null;
+
+    /** Creates a new VideoPlayer instance for Blazor interop */
+    static create(
+        canvas: HTMLCanvasElement,
+        blazorRef: DotNet.DotNetObject,
+        streamId: string,
+        authorId: string,
+        codec: string,
+        width: number,
+        height: number,
+        codecSettings: string
+    ): VideoPlayer {
+        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas);
+    }
 
     constructor(
         blazorRef: DotNet.DotNetObject,
