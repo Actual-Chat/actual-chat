@@ -15,7 +15,8 @@ public static class IconQueryExt
 
         switch (chatKind) {
         case ChatKind.Peer:
-            return new IconQuery(contact.Account?.Avatar.Picture, AvatarKind.Beam, contact.ChatId.Value);
+            var defaultAvatarKey = DefaultUserPicture.GetAvatarKey(contact.Account?.Id.Value ?? "");
+            return new IconQuery(contact.Account?.Avatar.Picture, AvatarKind.Beam, defaultAvatarKey);
         case ChatKind.Group:
         case ChatKind.Place:
             return new IconQuery(contact.Chat.Picture.ToPicture(), AvatarKind.Marble, contact.ChatId.Value);

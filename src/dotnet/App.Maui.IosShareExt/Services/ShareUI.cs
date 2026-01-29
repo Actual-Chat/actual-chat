@@ -37,6 +37,7 @@ public class ShareUI : UIServiceBase, IComputeService
     public ShareUI(IosHub hub) : base(hub)
     {
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
+        Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
         _isUploading = Hub.StateFactory.NewMutable<bool>();
         _isFailed = Hub.StateFactory.NewMutable<bool>();
         _uploadPct = Hub.StateFactory.NewMutable<double>();
@@ -127,7 +128,6 @@ public class ShareUI : UIServiceBase, IComputeService
             Log.LogInformation("Uploading to chats: {ChatIds}", string.Join(",", chatIds));
             // TODO(FC): single upload for all chats !!!!!!!!!!!!!!!!!!!!!!!!!!!
             for (var i = 0; i < chatIds.Count; i++) {
-                // TODO: handle error
                 // TODO: handle cancellation
                 var totalPct = i * 100 / chatIds.Count;
                 var chatId = chatIds[i];
@@ -144,8 +144,9 @@ public class ShareUI : UIServiceBase, IComputeService
             }
             await CloseApp(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception)
+        catch (Exception e)
         {
+            Log.LogError(e, "Failed to send message");
             _isFailed.Value = true;
             throw;
         }

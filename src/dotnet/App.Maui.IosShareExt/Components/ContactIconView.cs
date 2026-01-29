@@ -4,7 +4,7 @@ using ActualChat.UI;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 
-public sealed class AvatarView(IconQuery? iconQuery, UIImage? defaultImage, string title, bool isRound, IosHub hub)
+public sealed class ContactIconView(IconQuery? iconQuery, UIImage? defaultImage, string title, bool isRound, IosHub hub)
     : ComputedStateView<LoadedImage?>(hub)
 {
     private const int Size = 40;
@@ -63,7 +63,10 @@ public sealed class AvatarView(IconQuery? iconQuery, UIImage? defaultImage, stri
 
     private void SetImage(LoadedImage? model)
     {
-        var image = model?.Data is null ? defaultImage : UIImage.LoadFromData(NSData.FromArray(model.Data));
+        var image = model?.FilePath.IsEmpty != false
+            ? defaultImage
+            : UIImage.FromFile(model.FilePath);
+        var old = _image.Image;
         if (image is null) {
             _image.BackgroundColor = UIColor.SystemBlue;
             _image.Image = null;
@@ -74,6 +77,8 @@ public sealed class AvatarView(IconQuery? iconQuery, UIImage? defaultImage, stri
             _image.Image = image;
             _initialLabel.Hidden = model?.AvatarKind is not AvatarKind.Marble;
         }
+        if (!ReferenceEquals(old, image))
+            old.DisposeSilently();
     }
 
     protected override Task<LoadedImage?> ComputeState(CancellationToken cancellationToken)

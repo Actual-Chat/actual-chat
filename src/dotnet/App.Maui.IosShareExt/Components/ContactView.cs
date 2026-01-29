@@ -8,7 +8,7 @@ namespace ActualChat.App.Maui.IosShareExt.Components;
 public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView<ContactView.Model>(hub)
 {
     public const int Height = 52;
-    private AvatarView _iconView = null!;
+    private ContactIconView _iconView = null!;
     private UIImageView _checkbox = null!;
     private UILabel _titleLabel = null!;
     private UILabel _subtitleLabel = null!;
@@ -22,7 +22,7 @@ public sealed class ContactView(Contact contact, IosHub hub) : ComputedStateView
         BackgroundColor = UIColor.Clear;
 
         // Avatar
-        _iconView = new AvatarView(model.IconQuery, null, contact.Chat.Title, true, Hub);
+        _iconView = new ContactIconView(model.IconQuery, null, contact.Chat.Title, true, Hub);
 
         // Text container
         var textContainer = new UIStackView

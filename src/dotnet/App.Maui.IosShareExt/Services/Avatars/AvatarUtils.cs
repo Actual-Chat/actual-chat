@@ -19,9 +19,9 @@ public static class AvatarUtils
         return num % max;
     }
 
-    public static int GetDigit(int number, int index)
+    public static int GetDigit(long number, int index)
     {
-        return (int)Math.Floor((double)number / Math.Pow(10, index)) % 10;
+        return (int)(Math.Floor((double)number / Math.Pow(10, index)) % 10);
     }
 
     public static bool GetBoolDigit(int number, int index)
@@ -34,9 +34,9 @@ public static class AvatarUtils
         return Math.Atan2(y, x) * 180 / Math.PI;
     }
 
-    public static int GetUnit(int number, int range, int? index = null)
+    public static int GetUnit(long number, int range, int? index = null)
     {
-        int value = number % range;
+        int value = (int)(number % range);
 
         if (index.HasValue && (GetDigit(number, index.Value) % 2) == 0)
         {
@@ -70,6 +70,6 @@ public static class AvatarUtils
         double yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000.0;
 
         // Check contrast
-        return yiq >= 128 ? "#000000" : "#FFFFFF";
+        return yiq >= 128 ? "000000" : "FFFFFF";
     }
 }

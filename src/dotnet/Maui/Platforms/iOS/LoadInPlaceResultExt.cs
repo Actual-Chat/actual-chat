@@ -13,6 +13,12 @@ public static class LoadInPlaceResultExt
         public string ImplyMimeType(NSItemProvider itemProvider)
             => representation.ImplyMimeType(itemProvider.RegisteredContentTypes);
 
+        public FilePath GetSuggestedFileName(NSItemProvider item)
+        {
+            FilePath fileName = item.SuggestedName.NullIfEmpty() ?? representation.Path.FileNameWithoutExtension;
+            return !fileName.HasExtension ? fileName.ChangeExtension(representation.Path.Extension) : fileName;
+        }
+
         public string ImplyMimeType(IReadOnlyList<UTType> registeredContentTypes)
         {
             if (MediaMimeTypes.TryGetMimeType(representation.Path.FileName, out var mimeType))

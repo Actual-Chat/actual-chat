@@ -41,8 +41,10 @@ public sealed class ContactListView(IosHub hub) : ComputedStateView<ContactListV
         var cellRegistration = UICollectionViewCellRegistrationExt.GetRegistration<UICollectionViewListCell, NSContact>(
             (cell, _, contact) =>
             {
-                foreach (var subview in cell.ContentView.Subviews)
+                foreach (var subview in cell.ContentView.Subviews) {
                     subview.RemoveFromSuperview();
+                    subview.DisposeSilently();
+                }
 
                 var contactItemView = new ContactView(contact, Hub);
                 contactItemView.TranslatesAutoresizingMaskIntoConstraints = false;
