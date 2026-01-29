@@ -37,6 +37,7 @@ public class ShareUI : UIServiceBase, IComputeService
     public ShareUI(IosHub hub) : base(hub)
     {
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
+        Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
         _isUploading = Hub.StateFactory.NewMutable<bool>();
         _isFailed = Hub.StateFactory.NewMutable<bool>();
         _uploadPct = Hub.StateFactory.NewMutable<double>();
