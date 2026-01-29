@@ -32,7 +32,7 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task TestAgentShouldHaveVerifiedEmail()
     {
         var (account, email) = await SignInAsTestAgent();
-        account.IsEmailVerified.Should().BeTrue();
+        account.IsEmailVerified().Should().BeTrue();
         account.Email.Should().Be(email);
     }
 
@@ -40,8 +40,8 @@ public class TestAgentSignInTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task TestAgentShouldHaveEmailIdentity()
     {
         var (account, email) = await SignInAsTestAgent();
-        account.Identities.GetEmail().Should().Be(email);
-        account.Identities.GetEmailIdentity().Should().NotBe(UserIdentity.None);
+        account.Identities.GetEmails().Should().Contain(email);
+        account.Identities.GetEmailIdentities().Should().NotBeEmpty();
     }
 
     [Fact]

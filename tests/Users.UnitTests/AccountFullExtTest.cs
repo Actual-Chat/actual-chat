@@ -9,7 +9,7 @@ public class AccountFullExtTest
     {
         // act
         var emailId = ActualChat.Email.Parse(email);
-        var account = new AccountFull("user1").WithPhoneIdentities(ActualChat.Phone.Parse(phone)).WithEmailIdentities(emailId);
+        var account = new AccountFull("user1").WithPhoneIdentity(ActualChat.Phone.Parse(phone)).WithEmailIdentity(emailId);
 
         // assert
         account.Identities.Keys.Select(x => x.Id)

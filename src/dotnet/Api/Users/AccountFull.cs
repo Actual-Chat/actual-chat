@@ -34,7 +34,6 @@ public sealed partial record AccountFull : Account
     [DataMember, MemoryPackOrder(8)] public string Email { get; init; } = "";
     [DataMember, MemoryPackOrder(9)] public string Name { get; init; } = "";
     [DataMember, MemoryPackOrder(13)] public bool IsGreetingCompleted { get; init; }
-    [DataMember, MemoryPackOrder(14)] public bool IsEmailVerified { get; init; }
     [DataMember, MemoryPackOrder(15)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(16)] public string TimeZone { get; init; } = "";
     [DataMember, MemoryPackOrder(17)] public AliasId? AliasId { get; init; }

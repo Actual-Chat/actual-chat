@@ -86,14 +86,14 @@
     public override bool CanSkip => false;
 
     public override bool IsCompleted
-        => Account.HasVerifiedPhone() || OnboardingUI.UserSettings.Value.IsVerifyPhoneStepCompleted;
+        => Account.IsPhoneVerified() || OnboardingUI.UserSettings.Value.IsVerifyPhoneStepCompleted;
 
     protected override void MarkCompleted()
         => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsVerifyPhoneStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, default);
-        _isVerified = account.HasVerifiedPhone();
+        _isVerified = account.IsPhoneVerified();
         if (account.Phone != null) {
             _showVerificationStatus = true;
             _model.Phone = account.Phone.ToReadable();
@@ -137,7 +137,7 @@
         if (error is not null)
             return false;
 
-        if (account.HasVerifiedPhone())
+        if (account.IsPhoneVerified())
             return true;
 
         var hasSentCodeRecently = await TotpUI.HasSentCodeRecently(CancellationToken.None);

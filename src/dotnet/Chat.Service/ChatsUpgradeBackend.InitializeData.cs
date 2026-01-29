@@ -36,18 +36,15 @@ public partial class ChatsUpgradeBackend
             if (account.Claims.Count == 0)
                 continue;
 
-            var email = account.GetVerifiedEmail();
-            if (email.IsNullOrEmpty())
-                continue;
-
-            if (hostInfo.IsDevelopmentInstance) {
-                if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
-                    userIdByEmail.Add(email, userId);
-            }
-            else {
-                if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
+            var emails = account.Identities.GetEmails();
+            foreach (var email in emails) {
+                if (hostInfo.IsDevelopmentInstance) {
+                    if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
+                        userIdByEmail.TryAdd(email, userId);
+                }
+                else if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
                     || OrdinalIgnoreCaseEquals(email, Constants.Team.Member2Email))
-                    userIdByEmail.Add(email, userId);
+                    userIdByEmail.TryAdd(email, userId);
             }
         }
 
@@ -380,18 +377,15 @@ public partial class ChatsUpgradeBackend
             if (account == null)
                 continue;
 
-            var email = account.GetVerifiedEmail();
-            if (email.IsNullOrEmpty())
-                continue;
-
-            if (hostInfo.IsDevelopmentInstance) {
-                if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
-                    userIdByEmail.Add(email, userId);
-            }
-            else {
-                if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
+            var emails = account.Identities.GetEmails();
+            foreach (var email in emails) {
+                if (hostInfo.IsDevelopmentInstance) {
+                    if (email.OrdinalIgnoreCaseEndsWith(Constants.Team.EmailSuffix))
+                        userIdByEmail.TryAdd(email, userId);
+                }
+                else if (OrdinalIgnoreCaseEquals(email, Constants.Team.Member1Email)
                     || OrdinalIgnoreCaseEquals(email, Constants.Team.Member2Email))
-                    userIdByEmail.Add(email, userId);
+                    userIdByEmail.TryAdd(email, userId);
             }
         }
 

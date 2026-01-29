@@ -31,7 +31,7 @@ public partial class DigestFlow : PeriodicFlow, IHasDelayQuanta
             return "No account";
         if (account.TimeZone.IsNullOrEmpty())
             return "Account has no time zone";
-        if (!account.HasVerifiedEmail())
+        if (!account.IsEmailVerified())
             return "Account has no verified email";
         if (!account.Email.EndsWith(Constants.Team.EmailSuffix, StringComparison.OrdinalIgnoreCase))
             return "Account is excluded";

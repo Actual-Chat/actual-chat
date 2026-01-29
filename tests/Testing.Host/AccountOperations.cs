@@ -28,7 +28,7 @@ public static class AccountOperations
             var account = new AccountFull(userNameFactory(i))
                 .WithClaim(ClaimTypes.GivenName, nameFactory(i))
                 .WithClaim(ClaimTypes.Surname, secondNameFactory(i))
-                .WithPhoneIdentities(phone);
+                .WithPhoneIdentity(phone);
             accounts[i] = await tester.SignIn(account, cancellationToken);
         }
         return accounts;
@@ -48,7 +48,7 @@ public static class AccountOperations
         if (!email.IsNullOrEmpty())
             account = account.WithClaim(ClaimTypes.Email, email);
         if (phone != null)
-            account = account.WithPhoneIdentities(phone);
+            account = account.WithPhoneIdentity(phone);
         return await tester.SignIn(account);
     }
 

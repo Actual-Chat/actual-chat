@@ -12,6 +12,15 @@ public class ClaimMapper
 
     public virtual AccountFull UpdateClaims(AccountFull account, Dictionary<string, string> httpClaims)
     {
+        var (claims, name) = UpdateClaims(account.Claims, httpClaims);
+        if (!name.IsNullOrEmpty())
+            account = account with { Name = name };
+        return account with { Claims = claims };
+    }
+
+    public virtual (ApiMap<string, string> Claims, string Name) UpdateClaims(
+        ApiMap<string, string> claims, Dictionary<string, string> httpClaims)
+    {
         var surname = Capitalize(httpClaims.GetValueOrDefault(SurnameClaim) ?? "").Trim();
         var givenName = Capitalize(httpClaims.GetValueOrDefault(GivenNameClaim) ?? "").Trim();
         var fullName = $"{givenName} {surname}".Trim();
@@ -22,15 +31,13 @@ public class ClaimMapper
         if (name.IsNullOrEmpty())
             name = fullName;
 
-        var newClaims = account.Claims.Clone();
-        if (!name.IsNullOrEmpty()) {
-            account = account with { Name = name };
+        var newClaims = claims.Clone();
+        if (!name.IsNullOrEmpty())
             newClaims.Add(OwnNameClaim, name);
-        }
         if (!fullName.IsNullOrEmpty())
             newClaims.Add(OwnFullNameClaim, name);
 
-        return account with { Claims = newClaims };
+        return (newClaims, name);
     }
 
     private static string Capitalize(string s)

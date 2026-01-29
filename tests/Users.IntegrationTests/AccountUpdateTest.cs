@@ -338,7 +338,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var phone = UniqueNames.Phone();
         var account = new AccountFull(UniqueNames.Name("User"))
             .WithClaim(ClaimTypes.GivenName, "Test")
-            .WithPhoneIdentities(phone);
+            .WithPhoneIdentity(phone);
         account = await Tester.SignIn(account);
 
         account.Phone.Should().Be(phone);
@@ -381,7 +381,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         var phone = UniqueNames.Phone();
         var account = new AccountFull(UniqueNames.Name("User"))
             .WithClaim(ClaimTypes.GivenName, "Test")
-            .WithPhoneIdentities(phone);
+            .WithPhoneIdentity(phone);
         account = await Tester.SignIn(account);
 
         var originalIdentitiesCount = account.Identities.Count;
@@ -395,7 +395,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Assert - identities should be merged (original + new), not replaced
         signedInAccount.Identities.Count.Should().BeGreaterThanOrEqualTo(originalIdentitiesCount);
         // Phone identities should still be present
-        signedInAccount.Identities.GetPhoneIdentity().Should().NotBe(UserIdentity.None);
+        signedInAccount.Identities.GetPhoneIdentities().Should().NotBeEmpty();
     }
 
     [Fact]

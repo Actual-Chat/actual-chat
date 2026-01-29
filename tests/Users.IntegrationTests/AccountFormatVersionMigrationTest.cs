@@ -22,13 +22,13 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     }
 
     [Fact]
-    public async Task NewAccountsShouldHaveFormatVersion1()
+    public async Task NewAccountsShouldHaveFormatVersion2()
     {
         // Arrange & Act
         var account = await Tester.SignInAsUniqueBob();
 
         // Assert
-        account.FormatVersion.Should().Be(1);
+        account.FormatVersion.Should().Be(2);
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     {
         // Arrange - create account with FormatVersion=1
         var account = await Tester.SignInAsUniqueBob();
-        account.FormatVersion.Should().Be(1);
+        account.FormatVersion.Should().Be(2);
 
         // Downgrade to FormatVersion=0 to simulate legacy data
         await SetFormatVersionToZero(account.Id);
@@ -56,7 +56,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     {
         // Arrange - create account with FormatVersion=1
         var account = await Tester.SignInAsUniqueBob();
-        account.FormatVersion.Should().Be(1);
+        account.FormatVersion.Should().Be(2);
 
         // Downgrade to FormatVersion=0 to simulate legacy data
         await SetFormatVersionToZero(account.Id);
@@ -73,7 +73,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         // Assert - FormatVersion should now be 1
         var accountAfterUpdate = await Accounts.GetOwn(Tester.Session, default);
         accountAfterUpdate.Should().NotBeNull();
-        accountAfterUpdate!.FormatVersion.Should().Be(1);
+        accountAfterUpdate!.FormatVersion.Should().Be(2);
         accountAfterUpdate.Name.Should().Be(updatedName);
     }
 
@@ -98,12 +98,12 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
 
         // Assert - FormatVersion should now be 1 and Claims should be in DbAccount
         var accountAfterUpdate = await Accounts.GetOwn(Tester.Session, default);
-        accountAfterUpdate!.FormatVersion.Should().Be(1);
+        accountAfterUpdate!.FormatVersion.Should().Be(2);
         accountAfterUpdate.Claims.Should().BeEquivalentTo(accountBeforeUpdate.Claims);
 
         // Verify Claims are actually in DbAccount
         var dbAccount = await GetDbAccount(account.Id);
-        dbAccount.FormatVersion.Should().Be(1);
+        dbAccount.FormatVersion.Should().Be(2);
         dbAccount.Claims.Should().NotBeEmpty();
     }
 
@@ -112,7 +112,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     {
         // Arrange - create account
         var account = await Tester.SignInAsUniqueBob();
-        account.FormatVersion.Should().Be(1);
+        account.FormatVersion.Should().Be(2);
 
         // Downgrade to FormatVersion=0
         await SetFormatVersionToZero(account.Id);
@@ -122,7 +122,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         var accountAfterSignIn = await Tester.SignIn(account);
 
         // Assert - FormatVersion should now be 1
-        accountAfterSignIn.FormatVersion.Should().Be(1);
+        accountAfterSignIn.FormatVersion.Should().Be(2);
     }
 
     [Fact]
@@ -180,12 +180,12 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
 
         // Assert - FormatVersion should now be 1 and identities should be in DbAccount
         var accountAfterUpdate = await Accounts.GetOwn(Tester.Session, default);
-        accountAfterUpdate!.FormatVersion.Should().Be(1);
+        accountAfterUpdate!.FormatVersion.Should().Be(2);
         accountAfterUpdate.Identities.Should().BeEquivalentTo(accountBeforeUpdate.Identities);
 
         // Verify identities are now in DbAccount
         var dbAccount = await GetDbAccountWithIdentities(account.Id);
-        dbAccount.FormatVersion.Should().Be(1);
+        dbAccount.FormatVersion.Should().Be(2);
         dbAccount.Identities.Should().NotBeEmpty();
     }
 

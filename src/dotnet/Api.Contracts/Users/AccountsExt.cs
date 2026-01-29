@@ -32,17 +32,8 @@ public static class AccountsExt
         else {
             // User updates its own profile
             if (ownAccount.Phone != updatedAccount.Phone) {
-                var verifiedPhoneHash = ownAccount.Identities.GetPhoneHash();
-                if (!verifiedPhoneHash.IsNullOrEmpty() && !OrdinalEquals(updatedAccount.Phone?.Hash, verifiedPhoneHash))
-                    throw StandardError.Unauthorized("You can't change your phone number after it's verified.");
                 if (updatedAccount.Phone?.IsNormalized() == false)
                     throw StandardError.Constraint<Phone>("Incorrect phone number format.");
-            }
-            if(!OrdinalIgnoreCaseEquals(ownAccount.Email, updatedAccount.Email)) {
-                if (ownAccount.Identities.GetEmailIdentity().IsValid)
-                    throw StandardError.Unauthorized("You can't change your email.");
-                if (ownAccount.IsEmailVerified)
-                    throw StandardError.Unauthorized("You can't change your email after it's verified.");
             }
             if (ownAccount.Status != updatedAccount.Status)
                 throw StandardError.Unauthorized("You can't change your own status.");

@@ -19,7 +19,7 @@ public class ExternalContactsBackwardCompatibilityTest(ExternalAppHostFixture fi
     private static Phone BobPhone => Phone.Parse("1-2345678901");
     private static AccountFull Bob { get; } = new AccountFull($"Bob-{nameof(ExternalContactsTest)}")
         .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "111"))
-        .WithPhoneIdentities(BobPhone)
+        .WithPhoneIdentity(BobPhone)
         .WithClaim(ClaimTypes.Email, BobEmail);
 
     protected override async Task InitializeAsync()

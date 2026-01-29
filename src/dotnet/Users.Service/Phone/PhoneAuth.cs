@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using ActualChat.Hashing;
 using ActualChat.Hosting;
@@ -109,8 +110,10 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
         if (!await ValidateCode(session, phone, totp, TotpPurpose.SignInPhone, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var account = new AccountFull("").WithPhoneIdentities(phone);
-        var signInCommand = new AccountsBackend_SignIn(session, account, account.Identities.GetPhoneIdentity());
+        var identities = ApiMap<UserIdentity, string>.Empty.WithPhoneIdentity(phone, out var phoneIdentity);
+        var claims = ApiMap<string, string>.Empty.With(ClaimTypes.MobilePhone, phone.Value);
+
+        var signInCommand = new AccountsBackend_SignIn(session, phoneIdentity, identities, claims);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -127,16 +130,19 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         // save phone to account
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        account = account with { Phone = phone, IsGreetingCompleted = false };
         await Accounts.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
-        var updatedAccount = account.WithPhoneIdentities(phone);
+        var updatedAccount = account.WithPhoneIdentity(phone) with {
+            Phone = phone,
+            IsGreetingCompleted = false,
+        };
 
         // save phone identity + phone claim
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var phoneIdentity = UserIdentityExt.NewPhoneIdentity(phone);
         var conflictingUserId = await dbContext
-            .GetUserIdByIdentity(updatedAccount.Identities.GetPhoneIdentity(), false, cancellationToken)
+            .GetUserIdByIdentity(phoneIdentity, false, cancellationToken)
             .ConfigureAwait(false);
         if (conflictingUserId != null && !OrdinalEquals(conflictingUserId.Value, account.Id.Value))
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");

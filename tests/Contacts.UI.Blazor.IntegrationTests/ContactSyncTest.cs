@@ -23,6 +23,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     private static AccountFull Bob { get; } = new AccountFull("BobAdmin")
         .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "111"))
+        .WithPhoneIdentity(BobPhone)
         .WithPhone(BobPhone)
         .WithClaim(ClaimTypes.Email, BobEmail);
 

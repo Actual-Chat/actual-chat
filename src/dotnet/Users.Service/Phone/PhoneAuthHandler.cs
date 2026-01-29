@@ -46,8 +46,10 @@ public sealed class PhoneAuthHandler(
         if (account.IsGuest)
             return HandleRequestResult.NoResult();
 
+        // TODO(AY): Frol, check this out, IMO this has to be fixed. There can be many phone identities.
+        var phoneIdentity = account.Identities.GetPhoneIdentities().FirstOrDefault();
         var claims = account.Claims
-            .With(ClaimTypes.NameIdentifier, account.Identities.GetPhoneIdentity().SchemaBoundId)
+            .With(ClaimTypes.NameIdentifier, phoneIdentity.Value)
             .Select(x => new Claim(x.Key, x.Value));
         var authenticationType = Options.ClaimsIssuer.NullIfEmpty() ?? AuthSchema.Phone;
         var identity = new ClaimsIdentity(claims, authenticationType);

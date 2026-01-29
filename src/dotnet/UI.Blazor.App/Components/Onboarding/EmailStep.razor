@@ -59,7 +59,7 @@
 
     public override bool CanSkip => true;
     public override bool IsCompleted
-        => Account.HasVerifiedEmail() || OnboardingUI.UserSettings.Value.IsVerifyEmailStepCompleted;
+        => Account.IsEmailVerified() || OnboardingUI.UserSettings.Value.IsVerifyEmailStepCompleted;
 
     protected override void MarkCompleted()
         => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsVerifyEmailStepCompleted = true });

@@ -33,11 +33,11 @@ public class DigestFlowTest(ITestOutputHelper @out)
 
         var userId = Constants.User.Admin.UserId;
         var account = await accountsBackend.Get(userId, CancellationToken.None).Require();
+        var email = ActualChat.Email.Parse($"admin{Constants.Team.EmailSuffix}");
         var updateCmd = new AccountsBackend_Update(
-            account with {
+            account
+                .WithEmailIdentity(email) with {
                 TimeZone = "America/New_York",
-                Email = $"admin{Constants.Team.EmailSuffix}",
-                IsEmailVerified = true,
             },
             null);
         await commander.Call(updateCmd, true);
@@ -60,11 +60,11 @@ public class DigestFlowTest(ITestOutputHelper @out)
 
         var userId = Constants.User.Admin.UserId;
         var account = await accountsBackend.Get(userId, default).Require();
+        var email = ActualChat.Email.Parse($"admin{Constants.Team.EmailSuffix}");
         var updateCmd = new AccountsBackend_Update(
-            account with {
+            account
+                .WithEmailIdentity(email) with {
                 TimeZone = "America/New_York",
-                Email = $"admin{Constants.Team.EmailSuffix}",
-                IsEmailVerified = true,
             },
             null);
         await commander.Call(updateCmd, true);
@@ -99,11 +99,11 @@ public class DigestFlowTest(ITestOutputHelper @out)
                 DigestTime = DateTime.Now.TimeOfDay.Add(new TimeSpan(0, 0, 10)),
             });
         var account = await accountsBackend.Get(userId, default).Require();
+        var email = ActualChat.Email.Parse($"admin{Constants.Team.EmailSuffix}");
         var updateCmd = new AccountsBackend_Update(
-            account with {
+            account
+                .WithEmailIdentity(email) with {
                 TimeZone = TimeZoneInfo.Local.Id,
-                Email = $"admin{Constants.Team.EmailSuffix}",
-                IsEmailVerified = true,
             },
             null);
         await commander.Call(updateCmd, true);
