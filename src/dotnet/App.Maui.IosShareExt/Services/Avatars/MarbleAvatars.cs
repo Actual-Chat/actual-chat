@@ -44,12 +44,10 @@ public static class MarbleAvatars
 
     private static void DrawBackground(SKCanvas canvas, ColorProperty background)
     {
-        using var paint = new SKPaint
-        {
-            Color = ParseColor(background.Color),
-            IsAntialias = true,
-            Style = SKPaintStyle.Fill
-        };
+        using var paint = new SKPaint();
+        paint.Color = ParseColor(background.Color);
+        paint.IsAntialias = true;
+        paint.Style = SKPaintStyle.Fill;
 
         canvas.DrawRect(new SKRect(0, 0, Size, Size), paint);
     }
@@ -62,14 +60,12 @@ public static class MarbleAvatars
         SKImageFilter? blurFilter,
         SKBlendMode blendMode)
     {
-        using var paint = new SKPaint
-        {
-            Color = ParseColor(property.Color),
-            IsAntialias = true,
-            Style = SKPaintStyle.Fill,
-            ImageFilter = blurFilter,
-            BlendMode = blendMode
-        };
+        using var paint = new SKPaint();
+        paint.Color = ParseColor(property.Color);
+        paint.IsAntialias = true;
+        paint.Style = SKPaintStyle.Fill;
+        paint.ImageFilter = blurFilter;
+        paint.BlendMode = blendMode;
 
         canvas.Save();
         canvas.Translate((float)property.TranslateX, (float)property.TranslateY);
@@ -82,14 +78,12 @@ public static class MarbleAvatars
 
     private static void DrawTitle(SKCanvas canvas, string title)
     {
-        using var paint = new SKPaint
-        {
-            Color = SKColors.White,
-            IsAntialias = true,
-            TextSize = FontSize,
-            TextAlign = SKTextAlign.Center,
-            Typeface = SKTypeface.FromFamilyName(null, new SKFontStyle(SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright))
-        };
+        using var paint = new SKPaint();
+        paint.Color = SKColors.White;
+        paint.IsAntialias = true;
+        paint.TextSize = FontSize;
+        paint.TextAlign = SKTextAlign.Center;
+        paint.Typeface = SKTypeface.FromFamilyName(null, new SKFontStyle(SKFontStyleWeight.Medium, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright));
 
         var metrics = paint.FontMetrics;
         var x = Size / 2f;
@@ -107,7 +101,7 @@ public static class MarbleAvatars
                 Color = AvatarUtils.GetRandomColor((int)(numFromName + i), colors, range),
                 TranslateX = AvatarUtils.GetUnit(numFromName * (i + 1), Size / 10, 1),
                 TranslateY = AvatarUtils.GetUnit(numFromName * (i + 1), Size / 10, 2),
-                Scale = 1.2 + AvatarUtils.GetUnit(numFromName * (i + 1), Size / 20) / 10.0,
+                Scale = 1.2 + (AvatarUtils.GetUnit(numFromName * (i + 1), Size / 20) / 10.0),
                 Rotate = AvatarUtils.GetUnit(numFromName * (i + 1), 360, 1),
             })
             .ToArray();
@@ -116,14 +110,10 @@ public static class MarbleAvatars
     private static SKColor ParseColor(string hex)
     {
         if (hex.StartsWith("#", StringComparison.Ordinal))
-        {
             hex = hex[1..];
-        }
 
         if (hex.Length != 6 && hex.Length != 8)
-        {
             throw new ArgumentException("Expected a 6- or 8-digit hex color.", nameof(hex));
-        }
 
         var r = byte.Parse(hex.Substring(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
         var g = byte.Parse(hex.Substring(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
