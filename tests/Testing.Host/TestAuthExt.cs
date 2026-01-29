@@ -41,13 +41,16 @@ public static class TestAuthExt
         CancellationToken cancellationToken = default)
     {
         var services = appHost.Services;
-        if (account.Identities.IsEmpty)
-            account = account.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
-        var userIdentity = account.Identities.Keys.First();
+        var userIdentity = account.Identities.IsEmpty
+            ? new UserIdentity("test", Ulid.NewUlid().ToString()!)
+            : account.Identities.Keys.First();
+        var newIdentities = account.Identities.IsEmpty
+            ? ApiMap<UserIdentity, string>.Empty
+            : account.Identities.Where(x => x.Key != userIdentity).ToApiMap(x => x.Key, x => x.Value);
         var commander = services.Commander();
         var accounts = services.GetRequiredService<IAccounts>();
 
-        var command = new AccountsBackend_SignIn(session, account, userIdentity);
+        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
         return await WaitTillAuthenticationHappened(accounts, session, userIdentity, cancellationToken).ConfigureAwait(false);
     }
@@ -58,13 +61,16 @@ public static class TestAuthExt
         AccountFull account,
         CancellationToken cancellationToken = default)
     {
-        if (account.Identities.IsEmpty)
-            account = account.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
-        var userIdentity = account.Identities.Keys.First();
+        var userIdentity = account.Identities.IsEmpty
+            ? new UserIdentity("test", Ulid.NewUlid().ToString()!)
+            : account.Identities.Keys.First();
+        var newIdentities = account.Identities.IsEmpty
+            ? ApiMap<UserIdentity, string>.Empty
+            : account.Identities.Where(x => x.Key != userIdentity).ToApiMap(x => x.Key, x => x.Value);
         var commander = tester.AppServices.Commander();
 
         var session = tester.Session;
-        var command = new AccountsBackend_SignIn(session, account, userIdentity);
+        var command = new AccountsBackend_SignIn(session, userIdentity, newIdentities, account.Claims);
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
         var accounts = tester.ClientServices.GetRequiredService<IAccounts>();

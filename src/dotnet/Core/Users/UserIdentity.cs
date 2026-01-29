@@ -15,17 +15,14 @@ public readonly partial record struct UserIdentity : IComparable<UserIdentity>
     public static string DefaultSchema { get; set; } = "Default";
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public string Id {
-        get => field ?? "";
-        init;
-    }
+    public string Id { get => field ?? ""; init; }
 
     // Computed properties
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string Schema => ParseId(Id).Schema;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
-    public string SchemaBoundId => ParseId(Id).SchemaBoundId;
+    public string Value => ParseId(Id).Value;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsValid => !Id.IsNullOrEmpty();
 
@@ -43,11 +40,11 @@ public readonly partial record struct UserIdentity : IComparable<UserIdentity>
     public override string ToString()
         => Id;
 
-    public void Deconstruct(out string schema, out string schemaBoundId)
-        => (schema, schemaBoundId) = ParseId(Id);
+    public void Deconstruct(out string schema, out string value)
+        => (schema, value) = ParseId(Id);
 
-    public static implicit operator UserIdentity((string Schema, string SchemaBoundId) source)
-        => new(source.Schema, source.SchemaBoundId);
+    public static implicit operator UserIdentity((string Schema, string Value) source)
+        => new(source.Schema, source.Value);
     public static implicit operator UserIdentity(string source) => new(source);
     public static implicit operator string(UserIdentity source) => source.Id;
 
@@ -65,17 +62,17 @@ public readonly partial record struct UserIdentity : IComparable<UserIdentity>
 
     // Private methods
 
-    private static string FormatId(string schema, string schemaBoundId)
+    private static string FormatId(string schema, string value)
     {
         using var f = IdFormat.CreateFormatter();
         if (!StringComparer.Ordinal.Equals(schema, DefaultSchema))
             f.Append(schema);
-        f.Append(schemaBoundId);
+        f.Append(value);
         f.AppendEnd();
         return f.Output;
     }
 
-    private static (string Schema, string SchemaBoundId) ParseId(string id)
+    private static (string Schema, string Value) ParseId(string id)
     {
         if (id.IsNullOrEmpty())
             return ("", "");
@@ -85,11 +82,8 @@ public readonly partial record struct UserIdentity : IComparable<UserIdentity>
             return (DefaultSchema, id);
 
         var firstItem = p.Item;
-        return p.TryParseNext() ? (firstItem, p.Item) : (DefaultSchema, firstItem);
-    }
-
-    public void Deconstruct(out string Id)
-    {
-        Id = this.Id;
+        return p.TryParseNext()
+            ? (firstItem, p.Item)
+            : (DefaultSchema, firstItem);
     }
 }

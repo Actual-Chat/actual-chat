@@ -139,17 +139,22 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
 
         // Create & sign in the account
         var session = Session.New();
-        var signInAccount = new AccountFull(userId, 0) { Name = userName }
-            .WithIdentity(userIdentity);
+        var identities = ApiMap<UserIdentity, string>.Empty;
+        var claims = ApiMap<string, string>.Empty;
+
         if (!userInfo.FirstName.IsNullOrEmpty())
-            signInAccount = signInAccount.WithClaim(ClaimTypes.GivenName, userInfo.FirstName);
+            claims = claims.With(ClaimTypes.GivenName, userInfo.FirstName);
         if (!userInfo.LastName.IsNullOrEmpty())
-            signInAccount = signInAccount.WithClaim(ClaimTypes.Surname, userInfo.LastName);
-        if (!userInfo.Phone.IsNullOrEmpty())
-            signInAccount = signInAccount.WithPhoneIdentities(ActualChat.Phone.Parse(userInfo.Phone));
+            claims = claims.With(ClaimTypes.Surname, userInfo.LastName);
+        if (!userInfo.Phone.IsNullOrEmpty()) {
+            var phone = ActualChat.Phone.Parse(userInfo.Phone);
+            identities = identities.WithPhoneIdentity(phone);
+            claims = claims.With(ClaimTypes.MobilePhone, phone.Value);
+        }
         if (!userInfo.Email.IsNullOrEmpty())
-            signInAccount = signInAccount.WithClaim(ClaimTypes.Email, userInfo.Email);
-        var signInCommand = new AccountsBackend_SignIn(session, signInAccount, userIdentity);
+            claims = claims.With(ClaimTypes.Email, userInfo.Email);
+
+        var signInCommand = new AccountsBackend_SignIn(session, userIdentity, identities, claims);
         await commander.Call(signInCommand, cancellationToken).ConfigureAwait(false);
 
         // Fetch its account

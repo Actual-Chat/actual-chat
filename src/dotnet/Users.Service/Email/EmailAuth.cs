@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using ActualChat.Hashing;
 using ActualChat.Users.Db;
@@ -100,10 +101,10 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (!await ValidateCode(session, email.Value, totp, TotpPurpose.SignInEmail, cancellationToken).ConfigureAwait(false))
             return false;
 
-        var account = new AccountFull("").WithEmailIdentities(email);
-        if (Constants.Auth.TestAgent.IsTestAgentEmail(email.Value) && IsTestAgentBypassAllowed())
-            account = account with { IsEmailVerified = true };
-        var signInCommand = new AccountsBackend_SignIn(session, account, account.Identities.GetEmailIdentity());
+        var identities = ApiMap<UserIdentity, string>.Empty.WithEmailIdentity(email, out var emailIdentity);
+        var claims = ApiMap<string, string>.Empty.With(ClaimTypes.Email, email.Value);
+
+        var signInCommand = new AccountsBackend_SignIn(session, emailIdentity, identities, claims);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
         return true;
     }
@@ -119,15 +120,15 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return false;
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        account = account with { IsEmailVerified = true };
-        await Accounts.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
-        var updatedAccount = account.WithEmailIdentities(email);
+        var updatedAccount = account.WithEmailIdentity(email);
+        await Accounts.AssertCanUpdate(session, updatedAccount, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var emailIdentity = UserIdentityExt.NewEmailIdentity(email);
         var conflictingUserId = await dbContext
-            .GetUserIdByIdentity(updatedAccount.Identities.GetEmailIdentity(), false, cancellationToken)
+            .GetUserIdByIdentity(emailIdentity, false, cancellationToken)
             .ConfigureAwait(false);
         if (conflictingUserId != null && !OrdinalEquals(conflictingUserId.Value, account.Id.Value))
             throw StandardError.Unauthorized("Email has already been taken by another account.");

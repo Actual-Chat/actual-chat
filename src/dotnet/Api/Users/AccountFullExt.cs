@@ -28,57 +28,39 @@ public static class AccountFullExt
         => account with { Identities = account.Identities.With(identity, secret) };
 
     public static AccountFull WithPhone(this AccountFull account, Phone phone)
-        => account.WithClaim(ClaimTypes.MobilePhone, phone.Value) with { Phone = phone };
+        => account with { Phone = phone };
+
+    public static AccountFull WithPhoneIdentity(this AccountFull account, Phone phone)
+    {
+        phone.Require();
+        if (account.Identities.HasPhone(phone))
+            return account; // Already has this phone identity
+
+        return account
+            .WithPhone(phone)
+            .WithClaim(ClaimTypes.MobilePhone, phone.Value) with {
+                Identities = account.Identities.WithPhoneIdentity(phone),
+            };
+    }
 
     public static AccountFull WithEmail(this AccountFull account, string email)
         => account with { Email = email };
 
-    public static AccountFull WithPhoneIdentities(this AccountFull account, Phone phone)
+    public static AccountFull WithEmailIdentity(this AccountFull account, Email email)
     {
-        phone.Require();
-        var phoneIdentity = account.Identities.GetPhoneIdentity();
-        if (phoneIdentity != UserIdentity.None)
-            throw StandardError.Constraint("Cannot change phone identity - already set to a different phone number.");
+        if (account.Identities.HasEmail(email.Value))
+            return account; // Already has this email identity
 
-        return account
-            .WithIdentity(UserIdentityExt.NewPhoneIdentity(phone))
-            .WithIdentity(UserIdentityExt.NewHashedPhoneIdentity(phone.Hash))
-            .WithClaim(ClaimTypes.MobilePhone, phone.Value)
-            .WithPhone(phone);
+        return account.WithEmail(email.Value) with {
+            Identities = account.Identities.WithEmailIdentity(email),
+        };
     }
-
-    public static AccountFull WithEmailIdentities(this AccountFull account, Email email)
-    {
-        var emailIdentity = account.Identities.GetEmailIdentity();
-        if (emailIdentity != UserIdentity.None && !OrdinalEquals(emailIdentity.SchemaBoundId, email.Value))
-            throw StandardError.Constraint("Cannot change email identity - already set to a different email address.");
-
-        return account
-            .WithIdentity(UserIdentityExt.NewEmailIdentity(email))
-            .WithIdentity(UserIdentityExt.NewHashedEmailIdentity(email.Hash))
-            .WithEmail(email.Value);
-    }
-
-    // GetVerifiedXxx
-
-    public static string? GetVerifiedEmail(this AccountFull account)
-        => account.Identities.GetEmail();
-
-    public static Phone? GetVerifiedPhone(this AccountFull account)
-        => account.Identities.GetPhone();
 
     // HasVerifiedXxx
 
-    public static bool HasVerifiedPhone(this AccountFull account)
-        => account.Phone is { } phone && phone.IsNormalized() && account.Identities.GetPhone() == phone;
+    public static bool IsPhoneVerified(this AccountFull account)
+        => account.Phone is { } phone && phone.IsNormalized() && account.Identities.HasPhone(phone);
 
-    public static bool HasVerifiedEmail(this AccountFull account) {
-        if (account.Email.IsNullOrEmpty())
-            return false;
-
-        if (OrdinalIgnoreCaseEquals(account.Identities.GetEmail(), account.Email))
-            return true;
-
-        return account.IsEmailVerified;
-    }
+    public static bool IsEmailVerified(this AccountFull account)
+        => !account.Email.IsNullOrEmpty() && account.Identities.HasEmail(account.Email);
 }

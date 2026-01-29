@@ -10,11 +10,9 @@ using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Transcription;
-using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Resilience;
-using RangeExt = ActualChat.Mathematics.RangeExt;
 
 namespace ActualChat.Chat;
 
@@ -2361,10 +2359,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (account is not { IsAdmin: true })
             return;
 
-        var email = account.GetVerifiedEmail();
-        if (email.IsNullOrEmpty())
-            return;
-        if (!email.OrdinalEndsWith(Constants.Team.EmailSuffix))
+        var emails = account.Identities.GetEmails();
+        var hasTeamEmail = emails.Any(e => e.OrdinalEndsWith(Constants.Team.EmailSuffix));
+        if (!hasTeamEmail)
             return;
 
         var author = await AuthorsBackend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);

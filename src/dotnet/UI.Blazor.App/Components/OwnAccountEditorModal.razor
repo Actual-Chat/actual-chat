@@ -7,8 +7,8 @@
 
     // TODO(FC): show verify by sms on phone change
     var phone = _form.ParsedPhone;
-    var isPhoneVerified = _account.HasVerifiedPhone();
-    var isEmailVerified = _account.HasVerifiedEmail();
+    var isPhoneVerified = _account.IsPhoneVerified();
+    var isEmailVerified = _account.IsEmailVerified();
     var isEmailEmpty = _form.Email.IsNullOrEmpty();
 }
 

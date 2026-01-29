@@ -56,7 +56,7 @@
         </Caption>
         <Right>
             <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@account.Email"/>
-            <VerificationStatus IsVerified="account.HasVerifiedEmail()" Class="w-8 h-8" Verify="@OnEditClick"/>
+            <VerificationStatus IsVerified="account.IsEmailVerified()" Class="w-8 h-8" Verify="@OnEditClick"/>
         </Right>
     </TileItem>
 
@@ -67,7 +67,7 @@
         <Right>
             @if (account.Phone != null) {
                 <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@readablePhone"/>
-                <VerificationStatus IsVerified="account.HasVerifiedPhone()" Class="w-8 h-8" Verify="@OnEditClick"/>
+                <VerificationStatus IsVerified="account.IsPhoneVerified()" Class="w-8 h-8" Verify="@OnEditClick"/>
             }
         </Right>
         <Content>

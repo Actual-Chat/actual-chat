@@ -160,8 +160,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     // [CommandHandler]
     public virtual async Task OnSignIn(AccountsBackend_SignIn command, CancellationToken cancellationToken = default)
     {
-        var (session, account, authenticatedIdentity) = command;
+        var (session, authenticatedIdentity, identities, claims) = command;
         session.RequireValid();
+
+        identities = identities.With(authenticatedIdentity, "");
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
@@ -174,12 +176,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             return;
         }
 
-        if (!account.Identities.ContainsKey(authenticatedIdentity))
-#pragma warning disable MA0015
-            throw new ArgumentOutOfRangeException(
-                $"{nameof(command)}.{nameof(AccountsBackend_SignIn.AuthenticatedIdentity)}");
-#pragma warning restore MA0015
-
         // Check if session is valid (not forced sign-out)
         var sessionInfo = await SessionsBackend.Get(session, cancellationToken).ConfigureAwait(false);
         if (sessionInfo?.IsSignOutForced == true)
@@ -189,47 +185,33 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await using var _1 = dbContext.ConfigureAwait(false);
 
         var isNew = false;
+        AccountFull? resultAccount = null;
         var userId = await dbContext
             .GetUserIdByIdentity(authenticatedIdentity, true, cancellationToken)
             .ConfigureAwait(false);
+        AccountFull? existingAccount;
         if (userId is null) {
-            // No user found by identity - try by account ID or create new
-            var dbAccount = account.HasId()
-                ? await dbContext.GetDbAccount(account.Id, true, cancellationToken).ConfigureAwait(false)
-                : null;
-            if (dbAccount is not null) {
-                // Existing account found by ID - acquire lock first, then update
-                userId = UserId.Parse(dbAccount.Id);
-                var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
-                await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
-                var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
-                dbUser.Require();
-
-                account = MergeWithExistingOnSignIn(account, existingAccount);
-                await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
-            }
-            else {
-                // No account found - create new
-                dbAccount = await CreateDbAccount(dbContext, account, cancellationToken).ConfigureAwait(false);
-                userId = UserId.Parse(dbAccount.Id);
-                account = dbAccount.ToModel();
-                isNew = true;
-            }
+            // No user found by identity - create new account
+            existingAccount = UpdateExistingAccount(null, null);
+            var dbAccount = await CreateDbAccount(dbContext, existingAccount, cancellationToken).ConfigureAwait(false);
+            userId = UserId.Parse(dbAccount.Id);
+            resultAccount = dbAccount.ToModel();
+            isNew = true;
         }
         else {
             // Existing user found by identity - acquire lock first, then load and update
-            var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
+            existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
             await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
             var dbAccount = await dbContext.GetDbAccount(userId, true, cancellationToken).ConfigureAwait(false);
             dbAccount.Require();
             var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
             dbUser.Require();
 
-            account = MergeWithExistingOnSignIn(account, existingAccount, userId);
-            await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
+            existingAccount = UpdateExistingAccount(existingAccount, userId);
+            await UpdateDbAccount(dbContext, dbAccount, dbUser, existingAccount, cancellationToken).ConfigureAwait(false);
         }
 
-        context.Operation.Items.KeylessSet(account);
+        context.Operation.Items.KeylessSet(resultAccount);
         context.Operation.Items.KeylessSet(isNew);
 
         // Update session with auth info
@@ -241,14 +223,51 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             context.Operation.AddEvent(new NewAccountEvent(userId));
 
             // Auto-enable early access settings for test agent accounts
-            var email = account.Identities.GetEmail();
-            if (!email.IsNullOrEmpty() && Constants.Auth.TestAgent.IsTestAgentEmail(email)) {
+            if (identities.GetEmails().Any(Constants.Auth.TestAgent.IsTestAgentEmail)) {
                 var kvas = ServerKvasBackend.GetUserClient(userId);
                 await kvas.UserAppSettings().Set(new UserAppSettings {
                     AreExperimentalFeaturesEnabled = true,
                     IsIncompleteUIEnabled = true,
                 }, cancellationToken).ConfigureAwait(false);
             }
+        }
+
+        AccountFull UpdateExistingAccount(AccountFull? account, UserId? newUserId)
+        {
+            account ??= new AccountFull("");
+            var mergedIdentities = account.Identities.WithMany(identities);
+            var mergedClaims = account.Claims.WithMany(claims);
+
+            // Set Email from claims or identities if not already set
+            var email = account.Email.IsNullOrEmpty()
+                ? mergedClaims.GetValueOrDefault(ClaimTypes.Email, "").NullIfEmpty()
+                    ?? mergedIdentities.GetEmails().FirstOrDefault()
+                    ?? ""
+                : account.Email;
+
+            // Set Phone from identities if not already set
+            var phone = account.Phone ?? mergedIdentities.GetPhones().FirstOrDefault();
+
+            return account with {
+                Id = newUserId ?? account.Id,
+                Name = GetNewAccountName(account.Name),
+                Email = email,
+                Phone = phone,
+                Claims = mergedClaims,
+                Identities = mergedIdentities,
+            };
+        }
+
+        string GetNewAccountName(string? existingName)
+        {
+            if (!existingName.IsNullOrEmpty())
+                return AccountNameValidator.Normalize(existingName);
+
+            existingName = claims.GetValueOrDefault(ClaimTypes.GivenName, "");
+            var surname = claims.GetValueOrDefault(ClaimTypes.Surname, "");
+            if (!surname.IsNullOrEmpty())
+                existingName = $"{existingName} {surname}";
+            return AccountNameValidator.Normalize(existingName);
         }
     }
 
@@ -404,16 +423,18 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (HasIdentity(account, "internal") && account.Id == Constants.User.Admin.UserId)
             return true;
 
-        var email = account.Identities.GetEmail();
-        if (email.IsNullOrEmpty() || !MailAddress.TryCreate(email, out var emailAddress))
-            return false;
+        var emails = account.Identities.GetEmails();
+        foreach (var email in emails) {
+            if (email.IsNullOrEmpty() || !MailAddress.TryCreate(email, out var emailAddress))
+                continue;
 
-        if (AdminEmails.Contains(email))
-            return true; // Predefined admin email
-        if (HasGoogleIdentity(account) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
-            return true; // company email
-        if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
-            return true; // test agent email
+            if (AdminEmails.Contains(email))
+                return true; // Predefined admin email
+            if (HasGoogleIdentity(account) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
+                return true; // company email
+            if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
+                return true; // test agent email
+        }
         return false;
     }
 
@@ -441,32 +462,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
     // DbUser/DbAccount sync helpers
 
-    private string GetNewAccountName(AccountFull account)
-    {
-        var name = account.Name;
-        if (!name.IsNullOrEmpty())
-            return AccountNameValidator.Normalize(name);
-
-        name = account.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
-        var surname = account.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
-        if (!surname.IsNullOrEmpty())
-            name = $"{name} {surname}";
-        return AccountNameValidator.Normalize(name);
-    }
-
-    private AccountFull MergeWithExistingOnSignIn(AccountFull account, AccountFull? existingAccount, UserId? userId = null)
-        => account with {
-            Id = userId ?? account.Id,
-            Name = GetNewAccountName(account),
-            Phone = account.Phone ?? existingAccount?.Phone,
-            Email = account.Email.NullIfEmpty() ?? existingAccount?.Email ?? "",
-            IsEmailVerified = account.IsEmailVerified || (existingAccount?.IsEmailVerified ?? false),
-            SyncContacts = account.SyncContacts || (existingAccount?.SyncContacts ?? false),
-            IsGreetingCompleted = account.IsGreetingCompleted || (existingAccount?.IsGreetingCompleted ?? false),
-            TimeZone = account.TimeZone.NullIfEmpty() ?? existingAccount?.TimeZone ?? "",
-            AliasId = account.AliasId ?? existingAccount?.AliasId,
-        };
-
     private async Task UpdateDbAccount(
         UsersDbContext dbContext,
         DbAccount dbAccount,
@@ -476,10 +471,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     {
         // Update DbAccount with all properties (double write)
         dbAccount.Version = VersionGenerator.NextVersion(dbAccount.Version);
-        dbAccount.FormatVersion = 1; // Upgrade to format version 1
+        dbAccount.FormatVersion = 2; // Upgrade to format version 2
         dbAccount.Status = account.Status;
         dbAccount.Email = account.Email;
-        dbAccount.IsEmailVerified = account.IsEmailVerified;
+        dbAccount.IsEmailVerified = account.IsEmailVerified();
         dbAccount.Phone = account.Phone?.Value ?? "";
         dbAccount.SyncContacts = account.SyncContacts;
         dbAccount.Name = account.Name;
@@ -534,7 +529,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             ?? account.Email.NullIfEmpty()
             ?? "";
         if (!emailString.IsNullOrEmpty() && ActualChat.Email.TryParse(emailString, out var email))
-            account = account.WithEmailIdentities(email);
+            account = account.WithEmailIdentity(email);
 
         // Update dbUser with identities
         dbUser.UpdateFrom(account);
@@ -545,12 +540,12 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var isAdmin = IsAdmin(account);
         var dbAccount = new DbAccount {
             Id = userId,
-            FormatVersion = 1, // New accounts start with format version 1
+            FormatVersion = 2, // New accounts start with format version 2
             Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
             Name = name, // Same normalized name as DbUser
             Email = emailString,
-            IsEmailVerified = account.IsEmailVerified,
+            IsEmailVerified = account.IsEmailVerified(),
             Phone = account.Phone?.Value ?? account.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
             CreatedAt = dbUser.CreatedAt,
             Claims = dbUser.Claims, // Sync claims to DbAccount

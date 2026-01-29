@@ -121,9 +121,10 @@ public sealed class ServerAuth
             await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
         }
 
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var isSignedIn = !account.IsGuest;
-        AccountFull? existingAccount = isSignedIn ? account : null;
+        var existingAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var isSignedIn = !existingAccount.IsGuest;
+        if (!isSignedIn)
+            existingAccount = null;
 
         try {
             if (httpIsSignedIn) {
@@ -153,10 +154,7 @@ public sealed class ServerAuth
         Session session, AccountFull? existingAccount, ClaimsPrincipal httpUser, string httpAuthenticationSchema,
         CancellationToken cancellationToken)
     {
-        var (account, authenticatedIdentity) =
-            await CreateOrUpdateAccount(existingAccount, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
-
-        var signInCommand = new AccountsBackend_SignIn(session, account, authenticatedIdentity);
+        var signInCommand = await GetSignInCommand(session, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
         await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -178,65 +176,41 @@ public sealed class ServerAuth
         return account.Identities.ContainsKey(identity);
     }
 
-    private async Task<(AccountFull Account, UserIdentity AuthenticatedIdentity)> CreateOrUpdateAccount(
-        AccountFull? existingAccount, ClaimsPrincipal httpUser, string schema,
-        CancellationToken cancellationToken)
-    {
-        var (account, userIdentity) = BaseCreateOrUpdateAccount(existingAccount, httpUser, schema);
-        var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value, StringComparer.Ordinal);
-        account = ClaimMapper.UpdateClaims(account, httpClaims);
-        await UseExistingEmailIdentity().ConfigureAwait(false);
-        return (account, userIdentity);
-
-        async Task UseExistingEmailIdentity()
-        {
-            var existingUserId = await AccountsBackend.GetIdByUserIdentity(userIdentity, cancellationToken).ConfigureAwait(false);
-            // Check if a user with such email exists when logging in with external identity
-            if (existingUserId is not null || !AuthSchema.IsExternal(schema) || httpUser.FindFirstValue(ClaimTypes.Email) is not { } emailString)
-                return;
-
-            if (!ActualChat.Email.TryParse(emailString, out var email))
-                return;
-
-            var emailHash = email.Hash;
-            var userId = await AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken)
-                .ConfigureAwait(false);
-            if (userId is null)
-                return;
-
-            account = account.WithEmailIdentities(email);
-            userIdentity = account.Identities.GetEmailIdentity();
-        }
-    }
-
-    private (AccountFull Account, UserIdentity AuthenticatedIdentity) BaseCreateOrUpdateAccount(
-        AccountFull? existingAccount, ClaimsPrincipal httpUser, string schema)
+    private async Task<AccountsBackend_SignIn> GetSignInCommand(
+        Session session, ClaimsPrincipal httpUser, string schema, CancellationToken cancellationToken)
     {
         var httpUserIdentityName = httpUser.Identity?.Name ?? "";
         var claims = httpUser.Claims.ToApiMap(c => c.Type, c => c.Value, StringComparer.Ordinal);
         var id = FirstClaimOrDefault(claims, IdClaimKeys) ?? httpUserIdentityName;
-        var name = FirstClaimOrDefault(claims, NameClaimKeys) ?? httpUserIdentityName;
         var identity = new UserIdentity(schema, id);
-        var identities = new ApiMap<UserIdentity, string>() {
-            { identity, "" },
-        };
+        var identities = ApiMap<UserIdentity, string>.Empty;
 
-        AccountFull account;
-        if (existingAccount == null)
-            // Create
-            account = new AccountFull("") {
-                Name = name,
-                Claims = claims,
-                Identities = identities,
-            };
-        else {
-            // Update - merge identities instead of replacing to preserve phone/email identities
-            account = existingAccount with {
-                Claims = existingAccount.Claims.WithMany(claims),
-                Identities = existingAccount.Identities.WithMany(identities),
-            };
-        }
-        return (account, identity);
+        // Map claims using ClaimMapper
+        var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value, StringComparer.Ordinal);
+        (claims, _) = ClaimMapper.UpdateClaims(claims, httpClaims);
+
+        // For external providers, try to link by email if the identity doesn't exist yet
+        var authenticatedIdentity = identity;
+        if (!AuthSchema.IsExternal(schema))
+            goto exit;
+
+        var existingUserId = await AccountsBackend.GetIdByUserIdentity(identity, cancellationToken).ConfigureAwait(false);
+        if (existingUserId is not null
+            || httpUser.FindFirstValue(ClaimTypes.Email) is not { } emailClaim
+            || !ActualChat.Email.TryParse(emailClaim, out var email))
+            goto exit;
+
+        var emailHash = email.Hash;
+        var userId = await AccountsBackend.GetUserIdByEmailHash(emailHash, cancellationToken).ConfigureAwait(false);
+        if (userId is null)
+            goto exit;
+
+        // Found existing user by email - use email identity as authenticated identity
+        authenticatedIdentity = UserIdentityExt.NewEmailIdentity(email);
+        identities = identities.With(identity, "");
+
+        exit:
+        return new AccountsBackend_SignIn(session, authenticatedIdentity, identities, claims);
     }
 
     private static string? FirstClaimOrDefault(IReadOnlyDictionary<string, string> claims, string[] keys)

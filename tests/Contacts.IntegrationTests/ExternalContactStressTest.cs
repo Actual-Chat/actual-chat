@@ -168,7 +168,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
     private static AccountFull BuildAccount(string prefix, int i)
         => new AccountFull(BuildUserName(prefix, i))
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, $"{prefix}-{i.ToString("00000", CultureInfo.InvariantCulture)}"))
-            .WithPhoneIdentities(BuildPhone(prefix, i))
+            .WithPhoneIdentity(BuildPhone(prefix, i))
             .WithClaim(ClaimTypes.Email, BuildEmail(prefix, i));
 
     private static string BuildUserName(string prefix, int i)

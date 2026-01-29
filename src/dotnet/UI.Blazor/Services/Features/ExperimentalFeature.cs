@@ -27,7 +27,7 @@ public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
         if (account.IsAdmin)
             return true;
 
-        var email = account.GetVerifiedEmail();
-        return !email.IsNullOrEmpty() && FocusGroupEmails.Contains(email);
+        var emails = account.Identities.GetEmails();
+        return emails.Any(email => FocusGroupEmails.Contains(email));
     }
 }

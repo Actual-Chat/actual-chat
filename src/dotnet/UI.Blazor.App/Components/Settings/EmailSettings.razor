@@ -11,7 +11,7 @@
     var timeZoneChanged = !OrdinalEquals(_timeZoneFormModel.BrowserTimeZoneName, _timeZoneFormModel.SelectedTimeZoneName);
     var browserTimeZoneNameFound = _timeZoneFormModel.BrowserTimeZoneName != "";
     var updateTimeZoneVisible = timeZoneChanged && browserTimeZoneNameFound;
-    var isEmailVerified = _account.HasVerifiedEmail();
+    var isEmailVerified = _account.IsEmailVerified();
     var isEmailEmpty = _emailFormModel.Email.IsNullOrEmpty();
     var isEmailValid = _emailFormEditContext.IsValid(() => _emailFormModel.Email!);
 }

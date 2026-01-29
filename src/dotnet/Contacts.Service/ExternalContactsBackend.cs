@@ -124,11 +124,9 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     private static ImmutableArray<string> GetLinksFor(AccountFull account)
     {
         var list = ImmutableArray<string>.Empty;
-        var phoneHash = account.Identities.GetPhoneHash();
-        if (!phoneHash.IsNullOrEmpty())
+        foreach (var phoneHash in account.Identities.GetPhoneHashes())
             list = list.Add(DbExternalContactLink.GetPhoneLink(phoneHash));
-        var emailHash = account.Identities.GetEmailHash();
-        if (!emailHash.IsNullOrEmpty())
+        foreach (var emailHash in account.Identities.GetEmailHashes())
             list = list.Add(DbExternalContactLink.GetEmailLink(emailHash));
         return list;
     }
