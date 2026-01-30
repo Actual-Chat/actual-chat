@@ -267,9 +267,6 @@
         if (chat.HasSingleAuthor)
             return false;
 
-        if (chat.IsAiSearchChat())
-            return false;
-
         var authors = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
         if (authors.Length < 2)
             return false; // It seems the current user is the only member in the chat hence it has no sense to check unread status.

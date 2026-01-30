@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using ActualChat.Chat;
 using ActualChat.Flows;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
@@ -17,7 +16,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
     private IndexedDocuments IndexedDocuments => field ??= Services.GetRequiredService<IndexedDocuments>();
-    private Task WhenOpenSearchReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;
+    private Task WhenReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;
 
     [IgnoreDataMember, MemoryPackIgnore]
     private ChatId ChatId { get; set; } = null!;
@@ -25,7 +24,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
     protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {
         ChatId = ChatId.Parse(Id.Arguments);
-        await WhenOpenSearchReady.ConfigureAwait(false);
+        await WhenReady.ConfigureAwait(false);
         var readiness = await PrepareOnce().ConfigureAwait(false);
         if (readiness.IsSuspended) {
             // Let's wait a bit for chat to appear & retry
@@ -72,7 +71,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
 
     protected override async Task ProcessBatch(IReadOnlyList<ChatEntry> batch, CancellationToken cancellationToken)
     {
-        await WhenOpenSearchReady.ConfigureAwait(false);
+        await WhenReady.ConfigureAwait(false);
 
         var updated = batch
             .Where(x => x is { IsRemoved: false, IsSystemEntry: false })

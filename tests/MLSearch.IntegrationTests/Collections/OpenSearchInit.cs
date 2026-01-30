@@ -1,7 +1,5 @@
-// TODO: Remove (MLSearch)
 using ActualChat.Hosting;
 using ActualChat.MLSearch.Engine;
-using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using OpenSearch.Client;
 using OpenSearch.Net;
 using HttpMethod = OpenSearch.Net.HttpMethod;
@@ -9,10 +7,10 @@ using HttpMethod = OpenSearch.Net.HttpMethod;
 namespace ActualChat.MLSearch.IntegrationTests;
 
 // An instance of OpenSearchInit class is created via DI container on app start
-internal sealed class OpenSearchInit(IClusterSetup clusterSetup) : IModuleInitializer
+internal sealed class OpenSearchInit(OpenSearchConfigurator openSearchConfigurator) : IModuleInitializer
 {
     public Task Initialize(CancellationToken cancellationToken)
-        => clusterSetup.InitializeAsync(cancellationToken);
+        => openSearchConfigurator.InitializeAsync(cancellationToken);
 }
 
 // An instance of OpenSearchCleanup class is created via DI container of the app host of MLSearchCollection above

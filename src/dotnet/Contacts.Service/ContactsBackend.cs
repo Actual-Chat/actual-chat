@@ -838,8 +838,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                     chatId, author, oldAuthor);
             else {
                 isChatRoulette = chat.IsChatRoulette();
-                if (chat.IsAiSearchChat())
-                    return; // Do not create contacts for ML Search chats
             }
         }
 

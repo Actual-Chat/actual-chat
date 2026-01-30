@@ -1,6 +1,4 @@
-// TODO: Remove (MLSearch)
 using ActualChat.Hosting;
-using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
@@ -8,9 +6,9 @@ using ActualChat.MLSearch.Module;
 using OpenSearch.Client;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
+
 namespace ActualChat.MLSearch;
 
-// TODO: merge with cluster setup actions or cluster setup
 public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBase
 {
     private readonly TaskCompletionSource _whenReady = TaskCompletionSourceExt.New();
@@ -25,23 +23,32 @@ public sealed class OpenSearchConfigurator(IServiceProvider services) : WorkerBa
 
     public Task WhenReady => _whenReady.Task;
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
+    /// <summary>
+    /// Initializes OpenSearch indices. Can be called directly for testing
+    /// or will be called automatically via hosted service.
+    /// </summary>
+    public async Task InitializeAsync(CancellationToken cancellationToken)
     {
+        if (_whenReady.Task.IsCompleted)
+            return;
+
         if (!Settings.IsEnabled) {
-            _whenReady.SetException(StandardError.Unavailable("Search feature is turned off."));
+            _whenReady.TrySetException(StandardError.Unavailable("Search feature is turned off."));
             return;
         }
 
         try {
             await Run(cancellationToken).ConfigureAwait(false);
-            _whenReady.SetResult();
+            _whenReady.TrySetResult();
         }
-        catch (Exception e)
-        {
-            _whenReady.SetException(e);
+        catch (Exception e) {
+            _whenReady.TrySetException(e);
             throw;
         }
     }
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => InitializeAsync(cancellationToken);
 
     private async Task Run(CancellationToken cancellationToken)
     {

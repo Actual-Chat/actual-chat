@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using ActualChat.Db;
 using ActualChat.MLSearch.Db;
 

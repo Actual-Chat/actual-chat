@@ -1,6 +1,5 @@
 using ActualChat.Contacts;
 using ActualChat.Kvas;
-using ActualChat.MLSearch;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
@@ -40,7 +39,6 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private IPlaces Places => Hub.Places;
     private IChatPositions ChatPositions => Hub.ChatPositions;
     private IMentions Mentions => Hub.Mentions;
-    private IMLSearch MLSearch => Hub.MLSearch;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;

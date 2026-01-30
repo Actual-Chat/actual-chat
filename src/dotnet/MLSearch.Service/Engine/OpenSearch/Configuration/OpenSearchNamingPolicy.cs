@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 namespace ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 
 internal class OpenSearchNamingPolicy(JsonNamingPolicy policy)

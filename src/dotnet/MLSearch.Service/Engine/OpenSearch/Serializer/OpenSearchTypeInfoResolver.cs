@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 
 using System.Text.Json.Serialization.Metadata;
 using OpenSearch.Client;

@@ -39,13 +39,6 @@
                             <ToBeDone/>
                         </Tab>
                     </TabPanel>
-
-                    <div class="ai-btn">
-                        <Button Class="btn-primary" Click="@OnAISearchClicked">
-                            <i class="icon-ai-search"></i>
-                            Open AI Search
-                        </Button>
-                    </div>
                 } else {
                     // TODO: remove when migrated to markup above
                     <div class="c-search-tab c-container">
@@ -78,9 +71,6 @@
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         return new Model(isOpen, enableIncompleteUI);
     }
-
-    private Task OnAISearchClicked()
-        => SearchUI.LaunchAISearch();
 
     // Nested types
 

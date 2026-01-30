@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using System.Linq.Expressions;
 
 namespace ActualChat.MLSearch.UnitTests;

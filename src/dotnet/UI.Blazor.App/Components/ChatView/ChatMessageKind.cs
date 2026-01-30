@@ -6,7 +6,6 @@ public enum ChatMessageKind
     DateLine,
     NewMessagesLine,
     WelcomeBlock,
-    SearchWelcomeBlock,
     Group,
     ConversationBlock,
     ConversationStart,

@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using ActualChat.Contacts;
 using ActualChat.Flows;
 using ActualChat.MLSearch.Documents;
