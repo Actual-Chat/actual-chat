@@ -8,6 +8,52 @@ public static class UserIdentityExt
     public static List<UserIdentity> GetIdentities(this ApiMap<UserIdentity, string> identities, string schema)
         => identities.Where(x => OrdinalEquals(x.Key.Schema, schema)).Select(x => x.Key).ToList();
 
+    // Internal identity (for special users defined in Constants)
+
+    public static bool HasInternalIdentity(this ApiMap<UserIdentity, string> identities)
+        => identities.HasInternalIdentity(out _);
+
+    public static bool HasInternalIdentity(this ApiMap<UserIdentity, string> identities, [NotNullWhen(true)] out UserId? userId)
+    {
+        var identity = identities.Keys.FirstOrDefault(x => OrdinalEquals(x.Schema, UserIdentity.InternalSchema));
+        userId = identity.IsValid ? UserId.TryParse(identity.Value) : null;
+        return userId is not null;
+    }
+
+    public static ApiMap<UserIdentity, string> WithInternalIdentity(
+        this ApiMap<UserIdentity, string> identities, UserId userId)
+        => identities.With(new UserIdentity(UserIdentity.InternalSchema, userId.Require().Value), "");
+
+    // Google identity
+
+    public static bool HasGoogleIdentity(this ApiMap<UserIdentity, string> identities)
+        => identities.HasGoogleIdentity(out _);
+
+    public static bool HasGoogleIdentity(this ApiMap<UserIdentity, string> identities, out UserIdentity googleIdentity)
+    {
+        googleIdentity = identities.Keys.FirstOrDefault(x => OrdinalEquals(x.Schema, AuthSchema.Google));
+        return googleIdentity.IsValid;
+    }
+
+    public static ApiMap<UserIdentity, string> WithGoogleIdentity(
+        this ApiMap<UserIdentity, string> identities, string googleId)
+        => identities.With(new UserIdentity(AuthSchema.Google, googleId.RequireNonEmpty()), "");
+
+    // Apple identity
+
+    public static bool HasAppleIdentity(this ApiMap<UserIdentity, string> identities)
+        => identities.HasAppleIdentity(out _);
+
+    public static bool HasAppleIdentity(this ApiMap<UserIdentity, string> identities, out UserIdentity appleIdentity)
+    {
+        appleIdentity = identities.Keys.FirstOrDefault(x => OrdinalEquals(x.Schema, AuthSchema.Apple));
+        return appleIdentity.IsValid;
+    }
+
+    public static ApiMap<UserIdentity, string> WithAppleIdentity(
+        this ApiMap<UserIdentity, string> identities, string appleId)
+        => identities.With(new UserIdentity(AuthSchema.Apple, appleId.RequireNonEmpty()), "");
+
     // Email identities
 
     public static List<UserIdentity> GetEmailIdentities(this ApiMap<UserIdentity, string> identities)
