@@ -14,14 +14,19 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        if (!AppliedMigrations.Contains(nameof(StartDigestFlows))) {
-            await StartDigestFlows(cancellationToken).ConfigureAwait(false);
-            AppliedMigrations.Add(nameof(StartDigestFlows));
-        }
-        if (!AppliedMigrations.Contains(nameof(StartAccountTouchFlow))) {
-            await StartAccountTouchFlow(cancellationToken).ConfigureAwait(false);
-            AppliedMigrations.Add(nameof(StartAccountTouchFlow));
-        }
+        await ApplyMigration(StartAccountTouchFlow).ConfigureAwait(false);
+        await ApplyMigration(StartDigestFlows).ConfigureAwait(false);
+    }
+
+    private async ValueTask ApplyMigration(
+        Func<CancellationToken, Task> migration,
+        [CallerArgumentExpression(nameof(migration))] string name = "")
+    {
+        if (!AppliedMigrations.Add(name))
+            return;
+
+        var cancellationToken = Runtime.CancellationToken;
+        await migration.Invoke(cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
@@ -43,11 +48,6 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
         }
     }
 
-    private async Task StartAccountTouchFlow(CancellationToken cancellationToken)
-    {
-        // Start a single AccountTouchFlow that will iterate through all accounts
-        await Hub.NewResumeEvent<AccountTouchFlow>()
-            .Schedule(cancellationToken)
-            .ConfigureAwait(false);
-    }
+    private Task StartAccountTouchFlow(CancellationToken cancellationToken)
+        => Hub.NewResumeEvent<AccountTouchFlow>().Schedule(cancellationToken);
 }
