@@ -84,16 +84,16 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
     }
 
     public Task<RpcConnection> GetServerConnection(
-        RpcServerPeer peer, Channel<RpcMessage> channel, PropertyBag properties,
+        RpcServerPeer peer, RpcTransport transport, PropertyBag properties,
         CancellationToken cancellationToken)
     {
         if (!properties.KeylessTryGet<HttpContext>(out var httpContext))
-            return Task.FromResult(new RpcConnection(channel, properties));
+            return Task.FromResult(new RpcConnection(transport, properties));
 
         var session = httpContext.TryGetSessionFromHeader() ?? httpContext.TryGetSessionFromCookie();
         return Task.FromResult(session.IsValid()
-            ? new RpcBackendConnection(channel, properties, session)
-            : new RpcConnection(channel, properties));
+            ? new RpcBackendConnection(transport, properties, session)
+            : new RpcConnection(transport, properties));
     }
 
     // Private methods
