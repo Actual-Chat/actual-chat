@@ -451,7 +451,7 @@ export class VisualMediaViewer {
 
     private async onSlideChange(swiper: Swiper): Promise<void> {
         this.updateVideoPlayback();
-        if (this.maxVideoWidth != 0 || this.maxVideoWidth != 0 || this.videoRatio != 0)
+        if (this.maxVideoWidth != 0 || this.maxVideoHeight != 0 || this.videoRatio != 0)
             this.maxVideoWidth = this.maxVideoHeight = this.videoRatio = 0;
         void this.blazorRef.invokeMethodAsync('SlideChanged', swiper.activeIndex);
     }
@@ -492,6 +492,29 @@ export class VisualMediaViewer {
         spinner.remove();
     }
 
+    private calculateSize(
+        originalWidth: number,
+        originalHeight: number,
+        screenWidth: number = window.innerWidth,
+        screenHeight: number = window.innerHeight): { width: number; height: number } {
+        const originalRatio = originalWidth / originalHeight;
+
+        let width = originalWidth;
+        let height = originalHeight;
+
+        if (screenWidth < width) {
+            width = screenWidth;
+            height = width / originalRatio;
+        }
+
+        if (screenHeight < height) {
+            height = screenHeight;
+            width = height * originalRatio;
+        }
+
+        return { width, height };
+    }
+
     private videoPlugHandler(video: HTMLMediaElement) {
         const wrapper = video.closest('.video-wrapper') as HTMLElement;
         if (!wrapper)
@@ -516,23 +539,12 @@ export class VisualMediaViewer {
 
         const imagePlug = thumbnail.querySelector('image-skeleton') as HTMLImageElement;
         if (imagePlug) {
-            let plugWidth = 0;
-            let plugHeight = 0;
             const originalWidth = Number(thumbnail.dataset.width);
             const originalHeight = Number(thumbnail.dataset.height);
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-            const originalRatio = originalWidth / originalHeight;
+            const { width, height } = this.calculateSize(originalWidth, originalHeight);
 
-            plugWidth = screenWidth < originalWidth ? screenWidth : originalWidth;
-            plugHeight = plugWidth / originalRatio;
-            if (screenHeight < plugHeight) {
-                plugHeight = screenHeight;
-                plugWidth = plugHeight * originalRatio;
-            }
-
-            thumbnail.style.width = plugWidth + 'px';
-            thumbnail.style.height = plugWidth / originalRatio + 'px';
+            thumbnail.style.width = width + 'px';
+            thumbnail.style.height = height + 'px';
         }
     }
 
@@ -577,10 +589,10 @@ export class VisualMediaViewer {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent | MouseEvent) => this.onJumpBtnClick(event, video, true));
 
-        this.drugThumb(video, progressBar, thumb);
+        this.dragThumb(video, progressBar, thumb);
     }
 
-    private drugThumb(video: HTMLMediaElement, progressBar: HTMLProgressElement, thumb: HTMLElement) {
+    private dragThumb(video: HTMLMediaElement, progressBar: HTMLProgressElement, thumb: HTMLElement) {
         let rect: DOMRect | null = null;
 
         const updateThumbPosition = (percent: number) => {
@@ -669,19 +681,10 @@ export class VisualMediaViewer {
             return;
         }
 
-        let plugWidth = 0;
         const originalWidth = Number(plug.dataset.width);
         const originalHeight = Number(plug.dataset.height);
-        const screenWidth = window.innerWidth;
-        const screenHeight = window.innerHeight;
-        const originalRatio = originalWidth / originalHeight;
-        const screenRatio = screenWidth / screenHeight;
-        if (screenRatio > originalRatio && originalHeight > screenHeight) {
-            plugWidth = screenHeight * originalRatio;
-        } else {
-            plugWidth = originalWidth;
-        }
-        plug.width = plugWidth;
+        const { width } = this.calculateSize(originalWidth, originalHeight);
+        plug.width = width;
 
         fromEvent(original, 'load')
             .pipe(takeUntil(this.disposed$))
