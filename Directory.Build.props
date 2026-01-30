@@ -80,14 +80,14 @@
     <RootNamespace Condition="$(AssemblyName.EndsWith('.Api.Contracts'))">$(AssemblyName.Replace('.Api.Contracts',''))</RootNamespace>
 
     <!-- C# / language settings -->
-    <TargetFramework Condition="!$(IsMauiProject)">net9.0</TargetFramework>
+    <TargetFramework Condition="!$(IsMauiProject)">net10.0</TargetFramework>
     <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Features>strict</Features>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <MauiVersion Condition="$(IsMauiProject)">9.0.120</MauiVersion>
+    <MauiVersion Condition="$(IsMauiProject)">10.0.30</MauiVersion>
 
     <!-- Generators -->
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
@@ -218,6 +218,7 @@
     <!-- CA1819: Properties should not return arrays -->
     <!-- CA1848: For improved performance, use the LoggerMessage delegates instead of calling ... -->
     <!-- CA1859: Change return type of method M from TBase to T for improved performance -->
+    <!-- CA1873: Evaluation of this argument may be expensive and unnecessary if logging is disabled -->
     <!-- CA2000: Call System.IDisposable.Dispose on object created by ... before all references to it are out of scope -->
     <!-- CA2213: C contains field F that is of IDisposable type, but it is never disposed -->
     <!-- CA2225: Provide a method named 'M' as an alternate for operator op_Implicit -->
@@ -226,7 +227,7 @@
     <NoWarn>$(NoWarn);CA1001;CA1002;CA1003;CA1030;CA1031;CA1033;CA1034;CA1040;CA1043</NoWarn>
     <NoWarn>$(NoWarn);CA1051;CA1054;CA1055;CA1056;CA1063;CA1065;CA1308;CA1508;CA1510</NoWarn>
     <NoWarn>$(NoWarn);CA1707;CA1711;CA1720;CA1724;CA1725</NoWarn>
-    <NoWarn>$(NoWarn);CA1802;CA1805;CA1810;CA1815;CA1816;CA1819;CA1848;CA1859</NoWarn>
+    <NoWarn>$(NoWarn);CA1802;CA1805;CA1810;CA1815;CA1816;CA1819;CA1848;CA1859;CA1873</NoWarn>
     <NoWarn>$(NoWarn);CA2000;CA2213;CA2225;CA2234;CA5394</NoWarn>
     <!-- IDE0055: Fix formatting -->
     <!-- IDE0160: Use block-scoped namespace declarations -->

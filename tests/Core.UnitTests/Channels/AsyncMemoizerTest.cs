@@ -80,7 +80,7 @@ public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         var replays = Enumerable.Range(0, 2)
             .Select(_ => memo.Replay());
         foreach (var replay in replays) {
-            var items = replay.ToEnumerable();
+            var items = replay.ToBlockingEnumerable();
             // ReSharper disable once PossibleMultipleEnumeration
             items.Should().BeEquivalentTo(source);
         }

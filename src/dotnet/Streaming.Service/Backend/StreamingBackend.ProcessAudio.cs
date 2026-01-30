@@ -25,7 +25,7 @@ public partial class StreamingBackend
         var delayedCts = cancellationToken.CreateDelayedTokenSource(Constants.Transcription.CancellationDelay);
         var delayedCancellationToken = delayedCts.Token;
         try {
-            var augmentedFrames = frames.AsAsyncEnumerable();
+            IAsyncEnumerable<AudioFrame> augmentedFrames = frames;
             if (Constants.DebugMode.AudioRecordingStream)
                 augmentedFrames = augmentedFrames.WithLog(Log, nameof(ProcessAudio), cancellationToken);
             await ProcessAudio(record, preSkip, augmentedFrames, delayedCancellationToken).ConfigureAwait(false);

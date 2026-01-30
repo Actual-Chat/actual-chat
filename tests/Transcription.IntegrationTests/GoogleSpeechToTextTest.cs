@@ -37,9 +37,9 @@ public class GoogleSpeechToTextTest(ITestOutputHelper @out, ILogger<GoogleSpeech
         if (withDelay) {
             var i = 0;
             resultStream = memoized.Replay()
-                .SelectAwait(async chunk => {
+                .Select(async (byte[] chunk, CancellationToken _) => {
                     if (i++ > 69)
-                        await Task.Delay(20);
+                        await Task.Delay(20).ConfigureAwait(false);
                     return chunk;
                 });
         }
@@ -119,8 +119,8 @@ public class GoogleSpeechToTextTest(ITestOutputHelper @out, ILogger<GoogleSpeech
             return audio;
 
         var delayedFrames = audio.GetFrames(CancellationToken.None)
-            .SelectAwait(async f => {
-                await Task.Delay(20);
+            .Select(async (AudioFrame f, CancellationToken _) => {
+                await Task.Delay(20).ConfigureAwait(false);
                 return f;
             });
         var delayedAudio = new AudioSource(
