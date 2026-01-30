@@ -1,7 +1,6 @@
-// TODO: Remove (MLSearch)
 using ActualChat.Attributes;
 using ActualChat.Hosting;
 
 [assembly: BackendService(nameof(HostRole.OneServer), ServiceMode.Local, Priority = 1)]
-[assembly: BackendService(nameof(HostRole.MLSearchBackend), ServiceMode.Server)] // TBD: -> Distributed
-[assembly: BackendClient(nameof(HostRole.MLSearchBackend))]
+[assembly: BackendService(nameof(HostRole.SearchBackend), ServiceMode.Server)]
+[assembly: BackendClient(nameof(HostRole.SearchBackend))]

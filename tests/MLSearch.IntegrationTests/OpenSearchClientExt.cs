@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
 using OpenSearch.Client;
@@ -8,16 +7,11 @@ using HttpMethod = OpenSearch.Net.HttpMethod;
 
 namespace ActualChat.MLSearch.IntegrationTests;
 
-public readonly struct OpenSearchClientDebugExt
+public readonly struct OpenSearchClientDebugExt(IOpenSearchClient client)
 {
-    private readonly IOpenSearchClient _client;
-
-    public OpenSearchClientDebugExt(IOpenSearchClient client)
-        => _client = client;
-
     public async Task<string> DumpStat()
     {
-        var nodesStatsResponse = await _client.Nodes.StatsAsync();
+        var nodesStatsResponse = await client.Nodes.StatsAsync();
         var sb = new StringBuilder();
         foreach (var node in nodesStatsResponse.Nodes) {
             sb.AppendLine($"Node ID stat: {node.Key}");
@@ -37,7 +31,7 @@ public readonly struct OpenSearchClientDebugExt
             }
         }
 
-        var clusterStatsResponse = await _client.Cluster.StatsAsync();
+        var clusterStatsResponse = await client.Cluster.StatsAsync();
         var fs = clusterStatsResponse.Nodes.FileSystem;
         sb.AppendLine( "  Filesystem:");
         sb.AppendLine($"    Total: {fs.TotalInBytes} bytes");
@@ -71,7 +65,7 @@ public readonly struct OpenSearchClientDebugExt
         foreach (var kv in queryDict)
             requestParameters.SetQueryString(kv.Key, kv.Value);
         requestParameters.SetQueryString("format", "json");
-        var response = await _client
+        var response = await client
             .LowLevel
             .DoRequestAsync<StringResponse>(
                 HttpMethod.GET,

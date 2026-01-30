@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 namespace ActualChat.MLSearch.Documents;
 
 public sealed record IndexedPlace : IHasId<PlaceId>, IHasRoutingKey<PlaceId>, IRequirementTarget

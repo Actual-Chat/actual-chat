@@ -22,21 +22,9 @@
                     TextChanged="OnSearchInputTextChanged">
                 </TextInput>
 
-                @if (ReferenceEquals(Place, null)) {
-                    @if (m.EnableIncompleteUI) {
-                        <ButtonRound Click="@OnAISearchClicked" Class="c-ai-btn">
-                            <i class="icon-ai-search text-xl"></i>
-                        </ButtonRound>
-                    } else {
-                        <ButtonRound Click="@OnSearchButtonClick" Class="c-ai-btn search-btn btn-transparent">
-                            <i class="icon-search text-xl"></i>
-                        </ButtonRound>
-                    }
-                } else {
-                    <ButtonRound Click="@OnAISearchClicked" Class="c-ai-btn place-search">
-                        <i class="icon-ai-search text-xl"></i>
-                    </ButtonRound>
-                }
+                <ButtonRound Click="@OnSearchButtonClick" Class="c-ai-btn search-btn btn-transparent">
+                    <i class="icon-search text-xl"></i>
+                </ButtonRound>
                 <HeaderButton Click="@(_ => OnClick(false))" Class="c-close-btn">
                     <i class="icon-close text-2xl"></i>
                 </HeaderButton>
@@ -93,9 +81,6 @@
 
     private ValueTask Cancel()
         => _inputRef?.Clear() ?? default;
-
-    private Task OnAISearchClicked()
-        => SearchUI.LaunchAISearch();
 
     private Task OnSearchCleared(SearchClearedEvent e, CancellationToken cancellationToken)
         => _inputRef?.Clear().AsTask() ?? Task.CompletedTask;

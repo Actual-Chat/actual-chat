@@ -153,10 +153,9 @@ public partial class ChatUI
 
         var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
         var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
-        var isBot = chat.IsAiSearchChat();
         var tiles = new List<VirtualListTile<ChatMessage>>();
         var hasVeryFirstItem = dataQuery.ExistingIdRange.Start + dataQuery.StartOffset <= chatIdRange.Start;
-        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId, isBot) : null;
+        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         foreach (var idTile in idTiles) {
             var lastReadEntryLid = shownReadyEntryLid;
@@ -438,13 +437,11 @@ public partial class ChatUI
         var isPrevUnread = false;
         var isPrevAudio = false;
         var hasVeryFirstItem = false;
-        var hasVeryFirstSearchItem = false;
         if (prevMessage is ChatEntryMessage prevEntryMessage) {
             prevEntry = prevEntryMessage.Entry;
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
             isPrevAudio = prevEntry.HasAudioEntry || prevEntry.IsStreaming;
             hasVeryFirstItem = prevMessage.Kind == ChatMessageKind.WelcomeBlock;
-            hasVeryFirstSearchItem = prevMessage.Kind == ChatMessageKind.SearchWelcomeBlock;
         }
 
         var messages = new List<ChatMessage>(entries.Count);
@@ -500,17 +497,6 @@ public partial class ChatUI
                         if (hasVeryFirstItem) {
                             var welcomeMessage = new ChatEntryMessage(entry) {
                                 Kind = ChatMessageKind.WelcomeBlock,
-                                ShouldSkipKey = true,
-                                PreviousMessage = prevMessage,
-                            };
-                            if (prevMessage != null)
-                                prevMessage.NextMessage = welcomeMessage;
-                            messages.Add(welcomeMessage);
-                            prevMessage = welcomeMessage;
-                        }
-                        if (hasVeryFirstSearchItem) {
-                            var welcomeMessage = new ChatEntryMessage(entry) {
-                                Kind = ChatMessageKind.SearchWelcomeBlock,
                                 ShouldSkipKey = true,
                                 PreviousMessage = prevMessage,
                             };
@@ -746,22 +732,10 @@ public partial class ChatUI
         return showIndexDocId;
     }
 
-    private async Task<IReadOnlyDictionary<ChatEntryId, string>> GetIndexDocIds(
+    private Task<IReadOnlyDictionary<ChatEntryId, string>> GetIndexDocIds(
         List<ChatEntry> entries,
         CancellationToken cancellationToken)
-    {
-        using (Computed.BeginIsolation()) {
-            var entryIds = entries.Select(x => x.Id).ToList();
-            var docIds = await entryIds
-                .Select(c => MLSearch.GetIndexDocIdByEntryId(Session, c, cancellationToken))
-                .Collect(ApiConstants.Concurrency.High, cancellationToken)
-                .ConfigureAwait(false);
-            var result = entryIds
-                .Zip(docIds, (entryId, docId) => (entryId, docId))
-                .ToDictionary(c => c.entryId, c => c.docId);
-            return result;
-        }
-    }
+        => Task.FromResult<IReadOnlyDictionary<ChatEntryId, string>>(ImmutableDictionary<ChatEntryId, string>.Empty);
 
     private static bool IsBlockStart(ChatEntry? prevEntry, ChatEntry entry)
     {

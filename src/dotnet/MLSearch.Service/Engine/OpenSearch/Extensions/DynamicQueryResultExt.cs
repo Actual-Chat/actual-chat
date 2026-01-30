@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;

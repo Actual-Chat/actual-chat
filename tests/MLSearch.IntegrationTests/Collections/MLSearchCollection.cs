@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using ActualChat.Hosting;
 using ActualChat.MLSearch.Module;
 using ActualChat.Testing.Host;
@@ -12,7 +11,6 @@ public class AppHostFixture(IMessageSink messageSink)
     : Testing.Host.AppHostFixture("ml_search", messageSink, TestAppHostOptions.Default with {
         ConfigureHost = (__, cfg) => {
             _ = cfg.AddInMemory<MLSearchSettings>((x => x.IsEnabled, "true"),
-                (x => x.IsInitialIndexingDisabled, "true"),
                 (x => x.ChangedEntityIndexingDelay, "00:00:04"),
                 (x => x.IndexingFlowResumeDelayQuanta, "00:00:01.5"));
         },

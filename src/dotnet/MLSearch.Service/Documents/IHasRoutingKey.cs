@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 namespace ActualChat.MLSearch.Documents;
 
 internal interface IHasRoutingKey<in TId>

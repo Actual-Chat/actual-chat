@@ -118,12 +118,6 @@ public class ChatUsagesBackend(IServiceProvider services)
         var chatId = entry.ChatId;
         if (chatId.Kind == ChatKind.Peer)
             listKind = ChatUsageListKind.PeerChatsWroteTo;
-        else {
-            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chat is not null && chat.IsAiSearchChat() && author.LocalId > 0)
-                // A user posted a request to AI search chat.
-                listKind = ChatUsageListKind.SearchChats;
-        }
 
         if (!listKind.HasValue)
             return;

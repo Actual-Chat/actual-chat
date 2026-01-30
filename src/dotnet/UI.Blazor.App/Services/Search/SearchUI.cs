@@ -1,4 +1,3 @@
-using ActualChat.MLSearch;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
@@ -98,31 +97,6 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
 
     public void ShowRecent(bool isOn)
         => _isShowRecentOn.Set(isOn);
-
-    // TODO: Remove (MLSearch)
-    public async Task LaunchAISearch()
-    {
-        var searchChatId = await CreateSearchChat().ConfigureAwait(true);
-        if (searchChatId is null)
-            return;
-
-        NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
-        if (BrowserInfo.ScreenSize.Value.IsNarrow())
-            PanelsUI.HidePanels();
-        await History.NavigateTo(Links.Chat(searchChatId)).ConfigureAwait(false);
-    }
-
-    // TODO: Remove (MLSearch)
-    private async Task<ChatId?> CreateSearchChat() {
-        var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
-        var title = "Search on " + now.ToInvariantString("g");
-        var createSearchChatCommand = new MLSearch_CreateChat(Session, title, default);
-        var (searchChat, error) = await UICommander.Run(createSearchChatCommand).ConfigureAwait(false);
-        if (error != null)
-            return null;
-
-        return searchChat.Id;
-    }
 
     public Task Select(FoundItem foundItem, bool mustNavigate = false)
     {

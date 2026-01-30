@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using ActualChat.Chat;
 using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 

@@ -3,7 +3,6 @@ using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
-using ActualChat.MLSearch;
 using ActualChat.Notification;
 using ActualChat.Streaming;
 using ActualChat.Users;
@@ -26,7 +25,6 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();
     public IChatUsages ChatUsages => field ??= Services.GetRequiredService<IChatUsages>();
     public INotifications Notifications => field ??= Services.GetRequiredService<INotifications>();
-    public IMLSearch MLSearch => field ??= Services.GetRequiredService<IMLSearch>(); // TODO: Remove (MLSearch)
 
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
     public SendingMessages SendingMessages => field ??= Services.GetRequiredService<SendingMessages>();

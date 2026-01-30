@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using ActualChat.Search;
 using ActualChat.Testing.Host;
 using static ActualChat.Testing.Host.Assertion.AssertOptionsExt;

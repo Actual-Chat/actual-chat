@@ -12,9 +12,6 @@
 
 <div class="right-panel">
     <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
-        @if (m.ShowSearchPanel) {
-            <AISearchPanel Chat="@chat"/>
-        }
         <RightPanelHeader Chat="@chat" />
         <div class="c-panel-content">
             <RightPanelChatInfo Chat="@chat"/>
@@ -76,14 +73,12 @@
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
         // Disable 'members' tab for the announcements chat
-        var showMemberTab = chat.Id != Constants.Chat.AnnouncementsChatId && rules.CanSeeMembers() && !chat.IsAiSearchChat();
-        var showSearchPanel = await PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
+        var showMemberTab = chat.Id != Constants.Chat.AnnouncementsChatId && rules.CanSeeMembers();
 
         return new () {
             Chat = chat,
             EnableIncompleteUI = enableIncompleteUI,
             ShowMembersTab = showMemberTab,
-            ShowSearchPanel = showSearchPanel && enableIncompleteUI,
         };
     }
 
@@ -99,7 +94,6 @@
         public bool ShowThreads => Chat?.Id.Kind is ChatKind.Group or ChatKind.Place;
         public bool ShowTabs => ShowMembersTab || EnableIncompleteUI || ShowThreads;
         public bool ShowMembersTab { get; init; }
-        public bool ShowSearchPanel { get; init; }
         public bool EnableIncompleteUI { get; init; }
     }
 }

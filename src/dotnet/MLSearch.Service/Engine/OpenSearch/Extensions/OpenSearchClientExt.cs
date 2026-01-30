@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using System.Linq.Expressions;
 using OpenSearch.Client;
 using OpenSearch.Net;

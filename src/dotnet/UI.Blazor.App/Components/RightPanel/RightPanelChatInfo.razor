@@ -47,12 +47,11 @@
         if (chat.HasSingleAuthor || !chat.IsMember())
             return new() { HideNotificationsToggle = true };
 
-        var isAiSearchChat = chat.IsAiSearchChat();
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
         var userChatSettings = await Temporals.GetUserChatSettings(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             NotificationMode = userChatSettings.NotificationMode,
-            ShowSummarizationToggle = isOwner && !isAiSearchChat,
+            ShowSummarizationToggle = isOwner,
             IsSummarized = Chat.IsSummarized ?? false,
         };
     }

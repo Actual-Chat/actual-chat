@@ -1,11 +1,8 @@
-// TODO: Remove (MLSearch)
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.Hosting;
-using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Configuration;
 using ActualChat.MLSearch.Engine.OpenSearch.Serializer;
-using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.MLSearch.Module;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -39,12 +36,8 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             var openSearchSettings = s.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
             var connectionSettings = new ConnectionSettings(
                     new SingleNodeConnectionPool(new Uri(openSearchSettings.ClusterUri)),
-                    sourceSerializer: (builtin, connectionSettings) => new OpenSearchJsonSerializer(builtin, connectionSettings, typeInfoModifiers: [
-                        ChatsTypeInfoModifier.Modify,
-                    ]))
+                    sourceSerializer: (builtin, connectionSettings) => new OpenSearchJsonSerializer(builtin, connectionSettings))
                 .DefaultFieldNameInferrer(JsonNamingPolicy.CamelCase.ConvertName)
-                .DefaultMappingFor<ChatInfo>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatInfoName))
-                .DefaultMappingFor<ChatSlice>(map => map.RelationName(ChatInfoToChatSliceRelation.ChatSliceName))
                 .DefaultMappingFor<IndexedChat>(map => map.RoutingProperty(x => x.Id))
                 .DefaultMappingFor<IndexedEntry>(map => map.RoutingProperty(x => x.ChatId))
                 .DefaultMappingFor<IndexedUser>(map => map.RoutingProperty(x => x.Id))
@@ -58,44 +51,6 @@ internal static class OpenSearchConfigurationServiceCollectionExt
             }
             return new OpenSearchClient(connectionSettings);
         });
-
-        services.AddSingleton<ServiceCoordinator>()
-            .AddAlias<IServiceCoordinator, ServiceCoordinator>()
-            .AddHostedService(c => c.GetRequiredService<ServiceCoordinator>());
-
-        _ = services
-            .AddSingleton<IClusterSetup>(static c => c.CreateInstance<ClusterSetup>(
-                c.GetRequiredService<IMeshLocks>().WithKeyPrefix(nameof(ClusterSetup))
-            ))
-            .AddSingleton<IClusterSetupActions>(static c => {
-                var openSearchSettings = c.GetRequiredService<IOptions<OpenSearchSettings>>().Value;
-                return openSearchSettings.EmbeddingService.EmbeddingServiceType switch {
-                    EmbeddingServiceType.BuiltIn => c.CreateInstance<BuiltInModelClusterSetupActions>(),
-                    EmbeddingServiceType.Custom => c.CreateInstance<CustomRemoteModelClusterSetupActions>(),
-                    _ => throw new InvalidOperationException(),
-                };
-            });
-
-        services
-            .AddSingleton<IOptionsFactory<PlainIndexSettings>, PlainIndexSettingsFactory>()
-            .AddSingleton<IOptionsFactory<SemanticIndexSettings>, SemanticIndexSettingsFactory>();
-
-        services
-            .AddSingleton(
-                static c => c.CreateInstance<SettingsChangeTokenSource<SemanticIndexSettings>>(OpenSearchNames.ChatContent))
-            .AddAlias<ISettingsChangeTokenSource, SettingsChangeTokenSource<SemanticIndexSettings>>()
-            .AddAlias<IOptionsChangeTokenSource<SemanticIndexSettings>, SettingsChangeTokenSource<SemanticIndexSettings>>();
-
-        foreach (var indexName in new[] { OpenSearchNames.ChatCursor, OpenSearchNames.ChatContentCursor }) {
-            services
-                .AddSingleton(c => c.CreateInstance<SettingsChangeTokenSource<PlainIndexSettings>>(indexName))
-                .AddAlias<ISettingsChangeTokenSource, SettingsChangeTokenSource<PlainIndexSettings>>()
-                .AddAlias<IOptionsChangeTokenSource<PlainIndexSettings>, SettingsChangeTokenSource<PlainIndexSettings>>();
-        }
-
-        // ChatSlice engine registrations
-        services.AddSingleton<ISearchEngine<ChatSlice>>(
-            static c => c.CreateInstance<SemanticSearchEngine<ChatSlice>>(OpenSearchNames.ChatContent));
 
         return services;
     }

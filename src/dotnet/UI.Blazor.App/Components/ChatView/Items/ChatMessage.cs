@@ -50,11 +50,9 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
 
     // Static helpers
 
-    public static ChatMessage Welcome(ChatId chatId, bool isBot)
+    public static ChatMessage Welcome(ChatId chatId)
     {
         var chatEntry = new ChatEntry(TextEntryId.New(chatId, 0L));
-        return isBot
-            ? new ChatEntryMessage(chatEntry) { Kind = ChatMessageKind.SearchWelcomeBlock }
-            : new ChatEntryMessage(chatEntry) { Kind = ChatMessageKind.WelcomeBlock };
+        return new ChatEntryMessage(chatEntry) { Kind = ChatMessageKind.WelcomeBlock };
     }
 }

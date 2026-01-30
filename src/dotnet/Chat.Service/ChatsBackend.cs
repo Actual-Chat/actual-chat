@@ -948,13 +948,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     await CreateAnyoneRole(chatId).ConfigureAwait(false);
                 }
 
-                if (chat.IsAiSearchChat()) {
-                    var upsertMlBotAuthorCommand = new AuthorsBackend_Upsert(
-                        chat.Id, default, Constants.User.Sherlock.UserId, null,
-                        new AuthorDiff()
-                    );
-                    _ = await Commander.Call(upsertMlBotAuthorCommand, cancellationToken).ConfigureAwait(false);
-                }
             }
             else if (chatId.Kind == ChatKind.Thread) {
                 ownerId.Require("Command.OwnerId");

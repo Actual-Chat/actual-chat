@@ -18,7 +18,6 @@ public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMe
         [ChatMessageKind.NewMessagesLine] = "-new-messages",
         [ChatMessageKind.WelcomeBlock] = "-welcome-block",
         [ChatMessageKind.Group] = "-group",
-        [ChatMessageKind.SearchWelcomeBlock] = "-search-welcome-block",
         [ChatMessageKind.ConversationBlock] = "-conversation-block",
         [ChatMessageKind.ConversationStart] = "-conversation",
         [ChatMessageKind.ConversationEnd] = "-conversation-end",

@@ -381,7 +381,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (items.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
-                return new VirtualListData<ChatMessage>([ChatMessage.Welcome(chatId, chat.IsAiSearchChat())]) {
+                return new VirtualListData<ChatMessage>([ChatMessage.Welcome(chatId)]) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
                     ScrollToKey = null,
@@ -589,10 +589,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _ = BackgroundTask.Run(async () => {
                 var chat = await Chats.Get(Session, chatId, DisposeToken);
                 if (chat == null)
-                    return;
-
-                var isAiSearchChat = chat.IsAiSearchChat();
-                if (isAiSearchChat)
                     return;
 
                 var command = new ChatUsages_RegisterUsage(Session, ChatUsageListKind.ViewedGroupChats, chatId);

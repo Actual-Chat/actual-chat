@@ -1,4 +1,3 @@
-// TODO: Remove (MLSearch)
 using System.Text.Json.Serialization.Metadata;
 using ActualChat.MLSearch.Engine.OpenSearch.Serializer.Converters;
 using OpenSearch.Client;
