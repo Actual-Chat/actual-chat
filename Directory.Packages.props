@@ -126,7 +126,7 @@
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
     <PackageVersion Include="Blake3" Version="2.0.0" />
     <PackageVersion Include="CommunityToolkit.HighPerformance" Version="8.4.0" />
-    <PackageVersion Include="CommunityToolkit.Maui.Core" Version="11.2.0" />
+    <PackageVersion Include="CommunityToolkit.Maui.Core" Version="14.0.0" />
     <PackageVersion Include="Deepgram" Version="6.6.0" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
     <PackageVersion Include="FFMpegCore" Version="5.2.0" />
@@ -251,7 +251,7 @@
     <PackageVersion Include="CliWrap" Version="3.8.2" />
     <PackageVersion Include="Bullseye" Version="4.1.1" />
     <PackageVersion Include="System.CommandLine.DragonFruit" Version="0.3.0-alpha.21216.1" />
-    <PackageVersion Include="System.Management" Version="7.0.0-rc.2.22472.3" />
+    <PackageVersion Include="System.Management" Version="10.0.2" />
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
     <PackageVersion Include="AwesomeAssertions" Version="9.3.0" />
