@@ -4,6 +4,11 @@ using System;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
+// Without the pragma below C# produces a lot of warnings like this:
+// - The method webrtc_xxx didn't use DefaultDllImportSearchPaths attribute for P/Invokes.
+//   (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca5392)
+#pragma warning disable CA5392 // Use SecureString where possible
+
 public sealed class AudioProcessingModule : IDisposable
 {
     private readonly AudioProcessingHandle _apmHandle;
