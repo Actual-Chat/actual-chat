@@ -4,7 +4,6 @@ using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
 using Android.Media;
 using Android.Runtime;
-using JetBrains.Annotations;
 using AudioSource = ActualChat.Audio.AudioSource;
 using Encoding = Android.Media.Encoding;
 
@@ -404,7 +403,6 @@ internal sealed class AndroidAudioPlaybackEngine(
 
         // Required by Android runtime when the listener is re-hydrated from a JNI handle
         // (e.g., during callbacks after GC). Keeps managed type activation functional.
-        [UsedImplicitly]
         protected PlayPositionListener(IntPtr handle, JniHandleOwnership transfer)
             : base(handle, transfer)
         { }
