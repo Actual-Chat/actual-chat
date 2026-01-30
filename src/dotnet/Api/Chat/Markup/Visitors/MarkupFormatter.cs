@@ -48,7 +48,7 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
 
     protected override void VisitListItem(ListItemMarkup markup, ref StringBuilder state)
     {
-        state.Append(markup.GetPrefix());
+        state.Append(ListItemMarkup.Prefix);
         Visit(markup.Content, ref state);
     }
 

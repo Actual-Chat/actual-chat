@@ -2,8 +2,6 @@ using MemoryPack;
 
 namespace ActualChat.Hosting;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record struct HostRole(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol Id

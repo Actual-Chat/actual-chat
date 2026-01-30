@@ -23,7 +23,7 @@ public class MauiAttachmentFilePicker(IServiceProvider services) : IAttachmentFi
         if (temp is null)
             return [];
 
-        var filesResults = temp.ToArray();
+        var filesResults = temp.SkipNullItems().ToArray();
         if (filesResults.Length == 0)
             return [];
 

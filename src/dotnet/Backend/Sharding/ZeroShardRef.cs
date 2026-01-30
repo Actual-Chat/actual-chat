@@ -19,4 +19,6 @@ public readonly struct ZeroShardRef : IEquatable<ZeroShardRef>
     public bool Equals(ZeroShardRef other) => true;
     public override bool Equals(object? obj) => obj is ZeroShardRef;
     public override int GetHashCode() => 0;
+    public static bool operator ==(ZeroShardRef left, ZeroShardRef right) => left.Equals(right);
+    public static bool operator !=(ZeroShardRef left, ZeroShardRef right) => !left.Equals(right);
 }

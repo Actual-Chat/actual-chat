@@ -16,7 +16,7 @@ public sealed class PhoneNumberAttribute : AsyncValidationAttribute
         if (IsOptional && sValue.IsNullOrEmpty())
             return ValidationResult.Success;
 
-        if (!sValue.StartsWith("+", StringComparison.OrdinalIgnoreCase))
+        if (!sValue.StartsWith('+'))
             return validationContext.Error(ErrorMessage ?? "Phone number must start with '+'");
 
         if (!sValue.Skip(1).All(IsValidCharacter))

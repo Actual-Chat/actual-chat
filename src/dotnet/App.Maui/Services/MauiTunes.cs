@@ -34,13 +34,13 @@ public class MauiTunes : TuneUI
         _players.Clear();
     }
 
-    public override Task Play(Tune tune, CancellationToken cancellationToken = default)
+    public override Task Play(Tune tune)
     {
-        _ = ForegroundTask.Run(() => PlayAndWait(tune, CancellationToken.None), CancellationToken.None);
+        _ = ForegroundTask.Run(() => PlayAndWait(tune), CancellationToken.None);
         return Task.CompletedTask;
     }
 
-    public override async Task PlayAndWait(Tune tune, CancellationToken cancellationToken = default)
+    public override async Task PlayAndWait(Tune tune)
     {
         var audioService = AudioManager.Current;
         if (!Tunes.TryGetValue(tune, out var info))
@@ -79,7 +79,7 @@ public class MauiTunes : TuneUI
             if (audioFocusActivation is null)
                 return;
 
-            await player.PlayAsync(cancellationToken).ConfigureAwait(false);
+            await player.PlayAsync(CancellationToken.None).ConfigureAwait(false);
             ReleaseAudioFocus();
         }
     }

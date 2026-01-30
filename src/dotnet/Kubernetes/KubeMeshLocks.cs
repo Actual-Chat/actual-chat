@@ -217,14 +217,14 @@ public class KubeMeshLocks : MeshLocksBase
             k => {
                 var fullName = _keyPrefix + "-"+ k;
                 if (fullName.Length < 31)
-                    return (fullName, fullName.Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase());
+                    return (fullName, fullName.OrdinalReplace(" ", "-").OrdinalReplace(",", ".").OrdinalReplace(":", "").ToKebabCase());
 
                 var hashSuffix = fullName.Hash().Blake3().Base32(16);
                 var splitIndex = fullName.IndexOfAny([',', ':', ' ', '.']);
                 if (splitIndex < 0)
                     splitIndex = 31;
 
-                var name = fullName[..splitIndex].Replace(" ", "-").Replace(",", ".").Replace(":", "").ToKebabCase() + "-" + hashSuffix;
+                var name = fullName[..splitIndex].OrdinalReplace(" ", "-").OrdinalReplace(",", ".").OrdinalReplace(":", "").ToKebabCase() + "-" + hashSuffix;
                 return (fullName, name);
             });
 

@@ -134,9 +134,9 @@ public static class StableHash
             if (type.IsValueType) {
                 if (typeof(ISymbolIdentifier).IsAssignableFrom(type)) {
 #pragma warning disable IL2060
-                    return (Hasher<T>)HashSymbolIdentifierMethod
+                    return HashSymbolIdentifierMethod
                         .MakeGenericMethod(type)
-                        .CreateDelegate(typeof(Hasher<T>));
+                        .CreateDelegate<Hasher<T>>();
 #pragma warning restore IL2060
                 }
                 return null;

@@ -38,7 +38,7 @@ public class RunnableRunner : ProcessorBase, IRunnableRunner
                 return false;
 
             started = new StartedRunnable(
-                this, runnable, stopToken,
+                this, runnable,
                 static x => {
                     var runner = (RunnableRunner)x.RunnableRunner;
                     if (runner.WhenDisposed is not null) return;
@@ -47,7 +47,8 @@ public class RunnableRunner : ProcessorBase, IRunnableRunner
 
                         runner.StartedRunnables = runner.StartedRunnables.Remove(x.Runnable);
                     }
-                });
+                },
+                stopToken);
             StartedRunnables = StartedRunnables.Add(runnable, started);
             return true;
         }

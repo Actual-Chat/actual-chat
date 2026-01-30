@@ -30,7 +30,6 @@ public class RemoveDbEventIndexesConvention : IModelFinalizingConvention
             if (index.GetFilter() != null)
                 continue; // Skip if it has a filter - it is new one!
 
-
             // Verify it's the attribute-generated index (usually has default name or matching properties)
             // We remove it unconditionally as per requirement.
             entity.RemoveIndex(index);
@@ -54,7 +53,6 @@ public static class DbEntityExt
         }
     }
 
-
     public static void DefineIndexes(this EntityTypeBuilder<DbEvent> events)
     {
         // 1. The MOST important index: partial index for pending (New) events
@@ -70,4 +68,3 @@ public static class DbEntityExt
             .HasFilter("state != 0");
     }
 }
-

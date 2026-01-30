@@ -32,8 +32,8 @@ public sealed class StartedRunnable : IDisposable
     public StartedRunnable(
         IRunnableRunner runner,
         IRunnable runnable,
-        CancellationToken cancellationToken,
-        Action<StartedRunnable> onDispose)
+        Action<StartedRunnable> onDispose,
+        CancellationToken cancellationToken)
     {
         RunnableRunner = runner;
         Runnable = runnable;

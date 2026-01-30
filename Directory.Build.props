@@ -179,8 +179,9 @@
     <!-- MA0048: File name must match type name -->
     <!-- MA0056: Virtual method call in constructor -->
     <!-- MA0064: Avoid locking on publicly accessible instance - buggy, triggers on protected fields -->
+    <!-- MA0097: A class that implements IComparable<T> should also implement IEquatable<T> -->
     <!-- MA0099: Use Explicit enum value for 'Flag' instead of 0 -->
-    <NoWarn>$(NoWarn);MA0009;MA0018;MA0048;MA0056;MA0064;MA0099</NoWarn>
+    <NoWarn>$(NoWarn);MA0009;MA0018;MA0048;MA0056;MA0064;MA0097;MA0099</NoWarn>
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
     <!-- VSTHRD003: Avoid awaiting or returning a Task representing work that was not start ed within your context as that can lead to deadlocks. -->
     <!-- VSTHRD002: Synchronously waiting on tasks or awaiters may cause deadlocks -->
@@ -223,15 +224,17 @@
     <!-- CA1859: Change return type of method M from TBase to T for improved performance -->
     <!-- CA1873: Evaluation of this argument may be expensive and unnecessary if logging is disabled -->
     <!-- CA2000: Call System.IDisposable.Dispose on object created by ... before all references to it are out of scope -->
+    <!-- CA2208: Instantiate argument exceptions correctly -->
+    <!-- CA2211: Non-constant fields should not be visible -->
     <!-- CA2213: C contains field F that is of IDisposable type, but it is never disposed -->
     <!-- CA2225: Provide a method named 'M' as an alternate for operator op_Implicit -->
     <!-- CA2234: Modify M to call 'PostAsync(Uri,...)' instead of 'PostAsync(string, ...)' -->
     <!-- CA5394: Random is an insecure random number generator -->
-    <NoWarn>$(NoWarn);CA1001;CA1002;CA1003;CA1030;CA1031;CA1033;CA1034;CA1040;CA1043</NoWarn>
+    <NoWarn>$(NoWarn);CA1001;CA1002;CA1003;CA1030;CA1031;CA1033;CA1034;CA1036;CA1040;CA1043</NoWarn>
     <NoWarn>$(NoWarn);CA1051;CA1054;CA1055;CA1056;CA1063;CA1065;CA1308;CA1508;CA1510;CA1515</NoWarn>
     <NoWarn>$(NoWarn);CA1707;CA1711;CA1720;CA1724;CA1725</NoWarn>
     <NoWarn>$(NoWarn);CA1802;CA1805;CA1810;CA1815;CA1816;CA1819;CA1848;CA1859;CA1873</NoWarn>
-    <NoWarn>$(NoWarn);CA2000;CA2213;CA2225;CA2234;CA5394</NoWarn>
+    <NoWarn>$(NoWarn);CA2000;CA2208;CA2211;CA2213;CA2225;CA2234;CA5394</NoWarn>
     <!-- IDE0055: Fix formatting -->
     <!-- IDE0160: Use block-scoped namespace declarations -->
     <NoWarn>$(NoWarn);IDE0055;IDE0160</NoWarn>

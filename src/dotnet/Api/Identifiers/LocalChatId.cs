@@ -21,8 +21,7 @@ internal class LocalChatId
     {
         if (id.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(id));
-        if (threadId <= 0)
-            throw new ArgumentOutOfRangeException(nameof(threadId));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(threadId);
 
         Id = id;
         Parent = parentChatId;

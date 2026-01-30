@@ -64,9 +64,9 @@ public abstract class TuneUI : IDisposable
     public virtual void Dispose()
         => _backendRef.DisposeSilently();
 
-    public abstract Task Play(Tune tune, CancellationToken cancellationToken = default);
+    public abstract Task Play(Tune tune);
 
-    public abstract Task PlayAndWait(Tune tune, CancellationToken cancellationToken = default);
+    public abstract Task PlayAndWait(Tune tune);
 }
 
 // !!! keep in sync with tune-ui.ts

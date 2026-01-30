@@ -19,4 +19,6 @@ public readonly struct ThisNodeRef : IEquatable<ThisNodeRef>
     public bool Equals(ThisNodeRef other) => true;
     public override bool Equals(object? obj) => obj is ThisNodeRef;
     public override int GetHashCode() => 0;
+    public static bool operator ==(ThisNodeRef left, ThisNodeRef right) => left.Equals(right);
+    public static bool operator !=(ThisNodeRef left, ThisNodeRef right) => !left.Equals(right);
 }

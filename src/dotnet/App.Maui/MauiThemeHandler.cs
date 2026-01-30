@@ -83,7 +83,9 @@ public class MauiThemeHandler
 
     protected virtual bool Apply(string topBarColor, string bottomBarColor, Theme? theme)
     {
+ #pragma warning disable CA1826
         var mainPage = App.Current.Windows.FirstOrDefault()?.Page;
+ #pragma warning restore CA1826
         if (mainPage == null)
             return false;
 

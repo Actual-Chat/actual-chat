@@ -124,7 +124,7 @@ public class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAudioCaptu
         var processingTask = BackgroundTask.Run(async () => {
             try {
                 using var emptyBuffer = MemoryPool<float>.Shared.Rent(apmFrameSize);
-                emptyBuffer.Memory.Span.Fill(0);
+                emptyBuffer.Memory.Span.Clear();
 
                 while (!processingToken.IsCancellationRequested) {
                     // Check if we have enough microphone samples to enforce the delay

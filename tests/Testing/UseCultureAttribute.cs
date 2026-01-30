@@ -3,19 +3,31 @@ using Xunit.Sdk;
 
 namespace ActualChat.Testing;
 
+#pragma warning disable CA1019 // Define accessors for attribute arguments
+
 /// <summary>
 /// Apply this attribute to your test method to replace the
 /// <see cref="Thread.CurrentThread" /> <see cref="CultureInfo.CurrentCulture" /> and
 /// <see cref="CultureInfo.CurrentUICulture" /> with another culture.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-public class UseCultureAttribute : BeforeAfterTestAttribute
+public sealed class UseCultureAttribute : BeforeAfterTestAttribute
 {
     private readonly Lazy<CultureInfo> _culture;
     private readonly Lazy<CultureInfo> _uiCulture;
 
     private CultureInfo? _originalCulture;
     private CultureInfo? _originalUICulture;
+
+    /// <summary>
+    /// Gets the culture.
+    /// </summary>
+    public CultureInfo Culture => _culture.Value;
+
+    /// <summary>
+    /// Gets the UI culture.
+    /// </summary>
+    public CultureInfo UICulture => _uiCulture.Value;
 
     /// <summary>
     /// Replaces the culture and UI culture of the current thread with
@@ -39,19 +51,9 @@ public class UseCultureAttribute : BeforeAfterTestAttribute
     /// <param name="uiCulture">The name of the UI culture.</param>
     public UseCultureAttribute(string culture, string uiCulture)
     {
-        this._culture = new Lazy<CultureInfo>(() => new CultureInfo(culture, false));
-        this._uiCulture = new Lazy<CultureInfo>(() => new CultureInfo(uiCulture, false));
+        _culture = new Lazy<CultureInfo>(() => new CultureInfo(culture, false));
+        _uiCulture = new Lazy<CultureInfo>(() => new CultureInfo(uiCulture, false));
     }
-
-    /// <summary>
-    /// Gets the culture.
-    /// </summary>
-    public CultureInfo Culture => _culture.Value;
-
-    /// <summary>
-    /// Gets the UI culture.
-    /// </summary>
-    public CultureInfo UICulture => _uiCulture.Value;
 
     /// <summary>
     /// Stores the current <see cref="Thread.CurrentPrincipal" />
