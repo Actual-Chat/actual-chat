@@ -116,6 +116,7 @@
     public async Task CloseVideoPanel() {
         _rendered = false;
         _isRecording = false;
+        ChatVideoUI.SetLocalVideoRecording(false);
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
 
@@ -130,12 +131,14 @@
         _isRecording = true;
         _hasError = false;
         _errorMessage = "";
+        ChatVideoUI.SetLocalVideoRecording(true);
         await InvokeAsync(StateHasChanged);
     }
 
     [JSInvokable]
     public async Task OnRecordingStopped() {
         _isRecording = false;
+        ChatVideoUI.SetLocalVideoRecording(false);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -144,6 +147,7 @@
         _hasError = true;
         _errorMessage = error;
         _isRecording = false;
+        ChatVideoUI.SetLocalVideoRecording(false);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -193,6 +197,13 @@
         var isRightPanelVisible = false;
         if (!ScreenSize.IsNarrow())
             isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
+
+        // Check if stop recording was requested
+        var stopRequested = await ChatVideoUI.StopVideoRecordingRequested.Use(cancellationToken).ConfigureAwait(false);
+        if (stopRequested && _isRecording && JSRef is not null) {
+            ChatVideoUI.ResetStopRecordingRequest();
+            _ = JSRef.InvokeVoidAsync("stopRecording");
+        }
 
         // Get current chat
         var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);

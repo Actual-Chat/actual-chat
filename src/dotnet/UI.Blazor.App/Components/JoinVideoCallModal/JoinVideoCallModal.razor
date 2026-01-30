@@ -7,20 +7,21 @@
 <DialogFrame
     Class="join-video-call-modal modal-sm"
     ButtonsClass="wide-dialog-buttons"
-    Title="Join the video call">
+    Title="@ModalTitle">
     <Body>
     <FormBlock Class="">
-        <div class="c-members">
-            <ChatActivities
-                @key="@ModalModel.Chat.Id.Value"
-                Chat="@ModalModel.Chat"
-                MaxCount="3"
-                IsListening="true"/>
-            <span class="c-text">Lena J, Ethan Y and 8 others on the call</span>
-        </div>
-        <div class="c-rules">
-            <span class="c-rules-link">Chat Rules</span>
-        </div>
+        @if (ModalModel.Mode == VideoCallMode.Join) {
+            <div class="c-members">
+                <ChatActivities
+                    @key="@ModalModel.Chat.Id.Value"
+                    Chat="@ModalModel.Chat"
+                    MaxCount="3"
+                    IsListening="true"/>
+            </div>
+            <div class="c-rules">
+                <span class="c-rules-link">Chat Rules</span>
+            </div>
+        }
         <div @ref="_containerRef" class="c-video">
             <div class="video-frame">
                 <span class="plug-text">
@@ -58,7 +59,7 @@
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Class="btn-modal btn-primary">Join</Button>
+        <Button Class="btn-modal btn-primary">@ButtonText</Button>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
     </Buttons>
 </DialogFrame>
@@ -78,6 +79,14 @@
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private string ModalTitle => ModalModel.Mode == VideoCallMode.Start
+        ? "Start Video Call"
+        : "Join the video call";
+
+    private string ButtonText => ModalModel.Mode == VideoCallMode.Start
+        ? "Start"
+        : "Join";
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
@@ -155,5 +164,7 @@
 
     // Nested types
 
-    public sealed record Model(Chat Chat);
+    public enum VideoCallMode { Join, Start }
+
+    public sealed record Model(Chat Chat, VideoCallMode Mode = VideoCallMode.Join);
 }

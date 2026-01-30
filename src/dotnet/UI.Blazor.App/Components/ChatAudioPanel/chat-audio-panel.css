@@ -61,6 +61,7 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
 }
 .chat-audio-panel .language-button,
 .chat-audio-panel .playback-wrapper,
+.chat-audio-panel .video-wrapper,
 .chat-audio-panel .recorder-wrapper {
     @apply flex-none;
     @apply rounded-full;
@@ -69,12 +70,14 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover {
     @apply relative;
 }
 .chat-audio-panel .language-button .btn.btn-round,
-.chat-audio-panel .playback-wrapper .btn.btn-round {
+.chat-audio-panel .playback-wrapper .btn.btn-round,
+.chat-audio-panel .video-wrapper .btn.btn-round {
     @apply bg-post-panel md:bg-input;
     @apply text-audio-panel-button-text;
 }
 .list-view-layout:has(.chat-activity-panel.listening) .chat-audio-panel .language-button .btn.btn-round,
-.list-view-layout:has(.chat-activity-panel.listening) .chat-audio-panel .playback-wrapper .btn.btn-round {
+.list-view-layout:has(.chat-activity-panel.listening) .chat-audio-panel .playback-wrapper .btn.btn-round,
+.list-view-layout:has(.chat-activity-panel.listening) .chat-audio-panel .video-wrapper .btn.btn-round {
     @apply md:bg-01;
 }
 body.narrow .chat-audio-panel .language-button .btn.btn-round,
@@ -465,6 +468,38 @@ body.narrow .to-thin .rec-icon.text-mode-on {
     @apply outline outline-2 outline-primary outline-offset-[-1px];
     @apply bg-round-focus;
 }
+
+/* === 6.1. Video Toggle Wrapper === */
+
+.chat-audio-panel .video-wrapper.video-on {
+    @apply outline outline-2 outline-primary outline-offset-[-1px];
+    @apply bg-round-focus;
+}
+
+.chat-audio-panel .video-wrapper.video-on .btn.btn-round {
+    @apply text-primary;
+}
+
+.chat-audio-panel .video-wrapper.video-off .btn.btn-round {
+    @apply text-audio-panel-button-text;
+}
+
+/* Narrow mode video toggle in header */
+.audio-panel-header .video-wrapper {
+    @apply flex-none rounded-full;
+}
+
+.audio-panel-header .video-wrapper .btn.btn-round {
+    @apply bg-[var(--round-right-panel)];
+}
+
+.audio-panel-header .video-wrapper.video-on {
+    @apply outline outline-2 outline-primary outline-offset-[-1px];
+}
+
+.audio-panel-header .video-wrapper.video-on .btn.btn-round {
+    @apply text-primary;
+}
 .list-view-layout:has(.chat-activity-panel.listening) .playback-wrapper.listen-off-to-on,
 .list-view-layout:has(.chat-activity-panel.listening) .playback-wrapper.listen-on {
     @apply outline-primary outline-offset-[-1px];
@@ -713,6 +748,28 @@ body.narrow .audio-panel-wrapper .recorder-wrapper {
 }
 .audio-panel-header .btn-round {
     @apply bg-[var(--round-right-panel)];
+}
+
+/* === 11.5. Video Start Button === */
+
+/* Mobile video button - positioned top-right of recorder */
+.chat-audio-panel .recorder-button {
+    @apply relative;
+}
+body.narrow .chat-audio-panel .mobile-video-btn.btn-round {
+    @apply absolute -top-1 -right-1;
+    @apply z-20;
+    @apply w-10 h-10;
+    @apply bg-audio-panel-button;
+    @apply text-audio-panel-button-text;
+    @apply rounded-full;
+    @apply shadow-md;
+}
+body.narrow .chat-audio-panel .mobile-video-btn.btn-round .btn-content {
+    @apply w-10 h-10;
+}
+body.narrow .chat-audio-panel .mobile-video-btn.btn-round i {
+    @apply text-lg;
 }
 
 /* === 12. Volume Settings Button === */
