@@ -9,12 +9,11 @@ using Microsoft.Win32.SafeHandles;
 //   (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca5392)
 #pragma warning disable CA5392 // Use SecureString where possible
 
-public sealed class AudioProcessingModule : IDisposable
+public sealed class AudioProcessingModule : SafeDisposableBase
 {
     private readonly AudioProcessingHandle _apmHandle;
     private readonly AudioProcessingModuleConfig _moduleConfig;
     private readonly ProcessingConfig _streamConfig;
-    private bool _disposed;
 
     public AudioProcessingModule(StreamConfig inputConfig, StreamConfig outputConfig)
     {
@@ -32,10 +31,16 @@ public sealed class AudioProcessingModule : IDisposable
         };
     }
 
+    protected override void Dispose(bool disposing)
+    {
+        _apmHandle.DisposeSilently();
+        _moduleConfig.DisposeSilently();
+        _streamConfig.DisposeSilently();
+    }
+
     public void Configure(Action<AudioProcessingModuleConfig> configure)
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(AudioProcessingModule));
+        ThrowIfDisposed();
 
         configure(_moduleConfig);
         ThrowIfError(NativeMethods.webrtc_apm_apply_config(_apmHandle.DangerousGetHandle(), _moduleConfig.DangerousGetHandle()));
@@ -52,7 +57,7 @@ public sealed class AudioProcessingModule : IDisposable
 
     public unsafe void ProcessStream(ReadOnlySpan<float> capture, Span<float> output)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(AudioProcessingModule));
+        ThrowIfDisposed();
         if (capture.Length != output.Length)
             throw new ArgumentException("Capture and output buffers must match");
 
@@ -75,13 +80,12 @@ public sealed class AudioProcessingModule : IDisposable
 
     public unsafe void ProcessReverseStream(ReadOnlySpan<float> render, Span<float> output)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(AudioProcessingModule));
+        ThrowIfDisposed();
         if (render.Length != output.Length)
             throw new ArgumentException("Render and output buffers must match.");
 
         fixed (float* rPtr = render)
-        fixed (float* oPtr = output)
-        {
+        fixed (float* oPtr = output) {
             float** srcPtr = stackalloc float*[1];
             float** destPtr = stackalloc float*[1];
             srcPtr[0] = rPtr;
@@ -98,10 +102,8 @@ public sealed class AudioProcessingModule : IDisposable
 
     public unsafe void AnalyzeReverseStream(ReadOnlySpan<float> render)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(AudioProcessingModule));
-
-        fixed (float* rPtr = render)
-        {
+        ThrowIfDisposed();
+        fixed (float* rPtr = render) {
             float** srcPtr = stackalloc float*[1];
             srcPtr[0] = rPtr;
                 ThrowIfError(NativeMethods.webrtc_apm_analyze_reverse_stream(
@@ -113,41 +115,27 @@ public sealed class AudioProcessingModule : IDisposable
 
     public void SetAnalogLevel(int level)
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(AudioProcessingModule));
-
+        ThrowIfDisposed();
         NativeMethods.webrtc_apm_set_stream_analog_level(_apmHandle.DangerousGetHandle(), level);
     }
 
     public int GetRecommendedAnalogLevel()
-        => _disposed
-            ? throw new ObjectDisposedException(nameof(AudioProcessingModule))
-            : NativeMethods.webrtc_apm_recommended_stream_analog_level(_apmHandle.DangerousGetHandle());
+    {
+        ThrowIfDisposed();
+        return NativeMethods.webrtc_apm_recommended_stream_analog_level(_apmHandle.DangerousGetHandle());
+    }
 
     public void SetDelay(int milliseconds)
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(AudioProcessingModule));
-
+        ThrowIfDisposed();
         NativeMethods.webrtc_apm_set_stream_delay_ms(_apmHandle.DangerousGetHandle(), milliseconds);
     }
 
     public static int GetFrameSize(int sampleRateHz) =>
         checked((int)NativeMethods.webrtc_apm_get_frame_size(sampleRateHz));
 
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        _disposed = true;
-        _apmHandle.DisposeSilently();
-        _moduleConfig.DisposeSilently();
-        _streamConfig.DisposeSilently();
-    }
-
-
     // Private methods
+
     private static void ThrowIfError(int code)
     {
         if (code == 0)
