@@ -341,7 +341,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddMeter(CoreServerInstruments.Meter.Name)
             .AddMeter(AppInstruments.Meter.Name)
             .AddMeter(AppUIInstruments.Meter.Name)
-            .AddMeter(MLSearchInstruments.Meter.Name)
+            .AddMeter(MLSearchInstruments.Meter.Name) // TODO: Remove (MLSearch)
             // Disabled prometheus endpoint to test Otlp
             // .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
             //     cfg.ScrapeEndpointPath = "/metrics";
@@ -372,7 +372,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddSource(CoreServerInstruments.ActivitySource.Name)
             .AddSource(AppInstruments.ActivitySource.Name)
             .AddSource(AppUIInstruments.ActivitySource.Name)
-            .AddSource(MLSearchInstruments.ActivitySource.Name)
+            .AddSource(MLSearchInstruments.ActivitySource.Name) // TODO: Remove (MLSearch)
             .AddAspNetCoreInstrumentation(opt => {
                 var excludedPaths = new PathString[] {
                     "/favicon_voxt.ico",

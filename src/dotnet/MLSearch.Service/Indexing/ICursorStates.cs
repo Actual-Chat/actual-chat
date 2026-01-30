@@ -1,3 +1,4 @@
+// TODO: Remove (MLSearch)
 namespace ActualChat.MLSearch.Indexing;
 
 internal interface ICursorStates<TState> where TState : class

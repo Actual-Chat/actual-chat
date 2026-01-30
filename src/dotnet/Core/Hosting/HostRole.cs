@@ -34,7 +34,7 @@ public partial record struct HostRole(
     public static readonly HostRole SearchBackend = nameof(SearchBackend);
     public static readonly HostRole TranscriptionBackend = nameof(TranscriptionBackend);
     public static readonly HostRole UsersBackend = nameof(UsersBackend);
-    public static readonly HostRole MLSearchBackend = nameof(MLSearchBackend);
+    public static readonly HostRole MLSearchBackend = nameof(MLSearchBackend); // TODO: Remove (MLSearch)
     public static readonly HostRole TestBackend = nameof(TestBackend);
     public static readonly HostRole DiagnosticsBackend = nameof(DiagnosticsBackend);
 

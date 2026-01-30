@@ -99,6 +99,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
     public void ShowRecent(bool isOn)
         => _isShowRecentOn.Set(isOn);
 
+    // TODO: Remove (MLSearch)
     public async Task LaunchAISearch()
     {
         var searchChatId = await CreateSearchChat().ConfigureAwait(true);
@@ -111,6 +112,7 @@ public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotify
         await History.NavigateTo(Links.Chat(searchChatId)).ConfigureAwait(false);
     }
 
+    // TODO: Remove (MLSearch)
     private async Task<ChatId?> CreateSearchChat() {
         var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now);
         var title = "Search on " + now.ToInvariantString("g");

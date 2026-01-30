@@ -1,3 +1,4 @@
+// TODO: Remove (MLSearch)
 namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 internal sealed class EmbeddingModelProps(string id, int embeddingDimension, string uniqueKey)

@@ -30,7 +30,7 @@ public sealed class ShardScheme(
     public static readonly ShardScheme InviteBackend = new(nameof(InviteBackend), 1, HostRole.InviteBackend);
     public static readonly ShardScheme NotificationBackend = new(nameof(NotificationBackend), N, HostRole.NotificationBackend);
     public static readonly ShardScheme SearchBackend = new(nameof(SearchBackend), N, HostRole.SearchBackend);
-    public static readonly ShardScheme MLSearchBackend = new(nameof(MLSearchBackend), N, HostRole.MLSearchBackend);
+    public static readonly ShardScheme MLSearchBackend = new(nameof(MLSearchBackend), N, HostRole.MLSearchBackend); // TODO: Remove (MLSearch)
     public static readonly ShardScheme TranscriptionBackend = new(nameof(TranscriptionBackend), N, HostRole.TranscriptionBackend);
     public static readonly ShardScheme UsersBackend = new(nameof(UsersBackend), N, HostRole.UsersBackend);
     public static readonly ShardScheme TestBackend = new(nameof(TestBackend), N, HostRole.TestBackend); // Should be used only for testing
@@ -50,7 +50,7 @@ public sealed class ShardScheme(
         { InviteBackend.Id, InviteBackend },
         { NotificationBackend.Id, NotificationBackend },
         { SearchBackend.Id, SearchBackend },
-        { MLSearchBackend.Id, MLSearchBackend },
+        { MLSearchBackend.Id, MLSearchBackend }, // TODO: Remove (MLSearch)
         { TranscriptionBackend.Id, TranscriptionBackend },
         { UsersBackend.Id, UsersBackend },
         { TestBackend.Id, TestBackend },

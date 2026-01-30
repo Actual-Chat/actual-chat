@@ -1,3 +1,4 @@
+// TODO: Remove (MLSearch)
 namespace ActualChat.MLSearch.UnitTests;
 
 public class UniqueException : Exception

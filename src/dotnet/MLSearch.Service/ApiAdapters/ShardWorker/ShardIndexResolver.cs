@@ -1,3 +1,4 @@
+// TODO: Remove (MLSearch)
 namespace ActualChat.MLSearch.ApiAdapters.ShardWorker;
 
 internal interface IShardIndexResolver<in TShardKey>
