@@ -13,7 +13,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     {
         // We must return another RpcStream here - they aren't "shareable"
         var source = await Backend.GetAudio(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
-        return source == null ? null : RpcStream.New(source.AsAsyncEnumerable());
+        return source == null ? null : RpcStream.New((IAsyncEnumerable<byte[]>)source);
     }
 
     public async Task<RpcStream<TranscriptDiff>?> GetTranscript(string streamId, CancellationToken cancellationToken)
@@ -31,8 +31,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         if (diffs == null)
             return null;
 
-        var diffStream = diffs
-            .AsAsyncEnumerable()
+        var diffStream = ((IAsyncEnumerable<TranscriptDiff>)diffs)
             .SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken)
             .SuppressCancellation(cancellationToken);
         return RpcStream.New(diffStream);

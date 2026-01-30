@@ -310,7 +310,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var entries = await ListEntries()
             .Where(x => x.SupportsTranslation(false))
             .Take(count * 2)
-            .SelectAwait(async e => (e, await GetInternal(TranslationId.New(TextEntryId.New(e.ChatId, e.LocalId), language), cancellationToken).ConfigureAwait(false)))
+            .Select((ChatEntry e, CancellationToken ct) => SelectTranslationAsync(e, language, ct))
             .Where(x => x.Item2 is not null)
             .OrderBy(x => x.e.LocalId)
             .Select(x => new TranslationResult(x.e.Content, x.Item2!.Content))
@@ -630,6 +630,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     }
 
     // Private methods
+
+    private async ValueTask<(ChatEntry e, Translation?)> SelectTranslationAsync(ChatEntry e, Language language, CancellationToken cancellationToken)
+        => (e, await GetInternal(TranslationId.New(TextEntryId.New(e.ChatId, e.LocalId), language), cancellationToken).ConfigureAwait(false));
 
     private async Task<(TranslationSource? source, Translation? translation)> GetExisting(TranslationId id, CancellationToken cancellationToken)
     {

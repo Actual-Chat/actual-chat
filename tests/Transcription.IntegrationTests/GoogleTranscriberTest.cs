@@ -91,8 +91,8 @@ public class GoogleTranscriberTest(
             return audio;
 
         var delayedFrames = audio.GetFrames(CancellationToken.None)
-            .SelectAwait(async f => {
-                await Task.Delay(20);
+            .Select(async (AudioFrame f, CancellationToken _) => {
+                await Task.Delay(20).ConfigureAwait(false);
                 return f;
             });
         var delayedAudio = new AudioSource(

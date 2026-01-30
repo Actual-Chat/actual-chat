@@ -141,7 +141,6 @@
     <TrimmableAssembly Include="System.Data.Common" />
     <TrimmableAssembly Include="System.Collections.Immutable" />
     <TrimmableAssembly Include="System.Linq" />
-    <TrimmableAssembly Include="System.Linq.Async" />
     <TrimmableAssembly Include="System.Linq.Expressions" />
     <TrimmableAssembly Include="System.Private.CoreLib" />
     <TrimmableAssembly Include="System.Private.Xml" />

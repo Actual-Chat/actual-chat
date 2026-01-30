@@ -154,7 +154,7 @@ public class AsyncEnumerableExtTest(ITestOutputHelper @out) : TestBase(@out)
         var count = await source.Merge(otherSourceArray).CountAsync(cancellationToken: cts.Token);
         count.Should().Be(sequenceLength * (otherSourceLength + 1));
 
-        var sum = await source.Merge(otherSourceArray).SumAsync(i => i, cancellationToken: cts.Token);
+        var sum = await source.Merge(otherSourceArray).SumAsync(cts.Token);
         sum.Should().Be((otherSourceLength + 1) * (sequenceLength - 1) * sequenceLength / 2);
 
         WriteLine($"Count is {count}");

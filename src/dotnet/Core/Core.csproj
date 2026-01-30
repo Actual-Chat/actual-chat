@@ -15,7 +15,6 @@
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Microsoft.JSInterop" />
     <PackageReference Include="SauceControl.Blake2Fast" />
-    <PackageReference Include="System.Linq.Async" />
     <PackageReference Include="Ulid" />
   </ItemGroup>
 

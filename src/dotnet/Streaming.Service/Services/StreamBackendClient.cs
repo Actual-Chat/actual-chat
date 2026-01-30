@@ -23,7 +23,7 @@ public sealed class StreamBackendClient : IStreamClient
     {
         Log.LogDebug("GetAudio({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
         var rpcStream = await Backend.GetAudio(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
-        var stream = rpcStream?.AsAsyncEnumerable() ?? AsyncEnumerable.Empty<byte[]>();
+        var stream = (IAsyncEnumerable<byte[]>?)rpcStream ?? AsyncEnumerable.Empty<byte[]>();
         var (headerDataTask, dataStream) = stream
             .SuppressException<byte[], RpcReconnectFailedException>(cancellationToken)
             .SplitHead(cancellationToken);

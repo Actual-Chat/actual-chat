@@ -14,8 +14,9 @@ public static partial class AsyncEnumerableExt
         T value,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        _ = cancellationToken; // Cancellation is handled by the enumerator itself
         yield return value;
-        while (await enumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false))
+        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
             yield return enumerator.Current;
     }
 
@@ -168,9 +169,12 @@ public static partial class AsyncEnumerableExt
     public static async ValueTask<Option<T>> TryReadAsync<T>(
         this IAsyncEnumerator<T> source,
         CancellationToken cancellationToken = default)
-        => await source.MoveNextAsync(cancellationToken).ConfigureAwait(false)
+    {
+        _ = cancellationToken; // Cancellation is handled by the enumerator itself
+        return await source.MoveNextAsync().ConfigureAwait(false)
             ? source.Current
             : Option<T>.None;
+    }
 
     // ReadResultAsync
 
@@ -178,8 +182,9 @@ public static partial class AsyncEnumerableExt
         this IAsyncEnumerator<T> source,
         CancellationToken cancellationToken = default)
     {
+        _ = cancellationToken; // Cancellation is handled by the enumerator itself
         try {
-            if (!await source.MoveNextAsync(cancellationToken).ConfigureAwait(false))
+            if (!await source.MoveNextAsync().ConfigureAwait(false))
                 return ChannelExt.GetChannelClosedResult<T>();
             return source.Current;
         }
@@ -236,7 +241,7 @@ public static partial class AsyncEnumerableExt
             bool hasMore;
             T item = default!;
             try {
-                hasMore = await enumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false);
+                hasMore = await enumerator.MoveNextAsync().ConfigureAwait(false);
                 if (hasMore)
                     item = enumerator.Current;
             }
@@ -264,7 +269,7 @@ public static partial class AsyncEnumerableExt
             bool hasMore;
             T item = default!;
             try {
-                hasMore = await enumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false);
+                hasMore = await enumerator.MoveNextAsync().ConfigureAwait(false);
                 if (hasMore)
                     item = enumerator.Current;
             }
