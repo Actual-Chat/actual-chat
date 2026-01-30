@@ -205,6 +205,7 @@
     <!-- CA1308: Replace the call to 'ToLowerInvariant' with 'ToUpperInvariant' -->
     <!-- CA1508: someVar != null is always 'false' - !!! Gives too many false positives -->
     <!-- CA1510: Use 'ArgumentNullException.ThrowIfNull' instead of explicitly throwing a new exception instance -->
+    <!-- CA1515: Consider making public types internal -->
     <!-- CA1707: Remove the underscores from type name -->
     <!-- CA1711: Rename type name MacNotificationsPermission so that it does not end in 'Permission' -->
     <!-- CA1720: Identifier 'Long' contains type name -->
@@ -225,7 +226,7 @@
     <!-- CA2234: Modify M to call 'PostAsync(Uri,...)' instead of 'PostAsync(string, ...)' -->
     <!-- CA5394: Random is an insecure random number generator -->
     <NoWarn>$(NoWarn);CA1001;CA1002;CA1003;CA1030;CA1031;CA1033;CA1034;CA1040;CA1043</NoWarn>
-    <NoWarn>$(NoWarn);CA1051;CA1054;CA1055;CA1056;CA1063;CA1065;CA1308;CA1508;CA1510</NoWarn>
+    <NoWarn>$(NoWarn);CA1051;CA1054;CA1055;CA1056;CA1063;CA1065;CA1308;CA1508;CA1510;CA1515</NoWarn>
     <NoWarn>$(NoWarn);CA1707;CA1711;CA1720;CA1724;CA1725</NoWarn>
     <NoWarn>$(NoWarn);CA1802;CA1805;CA1810;CA1815;CA1816;CA1819;CA1848;CA1859;CA1873</NoWarn>
     <NoWarn>$(NoWarn);CA2000;CA2213;CA2225;CA2234;CA5394</NoWarn>
