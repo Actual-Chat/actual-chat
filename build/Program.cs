@@ -466,7 +466,10 @@ internal static class Program
 
         try {
             /// <see cref="RunTargetsAndExitAsync"/> will hang Target on ctrl+c
-            await RunTargetsWithoutExitingAsync(targets:arguments, options, messageOnly:ex => ex is OperationCanceledException || ex is WithoutStackException).ConfigureAwait(false);
+            await RunTargetsWithoutExitingAsync(
+                targets: arguments,
+                options: options,
+                messageOnly: ex => ex is OperationCanceledException or WithoutStackException).ConfigureAwait(false);
             return 0;
         }
         catch (TargetFailedException targetException) {
