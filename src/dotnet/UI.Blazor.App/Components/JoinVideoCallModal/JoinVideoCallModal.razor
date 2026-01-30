@@ -59,7 +59,7 @@
     </FormBlock>
     </Body>
     <Buttons>
-        <Button Class="btn-modal btn-primary">@ButtonText</Button>
+        <Button Class="btn-modal btn-primary" Click="@OnJoinClick">@ButtonText</Button>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
     </Buttons>
 </DialogFrame>
@@ -87,6 +87,8 @@
     private string ButtonText => ModalModel.Mode == VideoCallMode.Start
         ? "Start"
         : "Join";
+
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
@@ -145,6 +147,19 @@
             return;
 
         await _jsRef.InvokeAsync<bool>("switchCamera", _selectedDeviceId);
+    }
+
+    private async Task OnJoinClick() {
+        // Stop preview (free camera resource)
+        await DisposeAsync();
+
+        // Start video call with selected camera using centralized state
+        var chatId = ModalModel.Chat.Id;
+        var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+        ChatVideoUI.SetRecordingChatId(chatId, deviceId);
+
+        // Close modal
+        Modal.Close();
     }
 
     private async Task LoadVideoDevices() {

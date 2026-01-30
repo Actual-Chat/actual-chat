@@ -7,7 +7,10 @@
 @{
     var m = State.Value;
     var cls = m.IsRightPanelVisible ? "rp-visible" : "";
-    var recordingCls = _isRecording ? "recording" : "";
+    var isRecording = m.VideoState.IsRecording;
+    var hasError = m.VideoState.HasError;
+    var errorMessage = m.VideoState.ErrorMessage ?? "";
+    var recordingCls = isRecording ? "recording" : "";
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
     var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
 }
@@ -25,7 +28,7 @@
             </div>
             <div class="video-controls show-with-delay">
                 @if (_videoDevices.Count > 1) {
-                    <select @bind="_selectedCameraDeviceId" @bind:after="async () => await OnSelectedCameraChanged(_selectedCameraDeviceId)" class="camera-select" disabled="@_isRecording">
+                    <select @bind="_selectedCameraDeviceId" @bind:after="async () => await OnSelectedCameraChanged(_selectedCameraDeviceId)" class="camera-select" disabled="@isRecording">
                         <option value="">Default Camera</option>
                         @foreach (var device in _videoDevices) {
                             <option value="@device.DeviceId">@device.Label</option>
@@ -33,16 +36,16 @@
                     </select>
                 }
                 <HeaderButton Class="@($"record-btn {recordingCls}")"
-                              Name="@(_isRecording ? "Stop Recording" : "Start Recording")">
-                    <i class="@(_isRecording ? "icon-stop" : "icon-video") text-lg"></i>
+                              Name="@(isRecording ? "Stop Recording" : "Start Recording")">
+                    <i class="@(isRecording ? "icon-stop" : "icon-video") text-lg"></i>
                 </HeaderButton>
             </div>
             <HeaderButton Class="expand-btn show-with-delay">
                 <i class="icon-expand text-lg"></i>
             </HeaderButton>
-            @if (_hasError) {
+            @if (hasError) {
                 <div class="video-error">
-                    <span>@_errorMessage</span>
+                    <span>@errorMessage</span>
                 </div>
             }
         </div>
@@ -52,17 +55,16 @@
 @code {
     public sealed record Model(
         bool IsRightPanelVisible,
-        VideoStreamInfo[] RemoteStreams
+        VideoStreamInfo[] RemoteStreams,
+        ChatVideoState VideoState
     ) {
-        public static readonly Model None = new(false, []);
+        public static readonly Model None = new(false, [], ChatVideoState.None);
     }
 
     private record VideoDevice(string DeviceId, string Label);
 
     private bool _rendered;
-    private bool _isRecording;
-    private bool _hasError;
-    private string _errorMessage = "";
+    private bool _autoStartPending;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
     private static readonly string JSSetSessionContextMethod = "setSessionContext";
 
@@ -82,6 +84,7 @@
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public bool Show { get; set; }
+    [Parameter] public string? PendingCameraDeviceId { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -98,12 +101,24 @@
 
             await UpdateSessionContext();
             await LoadVideoDevices();
+
+            // Auto-start recording if requested from JoinVideoCallModal
+            var videoState = State.Value.VideoState;
+            if (_autoStartPending && !videoState.IsRecording) {
+                _autoStartPending = false;
+                if (!string.IsNullOrEmpty(PendingCameraDeviceId)) {
+                    _selectedCameraDeviceId = PendingCameraDeviceId;
+                    await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
+                }
+                await JSRef.InvokeVoidAsync("startRecording");
+            }
         }
     }
 
     protected override async Task OnParametersSetAsync() {
         if (Show && !_rendered) {
             _rendered = true;
+            _autoStartPending = PendingCameraDeviceId != null;
         } else if (!Show && _rendered && JSRef is not null) {
             await JSRef.InvokeVoidAsync("startClosing");
         }
@@ -115,8 +130,7 @@
     [JSInvokable]
     public async Task CloseVideoPanel() {
         _rendered = false;
-        _isRecording = false;
-        ChatVideoUI.SetLocalVideoRecording(false);
+        ChatVideoUI.OnRecordingStopped();
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
 
@@ -128,26 +142,21 @@
 
     [JSInvokable]
     public async Task OnRecordingStarted() {
-        _isRecording = true;
-        _hasError = false;
-        _errorMessage = "";
-        ChatVideoUI.SetLocalVideoRecording(true);
+        var chatId = Hub.ChatUI.SelectedChatId.Value;
+        if (chatId != null)
+            ChatVideoUI.OnRecordingStarted(chatId);
         await InvokeAsync(StateHasChanged);
     }
 
     [JSInvokable]
     public async Task OnRecordingStopped() {
-        _isRecording = false;
-        ChatVideoUI.SetLocalVideoRecording(false);
+        ChatVideoUI.OnRecordingStopped();
         await InvokeAsync(StateHasChanged);
     }
 
     [JSInvokable]
     public async Task OnRecordingError(string error) {
-        _hasError = true;
-        _errorMessage = error;
-        _isRecording = false;
-        ChatVideoUI.SetLocalVideoRecording(false);
+        ChatVideoUI.OnRecordingError(error);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -188,7 +197,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options {
-                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, []),
+                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], ChatVideoState.None),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -198,22 +207,23 @@
         if (!ScreenSize.IsNarrow())
             isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
 
-        // Check if stop recording was requested
-        var stopRequested = await ChatVideoUI.StopVideoRecordingRequested.Use(cancellationToken).ConfigureAwait(false);
-        if (stopRequested && _isRecording && JSRef is not null) {
-            ChatVideoUI.ResetStopRecordingRequest();
-            _ = JSRef.InvokeVoidAsync("stopRecording");
-        }
-
         // Get current chat
         var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
         if (chatId is null)
-            return new Model(isRightPanelVisible, []);
+            return new Model(isRightPanelVisible, [], ChatVideoState.None);
+
+        // Get centralized video state
+        var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+
+        // Check if recording was stopped externally
+        var wasRecording = State.Value.VideoState.IsRecording;
+        if (wasRecording && !videoState.IsRecording && JSRef is not null)
+            _ = JSRef.InvokeVoidAsync("stopRecording");
 
         // Get active video streams for this chat
         var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
         if (activeStreams is null || activeStreams.Streams.Length == 0)
-            return new Model(isRightPanelVisible, []);
+            return new Model(isRightPanelVisible, [], videoState);
 
         // Filter out own stream (shown in local preview)
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken);
@@ -221,6 +231,6 @@
             .Where(s => ownAuthor?.Id != s.AuthorId)
             .ToArray();
 
-        return new Model(isRightPanelVisible, remoteStreams);
+        return new Model(isRightPanelVisible, remoteStreams, videoState);
     }
 }
