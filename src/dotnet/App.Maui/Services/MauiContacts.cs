@@ -36,7 +36,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             }
 
             var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-            var ownPhone = account.HasVerifiedPhone()
+            var ownPhone = account.IsPhoneVerified()
                 ? account.Phone?.E164Value ?? ""
                 : "";
 
