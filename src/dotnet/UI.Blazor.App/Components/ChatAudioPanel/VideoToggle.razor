@@ -38,7 +38,8 @@
 
         var streamingAuthorIds = await ChatVideoUI.GetVideoStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var isLocalVideoRecording = await ChatVideoUI.IsLocalVideoRecording.Use(cancellationToken).ConfigureAwait(false);
+        var recordingChatId = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false);
+        var isLocalVideoRecording = recordingChatId == chatId;
 
         var isOwnVideoStreaming = ownAuthor != null && streamingAuthorIds.Contains(ownAuthor.Id);
         var areOthersVideoStreaming = streamingAuthorIds.Length > (isOwnVideoStreaming ? 1 : 0);
@@ -50,7 +51,7 @@
         var m = State.Value;
         if (m.IsOwnVideoStreaming || m.IsLocalVideoRecording) {
             // Stop own video recording (keep panel open for remote streams)
-            ChatVideoUI.RequestStopVideoRecording();
+            ChatVideoUI.SetRecordingChatId(null);
         } else {
             // Open join/start modal
             var mode = m.AreOthersVideoStreaming

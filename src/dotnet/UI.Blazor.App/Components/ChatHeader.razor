@@ -8,6 +8,12 @@
     var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
     var isPanelVisible = IsRecordingHere || IsListeningHere || m.IsAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
+
+    // Show video panel when recording is requested (via JoinVideoCallModal)
+    if (m.VideoState?.IsRecording == true && !_showVideoPanel) {
+        _showVideoPanel = true;
+        _pendingCameraDeviceId = m.VideoState.SelectedCameraDeviceId;
+    }
 }
 
 @if (m.HasSelection) {
@@ -98,10 +104,11 @@
     </div>
 }
 
-<VideoPanel Show="@_showVideoPanel"/>
+<VideoPanel Show="@_showVideoPanel" PendingCameraDeviceId="@_pendingCameraDeviceId"/>
 
 @code {
     private bool _showVideoPanel;
+    private string? _pendingCameraDeviceId;
 
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
@@ -141,6 +148,7 @@
 
         Chat? chat = null;
         ChatAudioState? audioState = null;
+        ChatVideoState? videoState = null;
         if (chatId is not null)
             chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 
@@ -148,8 +156,10 @@
         if (chatId is not null)
             authorIds = await LiveStreamUI.GetStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
 
-        if (chatId is not null)
+        if (chatId is not null) {
             audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+            videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        }
 
         var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
 
@@ -159,6 +169,7 @@
         return new() {
             Chat = chat,
             AudioState = audioState,
+            VideoState = videoState,
             IsAnyoneTalking = authorIds.Length > 0,
             IsAnyoneVideoStreaming = isAnyoneVideoStreaming,
             HasSelection = hasSelection,
@@ -211,6 +222,7 @@
 
         public Chat? Chat { get; init; }
         public ChatAudioState? AudioState { get; init; }
+        public ChatVideoState? VideoState { get; init; }
         public bool IsAnyoneTalking { get; init; }
         public bool IsAnyoneVideoStreaming { get; init; }
         public bool HasSelection { get; init; }

@@ -6,32 +6,90 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <summary>
 /// Provides reactive access to video stream data for the current chat.
 /// Player lifecycle management is handled by VideoTrackPlayer components.
+/// State is in-memory only (not persisted) since video recording can't survive page refresh.
 /// </summary>
 public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
 {
-    private readonly IMutableState<bool> _stopVideoRecordingRequested;
-    private readonly IMutableState<bool> _isLocalVideoRecording;
+    // Centralized video state
+    private readonly IMutableState<ChatId?> _recordingChatId;
+    private readonly IMutableState<string?> _selectedCameraDeviceId;
+    private readonly IMutableState<string?> _errorMessage;
 
     private IRealtimeStreaming RealtimeStreaming => Hub.Services.GetRequiredService<IRealtimeStreaming>();
     private IAuthors Authors => Hub.Authors;
 
-    public IState<bool> StopVideoRecordingRequested => _stopVideoRecordingRequested;
-    public IState<bool> IsLocalVideoRecording => _isLocalVideoRecording;
-
     public ChatVideoUI(AppUIHub hub) : base(hub)
     {
-        _stopVideoRecordingRequested = StateFactory.NewMutable(false);
-        _isLocalVideoRecording = StateFactory.NewMutable(false);
+        _recordingChatId = StateFactory.NewMutable((ChatId?)null);
+        _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
+        _errorMessage = StateFactory.NewMutable((string?)null);
     }
 
-    public void RequestStopVideoRecording()
-        => _stopVideoRecordingRequested.Value = true;
+    // Core state accessors
 
-    public void ResetStopRecordingRequest()
-        => _stopVideoRecordingRequested.Value = false;
+    [ComputeMethod]
+    public virtual async Task<ChatVideoState> GetState(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var recordingChatId = await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var isRecording = recordingChatId == chatId;
 
-    public void SetLocalVideoRecording(bool isRecording)
-        => _isLocalVideoRecording.Value = isRecording;
+        var selectedCameraDeviceId = isRecording
+            ? await _selectedCameraDeviceId.Use(cancellationToken).ConfigureAwait(false)
+            : null;
+        var errorMessage = isRecording
+            ? await _errorMessage.Use(cancellationToken).ConfigureAwait(false)
+            : null;
+
+        return new ChatVideoState(
+            chatId,
+            isRecording,
+            selectedCameraDeviceId,
+            isRecording && errorMessage != null,
+            errorMessage);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ChatId?> GetRecordingChatId(CancellationToken cancellationToken = default)
+        => await _recordingChatId.Use(cancellationToken).ConfigureAwait(false);
+
+    // State mutators
+
+    public void SetRecordingChatId(ChatId? chatId, string? cameraDeviceId = null)
+    {
+        if (chatId is null) {
+            _recordingChatId.Value = null;
+            return;
+        }
+
+        _recordingChatId.Value = chatId;
+        _selectedCameraDeviceId.Value = cameraDeviceId;
+        _errorMessage.Value = null;
+    }
+
+    public void SetSelectedCamera(string? cameraDeviceId)
+        => _selectedCameraDeviceId.Value = cameraDeviceId;
+
+    public void SetError(string? errorMessage)
+        => _errorMessage.Value = errorMessage;
+
+    // JS callback handlers (called from VideoPanel)
+
+    public void OnRecordingStarted(ChatId chatId)
+    {
+        if (_recordingChatId.Value == chatId)
+            return;
+        _recordingChatId.Value = chatId;
+        _errorMessage.Value = null;
+    }
+
+    public void OnRecordingStopped()
+        => _recordingChatId.Value = null;
+
+    public void OnRecordingError(string error)
+    {
+        _errorMessage.Value = error;
+        _recordingChatId.Value = null;
+    }
 
     [ComputeMethod]
     public virtual async Task<ActiveVideoStreams?> GetActiveVideoStreams(ChatId? chatId, CancellationToken cancellationToken = default)
