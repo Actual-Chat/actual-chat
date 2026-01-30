@@ -183,7 +183,7 @@ public partial class DeepgramTranscriber : ITranscriber
                 if (lastFrame != null) {
                     // Subtract the artificial silent prefix from timing to keep scheduler in sync with original audio
                     var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
-                    if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully())
+                    if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully)
                         processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
                     // state.ProcessedAudioDuration = (float)processedAudioDuration.TotalSeconds;
                     nextChunkAt = startedAt

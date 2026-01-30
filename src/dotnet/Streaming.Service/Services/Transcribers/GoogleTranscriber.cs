@@ -202,7 +202,7 @@ public partial class GoogleTranscriber : ITranscriber
 
                 if (lastFrame != null) {
                     var processedAudioDuration = (lastFrame.Offset + lastFrame.Duration - SilentPrefixDuration).Positive();
-                    if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully())
+                    if (audioSource.WhenDurationAvailable.IsCompletedSuccessfully)
                         processedAudioDuration = TimeSpanExt.Min(audioSource.Duration, processedAudioDuration);
                     state.ProcessedAudioDuration = (float)processedAudioDuration.TotalSeconds;
                     nextChunkAt = startedAt
