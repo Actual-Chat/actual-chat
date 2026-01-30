@@ -16,8 +16,8 @@
     @apply ordinary-header;
     @apply absolute top-0 z-20;
     @apply w-full;
+    @apply bg-[var(--black-80)];
     @apply md:shadow-md;
-    background: linear-gradient(to bottom, var(--black-60) 40%, var(--transparent) 100%);
     transition: transform 300ms ease-in-out, opacity 300ms ease-in-out;
 }
 .image-viewer-header > .c-author {
@@ -66,8 +66,8 @@ body.hoverable .image-viewer-header .btn-h:hover {
     @apply absolute bottom-0;
     @apply flex-x justify-center items-center;
     @apply h-14 w-full;
+    @apply bg-[var(--black-80)];
     @apply md:shadow-md-top;
-    background: linear-gradient(to top, var(--black-60) 40%, var(--transparent) 100%);
     transition: transform 200ms ease-in-out, opacity 200ms ease-in-out;
 
 }
@@ -98,6 +98,18 @@ swiper-slide img {
 body.device-ios swiper-slide .swiper-zoom-container,
 body.device-ios swiper-slide img {
     touch-action: none;
+}
+swiper-container::part(button-next) {
+    @apply right-0;
+    @apply py-4 pl-4 pr-2;
+    @apply rounded-l-2xl;
+    @apply bg-[var(--black-60)];
+}
+swiper-container::part(button-prev) {
+    @apply left-0;
+    @apply py-4 pl-2 pr-4;
+    @apply rounded-r-2xl;
+    @apply bg-[var(--black-60)];
 }
 .media-swiper .video-wrapper {
     @apply flex items-center justify-center;
@@ -131,10 +143,14 @@ body.device-ios swiper-slide img {
 .video-wrapper .video-control {
     @apply absolute z-10 left-0 right-0 bottom-0;
     @apply flex-y items-center gap-x-2;
-    @apply h-14;
     @apply px-4;
-    @apply rounded-t-xl;
-    background: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 5%,  rgba(0,0,0,0.75) 20% 80%, rgba(0,0,0,0.5) 95%, rgba(0,0,0,0) 100%);
+    background: linear-gradient(
+        to right,
+        var(--black-60) 0%,
+        var(--black-80) 10%,
+        var(--black-90) 20% 80%,
+        var(--black-80) 90%,
+        var(--black-60) 100%);
     backdrop-filter: blur(2px);
     transition: opacity 300ms ease-in-out;
 }
@@ -192,7 +208,7 @@ body.device-ios swiper-slide img {
 }
 .video-wrapper .video-control .c-line-1 {
     @apply flex-1 flex-x items-center justify-center gap-x-4;
-    @apply w-full;
+    @apply w-full min-h-10;
 }
 .video-control .c-line-1 .play-btn.is-playing .play-icon {
     @apply hidden;
@@ -210,7 +226,7 @@ body.device-ios swiper-slide img {
 .video-wrapper .video-control .c-line-2 {
     @apply relative;
     @apply flex-x items-center gap-x-4;
-    @apply w-full h-5;
+    @apply w-full min-h-10;
 }
 .video-wrapper .video-control progress {
     @apply relative;
@@ -263,7 +279,7 @@ body.device-ios swiper-slide img {
     display: flex;
     justify-content: center;
     align-items: center;
-    filter: brightness(0.25);
+    filter: brightness(0.5);
     pointer-events: auto;
 }
 swiper-container.media-preview-swiper::part(wrapper) {
