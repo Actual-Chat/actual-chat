@@ -1,6 +1,6 @@
 using System.Security.Claims;
+using ActualChat.Authentication;
 using ActualChat.Db.Module;
-using Microsoft.EntityFrameworkCore;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Redis.Module;
@@ -13,11 +13,11 @@ using ActualChat.Users.Internal;
 using ActualChat.Users.Models;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Phone.Internal;
-using ActualChat.Authentication;
 using ActualLab.Fusion.Server;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders.Physical;
 using Newtonsoft.Json;
 using Twilio;
@@ -88,9 +88,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
                 options.GenerateClientSecret = true;
                 options.UsePrivateKey(_ => new PhysicalFileInfo(new FileInfo(Settings.ApplePrivateKeyPath)));
             });
-            authentication.AddScheme<PhoneAuthOptions, PhoneAuthHandler>(
-                AuthSchema.Phone,
-                options => options.CallbackPath = Constants.Auth.Phone.CallbackPath);
             /*
             authentication.AddMicrosoftAccount(options => {
                 options.ClientId = Settings.MicrosoftAccountClientId;
