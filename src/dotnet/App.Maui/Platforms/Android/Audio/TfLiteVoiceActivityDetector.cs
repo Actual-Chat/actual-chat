@@ -7,7 +7,7 @@ using Xamarin.TensorFlow.Lite;
 namespace ActualChat.App.Maui.Audio;
 
 public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
-    : VoiceActivityDetector(services), IDisposable
+    : VoiceActivityDetector(services)
 {
     private Interpreter? _interpreter;
     private int _lastFrames = -1;           // Track current batch size for ResizeInput
@@ -80,9 +80,8 @@ public sealed class TfLiteVoiceActivityDetector(IServiceProvider services)
         _lastFrames = -1;
     }
 
-    public new void Dispose()  // Override if base has Dispose, else just implement
+    protected override void Dispose(bool disposing)
     {
-        base.Dispose();
         ReleaseFramesArray();
         _interpreter?.Close();
         _interpreter?.Dispose();

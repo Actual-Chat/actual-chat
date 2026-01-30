@@ -12,7 +12,7 @@ public sealed class OnnxVoiceActivityDetector(IServiceProvider services, Func<Ta
 
     public override bool IsInitialized => _session != null;
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
         _session?.Dispose();
         _session = null;

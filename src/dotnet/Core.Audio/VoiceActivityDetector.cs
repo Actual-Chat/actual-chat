@@ -10,7 +10,7 @@ namespace ActualChat.Audio;
 ///     - Context: 64 samples prepended to each window (total model input = 576 floats)
 ///     - Recurrent state: [2,1,128] float tensor persisted between calls
 /// </summary>
-public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncDisposable, IDisposable
+public abstract class VoiceActivityDetector(IServiceProvider services) : SafeDisposableBase
 {
     // AUDIO_REC constants (subset)
     public const int SampleRate = 16000; // AUDIO_REC.SAMPLE_RATE (Constants.Audio.RecordingSampleRate)
@@ -35,7 +35,6 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
     private readonly RunningEma _probEma = new (0.5f, 5);
     private readonly RunningUnitMedian _probMedian = new ();
 
-    private bool _disposed;
     private long? _lastConversationSignalAtSample;
     private int _maxPauseSamples;
     private int _pauseCancelSamples;
@@ -50,26 +49,11 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
 
     public abstract bool IsInitialized { get; }
 
-    public ValueTask DisposeAsync()
-    {
-        Dispose();
-        return ValueTask.CompletedTask;
-    }
-
-    public virtual void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        _disposed = true;
-    }
-
     /// <summary>
     ///     Initializes the VAD by loading the NN model.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     public abstract Task EnsureInitialized(CancellationToken cancellationToken = default);
-
 
     /// <summary>
     ///     Resets recurrent state and context to the initial values.
@@ -234,11 +218,5 @@ public abstract class VoiceActivityDetector(IServiceProvider services) : IAsyncD
         _lastConversationSignalAtSample = null;
         _maxPauseSamples = (int)(SampleRate * MaxPauseS);
         LastActivityEvent = VoiceActivityChange.NoVoiceActivity;
-    }
-
-    protected void ThrowIfDisposed()
-    {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(VoiceActivityDetector));
     }
 }
