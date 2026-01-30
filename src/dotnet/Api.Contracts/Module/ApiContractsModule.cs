@@ -52,7 +52,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
 
         // Search
         fusion.AddClient<ISearch>();
-        fusion.AddClient<IMLSearch>();
+        fusion.AddClient<IMLSearch>(); // TODO: Remove (MLSearch)
 
         // Contacts
         fusion.AddClient<IContacts>();
