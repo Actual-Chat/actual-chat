@@ -47,6 +47,24 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
     }
 
     [Theory]
+    [InlineData("This is a long English sentence with many words that clearly indicate the primary language of this message, but it contains one word in Russian: привет", "en-US")]
+    [InlineData("Это длинное русское предложение с множеством слов, которое явно указывает на основной язык этого сообщения, но оно содержит одно слово на английском: hello", "ru-RU")]
+    public async Task ShouldDetectOnlyPrimaryLanguageWhenOneWordIsInAnotherLanguage(string text, string expectedLanguage)
+    {
+        // arrange
+        var expectedLanguages = new[] { Language.Parse(expectedLanguage) };
+        var timeout = TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(20) : TimeSpan.FromSeconds(10);
+        var cts = new CancellationTokenSource(timeout.Debuggable());
+        var cancellationToken = cts.Token;
+
+        // act
+        var languages = await Sut.DetectLanguages(text, cancellationToken);
+
+        // assert
+        languages.Should().BeEquivalentTo(expectedLanguages, "for text: <<<{0}>>>", text);
+    }
+
+    [Theory]
     [InlineData("hello", "en-US")]
     [InlineData("До скорых.", "ru-RU")]
     [InlineData("Попытка", "ru-RU")]
