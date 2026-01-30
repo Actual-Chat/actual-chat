@@ -94,7 +94,7 @@ public class Medias(IServiceProvider services) : IMedias
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
 
         // Process upload and bind to media
-        var mediaContent = await Commander.Call(new MediaBackend_ProcessUpload(mediaId, uploadId), cancellationToken).ConfigureAwait(false);
+        var mediaContent = await Commander.Call(new UploadsBackend_ProcessAndSaveContent(uploadId, mediaId), cancellationToken).ConfigureAwait(false);
 
         // Update status to Ready
         var statusInfo = new MediaStatusInfo(mediaId, MediaStatus.Ready, MediaPreparingStage.None, 100);

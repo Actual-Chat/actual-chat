@@ -12,6 +12,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     private UploadsStorage UploadsStorage { get; } = services.GetRequiredService<UploadsStorage>();
     private GoogleResumableUploads GoogleResumableUploads => field ??= new GoogleResumableUploads(StorageClient.Create(), Services.LogFor<GoogleResumableUploads>());
     private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
+    private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
 
     private bool IsGoogleStorage => Blobs is GoogleCloudBlobStorages;
 
@@ -119,17 +120,28 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (upload is null)
             throw UploadNotFound();
 
-        var chatId = upload.ExtractChatIdFromTag();
-        var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
-        if (offset != upload.Length)
-            throw StandardError.Constraint("Upload length mismatch. Upload has not been completed.");
+        await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
-        var uploadedStreamFile = new UploadedStreamFile(
-            upload.FileName,
-            upload.ContentType,
-            upload.Length!.Value,
-            () => UploadsStorage.GetDataFile(uploadId, cancellationToken));
-        return await MediaProcessor.ProcessAttachment(chatId, uploadedStreamFile, cancellationToken).ConfigureAwait(false);
+        var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
+        var chatId = upload.ExtractChatIdFromTag();
+        var mediaId = MediaId.New(chatId.Value);
+        using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
+        return await MediaSaver.Save(mediaId, processedFile, isUpdate:false, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task<MediaContent> OnProcessAndSaveContent(UploadsBackend_ProcessAndSaveContent command, CancellationToken cancellationToken)
+    {
+        var (uploadId, mediaId) = command;
+
+        var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
+        if (upload == null)
+            throw UploadNotFound();
+
+        await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
+
+        var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
+        using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
+        return await MediaSaver.Save(mediaId, processedFile, isUpdate:true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<Uri> InitiateUploadSession(Upload upload, CancellationToken cancellationToken)
@@ -156,4 +168,21 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
     private static Exception UploadNotFound()
         => StandardError.Upload.NotFound();
+
+    private async Task EnsureUploadHasBeenCompleted(Upload upload, CancellationToken cancellationToken)
+    {
+        var offset = await UploadsStorage.GetUploadOffset(upload.Id, cancellationToken).ConfigureAwait(false);
+        if (offset != upload.Length)
+            throw StandardError.Constraint("Upload length mismatch. Upload has not been completed.");
+    }
+
+    private UploadedStreamFile GetUploadedStreamFileFrom(Upload upload, CancellationToken cancellationToken)
+    {
+        var uploadedFile = new UploadedStreamFile(
+            upload.FileName,
+            upload.ContentType,
+            upload.Length!.Value,
+            () => UploadsStorage.GetDataFile(upload.Id, cancellationToken));
+        return uploadedFile;
+    }
 }

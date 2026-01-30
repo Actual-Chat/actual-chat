@@ -1,6 +1,5 @@
 using ActualChat.Db;
 using ActualChat.Media.Db;
-using ActualChat.Uploads;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,12 +11,6 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         = services.GetRequiredService<IDbEntityResolver<string, DbMedia>>();
     private IContentSaver ContentSaver { get; }
         = services.GetRequiredService<IContentSaver>();
-    private IUploadsBackend UploadsBackend { get; }
-        = services.GetRequiredService<IUploadsBackend>();
-    private UploadsStorage UploadsStorage { get; }
-        = services.GetRequiredService<UploadsStorage>();
-    private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
-        = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
 
     // [ComputeMethod]
     public virtual async Task<Media?> Get(MediaId? mediaId, CancellationToken cancellationToken)
@@ -202,84 +195,5 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
 
         Log.LogInformation("<- OnCopyChat({CorrelationId}) inserted {Count} media records",
             correlationId, updateCount);
-    }
-
-    // [CommandHandler]
-    public virtual async Task<MediaContent> OnProcessUpload(MediaBackend_ProcessUpload command, CancellationToken cancellationToken)
-    {
-        var (mediaId, uploadId) = command;
-        if (Invalidation.IsActive) {
-            _ = Get(mediaId, default);
-            _ = GetFull(mediaId, default);
-            return default!;
-        }
-
-        // Get the existing media
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbMedia = await dbContext.Media
-            .Get(mediaId.Value, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbMedia == null)
-            throw StandardError.NotFound<Media>();
-
-        // Get and verify upload
-        var upload = await UploadsBackend.Get(uploadId, cancellationToken).ConfigureAwait(false);
-        if (upload == null)
-            throw StandardError.Upload.NotFound();
-
-        var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
-        if (offset != upload.Length)
-            throw StandardError.Constraint("Upload length mismatch. Upload has not been completed.");
-
-        // Create UploadedFile from the upload
-        var uploadedFile = new UploadedStreamFile(
-            upload.FileName,
-            upload.ContentType,
-            upload.Length!.Value,
-            () => UploadsStorage.GetDataFile(uploadId, cancellationToken));
-
-        // Process the file
-        using var processedFile = await UploadProcessors.Process(uploadedFile, cancellationToken).ConfigureAwait(false);
-
-        // Save main content
-        var contentId = mediaId.GetContentId(Path.GetExtension(processedFile.File.FileName));
-        var stream = await processedFile.File.Open().ConfigureAwait(false);
-        await using (stream.ConfigureAwait(false)) {
-            var content = new Content(contentId, processedFile.File.ContentType, stream);
-            await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
-        }
-
-        // Update media with metadata
-        var metadata = MetadataSerializer.Read(dbMedia.MetadataJson);
-        metadata = metadata
-            .Set("FileName", processedFile.File.FileName.Value)
-            .Set("ContentType", processedFile.File.ContentType)
-            .Set("Length", processedFile.File.Length);
-
-        if (processedFile.Size.HasValue) {
-            metadata = metadata
-                .Set("Width", processedFile.Size.Value.Width)
-                .Set("Height", processedFile.Size.Value.Height);
-        }
-
-        dbMedia.ContentId = contentId;
-        dbMedia.MetadataJson = MetadataSerializer.Write(metadata);
-
-        // Process and save thumbnail if present
-        string? thumbnailContentId = null;
-        if (processedFile.Thumbnail != null) {
-            thumbnailContentId = mediaId.GetContentId("_thumb" + Path.GetExtension(processedFile.Thumbnail.FileName));
-            var thumbnailStream = await processedFile.Thumbnail.Open().ConfigureAwait(false);
-            await using (thumbnailStream.ConfigureAwait(false)) {
-                var thumbnailContent = new Content(thumbnailContentId, processedFile.Thumbnail.ContentType, thumbnailStream);
-                await ContentSaver.Save(thumbnailContent, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        return new MediaContent(mediaId, contentId, default, thumbnailContentId);
     }
 }

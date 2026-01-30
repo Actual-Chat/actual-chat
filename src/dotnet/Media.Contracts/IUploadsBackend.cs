@@ -16,6 +16,8 @@ public interface IUploadsBackend : IComputeService, IBackendService
     Task<long> OnAppend(UploadsBackend_Append command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<MediaContent> OnConvertToMediaContent(UploadsBackend_ConvertToMediaContent command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<MediaContent> OnProcessAndSaveContent(UploadsBackend_ProcessAndSaveContent command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -51,6 +53,17 @@ public sealed partial record UploadsBackend_Append(
     [property: DataMember, MemoryPackOrder(1)] long Offset,
     [property: DataMember, MemoryPackOrder(2)] byte[] Chunk
 ) : ICommand<long>, IBackendCommand, IHasShardKey<UploadId>
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public UploadId ShardKey => UploadId;
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record UploadsBackend_ProcessAndSaveContent(
+    [property: DataMember, MemoryPackOrder(0)] UploadId UploadId,
+    [property: DataMember, MemoryPackOrder(1)] MediaId MediaId
+) : ICommand<MediaContent>, IBackendCommand, IHasShardKey<UploadId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public UploadId ShardKey => UploadId;

@@ -18,8 +18,6 @@ public interface IMediaBackend : IComputeService, IBackendService
     Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnCopyChat(MediaBackend_CopyChat command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task<MediaContent> OnProcessUpload(MediaBackend_ProcessUpload command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -43,15 +41,4 @@ public sealed partial record MediaBackend_CopyChat(
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public ChatId ShardKey => ChatId;
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record MediaBackend_ProcessUpload(
-    [property: DataMember, MemoryPackOrder(0)] MediaId MediaId,
-    [property: DataMember, MemoryPackOrder(1)] UploadId UploadId
-) : ICommand<MediaContent>, IBackendCommand, IHasShardKey<MediaId>
-{
-    [IgnoreDataMember, MemoryPackIgnore]
-    public MediaId ShardKey => MediaId;
 }

@@ -4,10 +4,15 @@ namespace ActualChat.Testing.Host;
 
 public static class MediaOperations
 {
-    public static Task<Media.Media> Attach(
+    public static async Task<MediaId> Attach(
         this IWebClientTester tester,
         ChatId chatId,
         UploadedFile file,
         CancellationToken cancellationToken = default)
-        => tester.AppServices.GetRequiredService<IMediaSaver>().Save(chatId, file, null, cancellationToken);
+    {
+        var mediaSaver = tester.AppServices.GetRequiredService<IMediaSaver>();
+        var mediaId = MediaId.New(chatId.Value);
+        await mediaSaver.Save(mediaId, file, null, cancellationToken);
+        return mediaId;
+    }
 }
