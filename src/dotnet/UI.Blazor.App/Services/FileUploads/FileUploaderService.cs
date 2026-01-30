@@ -179,7 +179,7 @@ public class FileUploaderService
             _ = progressTracker.Task.ContinueWith(async t => {
                 if (t.IsCompletedSuccessfully) {
                     Log.LogInformation("**** Uploaded file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
-                    var mediaContent = t.Result;
+                    var mediaContent = t.GetAwaiter().GetResult();
                     await (owner.Completed?.Invoke(sessionId, mediaContent) ?? Task.CompletedTask).ConfigureAwait(false);
                 }
                 else if (t.IsFaulted) {

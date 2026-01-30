@@ -35,7 +35,7 @@ public sealed class FileUploadOperation : IDisposable
                     else if (t.IsFaulted)
                         ProgressTracker.SetException(t.Exception);
                     else
-                        ProgressTracker.SetResult(t.Result);
+                        ProgressTracker.SetResult(t.GetAwaiter().GetResult());
                 },
                 TaskScheduler.Default);
     }

@@ -20,9 +20,7 @@ public record Attachment(string FileName, string FileType, long Length, int Widt
 
             if (!GetPreviewUrl.IsCompletedSuccessfully)
                 return "";
- #pragma warning disable VSTHRD002
-            return GetPreviewUrl.Result;
- #pragma warning restore VSTHRD002
+            return GetPreviewUrl.GetAwaiter().GetResult();
         }
     }
 
@@ -33,5 +31,5 @@ public record Attachment(string FileName, string FileType, long Length, int Widt
 
     public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
     public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
-    public bool IsUploading => UploadSessionId != "" && !(Uploaded || Failed);
+    public bool IsUploading => !UploadSessionId.IsNullOrEmpty() && !(Uploaded || Failed);
 }

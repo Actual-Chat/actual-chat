@@ -22,9 +22,7 @@ public static class AttachmentExt
         void UpdateResult(Task<MediaContent> t)
         {
             if (t.IsCompletedSuccessfully) {
- #pragma warning disable VSTHRD002
-                var mediaContent = t.Result;
- #pragma warning restore VSTHRD002
+                var mediaContent = t.GetAwaiter().GetResult();
                 updateAttachment(x => x with {
                     MediaId = mediaContent.MediaId,
                     ThumbnailMediaId = mediaContent.ThumbnailMediaId,

@@ -69,7 +69,7 @@ public class WebClientTester : IWebClientTester
         AppHost = appHost;
         Out = @out;
         Session = Session.New();
-        var sessionInfo = Commander.Call(new SessionsBackend_Upsert(Session)).Result;
+        var sessionInfo = Commander.Call(new SessionsBackend_Upsert(Session)).GetAwaiter().GetResult();
         var guestId = sessionInfo.GetGuestId();
         guestId.Should().NotBeNull();
         guestId.IsGuest.Should().BeTrue();

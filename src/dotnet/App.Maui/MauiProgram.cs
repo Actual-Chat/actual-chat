@@ -27,7 +27,7 @@ using Foundation;
 
 namespace ActualChat.App.Maui;
 
-#pragma warning disable VSTHRD002, IL2026
+#pragma warning disable IL2026
 
 public static partial class MauiProgram
 {

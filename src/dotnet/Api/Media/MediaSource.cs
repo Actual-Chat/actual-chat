@@ -12,11 +12,9 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     MediaFormat IMediaSource.Format => Format;
     public TFormat Format { get; }
     protected Task<TimeSpan> DurationTask => DurationTaskSource.Task;
-#pragma warning disable VSTHRD002
     public TimeSpan Duration => DurationTask.IsCompleted
-        ? DurationTask.Result
+        ? DurationTask.GetAwaiter().GetResult()
         : throw StandardError.Unavailable("Duration isn't parsed yet.");
-#pragma warning restore VSTHRD002
     public Task WhenDurationAvailable => DurationTask;
     public Moment CreatedAt { get; }
 

@@ -84,7 +84,7 @@ public class AppServicesAccessor
     {
         var scopedServicesTask = _blazorAppServicesSource.Task;
         if (scopedServicesTask.IsCompletedSuccessfully) {
-            var c = scopedServicesTask.Result;
+            var c = scopedServicesTask.GetAwaiter().GetResult();
             var hub = c.GetRequiredService<UIHub>();
             if (hub.WhenInitialized.IsCompletedSuccessfully) {
                 if (!whenRendered)
@@ -149,7 +149,7 @@ public class AppServicesAccessor
             var scopedServicesTask = _blazorAppServicesSource.Task;
             await scopedServicesTask.SilentAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            if (!scopedServicesTask.IsCompletedSuccessfully || scopedServicesTask.Result is not { } c)
+            if (!scopedServicesTask.IsCompletedSuccessfully || scopedServicesTask.GetAwaiter().GetResult() is not { } c)
                 continue;
 
             if (whenRendered) {

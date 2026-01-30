@@ -2,8 +2,6 @@ using ActualLab.Pooling;
 
 namespace ActualChat.Pooling;
 
-#pragma warning disable VSTHRD002
-
 public partial class SharedResourcePool<TKey, TResource>
 {
     public sealed class Lease : IResourceLease<TResource>
@@ -16,7 +14,7 @@ public partial class SharedResourcePool<TKey, TResource>
 
         public SharedResourcePool<TKey, TResource> Pool { get; }
         public TKey Key { get; }
-        public TResource Resource => _resourceTask!.Result;
+        public TResource Resource => _resourceTask!.GetAwaiter().GetResult();
         public bool IsRented {
             get {
                 lock (_lock)

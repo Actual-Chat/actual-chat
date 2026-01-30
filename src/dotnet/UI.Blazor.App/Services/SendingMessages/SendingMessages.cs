@@ -228,7 +228,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private void SubscribeFilePermissionsGranted(AttachmentList attachmentList, Attachment attachment)
         => _ = attachment.WhenFilePermissionGranted.ContinueWith(t => {
-            if (t.Result)
+            if (t.GetAwaiter().GetResult())
                 return;
 
             // File permission was denied.
@@ -331,7 +331,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
         var task = resultSource.Task;
         Result<ChatEntry?> result2 =
-            task.IsCompletedSuccessfully ? new Result<ChatEntry?>(task.Result)
+            task.IsCompletedSuccessfully ? new Result<ChatEntry?>(task.GetAwaiter().GetResult())
             : task.IsCanceled ? Result.NewError<ChatEntry?>(new OperationCanceledException())
             : Result.NewError<ChatEntry?>(task.Exception!);
 

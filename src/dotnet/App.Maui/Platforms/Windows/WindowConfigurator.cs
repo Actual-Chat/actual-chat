@@ -25,9 +25,7 @@ internal static class WindowConfigurator
         _ = JumpListManager.PopulateJumpList();
         window.Closed += (_, _) => {
             var t = Task.Run(JumpListManager.ClearJumpList);
-#pragma warning disable VSTHRD002
             _ = t.Wait(TimeSpan.FromSeconds(5));
-#pragma warning restore VSTHRD002
         };
 
         var appWindow = window.GetAppWindow()!;

@@ -151,7 +151,7 @@ public static partial class AsyncEnumerableExt
                     var readyTask = await Task.WhenAny(moveNextLeftTask, moveNextRightTask).ConfigureAwait(false);
                     if (ReferenceEquals(readyTask, moveNextLeftTask))
                         try {
-                            hasLeft = readyTask.Result;
+                            hasLeft = readyTask.GetAwaiter().GetResult();
                             moveNextLeftTask = falseTask;
                         }
                         catch (Exception e) {
@@ -160,7 +160,7 @@ public static partial class AsyncEnumerableExt
                         }
                     else
                         try {
-                            hasRight = readyTask.Result;
+                            hasRight = readyTask.GetAwaiter().GetResult();
                             moveNextRightTask = falseTask;
                         }
                         catch (Exception e) {
@@ -171,7 +171,7 @@ public static partial class AsyncEnumerableExt
                 else if (hasLeftTask)
                     try {
                         if (moveNextLeftTask.IsCompleted) {
-                            hasLeft = moveNextLeftTask.Result;
+                            hasLeft = moveNextLeftTask.GetAwaiter().GetResult();
                             moveNextLeftTask = falseTask;
                         }
                     }
@@ -182,7 +182,7 @@ public static partial class AsyncEnumerableExt
                 else if (hasRightTask)
                     try {
                         if (moveNextRightTask.IsCompleted) {
-                            hasRight = moveNextRightTask.Result;
+                            hasRight = moveNextRightTask.GetAwaiter().GetResult();
                             moveNextRightTask = falseTask;
                         }
                     }
