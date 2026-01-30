@@ -45,7 +45,7 @@ public sealed class MeshState
         foreach (var node in AllNodes.Values.Order()) {
             sb.Append("  [").Append(i).Append("] = ").Append(node.LockKey).Append(": ").Append(node.State);
             if (node.DeadAt is { } deadAt)
-                sb.Append($", dies in: {(deadAt - now).Positive().ToShortString()}");
+                sb.Append(CultureInfo.InvariantCulture, $", dies in: {(deadAt - now).Positive().ToShortString()}");
             sb.AppendLine();
             i++;
         }

@@ -5,13 +5,12 @@ namespace ActualChat.Chat;
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class ListItemMarkup(Markup content) : Markup
 {
+    public const string Prefix = "- ";
+
     public Markup Content { get; } = content;
 
     public override string Format()
-        => GetPrefix() + Content.Format();
-
-    public string GetPrefix()
-        => "- ";
+        => Prefix + Content.Format();
 
     public override Markup Simplify()
     {

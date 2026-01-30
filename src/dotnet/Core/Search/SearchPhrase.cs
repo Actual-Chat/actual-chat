@@ -53,7 +53,7 @@ public sealed partial class SearchPhrase
             if (term.Length == 0)
                 continue;
             if (sb.Length != 0)
-                sb.Append("|");
+                sb.Append('|');
             sb.Append("((^|\\s)?");
             if (MatchPrefixes)
                 AddPrefixRegex(term, sb);

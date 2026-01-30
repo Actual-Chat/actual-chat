@@ -181,7 +181,7 @@ public partial class ChatAudioUI
             await ChatEditorUI.HideRelatedEntry().ConfigureAwait(false);
 
             await AudioRecorder.StartRecording(chatId, repliedEntryId, abortToken).ConfigureAwait(false);
-            _ = TuneUI.Play(Tune.BeginRecording, CancellationToken.None);
+            _ = TuneUI.Play(Tune.BeginRecording);
             var whenStopped = ForegroundTask.Run(
                 async () => await cRecordingState
                     .When(x => x.ChatId != chatId || x.Language != language, abortToken)
@@ -208,7 +208,7 @@ public partial class ChatAudioUI
             // Stopping the recording
             for (var tryIndex = 0;; tryIndex++) {
                 if (await AudioRecorder.StopRecording(CancellationToken.None).ConfigureAwait(false)) {
-                    _ = TuneUI.Play(Tune.EndRecording, CancellationToken.None);
+                    _ = TuneUI.Play(Tune.EndRecording);
                     break;
                 }
                 if (tryIndex >= MaxStopRecordingTryCount) {

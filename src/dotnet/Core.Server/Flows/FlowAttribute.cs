@@ -1,7 +1,7 @@
 namespace ActualChat.Flows;
 
 [AttributeUsage(AttributeTargets.Class)]
-public class FlowAttribute : Attribute
+public sealed class FlowAttribute : Attribute
 {
     public double ResumeTimeout { get; set; } = double.NaN; // NaN means default
     public double DelayQuanta { get; set; } = double.NaN; // NaN means default

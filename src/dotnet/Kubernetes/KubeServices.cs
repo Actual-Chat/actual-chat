@@ -163,10 +163,12 @@ public class KubeServices : IKubeInfo, IAsyncDisposable
 
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             using var streamReader = new StreamReader(stream);
-            while (!streamReader.EndOfStream) {
+            while (true) {
                 var changeString = await streamReader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-                if (changeString.IsNullOrEmpty())
-                    continue;
+                if (changeString == null)
+                    break; // End of stream
+                if (changeString.Length == 0)
+                    continue; // Empty line
 
                 var watchEvent = JsonSerializer.Deserialize<Api.Change<EndpointSlice>>(changeString, WebJsonSerializeOptions);
                 if (watchEvent == null)

@@ -19,7 +19,7 @@ public partial class App : MauiWinUIApplication
         InitializeComponent();
         UnhandledException += (_, args) => {
             var e = args.Exception;
-            StaticLog.For(typeof(App)).LogError(e, "Unhandled exception");
+            StaticLog.For<App>().LogError(e, "Unhandled exception");
         };
     }
 

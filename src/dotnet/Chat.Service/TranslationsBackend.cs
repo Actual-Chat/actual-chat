@@ -607,7 +607,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             case TranslationIdKind.ConversationTitle or
                 TranslationIdKind.ConversationDescription or
                 TranslationIdKind.ConversationSummary: {
-                var lid = sourceId.GetRefLId();
+                var lid = sourceId.RefLid;
                 var conversationId = ConversationId.New(sourceId.ChatId, lid);
                 var conversation = await ConversationsBackend.Get(conversationId, cancellationToken).ConfigureAwait(false);
                 if (conversation is null)
@@ -617,7 +617,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             }
             case TranslationIdKind.ThreadTitle or
                 TranslationIdKind.ThreadDescription : {
-                var lid = sourceId.GetRefLId();
+                var lid = sourceId.RefLid;
                 var threadChatId = sourceId.ChatId.CreateThreadId(lid);
                 var threadChat = await ChatsBackend.Get(threadChatId, cancellationToken).ConfigureAwait(false);
                 if (threadChat is null)

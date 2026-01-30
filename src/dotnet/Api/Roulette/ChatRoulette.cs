@@ -4,8 +4,6 @@ using MemoryPack;
 
 namespace ActualChat.Roulette;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record ChatRoulette(

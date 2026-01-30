@@ -102,8 +102,10 @@ public static class TaskExt
         => errorLog is null ? task
             : task.WithErrorHandler(e => errorLog.LogError(e, message, args));
 
+
     // WithErrorLog with CancellationToken overloads
 
+#pragma warning disable CA1068 // CancellationToken parameters must come last
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Task WithErrorLog(
             this Task task, CancellationToken cancellationToken,
@@ -135,6 +137,7 @@ public static class TaskExt
         // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         => errorLog is null ? task
             : task.WithErrorHandler(e => errorLog.LogError(e, message, args), cancellationToken);
+#pragma warning restore CA1068 // CancellationToken parameters must come last
 
     // WhenAll
 

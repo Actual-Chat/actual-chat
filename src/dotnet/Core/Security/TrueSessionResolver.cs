@@ -8,7 +8,9 @@ namespace ActualChat.Security;
 public sealed class TrueSessionResolver(IServiceProvider services) : ISessionResolver
 {
     private readonly Lock _lock = new();
+ #pragma warning disable CA2263
     private readonly Tracer _tracer = services.TracerFor(typeof(TrueSessionResolver));
+ #pragma warning restore CA2263
     private volatile TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
     private volatile Session? _session;
 

@@ -120,10 +120,10 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
     protected void AddAttribute(string name, string value, bool mustEncode, ref StringBuilder state)
 #pragma warning restore CA1822
     {
-        state.Append(" ");
+        state.Append(' ');
         state.Append(name);
         state.Append("=\"");
         state.Append(mustEncode ? value.HtmlEncode() : value);
-        state.Append("\"");
+        state.Append('"');
     }
 }

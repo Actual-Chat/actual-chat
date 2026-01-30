@@ -8,8 +8,6 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiHostSwitcher(UrlMapper urlMapper, ReloadUI reloadUI) : IMauiHostSwitcher
 {
-    private const string PreferenceKey = MauiDeveloperTools.PreferenceKeys.HostOverride;
-
     public MauiHost DefaultHost
         => field ??= MauiHost.TryCreate(MauiSettings.DefaultHost)!;
 

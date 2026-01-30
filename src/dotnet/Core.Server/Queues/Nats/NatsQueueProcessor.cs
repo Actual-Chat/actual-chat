@@ -418,7 +418,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     // Serialization
 
-    private QueuedCommand Deserialize(NatsJSMsg<IMemoryOwner<byte>> message)
+    private static QueuedCommand Deserialize(NatsJSMsg<IMemoryOwner<byte>> message)
     {
         var data = message.Data;
         if (data == null)

@@ -88,7 +88,9 @@ public sealed class ChunkedFileUploader(IServiceProvider services)
             var bytesRead = await file.ReadAsync(chunkBuffer, 0, currentChunkSize, ct).ConfigureAwait(false);
 
             if (bytesRead < currentChunkSize)
-                Log.LogWarning("Unexpected EOF while reading chunk {Offset}. Expected to read {ChunkSize} bytes, but read only {ReadBytes} bytes",
+                Log.LogWarning(
+                    "Unexpected EOF while reading chunk {Offset}. "
+                    + "Expected to read {ChunkSize} bytes, but read only {ReadBytes} bytes",
                     offset, currentChunkSize, bytesRead);
             if (bytesRead == 0)
                 break;

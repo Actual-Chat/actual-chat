@@ -11,7 +11,7 @@ public sealed class StringDiffHandler(DiffEngine engine) : DiffHandlerBase<strin
     public override string? Patch(string? source, string? diff)
         => ReferenceEquals(diff, null) ? source : Unescape(diff);
 
-    public string? Escape(string? s)
+    public static string? Escape(string? s)
     {
         if (s == null)
             return EscapedNull;
@@ -24,7 +24,7 @@ public sealed class StringDiffHandler(DiffEngine engine) : DiffHandlerBase<strin
             : s;
     }
 
-    public string? Unescape(string? s)
+    public static string? Unescape(string? s)
     {
         if (s.IsNullOrEmpty())
             return s;

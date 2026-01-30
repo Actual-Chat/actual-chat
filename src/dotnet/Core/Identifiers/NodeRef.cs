@@ -5,8 +5,6 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat;
 
-#pragma warning disable CA1036, MA0097 // Implement comparison operators: <, <=, etc.
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [JsonConverter(typeof(Internal.SymbolIdentifierJsonConverter<NodeRef>))]
 [Newtonsoft.Json.JsonConverter(typeof(Internal.SymbolIdentifierNewtonsoftJsonConverter<NodeRef>))]

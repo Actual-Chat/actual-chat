@@ -7,7 +7,6 @@ using MessagePack;
 namespace ActualChat;
 
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
-#pragma warning disable MA0097 // IComparable should implement <, >, etc.
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
 [JsonConverter(typeof(StringIdentifierJsonConverter<TranslationSourceId>))]
@@ -53,7 +52,8 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
     public ChatId ChatId { get; }
     public TranslationIdKind Kind { get; }
     public string Extra { get; }
-    private long RefLid { get; }
+    public long RefLid { get; }
+
     private TextEntryId? ChatEntryId { get; }
 
     public TextEntryId GetChatEntryId()
@@ -63,9 +63,6 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
 
         return ChatEntryId!;
     }
-
-    public long GetRefLId()
-        => RefLid;
 
     public TranslationId ToTranslationId(Language language)
         => TranslationId.New(this, language);
@@ -115,7 +112,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
             return true;
         }
 
-        var chatIdLength = s.IndexOf(Delimiter);
+        var chatIdLength = s.OrdinalIndexOf(Delimiter);
         var s1 = s.Substring(0, chatIdLength);
         if (!ChatId.TryParse(s1, out var chatId))
             return false;

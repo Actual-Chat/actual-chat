@@ -8,4 +8,3 @@ public record EndpointSliceList(
     public string ApiVersion => "discovery.k8s.io/v1";
     public string Kind => "EndpointSliceList";
 }
-

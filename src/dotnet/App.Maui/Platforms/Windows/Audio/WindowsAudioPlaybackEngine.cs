@@ -292,7 +292,7 @@ internal sealed class WindowsAudioPlaybackEngine(
                 _ = ReportPlaying();
                 // Set frame to silence
                 var silence = new Span<float>((void*)dataPtr, playSamples);
-                silence.Fill(0);
+                silence.Clear();
             }
             else {
                 using var __ = pcmOwner;

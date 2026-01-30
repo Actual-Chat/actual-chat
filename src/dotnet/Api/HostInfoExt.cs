@@ -16,6 +16,6 @@ public static class HostInfoExt
             BaseUrlKind.Production => Constants.Hosts.AllProd,
             BaseUrlKind.Development => Constants.Hosts.AllDev,
             BaseUrlKind.Local => Constants.Hosts.AllLocal,
-            _ => throw new ArgumentOutOfRangeException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(hostInfo.BaseUrlKind)),
         };
 }

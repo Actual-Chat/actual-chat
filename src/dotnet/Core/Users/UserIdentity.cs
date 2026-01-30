@@ -2,8 +2,6 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
-#pragma warning disable CA1036
-
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]

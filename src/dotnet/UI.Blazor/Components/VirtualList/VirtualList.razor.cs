@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.Components;
 public static class VirtualList
 {
     public static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VirtualList.create";
-    public static bool IsNonFirstRender = false;
+    public static bool IsNonFirstRender { get; set; }
 }
 
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<UIHub, VirtualListData<TItem>>, IVirtualListBackend
