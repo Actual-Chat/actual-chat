@@ -477,12 +477,6 @@
     <None Remove="android.nettrace" />
     <None Remove="android.etlx" />
     <None Remove="android.etlx" />
-    <Compile Update="Platforms\Android\Audio\AudioFocusHelper.cs">
-      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
-    </Compile>
-    <Compile Update="Platforms\Android\Audio\AndroidAudioFocusService.cs">
-      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
-    </Compile>
   </ItemGroup>
   <!-- Android -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
