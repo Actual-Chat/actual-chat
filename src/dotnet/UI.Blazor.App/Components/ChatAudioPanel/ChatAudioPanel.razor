@@ -2,6 +2,7 @@
 @inherits ComputedStateComponent<AppUIHub, ChatAudioPanel.Model>
 @{
     var (audioState, enableIncompleteUI) = State.Value;
+    var isRecording = audioState?.IsRecording == true;
     var isHeaderVisible = audioState != null && IsNarrow && audioState is { IsListening: true, IsRecording: true };
 }
 
@@ -9,18 +10,12 @@
     @if (enableIncompleteUI && isHeaderVisible) {
         <div class="audio-panel-header">
             <div class="c-left">
-                <div class="w-12"></div>
-                <ButtonRound>
-                    <i class="icon-transcription text-xl"></i>
-                </ButtonRound>
-            </div>
-            <div class="c-right">
-                <ButtonRound>
-                    <i class="icon-video text-xl"></i>
-                </ButtonRound>
                 <ButtonRound>
                     <i class="icon-cast text-xl"></i>
                 </ButtonRound>
+            </div>
+            <div class="c-right">
+                <VideoToggle Chat="@Chat" IsNarrow="true" />
             </div>
         </div>
     }
@@ -31,6 +26,9 @@
              data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
             <PlaybackToggle Chat="@Chat"/>
         </div>
+        @if (!IsNarrow && isRecording) {
+            <VideoToggle Chat="@Chat" />
+        }
         <div class="recorder-button">
             <div data-bubble="@(BubbleRef.New<RecordButtonBubble>())"
                  data-bubble-priority="100"
