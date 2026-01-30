@@ -135,7 +135,7 @@ public class UsersDbInitializer(IServiceProvider services) : DbInitializer<Users
         var accountsBackend = Services.GetRequiredService<IAccountsBackend>();
 
         var isAdmin = userId == Constants.User.Admin.UserId;
-        var userIdentity = new UserIdentity("internal", userId.Value);
+        var userIdentity = new UserIdentity(UserIdentity.InternalSchema, userId.Value);
 
         // Create & sign in the account
         var session = Session.New();

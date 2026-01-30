@@ -12,7 +12,8 @@ public readonly partial record struct UserIdentity : IComparable<UserIdentity>
     private static readonly ListFormat IdFormat = ListFormat.SlashSeparated;
 
     public static readonly UserIdentity None;
-    public static string DefaultSchema { get; set; } = "Default";
+    public static readonly string DefaultSchema = "Default";
+    public static readonly string InternalSchema = "internal";
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public string Id { get => field ?? ""; init; }

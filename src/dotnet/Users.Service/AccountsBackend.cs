@@ -164,6 +164,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         session.RequireValid();
 
         identities = identities.With(authenticatedIdentity, "");
+        _ = identities.HasInternalIdentity(out var internalUserId);
 
         var context = CommandContext.GetCurrent();
         if (Invalidation.IsActive) {
@@ -185,33 +186,40 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         await using var _1 = dbContext.ConfigureAwait(false);
 
         var isNew = false;
-        AccountFull? resultAccount = null;
+        AccountFull? account;
         var userId = await dbContext
             .GetUserIdByIdentity(authenticatedIdentity, true, cancellationToken)
             .ConfigureAwait(false);
-        AccountFull? existingAccount;
+
+        // If no user found by identity but internalUserId is provided, check if account exists by ID
+        if (userId is null && internalUserId is not null) {
+            var internalAccount = await Get(internalUserId, cancellationToken).ConfigureAwait(false);
+            if (internalAccount is not null)
+                userId = internalUserId;
+        }
+
         if (userId is null) {
-            // No user found by identity - create new account
-            existingAccount = UpdateExistingAccount(null, null);
-            var dbAccount = await CreateDbAccount(dbContext, existingAccount, cancellationToken).ConfigureAwait(false);
+            // No user found by identity or internalUserId - create new account
+            account = UpdateExistingAccount(null, internalUserId);
+            var dbAccount = await CreateDbAccount(dbContext, account, cancellationToken).ConfigureAwait(false);
             userId = UserId.Parse(dbAccount.Id);
-            resultAccount = dbAccount.ToModel();
+            account = dbAccount.ToModel();
             isNew = true;
         }
         else {
-            // Existing user found by identity - acquire lock first, then load and update
-            existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
+            // Existing user found by identity or desired ID - acquire lock first, then load and update
+            var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
             await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
             var dbAccount = await dbContext.GetDbAccount(userId, true, cancellationToken).ConfigureAwait(false);
             dbAccount.Require();
             var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
             dbUser.Require();
 
-            existingAccount = UpdateExistingAccount(existingAccount, userId);
-            await UpdateDbAccount(dbContext, dbAccount, dbUser, existingAccount, cancellationToken).ConfigureAwait(false);
+            account = UpdateExistingAccount(existingAccount, userId);
+            await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
         }
 
-        context.Operation.Items.KeylessSet(resultAccount);
+        context.Operation.Items.KeylessSet(account);
         context.Operation.Items.KeylessSet(isNew);
 
         // Update session with auth info
@@ -232,25 +240,25 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             }
         }
 
-        AccountFull UpdateExistingAccount(AccountFull? account, UserId? newUserId)
+        AccountFull UpdateExistingAccount(AccountFull? originalAccount, UserId? newUserId)
         {
-            account ??= new AccountFull("");
-            var mergedIdentities = account.Identities.WithMany(identities);
-            var mergedClaims = account.Claims.WithMany(claims);
+            originalAccount ??= new AccountFull("");
+            var mergedIdentities = originalAccount.Identities.WithMany(identities);
+            var mergedClaims = originalAccount.Claims.WithMany(claims);
 
             // Set Email from claims or identities if not already set
-            var email = account.Email.IsNullOrEmpty()
+            var email = originalAccount.Email.IsNullOrEmpty()
                 ? mergedClaims.GetValueOrDefault(ClaimTypes.Email, "").NullIfEmpty()
                     ?? mergedIdentities.GetEmails().FirstOrDefault()
                     ?? ""
-                : account.Email;
+                : originalAccount.Email;
 
             // Set Phone from identities if not already set
-            var phone = account.Phone ?? mergedIdentities.GetPhones().FirstOrDefault();
+            var phone = originalAccount.Phone ?? mergedIdentities.GetPhones().FirstOrDefault();
 
-            return account with {
-                Id = newUserId ?? account.Id,
-                Name = GetNewAccountName(account.Name),
+            return originalAccount with {
+                Id = newUserId ?? originalAccount.Id,
+                Name = GetNewAccountName(originalAccount.Name),
                 Email = email,
                 Phone = phone,
                 Claims = mergedClaims,
@@ -258,16 +266,16 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             };
         }
 
-        string GetNewAccountName(string? existingName)
+        string GetNewAccountName(string? originalName)
         {
-            if (!existingName.IsNullOrEmpty())
-                return AccountNameValidator.Normalize(existingName);
+            if (!originalName.IsNullOrEmpty())
+                return AccountNameValidator.Normalize(originalName);
 
-            existingName = claims.GetValueOrDefault(ClaimTypes.GivenName, "");
+            originalName = claims.GetValueOrDefault(ClaimTypes.GivenName, "");
             var surname = claims.GetValueOrDefault(ClaimTypes.Surname, "");
             if (!surname.IsNullOrEmpty())
-                existingName = $"{existingName} {surname}";
-            return AccountNameValidator.Normalize(existingName);
+                originalName = $"{originalName} {surname}";
+            return AccountNameValidator.Normalize(originalName);
         }
     }
 
@@ -420,7 +428,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     internal static bool IsAdmin(AccountFull account)
     {
         // TODO(AY): Remove the check relying on test/internal auth providers in the production code
-        if (HasIdentity(account, "internal") && account.Id == Constants.User.Admin.UserId)
+        if (account.Identities.HasInternalIdentity() && account.Id == Constants.User.Admin.UserId)
             return true;
 
         var emails = account.Identities.GetEmails();
@@ -430,19 +438,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
             if (AdminEmails.Contains(email))
                 return true; // Predefined admin email
-            if (HasGoogleIdentity(account) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
+            if (account.Identities.HasGoogleIdentity() && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
                 return true; // company email
             if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
                 return true; // test agent email
         }
         return false;
     }
-
-    private static bool HasGoogleIdentity(AccountFull account)
-        => HasIdentity(account, GoogleDefaults.AuthenticationScheme);
-
-    private static bool HasIdentity(AccountFull account, string provider)
-        => account.Identities.Keys.Select(x => x.Schema).Contains(provider, StringComparer.Ordinal);
 
     private static AccountFull? GetGuestAccount(UserId userId)
     {

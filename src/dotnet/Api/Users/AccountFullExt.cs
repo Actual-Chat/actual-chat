@@ -56,7 +56,7 @@ public static class AccountFullExt
         };
     }
 
-    // HasVerifiedXxx
+    // IsXxxVerified
 
     public static bool IsPhoneVerified(this AccountFull account)
         => account.Phone is { } phone && phone.IsNormalized() && account.Identities.HasPhone(phone);

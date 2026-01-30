@@ -389,7 +389,7 @@ public class AccountUpdateTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Act - sign out and sign in with a different identity
         await Tester.SignOut();
-        var accountWithNewIdentity = account.WithIdentity(new UserIdentity("internal", UniqueNames.Prefix()));
+        var accountWithNewIdentity = account.WithIdentity(new UserIdentity(UserIdentity.InternalSchema, UniqueNames.Prefix()));
         var signedInAccount = await Tester.SignIn(accountWithNewIdentity);
 
         // Assert - identities should be merged (original + new), not replaced
