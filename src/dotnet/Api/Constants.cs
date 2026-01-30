@@ -235,7 +235,6 @@ public static partial class Constants
     {
         public static class Phone
         {
-            public const string CallbackPath = "/signin/phone/callback";
             public const int TotpLength = 6;
         }
 
