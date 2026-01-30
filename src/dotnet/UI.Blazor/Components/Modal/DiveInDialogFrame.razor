@@ -63,7 +63,7 @@
         Modal.StepIn($"page-'{_pageInfo.PageId}'")
             .WhenClosed.ContinueWith(t => {
                 // If result is false it means Step is closed due to closing entire modal, hence no need to switch pages.
-                if (t.IsCompletedSuccessfully && t.Result) {
+                if (t.IsCompletedSuccessfully && t.GetAwaiter().GetResult()) {
                     InvokeAsync(() => {
                         _pageInfo = pageToReturn;
                         StateHasChanged();

@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace ActualChat.Rpc.Internal;
 
-#pragma warning disable VSTHRD002, VSTHRD104
+#pragma warning disable VSTHRD104
 #pragma warning disable CA1822 // Can be static
 
 public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBase(services)

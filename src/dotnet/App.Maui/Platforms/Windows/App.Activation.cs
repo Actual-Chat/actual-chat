@@ -10,7 +10,7 @@ public partial class App
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         _ = DecideRedirection().ContinueWith(t => {
-            if (t.Result)
+            if (t.GetAwaiter().GetResult())
                 Environment.Exit(0);
             else
                 base.OnLaunched(args);

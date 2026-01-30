@@ -190,7 +190,7 @@ internal static class OpenSearchClientExt
         async Task<ISearchResponse<T>> LogTaskResult()
         {
             if (responseTask.IsCompletedSuccessfully)
-                return responseTask.Result.Log(client, log, scope, indexName);
+                return responseTask.GetAwaiter().GetResult().Log(client, log, scope, indexName);
 
             var response = await responseTask.ConfigureAwait(false);
             return response.Log(client, log, scope, indexName);

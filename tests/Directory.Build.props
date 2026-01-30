@@ -38,8 +38,7 @@
     <!-- MA0074: Use an overload of 'Replace' that has a StringComparison parameter -->
     <NoWarn>$(NoWarn);MA0002;MA0004;MA0006;MA0011;MA0074</NoWarn>
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
-    <!-- VSTHRD002: .Wait() deadlock -->
-    <NoWarn>$(NoWarn);RCS1090;VSTHRD002</NoWarn>
+    <NoWarn>$(NoWarn);RCS1090</NoWarn>
     <!-- xUnit1041: Fixture argument 'log' does not  have a fixture source -->
     <NoWarn>$(NoWarn);xUnit1041</NoWarn>
   </PropertyGroup>

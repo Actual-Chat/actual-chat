@@ -25,9 +25,7 @@ public class MauiTunes : TuneUI
                 continue;
 
             try {
- #pragma warning disable VSTHRD002
-                playerTask.Result.Dispose();
- #pragma warning restore VSTHRD002
+                playerTask.GetAwaiter().GetResult().Dispose();
             }
             catch {
                 /* ignore dispose errors */

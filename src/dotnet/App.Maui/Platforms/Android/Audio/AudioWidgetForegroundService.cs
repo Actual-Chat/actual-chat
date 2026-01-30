@@ -154,9 +154,7 @@ public class AudioWidgetForegroundService : Service
             if (!bitmapTask.IsCompletedSuccessfully)
                 callback(null);
             else {
-#pragma warning disable VSTHRD002
-                callback(bitmapTask.Result);
-#pragma warning restore VSTHRD002
+                callback(bitmapTask.GetAwaiter().GetResult());
             }
             return;
         }
@@ -165,9 +163,7 @@ public class AudioWidgetForegroundService : Service
                 if (!t.IsCompletedSuccessfully)
                     return;
 
-#pragma warning disable VSTHRD002
-                var bitmap = bitmapTask.Result;
-#pragma warning restore VSTHRD002
+                var bitmap = bitmapTask.GetAwaiter().GetResult();
                 MainThread.BeginInvokeOnMainThread(() => {
                     callback(bitmap);
                 });

@@ -14,7 +14,7 @@ public static class ActivityExt
                     activity?.SetStatus(ActivityStatusCode.Ok);
                 else
                     activity?.Finalize(t, cancellationToken);
-                return t.Result;
+                return t.GetAwaiter().GetResult();
             },
             TaskScheduler.Default);
 
