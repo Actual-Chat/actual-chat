@@ -18,6 +18,8 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
         await ApplyMigration(StartDigestFlows).ConfigureAwait(false);
     }
 
+    // Private methods
+
     private async ValueTask ApplyMigration(
         Func<CancellationToken, Task> migration,
         [CallerArgumentExpression(nameof(migration))] string name = "")
@@ -29,7 +31,7 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
         await migration.Invoke(cancellationToken).ConfigureAwait(false);
     }
 
-    // Private methods
+    // Migrations
 
     private async Task StartDigestFlows(CancellationToken cancellationToken)
     {
