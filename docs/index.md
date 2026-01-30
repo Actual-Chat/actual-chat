@@ -37,7 +37,7 @@ features:
 
 | Component | Technology |
 |-----------|------------|
-| Backend | .NET 9, C# 13 |
+| Backend | .NET 10, C# 14 |
 | Real-time sync | [ActualLab.Fusion](https://github.com/ActualLab/Fusion) |
 | UI | Blazor (Server/WebAssembly), TypeScript |
 | Databases | PostgreSQL, Redis |
