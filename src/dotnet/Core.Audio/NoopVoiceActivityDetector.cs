@@ -5,7 +5,7 @@ public sealed class NoopVoiceActivityDetector(IServiceProvider services) : Voice
     private bool _started;
     public override bool IsInitialized => true;
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     { }
 
     public override Task EnsureInitialized(CancellationToken cancellationToken = default)
