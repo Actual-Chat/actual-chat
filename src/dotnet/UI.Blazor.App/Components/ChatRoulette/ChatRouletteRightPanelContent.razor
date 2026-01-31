@@ -1,0 +1,142 @@
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.Roulette
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ChatRouletteRightPanelContent.Model?>
+@{
+    #pragma warning disable IL2091
+    var m = State.Value;
+    if (m is null) // not initialized yet.
+        return;
+
+    var hasChanged = HasFilterChanged(_form, _searchFilter);
+    var canApply = hasChanged && _formRef?.IsValid == true;
+}
+
+<div class="cr-right-panel-content">
+    <Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSubmit">
+        <DataAnnotationsValidator/>
+
+        <div class="c-center">
+            <FormBlock>
+                <FormSection For="() => _form.CountryId"
+                             InputId="@_form.CountryIdFieldId"
+                             Label="Choose country"
+                             IsLabelInsideInput="true">
+                    <InputSelect @bind-Value="@_form.CountryId">
+                        <option value="">Unspecified</option>
+                        @foreach (var country in RouletteUI.Countries) {
+                            <option value="@country.Value">@country.Title</option>
+                        }
+                    </InputSelect>
+                </FormSection>
+
+                <FormSection Class="profile-field"
+                             For="() => _form.Gender"
+                             InputId="@_form.GenderFieldId"
+                             Label="Gender">
+                    <GenderSelector @bind-Gender="@_form.Gender" />
+                </FormSection>
+
+                <FormSection Class="profile-field c-languages"
+                             For="() => _form.Languages"
+                             InputId="@_form.LanguagesFieldId"
+                             IsRequired="true"
+                             Label="Speaking languages">
+                    <LanguagesSelector
+                        ValueExpression="@(() => _form.Languages)"
+                        @bind-Languages="@_form.Languages" />
+                </FormSection>
+
+                <FormSection Class="profile-field"
+                             For="() => _form.Interests"
+                             InputId="@_form.InterestsFieldId"
+                             Label="Interests">
+                    <InterestsSelector @bind-Interests="@_form.Interests" />
+                </FormSection>
+            </FormBlock>
+        </div>
+
+        <div class="cr-buttons">
+            <Button Class="cr-cancel" IsDisabled="@(!hasChanged)" Click="OnCancelClick">Cancel</Button>
+            <Button Class="cr-apply" IsDisabled="@(!canApply)" Type="@ButtonType.Submit">Apply</Button>
+        </div>
+    </Form>
+</div>
+
+@code {
+    private Preferences _searchFilter = Preferences.Empty;
+    private Form? _formRef;
+    private FormModel _form = null!;
+
+    private RouletteUI RouletteUI => Hub.RouletteUI;
+
+    protected override Task OnInitializedAsync() {
+        MustRenderAfterEvent = true;
+        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        return Task.CompletedTask;
+    }
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var searchCriteria = await RouletteUI.SearchCriteria.Use(cancellationToken);
+        if (searchCriteria != _searchFilter) {
+            FillInForm(_form, searchCriteria);
+            _searchFilter = searchCriteria;
+        }
+        return new Model();
+    }
+
+    private void OnCancelClick()
+        => FillInForm(_form, _searchFilter);
+
+    private void OnSubmit() {
+        var preferences = new Preferences {
+            Country = Country.ParseNullable(_form.CountryId),
+            Gender = _form.Gender,
+            Languages = _form.Languages.ToArray(),
+            Interests = _form.Interests.ToArray(),
+        };
+        RouletteUI.ApplyNewFilter(preferences);
+    }
+
+    private bool HasFilterChanged(FormModel form, Preferences searchFilter) {
+        if (!OrdinalEquals(form.CountryId, searchFilter.Country?.Value ?? ""))
+            return true;
+
+        if (form.Gender != searchFilter.Gender)
+            return true;
+
+        if (!form.Languages.SequenceEqual(searchFilter.Languages))
+            return true;
+
+        if (!form.Interests.SequenceEqual(searchFilter.Interests))
+            return true;
+
+        return false;
+    }
+
+    private void FillInForm(FormModel form, Preferences searchCriteria) {
+        form.CountryId = searchCriteria.Country?.Value ?? "";
+        form.Gender = searchCriteria.Gender;
+        form.Languages = searchCriteria.Languages;
+        form.Interests = searchCriteria.Interests;
+        form.CopyToBase();
+    }
+
+    // Nested types
+    public record Model;
+
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "String.Count should be preserved.")]
+    public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
+        : FormModel<FormModel>("search-filter", componentIdGenerator)
+    {
+        public string CountryId { get; set; } = "";
+        public string CountryIdFieldId { get; set; } = "";
+        [MinLength(1, ErrorMessage = "Minimum 1 language must be selected")]
+        public IReadOnlyList<Language> Languages { get; set; } = [];
+        public string LanguagesFieldId { get; set; } = "";
+        public Gender Gender { get; set; } = Gender.Undefined;
+        public string GenderFieldId { get; set; } = "";
+        public IReadOnlyList<Interest> Interests { get; set; } = [];
+        public string InterestsFieldId { get; set; } = "";
+    }
+}

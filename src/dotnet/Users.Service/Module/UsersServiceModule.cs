@@ -4,6 +4,7 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Redis.Module;
+using ActualChat.Roulette;
 using ActualChat.Security;
 using ActualChat.Users.Db;
 using ActualChat.Users.Email;
@@ -183,6 +184,10 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // TimeZones
         rpcHost.AddApi<ITimeZones, TimeZones>();
 
+        // RouletteProfiles
+        rpcHost.AddLocalApi<IRouletteProfiles, RouletteProfiles>();
+        rpcHost.AddBackend<IRouletteProfilesBackend, RouletteProfilesBackend>();
+
         // Mobile authentication
         rpcHost.AddApi<IMobileSessions, MobileSessions>();
 
@@ -268,6 +273,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbAvatar>();
             db.AddEntityResolver<string, DbUserPresence>();
             db.AddEntityResolver<string, DbChatPosition>();
+            db.AddEntityResolver<string, DbRouletteProfilePrefs>();
+            db.AddEntityResolver<string, DbRouletteUserSettings>();
         });
     }
 }

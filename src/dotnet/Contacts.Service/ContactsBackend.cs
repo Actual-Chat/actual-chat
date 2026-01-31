@@ -119,7 +119,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             if (!contactIds.Exists(c => c.ChatId == Constants.Chat.AnnouncementsChatId))
                 contactIds.Insert(0, ContactId.NewChat(ownerId, Constants.Chat.AnnouncementsChatId));
         }
-        else {
+        else if (placeId != Constants.Place.ChatRouletteId) {
             // Add all public chats from this place
             await PseudoPlaceContact(placeId).ConfigureAwait(false);
             var publicChatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
@@ -290,10 +290,16 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var chatId = id.ChatId;
         var placeId = (chatId as PlaceChatId)?.PlaceId;
         var context = CommandContext.GetCurrent();
+        const string isChatRouletteOperationItemKey = "IsChatRoulette";
 
         if (Invalidation.IsActive) {
             var invIndex = context.Operation.Items.KeylessGet(long.MinValue);
-            if (invIndex != long.MinValue) {
+            var invIsChatRoulette = context.Operation.Items.Get<bool>(isChatRouletteOperationItemKey);
+            if (invIsChatRoulette) {
+                _ = Get(ownerId, id, default);
+                _ = ListIds(ownerId, Constants.Place.ChatRouletteId, default);
+            }
+            else if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
                 _ = ListIds(ownerId, placeId, default);
             }
@@ -314,6 +320,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ConfigureAwait(false);
         var existing = dbContact?.ToModel();
 
+        bool isChatRoulette;
         if (change.IsCreate(out var contact)) {
             if (dbContact != null)
                 return dbContact.ToModel(); // Already exists, so we don't recreate one
@@ -337,6 +344,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             };
             dbContact = new DbContact(contact);
             dbContext.Add(dbContact);
+            isChatRoulette =  contact.IsChatRoulette();
         }
         else if (change.IsUpdate(out contact)) {
             dbContact.RequireVersion(expectedVersion);
@@ -344,6 +352,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 Version = VersionGenerator.NextVersion(dbContact.Version),
             };
             dbContact.UpdateFrom(contact);
+            isChatRoulette = contact.IsChatRoulette();
         }
         else { // Remove
             if (expectedVersion != null)
@@ -352,10 +361,12 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 return null;
 
             dbContext.Remove(dbContact);
+            isChatRoulette = dbContact.ToModel().IsChatRoulette();
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation.Items.KeylessSet(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1L);
+        context.Operation.Items.Set(isChatRouletteOperationItemKey, isChatRoulette);
         contact = dbContact.ToModel();
         context.Operation.AddEvent(new ContactChangedEvent(contact, existing, change.Kind));
         return contact;
@@ -819,8 +830,21 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return;
         }
 
+        var isChatRoulette = false;
+        if (chatId.Kind == ChatKind.Group && !author.HasLeft) {
+            var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is null)
+                Log.LogWarning("Can't get chat with id '{ChatId}' on changing author '{Author}', old author: '{OldAuthor}'",
+                    chatId, author, oldAuthor);
+            else {
+                isChatRoulette = chat.IsChatRoulette();
+            }
+        }
+
         var change = new Change<Contact> {
-            Create = new Contact(contactId),
+            Create = new Contact(contactId) {
+                SystemTag = isChatRoulette ? Constants.Contact.SystemTags.ChatRoulette : Symbol.Empty
+            },
         };
         var command = new ContactsBackend_Change(contactId, null, change);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);

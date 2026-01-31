@@ -1,17 +1,22 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
 @implements IDisposable
 @inherits ComputedStateComponent<AppUIHub, LeftPanelContentHeader.Model>
 @{
     var m = State.Value;
     var place = m.Place;
+    var isChatRoulette = m.IsChatRoulette;
 }
 
-@if (place != null) {
-    <LeftPanelPlaceContentHeader Place="@place"/>
+@if (isChatRoulette) {
+    <LeftPanelChatRouletteContentHeader />
 } else {
-    <LeftPanelChatContentHeader />
+    @if (place != null) {
+        <LeftPanelPlaceContentHeader Place="@place"/>
+    } else {
+        <LeftPanelChatContentHeader />
+    }
+    <LeftPlaceSearchOverlayPanel Place="@place"/>
 }
-<LeftPlaceSearchOverlayPanel Place="@place"/>
 
 @code {
     private IPlaces Places => Hub.Places;
@@ -31,7 +36,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(null),
+            InitialValue = new Model(null, false),
             Category = GetStateCategory(GetType()),
         };
 
@@ -40,18 +45,20 @@
         var searchPlaceId = await SearchUI.PlaceId.Use(cancellationToken).ConfigureAwait(false);
         var isSearchOn = await SearchUI.IsSearchModeOn.Use(cancellationToken).ConfigureAwait(false);
         if (isSearchOn && searchPlaceId is null)
-            return new Model(null);
+            return new Model(null, false);
 
         var placeId = NavbarUI.IsPlaceSelected(out var selectedPlaceId)
             ? selectedPlaceId
             : NavbarUI.IsPinnedChatSelected(out var pinnedChatId)
                 ? (pinnedChatId as PlaceChatId)?.PlaceId
                 : null;
+        if (Constants.Place.ChatRouletteId.Equals(placeId))
+            return new Model(null, true);
 
         var place = placeId is null
             ? null
             : await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
-        return new Model(place);
+        return new Model(place, false);
     }
 
     private void OnNavbarSelectedGroupOrTitleChanged(object? s, EventArgs e)
@@ -59,5 +66,5 @@
 
     // Nested types
 
-    public record Model(Place? Place);
+    public record Model(Place? Place, bool IsChatRoulette);
 }

@@ -1,4 +1,5 @@
-@namespace ActualChat.UI.Blazor.App.Components
+﻿@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Roulette
 @inherits ComputedStateComponent<AppUIHub, NavbarButtons.Model>
 @{
     var m = State.Value;
@@ -37,22 +38,33 @@
 
 <div class="navbar-buttons">
     <NavbarPlaceButtons/>
+    @if (m.EnableChatRoulettePlace) {
+        <NavbarChatRouletteButton/>
+    }
     <NavbarChatButtons/>
 </div>
 
 @code {
+    private IRouletteProfiles RouletteProfiles => Hub.RouletteProfiles;
+
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new (AccountUI.OwnAccount.Value),
+            InitialValue = new (AccountUI.OwnAccount.Value, false),
             Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        return new(ownAccount);
+        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
+        var isChatRouletteEnabled = false;
+        if (enableChatRouletteUI) {
+            var userSettings = await RouletteProfiles.GetOwnUserSettings(Session, cancellationToken).ConfigureAwait(false);
+            isChatRouletteEnabled = userSettings?.IsEnabled ?? false;
+        }
+        return new(ownAccount, isChatRouletteEnabled);
     }
 
     // Nested types
 
-    public record Model(AccountFull OwnAccount);
+    public record Model(AccountFull OwnAccount, bool EnableChatRoulettePlace);
 }

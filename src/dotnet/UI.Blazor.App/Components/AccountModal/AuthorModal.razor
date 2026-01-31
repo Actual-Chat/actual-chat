@@ -31,11 +31,13 @@
         tileCls += " unhovered tile-selected";
     var toggleValue = m.OnlyAnonymousChatAllowed || _anonymousChat;
     EventCallback onEditClick = default;
-    if (m.IsOwnAuthor) {
-        if (!author.IsAnonymous)
-            onEditClick = EventCallback.Factory.Create(this, OnSettingsClick);
-    } else if (m.PeerChatContact is not null && m.PeerChatContact.IsStored()) {
-        onEditClick = EventCallback.Factory.Create(this, _ => OnEditPeerContactClick(m.PeerChatContact));
+    if (!m.IsChatRoulette) {
+        if (m.IsOwnAuthor) {
+            if (!author.IsAnonymous)
+                onEditClick = EventCallback.Factory.Create(this, OnSettingsClick);
+        } else if (m.PeerChatContact is not null && m.PeerChatContact.IsStored()) {
+            onEditClick = EventCallback.Factory.Create(this, _ => OnEditPeerContactClick(m.PeerChatContact));
+        }
     }
 }
 
@@ -56,10 +58,14 @@
     <Buttons>
         @if (m.IsOwnAuthor) {
             if (!author.IsAnonymous) {
-                <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
-                    <Icon><i class="icon-sync text-lg"></i></Icon>
-                    <Title>Change avatar</Title>
-                </Button>
+                if (!m.IsChatRoulette) {
+                    <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
+                        <Icon><i class="icon-sync text-lg"></i></Icon>
+                        <Title>Change avatar</Title>
+                    </Button>
+                } else {
+                    <Button Class="btn-modal" Click="OnCancel">Close</Button>
+                }
             } else {
                 <Button Class="btn-modal" Click="@(_ => OnEditAvatarClick(author))">
                     <Icon><i class="icon-sync text-lg md:hidden"></i></Icon>
@@ -189,6 +195,7 @@
             Author = author,
             Account = account,
             IsOwnAuthor = ownAuthor is not null && ownAuthor.Id == author.Id,
+            IsChatRoulette = chat?.IsChatRoulette() ?? false,
             PeerChatId = peerChatId,
             PeerChatContact = peerChatContact,
             OnlyAnonymousChatAllowed = onlyAnonymousChatAllowed,
@@ -266,6 +273,7 @@
         public EditChatMemberModel? EditMemberModel { get; init; }
         public bool UsePlaceSettingsToEditMember { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public bool IsChatRoulette { get; init; }
     }
 
     public sealed record Model(AuthorId AuthorId);

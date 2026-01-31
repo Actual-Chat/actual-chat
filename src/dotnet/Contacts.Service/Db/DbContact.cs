@@ -37,6 +37,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsPinned = IsPinned,
             PeerContactName = PeerContactName,
             ExternalContactName = ExternalContactName,
+            SystemTag = Constants.Place.ChatRouletteId.Value.Equals(PlaceId) ? Constants.Contact.SystemTags.ChatRoulette : Symbol.Empty,
         };
 
     public void UpdateFrom(Contact model)
@@ -58,6 +59,11 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ChatId = model.ChatId.Value;
         UserId = model.UserId?.Value;
         var placeId = (model.ChatId as PlaceChatId)?.PlaceId;
+        if (Constants.Contact.SystemTags.ChatRoulette.Equals(model.SystemTag)) {
+            if (placeId is not null)
+                throw StandardError.Constraint("PlaceId should be null for chat roulette.");
+            placeId = Constants.Place.ChatRouletteId;
+        }
         PlaceId = placeId?.Value;
     }
 

@@ -44,8 +44,17 @@ public static partial class Constants
 
     public static class Place
     {
-        public static readonly IReadOnlySet<Symbol> SystemPlaceIds = new HashSet<Symbol>();
+        public static readonly PlaceId ChatRouletteId = PlaceId.Parse("chat-roulette"); // Pseudo Place
+        public static readonly IReadOnlySet<Symbol> SystemPlaceIds = new HashSet<Symbol>([ChatRouletteId.Id]);
         public static readonly HashSet<string> SystemPlaceIdValues = SystemPlaceIds.Select(x => x.Value).ToHashSet(StringComparer.Ordinal);
+    }
+
+    public static class Contact
+    {
+        public static class SystemTags
+        {
+            public static readonly Symbol ChatRoulette = "chat-roulette";
+        }
     }
 
     public static class Chat
@@ -80,8 +89,9 @@ public static partial class Constants
             public static readonly Symbol Coworkers = "coworkers";
             public static readonly Symbol Welcome = "welcome";
             public static readonly Symbol Bot = "ml-bot";
+            public static readonly Symbol ChatRoulette = "chat-roulette";
             public static class Rules {
-                private static readonly Symbol[] AllowMultiplePerUser = [Bot, Welcome];
+                private static readonly Symbol[] AllowMultiplePerUser = [Bot, Welcome, ChatRoulette];
                 public static bool MustBeUniquePerUser(Symbol systemTag)
                     => AllowMultiplePerUser.All(e => e != systemTag);
             }

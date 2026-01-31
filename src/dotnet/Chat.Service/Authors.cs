@@ -99,6 +99,9 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         if (chat == null)
             return null;
 
+        if (chat.IsChatRoulette())
+            return null; // NOTE(DF): Do not reveal account ID, do not allow creating a new peer chat.
+
         var author = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
@@ -363,6 +366,8 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         var (session, chatId, avatarId) = command;
         chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        if (chat.IsChatRoulette())
+            throw StandardError.Constraint("You can't set avatar in chat roulette.");
 
         var rootChatId = chatId.GetRootChatId();
         var author = await GetOwn(session, rootChatId, cancellationToken).ConfigureAwait(false);

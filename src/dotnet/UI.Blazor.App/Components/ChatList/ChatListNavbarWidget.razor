@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
 @{
-    var showFilters = true; // Chats and regular Places.
+    var showFilters = PlaceId is null || PlaceId != Constants.Place.ChatRouletteId; // Chats and regular Places.
     var supportThreads = PlaceId is null || Constants.Place.SystemPlaceIds.All(c => PlaceId.Value != c.Value);
 
     RenderFragment RenderChatListTab(double order, ChatListFilter filter)

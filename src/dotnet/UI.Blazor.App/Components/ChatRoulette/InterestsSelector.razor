@@ -1,0 +1,27 @@
+@namespace ActualChat.UI.Blazor.App.Components
+
+<div class="interests-selector cr-badge-selector c-content">
+    @foreach (var interest in ActualChat.Interests.All) {
+        var isSelected = Interests.Contains(interest);
+        var cls = isSelected ? "selected" : "";
+        <div class="cr-badge profile-badge clickable @cls" @onclick="@(() => Select(interest, !isSelected))">
+            @interest.Title
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<Interest> Interests { get; set; } = [];
+    [Parameter] public EventCallback<IReadOnlyList<Interest>> InterestsChanged { get; set; }
+
+    private Task Select(Interest interest, bool select) {
+        var interests = Interests;
+        if (select) {
+            if (!interests.Contains(interest))
+                interests = interests.With(interest);
+        } else {
+            interests = interests.Without(interest);
+        }
+        return InterestsChanged.InvokeAsync(interests);
+    }
+}

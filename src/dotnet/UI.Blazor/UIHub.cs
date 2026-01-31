@@ -1,8 +1,10 @@
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Logging;
+using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 using ActualLab.Internal;
 using ActualLab.Rpc;
 
@@ -46,6 +48,8 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     public IAvatars Avatars => field ??= Services.GetRequiredService<IAvatars>();
     public Media.IMediaLinkPreviews MediaLinkPreviews => field ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
+    public IRoulette Roulette => field ??= Services.GetRequiredService<IRoulette>();
+    public IRouletteProfiles RouletteProfiles => field ??= Services.GetRequiredService<IRouletteProfiles>();
     public ISearch Search => field ??= Services.GetRequiredService<ISearch>();
     public Temporals Temporals => field ??= Services.GetRequiredService<Temporals>();
     public AccountSettings AccountSettings => field ??= Services.GetRequiredService<AccountSettings>();

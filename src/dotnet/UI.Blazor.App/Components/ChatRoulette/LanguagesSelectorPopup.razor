@@ -1,0 +1,64 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<LanguagesSelectorPopup.Model>
+@{
+    #pragma warning disable IL2091
+    var canSubmit = !_form.LanguageId.IsNullOrEmpty();
+}
+
+<Form OnSubmit="OnSubmit" Class="h-full" Model="@_form">
+    <DialogFrame
+        Title="Pick language"
+        HasCloseButton="true"
+        Class="modal-sm languages-selector-popup"
+        NarrowViewSettings="DialogFrameNarrowViewSettings.Bottom">
+        <Body>
+            <FormSection For="() => _form.LanguageId" InputId="@_form.LanguageIdFieldId" Label="Pick language" IsLabelInsideInput="true">
+                <InputSelect @bind-Value="@_form.LanguageId">
+                    @foreach (var option in ModalModel.AvailableLanguages) {
+                        <option value="@option.Id">@option.Title</option>
+                    }
+                </InputSelect>
+            </FormSection>
+        </Body>
+        <Buttons>
+            <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+            <Button Class="btn-modal btn-primary" IsDisabled="@(!canSubmit)" Type="@ButtonType.Submit">Select</Button>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private FormModel _form = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+
+    private void OnSubmit() {
+        var language = ModalModel.AvailableLanguages.FirstOrDefault(c => c.Value == _form.LanguageId);
+        if (language == null)
+            return;
+
+        Modal.Close();
+        ModalModel.OnLanguageSelected(language);
+    }
+
+    // Nested types
+
+    public record Model(
+        IReadOnlyList<Language> AvailableLanguages,
+        Action<Language> OnLanguageSelected);
+
+    public sealed class FormModel : FormModel<FormModel> {
+        public string LanguageId { get; set; } = "";
+        public string LanguageIdFieldId { get; set; } = "";
+
+        // ReSharper disable once ConvertToPrimaryConstructor
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("languages-selector-popup", componentIdGenerator) {
+        }
+    }
+}
