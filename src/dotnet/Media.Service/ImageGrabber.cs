@@ -30,7 +30,9 @@ public class ImageGrabber(IServiceProvider services)
 
         var existingId = await GetExisting().ConfigureAwait(false);
         if (existingId != null) {
-            await ScheduleUpdateIfRequired().ConfigureAwait(false);
+            await FlowHub
+                .TryScheduleUpdate<PreviewThumbnailUpdateFlow>(imageUrl, cancellationToken)
+                .ConfigureAwait(false);
             return existingId;
         }
 
@@ -50,19 +52,6 @@ public class ImageGrabber(IServiceProvider services)
                 .ConfigureAwait(false);
             return existingMedia?.Id;
         }
-
-        async Task ScheduleUpdateIfRequired()
-        {
-            var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
-            if (!NeedsUpdate(grabStatus))
-                return;
-
-            await FlowHub
-                .NewResumeEvent<PreviewThumbnailUpdateFlow>(PreviewThumbnailUpdateFlow.GetArguments(imageUrl))
-                .WithReset() // Intended, this flow runs just once unless it's reset
-                .Schedule(cancellationToken)
-                .ConfigureAwait(false);
-        }
     }
 
     public async Task UpdateExisting(string imageUrl, CancellationToken cancellationToken)
@@ -75,12 +64,6 @@ public class ImageGrabber(IServiceProvider services)
             Log.LogError(e, "Failed to update existing link preview thumbnail");
             await SaveGrabStatus(imageUrl, false, cancellationToken).ConfigureAwait(false);
         }
-    }
-
-    public async Task<bool> NeedsUpdate(string imageUrl, CancellationToken cancellationToken)
-    {
-        var grabStatus = await GrabStatusesBackend.GetByUrl(imageUrl, cancellationToken).ConfigureAwait(false);
-        return NeedsUpdate(grabStatus);
     }
 
     // Private members

@@ -8,7 +8,7 @@ public interface ILinkPreviewsBackend : IComputeService, IBackendService
     [ComputeMethod(AutoInvalidationDelay = 25 * 60 * 60 * 1000)]
     Task<LinkPreview?> Get(
         Symbol id,
-        bool mustScheduleRefreshIfRequired,
+        bool tryScheduleRefresh,
         CancellationToken cancellationToken);
 
     // Commands
