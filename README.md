@@ -14,14 +14,12 @@ For comprehensive documentation for developers, see the **[Voxt Documentation](.
 
 ## Key Technologies
 
-| Component | Technology |
-|-----------|------------|
-| Backend | .NET 10, C# 14 |
-| Real-time sync | [ActualLab.Fusion](https://github.com/ActualLab/Fusion) |
-| UI | Blazor (Server/WebAssembly), TypeScript |
-| Databases | PostgreSQL, Redis |
-| Messaging | NATS |
-| Mobile | .NET MAUI |
+| Component | Technology                                              |
+|:----------|---------------------------------------------------------|
+| Backend   | .NET 10, C# 14                                          |
+| Fusion    | [ActualLab.Fusion](https://github.com/ActualLab/Fusion) |
+| UI        | Blazor (Server/WebAssembly), TypeScript                 |
+| Mobile    | .NET MAUI                                               |
 
 ## Quick Start
 
