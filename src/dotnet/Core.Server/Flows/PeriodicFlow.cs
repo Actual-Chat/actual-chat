@@ -1,11 +1,10 @@
-using ActualChat.Time;
 using MemoryPack;
 
 namespace ActualChat.Flows;
 
 // Base class for flows that run periodically.
 // Implements a simple pattern where Run is called at scheduled intervals.
-public abstract class PeriodicFlow : Flow<string>, IQuantProvider
+public abstract class PeriodicFlow : Flow<string>
 {
     [IgnoreDataMember, MemoryPackIgnore]
     protected virtual TimeSpan MaxResumeDelay => TimeSpan.FromDays(7);
@@ -28,13 +27,11 @@ public abstract class PeriodicFlow : Flow<string>, IQuantProvider
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         LastReadiness = await Prepare(cancellationToken).ConfigureAwait(false);
-        var flowDef = Hub.Defs.ByType[GetType()];
         if (LastReadiness is { IsSuspended: true } readiness) {
             var resumeDelay = readiness.ResumeDelay ?? MaxResumeDelay;
             var resumeAt = ResumedAt + resumeDelay;
-            var resumeQuanta1 = flowDef.GetQuant!(resumeDelay);
-            Console.Log($"Prepare() -> {readiness}, will resume at {resumeAt} mod {resumeQuanta1.ToShortString()}");
-            Runtime.StageResumeAt(resumeAt, resumeQuanta1);
+            Console.Log($"Prepare() -> {readiness}, will resume in {resumeDelay.ToShortString()} mod {FlowDef.DelayQuanta.ToShortString("auto")}");
+            Runtime.StageResumeAt(resumeAt);
             return;
         }
 
@@ -59,8 +56,7 @@ public abstract class PeriodicFlow : Flow<string>, IQuantProvider
 
         var nextRunIn = (nextRunAt - Hub.SystemNow).Clamp(TimeSpan.Zero, MaxResumeDelay);
         var scheduledAt = Hub.SystemNow + nextRunIn;
-        var resumeQuanta2 = flowDef.GetQuant!(nextRunIn);
-        Console.Log($"Next run scheduled at {scheduledAt} (in {nextRunIn.ToShortString()} mod {resumeQuanta2.ToShortString()})");
-        Runtime.StageResumeAt(scheduledAt, resumeQuanta2);
+        Console.Log($"Next run scheduled in {nextRunIn.ToShortString()} mod {FlowDef.DelayQuanta.ToShortString("auto")}");
+        Runtime.StageResumeAt(scheduledAt);
     }
 }

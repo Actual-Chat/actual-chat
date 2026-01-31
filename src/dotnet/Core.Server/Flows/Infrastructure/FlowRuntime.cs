@@ -1,4 +1,3 @@
-using ActualChat.Time;
 using ActualLab.CommandR.Operations;
 
 namespace ActualChat.Flows.Infrastructure;
@@ -10,6 +9,7 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
     public FlowHub Hub { get; } = hub;
     public IServiceProvider Services => Hub.Services;
     public CancellationToken CancellationToken { get; } = cancellationToken;
+    public FlowDef FlowDef => field ??= Hub.Defs.ByType[Flow.GetType()];
     public ILogger Log => field ??= Services.LogFor(Flow.GetType());
 
     // Properties
@@ -31,9 +31,14 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
         return e;
     }
 
-    public FlowResumeEvent StageResumeIn(TimeSpan delayBy, TimeSpan? delayQuanta = null)
+    public FlowResumeEvent StageResumeIn(TimeSpan delayBy)
+        => StageResumeAt(Flow.Id, Hub.SystemNow + delayBy);
+    public FlowResumeEvent StageResumeIn(TimeSpan delayBy, TimeSpan? delayQuanta)
         => StageResumeAt(Flow.Id, Hub.SystemNow + delayBy, delayQuanta);
-    public FlowResumeEvent StageResumeAt(Moment delayUntil, TimeSpan? delayQuanta = null)
+
+    public FlowResumeEvent StageResumeAt(Moment delayUntil)
+        => StageResumeAt(Flow.Id, delayUntil);
+    public FlowResumeEvent StageResumeAt(Moment delayUntil, TimeSpan? delayQuanta)
         => StageResumeAt(Flow.Id, delayUntil, delayQuanta);
 
     // Commit
@@ -70,10 +75,16 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
     // Private methods
 
+    private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil)
+    {
+        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil);
+        StagedEvents.Add(e);
+        return e;
+    }
+
     private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil, TimeSpan? delayQuanta)
     {
-        var currentDelayQuanta = delayQuanta ?? (Flow as IHasDelayQuanta)?.DelayQuanta;
-        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil, currentDelayQuanta);
+        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil, delayQuanta);
         StagedEvents.Add(e);
         return e;
     }
@@ -86,7 +97,7 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
                 if (e is null)
                     continue;
                 if (e is IOperationEventSource operationEventSource)
-                    buffer.Add(operationEventSource.ToOperationEvent());
+                    buffer.Add(operationEventSource.ToOperationEvent(this));
                 else if (e is OperationEvent operationEvent)
                     buffer.Add(operationEvent);
                 else

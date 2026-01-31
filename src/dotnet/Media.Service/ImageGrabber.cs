@@ -59,7 +59,6 @@ public class ImageGrabber(IServiceProvider services)
 
             await FlowHub
                 .NewResumeEvent<PreviewThumbnailUpdateFlow>(PreviewThumbnailUpdateFlow.GetArguments(imageUrl))
-                .WithQuanta() // Schedule immediately, but quantize to prevent duplicates
                 .WithReset() // Intended, this flow runs just once unless it's reset
                 .Schedule(cancellationToken)
                 .ConfigureAwait(false);

@@ -11,7 +11,7 @@ namespace ActualChat.Chat.Flows;
 public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 {
     private const int BatchSize = 100;
-    private TimeSpan MaxDelay => TimeSpan.FromDays(7);
+    private static readonly TimeSpan MaxDelay = TimeSpan.FromDays(7);
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     private ChatId ChatId { get; set; } = null!;
 

@@ -69,8 +69,8 @@ public static class QueuesExt
 
     internal static TimeSpan GetTimeout(ICommand command, IServiceProvider services)
     {
-        if (command is IComputesTimeout computeTimeout)
-            return computeTimeout.ComputeTimeout(services);
+        if (command is ITimeoutProvider timeoutProvider)
+            return timeoutProvider.GetTimeout(services);
 
         return (command as IHasTimeout)?.Timeout ?? DefaultTimeout;
     }

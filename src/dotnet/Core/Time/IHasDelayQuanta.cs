@@ -2,5 +2,6 @@ namespace ActualChat.Time;
 
 public interface IHasDelayQuanta
 {
-    TimeSpan DelayQuanta { get; }
+    // Null means "auto", i.e., computed via AutoDelayQuanta.For(delay)
+    TimeSpan? DelayQuanta { get; }
 }

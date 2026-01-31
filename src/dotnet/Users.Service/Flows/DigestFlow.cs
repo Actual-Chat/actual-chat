@@ -1,6 +1,5 @@
 using ActualChat.Flows;
 using ActualChat.Queues;
-using ActualChat.Time;
 using MemoryPack;
 using TimeZoneConverter;
 
@@ -8,8 +7,9 @@ namespace ActualChat.Users.Flows;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
+[Flow(DelayQuanta = 3600)] // 1 Hour
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class DigestFlow : PeriodicFlow, IHasDelayQuanta
+public partial class DigestFlow : PeriodicFlow
 {
     protected override TimeSpan MaxResumeDelay => TimeSpan.FromDays(2);
 
@@ -19,8 +19,6 @@ public partial class DigestFlow : PeriodicFlow, IHasDelayQuanta
     private TimeZoneInfo TimeZoneInfo { get; set; } = null!;
     [IgnoreDataMember, MemoryPackIgnore]
     private TimeSpan DigestTime { get; set; }
-
-    TimeSpan IHasDelayQuanta.DelayQuanta { get; } = TimeSpan.FromHours(1);
 
     protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)
     {

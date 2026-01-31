@@ -39,6 +39,8 @@ public abstract class Flow : IFlowImpl
     protected FlowHub Hub => Runtime?.Hub!;
     [IgnoreDataMember, MemoryPackIgnore]
     protected IServiceProvider Services => Runtime?.Services!;
+    [IgnoreDataMember, MemoryPackIgnore]
+    protected FlowDef FlowDef => Runtime.FlowDef;
 
     // Properties that are persisted to the DB directly
     [IgnoreDataMember, MemoryPackIgnore]

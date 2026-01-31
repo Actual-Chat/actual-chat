@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace ActualChat.Testing;
 
 public static class TimeSpanExt

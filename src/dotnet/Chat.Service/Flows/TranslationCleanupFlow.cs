@@ -4,6 +4,7 @@ using MemoryPack;
 
 namespace ActualChat.Chat.Flows;
 
+[Flow(DelayQuanta = 60)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
 {

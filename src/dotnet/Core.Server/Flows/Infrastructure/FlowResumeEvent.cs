@@ -8,11 +8,14 @@ using MessagePack;
 namespace ActualChat.Flows.Infrastructure;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class FlowResumeEvent : IDelegatingCommand<long>, IBackendCommand, IOperationEventSource, IHasDelayUntil, IHasDelayQuanta, IComputesTimeout
+public sealed partial class FlowResumeEvent : IDelegatingCommand<long>, IBackendCommand,
+    IOperationEventSource, IHasUuid,
+    IHasDelayUntil, IHasDelayQuanta, ITimeoutProvider
 {
     private static readonly UuidGenerator UuidGenerator = UlidUuidGenerator.Instance;
 
     private readonly FlowHub? _hub; // Used only in Schedule method
+    private volatile OperationEvent? _operationEvent;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public FlowId FlowId { get; }
@@ -21,7 +24,7 @@ public sealed partial class FlowResumeEvent : IDelegatingCommand<long>, IBackend
     [DataMember(Order = 2), MemoryPackOrder(2)]
     public Moment DelayUntil { get; private set; }
     [DataMember(Order = 3), MemoryPackOrder(3)]
-    public TimeSpan DelayQuanta { get; private set; }
+    public TimeSpan? DelayQuanta { get; private set => field = value is { } q ? q.Positive() : null; }
 
     [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     private FlowResumeEvent(FlowId flowId)
@@ -34,60 +37,56 @@ public sealed partial class FlowResumeEvent : IDelegatingCommand<long>, IBackend
     {
         var delayUntilPart = DelayUntil != default ? $", {nameof(DelayUntil)} = {DelayUntil}" : "";
         if (delayUntilPart.Length > 0 && DelayQuanta > TimeSpan.Zero)
-            delayUntilPart += $" mod {DelayQuanta.ToShortString()}";
+            delayUntilPart += $" mod {DelayQuanta.ToShortString("auto")}";
         var mustResetPart = MustReset ? $", {nameof(MustReset)} = true" : "";
         return $"{nameof(FlowResumeEvent)}(`{FlowId}`{delayUntilPart}{mustResetPart})";
     }
 
-    public OperationEvent ToOperationEvent()
-    {
-        var operationEvent = new OperationEvent("", this);
-        if (DelayQuanta > TimeSpan.Zero) {
-            var uuidPrefix = $"{nameof(FlowResumeEvent)}({FlowId.Value})";
-            operationEvent.SetDelayUntil(DelayUntil, DelayQuanta, uuidPrefix);
-        }
-        else {
-            operationEvent.Uuid = $"{nameof(FlowResumeEvent)}-{UuidGenerator.Next()}";
-            operationEvent.SetDelayUntil(DelayUntil);
-        }
-        return operationEvent;
-    }
-
     // WithXxx methods
 
-    public FlowResumeEvent WithDelay(Moment delayUntil, TimeSpan? delayQuanta = null)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public FlowResumeEvent WithDelay(Moment delayUntil)
     {
+        ThrowIfImmutable();
         DelayUntil = delayUntil;
-        return WithQuanta(delayQuanta);
+        return this;
     }
 
-    public FlowResumeEvent WithDelay(TimeSpan delay, TimeSpan? delayQuanta = null)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public FlowResumeEvent WithDelay(Moment delayUntil, TimeSpan? delayQuanta)
     {
+        WithDelay(delayUntil);
+        DelayQuanta = delayQuanta;
+        return this;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public FlowResumeEvent WithDelay(TimeSpan delay)
+    {
+        ThrowIfImmutable();
         var delayUntil = _hub?.Clocks.SystemClock.Now + delay ?? Moment.Now + delay;
         DelayUntil = delayUntil;
-        return WithQuanta(delayQuanta);
+        return this;
     }
 
-    public FlowResumeEvent WithQuanta(TimeSpan? delayQuanta = null)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public FlowResumeEvent WithDelay(TimeSpan delay, TimeSpan? delayQuanta)
     {
-        var delayUntil = DelayUntil;
-        if (delayQuanta is null) {
-            if (_hub != null) {
-                var flowDef = _hub.Defs.ByName[FlowId.Name];
-                var delay = (delayUntil - _hub.Clocks.SystemClock.Now).Positive();
-                var quanta = delayQuanta ?? flowDef.DelayQuanta ?? flowDef.GetQuant?.Invoke(delay) ?? TimeSpan.Zero;
-                DelayQuanta = quanta;
-            }
-            else
-                DelayQuanta = TimeSpan.Zero;
-        }
-        else
-            DelayQuanta = delayQuanta.Value.Positive();
+        WithDelay(delay);
+        DelayQuanta = delayQuanta;
+        return this;
+    }
+
+    public FlowResumeEvent WithDelayQuanta(TimeSpan? delayQuanta)
+    {
+        ThrowIfImmutable();
+        DelayQuanta = delayQuanta;
         return this;
     }
 
     public FlowResumeEvent WithReset(bool mustReset = true)
     {
+        ThrowIfImmutable();
         MustReset = mustReset;
         return this;
     }
@@ -97,9 +96,39 @@ public sealed partial class FlowResumeEvent : IDelegatingCommand<long>, IBackend
     public Task Schedule(CancellationToken cancellationToken = default)
         => _hub.Require().Schedule(this, cancellationToken);
 
-    // IComputesTimeout implementation
+    // Private methods
 
-    TimeSpan IComputesTimeout.ComputeTimeout(IServiceProvider services)
+    private void ThrowIfImmutable()
+    {
+        if (_operationEvent is not null)
+            throw StandardError.Internal($"This {nameof(FlowResumeEvent)} instance is already immutable.");
+    }
+
+    // Explicit interface implementations
+
+    string IHasUuid.Uuid => field ??= ((IOperationEventSource)this).ToOperationEvent(null!).Uuid;
+
+    OperationEvent IOperationEventSource.ToOperationEvent(IServiceProvider services)
+    {
+        if (_operationEvent is { } operationEvent)
+            return operationEvent;
+
+        operationEvent = new OperationEvent("", this);
+        var delayQuanta = DelayQuanta ?? AutoDelayQuanta.For(DelayUntil - _hub.Require().Clocks.SystemClock.Now);
+        if (delayQuanta > TimeSpan.Zero) {
+            var uuidPrefix = $"{nameof(FlowResumeEvent)}({FlowId.Value})";
+            operationEvent.SetDelayUntil(DelayUntil, delayQuanta, uuidPrefix);
+        }
+        else {
+            operationEvent.Uuid = $"{nameof(FlowResumeEvent)}-{UuidGenerator.Next()}";
+            operationEvent.SetDelayUntil(DelayUntil);
+        }
+
+        // We compute it maximum once
+        return Interlocked.CompareExchange(ref _operationEvent, operationEvent, null) ?? operationEvent;
+    }
+
+    TimeSpan ITimeoutProvider.GetTimeout(IServiceProvider services)
     {
         var flowHub = services.FlowHub();
         var flowDef = flowHub.Defs.ByName[FlowId.Name];

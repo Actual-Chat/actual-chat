@@ -1,5 +1,4 @@
 using System.Collections.Frozen;
-using ActualLab.CommandR.Operations;
 using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Queues;
@@ -32,9 +31,8 @@ public abstract record QueuedCommand : IHasUuid, IHasId<string>
 
         if (uuid.IsNullOrEmpty())
             uuid = command switch {
-                IOperationEventSource operationEventSource => operationEventSource.ToOperationEvent().Uuid,
                 IHasUuid hasUuid => hasUuid.Uuid,
-                _ => Ulid.NewUlid().ToString()
+                _ => Ulid.NewUlid().ToString(),
             };
 
         return headers is null
