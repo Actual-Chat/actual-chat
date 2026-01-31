@@ -13,7 +13,13 @@ public class MainPage : ContentPage
     public MainPage()
     {
         Interlocked.Exchange(ref _current, this);
+
         On<iOS>().SetUseSafeArea(true);
+#if ANDROID
+        // .NET 10 changed ContentPage to default to SafeAreaEdges.None (edge-to-edge) on Android.
+        // Set to All to avoid system bars (status bar, navigation bar) overlapping content.
+        SafeAreaEdges = SafeAreaEdges.All;
+#endif
         BackgroundColor = MauiSettings.SplashBackgroundColor;
         RecreateWebView();
     }
