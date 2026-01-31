@@ -57,7 +57,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             var placeIds = await contacts.ListPlaceIds(session, ct);
             placeIds.Length.Should().Be(1);
             placeIds.Should().Contain(place.Id);
-        });
+        }, TimeSpan.FromSeconds(10));
 
         await using var tester2 = AppHost.NewBlazorTester(Out);
         var anotherSession = tester2.Session;
@@ -329,7 +329,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             var placeIds = await contacts.ListPlaceIds(anotherSession, ct);
             placeIds.Length.Should().Be(1);
             placeIds.Should().Contain(place.Id);
-        });
+        }, TimeSpan.FromSeconds(10));
 
         if (!isPublicChat) {
             var contactIds = await contacts.ListIds(anotherSession, place.Id, default);

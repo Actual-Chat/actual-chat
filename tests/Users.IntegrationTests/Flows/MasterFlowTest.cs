@@ -7,21 +7,7 @@ public class MasterFlowTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(MasterFlowTest)}", TestAppHostOptions.Default, @out)
 {
     [Fact]
-    public async Task ShouldStartDigestFlow()
-    {
-        await using var h = await NewAppHost();
-
-        var flowHub = h.Services.FlowHub();
-
-        await ComputedTest.When(async ct => {
-            var userId = Constants.User.Admin.UserId.Value;
-            var flow = await flowHub.TryGet<DigestFlow>(userId, ct);
-            flow.Should().NotBeNull();
-        }, TimeSpan.FromSeconds(30));
-    }
-
-    [Fact]
-    public async Task ShouldBeHangingOnReset()
+    public async Task ShouldApplyStartDigestFlowsMigration()
     {
         await using var h = await NewAppHost();
 
@@ -32,6 +18,21 @@ public class MasterFlowTest(ITestOutputHelper @out)
             var flow = await flowHub.TryGet<MasterFlow>("", ct);
             flow.Should().NotBeNull();
             flow.AppliedMigrations.Contains("StartDigestFlows").Should().BeTrue();
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task ShouldStartDigestFlow()
+    {
+        await using var h = await NewAppHost();
+
+        var flowHub = h.Services.FlowHub();
+        await flowHub.NewResumeEvent<MasterFlow>("").Schedule();
+
+        await ComputedTest.When(async ct => {
+            var userId = Constants.User.Admin.UserId.Value;
+            var flow = await flowHub.TryGet<DigestFlow>(userId, ct);
+            flow.Should().NotBeNull();
         }, TimeSpan.FromSeconds(30));
     }
 }
