@@ -64,10 +64,6 @@ public partial class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
-        // Opt out of edge-to-edge enforcement on Android 15+ (API 35+)
-        // Must apply the style before the DecorView setup
-        Theme?.ApplyStyle(Resource.Style.OptOutEdgeToEdgeEnforcement, force: false);
-
         using var _1 = Tracer.MethodRegion();
 
         BlazorWebViewApp.EnsureStarted();

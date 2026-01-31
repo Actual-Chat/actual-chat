@@ -13,6 +13,4 @@
     <item name="android:navigationBarColor">@color/colorPrimaryDark</item>
     <item name="android:gravity">center</item>
   </style>
-  <style name="OptOutEdgeToEdgeEnforcement">
-  </style>
 </resources>
