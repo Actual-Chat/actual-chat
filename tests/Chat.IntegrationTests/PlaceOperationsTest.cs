@@ -387,8 +387,10 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         if (addToPlaceMembers) {
             var user2 = await tester2.Accounts.GetOwn(session2, default);
             await commander.Call(new Places_Invite(session, place.Id, [user2.Id]));
-            var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, default);
-            placeFromUser2Perspective.Should().NotBeNull();
+            await ComputedTest.When(async ct => {
+                var placeFromUser2Perspective = await tester2.Places.Get(session2, place.Id, ct);
+                placeFromUser2Perspective.Should().NotBeNull();
+            });
         }
 
         var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chat.Id));
