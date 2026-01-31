@@ -1,6 +1,7 @@
 using ActualChat.Db;
 using ActualChat.Media.Db;
 using ActualChat.Media.Resources;
+using ActualChat.Roulette;
 
 namespace ActualChat.Media.Module;
 
@@ -23,6 +24,11 @@ public class MediaDbInitializer(IServiceProvider services) : DbInitializer<Media
         // Add Sherlock image
         await new MediaUploader(GetType())
             .Upload(c => c.AddMedia(Constants.User.Sherlock.MediaId.Value, Resource.Sherlock), cancellationToken)
+            .ConfigureAwait(false);
+
+        // Add Chat Roulette image
+        await new MediaUploader(GetType())
+            .Upload(c => c.AddMedia(ChatRoulette.MediaId.Value, Resource.ChatRoulette), cancellationToken)
             .ConfigureAwait(false);
     }
 }

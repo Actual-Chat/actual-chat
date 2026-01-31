@@ -8,6 +8,7 @@ public class Resource(string name)
     public static readonly Resource NotesSvg = new ("notes.svg");
     public static readonly Resource FriendsSvg = new ("friends.svg");
     public static readonly Resource Sherlock = new ("sherlock.svg");
+    public static readonly Resource ChatRoulette = new ("chatroulette.svg");
 
     public string Name { get; } = name;
 

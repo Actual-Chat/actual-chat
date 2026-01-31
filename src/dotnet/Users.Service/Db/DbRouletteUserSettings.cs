@@ -1,0 +1,44 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Roulette;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using ActualLab.Versioning;
+
+namespace ActualChat.Users.Db;
+
+// TODO(AY): Rename to UserRouletteSettings
+[Table("RouletteUserSettings")]
+[SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
+public class DbRouletteUserSettings : IHasId<string>, IHasVersion<long>, IRequirementTarget
+{
+    [Key] public string Id { get; set; } = null!; // The same as user account id.
+    [ConcurrencyCheck] public long Version { get; set; }
+
+    public bool IsEnabled { get; set; } = true;
+
+    public DbRouletteUserSettings() { }
+    public DbRouletteUserSettings(RouletteUserSettings model) => UpdateFrom(model);
+
+    public RouletteUserSettings ToModel()
+        => new (UserId.Parse(Id), Version) {
+            IsEnabled = IsEnabled
+        };
+
+    public void UpdateFrom(RouletteUserSettings model)
+    {
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id.Value);
+        model.RequireSomeVersion();
+
+        Id = id.Value;
+        Version = model.Version;
+        IsEnabled = model.IsEnabled;
+    }
+
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbRouletteUserSettings>
+    {
+        public void Configure(EntityTypeBuilder<DbRouletteUserSettings> builder)
+            => builder.Property(a => a.Id).IsRequired();
+    }
+}

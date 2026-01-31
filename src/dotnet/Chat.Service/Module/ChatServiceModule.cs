@@ -9,6 +9,7 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
+using ActualChat.Roulette;
 using ActualChat.Uploads;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
@@ -58,6 +59,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         // Aliases
         rpcHost.AddLocalApi<IAliases, Aliases>();
         rpcHost.AddBackend<IAliasBackend, AliasBackend>();
+
+        // Chat Roulette
+        rpcHost.AddLocalApi<IRoulette, Roulette>();
+        rpcHost.AddBackend<IRouletteBackend, RouletteBackend>();
 
         // Translation
         rpcHost.AddLocalApi<ITranslations, Translations>();
@@ -216,6 +221,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
             // DbAlias
             db.AddEntityResolver<string, DbAlias>();
+
+            // DbChatRoulette
+            db.AddEntityResolver<string, DbChatRoulette>();
 
             // DbConversation
             db.AddEntityResolver<string, DbConversation>();

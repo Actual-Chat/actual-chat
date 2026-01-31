@@ -1,0 +1,41 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+@{
+    if (!State.Value)
+        return;
+
+    var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
+    var placeId = Constants.Place.ChatRouletteId;
+}
+
+<div class=c-delimiter></div>
+
+<NavbarGroupSelectionButton
+    CanMove="@false"
+    Title="Chat Roulette"
+    Id="@placeId.GetNavbarGroupId()"
+    Tooltip="Chat Roulette">
+    <ChildContent>
+        <Pic Title="Chat Roulette"
+             Size="@size"
+             IsSquare="true">
+            <NoPicture>
+                <div class="c-chat-roulette-icon">
+                    <i class="icon-hand text-2xl"></i>
+                </div>
+            </NoPicture>
+        </Pic>
+    </ChildContent>
+    <BadgeContent>
+        <ChatsNavbarButtonBadge PlaceId="@placeId"/>
+    </BadgeContent>
+</NavbarGroupSelectionButton>
+
+@code {
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chatRouletteContacts = await Hub.Contacts.ListIds(Session, Constants.Place.ChatRouletteId, cancellationToken).ConfigureAwait(false);
+        return chatRouletteContacts.Length > 0;
+    }
+}
