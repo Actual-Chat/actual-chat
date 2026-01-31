@@ -24,6 +24,10 @@ IMPORTANT: See `README.md` in the root folder to learn what Voxt (formerly Actua
   - `build/`: Bullseye-based `Build.csproj` - a project responsible for a set of advanced build tasks (e.g., building NuGet packages).
   - `artifacts/`: various build outputs / artifacts.
 
+For detailed project organization, see [`docs/architecture/project-structure.md`](./architecture/project-structure.md).
+
+When implementing new features, see [`docs/development/implementing-features.md`](./development/implementing-features.md) for a comprehensive guide covering all layers from domain models to UI components.
+
 ## Build Prerequisites
 
 - Install .NET 10

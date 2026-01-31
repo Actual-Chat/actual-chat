@@ -4,148 +4,75 @@
 
 ![slow tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/test-slow.yml/badge.svg)
 
+**Voxt** is a real-time communication platform built with .NET, Blazor, and [ActualLab.Fusion](https://github.com/ActualLab/Fusion).
+
 Web site: [voxt.ai](https://voxt.ai)
 
-## Join Team Chats 
+## Documentation for Developers
 
-- Unsurprisingly, our team uses [Voxt](https://voxt.ai) to communicate  
-- If you're a part of our team, please contact [Alex Yakunin](https://voxt.ai/u/hjp639qb6bp1) to get access.
+For comprehensive documentation for developers, see the **[Voxt Documentation](./docs/index.md)**.
 
-## Prerequisites
+## Key Technologies
 
-Install:
+| Component | Technology |
+|-----------|------------|
+| Backend | .NET 10, C# 14 |
+| Real-time sync | [ActualLab.Fusion](https://github.com/ActualLab/Fusion) |
+| UI | Blazor (Server/WebAssembly), TypeScript |
+| Databases | PostgreSQL, Redis |
+| Messaging | NATS |
+| Mobile | .NET MAUI |
+
+## Quick Start
+
+### Prerequisites
+
 - [Git](https://git-scm.com/downloads)
-- [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0)
-- `dotnet workload install wasm-tools maui aspire`  
+- [.NET 10](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Docker](https://www.docker.com/get-started)
-- [NodeJS 16+](https://nodejs.org/en/) and the latest `npm`;
-  [npm-windows-update](https://www.npmjs.com/package/npm-windows-upgrade)
-  is the simplest way to update `npm` on Windows
-- [Edge](https://www.microsoft.com/en-us/edge#platform)
-  or [Chrome](https://chromeenterprise.google/browser/download/)
-- [Playwright](https://playwright.dev/docs/intro/#installation)
-- [Configure GCP service key](https://www.notion.so/actual-chat/GCP-service-keys-d4cbb93a014644fba636e35aad45f94d)
-- Ensure your time & timezone settings are correct.
+- [Node.js 20+](https://nodejs.org/en/)
 
-Run:
+### Setup
+
 ```bash
+# Restore tools and workloads
 dotnet tool restore
 dotnet workload install wasm-tools maui aspire
-```
 
-Recommended IDEs:
-- [Rider](https://www.jetbrains.com/rider/)
-- [Visual Studio Code](https://code.visualstudio.com/)
+# Install npm dependencies
+./npm-install.cmd
 
-## Building Server + Web App
-
-First, get Google Cloud credentials (`key.json` file) to make sure you can use Google Transcribe APIs. Copy the provided file to `~/.gcp/key.json` and ensure `GOOGLE_APPLICATION_CREDENTIALS` env. variable stores its path.
-
-To build & run the project:
-
-```bash
-# Start Docker containers for NGINX, PostgreSQL, Redis etc.
+# Start infrastructure (PostgreSQL, Redis, NGINX, etc.)
 ./docker-start.cmd
 
-# Install dependencies and run watch (dotnet watch + web watch)
-./run-build.cmd restore-tools npm-install watch
-```
-
-If you're getting `RpcException` with 
-`"Request had invalid authentication credentials."` message,
-make sure your time & time zone settings are correct.
-
-Other useful commands:
-
-```powershell
-# What else build project can do?
-./run-build.cmd --help
- 
-# List all available targets (you can combine them)
-./run-build.cmd --list-targets
-
-# Run with observability services (opentelemetry collector + jaeger) locally:
-docker-compose -f docker-compose.observability.yml -f docker-compose.yml up
-
-# Use either env. var or the matching option in your appsettings.local.json
-$env:HostSettings__OpenTelemetryEndpoint="localhost"
+# Build and run with watch
 ./run-build.cmd watch
 ```
 
-You can add your own targets (as C# code) to `./build/Program.cs`, which is actually a [Bullseye](https://github.com/adamralph/bullseye) build project written in C#.
+Access the app at https://local.voxt.ai (see [Running Voxt](./docs/running-voxt.md) for host setup).
 
-It's also useful to have an [alias](https://github.com/vchirikov/dotfiles/blob/7f280e9287ceba6fd508577fb0665fc19e4d9b29/Microsoft.PowerShell_profile.ps1#L231-L249) to run build system (to run commands like `bs watch`).
+## Join Team Chats
 
-There are some shortcuts in `*.cmd` files, you can use them too.
-
-Possible issues:
-- If you use Windows, project build could break with a message about some resource related to `AdamE.Firebase.iOS.Analytics` package is not found. The issue is because of well-known default 260 characters limitation on the path length. Fortunately, there is a [workaround](https://github.com/AdamEssenmacher/GoogleApisForiOSComponents?tab=readme-ov-file#long-path-issue-workarounds) to make it working.
-
-## Accessing Web App
-
-NGINX (which runs in Docker) is configured to serve the app + its assets from https://local.voxt.ai, which means you need to setup a few extra things to access it.
-
-### Setting up https://local.voxt.ai
-
-Run:
-```bash
-./add-hosts.cmd
-```
-
-Alternatively, you  hosts and trust certificate manually:
-
-- Add this line with aliases to [Hosts file](https://www.howtogeek.com/howto/27350/beginner-geek-how-to-edit-your-hosts-file/).
-     ```
-     127.0.0.1  local.voxt.ai media.local.voxt.ai cdn.local.voxt.ai
-     ```
- - Import [local.voxt.ai.crt](./.config/local.voxt.ai/ssl/local.voxt.ai.crt) to "Trusted Root Certification Authorities". You can do it with [Microsoft Management Console](https://www.thesslstore.com/knowledgebase/ssl-install/how-to-import-intermediate-root-certificates-using-mmc/#import-root-certificate-using-mmc12/) or [Chrome](https://www.pico.net/kb/how-do-you-get-chrome-to-accept-a-self-signed-certificate/).
-## Building Mobile and Desktop Apps
-
-The instructions below imply you're on Windows.
-
-### Windows app
-
-- Install [sign_app.cer](./.config/maui/sign_app.cer) to "Trusted Root Certification Authorities" (required only once).
-- Enable Developer mode in windows settings. https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development
-- Build solution:
-  - using any IDE, or:
-  - run `msbuild` from repo root, or,
-  - run `dotnet build` from repo root.
-- Run this command from repo root:
-  ```bash
-  dotnet publish src/dotnet/App.Maui/App.Maui.csproj -f net10.0-windows10.0.22621.0 -c Debug --no-restore -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=true -p:PackageCertificateThumbprint=0BFF799D82CC03E61A65584D31D800924149453A
-  ```
-
-Possible issues:
-- `"artefacts\obj\ClientApp\project.assets.json' doesn't have a target for 'net10.0-windows10.0.22621.0"` error: try to build everything in IDE and run `dotnet publish` with `--no-restore`.
-
-### Android app
-
-TODO: write this section.
+- Our team uses [Voxt](https://voxt.ai) to communicate
+- Contact [Alex Yakunin](https://voxt.ai/u/hjp639qb6bp1) to get access
 
 ## Conventions
 
-We use:
 - [Conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
-- Standard .NET naming & style guidelines. Exceptions:
-    - Place `{` on the same line for `if`, `for`, and
-      any other code inside method body
-    - If you have to wrap a method body expression,
-      wrap it before `=>` rather than after
-    - A bunch of other things, see `#coding-style` Discord channel
+- See [Coding Style](./docs/CODING_STYLE.md) for .NET coding guidelines
 
 ## Releases
 
 We use [Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning/blob/master/doc/nbgv-cli.md).
 
-To publish a new release, run these commands from repo root:
-
 ```bash
 dotnet nbgv prepare-release
-# Push newly created version XX:
-git push --set-upstream origin release/v0.XX
+git push --set-upstream origin release/vX.Y
 ```
 
-Note that release deployment won't happen unless approved by one of our core team members.
+Release deployment requires approval from core team members.
 
-We use the `alpha` suffix in the `master` branch, `beta`,`rc-*` in release branches. When a release branch drops the version suffix it becomes a production release.
+## Related Projects
+
+- [ActualLab.Fusion](https://github.com/ActualLab/Fusion) - Real-time state synchronization framework
+- [ActualLab.Fusion.Samples](https://github.com/ActualLab/Fusion.Samples) - Sample applications
