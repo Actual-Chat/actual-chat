@@ -1,11 +1,9 @@
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Fusion.Client;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class RealtimeChatPlayer : ChatPlayer
 {
-
     private ChatAudioUI ChatAudioUI { get; }
 
     public RealtimeChatPlayer(AppUIHub hub, ChatId chatId)
