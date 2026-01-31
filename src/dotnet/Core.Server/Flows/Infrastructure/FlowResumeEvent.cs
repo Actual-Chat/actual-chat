@@ -39,7 +39,7 @@ public sealed partial class FlowResumeEvent :
     internal FlowResumeEvent(FlowId flowId, FlowHub hub) : this(flowId)
     {
         _hub = hub;
-        DelayQuanta = hub.Defs.ByType[GetType()].DelayQuanta;
+        DelayQuanta = hub.Defs.ByName[flowId.Name].DelayQuanta;
     }
 
     public override string ToString()

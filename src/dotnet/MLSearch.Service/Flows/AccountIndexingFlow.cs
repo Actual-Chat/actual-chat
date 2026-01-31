@@ -4,7 +4,6 @@ using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Queues;
 using ActualChat.Search;
-using ActualChat.Users;
 using MemoryPack;
 
 namespace ActualChat.MLSearch.Flows;
