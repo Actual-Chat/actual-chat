@@ -165,7 +165,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
                         count++;
                         QueuedCommand? queuedCommand;
                         try {
-                            queuedCommand = Deserialize(message);
+                            queuedCommand = Deserialize(message, Queues);
                         }
                         catch (Exception e) when (!e.IsCancellationOf(gracefulStopToken)) {
                             Log.LogError(e,
@@ -418,7 +418,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     // Serialization
 
-    private static QueuedCommand Deserialize(NatsJSMsg<IMemoryOwner<byte>> message)
+    private static QueuedCommand Deserialize(NatsJSMsg<IMemoryOwner<byte>> message, IQueues queues)
     {
         var data = message.Data;
         if (data == null)
@@ -432,7 +432,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         case 2: {
             var uuid = (string)Serializer.Read(dataMemory[1..], typeof(string), out var ulidLength)!;
             var command = (ICommand)TypeDecoratingSerializer.Read(dataMemory[(1 + ulidLength)..], typeof(ICommand), out _)!;
-            return QueuedCommand.NewUntyped(command, uuid, message.Headers?.AsReadOnly());
+            return QueuedCommand.NewUntyped(command, uuid, message.Headers?.AsReadOnly(), queues);
         }
         default:
             throw StandardError.Internal($"Unsupported format version: {formatVersion}.");

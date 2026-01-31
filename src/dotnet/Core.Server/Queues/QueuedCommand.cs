@@ -1,4 +1,6 @@
 using System.Collections.Frozen;
+using ActualChat.Flows.Infrastructure;
+using ActualLab.CommandR.Operations;
 using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Queues;
@@ -7,8 +9,10 @@ public abstract record QueuedCommand : IHasUuid, IHasId<string>
 {
     private static readonly MethodInfo NewInternalMethod
         = typeof(QueuedCommand).GetMethod(nameof(NewInternal), BindingFlags.Static | BindingFlags.NonPublic)!;
-    private static readonly ConcurrentDictionary<Type, Func<ICommand, string?, IReadOnlyDictionary<string, StringValues>?, QueuedCommand>> Factories
-        = new();
+    private static readonly ConcurrentDictionary<
+            Type,
+            Func<ICommand, string?, IReadOnlyDictionary<string, StringValues>?, IQueues?, QueuedCommand>
+        > Factories = new();
 
     public string Uuid { get; private init; } = "";
     string IHasId<string>.Id => Uuid;
@@ -23,14 +27,16 @@ public abstract record QueuedCommand : IHasUuid, IHasId<string>
     public static QueuedCommand New<TCommand>(
         TCommand command,
         string? uuid = null,
-        IReadOnlyDictionary<string, StringValues>? headers = null)
+        IReadOnlyDictionary<string, StringValues>? headers = null,
+        IQueues? queues = null)
         where TCommand : ICommand
     {
         if (typeof(TCommand) != command.GetType())
-            return NewUntyped(command, uuid, headers);
+            return NewUntyped(command, uuid, headers, queues);
 
         if (uuid.IsNullOrEmpty())
             uuid = command switch {
+                FlowResumeEvent flowResumeEvent => ((IOperationEventSource)flowResumeEvent).ToOperationEvent(queues?.Services!).Uuid,
                 IHasUuid hasUuid => hasUuid.Uuid,
                 _ => Ulid.NewUlid().ToString(),
             };
@@ -43,13 +49,14 @@ public abstract record QueuedCommand : IHasUuid, IHasId<string>
     public static QueuedCommand NewUntyped(
         ICommand command,
         string? uuid = null,
-        IReadOnlyDictionary<string, StringValues>? headers = null)
+        IReadOnlyDictionary<string, StringValues>? headers = null,
+        IQueues? queues = null)
         => Factories.GetOrAdd(
             command.GetType(),
             static t => NewInternalMethod
                 .MakeGenericMethod(t)
-                .CreateDelegate<Func<ICommand, string?, IReadOnlyDictionary<string, StringValues>?, QueuedCommand>>()
-        ).Invoke(command, uuid, headers);
+                .CreateDelegate<Func<ICommand, string?, IReadOnlyDictionary<string, StringValues>?, IQueues?, QueuedCommand>>()
+        ).Invoke(command, uuid, headers, queues);
 
     public static CommandKind GetKind(ICommand command)
         => command is IEventCommand eventCommand
@@ -67,9 +74,10 @@ public abstract record QueuedCommand : IHasUuid, IHasId<string>
     private static QueuedCommand NewInternal<T>(
         ICommand command,
         string? uuid = null,
-        IReadOnlyDictionary<string, StringValues>? headers = null)
+        IReadOnlyDictionary<string, StringValues>? headers = null,
+        IQueues? queues = null)
         where T : ICommand
-        => New((T)command, uuid, headers);
+        => New((T)command, uuid, headers, queues);
 }
 
 public sealed record QueuedCommand<T>(T Command) : QueuedCommand

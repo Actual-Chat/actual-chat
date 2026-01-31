@@ -32,7 +32,7 @@ public static class QueuesExt
             activity.AddTag(OtelConstants.MessagingMessageType, command.GetType().Name);
         }
         try {
-            var queuedCommand = QueuedCommand.New(command, headers: contextHeaders);
+            var queuedCommand = QueuedCommand.New(command, headers: contextHeaders, queues: queues);
             await queues.Enqueue(queuedCommand, cancellationToken).ConfigureAwait(false);
             activity?.SetTag(OtelConstants.MessagingMessageId, queuedCommand.Uuid);
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -42,7 +42,6 @@ public static class QueuesExt
             activity?.SetStatus(ActivityStatusCode.Error);
             throw;
         }
-
     }
 
     public static Task Enqueue(this IQueues queues,

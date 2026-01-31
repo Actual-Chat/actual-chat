@@ -8,9 +8,11 @@ using MessagePack;
 namespace ActualChat.Flows.Infrastructure;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class FlowResumeEvent : IDelegatingCommand<long>, IBackendCommand,
-    IOperationEventSource, IHasUuid,
-    IHasDelayUntil, IHasDelayQuanta, ITimeoutProvider
+public sealed partial class FlowResumeEvent :
+    IDelegatingCommand<long>, IBackendCommand,
+    IHasDelayUntil, IHasDelayQuanta,
+    ITimeoutProvider,
+    IOperationEventSource
 {
     private static readonly UuidGenerator UuidGenerator = UlidUuidGenerator.Instance;
 
@@ -106,15 +108,20 @@ public sealed partial class FlowResumeEvent : IDelegatingCommand<long>, IBackend
 
     // Explicit interface implementations
 
-    string IHasUuid.Uuid => field ??= ((IOperationEventSource)this).ToOperationEvent(null!).Uuid;
-
-    OperationEvent IOperationEventSource.ToOperationEvent(IServiceProvider services)
+    OperationEvent IOperationEventSource.ToOperationEvent(IServiceProvider? services)
     {
         if (_operationEvent is { } operationEvent)
             return operationEvent;
 
+        // Compute delay quanta
+        var delayQuanta = DelayQuanta.GetValueOrDefault();
+        if (!DelayQuanta.HasValue) {
+            var clocks = _hub?.Clocks ?? services.Require().Clocks();
+            delayQuanta = AutoDelayQuanta.For(DelayUntil - clocks.SystemClock.Now);
+        }
+
+        // Produce operation event
         operationEvent = new OperationEvent("", this);
-        var delayQuanta = DelayQuanta ?? AutoDelayQuanta.For(DelayUntil - _hub.Require().Clocks.SystemClock.Now);
         if (delayQuanta > TimeSpan.Zero) {
             var uuidPrefix = $"{nameof(FlowResumeEvent)}({FlowId.Value})";
             operationEvent.SetDelayUntil(DelayUntil, delayQuanta, uuidPrefix);
@@ -124,7 +131,7 @@ public sealed partial class FlowResumeEvent : IDelegatingCommand<long>, IBackend
             operationEvent.SetDelayUntil(DelayUntil);
         }
 
-        // We compute it maximum once
+        // We produce it just once
         return Interlocked.CompareExchange(ref _operationEvent, operationEvent, null) ?? operationEvent;
     }
 
