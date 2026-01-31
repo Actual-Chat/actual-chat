@@ -3,6 +3,7 @@ using ActualChat.Flows.Infrastructure;
 using ActualChat.Queues;
 using ActualLab.CommandR.Operations;
 using ActualLab.Fusion.EntityFramework.Operations;
+using ActualLab.Generators;
 using ActualLab.Resilience;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry;
@@ -16,6 +17,8 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
     where TDbContext : DbContext
 {
     private string ProcessActivityName => field ??= $"{nameof(Process)}@{GetType().GetName()}>";
+
+    private UuidGenerator UuidGenerator { get; } = UlidUuidGenerator.Instance;
     private IQueues Queues { get; } = services.Queues();
 
     public override async Task Process(OperationEvent operationEvent, CancellationToken cancellationToken)
@@ -40,7 +43,9 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
             else
                 Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
             try {
-                await Queues.Enqueue(command, uuid, cancellationToken).ConfigureAwait(false);
+                // If the event was fetched, it has to be executed in the queue,
+                // so we need a unique ID instead of the original one.
+                await Queues.Enqueue(command, UuidGenerator.Next(), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) {
                 if (e.IsCancellationOf(cancellationToken) || e.IsServiceProviderDisposedException()) {
