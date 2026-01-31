@@ -37,7 +37,10 @@ public sealed partial class FlowResumeEvent :
         => FlowId = flowId;
 
     internal FlowResumeEvent(FlowId flowId, FlowHub hub) : this(flowId)
-        => _hub = hub;
+    {
+        _hub = hub;
+        DelayQuanta = hub.Defs.ByType[GetType()].DelayQuanta;
+    }
 
     public override string ToString()
     {
@@ -118,11 +121,8 @@ public sealed partial class FlowResumeEvent :
             return operationEvent;
 
         // Compute delay quanta
-        var delayQuanta = DelayQuanta.GetValueOrDefault();
-        if (DelayQuanta is null) { // Auto delay quanta
-            var clocks = _hub?.Clocks ?? services.Require().Clocks();
-            delayQuanta = AutoDelayQuanta.For(DelayUntil - clocks.SystemClock.Now);
-        }
+        var hub = _hub ?? services?.FlowHub();
+        var delayQuanta = DelayQuanta ?? AutoDelayQuanta.For(DelayUntil - hub.Require().SystemNow);
 
         // Produce operation event
         operationEvent = new OperationEvent("", this);
