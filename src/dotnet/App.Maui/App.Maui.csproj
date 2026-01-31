@@ -189,6 +189,8 @@
 
   <!-- Common Windows, iOS and Android build properties -->
   <PropertyGroup>
+    <!-- This enables CoreCLR (instead of Mono) in Release builds on Android -->
+    <UseCoreClr Condition="'$(UseCoreClr)' == ''">true</UseCoreClr>
     <UseInterpreter Condition="'$(Configuration)' == 'Debug'">true</UseInterpreter>
     <UseInterpreter Condition="'$(Configuration)' == 'Release'">false</UseInterpreter>
   </PropertyGroup>
@@ -308,6 +310,13 @@
     -->
     <AndroidEnablePreloadAssemblies>False</AndroidEnablePreloadAssemblies>
     <AndroidAotEnableLazyLoad>True</AndroidAotEnableLazyLoad>
+  </PropertyGroup>
+
+  <!-- Android: CoreCLR mode (instead of Mono) -->
+  <PropertyGroup Condition="'$(UseCoreClr)' == 'true' and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <UseMonoRuntime>false</UseMonoRuntime>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <!-- Android: Profile-guided AOT profiles -->
