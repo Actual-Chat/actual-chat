@@ -23,7 +23,7 @@ public static class QueuesExt
 
     public static async Task Enqueue<TCommand>(this IQueues queues,
         TCommand command,
-        string? uuid = null,
+        string? uuid,
         CancellationToken cancellationToken = default)
         where TCommand : ICommand
     {
