@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Roulette
 @inherits ComputedStateComponent<AppUIHub, ChatDescription.Model>
 @{
     var m = State.Value;
@@ -14,39 +13,9 @@
     @m.Description
 </span>
 
-@if (m.ChatRouletteInfo != null) {
-    var preferences = m.ChatRouletteInfo.PeerProfile.Preferences.Preferences;
-    var countryName = preferences.Country?.Title.NullIfEmpty() ?? "---";
-    var languages = string.Join(", ", preferences.Languages.Select(c => c.Title)).NullIfEmpty() ?? "---";
-    <div class="cr-item">
-        <div class="c-center">
-            <div class="cr-badge c-location">
-                <i class="icon-map-point"></i>
-                <span>@countryName</span>
-            </div>
-            <div class="cr-badge c-languages">
-                <i class="icon-globe"></i>
-                <span>@languages</span>
-            </div>
-        </div>
-        <div class="c-bottom">
-            @{
-                var matchInterests = m.ChatRouletteInfo.OwnProfile?.Preferences.Preferences.Interests ?? [];
-            }
-            @foreach (var interest in preferences.Interests) {
-                var match = matchInterests.Contains(interest);
-                <div class="cr-badge @(match ? "selected" : "")">
-                    <span>@interest.Title</span>
-                </div>
-            }
-        </div>
-    </div>
-}
-
 @code {
     private IAvatars Avatars => Hub.Avatars;
     private IAuthors Authors => Hub.Authors;
-    private IRoulette Roulette => Hub.Roulette;
 
     [ParameterComparer(typeof(ByRefParameterComparer))]
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
@@ -61,10 +30,6 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (Chat.Id is PeerChatId peerChatId)
             return await GetPeerChatModel(peerChatId, cancellationToken);
-
-        var isChatRoulette = Chat.IsChatRoulette();
-        if (isChatRoulette)
-            return await GetChatRouletteModel(Chat, cancellationToken);
 
         return new() {
             Description = Chat.Description,
@@ -94,30 +59,6 @@
         };
     }
 
-    private async Task<Model> GetChatRouletteModel(Chat chat, CancellationToken cancellationToken) {
-        var chatRouletteInfo = await GetChatRouletteInfo(chat, cancellationToken).ConfigureAwait(false);
-        if (chatRouletteInfo is null)
-            return new();
-
-        return new() {
-            Description = chatRouletteInfo.PeerProfile.Avatar.Bio,
-            ChatRouletteInfo = chatRouletteInfo
-        };
-    }
-
-    private async Task<ChatRouletteInfo?> GetChatRouletteInfo(Chat chat, CancellationToken cancellationToken) {
-        var chatRouletteProfiles = await Roulette.GetProfiles(Session, chat.Id, cancellationToken).ConfigureAwait(false);
-        if (chatRouletteProfiles is null)
-            return null;
-
-        var peerProfile = chatRouletteProfiles.PeerProfile;
-        var ownProfile = chatRouletteProfiles.OwnProfile;
-        if (peerProfile is null || ownProfile is null)
-            return null;
-
-        return new ChatRouletteInfo(peerProfile, chatRouletteProfiles.OwnProfile);
-    }
-
     // Nested types
 
     public sealed record Model {
@@ -125,8 +66,5 @@
 
         public string Description { get; init; } = "";
         public string PeerOwnName { get; init; } = "";
-        public ChatRouletteInfo? ChatRouletteInfo { get; init; }
     }
-
-    public sealed record ChatRouletteInfo(Profile PeerProfile, Profile? OwnProfile);
 }

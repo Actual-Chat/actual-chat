@@ -99,7 +99,6 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         await _userSettings.Computed.Synchronize(cancellationToken).ConfigureAwait(false);
         await _localSettings.WhenRead.ConfigureAwait(false);
         await _localSettings.Computed.Synchronize(cancellationToken).ConfigureAwait(false);
-        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken).ConfigureAwait(false);
 
         // If there was a recent account change, add a delay to let them hit the client
         await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);
@@ -107,7 +106,7 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
         // Finally, wait for the possibility to render onboarding modal
         await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        if (_userSettings.Value.HasUncompletedSteps(enableChatRouletteUI))
+        if (_userSettings.Value.HasUncompletedSteps())
             return true;
 
         if (!_localSettings.Value.IsPermissionsStepCompleted) {
@@ -144,7 +143,6 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
                 IsVerifyEmailStepCompleted = true,
                 IsTimeZoneStepCompleted = true,
                 IsDataCollectionStepCompleted = true,
-                IsChatRouletteStepCompleted = true,
                 IsSpeechTranscriptionStepCompleted = true,
                 IsTranscriptPlaybackStepCompleted = true,
                 IsPlacesFeatureStepCompleted = true,
