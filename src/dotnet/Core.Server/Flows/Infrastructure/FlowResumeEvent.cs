@@ -25,8 +25,12 @@ public sealed partial class FlowResumeEvent :
     public bool MustReset { get; private set; }
     [DataMember(Order = 2), MemoryPackOrder(2)]
     public Moment DelayUntil { get; private set; }
+
     [DataMember(Order = 3), MemoryPackOrder(3)]
-    public TimeSpan? DelayQuanta { get; private set => field = value is { } q ? q.Positive() : null; }
+    public TimeSpan? DelayQuanta {
+        get => MustReset ? TimeSpan.Zero : field; // MustReset overrides DelayQuanta: we can't skip such events
+        private set => field = value is { } q ? q.Positive() : null;
+    }
 
     [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     private FlowResumeEvent(FlowId flowId)
@@ -115,7 +119,7 @@ public sealed partial class FlowResumeEvent :
 
         // Compute delay quanta
         var delayQuanta = DelayQuanta.GetValueOrDefault();
-        if (!DelayQuanta.HasValue) {
+        if (DelayQuanta is null) { // Auto delay quanta
             var clocks = _hub?.Clocks ?? services.Require().Clocks();
             delayQuanta = AutoDelayQuanta.For(DelayUntil - clocks.SystemClock.Now);
         }

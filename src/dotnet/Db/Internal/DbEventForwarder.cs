@@ -20,13 +20,13 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
 
     public override async Task Process(OperationEvent operationEvent, CancellationToken cancellationToken)
     {
-        var ulid = operationEvent.Uuid;
+        var uuid = operationEvent.Uuid;
         var value = operationEvent.Value;
         var delay = (operationEvent.DelayUntil - operationEvent.LoggedAt).Positive();
         var processingDelay = Clocks.SystemClock.Now - operationEvent.DelayUntil;
         var info = delay > TimeSpan.FromSeconds(0.1)
-            ? $"{ulid} ({delay.ToShortString()} + {processingDelay.ToShortString()} delay)"
-            : $"{ulid} ({processingDelay.ToShortString()} delay)";
+            ? $"{uuid} ({delay.ToShortString()} + {processingDelay.ToShortString()} delay)"
+            : $"{uuid} ({processingDelay.ToShortString()} delay)";
 
         // Forwards everything to Queues
         switch (value) {
@@ -40,7 +40,7 @@ public class DbEventForwarder<TDbContext>(IServiceProvider services)
             else
                 Log.LogInformation("-> {CommandType}: {Info}", command.GetType().GetName(), info);
             try {
-                await Queues.Enqueue(command, cancellationToken).ConfigureAwait(false);
+                await Queues.Enqueue(command, uuid, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) {
                 if (e.IsCancellationOf(cancellationToken) || e.IsServiceProviderDisposedException()) {

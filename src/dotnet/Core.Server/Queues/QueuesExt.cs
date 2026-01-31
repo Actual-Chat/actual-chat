@@ -15,8 +15,15 @@ public static class QueuesExt
 
     // Enqueue
 
+    public static Task Enqueue<TCommand>(this IQueues queues,
+        TCommand command,
+        CancellationToken cancellationToken = default)
+        where TCommand : ICommand
+        => queues.Enqueue(command, null, cancellationToken);
+
     public static async Task Enqueue<TCommand>(this IQueues queues,
         TCommand command,
+        string? uuid = null,
         CancellationToken cancellationToken = default)
         where TCommand : ICommand
     {
@@ -32,7 +39,7 @@ public static class QueuesExt
             activity.AddTag(OtelConstants.MessagingMessageType, command.GetType().Name);
         }
         try {
-            var queuedCommand = QueuedCommand.New(command, headers: contextHeaders, queues: queues);
+            var queuedCommand = QueuedCommand.New(command, uuid, headers: contextHeaders, queues: queues);
             await queues.Enqueue(queuedCommand, cancellationToken).ConfigureAwait(false);
             activity?.SetTag(OtelConstants.MessagingMessageId, queuedCommand.Uuid);
             activity?.SetStatus(ActivityStatusCode.Ok);
