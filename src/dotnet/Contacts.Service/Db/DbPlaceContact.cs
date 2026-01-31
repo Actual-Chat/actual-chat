@@ -32,11 +32,7 @@ public class DbPlaceContact : IHasId<string>, IHasVersion<long>, IRequirementTar
     {
         var ownerId = UserId.Parse(OwnerId);
         var placeId = ActualChat.PlaceId.Parse(PlaceId);
-        return new(ContactId.NewPlace(ownerId, placeId), Version) {
-            SystemTag = Constants.Place.ChatRouletteId.Value.Equals(PlaceId)
-                ? Constants.Contact.SystemTags.ChatRoulette
-                : Symbol.Empty,
-        };
+        return new(ContactId.NewPlace(ownerId, placeId), Version);
     }
 
     internal static string FormatId(ContactId contactId)

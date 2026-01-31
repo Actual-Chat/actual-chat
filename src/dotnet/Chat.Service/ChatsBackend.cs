@@ -40,7 +40,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IInvitesBackend InvitesBackend => field ??= Services.GetRequiredService<IInvitesBackend>();
     private IPlacesBackend PlacesBackend => field ??= Services.GetRequiredService<IPlacesBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
-    private IRouletteBackend RouletteBackend => field ??= Services.GetRequiredService<IRouletteBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private HostInfo HostInfo => field ??= Services.HostInfo();
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
@@ -2219,26 +2218,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 };
         }
 
-        if (chat.IsChatRoulette()) {
-            const ChatPermissions mask =
-                ChatPermissions.Read |
-                ChatPermissions.Write |
-                ChatPermissions.SeeMembers |
-                ChatPermissions.Leave;
-            rules = rules with { Permissions = rules.Permissions & mask };
-            var hasCompleted = false;
-            var chatRouletteId = await RouletteExt.GetChatRouletteId(chatId, AuthorsBackend, cancellationToken)
-                .ConfigureAwait(false);
-            if (chatRouletteId is null)
-                hasCompleted = true;
-            else {
-                var chatRoulette = await RouletteBackend.GetChatRoulette(chatRouletteId, cancellationToken).ConfigureAwait(false);
-                if (chatRoulette is null || chatRoulette.CompletedBy is not null)
-                    hasCompleted = true;
-            }
-            if (hasCompleted)
-                rules = rules with { Permissions = rules.Permissions & ~ChatPermissions.Write }; // Disable write when roulette marked as completed.
-        }
         return rules;
     }
 

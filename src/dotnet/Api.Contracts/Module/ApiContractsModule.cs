@@ -8,7 +8,6 @@ using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Notification;
-using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
@@ -69,10 +68,6 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
 
         // Aliases
         fusion.AddClient<IAliases>();
-
-        // Chat Roulette
-        fusion.AddClient<IRoulette>();
-        fusion.AddClient<IRouletteProfiles>();
 
         // Conversations
         fusion.AddClient<IConversations>();

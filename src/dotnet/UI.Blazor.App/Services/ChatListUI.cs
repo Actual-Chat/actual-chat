@@ -63,10 +63,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
 
     public PlaceChatListSettings GetPlaceChatListSettings(PlaceId? placeId)
         => _placeChatLists.GetOrAdd(placeId is not null ? Option.Some(placeId) : Option<PlaceId>.None,
-            static (placeId1, self) =>
-                Constants.Place.ChatRouletteId.Equals(placeId1.ValueOrDefault)
-                    ? new PlaceChatListSettings(placeId1.ValueOrDefault, self.Hub, false)
-                    : new PlaceChatListSettings(placeId1.ValueOrDefault, self.Hub, true),
+            static (placeId1, self) => new PlaceChatListSettings(placeId1.ValueOrDefault, self.Hub, true),
             this);
 
     [ComputeMethod]
