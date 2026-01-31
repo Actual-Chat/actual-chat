@@ -24,11 +24,11 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
         Func<CancellationToken, Task> migration,
         [CallerArgumentExpression(nameof(migration))] string name = "")
     {
-        if (!AppliedMigrations.Add(name))
+        if (AppliedMigrations.Contains(name))
             return;
 
-        var cancellationToken = Runtime.CancellationToken;
-        await migration.Invoke(cancellationToken).ConfigureAwait(false);
+        await migration.Invoke(Runtime.CancellationToken).ConfigureAwait(false);
+        AppliedMigrations.Add(name);
     }
 
     // Migrations
