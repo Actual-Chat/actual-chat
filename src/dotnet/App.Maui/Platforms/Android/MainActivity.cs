@@ -86,7 +86,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
         // base.OnCreate call hides native splash screen. Set NavigationBar color the same as web splash screen
         // background color to make it look like web splash screen covers the entire screen.
-        AndroidThemeHandler.SetNavigationBarColor(MauiSettings.SplashBackgroundColor);
+        AndroidThemeHandler.SetNavigationBarColor(MauiSettings.SplashBackgroundColor.ToArgbHex());
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061

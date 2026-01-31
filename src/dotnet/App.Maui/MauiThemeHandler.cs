@@ -98,7 +98,6 @@ public class MauiThemeHandler
         StatusBar.SetColor(Color.FromArgb(topBarColor));
         StatusBar.SetStyle(style);
         mainPage.BackgroundColor = Color.FromArgb(bottomBarColor);
-
         return true;
     }
 }

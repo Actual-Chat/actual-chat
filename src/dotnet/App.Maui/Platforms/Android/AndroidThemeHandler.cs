@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.Services;
 using AndroidX.Core.View;
+using Color = Microsoft.Maui.Graphics.Color;
 
 namespace ActualChat.App.Maui;
 
@@ -9,39 +10,40 @@ public class AndroidThemeHandler : MauiThemeHandler
 
     [UnconditionalSuppressMessage("Trimming",
         "CA1422: Call site is reachable on Android >= v.X, obsolete on >= v.Y",
-        Justification = "Fine for Window.SetStatusBarColor && Window.SetNavigationBarColor")]
+        Justification = "Fine for Window.SetNavigationBarColor")]
     protected override bool Apply(string topBarColor, string bottomBarColor, Theme? theme)
     {
-        var cTopBar = Android.Graphics.Color.ParseColor(topBarColor);
-        var cBottomBar = Android.Graphics.Color.ParseColor(bottomBarColor);
+        // Call base for status bar handling via CommunityToolkit and background color
+        if (!base.Apply(topBarColor, bottomBarColor, theme))
+            return false;
+
+        SetNavigationBarColor(bottomBarColor);
+        return true;
+    }
+
+    [UnconditionalSuppressMessage("Trimming",
+        "CA1422: Call site is reachable on Android >= v.X, obsolete on >= v.Y",
+        Justification = "Fine for Window.SetNavigationBarColor")]
+    public static bool SetNavigationBarColor(string bottomBarColor)
+    {
         var window = Window;
         if (window == null)
             return false;
 
-        // Set System bars colors
-        // See https://developer.android.com/design/ui/mobile/guides/layout-and-content/layout-basics
-        // I do it from here because I can not modify theme 'Maui.MainTheme'
-        // which is applied after calling base.OnCreate.
-        window.SetStatusBarColor(cTopBar);
-        var isStatusBarDark = IsDark(cTopBar);
-        var wic = new WindowInsetsControllerCompat(window, window.DecorView);
-        wic.AppearanceLightStatusBars = !isStatusBarDark;
-        window.SetNavigationBarColor(cBottomBar);
-        return true;
+        var androidColor = Android.Graphics.Color.ParseColor(bottomBarColor);
+        window.SetNavigationBarColor(androidColor);
 
-        static bool IsDark(Android.Graphics.Color color) {
-            var darkness = 1 - (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;
-            return darkness >= 0.5;
-        }
+        // Set navigation bar icon appearance (light/dark)
+        var isNavBarDark = IsDark(androidColor);
+        var wic = new WindowInsetsControllerCompat(window, window.DecorView);
+        wic.AppearanceLightNavigationBars = !isNavBarDark;
+        return true;
     }
 
-    public static void SetNavigationBarColor(Color color)
-    {
-        var window = Window;
-        if (window == null)
-            return;
+    // Private methods
 
-        var androidColor = Android.Graphics.Color.ParseColor(color.ToArgbHex());
-        window.SetNavigationBarColor(androidColor);
+    private static bool IsDark(Android.Graphics.Color color) {
+        var darkness = 1 - (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;
+        return darkness >= 0.5;
     }
 }
