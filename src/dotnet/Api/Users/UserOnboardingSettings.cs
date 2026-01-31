@@ -15,14 +15,13 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(8)] public bool IsVerifyEmailStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(9)] public bool IsTimeZoneStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(10)] public bool IsDataCollectionStepCompleted { get; init; }
-    [DataMember, MemoryPackOrder(11)] public bool IsChatRouletteStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(12)] public bool IsSpeechTranscriptionStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(13)] public bool IsTranscriptPlaybackStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(14)] public bool IsPlacesFeatureStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(16)] public bool IsLanguagesStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(17)] public bool IsSummarizationStepCompleted { get; init; }
 
-    public bool HasUncompletedSteps(bool enableChatRouletteUI)
+    public bool HasUncompletedSteps()
     {
         var areAllFeatureIndependentStepsCompleted = this is {
             IsAvatarStepCompleted: true,
@@ -37,11 +36,6 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
             IsSummarizationStepCompleted: true,
             IsLanguagesStepCompleted: true,
         };
-        if (!areAllFeatureIndependentStepsCompleted)
-            return true;
-        if (enableChatRouletteUI && !IsChatRouletteStepCompleted)
-            return true;
-
-        return false;
+        return !areAllFeatureIndependentStepsCompleted;
     }
 }

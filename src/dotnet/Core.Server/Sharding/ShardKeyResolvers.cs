@@ -72,7 +72,6 @@ public static class ShardKeyResolvers
         Register<ExplicitNotificationId>(static x => ForString(x.UserId.Value));
         Register<AliasId>(static x => ForString(x.Value));
         Register<ConversationId>(static x => ForString(x.ChatId.Value));
-        Register<ChatRouletteId>(static x => ForString(x.Value));
         Register<ExternalContactId>(static x => ForString(x.UserDeviceId.OwnerId.Value));
 
         // Classes

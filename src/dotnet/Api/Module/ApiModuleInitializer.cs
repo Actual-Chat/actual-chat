@@ -55,8 +55,6 @@ public static class ApiModuleInitializer
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ConversationId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<TranslationId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<TranslationSourceId>());
-        // Roulette identifiers
-        MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ChatRouletteId>());
         // Content identifiers
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<ContentId>());
         MemoryPackFormatterProvider.Register(new StringIdentifierMemoryPackFormatter<UploadId>());

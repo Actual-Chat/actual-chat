@@ -40,9 +40,6 @@
             <LanguagesStep/>
             <DataCollectionStep IsConfigured="m.IsDataCollectionConfigured"/>
             <CreateChatsStep/>
-            @if (m.EnableChatRouletteUI) {
-                <ChatRouletteStep/>
-            }
         </Steps>
         <Header>
             @if (stepper.CanMoveBack) {
@@ -115,11 +112,9 @@
     protected override async Task<ViewModel?> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var isDataCollectionConfigured = await DataCollectionSettingsUI.IsConfigured(cancellationToken).ConfigureAwait(false);
-        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
         return new() {
             AccountFull = account,
             IsDataCollectionConfigured = isDataCollectionConfigured,
-            EnableChatRouletteUI = enableChatRouletteUI,
         };
     }
 
@@ -151,7 +146,6 @@
     public sealed record ViewModel {
         public AccountFull AccountFull { get; init; } = null!;
         public bool IsDataCollectionConfigured { get; init; }
-        public bool EnableChatRouletteUI { get; init; }
     }
 
     public sealed record Model : IOptionallyClosable {
