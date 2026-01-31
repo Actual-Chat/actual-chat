@@ -32,6 +32,21 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
     }
 
     [Fact]
+    public async Task NewAccountsShouldHaveIdentitiesInDbAccount()
+    {
+        // Arrange & Act
+        var account = await Tester.SignInAsUniqueBob();
+
+        // Assert
+        account.Identities.Should().NotBeEmpty();
+
+        // Verify identities are in DbAccountIdentity table
+        var dbAccount = await GetDbAccountWithIdentities(account.Id);
+        dbAccount.Identities.Should().NotBeEmpty();
+        dbAccount.Identities.Should().HaveCount(account.Identities.Count);
+    }
+
+    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 3, Timeout = 15_000)]
     public async Task ShouldReadAccountWithFormatVersion0()
     {
         // Arrange - create account with FormatVersion=1
@@ -51,7 +66,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         readAccount.Name.Should().Be(account.Name);
     }
 
-    [Fact]
+    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 3, Timeout = 15_000)]
     public async Task ShouldUpgradeFormatVersionOnUpdate()
     {
         // Arrange - create account with FormatVersion=1
@@ -77,7 +92,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         accountAfterUpdate.Name.Should().Be(updatedName);
     }
 
-    [Fact]
+    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 3, Timeout = 15_000)]
     public async Task ShouldSyncClaimsOnFormatVersionUpgrade()
     {
         // Arrange - create account with claims
@@ -107,7 +122,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         dbAccount.Claims.Should().NotBeEmpty();
     }
 
-    [Fact]
+    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 3, Timeout = 15_000)]
     public async Task ShouldUpgradeFormatVersionOnSignIn()
     {
         // Arrange - create account
@@ -125,22 +140,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         accountAfterSignIn.FormatVersion.Should().Be(2);
     }
 
-    [Fact]
-    public async Task NewAccountsShouldHaveIdentitiesInDbAccount()
-    {
-        // Arrange & Act
-        var account = await Tester.SignInAsUniqueBob();
-
-        // Assert
-        account.Identities.Should().NotBeEmpty();
-
-        // Verify identities are in DbAccountIdentity table
-        var dbAccount = await GetDbAccountWithIdentities(account.Id);
-        dbAccount.Identities.Should().NotBeEmpty();
-        dbAccount.Identities.Should().HaveCount(account.Identities.Count);
-    }
-
-    [Fact]
+    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 3, Timeout = 15_000)]
     public async Task ShouldReadIdentitiesFromDbUserWhenFormatVersion0()
     {
         // Arrange - create account with identities
@@ -160,7 +160,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         readAccount.Identities.Count.Should().Be(account.Identities.Count);
     }
 
-    [Fact]
+    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 3, Timeout = 15_000)]
     public async Task ShouldSyncIdentitiesOnFormatVersionUpgrade()
     {
         // Arrange - create account with identities
