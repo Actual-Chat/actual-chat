@@ -533,12 +533,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             }
         }
 
-        var navGroupId = NavbarGroupIds.Chats;
-        var chat = await Chats.Get(Session, chatId, default).ConfigureAwait(true);
-        if (chat is not null && chat.IsChatRoulette())
-            navGroupId = Constants.Place.ChatRouletteId.GetNavbarGroupId();
-
-        NavbarUI.SelectGroup(navGroupId, false);
+        NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
     }
 
     private async ValueTask<ChatId?> FixSelectedChatId(ChatId? chatId, CancellationToken cancellationToken = default)

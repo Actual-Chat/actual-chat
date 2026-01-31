@@ -73,9 +73,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // SearchUI
         fusion.AddService<SearchUI>(ServiceLifetime.Scoped);
 
-        // ChatRouletteUI
-        fusion.AddService<RouletteUI>(ServiceLifetime.Scoped);
-
         // TranslationUI
         fusion.AddService<TranslationUI>(ServiceLifetime.Scoped);
         fusion.AddService<ThrottledTranslations>(ServiceLifetime.Scoped);
@@ -122,9 +119,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<IncomingShareModal.Model, IncomingShareModal>()
             .Add<DownloadAppModal.Model, DownloadAppModal>()
             .Add<CopyChatToPlaceErrorModal.Model, CopyChatToPlaceErrorModal>()
-            .Add<ChatRouletteProfileModal.Model, ChatRouletteProfileModal>()
-            .Add<ChatRouletteProfileEditorModal.Model, ChatRouletteProfileEditorModal>()
-            .Add<LanguagesSelectorPopup.Model, LanguagesSelectorPopup>()
             .Add<TranslationTargetLanguageModal.Model, TranslationTargetLanguageModal>()
             .Add<JoinVideoCallModal.Model, JoinVideoCallModal>()
             .Add<IncomingCallModal.Model, IncomingCallModal>()

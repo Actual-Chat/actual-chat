@@ -2,7 +2,6 @@ using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.Logging;
 using ActualChat.Module;
-using ActualChat.UI.Blazor.App.Components.ChatRoulette;
 using ActualChat.UI.Blazor.App.Components.Discover;
 using ActualChat.UI.Blazor.App.Components.PlaceInfo;
 using ActualChat.UI.Blazor.App.Module;
@@ -60,7 +59,6 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
     // Test Pages
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatRoulettePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DiscoverTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupEditorTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PlaceInfoTestPage))]

@@ -1,8 +1,5 @@
-﻿@namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedMenuBase<AppUIHub, CreateMenu.Model>
-@{
-    var m = State.Value;
-}
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedMenuBase<AppUIHub, Unit>
 
 <MenuEntry
     Icon="icon-conversation"
@@ -14,40 +11,20 @@
     Text="New Place"
     Click="OnCreatePlaceClick">
 </MenuEntry>
-@if (m.EnableChatRouletteUI) {
-    <MenuEntry
-        Icon="icon-hand"
-        Text="New Chat Roulette"
-        Click="OnStartChatRouletteClick">
-    </MenuEntry>
-}
 
 @code {
-    private RouletteUI RouletteUI => Hub.RouletteUI;
-
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<Unit>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(false),
+            InitialValue = default,
             Category = GetStateCategory(GetType()),
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var enableChatRouletteUI = await Features.Get<Features_EnableChatRouletteUI>(cancellationToken);
-        return new Model(enableChatRouletteUI);
-    }
+    protected override Task<Unit> ComputeState(CancellationToken cancellationToken)
+        => ActualLab.Async.TaskExt.UnitTask;
 
     private void OnCreateChatClick()
         => ModalUI.Show(new NewChatModal.Model(Hub.ChatUI.SelectedPlaceId.Value));
 
     private void OnCreatePlaceClick()
         => ModalUI.Show(new NewPlaceModal.Model());
-
-    private async Task OnStartChatRouletteClick() {
-        await WhenClosed;
-        await RouletteUI.StartChatRoulette();
-    }
-
-    // Nested types
-
-    public record Model(bool EnableChatRouletteUI);
 }

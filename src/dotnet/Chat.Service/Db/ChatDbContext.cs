@@ -22,7 +22,6 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbPlace> Places { get; protected set; } = null!;
     public DbSet<DbReadPositionsStat> ReadPositionsStats { get; protected set; } = null!;
     public DbSet<DbAlias> Aliases { get; protected set; } = null!;
-    public DbSet<DbChatRoulette> ChatRoulettes { get; protected set; } = null!;
     public DbSet<DbConversation> Conversations { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
@@ -106,14 +105,6 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
 
         var alias = model.Entity<DbAlias>();
         alias.Property(e => e.Id).UseCollation("C");
-
-        var chatRoulette = model.Entity<DbChatRoulette>();
-        chatRoulette.Property(e => e.Id).UseCollation("C");
-        chatRoulette.Property(e => e.ChatId).UseCollation("C");
-        chatRoulette.Property(e => e.ProfileId1).UseCollation("C");
-        chatRoulette.Property(e => e.ProfileId2).UseCollation("C");
-        chatRoulette.Property(e => e.UserId1).UseCollation("C");
-        chatRoulette.Property(e => e.UserId2).UseCollation("C");
 
         var conversation = model.Entity<DbConversation>();
         conversation.Property(e => e.Id).UseCollation("C");

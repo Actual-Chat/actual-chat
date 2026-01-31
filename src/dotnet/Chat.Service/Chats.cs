@@ -66,18 +66,6 @@ public class Chats(IServiceProvider services) : IChats
             return null;
 
         chat = chat with { Rules = rules };
-        if (chat.IsChatRoulette()) {
-            var ownAuthorId = chat.Rules.Author.Require().Id;
-            var anotherAuthorId = AuthorId.New(chatId, ownAuthorId.LocalId == 1 ? 2 : 1);
-            var anotherAuthor = await AuthorsBackend.Get(chatId, anotherAuthorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
-            if (anotherAuthor is not null) {
-                var avatar = anotherAuthor.Avatar;
-                chat = chat with {
-                    Title = avatar.Name,
-                    Picture = avatar.Media,
-                };
-            }
-        }
 
         return chat;
     }
