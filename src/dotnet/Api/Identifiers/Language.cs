@@ -28,7 +28,6 @@ public sealed partial class Language : StringIdentifier, IStringIdentifier<Langu
     [IgnoreDataMember]
     public bool IsAnySpanish { get; }
 
-
     // Factories and constructors
 
     internal Language(string value, string shortTitle, string title)
