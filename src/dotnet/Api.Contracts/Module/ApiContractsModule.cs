@@ -34,6 +34,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
 
         // Audio
         rpc.AddClient<IStreamServer>();
+        rpc.AddClient<IRtcHub>();
         services.AddSingleton<IStreamClient>(c => new StreamClient(c));
         services.AddSingleton<AudioDownloader>(c => new HttpClientAudioDownloader(c));
 
