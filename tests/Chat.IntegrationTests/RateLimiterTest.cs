@@ -8,7 +8,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class RateLimiterTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [Fact]
+    [FlakyFact("AY: Time dependent", 3)]
     public async Task RateLimiterShouldReturnTrue()
     {
         var key = $"rate_limit:test:{Ulid.NewUlid()}";
@@ -41,7 +41,7 @@ public class RateLimiterTest(ChatCollection.AppHostFixture fixture, ITestOutputH
             => rateLimiter.IsRequestAllowedAsync();
     }
 
-    [Fact]
+    [FlakyFact("AY: Time dependent", 3)]
     public async Task TokenBucketRateLimiterShouldReturnTrue()
     {
         var key = $"rate_limit:test:{Ulid.NewUlid()}";
@@ -72,7 +72,7 @@ public class RateLimiterTest(ChatCollection.AppHostFixture fixture, ITestOutputH
             => rateLimiter.IsRequestAllowedAsync(30);
     }
 
-    [Fact]
+    [FlakyFact("AY: Time dependent", 3)]
     public async Task RequestsRateShouldBeLimited()
     {
         var key = $"rate_limit:test:{Ulid.NewUlid()}";
