@@ -42,6 +42,7 @@ permissions:
 jobs:
   calc-pkg-params:
     name: Calculate package related variables
+    needs: unit-tests
     runs-on: ubuntu-latest
     outputs:
       IS_DEV_MAUI: ${{ steps.calc.outputs.IS_DEV_MAUI }}
