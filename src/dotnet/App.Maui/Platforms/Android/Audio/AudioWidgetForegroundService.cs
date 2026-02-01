@@ -112,8 +112,9 @@ public class AudioWidgetForegroundService : Service
         ResolveBitmapAndRun(
             chatPicUrl,
             bitmap => {
-                // Callback can be called twice if the image could not be resolved synchronously.
-                // The first time it will be null, the second time it will be the bitmap.
+                // Callback is called twice when bitmap is loaded asynchronously:
+                // first with null to ensure StartForeground() is called in time,
+                // then with the actual bitmap to update the notification.
                 if (!Equals(lastRequestId, _requestId))
                     return;
 
@@ -159,12 +160,17 @@ public class AudioWidgetForegroundService : Service
             return;
         }
 
+        // Call callback immediately with null to ensure StartForeground() is called in time.
+        // Android requires StartForeground() within 5-10 seconds of startForegroundService().
+        callback(null);
+
         _ = bitmapTask.ContinueWith(t => {
                 if (!t.IsCompletedSuccessfully)
                     return;
 
                 var bitmap = bitmapTask.GetAwaiter().GetResult();
                 MainThread.BeginInvokeOnMainThread(() => {
+                    // Update notification with the loaded bitmap
                     callback(bitmap);
                 });
             },
