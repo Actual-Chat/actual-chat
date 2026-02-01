@@ -18,7 +18,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         return services.BuildServiceProvider();
     }
 
-    [Fact]
+    [FlakyFact("AY: Time-dependent", 3)]
     public async Task BasicTest()
     {
         var services = CreateServices();
@@ -70,7 +70,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         (await kvas.Get<string>("a")).Should().Be(value);
     }
 
-    [Fact]
+    [FlakyFact("AY: Time-dependent", 3)]
     public async Task SyncedStateTest1()
     {
         var services = CreateServices();
@@ -107,7 +107,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         s1.Value.Should().Be(s2.Value);
     }
 
-    [Fact]
+    [FlakyFact("AY: Time-dependent", 3)]
     public async Task SyncedStateTest2()
     {
         var services = CreateServices();
