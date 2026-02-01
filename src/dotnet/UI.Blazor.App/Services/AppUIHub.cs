@@ -6,6 +6,7 @@ using ActualChat.MediaPlayback;
 using ActualChat.Notification;
 using ActualChat.Streaming;
 using ActualChat.Users;
+using IRtcHub = ActualChat.Streaming.IRtcHub;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -58,6 +59,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => field ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
+    public IRtcHub RtcHub => field ??= Services.GetRequiredService<IRtcHub>();
     public ITranslations Translations => field ??= Services.GetRequiredService<ITranslations>();
     public TranslationUI TranslationUI => field ??= Services.GetRequiredService<TranslationUI>();
     public TranscriptUI TranscriptUI => field ??= Services.GetRequiredService<TranscriptUI>();

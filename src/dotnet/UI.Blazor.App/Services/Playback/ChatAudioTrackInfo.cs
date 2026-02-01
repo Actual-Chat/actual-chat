@@ -2,8 +2,29 @@ using ActualChat.MediaPlayback;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public record ChatAudioTrackInfo(ChatEntry AudioEntry, Chat.Chat Chat, Author Author) : TrackInfo(ComposeTrackId(AudioEntry), AudioEntry.IsStreaming)
+public record ChatAudioTrackInfo : TrackInfo
 {
+    public ChatEntry? AudioEntry { get; }
+    public Chat.Chat? Chat { get; }
+    public Author? Author { get; }
+
+    // Primary constructor for entry-based playback
+    public ChatAudioTrackInfo(ChatEntry audioEntry, Chat.Chat chat, Author author)
+        : base(ComposeTrackId(audioEntry), audioEntry.IsStreaming)
+    {
+        AudioEntry = audioEntry;
+        Chat = chat;
+        Author = author;
+    }
+
+    // Constructor for RTC stream-based playback (always streaming)
+    public ChatAudioTrackInfo(ChatId chatId, ChatEntryId? entryId, Chat.Chat? chat, Author? author)
+        : base(ComposeTrackId(chatId, entryId), true)
+    {
+        Chat = chat;
+        Author = author;
+    }
+
     public static Symbol ComposeTrackId(ChatEntry entry)
         => entry.Kind == ChatEntryKind.Audio
             ? ComposeTrackId(entry.ChatId, entry.LocalId)
@@ -11,4 +32,9 @@ public record ChatAudioTrackInfo(ChatEntry AudioEntry, Chat.Chat Chat, Author Au
 
     public static Symbol ComposeTrackId(ChatId chatId, long audioEntryId)
         => $"audio:{chatId.Value}:{audioEntryId}";
+
+    public static Symbol ComposeTrackId(ChatId chatId, ChatEntryId? entryId)
+        => entryId != null
+            ? $"audio:{entryId.Value}"
+            : $"audio:{chatId.Value}:rtc-{Guid.NewGuid():N}";
 }
