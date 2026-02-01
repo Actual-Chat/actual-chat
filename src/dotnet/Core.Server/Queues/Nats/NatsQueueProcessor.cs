@@ -49,16 +49,15 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         var shardIndex = queueShardRef.GetShardIndex();
         await GetStream(shardIndex, cancellationToken).ConfigureAwait(false);
         var context = new NatsJSContext(Connection);
-        // NatsBufferWriter is disposed by NATS after writing to network
-        var buffer = new NatsBufferWriter<byte>();
-        Serialize(buffer, queuedCommand);
-        var subjectName = GetSubjectName(shardIndex, Queues.GetTopic(queuedCommand.UntypedCommand));
-        var headers = ReferenceEquals(queuedCommand.Headers, null)
-            ? null
-            : new NatsHeaders(queuedCommand.Headers.ToDictionary(StringComparer.Ordinal));
+        var buffer = new ArrayPoolBuffer<byte>(1024);
         try {
+            Serialize(buffer, queuedCommand);
+            var subjectName = GetSubjectName(shardIndex, Queues.GetTopic(queuedCommand.UntypedCommand));
+            var headers = ReferenceEquals(queuedCommand.Headers, null)
+                ? null
+                : new NatsHeaders(queuedCommand.Headers.ToDictionary(StringComparer.Ordinal));
             var response = await context.PublishAsync(subjectName,
-                    buffer,
+                    buffer.WrittenMemory,
                     opts: new NatsJSPubOpts { MsgId = queuedCommand.Uuid },
                     headers: headers,
                     cancellationToken: cancellationToken)
@@ -85,6 +84,9 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         catch (Exception e) when (e is not ExternalError) {
             Log.LogError(e, "NATS write failed");
             throw;
+        }
+        finally {
+            buffer.Dispose();
         }
     }
 
