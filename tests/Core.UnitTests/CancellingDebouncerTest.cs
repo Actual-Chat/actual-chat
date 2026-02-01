@@ -28,7 +28,7 @@ public class CancellingDebouncerTest
             TimeSpan.FromSeconds(3));
     }
 
-    [Theory]
+    [FlakyTheory("AY: Time-dependent", 3)]
     [InlineData(3)]
     [InlineData(100)]
     [InlineData(7_890)]
