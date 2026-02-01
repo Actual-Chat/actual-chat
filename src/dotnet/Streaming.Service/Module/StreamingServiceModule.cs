@@ -42,6 +42,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         }
 
         rpcHost.AddApi<IStreamServer, StreamServer>();
+        rpcHost.AddApi<IRtcHub, RtcHub>();
         rpcHost.AddBackend<IStreamingBackend, StreamingBackend>();
         services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IStreamingBackend
         services.AddSingleton<AudioDownloader, BlobStorageAudioDownloader>(); // Server-side AudioDownloader
