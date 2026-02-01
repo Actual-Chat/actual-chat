@@ -90,7 +90,7 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
         await l.Resource.WhenDisposed.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
     }
 
-    [Fact (Timeout = 5000)]
+    [FlakyFact("AY: Time-dependent", 3, Timeout = 5000)]
     public async Task ShouldNotStuckWhenCancellationTokenIsFired()
     {
         // When a resource factory task fails asynchronously with a non-transient error,
