@@ -2,40 +2,36 @@ namespace ActualChat.Async;
 
 /// <summary>
 /// Combines multiple Channel&lt;T&gt; sources into a single output channel.
-/// Supports dynamic add/remove of sources.
+/// Sets StreamIndex on each item based on its source.
 /// </summary>
 public sealed class ChannelMuxer<T> : IAsyncDisposable
+    where T : IMuxable
 {
     private readonly Channel<T> _output;
-    private readonly ConcurrentDictionary<ChannelReader<T>, Task> _readers = new();
+    private readonly ConcurrentDictionary<int, (ChannelReader<T> Reader, Task Task)> _sources = new();
     private readonly CancellationTokenSource _cts = new();
+    private int _nextStreamIndex;
     private volatile bool _isDisposed;
 
     public ChannelReader<T> Output => _output.Reader;
 
     public ChannelMuxer(int? capacity = null)
-    {
-        _output = capacity.HasValue
-            ? Channel.CreateBounded<T>(new BoundedChannelOptions(capacity.Value) {
-                SingleReader = false,
-                SingleWriter = false,
-                FullMode = BoundedChannelFullMode.Wait,
-            })
-            : Channel.CreateUnbounded<T>(new UnboundedChannelOptions {
-                SingleReader = false,
-                SingleWriter = false,
-            });
-    }
+        => _output = ChannelExt.Create<T>(capacity);
 
-    public void AddSource(ChannelReader<T> source)
+    /// <summary>
+    /// Adds a source channel and returns its assigned stream index.
+    /// </summary>
+    public int AddSource(ChannelReader<T> source)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
-        var task = PumpAsync(source);
-        _readers.TryAdd(source, task);
+        var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
+        var task = PumpAsync(source, streamIndex);
+        _sources[streamIndex] = (source, task);
+        return streamIndex;
     }
 
-    public void RemoveSource(ChannelReader<T> source)
-        => _readers.TryRemove(source, out _);
+    public bool RemoveSource(int streamIndex)
+        => _sources.TryRemove(streamIndex, out _);
 
     public async ValueTask DisposeAsync()
     {
@@ -45,8 +41,7 @@ public sealed class ChannelMuxer<T> : IAsyncDisposable
         _isDisposed = true;
         await _cts.CancelAsync().ConfigureAwait(false);
 
-        // Wait for all pumps to complete
-        var tasks = _readers.Values.ToArray();
+        var tasks = _sources.Values.Select(x => x.Task).ToArray();
         if (tasks.Length > 0)
             await Task.WhenAll(tasks).SilentAwait(false);
 
@@ -56,19 +51,21 @@ public sealed class ChannelMuxer<T> : IAsyncDisposable
 
     // Private methods
 
-    private async Task PumpAsync(ChannelReader<T> source)
+    private async Task PumpAsync(ChannelReader<T> source, int streamIndex)
     {
         var ct = _cts.Token;
         try {
             while (await source.WaitToReadAsync(ct).ConfigureAwait(false))
-                while (source.TryRead(out var item))
+                while (source.TryRead(out var item)) {
+                    item.StreamIndex = streamIndex;
                     await _output.Writer.WriteAsync(item, ct).ConfigureAwait(false);
+                }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) {
             // Expected during disposal
         }
         finally {
-            _readers.TryRemove(source, out _);
+            _sources.TryRemove(streamIndex, out _);
         }
     }
 }

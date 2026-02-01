@@ -9,9 +9,6 @@ namespace ActualChat.Rtc;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class RtcStreamStart : RtcItem
 {
-    [DataMember(Order = 0), MemoryPackOrder(0)]
-    public int StreamIndex { get; init; }
-
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public Moment BeginsAt { get; init; }
 
