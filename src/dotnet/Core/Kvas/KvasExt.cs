@@ -42,7 +42,7 @@ public static class KvasExt
         if (value is null)
             return kvas.Set(key, null, cancellationToken);
 
-        using var buffer = new ArrayPoolBufferWriter<byte>();
+        using var buffer = new ArrayPoolBufferWriter<byte>(ArrayPools.SharedBytePool, 1024);
         Serializer.Write(buffer, value, typeof(T));
         return kvas.Set(key, buffer.WrittenMemory.ToArray(), cancellationToken);
     }

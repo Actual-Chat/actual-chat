@@ -1,5 +1,3 @@
-using ActualLab.IO;
-
 namespace ActualChat.Core.UnitTests.Identifiers;
 
 public class SerializationTest(ITestOutputHelper @out) : TestBase(@out)

@@ -34,7 +34,7 @@ public abstract class TextMarkup(string text) : Markup
         if (!parseNewLines)
             return New(kind, text);
 
-        var parts = MemoryBuffer<Markup>.Lease(true);
+        var parts = new RefArrayPoolBuffer<Markup>(MarkupArrayPool, 256, mustClear: true);
         try {
             foreach (var (line, endsWithLineFeed) in text.ParseLines()) {
                 parts.Add(New(kind, line));

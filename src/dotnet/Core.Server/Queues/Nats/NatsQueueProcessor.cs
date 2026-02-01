@@ -49,7 +49,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         var shardIndex = queueShardRef.GetShardIndex();
         await GetStream(shardIndex, cancellationToken).ConfigureAwait(false);
         var context = new NatsJSContext(Connection);
-        var buffer = new ArrayPoolBuffer<byte>(1024);
+        var buffer = new ArrayPoolBuffer<byte>(ArrayPools.SharedBytePool, 1024);
         try {
             Serialize(buffer, queuedCommand);
             var subjectName = GetSubjectName(shardIndex, Queues.GetTopic(queuedCommand.UntypedCommand));
@@ -439,7 +439,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         }
     }
 
-    private static void Serialize(IBufferWriter<byte> buffer, QueuedCommand queuedCommand)
+    private static void Serialize(ArrayPoolBuffer<byte> buffer, QueuedCommand queuedCommand)
     {
         var command = queuedCommand.UntypedCommand;
         buffer.Write(FormatVersionBytes);

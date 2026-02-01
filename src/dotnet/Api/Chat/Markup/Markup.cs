@@ -1,10 +1,13 @@
-﻿using ActualLab.Fusion.Blazor;
+﻿using System.Buffers;
+using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public abstract class Markup
 {
+    protected static ArrayPool<Markup> MarkupArrayPool = ArrayPool<Markup>.Shared;
+
     public static Markup Empty => PlainTextMarkup.Empty;
 
     public static Markup Join(Markup first, Markup second)

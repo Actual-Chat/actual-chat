@@ -54,7 +54,7 @@ public abstract class FeaturesBase(
         var featureDef = Registry.Get(featureType);
         var value = await Get(featureType, cancellationToken).ConfigureAwait(false);
 
-        using var buffer = new ArrayPoolBufferWriter<byte>(32);
+        using var buffer = new ArrayPoolBufferWriter<byte>(ArrayPools.SharedBytePool, 256);
         Serializer.Write(buffer, value, featureDef.ResultType);
         return buffer.WrittenSpan.ToArray();
 #pragma warning restore IL2026, IL2072
