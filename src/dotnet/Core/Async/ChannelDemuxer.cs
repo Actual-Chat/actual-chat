@@ -1,30 +1,21 @@
 namespace ActualChat.Async;
 
 /// <summary>
-/// Splits a single channel into multiple channels by key.
+/// Splits a single channel of IMuxable items into multiple channels by StreamIndex.
 /// </summary>
-public sealed class ChannelDemuxer<TKey, TItem> : IAsyncDisposable
-    where TKey : notnull
+public sealed class ChannelDemuxer<T> : IAsyncDisposable
+    where T : IMuxable
 {
-    private readonly ConcurrentDictionary<TKey, Channel<TItem>> _channels = new();
-    private readonly Func<TItem, TKey> _keySelector;
-    private readonly Func<TItem, bool>? _isCloseSignal;
+    private readonly ConcurrentDictionary<int, Channel<T>> _channels = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly int? _channelCapacity;
     private Task? _pumpTask;
     private volatile bool _isDisposed;
 
-    public ChannelDemuxer(
-        Func<TItem, TKey> keySelector,
-        Func<TItem, bool>? isCloseSignal = null,
-        int? channelCapacity = null)
-    {
-        _keySelector = keySelector;
-        _isCloseSignal = isCloseSignal;
-        _channelCapacity = channelCapacity;
-    }
+    public ChannelDemuxer(int? channelCapacity = null)
+        => _channelCapacity = channelCapacity;
 
-    public void SetInput(ChannelReader<TItem> input)
+    public void SetInput(ChannelReader<T> input)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
         if (_pumpTask != null)
@@ -33,16 +24,16 @@ public sealed class ChannelDemuxer<TKey, TItem> : IAsyncDisposable
         _pumpTask = PumpAsync(input);
     }
 
-    public ChannelReader<TItem> GetOrCreateChannel(TKey key)
+    public ChannelReader<T> GetOrCreateChannel(int streamIndex)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
-        var channel = _channels.GetOrAdd(key, _ => CreateChannel());
+        var channel = _channels.GetOrAdd(streamIndex, _ => CreateChannel());
         return channel.Reader;
     }
 
-    public bool TryRemoveChannel(TKey key)
+    public bool TryRemoveChannel(int streamIndex)
     {
-        if (!_channels.TryRemove(key, out var channel))
+        if (!_channels.TryRemove(streamIndex, out var channel))
             return false;
 
         channel.Writer.TryComplete();
@@ -69,35 +60,19 @@ public sealed class ChannelDemuxer<TKey, TItem> : IAsyncDisposable
 
     // Private methods
 
-    private Channel<TItem> CreateChannel()
-        => _channelCapacity.HasValue
-            ? Channel.CreateBounded<TItem>(new BoundedChannelOptions(_channelCapacity.Value) {
-                SingleReader = true,
-                SingleWriter = true,
-                FullMode = BoundedChannelFullMode.Wait,
-            })
-            : Channel.CreateUnbounded<TItem>(new UnboundedChannelOptions {
-                SingleReader = true,
-                SingleWriter = true,
-            });
+    private Channel<T> CreateChannel()
+        => ChannelExt.Create<T>(_channelCapacity, singleReader: true, singleWriter: true);
 
-    private async Task PumpAsync(ChannelReader<TItem> input)
+    private async Task PumpAsync(ChannelReader<T> input)
     {
         var ct = _cts.Token;
         Exception? error = null;
         try {
             while (await input.WaitToReadAsync(ct).ConfigureAwait(false))
                 while (input.TryRead(out var item)) {
-                    var key = _keySelector(item);
-
-                    if (_isCloseSignal?.Invoke(item) == true) {
-                        TryRemoveChannel(key);
-                        continue;
-                    }
-
-                    if (_channels.TryGetValue(key, out var channel))
+                    if (_channels.TryGetValue(item.StreamIndex, out var channel))
                         await channel.Writer.WriteAsync(item, ct).ConfigureAwait(false);
-                    // Items for unknown keys are silently dropped
+                    // Items for unknown stream indices are silently dropped
                 }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) {

@@ -1,13 +1,34 @@
+using ActualLab.Channels;
+using ChannelExtBase = ActualLab.Channels.ChannelExt;
+
 namespace ActualChat;
 
 public static partial class ChannelExt
 {
     private static readonly ChannelClosedException ChannelClosedError = new();
 
-    public static readonly UnboundedChannelOptions SingleReaderWriterUnboundedChannelOptions = new () {
+    public static readonly UnboundedChannelOptions SingleReaderWriterUnboundedChannelOptions = new() {
         SingleReader = true,
         SingleWriter = true,
     };
+
+    public static Channel<T> Create<T>(
+        int? capacity,
+        bool singleReader = false,
+        bool singleWriter = false,
+        bool allowSynchronousContinuations = true)
+        => ChannelExtBase.Create<T>(capacity.HasValue
+            ? new BoundedChannelOptions(capacity.Value) {
+                SingleReader = singleReader,
+                SingleWriter = singleWriter,
+                AllowSynchronousContinuations = allowSynchronousContinuations,
+                FullMode = BoundedChannelFullMode.Wait,
+            }
+            : new UnboundedChannelOptions {
+                SingleReader = singleReader,
+                SingleWriter = singleWriter,
+                AllowSynchronousContinuations = allowSynchronousContinuations,
+            });
 
     public static AsyncMemoizer<T> Memoize<T>(
         this Channel<T> source,

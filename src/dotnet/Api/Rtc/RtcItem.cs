@@ -1,3 +1,4 @@
+using ActualChat.Async;
 using MemoryPack;
 
 namespace ActualChat.Rtc;
@@ -9,4 +10,8 @@ namespace ActualChat.Rtc;
 [MemoryPackUnion(0, typeof(RtcAudioFrame))]
 [MemoryPackUnion(1, typeof(RtcStreamStart))]
 [MemoryPackUnion(2, typeof(RtcStreamEnd))]
-public abstract partial class RtcItem;
+public abstract partial class RtcItem : IMuxable
+{
+    [DataMember(Order = 0), MemoryPackOrder(0)]
+    public int StreamIndex { get; set; }
+}
