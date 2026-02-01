@@ -8,7 +8,7 @@ using NATS.Client.JetStream.Models;
 
 namespace ActualChat.Queues.Nats;
 
-public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options, NatsQueues, NatsJSMsg<IMemoryOwner<byte>>>
+public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options, NatsQueues, INatsJSMsg<IMemoryOwner<byte>>>
 {
     private const byte FormatVersion = 2;
     private static readonly byte[] FormatVersionBytes = [FormatVersion];
@@ -49,13 +49,14 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         var shardIndex = queueShardRef.GetShardIndex();
         await GetStream(shardIndex, cancellationToken).ConfigureAwait(false);
         var context = new NatsJSContext(Connection);
-        var buffer = new ArrayPoolBuffer<byte>();
+        // NatsBufferWriter is disposed by NATS after writing to network
+        var buffer = new NatsBufferWriter<byte>();
+        Serialize(buffer, queuedCommand);
+        var subjectName = GetSubjectName(shardIndex, Queues.GetTopic(queuedCommand.UntypedCommand));
+        var headers = ReferenceEquals(queuedCommand.Headers, null)
+            ? null
+            : new NatsHeaders(queuedCommand.Headers.ToDictionary(StringComparer.Ordinal));
         try {
-            Serialize(buffer, queuedCommand);
-            var subjectName = GetSubjectName(shardIndex, Queues.GetTopic(queuedCommand.UntypedCommand));
-            var headers = ReferenceEquals(queuedCommand.Headers, null)
-                ? null
-                : new NatsHeaders(queuedCommand.Headers.ToDictionary(StringComparer.Ordinal));
             var response = await context.PublishAsync(subjectName,
                     buffer,
                     opts: new NatsJSPubOpts { MsgId = queuedCommand.Uuid },
@@ -85,9 +86,6 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
             Log.LogError(e, "NATS write failed");
             throw;
         }
-        finally {
-            buffer.Dispose();
-        }
     }
 
     public override async Task Purge(CancellationToken cancellationToken)
@@ -110,7 +108,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         DebugLog?.LogDebug("[{ShardScheme}-S{ShardIndex}] OnRun started", ShardScheme.Name, shardIndex);
 
         var concurrencyLevel = Settings.ConcurrencyLevel;
-        var buffer = Channel.CreateBounded<(NatsJSMsg<IMemoryOwner<byte>> Message, QueuedCommand Command)>(
+        var buffer = Channel.CreateBounded<(INatsJSMsg<IMemoryOwner<byte>> Message, QueuedCommand Command)>(
             new BoundedChannelOptions(concurrencyLevel) {
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleWriter = true,
@@ -193,7 +191,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         }
 
         async ValueTask ProcessImpl(
-            (NatsJSMsg<IMemoryOwner<byte>> Message, QueuedCommand Command) item,
+            (INatsJSMsg<IMemoryOwner<byte>> Message, QueuedCommand Command) item,
             CancellationToken ct)
         {
             var (message, queuedCommand) = item;
@@ -229,7 +227,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     // MarkXxx
 
     protected override Task MarkCompleted(
-        int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand? command,
+        int shardIndex, INatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand? command,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("[{ShardIndex}]: Marking completed {Kind} command #{Uuid} {Command}",
@@ -241,7 +239,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     }
 
     protected override Task MarkFailed(
-        int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand? command, Exception? exception,
+        int shardIndex, INatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand? command, Exception? exception,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug(exception, "[{ShardIndex}]: Marking failed {Kind} command #{Uuid} {Command}",
@@ -253,7 +251,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
     }
 
     protected override Task MarkPostponed(
-        int shardIndex, NatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand command, TimeSpan delay,
+        int shardIndex, INatsJSMsg<IMemoryOwner<byte>> message, QueuedCommand command, TimeSpan delay,
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("[{ShardIndex}]: Marking postponed {Kind} command #{Uuid} {Command} for {Time}",
@@ -418,7 +416,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
     // Serialization
 
-    private static QueuedCommand Deserialize(NatsJSMsg<IMemoryOwner<byte>> message, IQueues queues)
+    private static QueuedCommand Deserialize(INatsJSMsg<IMemoryOwner<byte>> message, IQueues queues)
     {
         var data = message.Data;
         if (data == null)
@@ -439,7 +437,7 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         }
     }
 
-    private static void Serialize(ArrayPoolBuffer<byte> buffer, QueuedCommand queuedCommand)
+    private static void Serialize(IBufferWriter<byte> buffer, QueuedCommand queuedCommand)
     {
         var command = queuedCommand.UntypedCommand;
         buffer.Write(FormatVersionBytes);
