@@ -9,6 +9,7 @@ using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Notification;
 using ActualChat.Rtc;
+using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
@@ -76,9 +77,6 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
 
         // Users
         rpc.AddClient<ISecureTokens>();
-#pragma warning disable CS0618 // Obsolete
-        fusion.AddClient<ILegacyAuth>("IAuth");
-#pragma warning restore CS0618
         fusion.AddClient<ISystemProperties>();
         fusion.AddClient<IMobileSessions>();
         if (HostInfo.HostKind.IsMauiApp())
@@ -96,6 +94,12 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IEmailAuth>();
         fusion.AddClient<ITimeZones>();
         rpc.AddClient<ICaptcha>();
+
+        // Legacy APIs
+#pragma warning disable CS0618 // Obsolete
+        fusion.AddClient<ILegacyAuth>("IAuth");
+        fusion.AddClient<ILegacyRoulette>("IRoulette");
+#pragma warning restore CS0618
     }
 
     public void ConfigureFusionClients(FusionBuilder fusion)

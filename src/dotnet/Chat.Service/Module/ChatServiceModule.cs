@@ -9,7 +9,7 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Redis;
 using ActualChat.Redis.Module;
-using ActualChat.Uploads;
+using ActualChat.Roulette;
 using Google.Api.Gax;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.EntityFrameworkCore;
@@ -84,6 +84,11 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddLocalApi<IDiagnostics, Diagnostics>();
         rpcHost.AddBackend<IDiagnosticsBackend, DiagnosticsBackend>();
         services.AddFusion().AddComputeService<DiagnosticsBackendLocal>();
+
+        // Legacy APIs
+#pragma warning disable CS0618 // Obsolete
+        rpcHost.AddLocalApi<ILegacyRoulette, LegacyRoulette>("IRoulette");
+#pragma warning restore CS0618
 
         if (isBackendClient)
             return;
