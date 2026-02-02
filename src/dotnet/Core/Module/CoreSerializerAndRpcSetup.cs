@@ -22,7 +22,7 @@ public static class CoreSerializerAndRpcSetup
             RpcSerializationFormat.MemoryPackV6C);
 
         RpcSerializationFormatResolver.Default
-#if DEBUG
+#if true // DEBUG
             = new("mempack6");
 #else
             = isServer ? new("mempack6") : new("mempack6c");
