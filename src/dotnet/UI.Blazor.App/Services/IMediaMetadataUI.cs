@@ -6,10 +6,11 @@ public record MediaMetadata(
     string ImageUrl)
 {
     public static MediaMetadata FromTrack(ChatAudioTrackInfo trackInfo)
-        => new (
-            $"{trackInfo.Author.Avatar.Name} @ {trackInfo.Chat.Title}",
-            "Voxt",
-            "/_applogo-dark_voxt.svg");
+    {
+        var authorName = trackInfo.Author?.Avatar.Name ?? "Unknown";
+        var chatTitle = trackInfo.Chat?.Title ?? "Unknown";
+        return new($"{authorName} @ {chatTitle}", "Voxt", "/_applogo-dark_voxt.svg");
+    }
 }
 
 public interface IMediaMetadataUI

@@ -8,6 +8,7 @@
     rmdir /S /Q artifacts\publish
     rmdir /S /Q artifacts\tests
     rmdir /S /Q artifacts\claude-docker
+    dotnet restore
     echo "Clean completed."
     exit /b
 BATCH
@@ -22,4 +23,5 @@ rmdir artifacts/repacked
 rmdir artifacts/publish
 rmdir artifacts/tests
 rmdir artifacts/claude-docker
+dotnet restore
 echo "Clean completed."

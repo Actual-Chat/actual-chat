@@ -96,13 +96,18 @@ public sealed class ChatEntryPlayer : ProcessorBase
         CancellationToken cancellationToken)
     {
         try {
+            Log.LogDebug("Waiting for AudioInitializer, entry={EntryId}", audioEntry.Id);
             await AudioInitializer.WhenInitialized.ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Kind != ChatEntryKind.Audio)
                 throw StandardError.NotSupported($"The entry's Type must be {ChatEntryKind.Audio}.");
-            if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration)
+            if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration) {
+                Log.LogDebug("Skipping entry={EntryId} (skipTo > duration)", audioEntry.Id);
                 return PlayTrackCommand.PlayNothingProcess;
+            }
+            Log.LogDebug("Enqueuing entry={EntryId}, IsStreaming={IsStreaming}, skipTo={SkipTo}",
+                audioEntry.Id, audioEntry.IsStreaming, skipTo);
             return await (audioEntry.IsStreaming
                 ? EnqueueStreamingEntry(audioEntry, skipTo, playAt, cancellationToken)
                 : EnqueueNonStreamingEntry(audioEntry, skipTo, playAt, cancellationToken)
@@ -159,6 +164,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         CancellationToken cancellationToken)
     {
         var audioBlobUrl = UrlMapper.AudioBlobUrl(audioEntry);
+        Log.LogDebug("Downloading audio from {Url}, entry={EntryId}", audioBlobUrl, audioEntry.Id);
         var audioTask = AudioDownloader.Download(audioBlobUrl, skipTo, cancellationToken);
         var chatTask = Hub.Chats.Get(Hub.Session, audioEntry.ChatId, cancellationToken);
         var authorTask = Hub.Authors.Get(Hub.Session, audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
@@ -166,10 +172,12 @@ public sealed class ChatEntryPlayer : ProcessorBase
         var audio = await audioTask.ConfigureAwait(false);
         var chat = await chatTask.ConfigureAwait(false);
         var author = await authorTask.ConfigureAwait(false);
+        Log.LogDebug("Audio downloaded, format={Format}, entry={EntryId}", audio.Format, audioEntry.Id);
         var trackInfo = new ChatAudioTrackInfo(audioEntry, chat!, author!) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
+        Log.LogInformation("Playing entry={EntryId}, playAt={PlayAt}", audioEntry.Id, playAt);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);
     }
 }

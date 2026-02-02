@@ -4,9 +4,8 @@ using ActualChat.Invite;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.Notification;
+using ActualChat.Rtc;
 using ActualChat.Streaming;
-using ActualChat.Users;
-using IRtcHub = ActualChat.Streaming.IRtcHub;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

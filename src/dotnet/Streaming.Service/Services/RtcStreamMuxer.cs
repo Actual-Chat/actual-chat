@@ -53,9 +53,13 @@ public sealed class RtcStreamMuxer : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         try {
+            Log.LogInformation("Starting for chat {ChatId}, session {Session}", ChatId, Session);
+
             var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
-            if (chat == null || !chat.Rules.CanRead())
+            if (chat?.Rules.CanRead() != true) {
+                Log.LogWarning("Cannot read chat {ChatId}, chat={Chat}", ChatId, chat?.Id);
                 return;
+            }
 
             var serverClock = Clocks.ServerClock;
             await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -65,6 +69,8 @@ public sealed class RtcStreamMuxer : WorkerBase
                 .ConfigureAwait(false);
             var startId = idRange.End; // Start from the latest
 
+            Log.LogInformation("Observing entries from {StartId}", startId);
+
             var streamTasks = new Dictionary<long, Task>();
             var entries = entryReader.Observe(startId, cancellationToken);
             await foreach (var entry in entries.ConfigureAwait(false)) {
@@ -73,18 +79,14 @@ public sealed class RtcStreamMuxer : WorkerBase
                 if (streamTasks.ContainsKey(entry.LocalId))
                     continue; // Already processing this entry
 
+                // Clean up completed streams
+                CleanupCompletedStreams(streamTasks);
+
                 // Start streaming for this entry
                 var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
-                var streamTask = ProcessStreamAsync(entry, streamIndex, cancellationToken);
+                Log.LogInformation("Starting stream #{StreamIndex} for entry {EntryId}", streamIndex, entry.Id);
+                var streamTask = ProcessStream(entry, streamIndex, cancellationToken);
                 streamTasks[entry.LocalId] = streamTask;
-
-                // Clean up completed streams
-                var completedIds = streamTasks
-                    .Where(kvp => kvp.Value.IsCompleted)
-                    .Select(kvp => kvp.Key)
-                    .ToList();
-                foreach (var id in completedIds)
-                    streamTasks.Remove(id);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
@@ -93,19 +95,24 @@ public sealed class RtcStreamMuxer : WorkerBase
         catch (Exception e) {
             Log.LogError(e, "Error watching entries for chat {ChatId}", ChatId);
         }
+        return;
+
+        void CleanupCompletedStreams(Dictionary<long, Task> streamTasks) {
+            var completedIds = streamTasks.Where(kvp => kvp.Value.IsCompleted).ToList();
+            foreach (var (entryLid, _) in completedIds)
+                streamTasks.Remove(entryLid);
+        }
     }
 
-    private async Task ProcessStreamAsync(ChatEntry entry, int streamIndex, CancellationToken cancellationToken)
+    private async Task ProcessStream(ChatEntry entry, int streamIndex, CancellationToken cancellationToken)
     {
+        var frameCount = 0;
         try {
             var streamId = entry.StreamId;
-            if (streamId.IsNullOrEmpty())
-                return;
-
-            // Get audio source
             var audioSource = await StreamClient
                 .GetAudio(streamId, TimeSpan.Zero, cancellationToken)
                 .ConfigureAwait(false);
+            Log.LogDebug("Got audio source, format={Format}", audioSource.Format);
 
             // Emit stream start
             var startItem = new RtcStreamStart {
@@ -116,6 +123,7 @@ public sealed class RtcStreamMuxer : WorkerBase
                 Format = audioSource.Format,
             };
             await _output.Writer.WriteAsync(startItem, cancellationToken).ConfigureAwait(false);
+            Log.LogDebug("Emitted StreamStart for stream #{StreamIndex}", streamIndex);
 
             // Emit audio frames
             await foreach (var frame in audioSource.GetFrames(cancellationToken).ConfigureAwait(false)) {
@@ -124,17 +132,20 @@ public sealed class RtcStreamMuxer : WorkerBase
                     Data = frame.Data,
                 };
                 await _output.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
+                frameCount++;
             }
 
             // Emit stream end
             var endItem = new RtcStreamEnd { StreamIndex = streamIndex };
             await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("Stream #{StreamIndex} completed, {FrameCount} frames emitted", streamIndex, frameCount);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            // Expected
+            Log.LogDebug("Stream #{StreamIndex} cancelled after {FrameCount} frames", streamIndex, frameCount);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Error processing stream for entry {EntryId}", entry.Id);
+            Log.LogWarning(e, "Error processing stream #{StreamIndex} for entry {EntryId}, {FrameCount} frames emitted",
+                streamIndex, entry.Id, frameCount);
 
             // Still emit end marker on error
             try {

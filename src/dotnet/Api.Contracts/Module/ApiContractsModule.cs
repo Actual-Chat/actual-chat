@@ -8,6 +8,7 @@ using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Notification;
+using ActualChat.Rtc;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;

@@ -71,16 +71,22 @@ public static class ApplicationBuilderExt
             if (!isDist && !isContent && !isFramework)
                 return next(context);
 
-            var mustDisable = false;
+            var services = context.RequestServices;
+            var mustDisableCaching =
 #if DEBUG
-            mustDisable = true;
+                true;
+#else
+                false;
 #endif
-            if (!mustDisable && Constants.DebugMode.DisableStaticFileCaching) {
-                var hostInfo = context.RequestServices.HostInfo();
-                mustDisable = hostInfo.IsDevelopmentInstance;
-            }
-            if (mustDisable)
+            mustDisableCaching |= Constants.DebugMode.DisableStaticFileCaching && services.HostInfo().IsDevelopmentInstance;
+            if (mustDisableCaching) {
+                context.Response.OnStarting(() => {
+                    context.Response.Headers.Remove("Cache-Control");
+                    context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+                    return Task.CompletedTask;
+                });
                 return next(context);
+            }
 
             context.Response.OnStarting(() => {
                 var requestPathValue = requestPath.Value ?? "";

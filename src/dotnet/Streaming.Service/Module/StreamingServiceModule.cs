@@ -2,6 +2,7 @@
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Redis.Module;
+using ActualChat.Rtc;
 using ActualChat.Streaming.Services;
 using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.AspNetCore.Builder;

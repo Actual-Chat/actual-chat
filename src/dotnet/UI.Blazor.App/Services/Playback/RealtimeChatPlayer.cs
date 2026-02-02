@@ -1,5 +1,4 @@
 using ActualChat.Audio;
-using ActualChat.MediaPlayback;
 using ActualChat.Rtc;
 using ActualChat.UI.Blazor.App.Services.Rtc;
 using ActualChat.UI.Blazor.Services;
@@ -38,14 +37,18 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 
         // Connect to RTC Hub for multiplexed streaming
         var config = RtcStreamingSettings.Default;
+        Log.LogInformation("Connecting to RTC Hub for chat {ChatId}", ChatId);
         var rtcStream = await Hub.RtcHub.GetStream(Session, ChatId, config, cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Connected to RTC Hub for chat {ChatId}", ChatId);
 
-        var demuxer = new RtcStreamDemuxer(rtcStream, Log);
+        var demuxer = new RtcStreamDemuxer(rtcStream, Hub.LogFor<RtcStreamDemuxer>());
         await using var _ = demuxer.ConfigureAwait(false);
 
         demuxer.StreamStarted +=
             args => OnStreamStarted(args, entryPlayer, state, serverClock, cancellationToken);
+        Log.LogInformation("Starting demuxer for chat {ChatId}", ChatId);
         await demuxer.Run().ConfigureAwait(false);
+        Log.LogInformation("Demuxer stopped for chat {ChatId}", ChatId);
     }
 
     private void OnStreamStarted(

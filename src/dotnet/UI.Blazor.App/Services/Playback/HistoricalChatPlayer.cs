@@ -9,17 +9,24 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     protected override async Task Play(
         ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken)
     {
+        Log.LogInformation("Starting playback in chat {ChatId} from {MinPlayAt}", ChatId, minPlayAt);
         var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null || !chat.Rules.CanRead())
+        if (chat == null || !chat.Rules.CanRead()) {
+            Log.LogWarning("Cannot read chat {ChatId}", ChatId);
             return;
+        }
 
         Operation = $"historical playback in \"{chat.Title}\"";
         var clock = Clocks.CpuClock;
         var initialSleepAndPauseDuration = SleepAndPauseDuration;
         var realStartAt = RealNow();
         var lastPlaybackBlockEnd = PlaybackNow(); // Any time in past, actually
+        var entryCount = 0;
 
         await foreach (var entry in ListHistoricalAudioEntries(minPlayAt, cancellationToken).ConfigureAwait(false)) {
+            entryCount++;
+            Log.LogDebug("Found entry {EntryId}, IsStreaming={IsStreaming}, BeginsAt={BeginsAt}",
+                entry.Id, entry.IsStreaming, entry.BeginsAt);
             if (entry.IsStreaming)
                 continue;
 
@@ -52,9 +59,12 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             var skipOffset = playbackNow - entry.BeginsAt;
             var skipTo = skipOffset.Positive();
             var playAt = clock.Now + (-skipOffset).Positive();
-            DebugLog?.LogDebug("Play: enqueuing #{EntryId} @ {SkipTo}", entry.Id, skipTo.ToShortString());
+            Log.LogDebug("Play: enqueuing #{EntryId} @ {SkipTo}", entry.Id, skipTo.ToShortString());
             entryPlayer.EnqueueEntry(entry, skipTo, playAt);
         }
+
+        Log.LogInformation("Completed, processed {EntryCount} entries", entryCount);
+        return;
 
         Moment RealNow() => Clocks.CpuClock.Now + initialSleepAndPauseDuration - SleepAndPauseDuration;
         TimeSpan PlaybackDuration() => RealNow() - realStartAt;
