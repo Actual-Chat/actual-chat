@@ -94,7 +94,7 @@ public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILog
             // We might send 0-20-40ms tracks, so the JS side should support this
             var frameCount = 0;
             var frames = Source.GetFramesUntyped(cancellationToken);
-            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var frame in frames.ConfigureAwait(false)) {
                 if (!isPlayCommandProcessed) {
                     await playTask.ConfigureAwait(false);
                     isPlayCommandProcessed = true;

@@ -1,5 +1,3 @@
-using ActualChat.Audio;
-using ActualChat.Async;
 using ActualChat.Chat;
 using ActualChat.Rtc;
 
@@ -8,13 +6,13 @@ namespace ActualChat.Streaming.Services;
 /// <summary>
 /// Watches chat entries and multiplexes audio streams into a single output channel.
 /// </summary>
-public sealed class RtcStreamMuxer : IAsyncDisposable
+public sealed class RtcStreamMuxer : WorkerBase
 {
     private readonly Channel<RtcItem> _output;
-    private readonly CancellationTokenSource _cts = new();
-    private readonly Task _watchTask;
-    private volatile RtcStreamConfig _config;
+    private volatile RtcStreamingSettings _settings;
     private int _nextStreamIndex;
+
+    public RtcStreamingSettings Settings => _settings;
 
     private IServiceProvider Services { get; }
     private Session Session { get; }
@@ -31,30 +29,28 @@ public sealed class RtcStreamMuxer : IAsyncDisposable
         IServiceProvider services,
         Session session,
         ChatId chatId,
-        RtcStreamConfig config)
+        RtcStreamingSettings settings)
     {
         Services = services;
         Session = session;
         ChatId = chatId;
-        _config = config;
-        _output = Channel.CreateUnbounded<RtcItem>(ChannelExt.SingleReaderWriterUnboundedChannelOptions);
-        _watchTask = Task.Run(() => WatchEntriesAsync(_cts.Token));
+        _settings = settings;
+        _output = ChannelExt.Create<RtcItem>(ChannelExt.SingleReaderWriterUnboundedChannelOptions);
+        _ = Run(); // Start immediately
     }
 
-    public void UpdateConfig(RtcStreamConfig config)
-        => _config = config;
+    public void UpdateConfig(RtcStreamingSettings settings)
+        => Interlocked.Exchange(ref _settings, settings);
 
-    public async ValueTask DisposeAsync()
+    protected override Task OnStop()
     {
-        await _cts.CancelAsync().ConfigureAwait(false);
-        await _watchTask.SilentAwait(false);
         _output.Writer.TryComplete();
-        _cts.Dispose();
+        return Task.CompletedTask;
     }
 
-    // Private methods
+    // Protected methods
 
-    private async Task WatchEntriesAsync(CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
         try {
             var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
@@ -71,13 +67,9 @@ public sealed class RtcStreamMuxer : IAsyncDisposable
 
             var streamTasks = new Dictionary<long, Task>();
             var entries = entryReader.Observe(startId, cancellationToken);
-            await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                if (!_config.IsListening)
-                    continue;
-
+            await foreach (var entry in entries.ConfigureAwait(false)) {
                 if (!entry.IsStreaming)
                     continue;
-
                 if (streamTasks.ContainsKey(entry.LocalId))
                     continue; // Already processing this entry
 
@@ -111,10 +103,9 @@ public sealed class RtcStreamMuxer : IAsyncDisposable
                 return;
 
             // Get audio source
-            var audioSource = await StreamClient.GetAudio(streamId, TimeSpan.Zero, cancellationToken)
+            var audioSource = await StreamClient
+                .GetAudio(streamId, TimeSpan.Zero, cancellationToken)
                 .ConfigureAwait(false);
-            if (audioSource == null)
-                return;
 
             // Emit stream start
             var startItem = new RtcStreamStart {

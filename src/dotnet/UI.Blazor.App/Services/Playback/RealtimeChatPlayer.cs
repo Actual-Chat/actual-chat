@@ -37,16 +37,15 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         };
 
         // Connect to RTC Hub for multiplexed streaming
-        var config = RtcStreamConfig.Default;
+        var config = RtcStreamingSettings.Default;
         var rtcStream = await Hub.RtcHub.GetStream(Session, ChatId, config, cancellationToken).ConfigureAwait(false);
 
-        await using var demuxer = new RtcStreamDemuxer(Log);
+        var demuxer = new RtcStreamDemuxer(rtcStream, Log);
+        await using var _ = demuxer.ConfigureAwait(false);
 
-        // Subscribe to stream events
-        demuxer.StreamStarted += args => OnStreamStarted(args, entryPlayer, state, serverClock, cancellationToken);
-
-        // Run the demuxer (blocks until stream ends or cancellation)
-        await demuxer.RunAsync(rtcStream, cancellationToken).ConfigureAwait(false);
+        demuxer.StreamStarted +=
+            args => OnStreamStarted(args, entryPlayer, state, serverClock, cancellationToken);
+        await demuxer.Run().ConfigureAwait(false);
     }
 
     private void OnStreamStarted(

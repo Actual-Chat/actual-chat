@@ -1,5 +1,4 @@
-using ActualLab.Channels;
-using ChannelExtBase = ActualLab.Channels.ChannelExt;
+using ChannelExtCore = ActualLab.Channels.ChannelExt;
 
 namespace ActualChat;
 
@@ -12,12 +11,17 @@ public static partial class ChannelExt
         SingleWriter = true,
     };
 
+    // Just an alias
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Channel<T> Create<T>(ChannelOptions options)
+        => ChannelExtCore.Create<T>(options);
+
     public static Channel<T> Create<T>(
         int? capacity,
         bool singleReader = false,
         bool singleWriter = false,
         bool allowSynchronousContinuations = true)
-        => ChannelExtBase.Create<T>(capacity.HasValue
+        => ChannelExtCore.Create<T>(capacity.HasValue
             ? new BoundedChannelOptions(capacity.Value) {
                 SingleReader = singleReader,
                 SingleWriter = singleWriter,
