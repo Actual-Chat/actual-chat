@@ -664,12 +664,27 @@ switch ($mode) {
         $containerClaudeJson = Join-Path $projectRoot ".home" ".claude.json"
 
         # Copy from original on each run (fresh start with current credentials/settings)
+        # Skip folders/files that shouldn't be copied (caches, logs, debug artifacts, telemetry)
+        $skipItems = @(
+            'cache', 'caches', 'debug', 'log', 'logs', 'tmp', 'temp',
+            'downloads', 'file-history', 'paste-cache', 'session-env',
+            'shell-snapshots', 'statsig', 'telemetry',
+            'stats-cache.json'
+        )
+
         if (Test-Path $containerClaudeDir) {
             Remove-Item -Path $containerClaudeDir -Recurse -Force
         }
 
         if (Test-Path $originalClaudeDir) {
-            Copy-Item -Path $originalClaudeDir -Destination $containerClaudeDir -Recurse -Force
+            # Create destination and copy items selectively
+            New-Item -ItemType Directory -Path $containerClaudeDir -Force | Out-Null
+            Get-ChildItem -Path $originalClaudeDir | ForEach-Object {
+                $itemName = $_.Name.ToLower()
+                if ($itemName -notin $skipItems) {
+                    Copy-Item -Path $_.FullName -Destination $containerClaudeDir -Recurse -Force
+                }
+            }
         } else {
             New-Item -ItemType Directory -Path $containerClaudeDir -Force | Out-Null
         }
