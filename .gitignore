@@ -64,3 +64,6 @@ sw.js
 
 # VIM swap files
 *.swp
+
+# claude
+.home

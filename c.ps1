@@ -653,17 +653,43 @@ switch ($mode) {
             $volumeMounts += "${origWorktreeHostPath}:${origWorktreeContainerPath}"
         }
 
-        # Add Claude config mounts
-        if ($currentOS -eq "Windows") {
-            $volumeMounts += "-v"
-            $volumeMounts += "$env:USERPROFILE/.claude:/home/claude/.claude"
-            $volumeMounts += "-v"
-            $volumeMounts += "$env:USERPROFILE/.claude.json:/home/claude/.claude.json"
+        # Add Claude config mounts (per-project/worktree copy for parallel isolation)
+        # Copy config directly into the project/worktree directory
+        $userHome = if ($currentOS -eq "Windows") { $env:USERPROFILE } else { $env:HOME }
+        $originalClaudeDir = "$userHome/.claude"
+        $originalClaudeJson = "$userHome/.claude.json"
+
+        # Config goes into the project/worktree directory
+        $containerClaudeDir = Join-Path $projectRoot ".home" ".claude"
+        $containerClaudeJson = Join-Path $projectRoot ".home" ".claude.json"
+
+        # Copy from original on each run (fresh start with current credentials/settings)
+        if (Test-Path $containerClaudeDir) {
+            Remove-Item -Path $containerClaudeDir -Recurse -Force
+        }
+
+        if (Test-Path $originalClaudeDir) {
+            Copy-Item -Path $originalClaudeDir -Destination $containerClaudeDir -Recurse -Force
         } else {
+            New-Item -ItemType Directory -Path $containerClaudeDir -Force | Out-Null
+        }
+        if (Test-Path $originalClaudeJson) {
+            Copy-Item -Path $originalClaudeJson -Destination $containerClaudeJson -Force
+        }
+
+        # Mount the project-specific config to container's home
+        $hasClaudeJson = Test-Path $containerClaudeJson
+        $mountClaudeDir = $containerClaudeDir
+        $mountClaudeJson = $containerClaudeJson
+        if ($currentOS -eq "Windows") {
+            $mountClaudeDir = ConvertTo-DockerPath $containerClaudeDir
+            $mountClaudeJson = ConvertTo-DockerPath $containerClaudeJson
+        }
+        $volumeMounts += "-v"
+        $volumeMounts += "${mountClaudeDir}:/home/claude/.claude"
+        if ($hasClaudeJson) {
             $volumeMounts += "-v"
-            $volumeMounts += "$env:HOME/.claude:/home/claude/.claude"
-            $volumeMounts += "-v"
-            $volumeMounts += "$env:HOME/.claude.json:/home/claude/.claude.json"
+            $volumeMounts += "${mountClaudeJson}:/home/claude/.claude.json"
         }
 
         # Add git config mount
@@ -723,6 +749,7 @@ switch ($mode) {
         if ($dryRun) {
             Write-Host "Container: $containerName"
             Write-Host "Docker Working Directory: $dockerWorkDir"
+            Write-Host "Claude Config: $containerClaudeDir"
         }
 
         # Build args for the script running in Docker
