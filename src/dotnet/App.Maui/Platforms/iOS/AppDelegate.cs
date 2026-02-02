@@ -22,7 +22,7 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         return MauiProgram.CreateMauiApp();
     }
 
-    public override bool FinishedLaunching(UIApplication application, NSDictionary launchOptions)
+    public override bool FinishedLaunching(UIApplication application, NSDictionary? launchOptions)
     {
         RegisterBadgeNotifications();
         return base.FinishedLaunching(application, launchOptions);

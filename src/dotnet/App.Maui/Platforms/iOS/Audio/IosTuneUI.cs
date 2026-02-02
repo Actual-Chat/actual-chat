@@ -8,7 +8,7 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
     private Haptics Haptics => field ??= Hub.Services.GetRequiredService<Haptics>();
 
-    public override Task Play(Tune tune, CancellationToken cancellationToken = default)
+    public override Task Play(Tune tune)
         => ForegroundTask.Run(() => {
             var (_, sound) = Tunes[tune];
             _ = Vibrate(tune);
@@ -16,7 +16,7 @@ public class IosTuneUI(UIHub hub) : MauiTunes(hub)
         },
         CancellationToken.None);
 
-    public override Task PlayAndWait(Tune tune, CancellationToken cancellationToken = default)
+    public override Task PlayAndWait(Tune tune)
     {
         var (_, sound) = Tunes[tune];
         return Task.WhenAll(Vibrate(tune), PlaySound(sound));

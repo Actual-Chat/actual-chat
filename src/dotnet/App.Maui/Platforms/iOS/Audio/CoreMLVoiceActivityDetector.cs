@@ -66,9 +66,11 @@ public sealed class CoreMLVoiceActivityDetector(IServiceProvider services) : Voi
         return Task.CompletedTask;
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        base.Dispose();
+        if (!disposing)
+            return;
+
         _model.DisposeSilently();
         _model = null;
         _inputArr.DisposeSilently();
