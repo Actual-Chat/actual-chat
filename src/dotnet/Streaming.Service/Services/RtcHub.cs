@@ -8,48 +8,47 @@ namespace ActualChat.Streaming.Services;
 /// </summary>
 public class RtcHub(IServiceProvider services) : IRtcHub
 {
-    private static readonly ConcurrentDictionary<(Session, ChatId), RtcStreamMuxer> Muxers = new();
+    private readonly Lock _lock = new ();
+    private readonly ConcurrentDictionary<(Session, ChatId), RtcStreamMuxer> _muxers = new();
 
     private IServiceProvider Services { get; } = services;
     private ILogger Log => field ??= Services.LogFor<RtcHub>();
 
-    public async Task<RpcStream<RtcItem>> GetStream(
+    public Task<RpcStream<RtcItem>> GetStream(
         Session session,
         ChatId chatId,
-        RtcStreamConfig config,
+        RtcStreamingSettings settings,
         CancellationToken cancellationToken)
     {
+        RtcStreamMuxer muxer;
         var key = (session, chatId);
+        lock (_lock) { // TODO(AY): Make it more efficient later?
+            if (_muxers.TryRemove(key, out var oldMuxer))
+                _ = oldMuxer.DisposeSilentlyAsync(); // No need to await for this here
 
-        // Clean up any existing muxer for this session/chat
-        if (Muxers.TryRemove(key, out var oldMuxer))
-            await oldMuxer.DisposeAsync().ConfigureAwait(false);
+            muxer = new RtcStreamMuxer(Services, session, chatId, settings);
+            _muxers[key] = muxer;
+        }
 
-        // Create new muxer
-        var muxer = new RtcStreamMuxer(Services, session, chatId, config);
-        Muxers[key] = muxer;
-
-        // Convert to async enumerable and wrap as RpcStream
         var outputStream = ToAsyncEnumerable(muxer.Output, key, cancellationToken);
-        return RpcStream.New(outputStream);
+        return Task.FromResult(RpcStream.New(outputStream));
     }
 
-    public Task UpdateConfig(
+    public Task ChangeSettings(
         Session session,
         ChatId chatId,
-        RtcStreamConfig config,
+        RtcStreamingSettings settings,
         CancellationToken cancellationToken)
     {
-        var key = (session, chatId);
-        if (Muxers.TryGetValue(key, out var muxer))
-            muxer.UpdateConfig(config);
+        if (_muxers.TryGetValue((session, chatId), out var muxer))
+            muxer.UpdateConfig(settings);
 
         return Task.CompletedTask;
     }
 
     // Private methods
 
-    private static async IAsyncEnumerable<RtcItem> ToAsyncEnumerable(
+    private async IAsyncEnumerable<RtcItem> ToAsyncEnumerable(
         ChannelReader<RtcItem> reader,
         (Session, ChatId) key,
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -60,7 +59,7 @@ public class RtcHub(IServiceProvider services) : IRtcHub
         }
         finally {
             // Clean up muxer when stream ends
-            if (Muxers.TryRemove(key, out var muxer))
+            if (_muxers.TryRemove(key, out var muxer))
                 await muxer.DisposeAsync().ConfigureAwait(false);
         }
     }

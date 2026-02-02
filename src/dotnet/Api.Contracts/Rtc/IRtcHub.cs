@@ -12,12 +12,12 @@ public interface IRtcHub : IRpcService
     Task<RpcStream<RtcItem>> GetStream(
         Session session,
         ChatId chatId,
-        RtcStreamConfig config,
+        RtcStreamingSettings settings,
         CancellationToken cancellationToken);
 
-    Task UpdateConfig(
+    Task ChangeSettings(
         Session session,
         ChatId chatId,
-        RtcStreamConfig config,
+        RtcStreamingSettings settings,
         CancellationToken cancellationToken);
 }

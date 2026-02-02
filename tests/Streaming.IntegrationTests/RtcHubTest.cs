@@ -19,7 +19,7 @@ public class RtcHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
         var rtcHub = services.GetRequiredService<IRtcHub>();
-        var config = RtcStreamConfig.Default;
+        var config = RtcStreamingSettings.Default;
 
         var stream = await rtcHub.GetStream(session, Constants.Chat.DefaultChatId, config, CancellationToken.None);
 
@@ -45,7 +45,7 @@ public class RtcHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         chat.Require();
 
         var rtcHub = services.GetRequiredService<IRtcHub>();
-        var config = RtcStreamConfig.Default;
+        var config = RtcStreamingSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var stream = await rtcHub.GetStream(session, chat.Id, config, cts.Token);
@@ -53,7 +53,7 @@ public class RtcHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Stream should not throw when enumerated (even if empty)
         var items = new List<RtcItem>();
         try {
-            await foreach (var item in ((IAsyncEnumerable<RtcItem>)stream).WithCancellation(cts.Token))
+            await foreach (var item in stream)
                 items.Add(item);
         }
         catch (OperationCanceledException) {
@@ -73,9 +73,9 @@ public class RtcHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
         var rtcHub = services.GetRequiredService<IRtcHub>();
-        var config = new RtcStreamConfig { IsListening = false };
+        var settings = new RtcStreamingSettings { StreamKindFilter = RtcStreamKind.None };
 
-        await rtcHub.UpdateConfig(session, Constants.Chat.DefaultChatId, config, CancellationToken.None);
+        await rtcHub.ChangeSettings(session, Constants.Chat.DefaultChatId, settings, CancellationToken.None);
         // Should not throw
     }
 }

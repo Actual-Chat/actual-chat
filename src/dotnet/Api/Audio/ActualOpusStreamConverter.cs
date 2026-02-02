@@ -28,7 +28,7 @@ public class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAu
                 FullMode = BoundedChannelFullMode.Wait,
             });
 
-        var _ = BackgroundTask.Run(async () => {
+        _ = BackgroundTask.Run(async () => {
             try {
                 var offsetMs = 0;
                 var audioFrames = new List<AudioFrame>();
