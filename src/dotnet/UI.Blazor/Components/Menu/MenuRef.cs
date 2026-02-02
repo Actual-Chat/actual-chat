@@ -28,7 +28,7 @@ public readonly struct MenuRef(
     {
         var bufferLength = Arguments.Length + 1;
         var buffer = new RefArrayPoolBuffer<string>(ArrayPools.SharedStringPool, bufferLength, mustClear: true);
-        var span = buffer.Array.AsSpan(bufferLength);
+        var span = buffer.Array.AsSpan(0, bufferLength);
         try {
             span[0] = MenuRegistry.GetTypeId(MenuType);
             for (int i = 0; i < Arguments.Length; i++)
