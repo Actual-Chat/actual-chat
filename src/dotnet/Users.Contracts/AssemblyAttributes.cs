@@ -3,4 +3,4 @@ using ActualChat.Hosting;
 
 [assembly: BackendService(nameof(HostRole.OneServer), ServiceMode.Local, Priority = 1)]
 [assembly: BackendService(nameof(HostRole.UsersBackend), ServiceMode.Server)] // TBD: -> Distributed
-[assembly: BackendClient(nameof(HostRole.UsersBackend))]
+[assembly: BackendShardScheme(nameof(HostRole.UsersBackend))]

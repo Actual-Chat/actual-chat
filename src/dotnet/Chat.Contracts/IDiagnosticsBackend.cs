@@ -5,7 +5,7 @@ using ActualLab.Rpc;
 namespace ActualChat.Chat;
 
 [BackendService(nameof(HostRole.DiagnosticsBackend), ServiceMode.Distributed)]
-[BackendClient(nameof(HostRole.DiagnosticsBackend))]
+[BackendShardScheme(nameof(HostRole.DiagnosticsBackend))]
 public interface IDiagnosticsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]

@@ -7,7 +7,7 @@ using ActualLab.Rpc;
 namespace ActualChat.Flows;
 
 [BackendService(nameof(HostRole.FlowsBackend), ServiceMode.Distributed)]
-[BackendClient(nameof(HostRole.FlowsBackend))]
+[BackendShardScheme(nameof(HostRole.FlowsBackend))]
 public interface IFlowBackend : IComputeService, IBackendService
 {
     [ComputeMethod]

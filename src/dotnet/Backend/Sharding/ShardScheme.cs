@@ -14,7 +14,7 @@ public sealed class ShardScheme(
     ) : IHasId<Symbol>
 {
     private const int N = 12;
-    private static readonly ConcurrentDictionary<object, BackendClientAttribute?> BackendClientAttributes = new();
+    private static readonly ConcurrentDictionary<object, BackendShardSchemeAttribute?> BackendClientAttributes = new();
 
     public static readonly ShardScheme None = new(nameof(None), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
     public static readonly ShardScheme Undefined = new(nameof(Undefined), 0, HostRole.None, ShardSchemeFlags.Special | ShardSchemeFlags.Queue);
@@ -86,7 +86,7 @@ public sealed class ShardScheme(
             throw Errors.MustBeInterface(type, nameof(type));
 
         var attr = BackendClientAttributes.GetOrAdd(type,
-            static (_, t) => t.GetCustomAttributes<BackendClientAttribute>().SingleOrDefault(),
+            static (_, t) => t.GetCustomAttributes<BackendShardSchemeAttribute>().SingleOrDefault(),
             type);
         var shardScheme = attr != null ? ByBackendHostRole[attr.HostRole] : null;
         return shardScheme ?? ForAssembly(type.Assembly);
@@ -97,7 +97,7 @@ public sealed class ShardScheme(
     private static ShardScheme? ForAssembly(Assembly assembly)
     {
         var attr = BackendClientAttributes.GetOrAdd(assembly,
-            static (_, t) => t.GetCustomAttributes<BackendClientAttribute>().SingleOrDefault(),
+            static (_, t) => t.GetCustomAttributes<BackendShardSchemeAttribute>().SingleOrDefault(),
             assembly);
         return attr != null ? ByBackendHostRole[attr.HostRole] : null;
     }
