@@ -3,6 +3,7 @@
 @implements IModalView<JoinVideoCallModal.Model>
 @implements IAsyncDisposable
 @using ActualChat.UI.Blazor.App.Module
+@using ActualChat.Users
 
 <DialogFrame
     Class="join-video-call-modal modal-sm"
@@ -25,36 +26,38 @@
         <div @ref="_containerRef" class="c-video">
             <div class="video-frame">
                 <span class="plug-text">
-                    Camera inactive
+                    Camera is off
                 </span>
             </div>
         </div>
-        <div class="c-camera-select">
-            <select @bind="_selectedDeviceId" @bind:after="OnCameraChanged" class="camera-select" disabled="@(!_isVideoOn)">
-                <option value="">Default Camera</option>
-                @foreach (var device in _videoDevices) {
-                    <option value="@device.DeviceId">@device.Label</option>
-                }
-            </select>
-        </div>
-        <div class="c-buttons">
-            <ButtonRound Class="recording-btn">
-                <i class="icon-radio-button-on-fill text-2xl"></i>
+        <div class="c-toolbar">
+            @* Blur button *@
+            <ButtonRound Class="@BlurBtnClass()" Click="@OnBlurToggle">
+                <i class="icon-eye text-2xl"></i>
             </ButtonRound>
-            <ButtonRound Class="transcription-btn">
-                <i class="icon-transcription text-2xl"></i>
-            </ButtonRound>
+
+            @* Mic button *@
             <ButtonRound Class="mic-btn">
                 <i class="icon-mic-2 text-2xl"></i>
             </ButtonRound>
-            <ButtonRound Class="cast-btn">
-                <i class="icon-cast text-2xl"></i>
-            </ButtonRound>
+
+            @* Camera button *@
             <div class="@VideoWrapperClass() video-wrapper">
                 <ButtonRound Class="video-btn" Click="@OnVideoToggle">
                     <i class="icon-video text-2xl"></i>
                 </ButtonRound>
             </div>
+        </div>
+        <div class="c-camera-select">
+            <select value="@_selectedDeviceId" @onchange="OnCameraChanged">
+                @if (_videoDevices.Count == 0) {
+                    <option value="">No cameras found</option>
+                } else {
+                    @foreach (var device in _videoDevices) {
+                        <option value="@device.DeviceId">@device.Label</option>
+                    }
+                }
+            </select>
         </div>
     </FormBlock>
     </Body>
@@ -65,17 +68,19 @@
 </DialogFrame>
 
 @code {
-    private record VideoDevice(string DeviceId, string Label);
-
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.create";
+    private static readonly string JSEnumerateMethod = $"{BlazorUIAppModule.ImportName}.JoinVideoCallModal.enumerateDevices";
+
+    private record VideoDevice(string DeviceId, string Label);
 
     private ElementReference _containerRef;
     private DotNetObjectReference<JoinVideoCallModal>? _blazorRef;
     private IJSObjectReference? _jsRef;
 
     private bool _isVideoOn;
-    private List<VideoDevice> _videoDevices = new();
     private string _selectedDeviceId = "";
+    private bool _isBlurEnabled;
+    private List<VideoDevice> _videoDevices = new();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -90,18 +95,25 @@
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
+    protected override async Task OnInitializedAsync() {
+        var settings = await Hub.LocalSettings.LocalAppSettings().Get();
+        _selectedDeviceId = settings.SelectedCameraDeviceId ?? "";
+        _isBlurEnabled = settings.IsBackgroundBlurEnabledOrDefault;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
             return;
 
+        await LoadVideoDevices();
         await EnsureJsRef();
         if (_jsRef is null)
             return;
 
-        var success = await _jsRef.InvokeAsync<bool>("startPreview", (string?)null);
+        var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+        var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
         if (success) {
             _isVideoOn = true;
-            await LoadVideoDevices();
             StateHasChanged();
         }
     }
@@ -114,6 +126,16 @@
         }
         _blazorRef?.Dispose();
         _blazorRef = null;
+    }
+
+    private async Task LoadVideoDevices() {
+        try {
+            var devices = await JS.InvokeAsync<VideoDevice[]>(JSEnumerateMethod);
+            _videoDevices = devices.ToList();
+            StateHasChanged();
+        } catch {
+            _videoDevices = new();
+        }
     }
 
     private async Task EnsureJsRef() {
@@ -135,47 +157,41 @@
         } else {
             var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
             var success = await _jsRef.InvokeAsync<bool>("startPreview", deviceId);
-            if (success) {
+            if (success)
                 _isVideoOn = true;
-                await LoadVideoDevices();
-            }
         }
     }
 
-    private async Task OnCameraChanged() {
-        if (_jsRef is null || !_isVideoOn)
-            return;
+    private async Task OnCameraChanged(ChangeEventArgs e) {
+        var deviceId = e.Value?.ToString() ?? "";
+        _selectedDeviceId = deviceId;
+        await Hub.LocalSettings.LocalAppSettings().Update(
+            s => s with { SelectedCameraDeviceId = deviceId });
 
-        await _jsRef.InvokeAsync<bool>("switchCamera", _selectedDeviceId);
+        // Switch camera if preview is active
+        if (_isVideoOn && _jsRef is not null)
+            await _jsRef.InvokeAsync<bool>("switchCamera", deviceId);
+    }
+
+    private async Task OnBlurToggle() {
+        _isBlurEnabled = !_isBlurEnabled;
+        await Hub.LocalSettings.LocalAppSettings().Update(
+            s => s with { IsBackgroundBlurEnabled = _isBlurEnabled });
     }
 
     private async Task OnJoinClick() {
-        // Stop preview (free camera resource)
         await DisposeAsync();
-
-        // Start video call with selected camera using centralized state
         var chatId = ModalModel.Chat.Id;
         var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
         ChatVideoUI.SetRecordingChatId(chatId, deviceId);
-
-        // Close modal
         Modal.Close();
-    }
-
-    private async Task LoadVideoDevices() {
-        if (_jsRef is null)
-            return;
-
-        try {
-            var devices = await _jsRef.InvokeAsync<VideoDevice[]>("enumerateVideoDevices");
-            _videoDevices = devices.ToList();
-        } catch {
-            _videoDevices = new();
-        }
     }
 
     private string VideoWrapperClass()
         => _isVideoOn ? "video-on" : "video-off";
+
+    private string BlurBtnClass()
+        => _isBlurEnabled ? "blur-btn active" : "blur-btn";
 
     // Nested types
 

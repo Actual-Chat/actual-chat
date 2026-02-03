@@ -14,6 +14,21 @@ export class JoinVideoCallModal {
         return new JoinVideoCallModal(container, blazorRef);
     }
 
+    static async enumerateDevices(): Promise<VideoDevice[]> {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            return devices
+                .filter(d => d.kind === 'videoinput')
+                .map(d => ({
+                    deviceId: d.deviceId,
+                    label: d.label || `Camera ${d.deviceId.slice(0, 8)}`,
+                }));
+        } catch (error) {
+            errorLog?.log('Failed to enumerate video devices:', error);
+            return [];
+        }
+    }
+
     constructor(container: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.container = container;
