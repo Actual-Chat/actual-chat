@@ -110,7 +110,7 @@ ENV PATH=$PATH:/usr/local/share/npm-global/bin
 
 # Install Claude Code CLI
 ENV CLAUDE_INSTALL_METHOD=npm
-RUN npm install -g @anthropic-ai/claude-code
+RUN npm install -g @anthropic-ai/claude-code@2.0.25
 
 # Pre-download Playwright Chromium browser (~280MB, speeds up first use)
 RUN npx playwright install chromium
