@@ -11,7 +11,7 @@ namespace ActualChat.Streaming.IntegrationTests;
 public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [FlakyFact("AY: Time-dependent", 3, Timeout = 30_000)]
+    [Fact(Timeout = 30_000)]
     public async Task RtcStreamMuxer_ShouldEmitStreamItemsWhenRecording()
     {
         if (TestRunnerInfo.IsBuildAgent())
@@ -105,6 +105,9 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task RtcStreamDemuxer_ShouldRaiseEventsForReceivedStreams()
     {
+        if (TestRunnerInfo.IsBuildAgent())
+            return; // Requires DeepGram / Google Cloud credentials
+
         var appHost = AppHost;
         var services = appHost.Services;
         var log = services.LogFor<RtcPlaybackTest>();
@@ -185,6 +188,8 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
             frameCollectionTcs.TrySetResult();
         }
     }
+
+    // Private methods
 
     private static async IAsyncEnumerable<AudioFrame> GetTestAudioFrames()
     {
