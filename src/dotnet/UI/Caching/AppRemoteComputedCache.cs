@@ -1,5 +1,4 @@
 using ActualChat.Kvas;
-using ActualChat.Users;
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.Fusion.Interception;
