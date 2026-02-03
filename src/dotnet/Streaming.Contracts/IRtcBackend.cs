@@ -12,5 +12,5 @@ public interface IRtcBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ApiArray<RtcStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken);
 
-    Task<RpcStream<RtcStreamInfo>> ObserveNewStreams(ChatId chatId, CancellationToken cancellationToken);
+    Task<RpcStream<RtcStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken);
 }

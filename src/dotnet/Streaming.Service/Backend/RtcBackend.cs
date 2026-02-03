@@ -30,9 +30,9 @@ public class RtcBackend : ShardComputeService, IRtcBackend
         return Task.FromResult(chatStreams.GetActiveStreams());
     }
 
-    public virtual Task<RpcStream<RtcStreamInfo>> ObserveNewStreams(ChatId chatId, CancellationToken cancellationToken)
+    public virtual Task<RpcStream<RtcStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
     {
-        var observations = GetChatStreams(chatId).ObserveNewStreams(cancellationToken);
+        var observations = GetChatStreams(chatId).ObserveStreams(cancellationToken);
         return Task.FromResult(RpcStream.New(observations, isReconnectable: false));
     }
 
@@ -83,7 +83,7 @@ public class RtcBackend : ShardComputeService, IRtcBackend
         public ApiArray<RtcStreamInfo> GetActiveStreams()
             => new(_streams.Values.ToArray());
 
-        public async IAsyncEnumerable<RtcStreamInfo> ObserveNewStreams(
+        public async IAsyncEnumerable<RtcStreamInfo> ObserveStreams(
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             // Yield all currently active streams first

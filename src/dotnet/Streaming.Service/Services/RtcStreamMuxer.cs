@@ -74,7 +74,7 @@ public sealed class RtcStreamMuxer : WorkerBase
             while (!cancellationToken.IsCancellationRequested) {
                 try {
                     Log.LogInformation("OnRun: Connecting to ObserveNewStreams for {ChatId}", ChatId);
-                    var streams = await RtcBackend.ObserveNewStreams(ChatId, cancellationToken).ConfigureAwait(false);
+                    var streams = await RtcBackend.ObserveStreams(ChatId, cancellationToken).ConfigureAwait(false);
                     await foreach (var streamInfo in streams.ConfigureAwait(false)) {
                         Log.LogDebug("OnRun: Got stream {StreamId}", streamInfo.StreamId);
 
