@@ -442,6 +442,7 @@ jobs:
           ChatSettings__OpenAIApiKey: ${{secrets.OPENAI_API_KEY}}
           ChatSettings__Translation__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
           ChatSettings__LanguageDetection__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
+          StreamingSettings__DeepgramKey: ${{secrets.DEEPGRAM_API_KEY}}
         run: |-
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}
