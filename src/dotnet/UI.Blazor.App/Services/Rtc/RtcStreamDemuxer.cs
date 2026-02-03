@@ -13,16 +13,17 @@ public sealed class RtcStreamDemuxer(
     CancellationTokenSource? stopTokenSource = null)
     : WorkerBase(stopTokenSource)
 {
+    private static bool DebugMode => Constants.DebugMode.RtcStreaming;
     private readonly ConcurrentDictionary<int, Channel<byte[]>> _streams = new();
 
     private RpcStream<RtcItem> Input { get; } = input;
     private ILogger? Log { get; } = log;
+    private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
     public event Action<RtcStreamStartedArgs>? StreamStarted;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        Log?.LogInformation("Starting");
         var itemCount = 0;
         try {
             await foreach (var item in Input.WithCancellation(cancellationToken).ConfigureAwait(false)) {
@@ -34,7 +35,7 @@ public sealed class RtcStreamDemuxer(
                         Log?.LogWarning("StreamStart #{StreamIndex}: duplicate!", start.StreamIndex);
                         continue;
                     }
-                    Log?.LogDebug("StreamStart #{StreamIndex}, EntryId={EntryId}", start.StreamIndex, start.EntryId);
+                    DebugLog?.LogDebug("StreamStart #{StreamIndex}, EntryId={EntryId}", start.StreamIndex, start.EntryId);
                     channel = Channel.CreateUnbounded<byte[]>(ChannelExt.SingleReaderWriterUnboundedChannelOptions);
                     _streams[start.StreamIndex] = channel;
 
@@ -52,7 +53,7 @@ public sealed class RtcStreamDemuxer(
                         Log?.LogWarning("Failed to write frame for stream {StreamIndex}", frame.StreamIndex);
                     continue;
                 case RtcStreamEnd end:
-                    Log?.LogDebug("StreamEnd #{StreamIndex}", end.StreamIndex);
+                    DebugLog?.LogDebug("StreamEnd #{StreamIndex}", end.StreamIndex);
                     if (channel is null)
                         continue;
                     if (_streams.TryRemove(end.StreamIndex, channel))
@@ -60,10 +61,10 @@ public sealed class RtcStreamDemuxer(
                     break;
                 }
             }
-            Log?.LogInformation("Stream ended normally after {ItemCount} items", itemCount);
+            DebugLog?.LogInformation("Stream ended normally after {ItemCount} items", itemCount);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            Log?.LogDebug("Cancelled after {ItemCount} items", itemCount);
+            DebugLog?.LogDebug("Cancelled after {ItemCount} items", itemCount);
         }
         catch (RpcReconnectFailedException e) {
             Log?.LogError(e, "Reconnect failed after {ItemCount} items", itemCount);

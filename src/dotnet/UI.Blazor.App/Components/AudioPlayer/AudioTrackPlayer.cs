@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 {
-    private static bool DebugMode => Constants.DebugMode.AudioPlayback;
+    private static bool DebugMode => Constants.DebugMode.AudioTrackPlayer;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private readonly string _id;

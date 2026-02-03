@@ -20,7 +20,7 @@ public abstract class ChatPlayer : ProcessorBase
 
     protected ILogger Log { get; }
     protected ILogger? DebugLog => DebugMode ? Log : null;
-    protected static bool DebugMode => Constants.DebugMode.AudioPlayback;
+    protected static bool DebugMode => Constants.DebugMode.AudioTrackPlayer;
 
     protected AppUIHub Hub { get; }
     protected Session Session => Hub.Session;
@@ -64,13 +64,18 @@ public abstract class ChatPlayer : ProcessorBase
 
     public async Task<Task> Start(Moment startAt, CancellationToken cancellationToken)
     {
+        DebugLog?.LogInformation("ChatPlayer.Start: {PlayerKind} for {ChatId} at {StartAt}", PlayerKind, ChatId, startAt);
         this.ThrowIfDisposedOrDisposing();
         CancellationTokenSource playTokenSource;
         CancellationToken playToken;
 
         var whenPlayingSource = TaskCompletionSourceExt.New<Unit>();
         Task stopTask = Stop();
+        var loopCount = 0;
         while (true) {
+            loopCount++;
+            if (loopCount > 1)
+                DebugLog?.LogWarning("ChatPlayer.Start: waiting for previous playback to stop, loop #{LoopCount}", loopCount);
             await stopTask.ConfigureAwait(false);
             lock (Lock) {
                 if (_playTokenSource == null) {
@@ -82,6 +87,7 @@ public abstract class ChatPlayer : ProcessorBase
                 stopTask = Stop();
             }
         }
+        DebugLog?.LogInformation("ChatPlayer.Start: starting background task for {PlayerKind} {ChatId}", PlayerKind, ChatId);
 
         _ = BackgroundTask.Run(async () => {
             var chatEntryPlayer = new ChatEntryPlayer(Hub, ChatId, Playback, playToken);

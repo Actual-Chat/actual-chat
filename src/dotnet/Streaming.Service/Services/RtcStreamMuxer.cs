@@ -53,13 +53,15 @@ public sealed class RtcStreamMuxer : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         try {
-            Log.LogInformation("Starting for chat {ChatId}, session {Session}", ChatId, Session);
+            Log.LogInformation("OnRun: Starting for chat {ChatId}, session {Session}", ChatId, Session);
 
             var chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
             if (chat?.Rules.CanRead() != true) {
-                Log.LogWarning("Cannot read chat {ChatId}, chat={Chat}", ChatId, chat?.Id);
+                Log.LogWarning("OnRun: Cannot read chat {ChatId}, chat={Chat}, rules={Rules}",
+                    ChatId, chat?.Id, chat?.Rules);
                 return;
             }
+            Log.LogInformation("OnRun: Chat access verified for {ChatId}", ChatId);
 
             var serverClock = Clocks.ServerClock;
             await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -73,7 +75,9 @@ public sealed class RtcStreamMuxer : WorkerBase
 
             var streamTasks = new Dictionary<long, Task>();
             var entries = entryReader.Observe(startId, cancellationToken);
+            Log.LogInformation("OnRun: Starting to observe entries for {ChatId}", ChatId);
             await foreach (var entry in entries.ConfigureAwait(false)) {
+                Log.LogDebug("OnRun: Got entry {EntryId}, IsStreaming={IsStreaming}", entry.Id, entry.IsStreaming);
                 if (!entry.IsStreaming)
                     continue;
                 if (streamTasks.ContainsKey(entry.LocalId))
@@ -88,13 +92,15 @@ public sealed class RtcStreamMuxer : WorkerBase
                 var streamTask = ProcessStream(entry, streamIndex, cancellationToken);
                 streamTasks[entry.LocalId] = streamTask;
             }
+            Log.LogWarning("OnRun: Observe loop completed unexpectedly for {ChatId}", ChatId);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            // Expected
+            Log.LogInformation("OnRun: Cancelled for {ChatId}", ChatId);
         }
         catch (Exception e) {
-            Log.LogError(e, "Error watching entries for chat {ChatId}", ChatId);
+            Log.LogError(e, "OnRun: Error watching entries for chat {ChatId}", ChatId);
         }
+        Log.LogInformation("OnRun: Exiting for {ChatId}", ChatId);
         return;
 
         void CleanupCompletedStreams(Dictionary<long, Task> streamTasks) {

@@ -37,12 +37,13 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 
         // Connect to RTC Hub with automatic reconnection
         var settings = RtcStreamingSettings.Default;
-        var connector = new RtcStreamConnector(Hub.Services, Session, ChatId, settings);
-        await using var _ = connector.ConfigureAwait(false);
+        var processor = new RtcStreamProcessor(
+            Hub.Services, Session, ChatId, settings, cancellationToken.CreateLinkedTokenSource());
+        await using var _ = processor.ConfigureAwait(false);
 
-        connector.StreamStarted +=
+        processor.StreamStarted +=
             args => OnStreamStarted(args, entryPlayer, state, serverClock, cancellationToken);
-        await connector.Run().ConfigureAwait(false);
+        await processor.Run().ConfigureAwait(false);
     }
 
     private void OnStreamStarted(
@@ -55,7 +56,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         _ = BackgroundTask.Run(async () => {
             try {
                 // Skip own audio unless in debug mode
-                if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio && args.AuthorId != null) {
+                if (!Constants.DebugMode.ChatPlayersPlayMyOwnAudio && args.AuthorId != null) {
                     var author = await Authors.GetOwn(Session, ChatId, cancellationToken)
                         .ConfigureAwait(false);
                     if (author != null && args.AuthorId == author.Id)

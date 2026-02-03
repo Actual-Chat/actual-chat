@@ -5,6 +5,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
+    private static bool DebugMode => Constants.DebugMode.ChatPlayers;
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
     private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayerController> _players =
@@ -15,6 +16,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
     private IAudioFocusActivation? _audioFocusActivation;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private new ILogger? DebugLog => DebugMode ? Log : null;
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
@@ -60,7 +62,19 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
     }
 
     public void StartHistoricalPlayback(ChatId chatId, Moment startAt)
-        => StartPlayback(new HistoricalPlaybackState(chatId, startAt));
+    {
+        var currentState = PlaybackState.Value;
+        DebugLog?.LogInformation("StartHistoricalPlayback: chatId={ChatId}, startAt={StartAt}, currentState={CurrentState}",
+            chatId, startAt, currentState?.GetType().Name ?? "null");
+
+        var newState = new HistoricalPlaybackState(chatId, startAt);
+        if (currentState == newState) {
+            // Same state - force restart by stopping first
+            DebugLog?.LogInformation("StartHistoricalPlayback: same state, forcing restart");
+            StopPlayback();
+        }
+        StartPlayback(newState);
+    }
 
     public void StartRealtimePlayback(RealtimePlaybackState playbackState)
         => StartPlayback(playbackState);
@@ -106,12 +120,14 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        // TODO(AY): Implement _players cleanup here
+        DebugLog?.LogInformation("OnRun: ChatPlayers started");
         try {
             var lastPlaybackState = (PlaybackState?)null;
             var changes = PlaybackState.Computed.Changes(cancellationToken);
+            DebugLog?.LogInformation("OnRun: Waiting for playback state changes");
             await foreach (var cPlaybackState in changes.ConfigureAwait(false)) {
                 var newPlaybackState = cPlaybackState.Value;
+                DebugLog?.LogInformation("OnRun: State change detected: {NewState}", newPlaybackState?.GetType().Name ?? "null");
                 try {
                     await ProcessPlaybackStateChange(lastPlaybackState, newPlaybackState, cancellationToken)
                         .ConfigureAwait(false);
@@ -119,13 +135,16 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     // Let's stop everything in this case
+                    Log.LogError(ex, "ProcessPlaybackStateChange failed, stopping playback");
                     StopPlayback();
                     lastPlaybackState = null;
                     _ = StopPlayers();
                 }
             }
+            DebugLog?.LogWarning("OnRun: Changes loop exited unexpectedly");
         }
         finally {
+            DebugLog?.LogInformation("OnRun: ChatPlayers stopping");
             IEnumerable<Task> playerCloseTasks;
             lock (Lock)
                 playerCloseTasks = _players.Select(kv => Close(kv.Key.ChatId, kv.Key.PlayerKind));
@@ -155,6 +174,10 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         PlaybackState? playbackState,
         CancellationToken cancellationToken)
     {
+        DebugLog?.LogInformation("ProcessPlaybackStateChange: {LastState} -> {NewState}",
+            lastPlaybackState?.GetType().Name ?? "null",
+            playbackState?.GetType().Name ?? "null");
+
         if (playbackState == null) {
             await ExitState(lastPlaybackState).ConfigureAwait(false);
             ReleaseAudioFocus();
@@ -165,6 +188,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         var audioFocusActivation = await TryGainAudioFocus("Playback state change").ConfigureAwait(false);
         if (audioFocusActivation is null) {
             // Failed to get audio focus, stop playback. Show toast?
+            Log.LogWarning("ProcessPlaybackStateChange: failed to gain audio focus, stopping playback");
             StopPlayback();
             return;
         }
@@ -202,8 +226,11 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
 
         async Task EnterState(PlaybackState? state, CancellationToken ct)
         {
+            DebugLog?.LogInformation("EnterState: {State}", state?.GetType().Name ?? "null");
             if (state is HistoricalPlaybackState historical) {
                 _ = TuneUI.Play(Tune.StartHistoricalPlayback);
+                DebugLog?.LogInformation("EnterState: starting historical playback for {ChatId} at {StartAt}",
+                    historical.ChatId, historical.StartAt);
                 var startTask = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);
                 _ = BackgroundTask.Run(async () => {
                     var endPlaybackTask = await startTask.ConfigureAwait(false);
@@ -213,6 +240,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
                         ResumeRealtimePlayback();
                 }, ct);
                 await startTask.ConfigureAwait(false);
+                DebugLog?.LogInformation("EnterState: historical playback started");
             }
             if (state is RealtimePlaybackState realtime) {
                 _ = TuneUI.Play(Tune.StartRealtimePlayback);
@@ -240,8 +268,11 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         ChatPlayer newPlayer;
         lock (Lock) {
             var player = _players.GetValueOrDefault((chatId, playerKind));
-            if (player != null)
+            if (player != null) {
+                DebugLog?.LogInformation("GetOrCreate: returning existing {PlayerKind} player for {ChatId}", playerKind, chatId);
                 return player.ChatPlayer;
+            }
+            DebugLog?.LogInformation("GetOrCreate: creating new {PlayerKind} player for {ChatId}", playerKind, chatId);
             newPlayer = playerKind switch {
                 ChatPlayerKind.Realtime => new RealtimeChatPlayer(Hub, chatId),
                 ChatPlayerKind.Historical => new HistoricalChatPlayer(Hub, chatId),
@@ -301,7 +332,9 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
 
     private Task<Task> StartHistoricalPlayback(ChatId chatId, Moment startAt, CancellationToken cancellationToken)
     {
+        DebugLog?.LogInformation("StartHistoricalPlayback (private): getting or creating player for {ChatId}", chatId);
         var player = GetOrCreate(chatId, ChatPlayerKind.Historical);
+        DebugLog?.LogInformation("StartHistoricalPlayback (private): calling player.Start for {ChatId}", chatId);
         var startTask = player.Start(startAt, cancellationToken);
         player.Playback.IsPaused.Updated += IsPausedOnUpdated;
         player.Playback.IsPlaying.Updated += IsPlayingOnUpdated;

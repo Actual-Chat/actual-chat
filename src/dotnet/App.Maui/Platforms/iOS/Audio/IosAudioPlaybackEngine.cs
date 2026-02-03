@@ -17,7 +17,7 @@ public class IosAudioPlaybackEngine(
     private OpusDecoder _decoder = null!;
 
     private ILogger Log => field ??= hub.LogFor(GetType());
-    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayback);
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayer);
 
     public async ValueTask DisposeAsync()
     {

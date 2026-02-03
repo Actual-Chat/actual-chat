@@ -32,10 +32,12 @@ public static partial class Constants
         public static readonly bool WebMReader = false;
         public static readonly bool AudioSource = false;
         public static readonly bool AudioProcessor = true;
-        public static readonly bool AudioPlayback = false;
-        public static readonly bool NativeAudioPlayback = false;
+        public static readonly bool AudioTrackPlayer = false;
+        public static readonly bool NativeAudioPlayer = false;
+        public static readonly bool RtcStreaming = false;
 
-        public static bool AudioPlaybackPlayMyOwnAudio
+        public static readonly bool ChatPlayers = false;
+        public static bool ChatPlayersPlayMyOwnAudio
             => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
         public static readonly bool AudioRecording = true;
         public static readonly bool AudioRecordingStream = false;
