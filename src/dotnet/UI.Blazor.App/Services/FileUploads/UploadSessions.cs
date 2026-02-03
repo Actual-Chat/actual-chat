@@ -188,8 +188,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             return session.ReservedMediaId;
         }
 
-        var mediaId = await Commander.Call(
-            new Medias_ReserveMedia(Session, session.ChatId.Value), cancellationToken).ConfigureAwait(false);
+        var metadata = await Hub.AttachmentRegistry.GetUploadSessionMetadata(sessionId, cancellationToken).ConfigureAwait(false);
+        var command = new Medias_ReserveMedia(Session, session.ChatId.Value) { Metadata = metadata };
+        var mediaId = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         session.ReservedMediaId = mediaId;
         session.LastUpdatedAt = Now;
         await _repo.Save(session).ConfigureAwait(false);

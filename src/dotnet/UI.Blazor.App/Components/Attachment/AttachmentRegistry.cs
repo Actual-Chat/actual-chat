@@ -9,6 +9,7 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     private readonly ConcurrentDictionary<AttachmentId, AttachmentPreviewState> _previews = new();
     private readonly ConcurrentDictionary<AttachmentId, MediaContent> _mediaContents = new();
     private readonly ConcurrentDictionary<AttachmentId, FailureState> _failureStates = new();
+    private readonly ConcurrentDictionary<string, PropertyBag> _uploadSessionMetadata = new(StringComparer.Ordinal);
 
     public void Register(Attachment attachment)
     {
@@ -20,6 +21,7 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
             _ = GetAttachmentInfo(attachment.Id, default);
         if (attachment is SourceAttachment source)
             SetPreviewState(attachment.Id, AttachmentPreviewState.Preview(source.PreviewUrl));
+        SetUploadSessionMetadata(attachment.UploadSessionId, attachment);
     }
 
     public void Unregister(AttachmentId id)
@@ -65,6 +67,33 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
             _failureStates[id] = failureState;
         using (Invalidation.Begin())
             _ = GetFailureState(id, default);
+    }
+
+    public void SetUploadSessionMetadata(string uploadSessionId, Attachment attachment)
+    {
+        var metadata = new PropertyBag()
+            .Set(nameof(Media.Media.FileName), attachment.FileName)
+            .Set(nameof(Media.Media.ContentType), attachment.FileType)
+            .Set(nameof(Media.Media.Length), attachment.Length);
+        if (attachment.IsImage || attachment.IsVideo)
+            metadata = metadata
+                .Set(nameof(Media.Media.Width), attachment.Width)
+                .Set(nameof(Media.Media.Height), attachment.Height);
+        SetUploadSessionMetadata(uploadSessionId, metadata);
+    }
+
+    public void SetUploadSessionMetadata(string uploadSessionId, PropertyBag metadata)
+    {
+        _uploadSessionMetadata[uploadSessionId] = metadata;
+        using (Invalidation.Begin())
+            _ = GetUploadSessionMetadata(uploadSessionId, default);
+    }
+
+    public void RemoveUploadSessionMetadata(string uploadSessionId)
+    {
+        _uploadSessionMetadata.TryRemove(uploadSessionId, out _);
+        using (Invalidation.Begin())
+            _ = GetUploadSessionMetadata(uploadSessionId, default);
     }
 
     [ComputeMethod]
@@ -124,6 +153,13 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     {
         var failureState = _failureStates.GetValueOrDefault(id);
         return Task.FromResult(failureState);
+    }
+
+    [ComputeMethod]
+    public virtual Task<PropertyBag> GetUploadSessionMetadata(string uploadSessionId, CancellationToken cancellationToken)
+    {
+        var metadata = _uploadSessionMetadata.GetValueOrDefault(uploadSessionId);
+        return Task.FromResult(metadata);
     }
 
     [ComputeMethod]

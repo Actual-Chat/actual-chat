@@ -22,7 +22,10 @@ public interface IMedias : IComputeService
 public sealed partial record Medias_ReserveMedia(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] string Scope
-) : ISessionCommand<MediaId>, IApiCommand;
+) : ISessionCommand<MediaId>, IApiCommand
+{
+    [DataMember, MemoryPackOrder(2)] public PropertyBag Metadata { get; init; } = PropertyBag.Empty;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
