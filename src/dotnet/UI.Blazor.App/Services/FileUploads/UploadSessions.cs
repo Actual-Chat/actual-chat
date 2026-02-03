@@ -237,9 +237,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         _ = BackgroundTask.Run(async () => {
             var cmd = completed
-                ? new Medias_UpdateStatus(Session, mediaId, MediaStatus.Preparing, MediaPreparingStage.Uploading, progress)
-                : new Medias_UpdateStatus(Session, mediaId, MediaStatus.Preparing, MediaPreparingStage.ServerProcessing, 0);
-            var result = await Commander.Run(cmd, default).ConfigureAwait(false);
+                ? new Medias_UpdateStatus(Session, mediaId, MediaStatus.Preparing, MediaPreparingStage.ServerProcessing, 0)
+                : new Medias_UpdateStatus(Session, mediaId, MediaStatus.Preparing, MediaPreparingStage.Uploading, progress);
+            await Commander.Run(cmd, default).ConfigureAwait(false);
         });
     }
 

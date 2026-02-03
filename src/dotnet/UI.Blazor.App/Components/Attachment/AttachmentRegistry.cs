@@ -115,7 +115,19 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
         if (failureState == FailureState.Failed)
             return new AttachmentState(0, false, true, previewState);
         // TODO(DF): add proper progress calculation
-        var overallProgress = mediaStatus is not null ? (int)(mediaStatus.StageProgress * 100) : 0;
+        var overallProgress = 0;
+        if (mediaStatus is not null) {
+            var stageWidth = 30;
+            if (mediaStatus.PreparingStage >= MediaPreparingStage.ServerProcessing) {
+                overallProgress = 70;
+                stageWidth = 30;
+            }
+            else if (mediaStatus.PreparingStage >= MediaPreparingStage.Uploading) {
+                overallProgress = 30;
+                stageWidth = 40;
+            }
+            overallProgress += (int)(mediaStatus.StageProgress * stageWidth / 100);
+        }
         if (failureState == FailureState.Restarting)
             return new AttachmentState(overallProgress, false, false, previewState);
 

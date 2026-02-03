@@ -79,7 +79,7 @@ partial class SendingMessages
                     var uploadSession = await UploadSessions.CreateSession(cmd.ChatId, fileProvider).ConfigureAwait(false);
                     uploadSessionId = uploadSession.SessionId;
                 }
-                var attachEntry = new AttachFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Length, attachment.Width, attachment.Height);
+                var attachEntry = new AttachFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Length, attachment.Width, attachment.Height, attachment.Id);
                 attachEntries.Add(attachEntry);
             }
         }

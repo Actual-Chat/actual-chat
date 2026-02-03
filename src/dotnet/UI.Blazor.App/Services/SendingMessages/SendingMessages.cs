@@ -205,10 +205,12 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 attachEntry.Width,
                 attachEntry.Height,
                 attachExtra) {
+                Id = attachEntry.AttachmentId,
                 UploadSessionId = uploadSessionId,
             };
             attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
+            attachmentRegistry.Unregister(attachment.Id);
             attachmentRegistry.Register(attachment);
             //attachmentRegistry.SetUploadSessionId(attachment.Id, uploadSessionId);
             if (!attachmentIsOk)
