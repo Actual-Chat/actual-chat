@@ -14,6 +14,9 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     [FlakyFact("AY: Time-dependent", 3, Timeout = 30_000)]
     public async Task RtcStreamMuxer_ShouldEmitStreamItemsWhenRecording()
     {
+        if (TestRunnerInfo.IsBuildAgent())
+            return; // Requires DeepGram / Google Cloud credentials
+
         var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
