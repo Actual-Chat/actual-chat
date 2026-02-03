@@ -122,8 +122,8 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
                 EntryId = ChatEntryId.New(testChatId, ChatEntryKind.Audio, 1),
                 Format = AudioSource.DefaultFormat,
             },
-            new RtcAudioFrame { StreamIndex = 1, Data = new byte[] { 1, 2, 3, 4 } },
-            new RtcAudioFrame { StreamIndex = 1, Data = new byte[] { 5, 6, 7, 8 } },
+            new RtcAudioFrame { StreamIndex = 1, Data = [1, 2, 3, 4] },
+            new RtcAudioFrame { StreamIndex = 1, Data = [5, 6, 7, 8] },
             new RtcStreamEnd { StreamIndex = 1 },
         };
 
