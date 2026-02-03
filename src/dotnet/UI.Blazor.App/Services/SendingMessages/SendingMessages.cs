@@ -243,8 +243,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private void SubscribePreviewResolved(AttachmentId attachmentId, AttachExtra extras)
     {
-        if (extras.GetPreviewUrl.IsCompleted)
-            return;
+        // if (extras.GetPreviewUrl.IsCompleted)
+        //     return;
 
         _ =  extras.GetPreviewUrl.ContinueWith(t => {
             // Preview resolved.
@@ -307,10 +307,11 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var chatSendingMessages = GetChatSendingMessages(request.ChatId);
             if (result.IsValue(out var chatEntry1, out var exception)) {
                 textEntryId = (TextEntryId)chatEntry1.Id;
-                chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now, !chatEntry1.HasAttachmentUploads);
+                var hasAttachmentUploads = request.AttachmentUploads is not null;// chatEntry1.HasAttachmentUploads || chatEntry1.Attachments.Any(c => !(c.Media?.IsReady ?? false));
+                chatSendingMessages.ConfirmMessageHasSent(sendingMessage, chatEntry1, Now, !hasAttachmentUploads);
                 _mediaUploadsUI.Invalidate(sendingMessage);
                 try {
-                    if (chatEntry1.HasAttachmentUploads)
+                    if (hasAttachmentUploads)
                         chatEntry1 = await CompleteAttachmentUploads(
                                 chatEntry1,
                                 request,
@@ -488,6 +489,13 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         // await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
         var postResult = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
         var chatEntry = postResult.Result.Value;
+        if (chatEntry.Attachments.Length > 0) {
+            // Refetch the entry with attachments with media populated.
+            var chatEntry1 = await Chats.GetEntry(Session, chatEntry.Id, cancellationToken).ConfigureAwait(false);
+            // Should always be non-null, but just in case.
+            if (chatEntry1 is not null)
+                chatEntry = chatEntry1;
+        }
         var isNewMessage = cmd.LocalId is null;
         if (isNewMessage)
             AnalyticEvents.RaiseMessagePosted(

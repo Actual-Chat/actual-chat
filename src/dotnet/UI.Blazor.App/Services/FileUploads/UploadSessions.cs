@@ -214,6 +214,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
         session.ProgressTracker.ReportProgress(progress);
+        ReportMediaUploadProgress(session.ReservedMediaId, progress, false);
     }
 
     private async Task OnCompleted(string sessionId, MediaContent mediaContent)
@@ -225,6 +226,21 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.LastUpdatedAt = Now;
         session.MediaContent = mediaContent;
         await _repo.Save(session).ConfigureAwait(false);
+        ReportMediaUploadProgress(session.ReservedMediaId, 100, true);
+    }
+
+    private void ReportMediaUploadProgress(MediaId? mediaId, double progress, bool completed)
+    {
+        // TODO(DF): media uploads status should be taken from upload
+        if (mediaId is null)
+            return;
+
+        _ = BackgroundTask.Run(async () => {
+            var cmd = completed
+                ? new Medias_UpdateStatus(Session, mediaId, MediaStatus.Preparing, MediaPreparingStage.Uploading, progress)
+                : new Medias_UpdateStatus(Session, mediaId, MediaStatus.Preparing, MediaPreparingStage.ServerProcessing, 0);
+            var result = await Commander.Run(cmd, default).ConfigureAwait(false);
+        });
     }
 
     private async Task OnFailed(string sessionId, Exception error)

@@ -1,6 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
-
-@if (Entry.Attachments.Length > 0) {
+@if (_hasCompletedAttachments) {
     if (_hasShownUploads) {
         Hub.SendingMessages.NotifyAttachmentsLoaded(Entry.Id);
         _hasShownUploads = false;
@@ -20,7 +19,7 @@
         }
     </div>
 }
-else if (Entry.HasAttachmentUploads) {
+else if (_hasAttachmentUploads) {
     if (IsOwnMessage) {
         if (_mediaUploads is {} mediaUploads) {
             <div class="message-attachments">
@@ -50,6 +49,8 @@ else if (Entry.HasAttachmentUploads) {
 }
 
 @code {
+    private bool _hasCompletedAttachments;
+    private bool _hasAttachmentUploads;
     private AttachmentUploads? _mediaUploads;
     private bool _hasShownUploads;
 
@@ -60,7 +61,15 @@ else if (Entry.HasAttachmentUploads) {
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
 
     protected override void OnParametersSet() {
-        _mediaUploads = Entry.HasAttachmentUploads && IsOwnMessage ? Hub.SendingMessages.GetMediaUploads(Entry) : null;
+        _hasCompletedAttachments = false;
+        _hasAttachmentUploads = Entry.HasAttachmentUploads;
+        if (Entry.Attachments.Length > 0) {
+            if (Entry.Attachments.All(c => c.Media.IsReady))
+                _hasCompletedAttachments = true;
+            else
+                _hasAttachmentUploads = true;
+        }
+        _mediaUploads = _hasAttachmentUploads && IsOwnMessage ? Hub.SendingMessages.GetMediaUploads(Entry) : null;
     }
 
     private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(ChatEntry entry)
