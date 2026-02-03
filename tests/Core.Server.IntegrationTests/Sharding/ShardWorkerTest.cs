@@ -122,10 +122,11 @@ public class ShardWorkerTest(ITestOutputHelper @out)
     private class ChannelShardWorker(IServiceProvider services, ITestOutputHelper @out, string name)
         : ShardWorker(services, ShardScheme.TestBackend)
     {
-        private static readonly HashSet<ChannelShardWorker>[] ShardOwners
+        // Track workers along with their cancellation tokens to properly handle handoff periods
+        private static readonly HashSet<(ChannelShardWorker Worker, CancellationToken Token)>[] ShardOwners
             = Enumerable
                 .Range(0, ShardScheme.TestBackend.ShardCount)
-                .Select(_ => new HashSet<ChannelShardWorker>())
+                .Select(_ => new HashSet<(ChannelShardWorker, CancellationToken)>())
                 .ToArray();
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
 
@@ -146,10 +147,12 @@ public class ShardWorkerTest(ITestOutputHelper @out)
             @out.WriteLine($"-> OnRun({shardIndex} @ {this})");
             lock (ShardOwners) {
                 var shardOwners = ShardOwners[shardIndex];
-                if (shardOwners.Any(x => x.ShardOwner != ShardOwner))
+                // Only flag as error if another host's worker is still active (not cancelled).
+                // During shard handoff, the old worker might still be in cleanup while the new one starts.
+                if (shardOwners.Any(x => x.Worker.ShardOwner != ShardOwner && !x.Token.IsCancellationRequested))
                     UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
                         $"Shard {shardIndex} @ {this} is used by a worker from another host!"));
-                shardOwners.Add(this);
+                shardOwners.Add((this, cancellationToken));
             }
             try {
                 var rnd = RandomShared.NextDouble();
@@ -168,7 +171,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
             finally {
                 lock (ShardOwners) {
                     var shardOwners = ShardOwners[shardIndex];
-                    if (!shardOwners.Remove(this))
+                    if (!shardOwners.Remove((this, cancellationToken)))
                         UsedShardIndexes.Writer.TryComplete(StandardError.Constraint(
                             $"Shard {shardIndex} must be used {this}!"));
                 }

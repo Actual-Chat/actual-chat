@@ -673,7 +673,7 @@ switch ($mode) {
         )
 
         if (Test-Path $containerClaudeDir) {
-            Remove-Item -Path $containerClaudeDir -Recurse -Force
+            Remove-Item -Path $containerClaudeDir -Recurse -Force | Out-Null
         }
 
         if (Test-Path $originalClaudeDir) {
@@ -682,14 +682,14 @@ switch ($mode) {
             Get-ChildItem -Path $originalClaudeDir -Force | ForEach-Object {
                 $itemName = $_.Name.ToLower()
                 if ($itemName -notin $skipItems) {
-                    Copy-Item -Path $_.FullName -Destination $containerClaudeDir -Recurse -Force
+                    Copy-Item -Path $_.FullName -Destination $containerClaudeDir -Recurse -Force | Out-Null
                 }
             }
         } else {
             New-Item -ItemType Directory -Path $containerClaudeDir -Force | Out-Null
         }
         if (Test-Path $originalClaudeJson) {
-            Copy-Item -Path $originalClaudeJson -Destination $containerClaudeJson -Force
+            Copy-Item -Path $originalClaudeJson -Destination $containerClaudeJson -Force | Out-Null
         }
 
         # Mount the project-specific config to container's home
