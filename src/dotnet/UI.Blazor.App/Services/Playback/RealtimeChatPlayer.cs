@@ -42,24 +42,25 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         await using var _ = processor.ConfigureAwait(false);
 
         processor.StreamStarted +=
-            args => OnStreamStarted(args, entryPlayer, state, serverClock, cancellationToken);
+            (info, frames) => OnStreamStarted(entryPlayer, state, info, frames, cancellationToken);
         await processor.Run().ConfigureAwait(false);
     }
 
     private void OnStreamStarted(
-        RtcStreamStartedArgs args,
         ChatEntryPlayer entryPlayer,
         PlayState state,
-        MomentClock serverClock,
+        RtcStreamInfo streamInfo,
+        IAsyncEnumerable<byte[]> audioFrames,
         CancellationToken cancellationToken)
     {
         _ = BackgroundTask.Run(async () => {
+            var serverClock = Clocks.ServerClock;
             try {
                 // Skip own audio unless in debug mode
-                if (!Constants.DebugMode.ChatPlayersPlayMyOwnAudio && args.AuthorId != null) {
+                if (!Constants.DebugMode.ChatPlayersPlayMyOwnAudio) {
                     var author = await Authors.GetOwn(Session, ChatId, cancellationToken)
                         .ConfigureAwait(false);
-                    if (author != null && args.AuthorId == author.Id)
+                    if (author != null && streamInfo.AuthorId == author.Id)
                         return;
                 }
 
@@ -77,43 +78,44 @@ public sealed class RealtimeChatPlayer : ChatPlayer
                     state.SyncedSleepDuration = sleepDuration;
                 }
 
-                var playAt = Moment.Max(minPlayAt, args.BeginsAt);
-                if (playAt >= args.BeginsAt + Constants.Chat.MaxEntryDuration)
+                var playAt = Moment.Max(minPlayAt, streamInfo.BeginsAt);
+                if (playAt >= streamInfo.BeginsAt + Constants.Chat.MaxEntryDuration)
                     return;
 
                 // Play notification sound for new message after delay
-                if (args.BeginsAt - state.LastStreamBeginsAt > Hub.AudioSettings.IdleListeningNewMessageTrigger)
+                if (streamInfo.BeginsAt - state.LastStreamBeginsAt > Hub.AudioSettings.IdleListeningNewMessageTrigger)
                     await Hub.TuneUI.PlayAndWait(Tune.NotifyOnNewAudioMessageAfterDelay).ConfigureAwait(false);
 
-                state.LastStreamBeginsAt = args.BeginsAt;
+                state.LastStreamBeginsAt = streamInfo.BeginsAt;
 
                 // Create AudioSource from the stream frames
-                var skipTo = (playAt - args.BeginsAt).Positive();
-                var audioSource = CreateAudioSource(args, skipTo, cancellationToken);
+                var skipTo = (playAt - streamInfo.BeginsAt).Positive();
+                var audioSource = CreateAudioSource(streamInfo, audioFrames, skipTo, cancellationToken);
 
                 // Enqueue for playback
-                DebugLog?.LogDebug("Play: enqueuing stream #{StreamIndex} @ {SkipTo}",
-                    args.StreamIndex, skipTo.ToShortString());
+                DebugLog?.LogDebug("Play: enqueuing stream {StreamId} @ {SkipTo}",
+                    streamInfo.StreamId, skipTo.ToShortString());
 
-                await EnqueueAudioSource(entryPlayer, args, audioSource, playAt, cancellationToken)
+                await EnqueueAudioSource(entryPlayer, streamInfo, audioSource, playAt, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 // Expected
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Error processing stream #{StreamIndex}", args.StreamIndex);
+                Log.LogWarning(e, "Error processing stream {StreamId}", streamInfo.StreamId);
             }
         }, CancellationToken.None);
     }
 
     private AudioSource CreateAudioSource(
-        RtcStreamStartedArgs args,
+        RtcStreamInfo streamInfo,
+        IAsyncEnumerable<byte[]> audioFrames,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var format = args.Format ?? AudioSource.DefaultFormat;
-        var frameStream = args.AudioFrames
+        var format = streamInfo.Format ?? AudioSource.DefaultFormat;
+        var frameStream = audioFrames
             .Select((data, i) => new AudioFrame {
                 Data = data,
                 Offset = TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs),
@@ -127,7 +129,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             });
 
         return new AudioSource(
-            args.BeginsAt,
+            streamInfo.BeginsAt,
             format,
             frameStream,
             TimeSpan.Zero,
@@ -137,24 +139,22 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 
     private async Task EnqueueAudioSource(
         ChatEntryPlayer entryPlayer,
-        RtcStreamStartedArgs args,
+        RtcStreamInfo streamInfo,
         AudioSource audioSource,
         Moment playAt,
         CancellationToken cancellationToken)
     {
         // Get chat and author info for track metadata
         var chat = await Hub.Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
-        Author? author = null;
-        if (args.AuthorId != null)
-            author = await Hub.Authors.Get(Session, ChatId, args.AuthorId, cancellationToken).ConfigureAwait(false);
+        var author = await Hub.Authors.Get(Session, ChatId, streamInfo.AuthorId, cancellationToken).ConfigureAwait(false);
 
         if (chat == null)
             return;
 
-        // Create track info for RTC stream
-        var trackInfo = new ChatAudioTrackInfo(ChatId, args.EntryId, chat, author) {
-            RecordedAt = args.BeginsAt,
-            ClientSideRecordedAt = args.BeginsAt,
+        // Create track info for RTC stream (no entry ID available yet)
+        var trackInfo = new ChatAudioTrackInfo(ChatId, null, chat, author) {
+            RecordedAt = streamInfo.BeginsAt,
+            ClientSideRecordedAt = streamInfo.BeginsAt,
         };
 
         entryPlayer.Playback.Play(trackInfo, audioSource, playAt, cancellationToken);

@@ -18,7 +18,7 @@ public sealed class RtcStreamProcessor : WorkerBase
     public ChatId ChatId { get; }
     public RtcStreamingSettings Settings { get; }
 
-    public event Action<RtcStreamStartedArgs>? StreamStarted;
+    public event Action<RtcStreamInfo, IAsyncEnumerable<byte[]>>? StreamStarted;
 
     public RtcStreamProcessor(IServiceProvider services,
         Session session,
@@ -46,7 +46,7 @@ public sealed class RtcStreamProcessor : WorkerBase
 
                 var demuxer = new RtcStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
                 await using var _ = demuxer.ConfigureAwait(false);
-                demuxer.StreamStarted += args => StreamStarted?.Invoke(args);
+                demuxer.StreamStarted += (info, frames) => StreamStarted?.Invoke(info, frames);
 
                 DebugLog?.LogInformation("Demuxing RTC stream for {ChatId}...", ChatId);
                 await demuxer.Run().ConfigureAwait(false);

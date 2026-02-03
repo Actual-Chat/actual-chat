@@ -6,9 +6,16 @@ public static partial class ChannelExt
 {
     private static readonly ChannelClosedException ChannelClosedError = new();
 
-    public static readonly UnboundedChannelOptions SingleReaderWriterUnboundedChannelOptions = new() {
+    public static readonly UnboundedChannelOptions UnboundedPipeOptions = new() {
         SingleReader = true,
         SingleWriter = true,
+        AllowSynchronousContinuations = false,
+    };
+
+    public static readonly UnboundedChannelOptions UnboundedSyncPipeOptions = new() {
+        SingleReader = true,
+        SingleWriter = true,
+        AllowSynchronousContinuations = true,
     };
 
     // Just an alias

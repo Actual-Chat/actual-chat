@@ -20,7 +20,7 @@ public sealed class RtcStreamDemuxer(
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
-    public event Action<RtcStreamStartedArgs>? StreamStarted;
+    public event Action<RtcStreamInfo, IAsyncEnumerable<byte[]>>? StreamStarted;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -35,16 +35,15 @@ public sealed class RtcStreamDemuxer(
                         Log?.LogWarning("StreamStart #{StreamIndex}: duplicate!", start.StreamIndex);
                         continue;
                     }
-                    DebugLog?.LogDebug("StreamStart #{StreamIndex}, EntryId={EntryId}", start.StreamIndex, start.EntryId);
-                    channel = Channel.CreateUnbounded<byte[]>(ChannelExt.SingleReaderWriterUnboundedChannelOptions);
+                    DebugLog?.LogDebug("StreamStart #{StreamIndex}, StreamId={StreamId}", start.StreamIndex, start.StreamInfo.StreamId);
+                    channel = Channel.CreateUnbounded<byte[]>(ChannelExt.UnboundedPipeOptions);
                     _streams[start.StreamIndex] = channel;
 
                     // Note: We don't use StopToken here because the audio frames should remain
                     // readable until the channel is naturally completed (when StreamEnd is received).
                     // Using StopToken would cancel the enumeration when the demuxer stops.
                     var audioFrames = ToAsyncEnumerable(channel.Reader, CancellationToken.None);
-                    var args = new RtcStreamStartedArgs(start, audioFrames);
-                    StreamStarted?.Invoke(args);
+                    StreamStarted?.Invoke(start.StreamInfo, audioFrames);
                     break;
                 case RtcAudioFrame frame:
                     if (channel is null)

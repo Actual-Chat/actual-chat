@@ -32,6 +32,7 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     private ICommander Commander => field ??= Services.Commander();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
+    private RtcBackend RtcBackend => field ??= Services.GetRequiredService<RtcBackend>();
 
     public StreamingBackend(IServiceProvider services)
     {

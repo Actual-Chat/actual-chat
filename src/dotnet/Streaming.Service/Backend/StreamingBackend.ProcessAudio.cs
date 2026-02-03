@@ -2,8 +2,8 @@ using System.Text.RegularExpressions;
 using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Kvas;
+using ActualChat.Rtc;
 using ActualChat.Transcription;
-using ActualChat.Users;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -45,25 +45,27 @@ public partial class StreamingBackend
 
     // Private methods
 
-    public async Task ProcessAudio(
+    private async Task ProcessAudio(
         AudioRecord record,
         int preSkip,
         IAsyncEnumerable<AudioFrame> frames,
         CancellationToken cancellationToken)
     {
+        var session = record.Session;
+        var chatId = record.ChatId;
         var beginsAt = Clocks.SystemClock.Now;
-        var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
+        var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
 
         var languages = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
 
         var author = await Authors
-            .EnsureJoined(record.Session, record.ChatId, cancellationToken)
+            .EnsureJoined(session, chatId, cancellationToken)
             .ConfigureAwait(false);
 
-        var accountSettings = new AccountSettings(ServerKvas, record.Session);
+        var accountSettings = new AccountSettings(ServerKvas, session);
         var chatVoiceMode = await accountSettings
-            .GetChatVoiceMode(record.ChatId, cancellationToken)
+            .GetChatVoiceMode(chatId, cancellationToken)
             .ConfigureAwait(false);
         var mustStreamVoice = chatVoiceMode.VoiceMode.HasVoice();
 
@@ -82,6 +84,18 @@ public partial class StreamingBackend
             languages,
             OpenAudioSegmentLog);
         openSegment.SetRecordedAt(recordedAt);
+
+        // Register active stream as early as possible (before creating ChatEntry)
+        if (mustStreamVoice) {
+            var activeStream = new RtcStreamInfo {
+                ChatId = chatId,
+                AuthorId = author.Id,
+                StreamId = openSegment.StreamId.Value,
+                BeginsAt = beginsAt,
+                Format = audio.Format,
+            };
+            await RtcBackend.RegisterActiveStream(activeStream, cancellationToken).ConfigureAwait(false);
+        }
 
         var audioStream = openSegment.Source
             .GetFrames(cancellationToken)
@@ -125,10 +139,14 @@ public partial class StreamingBackend
         await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
         openSegment.Close(openSegment.Source.Duration);
         var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
-        // We should finalize audio entry regardless of cancellation - that's why CancellationToken.None
-        var audioBlobId = mustStreamVoice
-            ? await AudioSegmentSaver.Save(closedSegment, CancellationToken.None).ConfigureAwait(false)
-            : null;
+
+        string? audioBlobId = null;
+        if (mustStreamVoice) {
+            // Unregister active stream from RtcBackend
+            RtcBackend.UnregisterActiveStream(chatId, openSegment.StreamId.Value);
+            // We should finalize audio entry regardless of cancellation - that's why CancellationToken.None
+            audioBlobId = await AudioSegmentSaver.Save(closedSegment, CancellationToken.None).ConfigureAwait(false);
+        }
 
         if (audioEntry != null)
             await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, CancellationToken.None)

@@ -117,10 +117,13 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         var testItems = new List<RtcItem> {
             new RtcStreamStart {
                 StreamIndex = 1,
-                BeginsAt = SystemClock.Instance.Now,
-                AuthorId = AuthorId.New(testChatId, 1),
-                EntryId = ChatEntryId.New(testChatId, ChatEntryKind.Audio, 1),
-                Format = AudioSource.DefaultFormat,
+                StreamInfo = new RtcStreamInfo {
+                    ChatId = testChatId,
+                    AuthorId = AuthorId.New(testChatId, 1),
+                    StreamId = "test-stream-1",
+                    BeginsAt = SystemClock.Instance.Now,
+                    Format = AudioSource.DefaultFormat,
+                },
             },
             new RtcAudioFrame { StreamIndex = 1, Data = [1, 2, 3, 4] },
             new RtcAudioFrame { StreamIndex = 1, Data = [5, 6, 7, 8] },
@@ -136,13 +139,13 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Create demuxer
         var demuxer = new ActualChat.UI.Blazor.App.Services.Rtc.RtcStreamDemuxer(rpcStream, log);
-        demuxer.StreamStarted += args => {
-            log.LogInformation("StreamStarted event: StreamIndex={StreamIndex}", args.StreamIndex);
-            streamStartedEvents.Add(args.StreamIndex);
+        demuxer.StreamStarted += (streamInfo, audioFrames) => {
+            log.LogInformation("StreamStarted event: StreamId={StreamId}", streamInfo.StreamId);
+            streamStartedEvents.Add(1); // Using 1 as placeholder since we no longer have StreamIndex
 
             // Collect audio frames synchronously in the event handler
             // to ensure we get all frames before the stream ends
-            _ = CollectFrames(args.AudioFrames, receivedFrames, frameCollectionTcs, log);
+            _ = CollectFrames(audioFrames, receivedFrames, frameCollectionTcs, log);
         };
 
         // Run demuxer

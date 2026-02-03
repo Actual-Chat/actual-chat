@@ -4,10 +4,12 @@ using ActualChat.Rtc;
 namespace ActualChat.Streaming.Services;
 
 /// <summary>
-/// Watches chat entries and multiplexes audio streams into a single output channel.
+/// Watches for active streams via IRtcBackend and multiplexes audio into a single output channel.
 /// </summary>
 public sealed class RtcStreamMuxer : WorkerBase
 {
+    private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(1);
+
     private readonly Channel<RtcItem> _output;
     private volatile RtcStreamingSettings _settings;
     private int _nextStreamIndex;
@@ -18,7 +20,7 @@ public sealed class RtcStreamMuxer : WorkerBase
     private Session Session { get; }
     private ChatId ChatId { get; }
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
-    private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
+    private IRtcBackend RtcBackend => field ??= Services.GetRequiredService<IRtcBackend>();
     private IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILogger Log => field ??= Services.LogFor<RtcStreamMuxer>();
@@ -35,7 +37,7 @@ public sealed class RtcStreamMuxer : WorkerBase
         Session = session;
         ChatId = chatId;
         _settings = settings;
-        _output = ChannelExt.Create<RtcItem>(ChannelExt.SingleReaderWriterUnboundedChannelOptions);
+        _output = ChannelExt.Create<RtcItem>(ChannelExt.UnboundedPipeOptions);
         _ = Run(); // Start immediately
     }
 
@@ -66,55 +68,63 @@ public sealed class RtcStreamMuxer : WorkerBase
             var serverClock = Clocks.ServerClock;
             await serverClock.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            var entryReader = new ChatEntryReader(Chats, Session, ChatId, ChatEntryKind.Audio);
-            var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
-                .ConfigureAwait(false);
-            var startId = idRange.End; // Start from the latest
+            var streamTasks = new Dictionary<string, Task>(StringComparer.Ordinal);
 
-            Log.LogInformation("Observing entries from {StartId}", startId);
+            // Watch for streams via RtcBackend with auto-reconnect
+            while (!cancellationToken.IsCancellationRequested) {
+                try {
+                    Log.LogInformation("OnRun: Connecting to ObserveNewStreams for {ChatId}", ChatId);
+                    var streams = await RtcBackend.ObserveNewStreams(ChatId, cancellationToken).ConfigureAwait(false);
+                    await foreach (var streamInfo in streams.ConfigureAwait(false)) {
+                        Log.LogDebug("OnRun: Got stream {StreamId}", streamInfo.StreamId);
 
-            var streamTasks = new Dictionary<long, Task>();
-            var entries = entryReader.Observe(startId, cancellationToken);
-            Log.LogInformation("OnRun: Starting to observe entries for {ChatId}", ChatId);
-            await foreach (var entry in entries.ConfigureAwait(false)) {
-                Log.LogDebug("OnRun: Got entry {EntryId}, IsStreaming={IsStreaming}", entry.Id, entry.IsStreaming);
-                if (!entry.IsStreaming)
-                    continue;
-                if (streamTasks.ContainsKey(entry.LocalId))
-                    continue; // Already processing this entry
+                        if (streamTasks.ContainsKey(streamInfo.StreamId))
+                            continue; // Already processing this stream
 
-                // Clean up completed streams
-                CleanupCompletedStreams(streamTasks);
+                        // Clean up completed streams
+                        CleanupCompletedStreams(streamTasks);
 
-                // Start streaming for this entry
-                var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
-                Log.LogInformation("Starting stream #{StreamIndex} for entry {EntryId}", streamIndex, entry.Id);
-                var streamTask = ProcessStream(entry, streamIndex, cancellationToken);
-                streamTasks[entry.LocalId] = streamTask;
+                        // Start streaming
+                        var streamIndex = Interlocked.Increment(ref _nextStreamIndex);
+                        Log.LogInformation("Starting stream #{StreamIndex} for stream {StreamId}", streamIndex, streamInfo.StreamId);
+                        var streamTask = ProcessStream(streamInfo, streamIndex, cancellationToken);
+                        streamTasks[streamInfo.StreamId] = streamTask;
+                    }
+                    Log.LogWarning("OnRun: ObserveNewStreams completed for {ChatId}", ChatId);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                    throw; // Propagate cancellation
+                }
+                catch (Exception e) {
+                    Log.LogWarning(e, "OnRun: ObserveNewStreams failed for {ChatId}, reconnecting in {Delay}...",
+                        ChatId, ReconnectDelay);
+                }
+
+                // Wait before reconnecting
+                await Task.Delay(ReconnectDelay, cancellationToken).ConfigureAwait(false);
             }
-            Log.LogWarning("OnRun: Observe loop completed unexpectedly for {ChatId}", ChatId);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             Log.LogInformation("OnRun: Cancelled for {ChatId}", ChatId);
         }
         catch (Exception e) {
-            Log.LogError(e, "OnRun: Error watching entries for chat {ChatId}", ChatId);
+            Log.LogError(e, "OnRun: Fatal error for chat {ChatId}", ChatId);
         }
         Log.LogInformation("OnRun: Exiting for {ChatId}", ChatId);
         return;
 
-        void CleanupCompletedStreams(Dictionary<long, Task> streamTasks) {
-            var completedIds = streamTasks.Where(kvp => kvp.Value.IsCompleted).ToList();
-            foreach (var (entryLid, _) in completedIds)
-                streamTasks.Remove(entryLid);
+        void CleanupCompletedStreams(Dictionary<string, Task> tasks) {
+            var completedIds = tasks.Where(kvp => kvp.Value.IsCompleted).Select(kvp => kvp.Key).ToList();
+            foreach (var id in completedIds)
+                tasks.Remove(id);
         }
     }
 
-    private async Task ProcessStream(ChatEntry entry, int streamIndex, CancellationToken cancellationToken)
+    private async Task ProcessStream(RtcStreamInfo streamInfo, int streamIndex, CancellationToken cancellationToken)
     {
         var frameCount = 0;
         try {
-            var streamId = entry.StreamId;
+            var streamId = streamInfo.StreamId;
             var audioSource = await StreamClient
                 .GetAudio(streamId, TimeSpan.Zero, cancellationToken)
                 .ConfigureAwait(false);
@@ -123,10 +133,7 @@ public sealed class RtcStreamMuxer : WorkerBase
             // Emit stream start
             var startItem = new RtcStreamStart {
                 StreamIndex = streamIndex,
-                BeginsAt = entry.BeginsAt,
-                AuthorId = entry.AuthorId,
-                EntryId = entry.Id,
-                Format = audioSource.Format,
+                StreamInfo = streamInfo,
             };
             await _output.Writer.WriteAsync(startItem, cancellationToken).ConfigureAwait(false);
             Log.LogDebug("Emitted StreamStart for stream #{StreamIndex}", streamIndex);
@@ -150,8 +157,8 @@ public sealed class RtcStreamMuxer : WorkerBase
             Log.LogDebug("Stream #{StreamIndex} cancelled after {FrameCount} frames", streamIndex, frameCount);
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Error processing stream #{StreamIndex} for entry {EntryId}, {FrameCount} frames emitted",
-                streamIndex, entry.Id, frameCount);
+            Log.LogWarning(e, "Error processing stream #{StreamIndex} for stream {StreamId}, {FrameCount} frames emitted",
+                streamIndex, streamInfo.StreamId, frameCount);
 
             // Still emit end marker on error
             try {
