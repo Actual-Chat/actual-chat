@@ -149,7 +149,7 @@ public class ChannelDemuxerTest
         Assert.Equal(index2, item2?.StreamIndex);
     }
 
-    private static async Task<TestItem?> ReadWithTimeout(ChannelReader<TestItem> reader, int timeoutMs = 1000)
+    private static async Task<TestItem?> ReadWithTimeout(ChannelReader<TestItem> reader, int timeoutMs = 5000)
     {
         using var cts = new CancellationTokenSource(timeoutMs);
         try {

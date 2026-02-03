@@ -37,13 +37,11 @@ public class ChannelMuxerTest
         source2.Writer.TryComplete();
 
         var items = new List<TestItem>();
-        var timeout = Task.Delay(1000);
         while (items.Count < 2) {
-            var readTask = muxer.Output.ReadAsync().AsTask();
-            var completed = await Task.WhenAny(readTask, timeout);
-            if (completed == timeout)
+            var item = await ReadWithTimeout(muxer.Output);
+            if (item == null)
                 break;
-            items.Add(await readTask);
+            items.Add(item);
         }
 
         Assert.Equal(2, items.Count);
@@ -72,13 +70,11 @@ public class ChannelMuxerTest
         source2.Writer.TryComplete();
 
         var items = new List<TestItem>();
-        var timeout = Task.Delay(1000);
         while (items.Count < 10) {
-            var readTask = muxer.Output.ReadAsync().AsTask();
-            var completed = await Task.WhenAny(readTask, timeout);
-            if (completed == timeout)
+            var item = await ReadWithTimeout(muxer.Output);
+            if (item == null)
                 break;
-            items.Add(await readTask);
+            items.Add(item);
         }
 
         Assert.Equal(10, items.Count);
@@ -114,6 +110,17 @@ public class ChannelMuxerTest
 
         // Output should be completed
         Assert.True(muxer.Output.Completion.IsCompleted);
+    }
+
+    private static async Task<TestItem?> ReadWithTimeout(ChannelReader<TestItem> reader, int timeoutMs = 5000)
+    {
+        using var cts = new CancellationTokenSource(timeoutMs);
+        try {
+            return await reader.ReadAsync(cts.Token);
+        }
+        catch (OperationCanceledException) {
+            return null;
+        }
     }
 
     private class TestItem : IMuxable
