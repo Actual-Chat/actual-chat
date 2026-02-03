@@ -1,6 +1,5 @@
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.Internal;
-using ActualLab.Locking;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
 
@@ -186,10 +185,12 @@ public sealed class ShardOwner : WorkerBase, IHasServices
                     continue;
                 }
 
-                var mustOwn = computed.ValueOrDefault ?? false;
+                if (computed.ValueOrDefault is not { } mustOwn)
+                    continue; // Wait for mesh state to determine ownership
+
                 var isOwn = mutableState.Value.OwnershipStatus is not ShardOwnershipStatus.MappedToOtherNode;
                 if (isOwn != mustOwn)
-                    mutableState.Value = new ShardState(mutableState.Value, mustOwn: mustOwn);
+                    mutableState.Value = new ShardState(mutableState.Value, mustOwn);
 
                 if (mustOwn) {
                     var linkedCts = cancellationToken.CreateLinkedTokenSource();
