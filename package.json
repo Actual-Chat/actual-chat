@@ -25,7 +25,7 @@
     "@webgpu/types": "^0.1.67",
     "autoprefixer": "^10.4.21",
     "cssnano": "^7.1.1",
-    "esbuild": "^0.25.9",
+    "esbuild": "^0.25.12",
     "esbuild-sass-plugin": "^3.3.1",
     "eslint": "^9.34.0",
     "eslint-config-prettier": "^10.1.8",

@@ -34,43 +34,14 @@
 body.hoverable .join-video-call-modal .c-rules .c-rules-link:hover {
     @apply underline;
 }
-.join-video-call-modal .c-camera-select {
-    @apply py-1;
-}
-.join-video-call-modal .camera-select {
-    @apply w-full;
-    @apply rounded-lg px-3 py-1.5;
-    @apply text-sm text-primary;
-    @apply bg-03;
-    @apply border border-separator;
-    @apply focus:outline-none focus:ring-2 focus:ring-primary;
-}
-.join-video-call-modal .c-buttons {
+
+/* Toolbar — blur, mic, camera centered */
+.join-video-call-modal .c-toolbar {
     @apply flex-x gap-x-3 items-center justify-center;
-    @apply py-1;
+    @apply py-2;
 }
 
-/* Recording button - red dot */
-.join-video-call-modal .btn-round.recording-btn {
-    @apply text-danger;
-}
-
-/* Mic button - larger pink/magenta active style */
-.join-video-call-modal .btn-round.mic-btn {
-    @apply h-14 w-14;
-    @apply bg-pink-500 text-white;
-    @apply rounded-full;
-}
-body.hoverable .join-video-call-modal .btn-round.mic-btn:hover {
-    @apply bg-pink-600;
-}
-
-/* Camera select - disabled state */
-.join-video-call-modal .camera-select:disabled {
-    @apply opacity-50 cursor-not-allowed;
-}
-
-/* Video button wrapper - reuses PlaybackToggle outline pattern */
+/* Video button wrapper — outline when on */
 .join-video-call-modal .video-wrapper {
     @apply rounded-full;
 }
@@ -79,4 +50,28 @@ body.hoverable .join-video-call-modal .btn-round.mic-btn:hover {
 }
 .join-video-call-modal .video-wrapper.video-off .btn-round {
     @apply text-02;
+}
+
+/* Blur button — active state */
+.join-video-call-modal .btn-round.blur-btn.active {
+    @apply outline outline-2 outline-primary outline-offset-[-1px];
+}
+
+/* Camera select dropdown */
+.join-video-call-modal .c-camera-select {
+    @apply px-1;
+}
+.join-video-call-modal .c-camera-select select {
+    @apply w-full;
+    @apply border outline-none p-1 px-2;
+    @apply rounded-lg;
+    @apply bg-transparent;
+    @apply text-caption-1 text-02;
+    @apply cursor-pointer;
+}
+.join-video-call-modal .c-camera-select select:focus {
+    @apply outline-none border-primary ring-1 ring-primary;
+}
+.join-video-call-modal .c-camera-select select option {
+    @apply bg-02 text-01;
 }
