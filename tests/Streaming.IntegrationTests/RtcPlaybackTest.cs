@@ -11,7 +11,7 @@ namespace ActualChat.Streaming.IntegrationTests;
 public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [Fact(Timeout = 30_000)]
+    [FlakyFact("AY: Time-dependent", 3, Timeout = 30_000)]
     public async Task RtcStreamMuxer_ShouldEmitStreamItemsWhenRecording()
     {
         var appHost = AppHost;

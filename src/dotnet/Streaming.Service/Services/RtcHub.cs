@@ -31,7 +31,8 @@ public class RtcHub(IServiceProvider services) : IRtcHub
         }
 
         var outputStream = ToAsyncEnumerable(muxer.Output, key, cancellationToken);
-        return Task.FromResult(RpcStream.New(outputStream));
+        var rpcStream = new RpcStream<RtcItem>(outputStream) { IsReconnectable = false };
+        return Task.FromResult(rpcStream);
     }
 
     public Task ChangeSettings(
