@@ -131,12 +131,11 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             UICommander.ShowError("Failed to add file attachment.");
             return false;
         }
-
-        list.Add(attachment);
         // NOTE: Start upload immediately after adding attachments.
         attachment = await AttachmentsController.InitUploadSession(attachment, ChatId);
         AttachmentRegistry.Register(attachment);
         await AttachmentsController.ResumeUpload(attachment);
+        list.Add(attachment);
         return true;
     }
 

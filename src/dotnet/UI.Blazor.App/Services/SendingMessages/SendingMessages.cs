@@ -116,7 +116,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         long FileLength,
         int Width,
         int Height,
-        AttachExtra Extras) : Attachment(FileName, FileType, FileLength, Width, Height);
+        AttachExtra Extras) : Attachment(FileName, FileType, FileLength, Width, Height)
+    {
+        public bool NoFileAccess { get; init; }
+    }
 
     private async Task<AttachmentUploads?> CreateAttachmentUploads(SendMessageRequestEntry entry, IAttachmentList? sourceAttachments)
     {
@@ -207,6 +210,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 attachExtra) {
                 Id = attachEntry.AttachmentId,
                 UploadSessionId = uploadSessionId,
+                NoFileAccess = !attachmentIsOk
             };
             attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
@@ -228,6 +232,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         attachmentList.Subscribe(attachmentsController);
         foreach (var attachment in attachments) {
             attachmentList.Add(attachment);
+            if (attachment.NoFileAccess)
+                continue;
             var mediaStatus = await attachmentRegistry.GetMediaStatus(attachment.Id, default).ConfigureAwait(false);
             if (mediaStatus is null || mediaStatus.Status is not MediaStatus.Ready && mediaStatus.Status is not MediaStatus.Failed)
                 await attachmentsController.ResumeUpload(attachment).ConfigureAwait(false);

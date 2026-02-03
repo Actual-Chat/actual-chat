@@ -16,7 +16,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         await SaveMediaMetadata(mediaId, mediaContent.ContentId, processedFile.File, processedFile.Size, isUpdate, cancellationToken).ConfigureAwait(false);
         if (processedFile.Thumbnail != null) {
             await SaveFileContent(processedFile.Thumbnail, mediaContent.ThumbnailContentId!, cancellationToken).ConfigureAwait(false);
-            await SaveMediaMetadata(mediaContent.ThumbnailMediaId!, mediaContent.ThumbnailContentId!, processedFile.Thumbnail, processedFile.Size, isUpdate, cancellationToken).ConfigureAwait(false);
+            await SaveMediaMetadata(mediaContent.ThumbnailMediaId!, mediaContent.ThumbnailContentId!, processedFile.Thumbnail, processedFile.Size, false, cancellationToken).ConfigureAwait(false);
         }
         return mediaContent;
     }

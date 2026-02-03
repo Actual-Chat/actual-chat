@@ -15,6 +15,9 @@ public class Medias(IServiceProvider services) : IMedias
             return null;
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
+        if (!media.ContentId.IsNullOrEmpty())
+            return new MediaStatusInfo(mediaId, MediaStatus.Ready);
+
         return await MediaStatusBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
     }
 

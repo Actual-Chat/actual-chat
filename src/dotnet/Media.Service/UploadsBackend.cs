@@ -133,15 +133,26 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     {
         var (uploadId, mediaId) = command;
 
-        var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
-        if (upload == null)
-            throw UploadNotFound();
+        try {
+            var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
+            if (upload == null)
+                throw UploadNotFound();
 
-        await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
+            await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
-        var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
-        using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
-        return await MediaSaver.Save(mediaId, processedFile, isUpdate:true, cancellationToken).ConfigureAwait(false);
+            var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
+            using var processedFile =
+                await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
+            var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, cancellationToken)
+                .ConfigureAwait(false);
+            var changeStatus = Change.Update(new MediaStatusInfo(mediaId, MediaStatus.Ready));
+            await Commander.Run(new MediaStatusBackend_Change(mediaId, changeStatus), cancellationToken).ConfigureAwait(false);
+            return mediaContent;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to process and save content for upload '{UploadId}' and media '{MediaId}'", uploadId, mediaId);
+            throw;
+        }
     }
 
     private async Task<Uri> InitiateUploadSession(Upload upload, CancellationToken cancellationToken)
