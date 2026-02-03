@@ -1,3 +1,4 @@
+using ActualChat.Testing;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -64,7 +65,7 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
         languages.Should().BeEquivalentTo(expectedLanguages, "for text: <<<{0}>>>", text);
     }
 
-    [Theory]
+    [LocalTheory("Requests are too expensive for the build server")]
     [InlineData("hello", "en-US")]
     [InlineData("До скорых.", "ru-RU")]
     [InlineData("Попытка", "ru-RU")]
@@ -111,12 +112,9 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
     [InlineData("Еще что-нибудь попробую специально.", "ru-RU")]
     public async Task ShouldDetectLanguagesForManyEntries(string text, string expectedLanguage)
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // TODO: enable on test agents when requests are cheap enough
-
         // arrange
         var expectedLanguages = new[] { Language.Parse(expectedLanguage) };
-        var timeout = TestRunnerInfo.IsBuildAgent() ? TimeSpan.FromSeconds(60) : TimeSpan.FromSeconds(30);
+        var timeout = TimeSpan.FromSeconds(30);
         var cts = new CancellationTokenSource(timeout.Debuggable());
         var cancellationToken = cts.Token;
 

@@ -2,6 +2,7 @@ using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Kvas;
 using ActualChat.Rtc;
+using ActualChat.Testing;
 using ActualChat.Testing.Host;
 using ActualLab.Rpc;
 
@@ -11,12 +12,9 @@ namespace ActualChat.Streaming.IntegrationTests;
 public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [Fact(Timeout = 30_000)]
+    [LocalFact("Requires DeepGram / Google Cloud credentials", Timeout = 30_000)]
     public async Task RtcStreamMuxer_ShouldEmitStreamItemsWhenRecording()
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // Requires DeepGram / Google Cloud credentials
-
         var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
@@ -102,12 +100,9 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         startItems.Should().NotBeEmpty("should receive at least one StreamStart");
     }
 
-    [Fact(Timeout = 30_000)]
+    [LocalFact("Requires DeepGram / Google Cloud credentials", Timeout = 30_000)]
     public async Task RtcStreamDemuxer_ShouldRaiseEventsForReceivedStreams()
     {
-        if (TestRunnerInfo.IsBuildAgent())
-            return; // Requires DeepGram / Google Cloud credentials
-
         var appHost = AppHost;
         var services = appHost.Services;
         var log = services.LogFor<RtcPlaybackTest>();

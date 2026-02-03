@@ -1,4 +1,5 @@
 using ActualChat.Db;
+using ActualChat.Testing;
 using ActualChat.Testing.Host;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
@@ -52,7 +53,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         dbAccount.Identities.Should().HaveCount(account.Identities.Count);
     }
 
-    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 5)]
+    [LocalFact("Direct DB write sometimes triggers deadlocks on CI")]
     public async Task ShouldReadAccountWithFormatVersion0()
     {
         using var cts = new CancellationTokenSource(TestTimeout);
@@ -74,7 +75,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         readAccount.Name.Should().Be(account.Name);
     }
 
-    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 5)]
+    [LocalFact("Direct DB write sometimes triggers deadlocks on CI")]
     public async Task ShouldUpgradeFormatVersionOnUpdate()
     {
         using var cts = new CancellationTokenSource(TestTimeout);
@@ -102,7 +103,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         accountAfterUpdate.Name.Should().Be(updatedName);
     }
 
-    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 5)]
+    [LocalFact("Direct DB write sometimes triggers deadlocks on CI")]
     public async Task ShouldSyncClaimsOnFormatVersionUpgrade()
     {
         using var cts = new CancellationTokenSource(TestTimeout);
@@ -134,7 +135,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         dbAccount.Claims.Should().NotBeEmpty();
     }
 
-    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 5)]
+    [LocalFact("Direct DB write sometimes triggers deadlocks on CI")]
     public async Task ShouldUpgradeFormatVersionOnSignIn()
     {
         using var cts = new CancellationTokenSource(TestTimeout);
@@ -154,7 +155,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         accountAfterSignIn.FormatVersion.Should().Be(2);
     }
 
-    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 5)]
+    [LocalFact("Direct DB write sometimes triggers deadlocks on CI")]
     public async Task ShouldReadIdentitiesFromDbUserWhenFormatVersion0()
     {
         using var cts = new CancellationTokenSource(TestTimeout);
@@ -176,7 +177,7 @@ public class AccountFormatVersionMigrationTest(AppHostFixture fixture, ITestOutp
         readAccount.Identities.Count.Should().Be(account.Identities.Count);
     }
 
-    [FlakyFact("AY: Direct DB write sometimes triggers deadlocks", 5)]
+    [LocalFact("Direct DB write sometimes triggers deadlocks on CI")]
     public async Task ShouldSyncIdentitiesOnFormatVersionUpgrade()
     {
         using var cts = new CancellationTokenSource(TestTimeout);
