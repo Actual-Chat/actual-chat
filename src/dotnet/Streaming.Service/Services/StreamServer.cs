@@ -33,7 +33,6 @@ public class StreamServer(IServiceProvider services) : IStreamServer
             return null;
 
         var frameStream = frames
-            .AsAsyncEnumerable()
             .SuppressException<VideoFrame, RpcReconnectFailedException>(cancellationToken)
             .SuppressCancellation(cancellationToken);
         return RpcStream.New(frameStream);
@@ -54,7 +53,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         if (diffs == null)
             return null;
 
-        var diffStream = ((IAsyncEnumerable<TranscriptDiff>)diffs)
+        var diffStream = diffs
             .SuppressException<TranscriptDiff, RpcReconnectFailedException>(cancellationToken)
             .SuppressCancellation(cancellationToken);
         return RpcStream.New(diffStream);
