@@ -94,6 +94,30 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             entry.AfterSendMessageHandlerArgs,
             checkResend);
 
+    private record AttachExtra(Task<bool> WhenFilePermissionGranted, Task<string> GetPreviewUrl)
+    {
+        public string PreviewUrl {
+            get {
+                if (!GetPreviewUrl.IsCompleted)
+                    throw StandardError.Constraint("Preview not yet resolved.");
+
+                if (!GetPreviewUrl.IsCompletedSuccessfully)
+                    return "";
+ #pragma warning disable VSTHRD002
+                return GetPreviewUrl.Result;
+ #pragma warning restore VSTHRD002
+            }
+        }
+    }
+
+    private record RestoredAttachment(
+        string FileName,
+        string FileType,
+        long FileLength,
+        int Width,
+        int Height,
+        AttachExtra Extras) : Attachment(FileName, FileType, FileLength, Width, Height);
+
     private async Task<AttachmentUploads?> CreateAttachmentUploads(SendMessageRequestEntry entry, IAttachmentList? sourceAttachments)
     {
         var attachEntries = entry.AttachFileRequests;
@@ -104,12 +128,17 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         if (sourceAttachmentsCopy is not null && sourceAttachmentsCopy.Length != attachEntries.Length)
             sourceAttachmentsCopy = null;
 
-        var attachments = new List<Attachment>();
+        var attachments = new List<RestoredAttachment>();
+        var attachmentRegistry = Hub.AttachmentRegistry;
         for (var i = 0; i < attachEntries.Length; i++) {
             var attachEntry = attachEntries[i];
             var sourceAttachment = sourceAttachmentsCopy?[i];
-            var previewUrl = sourceAttachment?.PreviewUrl ?? "";
+            var previewUrl = "";
             Task<string> getPreviewUrl = Task.FromResult("");
+            if (sourceAttachment is SourceAttachment s) {
+                previewUrl = s.PreviewUrl;
+                getPreviewUrl = Task.FromResult(previewUrl);
+            }
             var uploadSessionId = attachEntry.UploadSessionId;
             // TODO: to think what to do with this. For now UploadApp is responsible for resuming stored sessions.
             var attachmentIsOk = false;
@@ -168,29 +197,25 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             async Task CleanupRequest()
                 => await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
 
-            var attachment = new Attachment(
+            var attachExtra = new AttachExtra(whenFilePermissionGranted ?? Task.FromResult(false), getPreviewUrl);
+            var attachment = new RestoredAttachment(
                 attachEntry.FileName,
                 attachEntry.FileType,
                 attachEntry.FileLength,
                 attachEntry.Width,
                 attachEntry.Height,
-                whenFilePermissionGranted ?? Task.FromResult(false),
-                getPreviewUrl) {
+                attachExtra) {
                 UploadSessionId = uploadSessionId,
             };
             attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
+            attachmentRegistry.Register(attachment);
+            //attachmentRegistry.SetUploadSessionId(attachment.Id, uploadSessionId);
             if (!attachmentIsOk)
-                attachment = attachment with {
-                    Failed = true,
-                    NoAccess = true,
-                };
+                //attachmentRegistry.Update(attachment.Id, s => s with { Failed = true, Preview = AttachmentPreviewState.NoFileAccess });
+                attachmentRegistry.SetPreviewState(attachment.Id, AttachmentPreviewState.NoFileAccess);
             else if (mediaContent is not null)
-                attachment = attachment with {
-                    Progress = 100,
-                    MediaId = mediaContent.MediaId,
-                    ThumbnailMediaId = mediaContent.ThumbnailMediaId,
-                };
+                attachmentRegistry.SetMediaContent(attachment.Id, mediaContent);
             attachments.Add(attachment);
         }
         if (attachments.Count == 0)
@@ -198,47 +223,48 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
         var attachmentsController = Services.GetRequiredService<AttachmentsController>();
         var attachmentList = new AttachmentList();
+        attachmentList.Subscribe(attachmentsController);
         foreach (var attachment in attachments) {
-            await attachmentsController.AddAttachment(attachmentList, attachment).ConfigureAwait(false);
-            if (!attachment.Uploaded && !attachment.Failed)
-                await attachmentsController.ResumeUpload(attachmentList, attachment.Id).ConfigureAwait(false);
+            attachmentList.Add(attachment);
+            var mediaStatus = await attachmentRegistry.GetMediaStatus(attachment.Id, default).ConfigureAwait(false);
+            if (mediaStatus is null || mediaStatus.Status is not MediaStatus.Ready && mediaStatus.Status is not MediaStatus.Failed)
+                await attachmentsController.ResumeUpload(attachment).ConfigureAwait(false);
         }
 
         foreach (var attachment in attachments) {
-            if (!attachment.Uploaded)
-                SubscribeFilePermissionsGranted(attachmentList, attachment);
-            SubscribePreviewResolved(attachment, attachmentList);
+            var mediaStatus = await attachmentRegistry.GetMediaStatus(attachment.Id, default).ConfigureAwait(false);
+            if (mediaStatus is null || mediaStatus.Status is not MediaStatus.Ready)
+                SubscribeFilePermissionsGranted(attachment.Id, attachment.Extras);
+            SubscribePreviewResolved(attachment.Id, attachment.Extras);
         }
 
-        return new AttachmentUploads(attachmentList);
+        return new AttachmentUploads(attachmentList, Hub.AttachmentRegistry);
     }
 
-    private void SubscribePreviewResolved(Attachment attachment, AttachmentList attachmentList)
+    private void SubscribePreviewResolved(AttachmentId attachmentId, AttachExtra extras)
     {
-        if (attachment.GetPreviewUrl.IsCompleted)
+        if (extras.GetPreviewUrl.IsCompleted)
             return;
 
-        _ = attachment.GetPreviewUrl.ContinueWith(t => {
+        _ =  extras.GetPreviewUrl.ContinueWith(t => {
             // Preview resolved.
-            _ = Dispatcher.InvokeAsync(() => {
-                attachmentList.UpdateAttachment(attachment.Id, a => a);
-            });
+#pragma warning disable VSTHRD002
+            Hub.AttachmentRegistry.SetPreviewState(attachmentId, AttachmentPreviewState.Preview(t.Result));
+ #pragma warning restore VSTHRD002
         }, TaskScheduler.Default);
     }
 
-    private void SubscribeFilePermissionsGranted(AttachmentList attachmentList, Attachment attachment)
-        => _ = attachment.WhenFilePermissionGranted.ContinueWith(t => {
+    private void SubscribeFilePermissionsGranted(AttachmentId attachmentId, AttachExtra extras)
+        => _ = extras.WhenFilePermissionGranted.ContinueWith(t => {
             if (t.Result)
                 return;
 
             // File permission was denied.
-            _ = Dispatcher.InvokeAsync(() => {
-                attachmentList.UpdateAttachment(attachment.Id,
-                    a => a with {
-                        Failed = true,
-                        NoAccess = true,
-                    });
-            });
+            Hub.AttachmentRegistry.SetPreviewState(attachmentId, AttachmentPreviewState.NoFileAccess);
+            // Hub.AttachmentRegistry.Update(attachmentId,
+            //     a => a with {
+            //         Failed = true,
+            //     });
         }, TaskScheduler.Default);
 
     private async Task CleanupAttachments(string postRequestUuid, IEnumerable<Attachment> attachments)
@@ -397,16 +423,18 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 .MarkMessageHasCreated(request.Uuid, chatEntry.LocalId, cancellationToken)
                 .ConfigureAwait(false);
 
-        var chatEntry2 = await CreateAttachments(chatEntry, request.AttachmentUploads, cancellationToken)
-            .ConfigureAwait(false);
-        chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry2, Now);
+        await request.AttachmentUploads.WhenUploaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        // var chatEntry2 = await CreateAttachments(chatEntry, request.AttachmentUploads, cancellationToken)
+        //     .ConfigureAwait(false);
+        chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry, Now);
         // Delete upload info with delay to avoid flickering in the UI.
         _ = BackgroundTask.Run(async () => {
                 await Task.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
                 _mediaUploadsUI.Delete(sendingMessage);
             },
             CancellationToken.None);
-        return chatEntry2;
+        return chatEntry;
     }
 
     private void InvokeAfterSendMessageHandler(string afterSendMessageHandlerKey, string afterSendMessageHandlerArgs, Result<ChatEntry?> result)
@@ -438,14 +466,23 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             if (chatEntry1 is not null)
                 return chatEntry1;
         }
+        var mediaIds = new List<MediaId>();
+        if (request.AttachmentUploads is not null) {
+            // TODO(DF): convert to durable commands
+            foreach (var attachment in request.AttachmentUploads.Attachments.Items) {
+                var mediaId = await UploadSessions.GetOrReserveMedia(attachment.UploadSessionId, cancellationToken).ConfigureAwait(false);
+                mediaIds.Add(mediaId);
+            }
+        }
         var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId, request.Text, request.RepliedEntryLid) {
             ClientId = request.ClientId,
         };
-        if (request.AttachmentUploads is not null) {
-            if (!request.AttachmentUploads.WhenUploaded.IsCompletedSuccessfully)
-                cmd = cmd with { HasAttachmentUploads = true };
-            else
-                cmd = cmd with { EntryAttachments = CreateTextEntryAttachments(request.AttachmentUploads) };
+        if (mediaIds.Count > 0) {
+            cmd = cmd with {
+                EntryAttachments = mediaIds
+                    .Select(x => new TextEntryAttachment { MediaId = x })
+                    .ToArray()
+            };
         }
         // // Simulate long sending
         // await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
@@ -489,28 +526,28 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         return null;
     }
 
-    private async Task<ChatEntry?> CreateAttachments(ChatEntry chatEntry, AttachmentUploads attachmentUploads, CancellationToken cancellationToken = default)
-    {
-        // An attachment should have several states: loading, loading error, canceled (removed), loaded.
-        // When an attachment has entered the `loading error` state, you can repeat the loading or cancel it entirely.
-        await attachmentUploads.WhenUploaded.WaitAsync(cancellationToken).ConfigureAwait(false);
-        // When all attachments are loaded, we can continue execution.
-        var entryAttachments = CreateTextEntryAttachments(attachmentUploads);
-        if (entryAttachments.Length == 0 && chatEntry.Content.IsNullOrEmpty()) {
-            // If there are no loaded attachments and the ChatEntry Content is empty,
-            // then we delete this ChatEntry altogether.
-            await RemoveChatEntry((TextEntryId)chatEntry.Id, cancellationToken).ConfigureAwait(false);
-            return null;
-        }
-        // If there are loaded attachments,
-        // then we add them to the ChatEntry and mark that there are no more loadings.
-        // NOTE(DF): may be better to introduce a new command for this.
-        var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId, chatEntry.Content) {
-            HasAttachmentUploads = false,
-            EntryAttachments = entryAttachments,
-        };
-        return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
-    }
+    // private async Task<ChatEntry?> CreateAttachments(ChatEntry chatEntry, AttachmentUploads attachmentUploads, CancellationToken cancellationToken = default)
+    // {
+    //     // An attachment should have several states: loading, loading error, canceled (removed), loaded.
+    //     // When an attachment has entered the `loading error` state, you can repeat the loading or cancel it entirely.
+    //     await attachmentUploads.WhenUploaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+    //     // When all attachments are loaded, we can continue execution.
+    //     var entryAttachments = CreateTextEntryAttachments(attachmentUploads);
+    //     if (entryAttachments.Length == 0 && chatEntry.Content.IsNullOrEmpty()) {
+    //         // If there are no loaded attachments and the ChatEntry Content is empty,
+    //         // then we delete this ChatEntry altogether.
+    //         await RemoveChatEntry((TextEntryId)chatEntry.Id, cancellationToken).ConfigureAwait(false);
+    //         return null;
+    //     }
+    //     // If there are loaded attachments,
+    //     // then we add them to the ChatEntry and mark that there are no more loadings.
+    //     // NOTE(DF): may be better to introduce a new command for this.
+    //     var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId, chatEntry.Content) {
+    //         HasAttachmentUploads = false,
+    //         EntryAttachments = entryAttachments,
+    //     };
+    //     return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+    // }
 
     private async Task RemoveChatEntry(TextEntryId chatEntryId, CancellationToken cancellationToken)
     {
@@ -518,16 +555,18 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         await Commander.Run(cmd1, cancellationToken).ConfigureAwait(false);
     }
 
-    private static TextEntryAttachment[] CreateTextEntryAttachments(AttachmentUploads attachmentUploads)
-    {
-        var entryAttachments = attachmentUploads.Attachments.Items
-            .Where(x => x.Uploaded)
-            .Select(x => new TextEntryAttachment {
-                MediaId = x.MediaId!,
-                ThumbnailMediaId = x.ThumbnailMediaId,
-            }).ToArray();
-        return entryAttachments;
-    }
+    // private TextEntryAttachment[] CreateTextEntryAttachments(AttachmentUploads attachmentUploads)
+    // {
+    //     var registry = Hub.AttachmentRegistry;
+    //     var entryAttachments = attachmentUploads.Attachments.Items
+    //         .Select(x => registry.GetState(x.Id))
+    //         .Where(x => x.Uploaded)
+    //         .Select(x => new TextEntryAttachment {
+    //             MediaId = x.MediaId!,
+    //             ThumbnailMediaId = x.ThumbnailMediaId,
+    //         }).ToArray();
+    //     return entryAttachments;
+    // }
 
     // Nested types
 

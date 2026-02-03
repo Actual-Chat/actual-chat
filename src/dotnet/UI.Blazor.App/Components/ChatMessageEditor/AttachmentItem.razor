@@ -1,19 +1,24 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, AttachmentState>
 
 @{
     var attachment = Attachment;
-    var progress = attachment.Progress;
+    var state = State.Value;
+    var progress = state.Progress;
+    // NOTE: For attachment item preview state should always be in OK state, so we can use previewUrl.
+    var previewUrl = state.Preview.PreviewUrl;
     var uploadProgressClass = "attachment-upload-progress";
     var plugClass = "blurred-plug";
-    if (attachment.Failed) {
+    if (state.Failed) {
         progress = Math.Max(progress, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (attachment.Uploaded) {
+    } else if (state.Uploaded) {
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
 
     var uploadStyle = $"width: {progress}%;";
+    var isUploading = state.UploadSessionId != "" && !(state.Uploaded || state.Failed);
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -22,19 +27,19 @@
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
             @if (attachment.IsImage) {
-                <img src="@attachment.PreviewUrl" alt="Image attachment" class="@plugClass"/>
+                <img src="@previewUrl" alt="Image attachment" class="@plugClass"/>
             } else if (attachment.IsVideo) {
                 <video preload="metadata" class="@plugClass">
-                    <source src="@attachment.PreviewUrl#t=0.5"/>
+                    <source src="@previewUrl#t=0.5"/>
                 </video>
             } else {
                 <FileAttachmentView FileType="@attachment.FileType"/>
             }
-            @if (!attachment.Uploaded) {
+            @if (!state.Uploaded) {
                 <span class="spinner-icon-wrapper">
-                    @if (attachment.IsUploading) {
+                    @if (isUploading) {
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                    } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
+                    } else if (state.Failed && !state.NoAccess && RestartClick.HasDelegate) {
                         <ButtonRound Click="@RestartClick">
                             <i class="icon-sync text-2xl"></i>
                         </ButtonRound>
@@ -54,7 +59,15 @@
 </li>
 
 @code {
+    private AttachmentRegistry AttachmentRegistry => Hub.AttachmentRegistry;
+
     [Parameter] public Attachment Attachment { get; set; } = null!;
     [Parameter] public EventCallback RemoveClick { get; set; }
     [Parameter] public EventCallback RestartClick { get; set; }
+
+    protected override ComputedState<AttachmentState>.Options GetStateOptions()
+        => new() { InitialValue = AttachmentState.None };
+
+    protected override Task<AttachmentState> ComputeState(CancellationToken cancellationToken)
+        => AttachmentRegistry.GetAttachmentState(Attachment.Id, cancellationToken);
 }

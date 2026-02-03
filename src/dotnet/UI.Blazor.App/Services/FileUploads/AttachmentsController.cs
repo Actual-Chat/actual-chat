@@ -5,107 +5,85 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IAttachmentListEventsListener
 {
     private UploadSessions UploadSessions => Hub.UploadSessions;
+    private AttachmentRegistry AttachmentRegistry => Hub.AttachmentRegistry;
 
-    public Task AddAttachment(AttachmentList list, Attachment attachment)
-        => Dispatcher.InvokeAsync(() => {
-            list.Subscribe(this);
-            list.Add(attachment);
-        });
-
-    public async Task<UploadSession?> InitUpload(AttachmentList list, string attachmentId, ChatId chatId)
+    public async Task<Attachment> InitUploadSession(Attachment attachment, ChatId chatId)
     {
-        var attachment = DemandAttachment(list, attachmentId);
         if (!attachment.UploadSessionId.IsNullOrEmpty())
             throw new InvalidOperationException("Upload session already assigned");
 
         if (attachment.FileProvider is not { } fileProvider)
             throw new InvalidOperationException(
-                $"Can't initialize upload for attachment '{attachmentId}'. No file provider assigned.");
+                $"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
         try {
             var uploadSession = await UploadSessions.CreateSession(chatId, fileProvider).ConfigureAwait(false);
-            await Dispatcher.InvokeAsync(() => {
-                    list.UpdateAttachment(attachmentId,
-                        a => {
-                            var a1 = a with {
-                                UploadSessionId = uploadSession.SessionId,
-                            };
-                            // UploadSession cleanup will handle file cleanup. So just replace it.
-                            a1.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
-                            a1.Cleanups.Add(
-                                AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSession.SessionId));
-                            return a1;
-                        });
-                })
-                .ConfigureAwait(false);
-            return uploadSession;
+            //AttachmentRegistry.SetUploadSessionId(attachment.Id, uploadSession.SessionId);
+            attachment = attachment with {
+                UploadSessionId = uploadSession.SessionId,
+            };
+            // UploadSession cleanup will handle file cleanup. So just replace it.
+            attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
+            attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSession.SessionId));
+            return attachment;
         }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to create/resume upload session");
-            return null;
+            throw;
         }
     }
 
-    public async Task ResumeUpload(AttachmentList list, string attachmentId)
+    public async Task ResumeUpload(Attachment attachment)
     {
-        var attachment = DemandAttachment(list, attachmentId);
+        var uploadSessionId = attachment.DemandUploadSessionId();
         UploadSession uploadSession;
         try {
-            uploadSession = await UploadSessions.ResumeSession(attachment.UploadSessionId).ConfigureAwait(false);
+            uploadSession = await UploadSessions.ResumeSession(uploadSessionId).ConfigureAwait(false);
         }
         catch (Exception ex) {
-            Log.LogWarning(ex, "Failed to resume upload session '{SessionId}'", attachment.UploadSessionId);
-            _ = Dispatcher.InvokeAsync(() => {
-                list.UpdateAttachment(attachment.Id, c => c with { Failed = true });
-            });
-            return;
+            Log.LogWarning(ex, "Failed to resume upload session '{SessionId}'", uploadSessionId);
+            AttachmentRegistry.SetFailureState(attachment.Id, FailureState.Failed);
         }
-        AttachmentExt.ObserveUploadProgress(
-            uploadSession.ProgressTracker,
-            updater => {
-                _ = Dispatcher.InvokeAsync(() => {
-                    list.UpdateAttachment(attachment.Id, updater);
-                });
-            });
+        // AttachmentExt.ObserveUploadProgress(
+        //     uploadSession.ProgressTracker,
+        //     updater => {
+        //         _ = Dispatcher.InvokeAsync(() => {
+        //             list.UpdateAttachment(attachment.Id, updater);
+        //         });
+        //     });
+        // AttachmentExt.ObserveUploadProgress(
+        //     uploadSession.ProgressTracker,
+        //     updater => {
+        //         _ = Dispatcher.InvokeAsync(() => {
+        //             AttachmentRegistry.Update(attachment.Id, updater);
+        //         });
+        //     });
     }
 
-    public async Task RestartUpload(AttachmentList list, string attachmentId)
+    public async Task RestartUpload(Attachment attachment)
     {
-        var attachment = DemandAttachment(list, attachmentId);
-        if (!attachment.Failed)
+        var failureState = await AttachmentRegistry.GetFailureState(attachment.Id, default).ConfigureAwait(false);
+        if (failureState is not FailureState.Failed)
             throw new InvalidOperationException("Can't restart. Upload is not failed");
-        if (attachment.NoAccess)
+        var previewState = await AttachmentRegistry.GetPreviewState(attachment.Id, default).ConfigureAwait(false);
+        if (previewState.State is PreviewAccessState.NoFileAccess)
             throw new InvalidOperationException("Can't restart. No access to file");
-        if (attachment.UploadSessionId.IsNullOrEmpty())
-            throw new InvalidOperationException("Upload is not initialized yet.");
 
-        await ResetUpload(list, attachment).ConfigureAwait(false);
-        await ResumeUpload(list, attachmentId).ConfigureAwait(false);
+        await ResetUpload(attachment).ConfigureAwait(false);
+        await ResumeUpload(attachment).ConfigureAwait(false);
     }
 
-    private async Task ResetUpload(AttachmentList list, Attachment attachment)
+    private async Task ResetUpload(Attachment attachment)
     {
-        await UploadSessions.ResetSession(attachment.UploadSessionId).ConfigureAwait(false);
-        await Dispatcher.InvokeAsync(() => {
-                list.UpdateAttachment(attachment.Id,
-                    a1 => a1 with {
-                        Failed = false,
-                        Progress = 0,
-                        MediaId = null,
-                        ThumbnailMediaId = null,
-                    });
-            })
-            .ConfigureAwait(false);
-    }
-
-    private static Attachment DemandAttachment(AttachmentList list, string attachmentId)
-    {
-        var attachment = list.Items.FirstOrDefault(a => OrdinalEquals(a.Id, attachmentId));
-        return attachment ?? throw new InvalidOperationException("Attachment not found");
+        var uploadSessionId = attachment.DemandUploadSessionId();
+        await UploadSessions.ResetSession(uploadSessionId).ConfigureAwait(false);
+        AttachmentRegistry.SetFailureState(attachment.Id, FailureState.Restarting);
     }
 
     Task IAttachmentListEventsListener.AttachmentsRemoved(AttachmentList list, Attachment[] attachments)
     {
+        foreach (var a in attachments)
+            AttachmentRegistry.Unregister(a.Id);
         _ = TuneUI.Play(Tune.ChangeAttachments);
         return BackgroundTask.Run(async () => {
                     foreach (var a in attachments)
@@ -122,7 +100,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
     {
         _ = TuneUI.Play(Tune.ChangeAttachments);
         return BackgroundTask.Run(async () => {
-                    await RestartUpload(list, attachment.Id).ConfigureAwait(false);
+                    await RestartUpload(attachment).ConfigureAwait(false);
                 },
                 Log,
                 "RestartUpload")

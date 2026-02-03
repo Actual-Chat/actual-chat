@@ -20,6 +20,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         _fileUploader = new FileUploaderService(
             hub.LogFor<FileUploaderService>(),
             GetOrRegisterUpload,
+            GetMediaId,
             ConvertUpload,
             ClearUploadId);
         _fileUploader.ProgressChanged += OnProgressChanged;
@@ -132,6 +133,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             await Commander.Call(new Uploads_Remove(Hub.Session, session.UploadId), CancellationToken.None).ConfigureAwait(false);
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repo.Delete(sessionId).ConfigureAwait(false);
+        Hub.UploadSessionsState.Remove(sessionId);
         Log.LogInformation("Deleted session '{SessionId}'", sessionId);
     }
 
@@ -159,6 +161,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session is null)
             return null;
 
+        if (session.ReservedMediaId is not null)
+            Hub.UploadSessionsState.SetReservedMediaId(sessionId, session.ReservedMediaId);
         session.FileProvider.Initialize(Hub.Services);
         switch (session.Status) {
             case UploadStatus.Completed when session.MediaContent is not null:
@@ -174,6 +178,23 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         }
         _sessions[sessionId] = session;
         return session;
+    }
+
+    public async Task<MediaId> GetOrReserveMedia(string sessionId, CancellationToken cancellationToken)
+    {
+        var session = await GetSession(sessionId).ConfigureAwait(false);
+        if (session.ReservedMediaId is not null) {
+            Hub.UploadSessionsState.SetReservedMediaId(sessionId, session.ReservedMediaId);
+            return session.ReservedMediaId;
+        }
+
+        var mediaId = await Commander.Call(
+            new Medias_ReserveMedia(Session, session.ChatId.Value), cancellationToken).ConfigureAwait(false);
+        session.ReservedMediaId = mediaId;
+        session.LastUpdatedAt = Now;
+        await _repo.Save(session).ConfigureAwait(false);
+        Hub.UploadSessionsState.SetReservedMediaId(sessionId, mediaId);
+        return session.ReservedMediaId;
     }
 
     private bool CheckIfTouched(string sessionId)
@@ -236,8 +257,25 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         return session.UploadId;
     }
 
-    private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken ct)
-        => Commander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), ct);
+    private async Task<MediaId> GetMediaId(string sessionId, CancellationToken cancellationToken)
+    {
+        return await GetOrReserveMedia(sessionId, cancellationToken).ConfigureAwait(false);
+        //
+        // var c = await Computed.New(Services,
+        //         async ct => await Hub.UploadSessionsState.GetReservedMediaId(sessionId, ct).ConfigureAwait(false))
+        //     .Update(cancellationToken)
+        //     .ConfigureAwait(false);
+        // var c2 = await c.When(x => x is not null, cancellationToken).ConfigureAwait(false);
+        // return c2.Value!;
+        // var session = await GetSession(sessionId).ConfigureAwait(false);
+        // return session.ReservedMediaId ?? throw new InvalidOperationException($"No reserved media id for the session '{sessionId}'.");
+    }
+
+    private Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken ct)
+    {
+        return Commander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId));
+//        return Commander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), ct);
+    }
 
     private async Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
     {

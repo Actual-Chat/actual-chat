@@ -1,0 +1,196 @@
+using ActualChat.Media;
+using ActualChat.UI.Blazor.App.Services;
+
+namespace ActualChat.UI.Blazor.App.Components;
+
+public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
+{
+    private readonly ConcurrentDictionary<AttachmentId, AttachmentInfo> _infos = new();
+    private readonly ConcurrentDictionary<AttachmentId, AttachmentPreviewState> _previews = new();
+    private readonly ConcurrentDictionary<AttachmentId, MediaContent> _mediaContents = new();
+    private readonly ConcurrentDictionary<AttachmentId, FailureState> _failureStates = new();
+
+    public void Register(Attachment attachment)
+    {
+        if (attachment.UploadSessionId.IsNullOrEmpty())
+            throw new InvalidOperationException("Attachment upload is not initialized yet.");
+        if (!_infos.TryAdd(attachment.Id, new AttachmentInfo(attachment.UploadSessionId)))
+            throw new InvalidOperationException("Attachment already registered");
+        using (Invalidation.Begin())
+            _ = GetAttachmentInfo(attachment.Id, default);
+        if (attachment is SourceAttachment source)
+            SetPreviewState(attachment.Id, AttachmentPreviewState.Preview(source.PreviewUrl));
+    }
+
+    public void Unregister(AttachmentId id)
+    {
+        _infos.TryRemove(id, out _);
+        _previews.TryRemove(id, out _);
+        _mediaContents.TryRemove(id, out _);
+        _failureStates.TryRemove(id, out _);
+        using (Invalidation.Begin()) {
+            _ = GetAttachmentInfo(id, default);
+            _ = GetPreviewState(id, default);
+            _ = GetMediaContent(id, default);
+            _ = GetFailureState(id, default);
+        }
+    }
+
+    public void SetPreviewState(AttachmentId id, AttachmentPreviewState previewState)
+    {
+        _previews[id] = previewState;
+        using (Invalidation.Begin())
+            _ = GetPreviewState(id, default);
+    }
+
+    public void SetMediaContent(AttachmentId id, MediaContent mediaContent)
+    {
+        _mediaContents[id] = mediaContent;
+        using (Invalidation.Begin())
+            _ = GetMediaContent(id, default);
+    }
+
+    // public void SetUploadSessionId(AttachmentId id, string uploadSessionId)
+    // {
+    //     _infos[id] = new AttachmentInfo(uploadSessionId);
+    //     using (Invalidation.Begin())
+    //         _ = GetAttachmentInfo(id, default);
+    // }
+
+    public void SetFailureState(AttachmentId id, FailureState failureState)
+    {
+        if (failureState == FailureState.None)
+            _failureStates.TryRemove(id, out _);
+        else
+            _failureStates[id] = failureState;
+        using (Invalidation.Begin())
+            _ = GetFailureState(id, default);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsUploaded(AttachmentId id, CancellationToken cancellationToken)
+    {
+        var state = await GetAttachmentState(id, cancellationToken).ConfigureAwait(false);
+        return state.Uploaded;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<AttachmentState> GetAttachmentState(AttachmentId id, CancellationToken cancellationToken)
+    {
+        var previewState = await GetPreviewState(id, cancellationToken).ConfigureAwait(false);
+        var mediaContent = await GetMediaContent(id, cancellationToken).ConfigureAwait(false);
+        if (mediaContent != null)
+            return new AttachmentState(100, true, false, previewState);
+        var mediaStatus = await GetMediaStatus(id, cancellationToken).ConfigureAwait(false);
+        var failureState = await GetFailureState(id, cancellationToken).ConfigureAwait(false);
+        if (failureState == FailureState.Failed)
+            return new AttachmentState(0, false, true, previewState);
+        // TODO(DF): add proper progress calculation
+        var overallProgress = mediaStatus is not null ? (int)(mediaStatus.StageProgress * 100) : 0;
+        if (failureState == FailureState.Restarting)
+            return new AttachmentState(overallProgress, false, false, previewState);
+
+        if (mediaStatus is null)
+            return AttachmentState.None with { Preview = previewState };
+
+        if (mediaStatus.Status is MediaStatus.Ready)
+            return new AttachmentState(100, true, false, previewState);
+
+        if (mediaStatus.Status is MediaStatus.Failed)
+            return new AttachmentState(0, false, true, previewState);
+
+        if (mediaStatus.Status is MediaStatus.Reserved)
+            return new AttachmentState(0, false, false, previewState);
+
+        return new AttachmentState(overallProgress, false, false, previewState);
+    }
+
+    [ComputeMethod]
+    public virtual Task<AttachmentPreviewState> GetPreviewState(AttachmentId id, CancellationToken cancellationToken)
+    {
+        var preview = _previews.GetValueOrDefault(id) ?? AttachmentPreviewState.PendingGetAccessRequest;
+        return Task.FromResult(preview);
+    }
+
+    [ComputeMethod]
+    public virtual Task<MediaContent?> GetMediaContent(AttachmentId id, CancellationToken cancellationToken)
+    {
+        var mediaContent = _mediaContents.GetValueOrDefault(id);
+        return Task.FromResult(mediaContent);
+    }
+
+    [ComputeMethod]
+    public virtual Task<FailureState> GetFailureState(AttachmentId id, CancellationToken cancellationToken)
+    {
+        var failureState = _failureStates.GetValueOrDefault(id);
+        return Task.FromResult(failureState);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<MediaStatusInfo?> GetMediaStatus(AttachmentId id, CancellationToken cancellationToken)
+    {
+        var info = await GetAttachmentInfo(id, cancellationToken).ConfigureAwait(false);
+        var uploadSessionId = info?.UploadSessionId;
+        if (uploadSessionId.IsNullOrEmpty())
+            return null;
+
+        var mediaId = await Hub.UploadSessionsState.GetReservedMediaId(uploadSessionId, cancellationToken);
+        if (mediaId is null)
+            return null;
+
+        var status = await Hub.Medias.GetStatus(Session, mediaId, cancellationToken).ConfigureAwait(false);
+        return status;
+    }
+
+    [ComputeMethod]
+    public virtual Task<AttachmentInfo?> GetAttachmentInfo(AttachmentId id, CancellationToken cancellationToken)
+    {
+        var state = _infos.GetValueOrDefault(id);
+        return Task.FromResult(state);
+    }
+
+    // public async Task<string> DemandUploadSessionId(AttachmentId id, CancellationToken cancellationToken = default)
+    // {
+    //     var uploadSessionId = await GetUploadSessionId(id, cancellationToken);
+    //     if (uploadSessionId.IsNullOrEmpty())
+    //         throw new InvalidOperationException("Upload session not assigned");
+    //
+    //     return uploadSessionId;
+    // }
+    //
+    // public async Task<string?> GetUploadSessionId(AttachmentId id, CancellationToken cancellationToken)
+    // {
+    //     var attachmentInfo = await GetAttachmentInfo(id, cancellationToken).ConfigureAwait(false);
+    //     return attachmentInfo?.UploadSessionId;
+    // }
+}
+
+public sealed record AttachmentInfo(string UploadSessionId);
+
+public enum PreviewAccessState {
+    Ok, NoFileAccess, PendingGetAccessRequest
+}
+
+public sealed record AttachmentPreviewState(PreviewAccessState State, string PreviewUrl)
+{
+    public static readonly AttachmentPreviewState NoFileAccess = new(PreviewAccessState.NoFileAccess, "");
+    public static readonly AttachmentPreviewState PendingGetAccessRequest = new(PreviewAccessState.PendingGetAccessRequest, "");
+    public static readonly AttachmentPreviewState NoPreview = new(PreviewAccessState.Ok, "");
+    public static AttachmentPreviewState Preview(string previewUrl) => new(PreviewAccessState.Ok, previewUrl);
+}
+
+public sealed record AttachmentState(int Progress, bool Uploaded, bool Failed, AttachmentPreviewState Preview)
+{
+    public static readonly AttachmentState None = new(0, false, false, AttachmentPreviewState.NoPreview);
+
+    public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
+
+    public string UploadSessionId { get; init; } = "";
+}
+
+public enum FailureState
+{
+    None,
+    Failed,
+    Restarting,
+}

@@ -27,7 +27,12 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
     }
 
     private AttachmentList CreateAttachmentList()
-        => new ();
+    {
+        var list = new AttachmentList();
+        var attachmentsController = Services.GetRequiredService<AttachmentsController>();
+        list.Subscribe(attachmentsController);
+        return list;
+    }
 
     private ValueTask Rollback(AttachmentList attachments) {
         Dispatcher.AssertAccess();

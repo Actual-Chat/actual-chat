@@ -1,16 +1,23 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, AttachmentState>
+
 @{
     var attachment = Attachment;
-    var progress = attachment.Progress;
+    var state = State.Value;
+    var preview = state.Preview;
+    var previewState = preview.State;
+    var previewUrl = preview.PreviewUrl;
+    var progress = state.Progress;
     var uploadProgressClass = "attachment-upload-progress";
     var plugClass = "blurred-plug";
-    if (attachment.Failed) {
+    if (state.Failed) {
         progress = Math.Max(progress, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (attachment.Uploaded) {
+    } else if (state.Uploaded) {
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
+    var isUploading = state.UploadSessionId != "" && !(state.Uploaded || state.Failed);
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -18,20 +25,20 @@
             <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
                 <i class="icon-trash03 text-2xl font-thin"></i>
             </ButtonSquare>
-            @if (_state is PreviewAccessState.Ok) {
+            @if (previewState is PreviewAccessState.Ok) {
                 @if (attachment.IsImage) {
-                    <img src="@_previewUrl" alt="Image attachment" class="@plugClass"/>
+                    <img src="@previewUrl" alt="Image attachment" class="@plugClass"/>
                 } else if (attachment.IsVideo) {
                     <video preload="metadata" class="@plugClass">
-                        <source src="@_previewUrl#t=0.5"/>
+                        <source src="@previewUrl#t=0.5"/>
                     </video>
                 }
-                @if (!attachment.Uploaded) {
-                    @if (attachment.IsUploading) {
+                @if (!state.Uploaded) {
+                    @if (isUploading) {
                         <span class="spinner-icon-wrapper">
                             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
                         </span>
-                    } else if (attachment.Failed && !attachment.NoAccess && RestartClick.HasDelegate) {
+                    } else if (state.Failed && !state.NoAccess && RestartClick.HasDelegate) {
                         <span class="reload-icon-wrapper">
                             <ButtonRound Click="@RestartClick" Class="btn-sm">
                                 <i class="icon-sync text-2xl"></i>
@@ -40,7 +47,7 @@
                     }
                 }
             } else {
-                var iconCls = _state is PreviewAccessState.PendingGetAccessRequest ? "icon-file-blocked" : "icon-file-broken";
+                var iconCls = previewState is PreviewAccessState.PendingGetAccessRequest ? "icon-file-blocked" : "icon-file-broken";
                 <div class="c-plug">
                     <div class="c-wrapper">
                         <i class="@iconCls text-2xl"></i>
@@ -60,32 +67,15 @@
 </li>
 
 @code {
-    private PreviewAccessState _state;
-    private string _previewUrl = "";
+    private AttachmentRegistry AttachmentRegistry => Hub.AttachmentRegistry;
 
     [Parameter] public Attachment Attachment { get; set; } = null!;
     [Parameter] public EventCallback RemoveClick { get; set; }
     [Parameter] public EventCallback RestartClick { get; set; }
 
-    protected override void OnParametersSet() {
-        _previewUrl = "";
-        if (Attachment.GetPreviewUrl.IsCompleted) {
-            var previewUrl = Attachment.PreviewUrl;
-            if (!previewUrl.IsNullOrEmpty()) {
-                // Preview properly resolved.
-                _state = PreviewAccessState.Ok;
-                _previewUrl = previewUrl;
-            } else {
-                // Did not get file permissions.
-                _state = PreviewAccessState.NoFileAccess;
-            }
-        } else {
-            _state = PreviewAccessState.PendingGetAccessRequest;
-        }
-    }
+    protected override ComputedState<AttachmentState>.Options GetStateOptions()
+        => new() { InitialValue = AttachmentState.None };
 
-    // Nested types
-    private enum PreviewAccessState {
-        Ok, NoFileAccess, PendingGetAccessRequest
-    }
+    protected override Task<AttachmentState> ComputeState(CancellationToken cancellationToken)
+        => AttachmentRegistry.GetAttachmentState(Attachment.Id, cancellationToken);
 }

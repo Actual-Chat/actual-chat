@@ -9,7 +9,8 @@ public class FileUploaderService
     private readonly Dictionary<string, UploadJob> _jobs = new (StringComparer.Ordinal);
     private readonly OperationQueue _operationQueue;
     private readonly Func<string, CancellationToken, Task<UploadId>> _getUploadId;
-    private readonly Func<UploadId, CancellationToken, Task<MediaContent>> _convertUpload;
+    private readonly Func<string, CancellationToken, Task<MediaId>> _getMediaId;
+    private readonly Func<UploadId, MediaId, CancellationToken, Task<MediaContent>> _convertUpload;
     private readonly Func<string, CancellationToken, Task> _clearUploadId;
     private ILogger Log { get; }
 
@@ -21,10 +22,12 @@ public class FileUploaderService
     public FileUploaderService(
         ILogger log,
         Func<string, CancellationToken, Task<UploadId>> getUploadId,
-        Func<UploadId, CancellationToken, Task<MediaContent>> convertUpload,
+        Func<string, CancellationToken, Task<MediaId>> getMediaId,
+        Func<UploadId, MediaId, CancellationToken, Task<MediaContent>> convertUpload,
         Func<string, CancellationToken, Task> clearUploadId)
     {
         _getUploadId = getUploadId;
+        _getMediaId = getMediaId;
         _convertUpload = convertUpload;
         _clearUploadId = clearUploadId;
         // TODO: add queues with different priorities for small and big files.
@@ -68,8 +71,11 @@ public class FileUploaderService
     private Task<UploadId> GetUploadId(string sessionId, CancellationToken cancellationToken)
         => _getUploadId(sessionId, cancellationToken);
 
-    private Task<MediaContent> ConvertUpload(UploadId uploadId, CancellationToken cancellationToken)
-        => _convertUpload(uploadId, cancellationToken);
+    private Task<MediaId> GetMediaId(string sessionId, CancellationToken cancellationToken)
+        => _getMediaId(sessionId, cancellationToken);
+
+    private Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken cancellationToken)
+        => _convertUpload(uploadId, mediaId, cancellationToken);
 
     private Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
         => _clearUploadId(sessionId, cancellationToken);
@@ -157,9 +163,10 @@ public class FileUploaderService
 
         private async Task<MediaContent> UploadAndConvert(CancellationToken ct, IFileProvider fileProvider, UploadProgressTracker progress)
         {
+            var mediaId = await Owner.GetMediaId(Session.SessionId, ct).ConfigureAwait(false);
             var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
             await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
-            return await Owner.ConvertUpload(uploadId, ct).ConfigureAwait(false);
+            return await Owner.ConvertUpload(uploadId, mediaId, ct).ConfigureAwait(false);
         }
 
         private void PropagateFileUploadProgress(
