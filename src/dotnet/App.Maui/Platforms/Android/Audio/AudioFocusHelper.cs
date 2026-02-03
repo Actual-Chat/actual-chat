@@ -160,7 +160,6 @@ public class AudioFocusHelper : IDisposable
     {
         private readonly AudioManager _audioManager;
         private readonly ILogger _log;
-        private TaskCompletionSource<bool>? _pendingDeviceChange;
         private CommunicationDeviceListener? _listener;
 
         public ModernAudioDeviceRouter(AudioManager audioManager, ILogger log)
@@ -175,7 +174,7 @@ public class AudioFocusHelper : IDisposable
                 _listener);
         }
 
-        public async Task<bool> SetCommunicationDeviceAsync(CancellationToken ct)
+        public Task<bool> SetCommunicationDeviceAsync(CancellationToken ct)
         {
             try {
                 var devices = _audioManager.AvailableCommunicationDevices;
@@ -195,36 +194,34 @@ public class AudioFocusHelper : IDisposable
 
                 if (device == null) {
                     _log.LogWarning("No communication devices available, audio may route to earpiece");
-                    return false;
+                    return Task.FromResult(false);
+                }
+
+                // Short-circuit: if the current communication device is already the desired type, skip
+                var currentDevice = _audioManager.CommunicationDevice;
+                if (currentDevice != null && currentDevice.Type == device.Type) {
+                    _log.LogInformation("Communication device already set to: {Type}", device.Type);
+                    return Task.FromResult(true);
                 }
 
                 _log.LogInformation("Setting communication device to: {Type}", device.Type);
 
-                _pendingDeviceChange = new TaskCompletionSource<bool>();
+                // SetCommunicationDevice returns true if the OS accepted the routing request.
+                // The OnCommunicationDeviceChanged callback is just a confirmation notification
+                // that can arrive with significant delay on some devices — no need to await it.
                 var success = _audioManager.SetCommunicationDevice(device);
 
-                if (!success) {
+                if (!success)
                     _log.LogWarning("SetCommunicationDevice returned false for device: {Type}", device.Type);
-                    return false;
-                }
+                else
+                    _log.LogInformation("Communication device set to: {Type} (confirmed: {Actual})",
+                        device.Type, _audioManager.CommunicationDevice?.Type);
 
-                // Wait for confirmation (max 2 seconds)
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                cts.CancelAfter(2000);
-                try {
-                    var result = await _pendingDeviceChange.Task.WaitAsync(cts.Token).ConfigureAwait(false);
-                    _log.LogInformation("Communication device set successfully: {Result}", result);
-                    return result;
-                }
-                catch (OperationCanceledException) {
-                    _log.LogWarning("Timeout waiting for communication device change confirmation");
-                    // Device was set, just confirmation timed out - assume success
-                    return true;
-                }
+                return Task.FromResult(success);
             }
             catch (Exception e) {
                 _log.LogWarning(e, "Failed to set communication device");
-                return false;
+                return Task.FromResult(false);
             }
         }
 
@@ -259,10 +256,9 @@ public class AudioFocusHelper : IDisposable
             AudioManager.IOnCommunicationDeviceChangedListener
         {
             public void OnCommunicationDeviceChanged(AudioDeviceInfo? device)
-            {
-                parent._log.LogInformation("Communication device changed callback: {Type}", device?.Type);
-                parent._pendingDeviceChange?.TrySetResult(device != null);
-            }
+                => parent._log.LogInformation(
+                    "Communication device changed callback: {Type}, current: {Current}",
+                    device?.Type, parent._audioManager.CommunicationDevice?.Type);
         }
     }
 
