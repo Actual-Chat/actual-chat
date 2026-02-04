@@ -24,23 +24,19 @@
 	<dict>
 		<key>NSExtensionAttributes</key>
 		<dict>
-            <key>NSExtensionActivationRule</key>
-            <dict>
-                <key>NSExtensionActivationSupportsAttachmentsWithMaxCount</key>
-                <integer>100</integer>
-                <key>NSExtensionActivationSupportsText</key>
-                <true/>
-                <key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
-                <integer>100</integer>
-                <key>NSExtensionActivationSupportsWebPageWithMaxCount</key>
-                <integer>100</integer>
-                <key>NSExtensionActivationSupportsImageWithMaxCount</key>
-                <integer>100</integer>
-                <key>NSExtensionActivationSupportsMovieWithMaxCount</key>
-                <integer>100</integer>
-                <key>NSExtensionActivationSupportsFileWithMaxCount</key>
-                <integer>100</integer>
-            </dict>
+			<!-- Accepts any content type - public.item is the root UTI that all types conform to -->
+			<key>NSExtensionActivationRule</key>
+			<string>SUBQUERY (
+				extensionItems,
+				$extensionItem,
+				SUBQUERY (
+					$extensionItem.attachments,
+					$attachment,
+					ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.item"
+                        OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image"
+                        OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.text"
+				).@count >= 1
+			).@count >= 1</string>
 		</dict>
         <key>NSExtensionPrincipalClass</key>
         <string>ShareViewController</string>
