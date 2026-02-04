@@ -46,6 +46,12 @@ body.narrow .text-mode .post-panel,
 body.narrow .narrow-panel .post-panel {
     @apply py-1 pb-10;
 }
+
+/* Disable transitions when keyboard opens to prevent visual glitch on Android */
+body.narrow .narrow-panel .post-panel,
+body.narrow .narrow-panel .post-panel .message-input-label {
+    transition: none;
+}
 .post-panel .c-right-buttons {
     @apply flex-x items-end self-end;
     @apply md:my-2;
