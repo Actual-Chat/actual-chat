@@ -36,14 +36,14 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Start Live Hub listener
         var liveHub = services.GetRequiredService<ILiveHub>();
-        var settings = LiveStreamingSettings.Default;
+        var settings = LiveStreamSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var liveStreamTask = liveHub.GetStream(session, chat.Id, settings, cts.Token);
+        var liveStreamTask = liveHub.GetLiveStream(session, chat.Id, settings, cts.Token);
         var liveStream = await liveStreamTask;
 
         // Collect items in background
-        var receivedItems = new List<LiveItem>();
+        var receivedItems = new List<LiveStreamItem>();
         var collectTask = BackgroundTask.Run(async () => {
             log.LogInformation("Starting to collect Live items");
             try {
@@ -109,7 +109,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Create test items
         var testChatId = ChatId.Parse("testChat");
-        var testItems = new List<LiveItem> {
+        var testItems = new List<LiveStreamItem> {
             new LiveStreamStart {
                 StreamIndex = 1,
                 StreamInfo = new LiveStreamInfo {

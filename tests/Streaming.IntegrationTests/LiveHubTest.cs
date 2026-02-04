@@ -19,9 +19,9 @@ public class LiveHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
         var liveHub = services.GetRequiredService<ILiveHub>();
-        var config = LiveStreamingSettings.Default;
+        var config = LiveStreamSettings.Default;
 
-        var stream = await liveHub.GetStream(session, Constants.Chat.DefaultChatId, config, CancellationToken.None);
+        var stream = await liveHub.GetLiveStream(session, Constants.Chat.DefaultChatId, config, CancellationToken.None);
 
         stream.Should().NotBeNull();
     }
@@ -45,13 +45,13 @@ public class LiveHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         chat.Require();
 
         var liveHub = services.GetRequiredService<ILiveHub>();
-        var config = LiveStreamingSettings.Default;
+        var config = LiveStreamSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var stream = await liveHub.GetStream(session, chat.Id, config, cts.Token);
+        var stream = await liveHub.GetLiveStream(session, chat.Id, config, cts.Token);
 
         // Stream should not throw when enumerated (even if empty)
-        var items = new List<LiveItem>();
+        var items = new List<LiveStreamItem>();
         try {
             await foreach (var item in stream)
                 items.Add(item);
@@ -73,7 +73,7 @@ public class LiveHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
         var liveHub = services.GetRequiredService<ILiveHub>();
-        var settings = new LiveStreamingSettings { StreamKindFilter = LiveStreamKind.None };
+        var settings = new LiveStreamSettings { StreamKindFilter = LiveStreamKind.None };
 
         await liveHub.ChangeSettings(session, Constants.Chat.DefaultChatId, settings, CancellationToken.None);
         // Should not throw

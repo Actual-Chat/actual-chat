@@ -36,7 +36,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         };
 
         // Connect to Live Hub with automatic reconnection
-        var settings = LiveStreamingSettings.Default;
+        var settings = LiveStreamSettings.Default;
         var processor = new LiveStreamProcessor(
             Hub.Services, Session, ChatId, settings, cancellationToken.CreateLinkedTokenSource());
         await using var _ = processor.ConfigureAwait(false);
@@ -151,7 +151,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         if (chat == null)
             return;
 
-        // Create track info for Live stream (no entry ID available yet)
+        // Create track info for live stream (no entry ID available yet)
         var trackInfo = new ChatAudioTrackInfo(ChatId, null, chat, author) {
             RecordedAt = streamInfo.BeginsAt,
             ClientSideRecordedAt = streamInfo.BeginsAt,

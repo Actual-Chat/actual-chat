@@ -4,11 +4,11 @@ using ActualLab.Rpc;
 namespace ActualChat.UI.Blazor.App.Services.Live;
 
 /// <summary>
-/// Demultiplexes a single Live stream into individual audio streams.
+/// Demultiplexes a single live stream into individual audio streams.
 /// Raises events when streams start and end.
 /// </summary>
 public sealed class LiveStreamDemuxer(
-    RpcStream<LiveItem> input,
+    RpcStream<LiveStreamItem> input,
     ILogger? log,
     CancellationTokenSource? stopTokenSource = null)
     : WorkerBase(stopTokenSource)
@@ -16,7 +16,7 @@ public sealed class LiveStreamDemuxer(
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
     private readonly ConcurrentDictionary<int, Channel<byte[]>> _streams = new();
 
-    private RpcStream<LiveItem> Input { get; } = input;
+    private RpcStream<LiveStreamItem> Input { get; } = input;
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
@@ -69,7 +69,7 @@ public sealed class LiveStreamDemuxer(
             Log?.LogError(e, "Reconnect failed after {ItemCount} items", itemCount);
         }
         catch (Exception e) {
-            Log?.LogError(e, "Error processing Live stream after {ItemCount} items", itemCount);
+            Log?.LogError(e, "Error processing live stream after {ItemCount} items", itemCount);
         }
         finally {
             // Clean up all remaining streams; we don't propagate the error here

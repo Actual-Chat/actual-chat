@@ -3,10 +3,10 @@ using MemoryPack;
 namespace ActualChat.Live;
 
 /// <summary>
-/// Announces the start of a new audio stream within the multiplexed Live stream.
+/// Announces the start of a new audio stream within the multiplexed live stream.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class LiveStreamStart : LiveItem
+public sealed partial class LiveStreamStart : LiveStreamItem
 {
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public LiveStreamInfo StreamInfo { get; init; } = null!;

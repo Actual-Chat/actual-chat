@@ -8,15 +8,15 @@ namespace ActualChat.Live;
 /// </summary>
 public interface ILiveHub : IRpcService
 {
-    Task<RpcStream<LiveItem>> GetStream(
+    Task<RpcStream<LiveStreamItem>> GetLiveStream(
         Session session,
         ChatId chatId,
-        LiveStreamingSettings settings,
+        LiveStreamSettings settings,
         CancellationToken cancellationToken);
 
     Task ChangeSettings(
         Session session,
         ChatId chatId,
-        LiveStreamingSettings settings,
+        LiveStreamSettings settings,
         CancellationToken cancellationToken);
 }

@@ -3,7 +3,7 @@ using ActualChat.Live;
 namespace ActualChat.UI.Blazor.App.Services.Live;
 
 /// <summary>
-/// Manages Live stream connection with automatic reconnection on disconnect.
+/// Manages live stream connection with automatic reconnection on disconnect.
 /// </summary>
 public sealed class LiveStreamProcessor : WorkerBase
 {
@@ -16,14 +16,14 @@ public sealed class LiveStreamProcessor : WorkerBase
     public IServiceProvider Services { get; }
     public Session Session { get; }
     public ChatId ChatId { get; }
-    public LiveStreamingSettings Settings { get; }
+    public LiveStreamSettings Settings { get; }
 
     public event Action<LiveStreamInfo, IAsyncEnumerable<byte[]>>? StreamStarted;
 
     public LiveStreamProcessor(IServiceProvider services,
         Session session,
         ChatId chatId,
-        LiveStreamingSettings settings,
+        LiveStreamSettings settings,
         CancellationTokenSource? stopTokenSource = null) : base(stopTokenSource)
     {
         Services = services;
@@ -40,9 +40,9 @@ public sealed class LiveStreamProcessor : WorkerBase
         var demuxerLog = Services.LogFor<LiveStreamDemuxer>();
         while (true) {
             try {
-                DebugLog?.LogInformation("-> LiveHub.GetStream({ChatId})", ChatId);
-                var stream = await liveHub.GetStream(Session, ChatId, Settings, cancellationToken).ConfigureAwait(false);
-                DebugLog?.LogInformation("<- LiveHub.GetStream({ChatId})", ChatId);
+                DebugLog?.LogInformation("-> LiveHub.GetLiveStream({ChatId})", ChatId);
+                var stream = await liveHub.GetLiveStream(Session, ChatId, Settings, cancellationToken).ConfigureAwait(false);
+                DebugLog?.LogInformation("<- LiveHub.GetLiveStream({ChatId})", ChatId);
 
                 var demuxer = new LiveStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
                 await using var _ = demuxer.ConfigureAwait(false);

@@ -14,10 +14,10 @@ public class LiveHub(IServiceProvider services) : ILiveHub
     private IServiceProvider Services { get; } = services;
     private ILogger Log => field ??= Services.LogFor<LiveHub>();
 
-    public Task<RpcStream<LiveItem>> GetStream(
+    public Task<RpcStream<LiveStreamItem>> GetLiveStream(
         Session session,
         ChatId chatId,
-        LiveStreamingSettings settings,
+        LiveStreamSettings settings,
         CancellationToken cancellationToken)
     {
         LiveStreamMuxer muxer;
@@ -31,14 +31,14 @@ public class LiveHub(IServiceProvider services) : ILiveHub
         }
 
         var outputStream = ToAsyncEnumerable(muxer.Output, key, cancellationToken);
-        var rpcStream = new RpcStream<LiveItem>(outputStream) { IsReconnectable = false };
+        var rpcStream = new RpcStream<LiveStreamItem>(outputStream) { IsReconnectable = false };
         return Task.FromResult(rpcStream);
     }
 
     public Task ChangeSettings(
         Session session,
         ChatId chatId,
-        LiveStreamingSettings settings,
+        LiveStreamSettings settings,
         CancellationToken cancellationToken)
     {
         if (_muxers.TryGetValue((session, chatId), out var muxer))
@@ -49,8 +49,8 @@ public class LiveHub(IServiceProvider services) : ILiveHub
 
     // Private methods
 
-    private async IAsyncEnumerable<LiveItem> ToAsyncEnumerable(
-        ChannelReader<LiveItem> reader,
+    private async IAsyncEnumerable<LiveStreamItem> ToAsyncEnumerable(
+        ChannelReader<LiveStreamItem> reader,
         (Session, ChatId) key,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {

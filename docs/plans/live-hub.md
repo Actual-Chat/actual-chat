@@ -22,7 +22,7 @@ Client                          Server
 ```
 Client                          Server
   │                               │
-  ├─ GetStream(config) ──────────►│ (single RPC call)
+  ├─ GetLiveStream(config)──────────►│ (single RPC call)
   │◄── RpcStream<LiveItem> ───────┤ (multiplexed: control + audio frames)
   │    [StreamStarted id=1]       │
   │    [AudioFrame id=1 data=...] │

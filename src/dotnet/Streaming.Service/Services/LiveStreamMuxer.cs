@@ -10,11 +10,11 @@ public sealed class LiveStreamMuxer : WorkerBase
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(1);
 
-    private readonly Channel<LiveItem> _output;
-    private volatile LiveStreamingSettings _settings;
+    private readonly Channel<LiveStreamItem> _output;
+    private volatile LiveStreamSettings _settings;
     private int _nextStreamIndex;
 
-    public LiveStreamingSettings Settings => _settings;
+    public LiveStreamSettings Settings => _settings;
 
     private IServiceProvider Services { get; }
     private Session Session { get; }
@@ -25,23 +25,23 @@ public sealed class LiveStreamMuxer : WorkerBase
     private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILogger Log => field ??= Services.LogFor<LiveStreamMuxer>();
 
-    public ChannelReader<LiveItem> Output => _output.Reader;
+    public ChannelReader<LiveStreamItem> Output => _output.Reader;
 
     public LiveStreamMuxer(
         IServiceProvider services,
         Session session,
         ChatId chatId,
-        LiveStreamingSettings settings)
+        LiveStreamSettings settings)
     {
         Services = services;
         Session = session;
         ChatId = chatId;
         _settings = settings;
-        _output = ChannelExt.Create<LiveItem>(ChannelExt.UnboundedPipeOptions);
+        _output = ChannelExt.Create<LiveStreamItem>(ChannelExt.UnboundedPipeOptions);
         _ = Run(); // Start immediately
     }
 
-    public void UpdateConfig(LiveStreamingSettings settings)
+    public void UpdateConfig(LiveStreamSettings settings)
         => Interlocked.Exchange(ref _settings, settings);
 
     protected override Task OnStop()
