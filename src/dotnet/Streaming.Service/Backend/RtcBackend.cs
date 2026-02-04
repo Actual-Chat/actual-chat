@@ -1,4 +1,5 @@
 using ActualChat.Rtc;
+using ActualChat.Sharding;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -12,12 +13,15 @@ public class RtcBackend : ShardComputeService, IRtcBackend
     {
         var stopToken = ShardOwner.StopToken;
         foreach (var shardIndex in ShardScheme.ShardIndexes) {
+            var shardIndexCopy = shardIndex; // Capture for closure
             var shardState = ShardOwner.States[shardIndex].Value;
-            // Clear streams on any shard ownership state change
+            // Clear streams only when THIS shard loses ownership
             _ = Task.Run(async () => {
                 while (true) {
                     shardState = await shardState.WhenNext(stopToken).ConfigureAwait(false);
-                    ClearAllStreams();
+                    // Only clear when we lose ownership (not when gaining or during startup)
+                    if (shardState.OwnershipStatus == ShardOwnershipStatus.MappedToOtherNode)
+                        ClearStreamsForShard(shardIndexCopy);
                 }
             }, CancellationToken.None);
         }
@@ -66,11 +70,17 @@ public class RtcBackend : ShardComputeService, IRtcBackend
             _ = ListActiveStreams(chatId, default);
     }
 
-    private void ClearAllStreams()
+    private void ClearStreamsForShard(int shardIndex)
     {
-        foreach (var (_, chatStreams) in _chatStreams)
-            chatStreams.Complete();
-        _chatStreams.Clear();
+        // Only clear streams for chats that belong to this shard
+        var chatIdsToRemove = _chatStreams.Keys
+            .Where(chatId => ShardScheme.GetShardIndex(chatId) == shardIndex)
+            .ToList();
+
+        foreach (var chatId in chatIdsToRemove) {
+            if (_chatStreams.TryRemove(chatId, out var chatStreams))
+                chatStreams.Complete();
+        }
     }
 
     // Nested types
