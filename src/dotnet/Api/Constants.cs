@@ -127,7 +127,6 @@ public static partial class Constants
         {
             public static readonly int ChatRemaining = 10_000;
             public static readonly int PlaceRemaining = 10_000;
-            public static readonly int UserRemaining = 10;
             public static readonly TimeSpan ExpiresIn = TimeSpan.FromDays(30);
         }
     }

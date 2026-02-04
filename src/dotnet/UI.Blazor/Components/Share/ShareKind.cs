@@ -8,6 +8,5 @@ public enum ShareKind
     Place,
     PlaceInvite,
     Message,
-    ActualChatInvite,
     Other,
 }

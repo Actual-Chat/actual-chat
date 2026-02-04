@@ -22,15 +22,11 @@ public class Invites(IServiceProvider services) : IInvites
     private ILogger Log => _log ??= Services.LogFor<Invites>();
 
     // [ComputeMethod]
-    public virtual async Task<Invite[]> ListUserInvites(
+    [Obsolete("2025.02: User invites feature is removed.")]
+    public virtual Task<Invite[]> ListUserInvites(
         Session session,
         CancellationToken cancellationToken)
-    {
-        await AssertCanListUserInvites(session, cancellationToken).ConfigureAwait(false);
-
-        var searchKey = new UserInviteOption().GetSearchKey();
-        return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
-    }
+        => Task.FromResult(Array.Empty<Invite>());
 
     // [ComputeMethod]
     public virtual async Task<Invite[]> ListChatInvites(
@@ -168,12 +164,6 @@ public class Invites(IServiceProvider services) : IInvites
 
     // Assertions
 
-    private async Task AssertCanListUserInvites(Session session, CancellationToken cancellationToken)
-    {
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        account.Require(AccountFull.MustBeAdmin);
-    }
-
     private Task AssertCanListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken)
         => RequireCanInvite(session, chatId, cancellationToken);
 
@@ -204,9 +194,7 @@ public class Invites(IServiceProvider services) : IInvites
 
         switch (invite.Details.Option) {
         case UserInviteOption:
-            if (!account.IsAdmin)
-                throw StandardError.Unauthorized("Only admins can generate user invites.");
-            break;
+            throw StandardError.Constraint("User invites feature is removed.");
         case ChatInviteOption chatInvite:
             await RequireCanInvite(session, chatInvite.ChatId, cancellationToken).ConfigureAwait(false);
             break;
@@ -228,9 +216,7 @@ public class Invites(IServiceProvider services) : IInvites
 
         switch (invite.Details.Option) {
             case UserInviteOption:
-                if (!account.IsAdmin)
-                    throw StandardError.Unauthorized("Only admins can revoke user invites.");
-                break;
+                throw StandardError.Constraint("User invites feature is removed.");
             case ChatInviteOption chatInvite:
                 await RequireCanInvite(session, chatInvite.ChatId, cancellationToken).ConfigureAwait(false);
                 break;

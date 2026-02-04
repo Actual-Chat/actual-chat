@@ -4,7 +4,7 @@ namespace ActualChat.Invite;
 
 public interface IInvites : IComputeService
 {
-    [ComputeMethod]
+    [ComputeMethod, Obsolete("2025.02: User invites feature is removed.")]
     Task<Invite[]> ListUserInvites(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Invite[]> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);

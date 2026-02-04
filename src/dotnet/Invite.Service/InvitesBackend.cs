@@ -169,19 +169,8 @@ public class InvitesBackend(IServiceProvider services)
         invite = invite.Use(VersionGenerator);
 
         switch (invite.Details.Option) {
-        case UserInviteOption: {
-            if (account.IsGuestOrNull())
-                throw StandardError.Unauthorized("Please sign in and open this link again to use this invite.");
-            if (account.Status == AccountStatus.Suspended)
-                throw StandardError.Unauthorized("A suspended account cannot be re-activated via invite code.");
-            if (account.IsActive())
-                throw StandardError.StateTransition("Your account is already active.");
-
-            // Raise events
-            var activatedAccount = account with { Status = AccountStatus.Active };
-            context.Operation.AddEvent(new AccountsBackend_Update(activatedAccount, null));
-            break;
-        }
+        case UserInviteOption:
+            throw StandardError.Constraint("User invites feature is removed.");
         case ChatInviteOption chatInviteOption: {
             var chatId = chatInviteOption.ChatId;
             if (chatId is PlaceChatId { IsRoot: false } placeChatId) {

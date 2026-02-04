@@ -51,10 +51,7 @@
 
     private string GetCaption(Invite invite) {
         switch (invite.Details.Option) {
-            case UserInviteOption:
-                return "User invite link";
             case ChatInviteOption:
-                return "Private join link";
             case PlaceInviteOption:
                 return "Private join link";
             default:
@@ -68,11 +65,6 @@
     private async ValueTask OnShareClick(Invite invite) {
         var link = GetLink(invite);
         switch (invite.Details.Option) {
-            case UserInviteOption: {
-                var request = new ShareRequest($"Your {CoreConstants.AppName} invite", link);
-                _ = ShareUI.Share(ShareKind.ActualChatInvite, $"Share {CoreConstants.AppName} invite", "", request);
-                return;
-            }
             case ChatInviteOption chatDetails: {
                 // The code here is ~ a copy of ShareUIExt.GetModel(ChatId...) - we can't reference it here, so...
                 var chats = Hub.Services.GetRequiredService<IChats>();
