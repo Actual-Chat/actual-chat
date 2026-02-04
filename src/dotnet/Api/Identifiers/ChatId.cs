@@ -31,11 +31,9 @@ public partial class ChatId : StringIdentifier, IStringIdentifier<ChatId>, IHasS
     public bool IsSystem => Constants.Chat.SystemChatIds.Contains(this);
     [IgnoreDataMember]
     public virtual string ShardKey => Value;
-
-    public ChatId GetRootChatId()
-        => this is PlaceChatId placeChatId
-            ? placeChatId.RootChatId
-            : this;
+    [IgnoreDataMember]
+    public ChatId RootChatId
+        => this is PlaceChatId placeChatId ? placeChatId.RootChatId : this;
 
     // Factories and constructors
 

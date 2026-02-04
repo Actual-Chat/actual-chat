@@ -364,7 +364,7 @@ public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(s
         chatId.EnsureNonThread();
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
 
-        var rootChatId = chatId.GetRootChatId();
+        var rootChatId = chatId.RootChatId;
         var author = await GetOwn(session, rootChatId, cancellationToken).ConfigureAwait(false);
         if (author == null || author.AvatarId == command.AvatarId)
             return;

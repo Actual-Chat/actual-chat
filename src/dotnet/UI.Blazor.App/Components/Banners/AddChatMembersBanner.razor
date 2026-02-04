@@ -33,7 +33,7 @@
 
     protected override void OnInitialized() {
         var chatId = Chat.Id;
-        var key = $"AddChatMembersBanner[{chatId.GetRootChatId().Value}].DismissedAt";
+        var key = $"AddChatMembersBanner[{chatId.RootChatId.Value}].DismissedAt";
         _dismissedAt = StateFactory.NewKvasSynced<Box<Moment>>(new(AccountSettings, key) {
             InitialValue = Box.New(default(Moment)),
         });

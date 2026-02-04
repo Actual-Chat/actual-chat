@@ -53,6 +53,8 @@ public static class FlowData
     }
 }
 
+#pragma warning disable CA1000 // Do not declare static members on generic types
+
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class FlowData<TFlow> : IFlowData
     where TFlow : Flow

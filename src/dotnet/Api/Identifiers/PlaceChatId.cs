@@ -31,7 +31,8 @@ public sealed partial class PlaceChatId : ChatId, IStringIdentifier<PlaceChatId>
     [IgnoreDataMember]
     public bool IsRoot { get; }
     [IgnoreDataMember]
-    public PlaceChatId RootChatId => field ??= IsRoot ? this : Parse(Format(PlaceId, PlaceId.Value));
+    public new PlaceChatId RootChatId
+        => field ??= IsRoot ? this : Parse(Format(PlaceId, PlaceId.Value));
 
     // Factories and constructors
 
