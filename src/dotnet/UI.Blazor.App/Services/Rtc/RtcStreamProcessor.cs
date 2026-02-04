@@ -38,7 +38,7 @@ public sealed class RtcStreamProcessor : WorkerBase
     {
         var rtcHub = Services.GetRequiredService<IRtcHub>();
         var demuxerLog = Services.LogFor<RtcStreamDemuxer>();
-        while (!cancellationToken.IsCancellationRequested) {
+        while (true) {
             try {
                 DebugLog?.LogInformation("-> RtcHub.GetStream({ChatId})", ChatId);
                 var stream = await rtcHub.GetStream(Session, ChatId, Settings, cancellationToken).ConfigureAwait(false);
@@ -51,10 +51,7 @@ public sealed class RtcStreamProcessor : WorkerBase
                 DebugLog?.LogInformation("Demuxing RTC stream for {ChatId}...", ChatId);
                 await demuxer.Run().ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                throw;
-            }
-            catch (Exception e) {
+            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 Log.LogWarning(e, "Failed for chat {ChatId}, will reconnect in {Delay}",
                     ChatId, ReconnectDelay.ToShortString());
             }

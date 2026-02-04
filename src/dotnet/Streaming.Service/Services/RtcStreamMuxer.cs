@@ -71,7 +71,7 @@ public sealed class RtcStreamMuxer : WorkerBase
             var streamTasks = new Dictionary<string, Task>(StringComparer.Ordinal);
 
             // Watch for streams via RtcBackend with auto-reconnect
-            while (!cancellationToken.IsCancellationRequested) {
+            while (true) {
                 try {
                     Log.LogInformation("OnRun: Connecting to ObserveNewStreams for {ChatId}", ChatId);
                     var streams = await RtcBackend.ObserveStreams(ChatId, cancellationToken).ConfigureAwait(false);
@@ -92,11 +92,10 @@ public sealed class RtcStreamMuxer : WorkerBase
                     }
                     Log.LogWarning("OnRun: ObserveNewStreams completed for {ChatId}", ChatId);
                 }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                    throw; // Propagate cancellation
-                }
                 catch (Exception e) {
-                    Log.LogWarning(e, "OnRun: ObserveNewStreams failed for {ChatId}, reconnecting in {Delay}...",
+                    if (e.IsCancellationOf(cancellationToken))
+                        throw;
+                    Log.LogWarning(e, "OnRun: ObserveStreams failed for {ChatId}, reconnecting in {Delay}...",
                         ChatId, ReconnectDelay);
                 }
 
@@ -104,13 +103,9 @@ public sealed class RtcStreamMuxer : WorkerBase
                 await Task.Delay(ReconnectDelay, cancellationToken).ConfigureAwait(false);
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            Log.LogInformation("OnRun: Cancelled for {ChatId}", ChatId);
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogError(e, "OnRun: Failed for chat {ChatId}", ChatId);
         }
-        catch (Exception e) {
-            Log.LogError(e, "OnRun: Fatal error for chat {ChatId}", ChatId);
-        }
-        Log.LogInformation("OnRun: Exiting for {ChatId}", ChatId);
         return;
 
         void CleanupCompletedStreams(Dictionary<string, Task> tasks) {
