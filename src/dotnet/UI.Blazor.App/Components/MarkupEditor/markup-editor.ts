@@ -163,29 +163,8 @@ export class MarkupEditor {
             return;
         }
 
-        if (!DeviceInfo.isIos) {
-            debugLog?.log('focus: setting focus on contentDiv');
-            this.contentDiv.focus();
-            return;
-        }
-
-        // The code blow makes sure mobile keyboard is shown on iOS.
-        // It works only after the first interaction.
-        debugLog?.log('focus: using iOS/force workaround');
-        const contentDiv = this.contentDiv;
-        const tempInput = document.createElement('input');
-        tempInput.style.position = 'absolute';
-        tempInput.style.top = (contentDiv.offsetTop + 7) + 'px';
-        tempInput.style.left = contentDiv.offsetLeft + 'px';
-        tempInput.style.height = '0';
-        tempInput.style.opacity = '0';
-        document.body.appendChild(tempInput);
-        tempInput.focus();
-        Timeout.startRegular(100, () => {
-            contentDiv.focus();
-            contentDiv.click();
-            document.body.removeChild(tempInput);
-        });
+        debugLog?.log('focus: setting focus on contentDiv');
+        this.contentDiv.focus();
     }
 
     public blur() {

@@ -25,7 +25,8 @@ body.device-ios {
     @apply ios-height;
 }
 
-body.device-ios input:focus {
+body.device-ios :has(input:focus),
+body.device-ios :has([contenteditable]:focus){
     animation: blink_input_opacity_to_prevent_scrolling_when_focus 0.01s;
 }
 
