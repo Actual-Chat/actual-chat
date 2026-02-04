@@ -94,7 +94,7 @@ public partial class StreamingBackend
                 BeginsAt = beginsAt,
                 Format = audio.Format,
             };
-            await RtcBackend.RegisterActiveStream(activeStream, cancellationToken).ConfigureAwait(false);
+            await RtcBackend.RegisterActiveStream(chatId, activeStream, cancellationToken).ConfigureAwait(false);
         }
 
         var audioStream = openSegment.Source
@@ -142,8 +142,8 @@ public partial class StreamingBackend
 
         string? audioBlobId = null;
         if (mustStreamVoice) {
-            // Unregister active stream from RtcBackend
-            RtcBackend.UnregisterActiveStream(chatId, openSegment.StreamId.Value);
+            // Unregister active stream from RtcBackend (use CancellationToken.None to ensure cleanup happens)
+            await RtcBackend.UnregisterActiveStream(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
             // We should finalize audio entry regardless of cancellation - that's why CancellationToken.None
             audioBlobId = await AudioSegmentSaver.Save(closedSegment, CancellationToken.None).ConfigureAwait(false);
         }

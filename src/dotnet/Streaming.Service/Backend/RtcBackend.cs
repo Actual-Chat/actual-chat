@@ -1,5 +1,4 @@
 using ActualChat.Rtc;
-using ActualChat.Sharding;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -21,7 +20,7 @@ public class RtcBackend : ShardComputeService, IRtcBackend
                     shardState = await shardState.WhenNext(stopToken).ConfigureAwait(false);
                     // Only clear when we lose ownership (not when gaining or during startup)
                     if (shardState.OwnershipStatus == ShardOwnershipStatus.MappedToOtherNode)
-                        ClearStreamsForShard(shardIndexCopy);
+                        ClearAndRerouteStreams(shardIndexCopy);
                 }
             }, CancellationToken.None);
         }
@@ -34,29 +33,33 @@ public class RtcBackend : ShardComputeService, IRtcBackend
         return Task.FromResult(chatStreams.GetActiveStreams());
     }
 
-    public virtual Task<RpcStream<RtcStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<RtcStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
     {
-        var observations = GetChatStreams(chatId).ObserveStreams(cancellationToken);
-        return Task.FromResult(RpcStream.New(observations, isReconnectable: false));
+        var shardState = ShardOwner.States[ShardScheme.GetShardIndex(chatId)].Value;
+        var shardOwnership = await shardState.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
+        // linkedCts will be either cancelled (most likely) or GC collected - that's why we don't dispose it explicitly
+        var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
+
+        var observations = GetChatStreams(chatId).ObserveStreams(linkedCts.Token);
+        return RpcStream.New(observations, isReconnectable: false);
     }
 
-    // Internal methods called by StreamingBackend
-
-    internal async ValueTask RegisterActiveStream(RtcStreamInfo activeStream, CancellationToken cancellationToken)
+    public virtual async Task RegisterActiveStream(ChatId chatId, RtcStreamInfo activeStream, CancellationToken cancellationToken)
     {
-        var chatStreams = GetChatStreams(activeStream.ChatId);
+        var chatStreams = GetChatStreams(chatId);
         if (chatStreams.TryAdd(activeStream)) {
-            InvalidateGetActiveStreams(activeStream.ChatId);
+            InvalidateGetActiveStreams(chatId);
             await chatStreams.NotifyNew(activeStream, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    internal void UnregisterActiveStream(ChatId chatId, string streamId)
+    public virtual Task UnregisterActiveStream(ChatId chatId, string streamId, CancellationToken cancellationToken)
     {
         if (!_chatStreams.TryGetValue(chatId, out var chatStreams))
-            return;
+            return Task.CompletedTask;
         if (chatStreams.TryRemove(streamId))
             InvalidateGetActiveStreams(chatId);
+        return Task.CompletedTask;
     }
 
     // Private methods
@@ -70,7 +73,7 @@ public class RtcBackend : ShardComputeService, IRtcBackend
             _ = ListActiveStreams(chatId, default);
     }
 
-    private void ClearStreamsForShard(int shardIndex)
+    private void ClearAndRerouteStreams(int shardIndex)
     {
         // Only clear streams for chats that belong to this shard
         var chatIdsToRemove = _chatStreams.Keys
@@ -78,8 +81,11 @@ public class RtcBackend : ShardComputeService, IRtcBackend
             .ToList();
 
         foreach (var chatId in chatIdsToRemove) {
-            if (_chatStreams.TryRemove(chatId, out var chatStreams))
-                chatStreams.Complete();
+            if (!_chatStreams.TryRemove(chatId, out var chatStreams))
+                continue;
+
+            InvalidateGetActiveStreams(chatId);
+            chatStreams.Complete(RpcRerouteException.MustReroute());
         }
     }
 
@@ -114,7 +120,7 @@ public class RtcBackend : ShardComputeService, IRtcBackend
         public ValueTask NotifyNew(RtcStreamInfo stream, CancellationToken cancellationToken)
             => _newStreams.Writer.WriteAsync(stream, cancellationToken);
 
-        public void Complete()
-            => _newStreams.Writer.TryComplete();
+        public void Complete(Exception? error = null)
+            => _newStreams.Writer.TryComplete(error);
     }
 }

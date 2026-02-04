@@ -38,8 +38,6 @@ public class RoutingStressTest(ITestOutputHelper @out)
         },
     }, @out)
 {
-    private readonly string _sharedMeshLockSubspace = Alphabet.AlphaNumeric.Generator8.Next();
-    private readonly ConcurrentDictionary<string, string> _globalStorage = new();
     private volatile int _errorCount;
 
     /// <summary>
@@ -51,7 +49,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         var shardScheme = ShardScheme.TestBackend;
 
         // Create first host
-        await using var h1 = await NewAppHost(o => o.WithMeshLockSubspace(_sharedMeshLockSubspace));
+        await using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var s1 = h1.Services.GetRequiredService<IRoutingTestService>();
         var o1 = h1.Services.ShardOwner(shardScheme);
@@ -69,9 +67,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         WriteLine($"Set and got value on h1: {result.Value} from {result.HostNodeRef}");
 
         // Create second host
-        await using var h2 = await NewAppHost(o => o
-            .WithMeshLockSubspace(_sharedMeshLockSubspace)
-            with { MustInitializeDb = false });
+        await using var h2 = await NewAppHost();
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
         var s2 = h2.Services.GetRequiredService<IRoutingTestService>();
         var o2 = h2.Services.ShardOwner(shardScheme);
@@ -146,7 +142,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         var syncTimeout = TimeSpan.FromSeconds(10);
 
         // Create first host
-        await using var h1 = await NewAppHost(o => o.WithMeshLockSubspace(_sharedMeshLockSubspace));
+        await using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var s1 = h1.Services.GetRequiredService<IRoutingTestService>();
 
@@ -161,9 +157,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         WriteLine($"Initial computed from {initialHostRef}: {computed.Value.Value}");
 
         // Create second host to cause shard redistribution
-        await using var h2 = await NewAppHost(o => o
-            .WithMeshLockSubspace(_sharedMeshLockSubspace)
-            with { MustInitializeDb = false });
+        await using var h2 = await NewAppHost();
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
         var s2 = h2.Services.GetRequiredService<IRoutingTestService>();
 
@@ -214,9 +208,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         var perCallTimeout = TimeSpan.FromSeconds(10);
 
         // Start with one host using faster mesh lock options
-        await using var h1 = await NewAppHost(o => o
-            .WithMeshLockSubspace(_sharedMeshLockSubspace)
-            with { MeshLockOptionsPreset = "Fast" });
+        await using var h1 = await NewAppHost(o => o with { MeshLockOptionsPreset = "Fast" });
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var s1 = h1.Services.GetRequiredService<IRoutingTestService>();
         await w1.WhenAnnounced;
@@ -267,9 +259,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
             while (!callTask.IsCompleted && !cancellationToken.IsCancellationRequested) {
                 await Task.Delay(rnd.Next(100, 500), cancellationToken);
 
-                var host = await NewAppHost(o => o
-                    .WithMeshLockSubspace(_sharedMeshLockSubspace)
-                    with { MustInitializeDb = false, MeshLockOptionsPreset = "Fast" });
+                var host = await NewAppHost(o => o with { MeshLockOptionsPreset = "Fast" });
                 hosts.Add(host);
                 Interlocked.Increment(ref addedHostCount);
 
@@ -304,9 +294,7 @@ public class RoutingStressTest(ITestOutputHelper @out)
         await Task.Delay(startDelays.Next(), cancellationToken);
         Log("Starting host...");
 
-        await using var host = await NewAppHost(o => o
-            .WithMeshLockSubspace(_sharedMeshLockSubspace)
-            with { MustInitializeDb = index == 0 }); // Only first worker initializes DB
+        await using var host = await NewAppHost(); // Only first worker initializes DB
 
         var watcher = host.Services.GetRequiredService<MeshWatcher>();
         var service = host.Services.GetRequiredService<IRoutingTestService>();
@@ -376,17 +364,11 @@ public sealed partial record RoutingTestValue(
 );
 
 // Test service implementation
-public class RoutingTestService : IRoutingTestService
+public class RoutingTestService(IServiceProvider services) : IRoutingTestService
 {
     private readonly ConcurrentDictionary<string, string> _storage = new();
-    private readonly MeshWatcher _meshWatcher;
-    private readonly ShardOwner _shardOwner;
-
-    public RoutingTestService(IServiceProvider services)
-    {
-        _meshWatcher = services.MeshWatcher();
-        _shardOwner = services.ShardOwner(ShardScheme.TestBackend);
-    }
+    private readonly MeshWatcher _meshWatcher = services.MeshWatcher();
+    private readonly ShardOwner _shardOwner = services.ShardOwner(ShardScheme.TestBackend);
 
     public virtual async Task<RoutingTestValue> GetValue(int shardKey, string key, CancellationToken cancellationToken = default)
     {

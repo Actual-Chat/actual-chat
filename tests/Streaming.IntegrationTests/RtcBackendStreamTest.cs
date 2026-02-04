@@ -80,9 +80,8 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
 
         log.LogInformation("Registering active stream: {StreamId}", testStreamInfo.StreamId);
 
-        // Access the internal method via the concrete type
-        var rtcBackendImpl = (RtcBackend)rtcBackend;
-        await rtcBackendImpl.RegisterActiveStream(testStreamInfo, cts.Token);
+        // Use the interface method (now part of IRtcBackend)
+        await rtcBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
 
         log.LogInformation("Stream registered, waiting for it to be received...");
 
@@ -124,7 +123,6 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
         var chatId = chat.Id;
 
         var rtcBackend = services.GetRequiredService<IRtcBackend>();
-        var rtcBackendImpl = (RtcBackend)rtcBackend;
 
         // First, register a stream BEFORE calling ObserveStreams
         var existingStreamInfo = new RtcStreamInfo {
@@ -136,7 +134,7 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
         };
 
         log.LogInformation("Registering existing stream: {StreamId}", existingStreamInfo.StreamId);
-        await rtcBackendImpl.RegisterActiveStream(existingStreamInfo, CancellationToken.None);
+        await rtcBackend.RegisterActiveStream(chatId, existingStreamInfo, CancellationToken.None);
 
         // Now call ObserveStreams - it should immediately yield the existing stream
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -187,7 +185,6 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
         var chatId = chat.Id;
 
         var rtcBackend = services.GetRequiredService<IRtcBackend>();
-        var rtcBackendImpl = (RtcBackend)rtcBackend;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
@@ -226,7 +223,7 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
         };
 
         log.LogInformation("Registering stream: {StreamId}", testStreamInfo.StreamId);
-        await rtcBackendImpl.RegisterActiveStream(testStreamInfo, cts.Token);
+        await rtcBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
 
         // Wait for both consumers to receive
         await Task.Delay(2000, cts.Token);

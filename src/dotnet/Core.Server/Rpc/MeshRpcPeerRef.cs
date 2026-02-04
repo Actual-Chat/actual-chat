@@ -81,10 +81,6 @@ public sealed class MeshRpcPeerRef : RpcPeerRef
                 await shardState.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
             }
             catch (RpcRerouteException) {
-                var shardOwners = shardState.ShardOwner.Host;
-                ObjectDisposedException.ThrowIf(shardOwners.StopToken.IsCancellationRequested, nameof(ShardOwners));
-                ObjectDisposedException.ThrowIf(shardOwners.Services.IsDisposedOrDisposing(), nameof(ShardOwners));
-
                 routeState.MarkChanged();
                 throw;
             }
