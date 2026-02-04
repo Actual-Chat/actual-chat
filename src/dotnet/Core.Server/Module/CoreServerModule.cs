@@ -13,7 +13,7 @@ namespace ActualChat.Module;
 public sealed class CoreServerModule(IServiceProvider moduleServices)
     : HostModule<CoreServerSettings>(moduleServices), IServerModule
 {
-    protected override CoreServerSettings GetSettings()
+    protected override CoreServerSettings LoadSettings()
     {
         var settings = Cfg.Settings<CoreServerSettings>(nameof(CoreSettings));
         if (!settings.GoogleProjectId.IsNullOrEmpty())

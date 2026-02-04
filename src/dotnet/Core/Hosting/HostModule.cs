@@ -40,9 +40,9 @@ public abstract class HostModule<
     ) : HostModule(moduleServices)
     where TSettings : class, new()
 {
-    public TSettings Settings => field ??= GetSettings();
+    public TSettings Settings => field ??= LoadSettings();
 
-    protected virtual TSettings GetSettings()
+    protected virtual TSettings LoadSettings()
         => Cfg.Settings<TSettings>();
 
     protected internal override void Initialize(ModuleHost host, IServiceCollection services)
