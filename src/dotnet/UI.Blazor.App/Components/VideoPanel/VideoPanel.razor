@@ -97,7 +97,7 @@
     protected override async Task OnParametersSetAsync() {
         if (Show && !_rendered) {
             _rendered = true;
-            _autoStartPending = PendingCameraDeviceId != null;
+            _autoStartPending = true;
         } else if (!Show && _rendered && JSRef is not null) {
             await JSRef.InvokeVoidAsync("startClosing");
         }

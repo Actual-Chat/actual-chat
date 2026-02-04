@@ -153,7 +153,11 @@ export class VideoStreamer {
     public static lastStream: VideoStream | null = null;
 
     public static init(hubUrl: string): void {
-        if (this.connection) return;
+        console.warn('[VideoStreamer] init called with hubUrl:', hubUrl);
+        if (this.connection) {
+            console.warn('[VideoStreamer] Connection already exists, state:', this.connection.state);
+            return;
+        }
 
         this.connection = new signalR.HubConnectionBuilder()
             .withUrl(hubUrl, {
@@ -164,7 +168,13 @@ export class VideoStreamer {
             .withHubProtocol(new MessagePackHubProtocol())
             .build();
 
-        this.connection.start();
+        this.connection.onclose((err) => console.warn('[VideoStreamer] Connection closed:', err));
+        this.connection.onreconnecting((err) => console.warn('[VideoStreamer] Reconnecting:', err));
+        this.connection.onreconnected((id) => console.warn('[VideoStreamer] Reconnected:', id));
+
+        this.connection.start()
+            .then(() => console.warn('[VideoStreamer] Connected successfully, state:', this.connection.state))
+            .catch((err) => console.error('[VideoStreamer] Connection failed:', err));
     }
 
     public static get isConnected(): boolean {
