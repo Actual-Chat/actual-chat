@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, ChatAudioPanel.Model>
 @{
-    var (audioState, enableIncompleteUI) = State.Value;
+    var (audioState, enableIncompleteUI, allowVideo) = State.Value;
     var isRecording = audioState?.IsRecording == true;
     var isHeaderVisible = audioState != null && IsNarrow && audioState is { IsListening: true, IsRecording: true };
 }
@@ -26,7 +26,7 @@
              data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
             <PlaybackToggle Chat="@Chat"/>
         </div>
-        @if (!IsNarrow && isRecording) {
+        @if (allowVideo && !IsNarrow && isRecording) {
             <VideoToggle Chat="@Chat" />
         }
         <div class="recorder-button">
@@ -36,7 +36,7 @@
             </div>
             <RecorderToggle Chat="@Chat"/>
         </div>
-        @if (IsNarrow) {
+        @if (allowVideo && IsNarrow) {
             <VoiceSettingsButton Chat="@Chat" IsNarrow="true" />
         }
         <div class="language-button"
@@ -57,12 +57,19 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var settings = await AccountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var isVideoFeatureEnabled = settings.AreExperimentalFeaturesEnabled ?? false;
         if (chat?.Id is null)
-            return new(null, enableIncompleteUI);
+            return new(null, enableIncompleteUI, isVideoFeatureEnabled);
 
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
-        return new (audioState, enableIncompleteUI);
+        return new(
+            audioState,
+            enableIncompleteUI,
+            isVideoFeatureEnabled);
     }
 
-    public sealed record Model(ChatAudioState? State, bool EnableIncompleteUI);
+    // Nested classes
+
+    public sealed record Model(ChatAudioState? AudioState, bool EnableIncompleteUI, bool IsVideoFeatureEnabled);
 }

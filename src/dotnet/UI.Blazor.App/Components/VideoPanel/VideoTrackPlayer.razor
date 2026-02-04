@@ -7,7 +7,15 @@
 @implements IVideoPlayerBackend
 @inject IServiceProvider Services
 
-<canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
+<div class="remote-video-container">
+    <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
+    @if (!string.IsNullOrEmpty(AuthorName)) {
+        <div class="video-participant-label">
+            <i class="icon-video"></i>
+            <span>@AuthorName</span>
+        </div>
+    }
+</div>
 
 @code {
     private static bool DebugMode => Constants.DebugMode.VideoPlayback;
@@ -35,6 +43,9 @@
 
     [Parameter, EditorRequired]
     public VideoStreamInfo StreamInfo { get; set; } = null!;
+
+    [Parameter]
+    public string AuthorName { get; set; } = "";
 
     public Task WhenCompleted => _whenCompletedSource.Task;
 

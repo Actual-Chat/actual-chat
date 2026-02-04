@@ -65,20 +65,7 @@
     </div>
     @if (chat is not null) {
         <div class="chat-header-control-panel hideable">
-        @if (m.EnableIncompleteUI) {
-            <HeaderButton Click="@OnJoinVideoCallClick">
-                <i class="icon-monitor text-xl"></i>
-            </HeaderButton>
-            <HeaderButton Click="@OnShowVideoPanel">
-                <i class="icon-video text-xl"></i>
-            </HeaderButton>
-        }
         <TranslationButton ChatId="@chat.Id"/>
-        @* @if (m.EnableIncompleteUI) { *@
-        @* <HeaderButton Click="@OnSearchClick" Class="@searchCls"> *@
-        @* <i class="icon-ai-search"></i> *@
-        @* </HeaderButton> *@
-        @* } *@
         @if (chat.Id.IsThread(out var threadChatId)) {
             <ChatHeaderFollowThreadToggle ThreadChatId="@threadChatId"/>
         }

@@ -25,7 +25,7 @@ body.narrow .video-panel.expanded {
     @apply rounded-none;
 }
 .video-panel .video-frame {
-    @apply h-full w-full;
+    @apply relative h-full w-full;
     @apply flex items-center justify-center;
 }
 .video-panel .video-frame canvas {
@@ -71,49 +71,26 @@ body.hoverable .btn-h.expand-btn:hover {
     @apply visible;
 }
 
-/* Video controls */
-.video-panel .video-controls {
-    @apply absolute bottom-2 left-1/2 -translate-x-1/2;
-    @apply flex items-center gap-2;
+/* Participant labels */
+.video-panel .video-participant-label {
+    @apply absolute bottom-2 left-2;
+    @apply flex items-center gap-1;
+    @apply bg-[var(--black-60)] text-white;
+    @apply px-2 py-1 rounded-lg;
+    @apply text-xs;
+    pointer-events: none;
 }
-.video-panel .btn-h.record-btn {
-    @apply text-white text-lg;
-    @apply bg-gray-800/50 rounded-full;
-    @apply p-2;
-    transition: all 0.2s ease-in-out;
+.video-panel .video-participant-label i {
+    @apply text-xs;
 }
-.video-panel .btn-h.record-btn.recording {
-    @apply bg-red-600;
-    animation: recordingPulse 1.5s ease-in-out infinite;
-}
-body.hoverable .btn-h.record-btn:hover {
-    @apply bg-gray-700/70;
-}
-body.hoverable .btn-h.record-btn.recording:hover {
-    @apply bg-red-700;
-}
-.video-panel .camera-select {
-    @apply bg-gray-800/50 text-white;
-    @apply rounded-lg px-3 py-1;
-    @apply text-sm;
-    @apply border border-gray-600;
-    @apply focus:outline-none focus:ring-2 focus:ring-blue-500;
-}
-
-/* Recording indicator */
-.video-panel.recording::before {
-    content: '';
-    @apply absolute top-3 left-3;
-    @apply w-3 h-3 rounded-full;
-    @apply bg-red-600;
-    animation: recordingPulse 1.5s ease-in-out infinite;
-    z-index: 10;
+.video-panel .remote-video-container {
+    @apply relative w-full h-full;
 }
 
 /* Error display */
 .video-panel .video-error {
     @apply absolute bottom-12 left-1/2 -translate-x-1/2;
-    @apply bg-red-600/90 text-white;
+    @apply bg-[var(--red-70)] text-white;
     @apply px-4 py-2 rounded-lg;
     @apply text-sm;
     @apply max-w-xs text-center;
@@ -159,15 +136,6 @@ body.hoverable .btn-h.record-btn.recording:hover {
 .video-panel[data-remote-stream-count="5"] .remote-streams,
 .video-panel[data-remote-stream-count="6"] .remote-streams {
     @apply grid-cols-3 grid-rows-2;
-}
-
-@keyframes recordingPulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
 }
 
 @keyframes smoothShowVideoPanel {

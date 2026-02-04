@@ -20,25 +20,18 @@
         <div class="c-content">
             <div class="video-frame">
                 <canvas class="call-video"></canvas>
+                @if (isRecording) {
+                    <div class="video-participant-label">
+                        <i class="icon-video"></i>
+                        <span>You</span>
+                    </div>
+                }
             </div>
             <div class="remote-streams">
                 @foreach (var streamInfo in m.RemoteStreams) {
-                    <VideoTrackPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" />
+                    var name = m.AuthorNames.GetValueOrDefault(streamInfo.AuthorId, "");
+                    <VideoTrackPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" AuthorName="@name" />
                 }
-            </div>
-            <div class="video-controls show-with-delay">
-                @if (_videoDevices.Count > 1) {
-                    <select @bind="_selectedCameraDeviceId" @bind:after="async () => await OnSelectedCameraChanged(_selectedCameraDeviceId)" class="camera-select" disabled="@isRecording">
-                        <option value="">Default Camera</option>
-                        @foreach (var device in _videoDevices) {
-                            <option value="@device.DeviceId">@device.Label</option>
-                        }
-                    </select>
-                }
-                <HeaderButton Class="@($"record-btn {recordingCls}")"
-                              Name="@(isRecording ? "Stop Recording" : "Start Recording")">
-                    <i class="@(isRecording ? "icon-stop" : "icon-video") text-lg"></i>
-                </HeaderButton>
             </div>
             <HeaderButton Class="expand-btn show-with-delay">
                 <i class="icon-expand text-lg"></i>
@@ -56,26 +49,16 @@
     public sealed record Model(
         bool IsRightPanelVisible,
         VideoStreamInfo[] RemoteStreams,
-        ChatVideoState VideoState
+        ChatVideoState VideoState,
+        IReadOnlyDictionary<AuthorId, string> AuthorNames
     ) {
-        public static readonly Model None = new(false, [], ChatVideoState.None);
+        public static readonly Model None = new(false, [], ChatVideoState.None, new Dictionary<AuthorId, string>());
     }
-
-    private record VideoDevice(string DeviceId, string Label);
 
     private bool _rendered;
     private bool _autoStartPending;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
     private static readonly string JSSetSessionContextMethod = "setSessionContext";
-
-    private List<VideoDevice> _videoDevices = new();
-    private string _selectedCameraDeviceId = "";
-
-    private async Task OnSelectedCameraChanged(string deviceId) {
-        if (JSRef is not null) {
-            await JSRef.InvokeVoidAsync("setSelectedCamera", deviceId);
-        }
-    }
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ElementReference Ref { get; set; }
@@ -100,16 +83,13 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
 
             await UpdateSessionContext();
-            await LoadVideoDevices();
 
             // Auto-start recording if requested from JoinVideoCallModal
             var videoState = State.Value.VideoState;
             if (_autoStartPending && !videoState.IsRecording) {
                 _autoStartPending = false;
-                if (!string.IsNullOrEmpty(PendingCameraDeviceId)) {
-                    _selectedCameraDeviceId = PendingCameraDeviceId;
+                if (!string.IsNullOrEmpty(PendingCameraDeviceId))
                     await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
-                }
                 await JSRef.InvokeVoidAsync("startRecording");
             }
         }
@@ -167,19 +147,6 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadVideoDevices() {
-        if (JSRef is null) return;
-
-        try {
-            var devices = await JSRef.InvokeAsync<VideoDevice[]>("enumerateVideoDevices");
-            _videoDevices = devices.ToList();
-            await InvokeAsync(StateHasChanged);
-        } catch {
-            // Handle error silently - camera selection is optional
-            _videoDevices = new();
-        }
-    }
-
     private async Task UpdateSessionContext() {
         if (JSRef is null)
             return;
@@ -197,7 +164,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options {
-                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], ChatVideoState.None),
+                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], ChatVideoState.None, new Dictionary<AuthorId, string>()),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -208,9 +175,11 @@
             isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
 
         // Get current chat
+        var emptyNames = (IReadOnlyDictionary<AuthorId, string>)new Dictionary<AuthorId, string>();
+
         var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
         if (chatId is null)
-            return new Model(isRightPanelVisible, [], ChatVideoState.None);
+            return new Model(isRightPanelVisible, [], ChatVideoState.None, emptyNames);
 
         // Get centralized video state
         var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
@@ -223,7 +192,7 @@
         // Get active video streams for this chat
         var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
         if (activeStreams is null || activeStreams.Streams.Length == 0)
-            return new Model(isRightPanelVisible, [], videoState);
+            return new Model(isRightPanelVisible, [], videoState, emptyNames);
 
         // Filter out own stream (shown in local preview)
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken);
@@ -231,6 +200,13 @@
             .Where(s => ownAuthor?.Id != s.AuthorId)
             .ToArray();
 
-        return new Model(isRightPanelVisible, remoteStreams, videoState);
+        // Resolve author names for remote streams
+        var authorNames = new Dictionary<AuthorId, string>();
+        foreach (var stream in remoteStreams) {
+            var author = await Hub.Authors.Get(Session, chatId, stream.AuthorId, cancellationToken);
+            authorNames[stream.AuthorId] = author?.Avatar.Name ?? "";
+        }
+
+        return new Model(isRightPanelVisible, remoteStreams, videoState, authorNames);
     }
 }
