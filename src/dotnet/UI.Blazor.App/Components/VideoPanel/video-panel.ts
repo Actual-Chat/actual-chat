@@ -123,12 +123,14 @@ export class VideoPanel {
      * Initialize and start video recording
      */
     public async startRecording(): Promise<void> {
+        console.warn('[VideoPanel] startRecording called, isRecording:', this.isRecording, 'sessionToken:', !!this.sessionToken, 'chatId:', this.chatId);
         if (this.isRecording) {
             warnLog?.log('Already recording');
             return;
         }
 
         if (!this.sessionToken || !this.chatId) {
+            console.error('[VideoPanel] Missing session context!', { sessionToken: !!this.sessionToken, chatId: this.chatId });
             throw new Error('Missing session context for video streaming');
         }
 
@@ -156,6 +158,7 @@ export class VideoPanel {
                 }
             };
 
+            console.warn('[VideoPanel] Creating RecordingService with streaming:', config.streaming);
             this.recordingService = new RecordingService(config);
 
             // Listen for state changes
@@ -183,7 +186,9 @@ export class VideoPanel {
             this.previewTrack = previewStream.getVideoTracks()[0];
 
             // Start recording (this initializes the video-pipeline)
+            console.warn('[VideoPanel] Calling recordingService.start()...');
             await this.recordingService.start();
+            console.warn('[VideoPanel] recordingService.start() completed successfully');
 
             // Set isRecording BEFORE starting the render loop — the render loop
             // checks this flag and exits permanently if it's false on the first frame.
@@ -191,6 +196,7 @@ export class VideoPanel {
             this.updateRecordButtonState();
 
             // Start rendering preview AFTER isRecording is set
+            console.warn('[VideoPanel] Starting preview rendering, canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
             this.startRenderingStream(previewStream);
 
             // Notify Blazor
@@ -233,7 +239,9 @@ export class VideoPanel {
      */
     private startRenderingStream(stream: MediaStream): void {
         const videoTrack = stream.getVideoTracks()[0];
+        console.warn('[VideoPanel] startRenderingStream: videoTrack:', !!videoTrack, 'canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
         if (!videoTrack || !this.canvas || !this.canvasCtx) {
+            console.error('[VideoPanel] startRenderingStream: missing required elements, aborting');
             return;
         }
 
@@ -244,10 +252,15 @@ export class VideoPanel {
         video.playsInline = true;
         video.play();
 
+        let frameCount = 0;
         const renderFrame = () => {
             if (!this.isRecording || !this.canvas || !this.canvasCtx) {
+                console.warn('[VideoPanel] renderFrame: exiting loop, isRecording:', this.isRecording);
                 return;
             }
+            frameCount++;
+            if (frameCount <= 3 || frameCount % 300 === 0)
+                console.warn('[VideoPanel] renderFrame #' + frameCount + ': videoWidth=' + video.videoWidth + ', videoHeight=' + video.videoHeight);
 
             // Resize canvas if needed
             if (this.canvas.width !== video.videoWidth || this.canvas.height !== video.videoHeight) {

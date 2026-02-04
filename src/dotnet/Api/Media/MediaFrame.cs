@@ -17,12 +17,10 @@ public abstract partial class MediaFrame
     [DataMember(Order = 0), MemoryPackOrder(0), Key("data")]
     public byte[] Data { get; init; } = [];
 
-    // Note: These are marked IgnoreMember for MessagePack because they're overridden
-    // in derived classes with their own [Key] attributes
-    [DataMember(Order = 1), MemoryPackOrder(1), IgnoreMember]
+    [DataMember(Order = 1), MemoryPackOrder(1), Key("offset")]
     public abstract TimeSpan Offset { get; init; }
-    [DataMember(Order = 2), MemoryPackOrder(2), IgnoreMember]
+    [DataMember(Order = 2), MemoryPackOrder(2), Key("duration")]
     public abstract TimeSpan Duration { get; init; }
-    [DataMember(Order = 3), MemoryPackOrder(3), IgnoreMember]
+    [DataMember(Order = 3), MemoryPackOrder(3), Key("isKeyFrame")]
     public abstract bool IsKeyFrame { get; init; }
 }

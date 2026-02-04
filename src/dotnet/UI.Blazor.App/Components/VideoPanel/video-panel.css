@@ -108,10 +108,12 @@ body.hoverable .btn-h.expand-btn:hover {
 }
 .video-panel.has-remote-streams .video-frame {
     @apply absolute;
-    @apply w-1/4 h-1/4;
+    @apply h-1/4;
     @apply bottom-2 right-2;
     @apply z-10;
     @apply rounded-lg overflow-hidden;
+    aspect-ratio: 16 / 9;
+    width: min-content;
     border: 2px solid var(--white-40);
 }
 .video-panel .remote-streams canvas.remote-video {

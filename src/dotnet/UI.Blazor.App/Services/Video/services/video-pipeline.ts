@@ -319,16 +319,20 @@ export class VideoPipeline implements IVideoPipeline {
   constructor(private config: PipelineConfig) {
     // Create worker instances
     const encoderWorkerPath = Versioning.mapPath('/dist/videoEncoderWorker.js');
+    console.warn('[VideoPipeline] Creating encoder worker from:', encoderWorkerPath);
     this.encoderWorkerInstance = new Worker(
       encoderWorkerPath,
       { type: 'module' }
     );
+    this.encoderWorkerInstance.onerror = (e) => console.error('[VideoPipeline] Encoder worker error:', e);
 
     const decoderWorkerPath = Versioning.mapPath('/dist/videoDecoderWorker.js');
+    console.warn('[VideoPipeline] Creating decoder worker from:', decoderWorkerPath);
     this.decoderWorkerInstance = new Worker(
       decoderWorkerPath,
       { type: 'module' }
     );
+    this.decoderWorkerInstance.onerror = (e) => console.error('[VideoPipeline] Decoder worker error:', e);
 
     // Create RPC proxies
     this.encoder = rpcClientServer<EncoderWorker>(
