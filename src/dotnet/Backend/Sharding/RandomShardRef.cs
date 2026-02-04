@@ -19,4 +19,6 @@ public readonly struct RandomShardRef : IEquatable<RandomShardRef>
     public bool Equals(RandomShardRef other) => true;
     public override bool Equals(object? obj) => obj is RandomShardRef;
     public override int GetHashCode() => 0;
+    public static bool operator ==(RandomShardRef left, RandomShardRef right) => left.Equals(right);
+    public static bool operator !=(RandomShardRef left, RandomShardRef right) => !left.Equals(right);
 }
