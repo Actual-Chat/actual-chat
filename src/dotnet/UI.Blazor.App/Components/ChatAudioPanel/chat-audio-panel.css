@@ -673,7 +673,6 @@ body.narrow .audio-panel-wrapper {
     @apply pl-9;
 }
 body.narrow .narrow-panel .audio-panel-wrapper {
-    @apply items-end gap-x-1;
     @apply pl-10;
 }
 body.narrow .chat-message-editor:has(.related-chat-entry-panel) .audio-panel-wrapper,

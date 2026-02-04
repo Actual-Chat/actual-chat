@@ -5,6 +5,7 @@
 }
 
 html {
+    @apply overflow-hidden;
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
     font-size: var(--font-size);
 }
