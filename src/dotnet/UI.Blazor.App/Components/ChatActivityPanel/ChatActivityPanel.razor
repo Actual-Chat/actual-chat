@@ -12,7 +12,7 @@
 
     var chat = Chat;
     var chatId = chat?.Id;
-    var iconSize = ScreenSize.IsNarrow() ? 6 : 5;
+    var iconSize = ScreenSize.IsNarrow() ? 6 : 8;
     var isActive = m.IsAnyoneTalking;
     var tooltip = IsListening ? "Listening..." : "Listen";
     var cls = IsListening ? " listening" : "";
@@ -38,7 +38,7 @@
         <div class="w-full"></div>
     }
     <div class="c-buttons">
-        @if (!IsListening) {
+        @if (!IsListening && !IsRecordingHere) {
             <Button
                 Class="btn-sm btn-transparent unhovered not-listening"
                 StopPropagation="true"
@@ -49,9 +49,9 @@
                 MustKeepAwake="@(!IsListening)">
                 Join muted
             </Button>
-        } else {
-            <ButtonRound
-                Class="btn-sm listening"
+        } else if (IsRecordingHere) {
+            <HeaderButton
+                Class="talking"
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnClick"
@@ -59,7 +59,18 @@
                 TooltipPosition="FloatingPosition.Bottom"
                 MustKeepAwake="@(!IsListening)">
                 <i class="icon-phone-off"></i>
-            </ButtonRound>
+            </HeaderButton>
+        } else {
+            <HeaderButton
+                Class="listening"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnClick"
+                Tooltip="@tooltip"
+                TooltipPosition="FloatingPosition.Bottom"
+                MustKeepAwake="@(!IsListening)">
+                <i class="icon-listen"></i>
+            </HeaderButton>
         }
     </div>
 </div>
@@ -79,7 +90,8 @@
     private ChatId? RecordingChatId {
         get {
             var activeChats = ActiveChatsUI.ActiveChats.Value;
-            return activeChats.Length > 0 ? activeChats[0].ChatId : null;
+            var recordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
+            return recordingChat?.ChatId;
         }
     }
 
