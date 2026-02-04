@@ -6,6 +6,7 @@ using ActualChat.MediaPlayback;
 using ActualChat.Notification;
 using ActualChat.Rtc;
 using ActualChat.Streaming;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

@@ -91,6 +91,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public DateTimeConverter DateTimeConverter => field ??= Services.GetRequiredService<DateTimeConverter>();
     public ComponentIdGenerator ComponentIdGenerator => field ??= Services.GetRequiredService<ComponentIdGenerator>();
     public History History => field ??= Services.GetRequiredService<History>();
+    public AudioFocusService AudioFocusService => field ??= Services.GetRequiredService<AudioFocusService>();
 
     public Tracer TracerFor(string name) => Tracer[name];
     public Tracer TracerFor(Type type) => Tracer[type];

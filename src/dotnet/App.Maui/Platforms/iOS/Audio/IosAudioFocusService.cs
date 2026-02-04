@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using ActualLab.Locking;
 using AVFoundation;
 using Foundation;
@@ -36,6 +37,16 @@ public class IosAudioFocusService : MauiAudioFocusService
         _interruptionSubscription.DisposeSilently();
         _configurationChangeSubscription.DisposeSilently();
         await base.DisposeAsyncCore().ConfigureAwait(false);
+    }
+
+    public override async Task Recover(CancellationToken cancellationToken = default)
+    {
+        using var cancellationToken1 = cancellationToken.LinkWith(StopToken);
+        await AsyncChain.From(RecoverInternal)
+            .Retry(RetryDelays, 3, Log)
+            .LogError(Log)
+            .Run(StopToken)
+            .ConfigureAwait(false);
     }
 
     protected override async Task<AudioFocusHandle?> RequestAudioFocus(AudioMode mode)
@@ -106,38 +117,22 @@ public class IosAudioFocusService : MauiAudioFocusService
         using var _ = await _lock.Lock(StopToken).ConfigureAwait(false);
         switch (type) {
         case AVAudioSessionInterruptionType.Began:
-            // TODO(FROL): please check how canDuck parameter should be set.
             _handle?.RaiseLostFocus(true, false);
             break;
         case AVAudioSessionInterruptionType.Ended:
             // Always attempt recovery - ShouldResume flag is unreliable for phone calls
-            await RecoverFromInterruption().ConfigureAwait(false);
+            await Recover().ConfigureAwait(false);
             break;
         default:
             throw new ArgumentOutOfRangeException(nameof(type), type, "Invalid interruption type");
         }
     }
 
-    private async Task RecoverFromInterruption()
+    private async Task RecoverInternal(CancellationToken cancellationToken)
     {
-        const int maxRetries = 3;
-
-        for (var attempt = 0; attempt < maxRetries; attempt++) {
-            try {
-                await Task.Delay(RetryDelays.GetDelay(attempt), StopToken).ConfigureAwait(false);
-
-                var currentMode = _modes.Keys.DefaultIfEmpty(AudioMode.Tunes).Max();
-                await AudioSession.ReactivateAfterInterruption(currentMode).ConfigureAwait(false);
-                AudioEngines.Resume(currentMode);
-                _handle?.RaiseRecoverFocus();
-
-                Log.LogInformation("Recovery successful on attempt {Attempt}", attempt + 1);
-                return;
-            }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogWarning(e, "Recovery attempt {Attempt} failed", attempt + 1);
-            }
-        }
-        Log.LogError("All recovery attempts failed after {MaxRetries} retries", maxRetries);
+        var currentMode = _modes.Keys.DefaultIfEmpty(AudioMode.Tunes).Max();
+        await AudioSession.Reactivate(currentMode).ConfigureAwait(false);
+        AudioEngines.Resume(currentMode);
+        _handle?.RaiseRecoverFocus();
     }
 }

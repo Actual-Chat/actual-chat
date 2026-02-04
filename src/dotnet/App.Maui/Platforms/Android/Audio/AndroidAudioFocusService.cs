@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using Android.Media;
 
 namespace ActualChat.App.Maui.Audio;
@@ -16,6 +17,13 @@ public class AndroidAudioFocusService : MauiAudioFocusService
         _focusHelper = new AudioFocusHelper(Platform.AppContext, hub.LogFor<AudioFocusHelper>());
         _focusHelper.OnFocusChanged += OnFocusChanged;
         _focusHelper.OnOutputDevicesChanged += OnOutputDevicesChanged;
+    }
+
+    public override Task Recover(CancellationToken cancellationToken = default)
+    {
+        Log.LogInformation("Recover: attempting to recover audio focus");
+        _handle?.RaiseRecoverFocus();
+        return Task.CompletedTask;
     }
 
     protected override async Task<AudioFocusHandle?> RequestAudioFocus(AudioMode mode)

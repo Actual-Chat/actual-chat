@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.UI.Blazor.Services;
 
 public enum AudioMode { Tunes, Playback, Recording }
 
@@ -19,6 +19,9 @@ public class AudioFocusService : ProcessorBase
 {
     public virtual Task<IAudioFocusActivation?> TryGainAudioFocus(AudioFocusConsumer consumer)
         => Task.FromResult<IAudioFocusActivation?>(FakeAudioFocusActivation.Instance);
+
+    public virtual Task Recover(CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
 
     // Nested types
     private class FakeAudioFocusActivation : IAudioFocusActivation

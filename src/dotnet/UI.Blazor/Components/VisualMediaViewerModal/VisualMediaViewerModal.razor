@@ -1,5 +1,6 @@
 @using ActualChat.Chat
 @using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
 @inherits ComponentBase<UIHub>
 @implements IAsyncDisposable
 @implements IModalView<VisualMediaViewerModal.Model>
@@ -132,6 +133,8 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    private AudioFocusService AudioFocusService => Hub.AudioFocusService;
+
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
@@ -145,6 +148,7 @@
         if (selectedAttachment != null) {
             _selectedSlide = _attachments.IndexOf(selectedAttachment);
         }
+        // Resolve the audio focus service (may not be available on web)
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -166,6 +170,10 @@
         _selectedSlide = selectedSlide;
         StateHasChanged();
     }
+
+    [JSInvokable]
+    public Task OnVideoPlaybackStopped()
+        => AudioFocusService.Recover();
 
     private string GetPreviewUrl(TextEntryAttachment attachment) {
         var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
