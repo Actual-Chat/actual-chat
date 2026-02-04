@@ -111,6 +111,7 @@
     --magenta-50-20: #FF005C33;
     --magenta-60-20: #FF388033;
     --magenta-60-10: #FF38801A;
+    --magenta-70-10: #FF649C1A;
     --magenta-70-20: #FF649C33;
     --magenta-80-10: #FF94BA1A;
     --magenta-90-20: #FFC9DC33;
@@ -189,6 +190,8 @@
     --violet-60-10: #A635FF1A;
     --violet-50-20: #8F00FF33;
     --violet-50-10: #8F00FF1A;
+    --violet-70-10: #8F00FF1A;
+    --violet-70-20: #8F00FF33;
     --violet-80-10: #D39AFF1A;
     --violet-80-20: #D39AFF33;
     --violet-80-40: #D39AFF66;

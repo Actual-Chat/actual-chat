@@ -1167,17 +1167,16 @@ export class VirtualList {
                 useSmoothScroll = useSmoothScroll && !isFarFromEdge;
             },
             write: () => {
-                const target = edge == VirtualListEdge.End
-                    ? this.endAnchorRef
-                    : this.spacerRef;
-                if (useSmoothScroll)
-                    target.scrollIntoView({
+                const targetScrollTop = edge == VirtualListEdge.End ? scrollHeight : 0;
+                if (useSmoothScroll) {
+                    // Use scrollTo instead of scrollIntoView - more predictable on iOS
+                    this.ref.scrollTo({
+                        top: targetScrollTop,
                         behavior: 'smooth',
-                        block: 'center',
-                        inline: 'nearest',
                     });
+                }
                 else {
-                    this.ref.scrollTop = edge == VirtualListEdge.End ? scrollHeight : 0;
+                    this.ref.scrollTop = targetScrollTop;
                 }
                 if (edge == VirtualListEdge.End) {
                     void this.turnOnIsEndAnchorVisible();
@@ -1201,14 +1200,17 @@ export class VirtualList {
                 if (!lastItemRef)
                     return false;
 
-                let hasAnchor = false;
-                fastRaf({
-                    read: () => { hasAnchor = lastItemRef.classList.contains('anchor'); },
-                    write: () => {
-                        if (!hasAnchor)
-                            lastItemRef.classList.add('anchor');
-                    },
-                });
+                const hasAnchor = lastItemRef.classList.contains('anchor');
+                const isNewItem = old?.itemKey != null && old.itemKey !== stickyEdge.itemKey;
+                // Add classes synchronously to avoid flicker
+                if (!hasAnchor)
+                    lastItemRef.classList.add('anchor');
+                if (isNewItem) {
+                    lastItemRef.classList.add('appearing');
+                    lastItemRef.addEventListener('animationend', () => {
+                        lastItemRef.classList.remove('appearing');
+                    }, { once: true });
+                }
             }
             return true;
         }
