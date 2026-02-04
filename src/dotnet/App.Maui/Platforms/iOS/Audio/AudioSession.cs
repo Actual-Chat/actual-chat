@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
@@ -20,17 +21,16 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
     public Task Reconfigure(AudioMode mode)
         => MainThread.InvokeOnMainThreadAsync(() => ReconfigureUnsafe(mode));
 
-    public Task ReactivateAfterInterruption(AudioMode mode)
-        => MainThread.InvokeOnMainThreadAsync(() => ReactivateAfterInterruptionUnsafe(mode));
+    public Task Reactivate(AudioMode mode)
+        => MainThread.InvokeOnMainThreadAsync(() => ReactivateUnsafe(mode));
 
-    private void ReactivateAfterInterruptionUnsafe(AudioMode mode)
+    private void ReactivateUnsafe(AudioMode mode)
     {
         var session = AVAudioSession.SharedInstance();
         ConfigureUnsafe(session, mode);
 
-        var success = session.SetActive(true, out var error);
-        if (!success) {
-            Log.LogWarning("Failed to re-activate audio session: {Error}", error?.LocalizedDescription);
+        if (!session.SetActive(true, out var error)) {
+            Log.LogWarning("Failed to re-activate audio session: {Error}", error.LocalizedDescription);
             // Deactivate and retry
             session.SetActive(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation, out _);
             session.SetActive(true, out error);

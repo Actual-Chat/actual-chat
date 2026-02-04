@@ -146,6 +146,15 @@ export class VisualMediaViewer {
         if (this.disposed$.closed)
             return;
 
+        // Pause all videos and notify audio focus system
+        [...this.videos].forEach((video: HTMLMediaElement) => {
+            if (!video.paused) {
+                video.pause();
+            }
+        });
+        // Notify that external media playback stopped when modal closes
+        void this.blazorRef.invokeMethodAsync('OnVideoPlaybackStopped');
+
         this.disposed$.next();
         this.disposed$.complete();
     }
@@ -571,7 +580,16 @@ export class VisualMediaViewer {
 
         fromEvent(video, 'pause')
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: Event) => this.playAndPauseHandler(event, playBtn));
+            .subscribe((event: Event) => {
+                this.playAndPauseHandler(event, playBtn);
+                void this.blazorRef.invokeMethodAsync('OnVideoPlaybackStopped');
+            });
+
+        fromEvent(video, 'ended')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(() => {
+                void this.blazorRef.invokeMethodAsync('OnVideoPlaybackStopped');
+            });
 
         fromEvent(video, 'timeupdate')
             .pipe(takeUntil(this.disposed$))

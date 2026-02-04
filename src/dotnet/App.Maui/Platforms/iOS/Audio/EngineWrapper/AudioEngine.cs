@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
@@ -161,9 +162,8 @@ public class AudioEngine : IDisposable
             return true;
 
         Log.LogInformation("{Mode}.TryEnsureEngineRunningUnsafe: Engine not running, attempting to start", Mode);
-        var success = _engine.StartAndReturnError(out var nsError);
-        if (!success || nsError != null) {
-            Log.LogWarning("{Mode}.TryEnsureEngineRunningUnsafe: Failed to start: {Error}", Mode, nsError?.LocalizedDescription);
+        if (!_engine.StartAndReturnError(out var nsError)) {
+            Log.LogWarning("{Mode}.TryEnsureEngineRunningUnsafe: Failed to start: {Error}", Mode, nsError.LocalizedDescription);
             return false;
         }
         _wasStarted = true;
