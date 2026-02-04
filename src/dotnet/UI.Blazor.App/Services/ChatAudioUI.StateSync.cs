@@ -635,6 +635,15 @@ public partial class ChatAudioUI
         await Task.Delay(options.PreCountdownTimeout, cancellationToken).ConfigureAwait(false);
 
         while (!cancellationToken.IsCancellationRequested) {
+            // If own video is streaming for this chat, treat as activity — don't countdown
+            var videoRecordingChatId = await Hub.ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false);
+            if (videoRecordingChatId == chatId) {
+                lastTranscribedAt = Clocks.ServerClock.Now;
+                yield return null; // No countdown
+                await Task.Delay(options.CheckPeriod, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
             // GetLastActivityTime returns null when there's ongoing activity, timestamp when idle
             var lastActivityTime = await LiveStreamUI.GetLastActivityServerTime(chatId, cancellationToken).ConfigureAwait(false);
             lastTranscribedAt = Moment.Max(lastTranscribedAt, lastActivityTime ?? ServerNow);
