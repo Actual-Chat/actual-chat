@@ -1,4 +1,3 @@
-using ActualLab.Fusion.Client;
 using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
