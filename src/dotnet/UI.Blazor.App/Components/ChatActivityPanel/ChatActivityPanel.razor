@@ -72,11 +72,10 @@
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
 
-    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
-    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
     private ChatId? RecordingChatId {
         get {
             var activeChats = ActiveChatsUI.ActiveChats.Value;
@@ -99,14 +98,6 @@
         await base.DisposeAsync();
     }
 
-    protected override async Task OnParametersSetAsync() {
-        ChatStreamingActivity?.Dispose();
-        ChatStreamingActivity = Chat?.Id is not null
-            ? await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None)
-            : null;
-        await base.OnParametersSetAsync();
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender && ScreenSize.IsNarrow()) {
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
@@ -114,17 +105,14 @@
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        if (ChatStreamingActivity == null)
-            return null;
-
         var chat = Chat;
         var chatId = chat?.Id;
         if (chat is null || chatId is null)
             return null;
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-        var authorIds = await ChatStreamingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
-        return new (chat, audioState, authorIds.Length > 0);
+        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        return new (chat, audioState, isAnyoneTalking);
     }
 
     private void OnClick() {

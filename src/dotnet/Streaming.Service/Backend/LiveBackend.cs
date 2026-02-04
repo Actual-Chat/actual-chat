@@ -26,11 +26,11 @@ public class LiveBackend : ShardComputeService, ILiveBackend
         }
     }
 
-    [ComputeMethod]
+    // [ComputeMethod]
     public virtual Task<ApiArray<LiveStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken)
     {
         var chatStreams = GetChatStreams(chatId);
-        return Task.FromResult(chatStreams.GetActiveStreams());
+        return Task.FromResult(chatStreams.ActiveStreams);
     }
 
     public virtual async Task<RpcStream<LiveStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
@@ -48,7 +48,7 @@ public class LiveBackend : ShardComputeService, ILiveBackend
     {
         var chatStreams = GetChatStreams(chatId);
         if (chatStreams.TryAdd(activeStream)) {
-            InvalidateGetActiveStreams(chatId);
+            InvalidateListActiveStreams(chatId);
             await chatStreams.NotifyNew(activeStream, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -58,7 +58,7 @@ public class LiveBackend : ShardComputeService, ILiveBackend
         if (!_chatStreams.TryGetValue(chatId, out var chatStreams))
             return Task.CompletedTask;
         if (chatStreams.TryRemove(streamId))
-            InvalidateGetActiveStreams(chatId);
+            InvalidateListActiveStreams(chatId);
         return Task.CompletedTask;
     }
 
@@ -67,7 +67,7 @@ public class LiveBackend : ShardComputeService, ILiveBackend
     private ChatStreamSet GetChatStreams(ChatId chatId)
         => _chatStreams.GetOrAdd(chatId, _ => new ChatStreamSet());
 
-    private void InvalidateGetActiveStreams(ChatId chatId)
+    private void InvalidateListActiveStreams(ChatId chatId)
     {
         using (Invalidation.Begin())
             _ = ListActiveStreams(chatId, default);
@@ -84,7 +84,7 @@ public class LiveBackend : ShardComputeService, ILiveBackend
             if (!_chatStreams.TryRemove(chatId, out var chatStreams))
                 continue;
 
-            InvalidateGetActiveStreams(chatId);
+            InvalidateListActiveStreams(chatId);
             chatStreams.Complete(RpcRerouteException.MustReroute());
         }
     }
@@ -96,8 +96,7 @@ public class LiveBackend : ShardComputeService, ILiveBackend
         private readonly ConcurrentDictionary<string, LiveStreamInfo> _streams = new(StringComparer.Ordinal);
         private readonly Channel<LiveStreamInfo> _newStreams = ChannelExt.Create<LiveStreamInfo>(ChannelExt.UnboundedPipeOptions);
 
-        public ApiArray<LiveStreamInfo> GetActiveStreams()
-            => new(_streams.Values.ToArray());
+        public ApiArray<LiveStreamInfo> ActiveStreams => new(_streams.Values);
 
         public async IAsyncEnumerable<LiveStreamInfo> ObserveStreams(
             [EnumeratorCancellation] CancellationToken cancellationToken)

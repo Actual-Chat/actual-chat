@@ -112,10 +112,8 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private SearchUI SearchUI => Hub.SearchUI;
-    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private IChats Chats => Hub.Chats;
-
-    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
 
     private ChatId? RecordingChatId {
         get {
@@ -152,12 +150,6 @@
         await JS.InvokeVoidAsync(JSInitMethod);
     }
 
-    protected override async Task OnParametersSetAsync() {
-        ChatStreamingActivity?.Dispose();
-        ChatStreamingActivity = await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
-        await base.OnParametersSetAsync();
-    }
-
     public override ValueTask DisposeAsync() {
         _animator.Dispose();
         return base.DisposeAsync();
@@ -189,11 +181,7 @@
         var isTransitioning =
             recordingChatId == chatId // The recorder records in this chat
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
-        var isAnyoneTalking = false;
-        if (ChatStreamingActivity != null) {
-            var authorIds = await ChatStreamingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
-            isAnyoneTalking = authorIds.Length > 0;
-        }
+        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
 
 

@@ -51,25 +51,16 @@
 </div>
 
 @code {
-    private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-
-    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
 
-    protected override async Task OnParametersSetAsync() {
-        ChatStreamingActivity?.Dispose();
-        ChatStreamingActivity = await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
-        await base.OnParametersSetAsync();
-    }
-
     protected override async Task<ChatAudioState?> ComputeState(CancellationToken cancellationToken) {
-        if (ChatStreamingActivity == null)
+        var chat = Chat;
+        if (chat?.Id is null)
             return null;
 
-        var chat = Chat;
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
         return audioState;
     }

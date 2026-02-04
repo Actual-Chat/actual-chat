@@ -9,16 +9,5 @@
 </Banner>
 
 @code {
-    private ChatActivity ChatActivity => Hub.ChatActivity;
-
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
-
-    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
-
-    protected override async Task OnParametersSetAsync() {
-        ChatStreamingActivity?.Dispose();
-        ChatStreamingActivity = Chat?.Id is null ? null
-            : await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
-        await base.OnParametersSetAsync();
-    }
 }

@@ -1,5 +1,7 @@
-using ActualChat.UI.Blazor.App.Services;
+using ActualChat.Live;
+using ActualChat.Streaming;
 using ActualChat.Testing.Host;
+using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -17,83 +19,45 @@ public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITe
         var services = tester.AppServices;
         var clientServices = tester.ScopedAppServices;
         var authors = services.GetRequiredService<IAuthors>();
+        var liveBackend = services.GetRequiredService<ILiveBackend>();
         await tester.SignInAsBob();
         var session = tester.Session;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var ct = cts.Token;
         try {
-            var chatActivity = clientServices.GetRequiredService<ChatActivity>();
-            using var recordingActivity = await chatActivity.GetStreamingActivity(TestChatId, ct);
-            var cStreamingEntries = await Computed.Capture(() => recordingActivity.GetStreamingEntries(ct), ct);
-            var cStreamingAuthorIds = await Computed.Capture(() => recordingActivity.GetStreamingAuthorIds(ct), ct);
-            cStreamingEntries.Value.Count.Should().Be(0);
+            var liveStreamUI = clientServices.GetRequiredService<LiveStreamUI>();
+            var author = await authors.EnsureJoined(session, TestChatId, ct);
 
-            var tcs1 = new TaskCompletionSource();
-            var tcs2 = new TaskCompletionSource();
-
-            _ = Task.Run(() => AddChatEntries(session, authors, tcs1.Task, tcs2.Task, ct), ct);
-
-            cStreamingEntries.Value.Count.Should().Be(0);
+            var cStreamingAuthorIds = await Computed.Capture(() => liveStreamUI.GetStreamingAuthorIds(TestChatId, ct), ct);
             cStreamingAuthorIds.Value.Length.Should().Be(0);
 
-            // Step1
-            tcs1.SetResult();
+            // Register an active stream
+            var streamInfo = new LiveStreamInfo {
+                ChatId = TestChatId,
+                AuthorId = author.Id,
+                StreamId = "test-stream-1",
+                BeginsAt = MomentClockSet.Default.SystemClock.Now,
+            };
+            await liveBackend.RegisterActiveStream(TestChatId, streamInfo, ct);
 
-            await cStreamingEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
-            cStreamingAuthorIds = await cStreamingAuthorIds.When(x => x.Length == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
+            // Verify stream is visible
+            await cStreamingAuthorIds.When(x => x.Length == 1, ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
             var authorId = cStreamingAuthorIds.Value.Single();
-            var cIsAuthorActive = await Computed.Capture(() => recordingActivity.IsAuthorStreaming(authorId, ct), ct);
-            await cIsAuthorActive.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            authorId.Should().Be(author.Id);
 
-            // Step2
-            tcs2.SetResult();
+            var cIsAuthorStreaming = await Computed.Capture(() => liveStreamUI.IsAuthorStreaming(TestChatId, authorId, ct), ct);
+            await cIsAuthorStreaming.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
 
-            await cStreamingEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
-            await cStreamingAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
-            await cIsAuthorActive.When(x => !x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            // Unregister the stream
+            await liveBackend.UnregisterActiveStream(TestChatId, streamInfo.StreamId, ct);
+
+            // Verify stream is gone
+            await cStreamingAuthorIds.When(x => x.Length == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
+            await cIsAuthorStreaming.When(x => !x, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
         }
         finally {
             await cts.CancelAsync();
         }
-    }
-
-    private async Task AddChatEntries(
-        Session session,
-        IAuthors authors,
-        Task step1,
-        Task step2,
-        CancellationToken cancellationToken)
-    {
-        await step1.ConfigureAwait(false);
-
-        var author = await authors.EnsureJoined(session, TestChatId, CancellationToken.None).ConfigureAwait(false);
-        var clock = MomentClockSet.Default.SystemClock;
-        var id = AudioEntryId.New(TestChatId, 0);
-        var entry = new ChatEntry(id) {
-            AuthorId = author.Id,
-            Content = "",
-            StreamId = "FAKE",
-            BeginsAt = clock.Now + TimeSpan.FromMilliseconds(20),
-            ClientSideBeginsAt = clock.Now,
-        };
-        var commander = authors.GetCommander();
-        var createCommand = new ChatsBackend_ChangeEntry(id, null, Change.Create(new ChatEntryDiff(entry)));
-        entry = await commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
-
-        await step2.ConfigureAwait(false);
-
-        var endsAt = clock.Now;
-        var completeCommand = new ChatsBackend_ChangeEntry(
-            entry.Id,
-            entry.Version,
-            Change.Update(new ChatEntryDiff {
-                EndsAt = endsAt,
-                StreamId = Symbol.Empty,
-            }));
-        entry = await commander.Call(completeCommand, true, cancellationToken).ConfigureAwait(false);
-
-        entry.StreamId.IsNullOrEmpty().Should().BeTrue();
-        entry.EndsAt.Should().Be(endsAt);
     }
 }

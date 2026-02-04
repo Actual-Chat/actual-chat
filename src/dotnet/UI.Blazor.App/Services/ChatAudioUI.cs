@@ -11,7 +11,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
 
     private IChats Chats => Hub.Chats;
-    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private IAudioInitializer AudioInitializer => Hub.AudioInitializer;
     private AudioSettings AudioSettings => Hub.AudioSettings;

@@ -575,9 +575,10 @@ public partial class ChatAudioUI
         // We just started, so it's ok to await for the countdown interval first
         await Task.Delay(options.PreCountdownTimeout, cancellationToken).ConfigureAwait(false);
 
-        using var streamingActivity = await ChatActivity.GetStreamingActivity(chatId, cancellationToken).ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
-            lastTranscribedAt = Moment.Max(lastTranscribedAt, streamingActivity.LastTranscribedAt.Value ?? ServerNow);
+            // GetLastActivityTime returns null when there's ongoing activity, timestamp when idle
+            var lastActivityTime = await LiveStreamUI.GetLastActivityServerTime(chatId, cancellationToken).ConfigureAwait(false);
+            lastTranscribedAt = Moment.Max(lastTranscribedAt, lastActivityTime ?? ServerNow);
             var idleAt = lastTranscribedAt + options.IdleTimeout;
             var idleDelay = (idleAt - ServerNow).Positive();
             if (idleDelay <= Epsilon) {

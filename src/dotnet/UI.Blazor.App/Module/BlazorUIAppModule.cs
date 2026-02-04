@@ -58,9 +58,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(_ => new PlayableTextPaletteProvider());
         services.AddScoped(_ => new AudioFocusService());
 
-        // Chat activity
-        services.AddScoped(c => new ChatActivity(c.AppUIHub()));
-        fusion.AddService<ChatStreamingActivity>(ServiceLifetime.Transient);
+        // Live stream UI
+        fusion.AddService<LiveStreamUI>(ServiceLifetime.Scoped);
 
         // Settings
         services.AddSingleton(_ => new AudioSettings()); // Used in StreamingServiceModule as well

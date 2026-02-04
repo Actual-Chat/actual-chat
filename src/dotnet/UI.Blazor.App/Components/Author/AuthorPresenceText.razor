@@ -8,31 +8,11 @@
 
 @code {
     private IAuthors Authors => Hub.Authors;
-    private ChatActivity ChatActivity => Hub.ChatActivity;
-
-    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
+    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
 
     [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
     [Parameter] public bool ShowRecording { get; set; }
     [Parameter] public bool IsShortText { get; set; }
-
-    public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
-        ChatStreamingActivity?.Dispose();
-        ChatStreamingActivity = null;
-    }
-
-    protected override void OnParametersSet()
-    {
-        ChatStreamingActivity?.Dispose();
-        ChatStreamingActivity = null;
-    }
-
-    protected override async Task OnParametersSetAsync() {
-        if (ShowRecording && AuthorId is not null)
-            ChatStreamingActivity = await ChatActivity.GetStreamingActivity(AuthorId.ChatId, CancellationToken.None);
-        await base.OnParametersSetAsync();
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -47,14 +27,11 @@
             return Model.None;
 
         var chatId = authorId.ChatId;
-        var streamingActivity = ShowRecording && ChatStreamingActivity != null
-            ? ChatStreamingActivity
-            : null;
 
         // The code below doesn't use any component prop, so we can use .ConfigureAwait(false)
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
-        if (streamingActivity != null) {
-            var isStreaming = await streamingActivity.IsAuthorStreaming(authorId, cancellationToken).ConfigureAwait(false);
+        if (ShowRecording) {
+            var isStreaming = await LiveStreamUI.IsAuthorStreaming(chatId, authorId, cancellationToken).ConfigureAwait(false);
             if (isStreaming)
                 presence = Presence.Recording;
         }

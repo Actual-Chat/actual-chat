@@ -14,11 +14,10 @@
 
 @code {
     private IChats Chats => Hub.Chats;
-    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
-    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
     private ChatId? RecordingChatId {
         get {
             var activeChats = ActiveChatsUI.ActiveChats.Value;
@@ -31,18 +30,7 @@
     [Parameter, EditorRequired] public ChatId? ChatId { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    protected override async Task OnParametersSetAsync() {
-        ChatStreamingActivity?.Dispose();
-        ChatStreamingActivity = ChatId is not null
-            ? await ChatActivity.GetStreamingActivity(ChatId, CancellationToken.None)
-            : null;
-        await base.OnParametersSetAsync();
-    }
-
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        if (ChatStreamingActivity == null)
-            return null;
-
         var chatId = ChatId;
         if (chatId is null)
             return null;
@@ -52,9 +40,9 @@
             return null;
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-        var authorIds = await ChatStreamingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+        var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
 
-        return new (chat, audioState, authorIds.Length > 0);
+        return new (chat, audioState, isAnyoneTalking);
     }
 
     // Nested types
