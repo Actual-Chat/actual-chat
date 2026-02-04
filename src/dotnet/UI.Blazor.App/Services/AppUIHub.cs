@@ -4,7 +4,7 @@ using ActualChat.Invite;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.Notification;
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualChat.Streaming;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -25,6 +25,9 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();
     public IChatUsages ChatUsages => field ??= Services.GetRequiredService<IChatUsages>();
     public INotifications Notifications => field ??= Services.GetRequiredService<INotifications>();
+    public ITranslations Translations => field ??= Services.GetRequiredService<ITranslations>();
+    public IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
+    public ILiveHub LiveHub => field ??= Services.GetRequiredService<ILiveHub>();
 
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
     public SendingMessages SendingMessages => field ??= Services.GetRequiredService<SendingMessages>();
@@ -43,6 +46,9 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public HighlightUI HighlightUI => field ??= Services.GetRequiredService<HighlightUI>();
     public new OnboardingUI OnboardingUI => (OnboardingUI)base.OnboardingUI;
     public SearchUI SearchUI => field ??= Services.GetRequiredService<SearchUI>();
+    public TranslationUI TranslationUI => field ??= Services.GetRequiredService<TranslationUI>();
+    public TranscriptUI TranscriptUI => field ??= Services.GetRequiredService<TranscriptUI>();
+    public LinkPreviewUI LinkPreviewUI => field ??= Services.GetRequiredService<LinkPreviewUI>();
 
     public ChatActivity ChatActivity => field ??= Services.GetRequiredService<ChatActivity>();
     public ChatPlayers ChatPlayers => field ??= Services.GetRequiredService<ChatPlayers>();
@@ -57,12 +63,6 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public PlayableTextPaletteProvider PlayableTextPaletteProvider => field ??= Services.GetRequiredService<PlayableTextPaletteProvider>();
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => field ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
-    public IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
-    public IRtcHub RtcHub => field ??= Services.GetRequiredService<IRtcHub>();
-    public ITranslations Translations => field ??= Services.GetRequiredService<ITranslations>();
-    public TranslationUI TranslationUI => field ??= Services.GetRequiredService<TranslationUI>();
-    public TranscriptUI TranscriptUI => field ??= Services.GetRequiredService<TranscriptUI>();
-    public LinkPreviewUI LinkPreviewUI => field ??= Services.GetRequiredService<LinkPreviewUI>();
     public MarkupHelpers MarkupHelpers => field ??= new MarkupHelpers(this);
 
     // Some handy helpers

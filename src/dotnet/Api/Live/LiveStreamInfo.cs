@@ -1,13 +1,13 @@
 using ActualChat.Audio;
 using MemoryPack;
 
-namespace ActualChat.Rtc;
+namespace ActualChat.Live;
 
 /// <summary>
 /// Information about an active audio stream in a chat.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record RtcStreamInfo
+public sealed partial record LiveStreamInfo
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public ChatId ChatId { get; init; } = null!;

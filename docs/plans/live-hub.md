@@ -1,4 +1,4 @@
-# RTC Hub: Multiplexed Streaming Service
+# Live Hub: Multiplexed Streaming Service
 
 ## Goal
 Replace the current RealtimeChatPlayer's multi-call architecture with a single multiplexed RPC stream to minimize latency.
@@ -23,7 +23,7 @@ Client                          Server
 Client                          Server
   │                               │
   ├─ GetStream(config) ──────────►│ (single RPC call)
-  │◄── RpcStream<RtcItem> ────────┤ (multiplexed: control + audio frames)
+  │◄── RpcStream<LiveItem> ───────┤ (multiplexed: control + audio frames)
   │    [StreamStarted id=1]       │
   │    [AudioFrame id=1 data=...] │
   │    [StreamStarted id=2]       │
@@ -54,126 +54,126 @@ public class ChannelDemuxer<TKey, TItem> : IAsyncDisposable
 }
 ```
 
-### Phase 2: Domain Models (`src/dotnet/Api/Rtc/`)
+### Phase 2: Domain Models (`src/dotnet/Api/Live/`)
 
 #### 2.1 Base Item Type
 ```csharp
-// RtcItem.cs - polymorphic base for all stream items
-[DataContract, MemoryPackable, MemoryPackUnion(0, typeof(RtcAudioFrame))]
-[MemoryPackUnion(1, typeof(RtcStreamStart))]
-[MemoryPackUnion(2, typeof(RtcStreamEnd))]
-public abstract partial record RtcItem;
+// LiveItem.cs - polymorphic base for all stream items
+[DataContract, MemoryPackable, MemoryPackUnion(0, typeof(LiveAudioFrame))]
+[MemoryPackUnion(1, typeof(LiveStreamStart))]
+[MemoryPackUnion(2, typeof(LiveStreamEnd))]
+public abstract partial record LiveItem;
 ```
 
 #### 2.2 Derived Item Types
 ```csharp
-// RtcAudioFrame.cs - audio data packet
+// LiveAudioFrame.cs - audio data packet
 [DataContract, MemoryPackable]
-public sealed partial record RtcAudioFrame(
+public sealed partial record LiveAudioFrame(
     [property: DataMember(Order = 0)] int StreamIndex,
     [property: DataMember(Order = 1)] byte[] Data
-) : RtcItem;
+) : LiveItem;
 
-// RtcStreamStart.cs - new stream announcement
+// LiveStreamStart.cs - new stream announcement
 [DataContract, MemoryPackable]
-public sealed partial record RtcStreamStart(
+public sealed partial record LiveStreamStart(
     [property: DataMember(Order = 0)] int StreamIndex,
     [property: DataMember(Order = 1)] Moment BeginsAt,
     [property: DataMember(Order = 2)] AuthorId AuthorId,
     [property: DataMember(Order = 3)] ChatEntryId EntryId,
     [property: DataMember(Order = 4)] AudioFormat Format
-) : RtcItem;
+) : LiveItem;
 
-// RtcStreamEnd.cs - stream completed
+// LiveStreamEnd.cs - stream completed
 [DataContract, MemoryPackable]
-public sealed partial record RtcStreamEnd(
+public sealed partial record LiveStreamEnd(
     [property: DataMember(Order = 0)] int StreamIndex
-) : RtcItem;
+) : LiveItem;
 ```
 
 #### 2.3 Configuration Model
 ```csharp
-// RtcStreamConfig.cs
+// LiveStreamingSettings.cs
 [DataContract, MemoryPackable]
-public sealed partial record RtcStreamConfig(
+public sealed partial record LiveStreamingSettings(
     [property: DataMember(Order = 0)] bool IsListening = true,
-    [property: DataMember(Order = 1)] RtcStreamKind Kinds = RtcStreamKind.Audio
+    [property: DataMember(Order = 1)] LiveStreamKind Kinds = LiveStreamKind.Audio
 );
 
 [Flags]
-public enum RtcStreamKind { None = 0, Audio = 1, /* Future: Video = 2 */ }
+public enum LiveStreamKind { None = 0, Audio = 1, /* Future: Video = 2 */ }
 ```
 
-### Phase 3: Contracts (`src/dotnet/Api.Contracts/Rtc/`)
+### Phase 3: Contracts (`src/dotnet/Api.Contracts/Live/`)
 
 #### 3.1 Server Interface
 ```csharp
-// IRtcHub.cs
-public interface IRtcHub : IRpcService
+// ILiveHub.cs
+public interface ILiveHub : IRpcService
 {
-    Task<RpcStream<RtcItem>> GetStream(
+    Task<RpcStream<LiveItem>> GetStream(
         Session session,
         ChatId chatId,
-        RtcStreamConfig config,
+        LiveStreamingSettings config,
         CancellationToken cancellationToken);
 
     Task UpdateConfig(
         Session session,
         ChatId chatId,
-        RtcStreamConfig config,
+        LiveStreamingSettings config,
         CancellationToken cancellationToken);
 }
 ```
 
 ### Phase 4: Server Implementation (`src/dotnet/Streaming.Service/`)
 
-#### 4.1 RtcHub (Frontend Service)
+#### 4.1 LiveHub (Frontend Service)
 ```csharp
-// Services/RtcHub.cs
-public class RtcHub : IRtcHub
+// Services/LiveHub.cs
+public class LiveHub : ILiveHub
 {
-    public async Task<RpcStream<RtcItem>> GetStream(...)
+    public async Task<RpcStream<LiveItem>> GetStream(...)
     {
         // Validate, create muxer, return RpcStream.New()
     }
 }
 ```
 
-#### 4.2 RtcStreamMuxer
+#### 4.2 LiveStreamMuxer
 ```csharp
-// Services/RtcStreamMuxer.cs
-public class RtcStreamMuxer : IAsyncDisposable
+// Services/LiveStreamMuxer.cs
+public class LiveStreamMuxer : IAsyncDisposable
 {
-    private readonly Channel<RtcItem> _output;
-    private readonly ChannelMuxer<RtcItem> _muxer;
+    private readonly Channel<LiveItem> _output;
+    private readonly ChannelMuxer<LiveItem> _muxer;
 
     // Watches chat entries, for each streaming entry:
-    // - Emit RtcStreamStart
-    // - Subscribe to audio stream, wrap frames as RtcAudioFrame
-    // - Emit RtcStreamEnd when done
+    // - Emit LiveStreamStart
+    // - Subscribe to audio stream, wrap frames as LiveAudioFrame
+    // - Emit LiveStreamEnd when done
 
-    public ChannelReader<RtcItem> Output => _output.Reader;
-    public void UpdateConfig(RtcStreamConfig config);
+    public ChannelReader<LiveItem> Output => _output.Reader;
+    public void UpdateConfig(LiveStreamingSettings config);
 }
 ```
 
-### Phase 5: Client Implementation (`src/dotnet/UI.Blazor.App/Services/Rtc/`)
+### Phase 5: Client Implementation (`src/dotnet/UI.Blazor.App/Services/Live/`)
 
-#### 5.1 RtcStreamDemuxer
+#### 5.1 LiveStreamDemuxer
 ```csharp
-// RtcStreamDemuxer.cs
-public class RtcStreamDemuxer : IAsyncDisposable
+// LiveStreamDemuxer.cs
+public class LiveStreamDemuxer : IAsyncDisposable
 {
-    public event Action<RtcStreamStart, IAsyncEnumerable<byte[]>> StreamStarted;
+    public event Action<LiveStreamStart, IAsyncEnumerable<byte[]>> StreamStarted;
     public event Action<int> StreamEnded;
 
-    public async Task RunAsync(RpcStream<RtcItem> input, CancellationToken ct);
+    public async Task RunAsync(RpcStream<LiveItem> input, CancellationToken ct);
 }
 ```
 
 ### Phase 6: Update RealtimeChatPlayer
 
-Replace ChatEntryReader + GetAudio() calls with RtcStreamDemuxer consumption.
+Replace ChatEntryReader + GetAudio() calls with LiveStreamDemuxer consumption.
 
 ## File Structure
 ```
@@ -181,25 +181,25 @@ src/dotnet/
 ├── Core/Channels/
 │   ├── ChannelMuxer.cs
 │   └── ChannelDemuxer.cs
-├── Api/Rtc/
-│   ├── RtcItem.cs
-│   ├── RtcAudioFrame.cs
-│   ├── RtcStreamStart.cs
-│   ├── RtcStreamEnd.cs
-│   └── RtcStreamConfig.cs
-├── Api.Contracts/Rtc/
-│   └── IRtcHub.cs
+├── Api/Live/
+│   ├── LiveItem.cs
+│   ├── LiveAudioFrame.cs
+│   ├── LiveStreamStart.cs
+│   ├── LiveStreamEnd.cs
+│   └── LiveStreamingSettings.cs
+├── Api.Contracts/Live/
+│   └── ILiveHub.cs
 ├── Streaming.Service/Services/
-│   ├── RtcHub.cs
-│   └── RtcStreamMuxer.cs
-└── UI.Blazor.App/Services/Rtc/
-    └── RtcStreamDemuxer.cs
+│   ├── LiveHub.cs
+│   └── LiveStreamMuxer.cs
+└── UI.Blazor.App/Services/Live/
+    └── LiveStreamDemuxer.cs
 ```
 
 ## Implementation Order
 1. Channel helpers in Core (ChannelMuxer, ChannelDemuxer)
-2. Domain models (Api/Rtc/)
-3. Contract interface (Api.Contracts/Rtc/IRtcHub.cs)
+2. Domain models (Api/Live/)
+3. Contract interface (Api.Contracts/Live/ILiveHub.cs)
 4. Server muxer (Streaming.Service)
 5. Client demuxer (UI.Blazor.App)
 6. Update RealtimeChatPlayer

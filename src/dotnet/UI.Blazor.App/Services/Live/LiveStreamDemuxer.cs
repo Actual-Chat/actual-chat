@@ -1,26 +1,26 @@
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualLab.Rpc;
 
-namespace ActualChat.UI.Blazor.App.Services.Rtc;
+namespace ActualChat.UI.Blazor.App.Services.Live;
 
 /// <summary>
-/// Demultiplexes a single RTC stream into individual audio streams.
+/// Demultiplexes a single Live stream into individual audio streams.
 /// Raises events when streams start and end.
 /// </summary>
-public sealed class RtcStreamDemuxer(
-    RpcStream<RtcItem> input,
+public sealed class LiveStreamDemuxer(
+    RpcStream<LiveItem> input,
     ILogger? log,
     CancellationTokenSource? stopTokenSource = null)
     : WorkerBase(stopTokenSource)
 {
-    private static bool DebugMode => Constants.DebugMode.RtcStreaming;
+    private static bool DebugMode => Constants.DebugMode.LiveStreaming;
     private readonly ConcurrentDictionary<int, Channel<byte[]>> _streams = new();
 
-    private RpcStream<RtcItem> Input { get; } = input;
+    private RpcStream<LiveItem> Input { get; } = input;
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
-    public event Action<RtcStreamInfo, IAsyncEnumerable<byte[]>>? StreamStarted;
+    public event Action<LiveStreamInfo, IAsyncEnumerable<byte[]>>? StreamStarted;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -30,7 +30,7 @@ public sealed class RtcStreamDemuxer(
                 itemCount++;
                 var channel = _streams.GetValueOrDefault(item.StreamIndex);
                 switch (item) {
-                case RtcStreamStart start:
+                case LiveStreamStart start:
                     if (channel is not null) {
                         Log?.LogWarning("StreamStart #{StreamIndex}: duplicate!", start.StreamIndex);
                         continue;
@@ -45,13 +45,13 @@ public sealed class RtcStreamDemuxer(
                     var audioFrames = ToAsyncEnumerable(channel.Reader, CancellationToken.None);
                     StreamStarted?.Invoke(start.StreamInfo, audioFrames);
                     break;
-                case RtcAudioFrame frame:
+                case LiveAudioFrame frame:
                     if (channel is null)
                         continue;
                     if (!channel.Writer.TryWrite(frame.Data))
                         Log?.LogWarning("Failed to write frame for stream {StreamIndex}", frame.StreamIndex);
                     continue;
-                case RtcStreamEnd end:
+                case LiveStreamEnd end:
                     DebugLog?.LogDebug("StreamEnd #{StreamIndex}", end.StreamIndex);
                     if (channel is null)
                         continue;
@@ -69,7 +69,7 @@ public sealed class RtcStreamDemuxer(
             Log?.LogError(e, "Reconnect failed after {ItemCount} items", itemCount);
         }
         catch (Exception e) {
-            Log?.LogError(e, "Error processing RTC stream after {ItemCount} items", itemCount);
+            Log?.LogError(e, "Error processing Live stream after {ItemCount} items", itemCount);
         }
         finally {
             // Clean up all remaining streams; we don't propagate the error here

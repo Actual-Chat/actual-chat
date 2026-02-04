@@ -2,7 +2,7 @@
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Redis.Module;
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualChat.Streaming.Services;
 using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.AspNetCore.Builder;
@@ -43,9 +43,9 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         }
 
         rpcHost.AddApi<IStreamServer, StreamServer>();
-        rpcHost.AddApi<IRtcHub, RtcHub>();
+        rpcHost.AddApi<ILiveHub, LiveHub>();
         rpcHost.AddBackend<IStreamingBackend, StreamingBackend>();
-        rpcHost.AddBackend<IRtcBackend, RtcBackend>();
+        rpcHost.AddBackend<ILiveBackend, LiveBackend>();
         services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IStreamingBackend
         services.AddSingleton<AudioDownloader, BlobStorageAudioDownloader>(); // Server-side AudioDownloader
         services.TryAddSingleton<AudioSettings>(); // AudioSettings are not configured now

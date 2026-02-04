@@ -1,23 +1,23 @@
 using ActualChat.Audio;
 using ActualChat.Chat;
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class LiveBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     /// <summary>
-    /// Tests that IRtcBackend.ObserveStreams works in loopback mode (same host produces and consumes).
+    /// Tests that ILiveBackend.ObserveStreams works in loopback mode (same host produces and consumes).
     /// This is the simplest possible test for the RPC stream functionality.
     /// </summary>
     [Fact]
     public async Task ObserveStreams_ShouldWorkInLoopback()
     {
         var services = AppHost.Services;
-        var log = services.LogFor<RtcBackendStreamTest>();
+        var log = services.LogFor<LiveBackendStreamTest>();
 
         // Create a test chat
         var commander = services.Commander();
@@ -26,7 +26,7 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
 
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "RtcBackendStreamTest",
+                Title = "LiveBackendStreamTest",
                 Kind = ChatKind.Group,
             },
         }));
@@ -36,14 +36,14 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
         log.LogInformation("Created chat {ChatId}", chatId);
 
         // Get the backend service
-        var rtcBackend = services.GetRequiredService<IRtcBackend>();
+        var liveBackend = services.GetRequiredService<ILiveBackend>();
 
         // Start observing streams
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var receivedStreams = new List<RtcStreamInfo>();
+        var receivedStreams = new List<LiveStreamInfo>();
 
         log.LogInformation("Calling ObserveStreams for chat {ChatId}...", chatId);
-        var rpcStream = await rtcBackend.ObserveStreams(chatId, cts.Token);
+        var rpcStream = await liveBackend.ObserveStreams(chatId, cts.Token);
         log.LogInformation("Got RpcStream, starting enumeration...");
 
         // Start collecting in background
@@ -70,7 +70,7 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
         await Task.Delay(500, cts.Token);
 
         // Now register a stream (simulating what StreamingBackend does)
-        var testStreamInfo = new RtcStreamInfo {
+        var testStreamInfo = new LiveStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
             StreamId = $"test-stream-{Guid.NewGuid():N}",
@@ -80,8 +80,8 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
 
         log.LogInformation("Registering active stream: {StreamId}", testStreamInfo.StreamId);
 
-        // Use the interface method (now part of IRtcBackend)
-        await rtcBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
+        // Use the interface method (now part of ILiveBackend)
+        await liveBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
 
         log.LogInformation("Stream registered, waiting for it to be received...");
 
@@ -106,7 +106,7 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
     public async Task ObserveStreams_ShouldYieldExistingStreamsFirst()
     {
         var services = AppHost.Services;
-        var log = services.LogFor<RtcBackendStreamTest>();
+        var log = services.LogFor<LiveBackendStreamTest>();
 
         // Create a test chat
         var commander = services.Commander();
@@ -115,17 +115,17 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
 
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "RtcBackendStreamTest2",
+                Title = "LiveBackendStreamTest2",
                 Kind = ChatKind.Group,
             },
         }));
         chat.Require();
         var chatId = chat.Id;
 
-        var rtcBackend = services.GetRequiredService<IRtcBackend>();
+        var liveBackend = services.GetRequiredService<ILiveBackend>();
 
         // First, register a stream BEFORE calling ObserveStreams
-        var existingStreamInfo = new RtcStreamInfo {
+        var existingStreamInfo = new LiveStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
             StreamId = $"existing-stream-{Guid.NewGuid():N}",
@@ -134,14 +134,14 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
         };
 
         log.LogInformation("Registering existing stream: {StreamId}", existingStreamInfo.StreamId);
-        await rtcBackend.RegisterActiveStream(chatId, existingStreamInfo, CancellationToken.None);
+        await liveBackend.RegisterActiveStream(chatId, existingStreamInfo, CancellationToken.None);
 
         // Now call ObserveStreams - it should immediately yield the existing stream
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var receivedStreams = new List<RtcStreamInfo>();
+        var receivedStreams = new List<LiveStreamInfo>();
 
         log.LogInformation("Calling ObserveStreams...");
-        var rpcStream = await rtcBackend.ObserveStreams(chatId, cts.Token);
+        var rpcStream = await liveBackend.ObserveStreams(chatId, cts.Token);
 
         // Try to get the first item with a short timeout
         var enumerator = rpcStream.GetAsyncEnumerator(cts.Token);
@@ -168,7 +168,7 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
     public async Task ObserveStreams_MultipleConcurrentConsumers()
     {
         var services = AppHost.Services;
-        var log = services.LogFor<RtcBackendStreamTest>();
+        var log = services.LogFor<LiveBackendStreamTest>();
 
         // Create a test chat
         var commander = services.Commander();
@@ -177,23 +177,23 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
 
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "RtcBackendStreamTest3",
+                Title = "LiveBackendStreamTest3",
                 Kind = ChatKind.Group,
             },
         }));
         chat.Require();
         var chatId = chat.Id;
 
-        var rtcBackend = services.GetRequiredService<IRtcBackend>();
+        var liveBackend = services.GetRequiredService<ILiveBackend>();
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
         // Start two concurrent consumers
-        var consumer1Streams = new List<RtcStreamInfo>();
-        var consumer2Streams = new List<RtcStreamInfo>();
+        var consumer1Streams = new List<LiveStreamInfo>();
+        var consumer2Streams = new List<LiveStreamInfo>();
 
-        var stream1 = await rtcBackend.ObserveStreams(chatId, cts.Token);
-        var stream2 = await rtcBackend.ObserveStreams(chatId, cts.Token);
+        var stream1 = await liveBackend.ObserveStreams(chatId, cts.Token);
+        var stream2 = await liveBackend.ObserveStreams(chatId, cts.Token);
 
         var consumer1Task = Task.Run(async () => {
             try {
@@ -214,7 +214,7 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
         await Task.Delay(500, cts.Token);
 
         // Register a stream
-        var testStreamInfo = new RtcStreamInfo {
+        var testStreamInfo = new LiveStreamInfo {
             ChatId = chatId,
             AuthorId = AuthorId.New(chatId, 1),
             StreamId = $"multi-consumer-stream-{Guid.NewGuid():N}",
@@ -223,7 +223,7 @@ public class RtcBackendStreamTest(AppHostFixture fixture, ITestOutputHelper @out
         };
 
         log.LogInformation("Registering stream: {StreamId}", testStreamInfo.StreamId);
-        await rtcBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
+        await liveBackend.RegisterActiveStream(chatId, testStreamInfo, cts.Token);
 
         // Wait for both consumers to receive
         await Task.Delay(2000, cts.Token);

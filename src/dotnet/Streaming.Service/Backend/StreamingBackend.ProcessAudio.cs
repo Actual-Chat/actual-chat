@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Kvas;
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
 
@@ -87,14 +87,14 @@ public partial class StreamingBackend
 
         // Register active stream as early as possible (before creating ChatEntry)
         if (mustStreamVoice) {
-            var activeStream = new RtcStreamInfo {
+            var activeStream = new LiveStreamInfo {
                 ChatId = chatId,
                 AuthorId = author.Id,
                 StreamId = openSegment.StreamId.Value,
                 BeginsAt = beginsAt,
                 Format = audio.Format,
             };
-            await RtcBackend.RegisterActiveStream(chatId, activeStream, cancellationToken).ConfigureAwait(false);
+            await LiveBackend.RegisterActiveStream(chatId, activeStream, cancellationToken).ConfigureAwait(false);
         }
 
         var audioStream = openSegment.Source
@@ -142,8 +142,8 @@ public partial class StreamingBackend
 
         string? audioBlobId = null;
         if (mustStreamVoice) {
-            // Unregister active stream from RtcBackend (use CancellationToken.None to ensure cleanup happens)
-            await RtcBackend.UnregisterActiveStream(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
+            // Unregister active stream from LiveBackend (use CancellationToken.None to ensure cleanup happens)
+            await LiveBackend.UnregisterActiveStream(chatId, openSegment.StreamId.Value, CancellationToken.None).ConfigureAwait(false);
             // We should finalize audio entry regardless of cancellation - that's why CancellationToken.None
             audioBlobId = await AudioSegmentSaver.Save(closedSegment, CancellationToken.None).ConfigureAwait(false);
         }

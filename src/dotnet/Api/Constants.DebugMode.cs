@@ -34,7 +34,7 @@ public static partial class Constants
         public static readonly bool AudioProcessor = true;
         public static readonly bool AudioTrackPlayer = false;
         public static readonly bool NativeAudioPlayer = false;
-        public static readonly bool RtcStreaming = false;
+        public static readonly bool LiveStreaming = false;
 
         public static readonly bool ChatPlayers = false;
         public static bool ChatPlayersPlayMyOwnAudio

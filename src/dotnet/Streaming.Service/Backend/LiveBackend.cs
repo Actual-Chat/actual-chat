@@ -1,13 +1,13 @@
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-public class RtcBackend : ShardComputeService, IRtcBackend
+public class LiveBackend : ShardComputeService, ILiveBackend
 {
     private readonly ConcurrentDictionary<ChatId, ChatStreamSet> _chatStreams = new();
 
-    public RtcBackend(IServiceProvider services)
+    public LiveBackend(IServiceProvider services)
         : base(services, ShardScheme.AudioBackend)
     {
         var stopToken = ShardOwner.StopToken;
@@ -27,13 +27,13 @@ public class RtcBackend : ShardComputeService, IRtcBackend
     }
 
     [ComputeMethod]
-    public virtual Task<ApiArray<RtcStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken)
+    public virtual Task<ApiArray<LiveStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken)
     {
         var chatStreams = GetChatStreams(chatId);
         return Task.FromResult(chatStreams.GetActiveStreams());
     }
 
-    public virtual async Task<RpcStream<RtcStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<LiveStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
     {
         var shardState = ShardOwner.States[ShardScheme.GetShardIndex(chatId)].Value;
         var shardOwnership = await shardState.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
@@ -44,7 +44,7 @@ public class RtcBackend : ShardComputeService, IRtcBackend
         return RpcStream.New(observations, isReconnectable: false);
     }
 
-    public virtual async Task RegisterActiveStream(ChatId chatId, RtcStreamInfo activeStream, CancellationToken cancellationToken)
+    public virtual async Task RegisterActiveStream(ChatId chatId, LiveStreamInfo activeStream, CancellationToken cancellationToken)
     {
         var chatStreams = GetChatStreams(chatId);
         if (chatStreams.TryAdd(activeStream)) {
@@ -93,13 +93,13 @@ public class RtcBackend : ShardComputeService, IRtcBackend
 
     private sealed class ChatStreamSet
     {
-        private readonly ConcurrentDictionary<string, RtcStreamInfo> _streams = new(StringComparer.Ordinal);
-        private readonly Channel<RtcStreamInfo> _newStreams = ChannelExt.Create<RtcStreamInfo>(ChannelExt.UnboundedPipeOptions);
+        private readonly ConcurrentDictionary<string, LiveStreamInfo> _streams = new(StringComparer.Ordinal);
+        private readonly Channel<LiveStreamInfo> _newStreams = ChannelExt.Create<LiveStreamInfo>(ChannelExt.UnboundedPipeOptions);
 
-        public ApiArray<RtcStreamInfo> GetActiveStreams()
+        public ApiArray<LiveStreamInfo> GetActiveStreams()
             => new(_streams.Values.ToArray());
 
-        public async IAsyncEnumerable<RtcStreamInfo> ObserveStreams(
+        public async IAsyncEnumerable<LiveStreamInfo> ObserveStreams(
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             // Yield all currently active streams first
@@ -111,13 +111,13 @@ public class RtcBackend : ShardComputeService, IRtcBackend
                 yield return stream;
         }
 
-        public bool TryAdd(RtcStreamInfo stream)
+        public bool TryAdd(LiveStreamInfo stream)
             => _streams.TryAdd(stream.StreamId, stream);
 
         public bool TryRemove(string streamId)
             => _streams.TryRemove(streamId, out _);
 
-        public ValueTask NotifyNew(RtcStreamInfo stream, CancellationToken cancellationToken)
+        public ValueTask NotifyNew(LiveStreamInfo stream, CancellationToken cancellationToken)
             => _newStreams.Writer.WriteAsync(stream, cancellationToken);
 
         public void Complete(Exception? error = null)

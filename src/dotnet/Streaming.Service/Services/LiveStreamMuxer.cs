@@ -1,47 +1,47 @@
 using ActualChat.Chat;
-using ActualChat.Rtc;
+using ActualChat.Live;
 
 namespace ActualChat.Streaming.Services;
 
 /// <summary>
-/// Watches for active streams via IRtcBackend and multiplexes audio into a single output channel.
+/// Watches for active streams via ILiveBackend and multiplexes audio into a single output channel.
 /// </summary>
-public sealed class RtcStreamMuxer : WorkerBase
+public sealed class LiveStreamMuxer : WorkerBase
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(1);
 
-    private readonly Channel<RtcItem> _output;
-    private volatile RtcStreamingSettings _settings;
+    private readonly Channel<LiveItem> _output;
+    private volatile LiveStreamingSettings _settings;
     private int _nextStreamIndex;
 
-    public RtcStreamingSettings Settings => _settings;
+    public LiveStreamingSettings Settings => _settings;
 
     private IServiceProvider Services { get; }
     private Session Session { get; }
     private ChatId ChatId { get; }
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
-    private IRtcBackend RtcBackend => field ??= Services.GetRequiredService<IRtcBackend>();
+    private ILiveBackend LiveBackend => field ??= Services.GetRequiredService<ILiveBackend>();
     private IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
-    private ILogger Log => field ??= Services.LogFor<RtcStreamMuxer>();
+    private ILogger Log => field ??= Services.LogFor<LiveStreamMuxer>();
 
-    public ChannelReader<RtcItem> Output => _output.Reader;
+    public ChannelReader<LiveItem> Output => _output.Reader;
 
-    public RtcStreamMuxer(
+    public LiveStreamMuxer(
         IServiceProvider services,
         Session session,
         ChatId chatId,
-        RtcStreamingSettings settings)
+        LiveStreamingSettings settings)
     {
         Services = services;
         Session = session;
         ChatId = chatId;
         _settings = settings;
-        _output = ChannelExt.Create<RtcItem>(ChannelExt.UnboundedPipeOptions);
+        _output = ChannelExt.Create<LiveItem>(ChannelExt.UnboundedPipeOptions);
         _ = Run(); // Start immediately
     }
 
-    public void UpdateConfig(RtcStreamingSettings settings)
+    public void UpdateConfig(LiveStreamingSettings settings)
         => Interlocked.Exchange(ref _settings, settings);
 
     protected override Task OnStop()
@@ -70,11 +70,11 @@ public sealed class RtcStreamMuxer : WorkerBase
 
             var streamTasks = new Dictionary<string, Task>(StringComparer.Ordinal);
 
-            // Watch for streams via RtcBackend with auto-reconnect
+            // Watch for streams via LiveBackend with auto-reconnect
             while (true) {
                 try {
                     Log.LogInformation("OnRun: Connecting to ObserveNewStreams for {ChatId}", ChatId);
-                    var streams = await RtcBackend.ObserveStreams(ChatId, cancellationToken).ConfigureAwait(false);
+                    var streams = await LiveBackend.ObserveStreams(ChatId, cancellationToken).ConfigureAwait(false);
                     await foreach (var streamInfo in streams.ConfigureAwait(false)) {
                         Log.LogDebug("OnRun: Got stream {StreamId}", streamInfo.StreamId);
 
@@ -115,7 +115,7 @@ public sealed class RtcStreamMuxer : WorkerBase
         }
     }
 
-    private async Task ProcessStream(RtcStreamInfo streamInfo, int streamIndex, CancellationToken cancellationToken)
+    private async Task ProcessStream(LiveStreamInfo streamInfo, int streamIndex, CancellationToken cancellationToken)
     {
         var frameCount = 0;
         try {
@@ -126,7 +126,7 @@ public sealed class RtcStreamMuxer : WorkerBase
             Log.LogDebug("Got audio source, format={Format}", audioSource.Format);
 
             // Emit stream start
-            var startItem = new RtcStreamStart {
+            var startItem = new LiveStreamStart {
                 StreamIndex = streamIndex,
                 StreamInfo = streamInfo,
             };
@@ -135,7 +135,7 @@ public sealed class RtcStreamMuxer : WorkerBase
 
             // Emit audio frames
             await foreach (var frame in audioSource.GetFrames(cancellationToken).ConfigureAwait(false)) {
-                var audioFrame = new RtcAudioFrame {
+                var audioFrame = new LiveAudioFrame {
                     StreamIndex = streamIndex,
                     Data = frame.Data,
                 };
@@ -144,7 +144,7 @@ public sealed class RtcStreamMuxer : WorkerBase
             }
 
             // Emit stream end
-            var endItem = new RtcStreamEnd { StreamIndex = streamIndex };
+            var endItem = new LiveStreamEnd { StreamIndex = streamIndex };
             await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Stream #{StreamIndex} completed, {FrameCount} frames emitted", streamIndex, frameCount);
         }
@@ -157,7 +157,7 @@ public sealed class RtcStreamMuxer : WorkerBase
 
             // Still emit end marker on error
             try {
-                var endItem = new RtcStreamEnd { StreamIndex = streamIndex };
+                var endItem = new LiveStreamEnd { StreamIndex = streamIndex };
                 await _output.Writer.WriteAsync(endItem, cancellationToken).ConfigureAwait(false);
             }
             catch {

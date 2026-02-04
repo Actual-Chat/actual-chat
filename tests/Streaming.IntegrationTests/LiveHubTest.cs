@@ -1,5 +1,5 @@
 using ActualChat.Chat;
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualChat.Streaming.Services;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
@@ -7,7 +7,7 @@ using ActualChat.Users;
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class RtcHubTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class LiveHubTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
@@ -18,10 +18,10 @@ public class RtcHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
-        var rtcHub = services.GetRequiredService<IRtcHub>();
-        var config = RtcStreamingSettings.Default;
+        var liveHub = services.GetRequiredService<ILiveHub>();
+        var config = LiveStreamingSettings.Default;
 
-        var stream = await rtcHub.GetStream(session, Constants.Chat.DefaultChatId, config, CancellationToken.None);
+        var stream = await liveHub.GetStream(session, Constants.Chat.DefaultChatId, config, CancellationToken.None);
 
         stream.Should().NotBeNull();
     }
@@ -38,20 +38,20 @@ public class RtcHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Create a chat
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "RtcHubTest",
+                Title = "LiveHubTest",
                 Kind = ChatKind.Group,
             },
         }));
         chat.Require();
 
-        var rtcHub = services.GetRequiredService<IRtcHub>();
-        var config = RtcStreamingSettings.Default;
+        var liveHub = services.GetRequiredService<ILiveHub>();
+        var config = LiveStreamingSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var stream = await rtcHub.GetStream(session, chat.Id, config, cts.Token);
+        var stream = await liveHub.GetStream(session, chat.Id, config, cts.Token);
 
         // Stream should not throw when enumerated (even if empty)
-        var items = new List<RtcItem>();
+        var items = new List<LiveItem>();
         try {
             await foreach (var item in stream)
                 items.Add(item);
@@ -72,10 +72,10 @@ public class RtcHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
-        var rtcHub = services.GetRequiredService<IRtcHub>();
-        var settings = new RtcStreamingSettings { StreamKindFilter = RtcStreamKind.None };
+        var liveHub = services.GetRequiredService<ILiveHub>();
+        var settings = new LiveStreamingSettings { StreamKindFilter = LiveStreamKind.None };
 
-        await rtcHub.ChangeSettings(session, Constants.Chat.DefaultChatId, settings, CancellationToken.None);
+        await liveHub.ChangeSettings(session, Constants.Chat.DefaultChatId, settings, CancellationToken.None);
         // Should not throw
     }
 }

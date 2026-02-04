@@ -1,6 +1,6 @@
 using ActualChat.Audio;
-using ActualChat.Rtc;
-using ActualChat.UI.Blazor.App.Services.Rtc;
+using ActualChat.Live;
+using ActualChat.UI.Blazor.App.Services.Live;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -35,9 +35,9 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             LastStreamBeginsAt = serverClock.Now,
         };
 
-        // Connect to RTC Hub with automatic reconnection
-        var settings = RtcStreamingSettings.Default;
-        var processor = new RtcStreamProcessor(
+        // Connect to Live Hub with automatic reconnection
+        var settings = LiveStreamingSettings.Default;
+        var processor = new LiveStreamProcessor(
             Hub.Services, Session, ChatId, settings, cancellationToken.CreateLinkedTokenSource());
         await using var _ = processor.ConfigureAwait(false);
 
@@ -49,7 +49,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
     private void OnStreamStarted(
         ChatEntryPlayer entryPlayer,
         PlayState state,
-        RtcStreamInfo streamInfo,
+        LiveStreamInfo streamInfo,
         IAsyncEnumerable<byte[]> audioFrames,
         CancellationToken cancellationToken)
     {
@@ -109,7 +109,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
     }
 
     private AudioSource CreateAudioSource(
-        RtcStreamInfo streamInfo,
+        LiveStreamInfo streamInfo,
         IAsyncEnumerable<byte[]> audioFrames,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
@@ -139,7 +139,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 
     private async Task EnqueueAudioSource(
         ChatEntryPlayer entryPlayer,
-        RtcStreamInfo streamInfo,
+        LiveStreamInfo streamInfo,
         AudioSource audioSource,
         Moment playAt,
         CancellationToken cancellationToken)
@@ -151,7 +151,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         if (chat == null)
             return;
 
-        // Create track info for RTC stream (no entry ID available yet)
+        // Create track info for Live stream (no entry ID available yet)
         var trackInfo = new ChatAudioTrackInfo(ChatId, null, chat, author) {
             RecordedAt = streamInfo.BeginsAt,
             ClientSideRecordedAt = streamInfo.BeginsAt,

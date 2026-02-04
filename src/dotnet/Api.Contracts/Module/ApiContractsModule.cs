@@ -8,7 +8,7 @@ using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Notification;
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.Security;
@@ -36,7 +36,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
 
         // Audio
         rpc.AddClient<IStreamServer>();
-        rpc.AddClient<IRtcHub>();
+        rpc.AddClient<ILiveHub>();
         services.AddSingleton<IStreamClient>(c => new StreamClient(c));
         services.AddSingleton<AudioDownloader>(c => new HttpClientAudioDownloader(c));
 

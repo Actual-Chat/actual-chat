@@ -1,7 +1,7 @@
 using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Kvas;
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualChat.Testing;
 using ActualChat.Testing.Host;
 using ActualLab.Rpc;
@@ -9,18 +9,18 @@ using ActualLab.Rpc;
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [LocalFact("Requires DeepGram / Google Cloud credentials", Timeout = 30_000)]
-    public async Task RtcStreamMuxer_ShouldEmitStreamItemsWhenRecording()
+    public async Task LiveStreamMuxer_ShouldEmitStreamItemsWhenRecording()
     {
         var appHost = AppHost;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
-        var log = services.LogFor<RtcPlaybackTest>();
+        var log = services.LogFor<LivePlaybackTest>();
         var accountSettings = services.AccountSettings(session);
         await accountSettings.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings { Primary = Languages.Main });
@@ -28,33 +28,33 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Create a chat
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "RtcPlaybackTest",
+                Title = "LivePlaybackTest",
                 Kind = ChatKind.Group,
             },
         }));
         chat.Require();
 
-        // Start RTC Hub listener
-        var rtcHub = services.GetRequiredService<IRtcHub>();
-        var settings = RtcStreamingSettings.Default;
+        // Start Live Hub listener
+        var liveHub = services.GetRequiredService<ILiveHub>();
+        var settings = LiveStreamingSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var rtcStreamTask = rtcHub.GetStream(session, chat.Id, settings, cts.Token);
-        var rtcStream = await rtcStreamTask;
+        var liveStreamTask = liveHub.GetStream(session, chat.Id, settings, cts.Token);
+        var liveStream = await liveStreamTask;
 
         // Collect items in background
-        var receivedItems = new List<RtcItem>();
+        var receivedItems = new List<LiveItem>();
         var collectTask = BackgroundTask.Run(async () => {
-            log.LogInformation("Starting to collect RTC items");
+            log.LogInformation("Starting to collect Live items");
             try {
-                await foreach (var item in rtcStream.WithCancellation(cts.Token)) {
-                    log.LogInformation("Received RTC item: {ItemType}, StreamIndex={StreamIndex}",
+                await foreach (var item in liveStream.WithCancellation(cts.Token)) {
+                    log.LogInformation("Received Live item: {ItemType}, StreamIndex={StreamIndex}",
                         item.GetType().Name, item.StreamIndex);
                     receivedItems.Add(item);
                 }
             }
             catch (OperationCanceledException) {
-                log.LogInformation("RTC stream collection cancelled, received {Count} items", receivedItems.Count);
+                log.LogInformation("Live stream collection cancelled, received {Count} items", receivedItems.Count);
             }
         }, cts.Token);
 
@@ -87,32 +87,32 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         log.LogInformation("Total items received: {Count}", receivedItems.Count);
 
         // Log item details
-        var startItems = receivedItems.OfType<RtcStreamStart>().ToList();
-        var audioFrameItems = receivedItems.OfType<RtcAudioFrame>().ToList();
-        var endItems = receivedItems.OfType<RtcStreamEnd>().ToList();
+        var startItems = receivedItems.OfType<LiveStreamStart>().ToList();
+        var audioFrameItems = receivedItems.OfType<LiveAudioFrame>().ToList();
+        var endItems = receivedItems.OfType<LiveStreamEnd>().ToList();
 
         log.LogInformation("StreamStart items: {Count}", startItems.Count);
         log.LogInformation("AudioFrame items: {Count}", audioFrameItems.Count);
         log.LogInformation("StreamEnd items: {Count}", endItems.Count);
 
         // We should have at least received stream start and some frames
-        receivedItems.Should().NotBeEmpty("should receive RTC items when audio is being recorded");
+        receivedItems.Should().NotBeEmpty("should receive Live items when audio is being recorded");
         startItems.Should().NotBeEmpty("should receive at least one StreamStart");
     }
 
     [LocalFact("Requires DeepGram / Google Cloud credentials", Timeout = 30_000)]
-    public async Task RtcStreamDemuxer_ShouldRaiseEventsForReceivedStreams()
+    public async Task LiveStreamDemuxer_ShouldRaiseEventsForReceivedStreams()
     {
         var appHost = AppHost;
         var services = appHost.Services;
-        var log = services.LogFor<RtcPlaybackTest>();
+        var log = services.LogFor<LivePlaybackTest>();
 
         // Create test items
         var testChatId = ChatId.Parse("testChat");
-        var testItems = new List<RtcItem> {
-            new RtcStreamStart {
+        var testItems = new List<LiveItem> {
+            new LiveStreamStart {
                 StreamIndex = 1,
-                StreamInfo = new RtcStreamInfo {
+                StreamInfo = new LiveStreamInfo {
                     ChatId = testChatId,
                     AuthorId = AuthorId.New(testChatId, 1),
                     StreamId = "test-stream-1",
@@ -120,9 +120,9 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
                     Format = AudioSource.DefaultFormat,
                 },
             },
-            new RtcAudioFrame { StreamIndex = 1, Data = [1, 2, 3, 4] },
-            new RtcAudioFrame { StreamIndex = 1, Data = [5, 6, 7, 8] },
-            new RtcStreamEnd { StreamIndex = 1 },
+            new LiveAudioFrame { StreamIndex = 1, Data = [1, 2, 3, 4] },
+            new LiveAudioFrame { StreamIndex = 1, Data = [5, 6, 7, 8] },
+            new LiveStreamEnd { StreamIndex = 1 },
         };
 
         var streamStartedEvents = new List<int>();
@@ -133,7 +133,7 @@ public class RtcPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         var rpcStream = RpcStream.New(testItems.ToAsyncEnumerable());
 
         // Create demuxer
-        var demuxer = new ActualChat.UI.Blazor.App.Services.Rtc.RtcStreamDemuxer(rpcStream, log);
+        var demuxer = new ActualChat.UI.Blazor.App.Services.Live.LiveStreamDemuxer(rpcStream, log);
         demuxer.StreamStarted += (streamInfo, audioFrames) => {
             log.LogInformation("StreamStarted event: StreamId={StreamId}", streamInfo.StreamId);
             streamStartedEvents.Add(1); // Using 1 as placeholder since we no longer have StreamIndex

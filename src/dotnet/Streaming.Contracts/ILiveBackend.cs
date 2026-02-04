@@ -1,20 +1,20 @@
 using ActualChat.Attributes;
 using ActualChat.Hosting;
-using ActualChat.Rtc;
+using ActualChat.Live;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
 [BackendService(nameof(HostRole.AudioBackend), ServiceMode.Distributed)]
 [BackendShardScheme(nameof(HostRole.AudioBackend))]
-public interface IRtcBackend : IComputeService, IBackendService
+public interface ILiveBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
-    Task<ApiArray<RtcStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<LiveStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken);
 
     [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)] // Handled internally by that method
-    Task<RpcStream<RtcStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken);
+    Task<RpcStream<LiveStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken);
 
-    Task RegisterActiveStream(ChatId chatId, RtcStreamInfo activeStream, CancellationToken cancellationToken);
+    Task RegisterActiveStream(ChatId chatId, LiveStreamInfo activeStream, CancellationToken cancellationToken);
     Task UnregisterActiveStream(ChatId chatId, string streamId, CancellationToken cancellationToken);
 }
