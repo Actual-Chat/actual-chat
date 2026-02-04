@@ -25,6 +25,7 @@ export class VideoPanel {
     private recordingService: RecordingService | null = null;
     private isRecording = false;
     private animationFrameId: number | null = null;
+    private previewTrack: MediaStreamTrack | null = null;
     private selectedCameraDeviceId: string | null = null;
     private sessionToken: string | null = null;
     private chatId: string | null = null;
@@ -167,17 +168,30 @@ export class VideoPanel {
                 this.onRecorderError(event.detail);
             }) as EventListener);
 
+            // Acquire a separate camera stream for local preview.
+            // We must get this BEFORE starting the recording pipeline, because
+            // the pipeline's MediaStreamTrackProcessor exclusively consumes
+            // frames from the track it's given — cloning after that point
+            // produces a dead track in Chromium.
+            const previewConstraints: MediaStreamConstraints = {
+                video: this.selectedCameraDeviceId
+                    ? { deviceId: { exact: this.selectedCameraDeviceId } }
+                    : true,
+                audio: false,
+            };
+            const previewStream = await navigator.mediaDevices.getUserMedia(previewConstraints);
+            this.previewTrack = previewStream.getVideoTracks()[0];
+
             // Start recording (this initializes the video-pipeline)
             await this.recordingService.start();
 
-            // Get output stream and render frames to canvas
-            const outputStream = this.recordingService.getOutputStream();
-            if (outputStream) {
-                this.startRenderingStream(outputStream);
-            }
-
+            // Set isRecording BEFORE starting the render loop — the render loop
+            // checks this flag and exits permanently if it's false on the first frame.
             this.isRecording = true;
             this.updateRecordButtonState();
+
+            // Start rendering preview AFTER isRecording is set
+            this.startRenderingStream(previewStream);
 
             // Notify Blazor
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
@@ -262,6 +276,10 @@ export class VideoPanel {
         if (this.animationFrameId !== null) {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
+        }
+        if (this.previewTrack) {
+            this.previewTrack.stop();
+            this.previewTrack = null;
         }
     }
 
