@@ -85,8 +85,7 @@
             await UpdateSessionContext();
 
             // Auto-start recording if requested from JoinVideoCallModal
-            var videoState = State.Value.VideoState;
-            if (_autoStartPending && !videoState.IsRecording) {
+            if (_autoStartPending) {
                 _autoStartPending = false;
                 if (!string.IsNullOrEmpty(PendingCameraDeviceId))
                     await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
