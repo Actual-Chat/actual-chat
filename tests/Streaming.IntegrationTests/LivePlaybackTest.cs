@@ -2,7 +2,6 @@ using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Kvas;
 using ActualChat.Live;
-using ActualChat.Testing;
 using ActualChat.Testing.Host;
 using ActualLab.Rpc;
 
@@ -34,12 +33,12 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         }));
         chat.Require();
 
-        // Start Live Hub listener
-        var liveHub = services.GetRequiredService<ILiveHub>();
+        // Start Live Streams listener
+        var liveStreams = services.GetRequiredService<ILiveStreams>();
         var settings = LiveStreamSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var liveStreamTask = liveHub.GetLiveStream(session, chat.Id, settings, cts.Token);
+        var liveStreamTask = liveStreams.GetLiveStream(session, chat.Id, settings, cts.Token);
         var liveStream = await liveStreamTask;
 
         // Collect items in background

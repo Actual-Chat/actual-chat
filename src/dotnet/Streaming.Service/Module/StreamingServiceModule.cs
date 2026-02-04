@@ -43,7 +43,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         }
 
         rpcHost.AddApi<IStreamServer, StreamServer>();
-        rpcHost.AddApi<ILiveHub, LiveHub>();
+        rpcHost.AddApi<ILiveStreams, LiveStreams>();
         rpcHost.AddBackend<IStreamingBackend, StreamingBackend>();
         rpcHost.AddBackend<ILiveBackend, LiveBackend>();
         services.AddSingleton<IStreamClient, StreamBackendClient>(); // Client for IStreamingBackend

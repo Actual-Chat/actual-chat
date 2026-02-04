@@ -1,13 +1,11 @@
 using ActualChat.Chat;
 using ActualChat.Live;
-using ActualChat.Streaming.Services;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 
 namespace ActualChat.Streaming.IntegrationTests;
 
 [Collection(nameof(StreamingCollection))]
-public class LiveHubTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class LiveStreamsTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
@@ -18,10 +16,10 @@ public class LiveHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
-        var liveHub = services.GetRequiredService<ILiveHub>();
+        var liveStreams = services.GetRequiredService<ILiveStreams>();
         var config = LiveStreamSettings.Default;
 
-        var stream = await liveHub.GetLiveStream(session, Constants.Chat.DefaultChatId, config, CancellationToken.None);
+        var stream = await liveStreams.GetLiveStream(session, Constants.Chat.DefaultChatId, config, CancellationToken.None);
 
         stream.Should().NotBeNull();
     }
@@ -38,17 +36,17 @@ public class LiveHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Create a chat
         var chat = await commander.Call(new Chats_Change(session, default, null, new() {
             Create = new ChatDiff {
-                Title = "LiveHubTest",
+                Title = "LiveStreamsTest",
                 Kind = ChatKind.Group,
             },
         }));
         chat.Require();
 
-        var liveHub = services.GetRequiredService<ILiveHub>();
+        var liveStreams = services.GetRequiredService<ILiveStreams>();
         var config = LiveStreamSettings.Default;
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var stream = await liveHub.GetLiveStream(session, chat.Id, config, cts.Token);
+        var stream = await liveStreams.GetLiveStream(session, chat.Id, config, cts.Token);
 
         // Stream should not throw when enumerated (even if empty)
         var items = new List<LiveStreamItem>();
@@ -72,10 +70,10 @@ public class LiveHubTest(AppHostFixture fixture, ITestOutputHelper @out)
         var session = Session.New();
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
 
-        var liveHub = services.GetRequiredService<ILiveHub>();
+        var liveStreams = services.GetRequiredService<ILiveStreams>();
         var settings = new LiveStreamSettings { StreamKindFilter = LiveStreamKind.None };
 
-        await liveHub.ChangeSettings(session, Constants.Chat.DefaultChatId, settings, CancellationToken.None);
+        await liveStreams.ChangeSettings(session, Constants.Chat.DefaultChatId, settings, CancellationToken.None);
         // Should not throw
     }
 }

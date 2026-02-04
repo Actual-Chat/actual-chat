@@ -1,4 +1,4 @@
-# Live Hub: Multiplexed Streaming Service
+# Live Streams: Multiplexed Streaming Service
 
 ## Goal
 Replace the current RealtimeChatPlayer's multi-call architecture with a single multiplexed RPC stream to minimize latency.
@@ -108,8 +108,8 @@ public enum LiveStreamKind { None = 0, Audio = 1, /* Future: Video = 2 */ }
 
 #### 3.1 Server Interface
 ```csharp
-// ILiveHub.cs
-public interface ILiveHub : IRpcService
+// ILiveStreams.cs
+public interface ILiveStreams : IRpcService
 {
     Task<RpcStream<LiveItem>> GetStream(
         Session session,
@@ -127,10 +127,10 @@ public interface ILiveHub : IRpcService
 
 ### Phase 4: Server Implementation (`src/dotnet/Streaming.Service/`)
 
-#### 4.1 LiveHub (Frontend Service)
+#### 4.1 LiveStreams (Frontend Service)
 ```csharp
-// Services/LiveHub.cs
-public class LiveHub : ILiveHub
+// Services/LiveStreams.cs
+public class LiveStreams : ILiveStreams
 {
     public async Task<RpcStream<LiveItem>> GetStream(...)
     {
@@ -188,9 +188,9 @@ src/dotnet/
 │   ├── LiveStreamEnd.cs
 │   └── LiveStreamingSettings.cs
 ├── Api.Contracts/Live/
-│   └── ILiveHub.cs
+│   └── ILiveStreams.cs
 ├── Streaming.Service/Services/
-│   ├── LiveHub.cs
+│   ├── LiveStreams.cs
 │   └── LiveStreamMuxer.cs
 └── UI.Blazor.App/Services/Live/
     └── LiveStreamDemuxer.cs
@@ -199,7 +199,7 @@ src/dotnet/
 ## Implementation Order
 1. Channel helpers in Core (ChannelMuxer, ChannelDemuxer)
 2. Domain models (Api/Live/)
-3. Contract interface (Api.Contracts/Live/ILiveHub.cs)
+3. Contract interface (Api.Contracts/Live/ILiveStreams.cs)
 4. Server muxer (Streaming.Service)
 5. Client demuxer (UI.Blazor.App)
 6. Update RealtimeChatPlayer

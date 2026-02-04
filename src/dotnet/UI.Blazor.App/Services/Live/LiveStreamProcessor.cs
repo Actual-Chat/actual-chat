@@ -36,13 +36,13 @@ public sealed class LiveStreamProcessor : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var liveHub = Services.GetRequiredService<ILiveHub>();
+        var liveStreams = Services.GetRequiredService<ILiveStreams>();
         var demuxerLog = Services.LogFor<LiveStreamDemuxer>();
         while (true) {
             try {
-                DebugLog?.LogInformation("-> LiveHub.GetLiveStream({ChatId})", ChatId);
-                var stream = await liveHub.GetLiveStream(Session, ChatId, Settings, cancellationToken).ConfigureAwait(false);
-                DebugLog?.LogInformation("<- LiveHub.GetLiveStream({ChatId})", ChatId);
+                DebugLog?.LogInformation("-> LiveStreams.GetLiveStream({ChatId})", ChatId);
+                var stream = await liveStreams.GetLiveStream(Session, ChatId, Settings, cancellationToken).ConfigureAwait(false);
+                DebugLog?.LogInformation("<- LiveStreams.GetLiveStream({ChatId})", ChatId);
 
                 var demuxer = new LiveStreamDemuxer(stream, demuxerLog, cancellationToken.CreateLinkedTokenSource());
                 await using var _ = demuxer.ConfigureAwait(false);

@@ -27,7 +27,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public INotifications Notifications => field ??= Services.GetRequiredService<INotifications>();
     public ITranslations Translations => field ??= Services.GetRequiredService<ITranslations>();
     public IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
-    public ILiveHub LiveHub => field ??= Services.GetRequiredService<ILiveHub>();
+    public ILiveStreams LiveStreams => field ??= Services.GetRequiredService<ILiveStreams>();
 
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
     public SendingMessages SendingMessages => field ??= Services.GetRequiredService<SendingMessages>();

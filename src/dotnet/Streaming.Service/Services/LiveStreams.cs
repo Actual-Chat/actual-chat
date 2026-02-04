@@ -6,13 +6,13 @@ namespace ActualChat.Streaming.Services;
 /// <summary>
 /// RPC service providing multiplexed real-time audio streams.
 /// </summary>
-public class LiveHub(IServiceProvider services) : ILiveHub
+public class LiveStreams(IServiceProvider services) : ILiveStreams
 {
     private readonly Lock _lock = new ();
     private readonly ConcurrentDictionary<(Session, ChatId), LiveStreamMuxer> _muxers = new();
 
     private IServiceProvider Services { get; } = services;
-    private ILogger Log => field ??= Services.LogFor<LiveHub>();
+    private ILogger Log => field ??= Services.LogFor<LiveStreams>();
 
     public Task<RpcStream<LiveStreamItem>> GetLiveStream(
         Session session,

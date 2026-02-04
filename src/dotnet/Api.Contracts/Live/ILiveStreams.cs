@@ -6,7 +6,7 @@ namespace ActualChat.Live;
 /// RPC service for multiplexed real-time audio streaming.
 /// Replaces multiple GetAudio calls with a single multiplexed stream.
 /// </summary>
-public interface ILiveHub : IRpcService
+public interface ILiveStreams : IRpcService
 {
     Task<RpcStream<LiveStreamItem>> GetLiveStream(
         Session session,
