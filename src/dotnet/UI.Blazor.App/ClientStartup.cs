@@ -92,11 +92,9 @@ public static class ClientStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsTermsPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AdminContentIndexerSettingsPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AdminCopyChatToPlacePage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AdminUserInvitesPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AuthTestPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatPage))]
     // [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmbeddedChatPage))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserInvitePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UnavailablePage))]
     // Components
