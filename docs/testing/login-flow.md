@@ -75,8 +75,11 @@ if (await cookieButton.isVisible({ timeout: 3000 }).catch(() => false)) {
 ### 2. Sign In with Test Account
 
 ```typescript
-// Click sign-in button in header
-await page.locator('button.signin-button-group').click();
+// Click sign-in button (location depends on page context)
+// On chat pages, the sign-in button is in the footer:
+await page.locator('div.signin-footer button').first().click();
+// On the landing page, use the header button:
+// await page.locator('button.signin-button-group').click();
 
 // Select email option if shown
 const emailOption = page.locator('button:has-text("Email")');
@@ -143,10 +146,11 @@ npx tsx docs/tests/signin-and-message.ts
 
 ### Sign-in button not visible
 
-The landing page has multiple sign-in buttons. Use the specific selector for the header button:
-```typescript
-page.locator('button.signin-button-group')
-```
+The sign-in button location depends on the page:
+- **Chat pages**: The sign-in button is inside a footer overlay: `div.signin-footer button`
+- **Landing page**: Use the header button: `button.signin-button-group`
+
+If navigating directly to a chat URL (e.g., `/chat/the-actual-one`), look for the footer button first.
 
 ### Onboarding modal blocks interaction
 
