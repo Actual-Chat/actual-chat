@@ -98,7 +98,7 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
-    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
     private ChatId? RecordingChatId {
         get {
             var activeChats = ActiveChatsUI.ActiveChats.Value;
@@ -118,8 +118,8 @@
     [Parameter] public string NoChatTitle { get; set; } = "Loading...";
 
     protected override async Task OnParametersSetAsync() {
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = Chat?.Id is not null
+        ChatStreamingActivity?.Dispose();
+        ChatStreamingActivity = Chat?.Id is not null
             ? await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None)
             : null;
         await base.OnParametersSetAsync();
@@ -142,8 +142,8 @@
             chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         AuthorId[] authorIds = [];
-        if (ChatRecordingActivity != null)
-            authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+        if (ChatStreamingActivity != null)
+            authorIds = await ChatStreamingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
 
         if (chatId is not null)
             audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);

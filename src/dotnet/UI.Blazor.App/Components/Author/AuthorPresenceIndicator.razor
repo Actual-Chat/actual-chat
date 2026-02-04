@@ -9,26 +9,26 @@
     private IAuthors Authors => Hub.Authors;
     private ChatActivity ChatActivity => Hub.ChatActivity;
 
-    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
 
     [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
     [Parameter] public bool ShowRecording { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync();
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = null;
+        ChatStreamingActivity?.Dispose();
+        ChatStreamingActivity = null;
     }
 
     protected override void OnParametersSet()
     {
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = null;
+        ChatStreamingActivity?.Dispose();
+        ChatStreamingActivity = null;
     }
 
     protected override async Task OnParametersSetAsync() {
         if (ShowRecording && AuthorId is not null)
-            ChatRecordingActivity = await ChatActivity.GetStreamingActivity(AuthorId.ChatId, CancellationToken.None);
+            ChatStreamingActivity = await ChatActivity.GetStreamingActivity(AuthorId.ChatId, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
 
@@ -46,7 +46,7 @@
 
         var chatId = authorId.ChatId;
         var showRecording = ShowRecording;
-        var chatRecordingActivity = ChatRecordingActivity;
+        var chatRecordingActivity = ChatStreamingActivity;
 
         var presence = await Authors.GetPresence(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (showRecording && chatRecordingActivity != null) {

@@ -22,7 +22,7 @@
 @code {
     private ChatActivity ChatActivity => Hub.ChatActivity;
 
-    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -32,12 +32,12 @@
 
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync();
-        ChatRecordingActivity?.Dispose();
+        ChatStreamingActivity?.Dispose();
     }
 
     protected override async Task OnParametersSetAsync() {
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = Chat?.Id is null ? null
+        ChatStreamingActivity?.Dispose();
+        ChatStreamingActivity = Chat?.Id is null ? null
             : await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
@@ -50,10 +50,10 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (ChatRecordingActivity == null)
+        if (ChatStreamingActivity == null)
             return Model.None;
 
-        var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+        var authorIds = await ChatStreamingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
         return new() {
             RecordingAuthorIds = authorIds.Select(id => id).ToList(),
         };

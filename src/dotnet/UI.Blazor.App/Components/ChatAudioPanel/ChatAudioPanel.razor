@@ -54,19 +54,19 @@
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
-    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
 
     protected override async Task OnParametersSetAsync() {
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
+        ChatStreamingActivity?.Dispose();
+        ChatStreamingActivity = await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
 
     protected override async Task<ChatAudioState?> ComputeState(CancellationToken cancellationToken) {
-        if (ChatRecordingActivity == null)
+        if (ChatStreamingActivity == null)
             return null;
 
         var chat = Chat;

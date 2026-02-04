@@ -115,7 +115,7 @@
     private ChatActivity ChatActivity => Hub.ChatActivity;
     private IChats Chats => Hub.Chats;
 
-    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
 
     private ChatId? RecordingChatId {
         get {
@@ -153,8 +153,8 @@
     }
 
     protected override async Task OnParametersSetAsync() {
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
+        ChatStreamingActivity?.Dispose();
+        ChatStreamingActivity = await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
 
@@ -190,8 +190,8 @@
             recordingChatId == chatId // The recorder records in this chat
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
         var isAnyoneTalking = false;
-        if (ChatRecordingActivity != null) {
-            var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+        if (ChatStreamingActivity != null) {
+            var authorIds = await ChatStreamingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
             isAnyoneTalking = authorIds.Length > 0;
         }
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);

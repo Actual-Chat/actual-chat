@@ -13,11 +13,11 @@
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
-    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
 
     protected override async Task OnParametersSetAsync() {
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = Chat?.Id is null ? null
+        ChatStreamingActivity?.Dispose();
+        ChatStreamingActivity = Chat?.Id is null ? null
             : await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
         await base.OnParametersSetAsync();
     }

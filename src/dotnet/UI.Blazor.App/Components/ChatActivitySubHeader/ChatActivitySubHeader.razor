@@ -18,7 +18,7 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
 
-    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
+    private IChatStreamingActivity? ChatStreamingActivity { get; set; }
     private ChatId? RecordingChatId {
         get {
             var activeChats = ActiveChatsUI.ActiveChats.Value;
@@ -32,15 +32,15 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnParametersSetAsync() {
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = ChatId is not null
+        ChatStreamingActivity?.Dispose();
+        ChatStreamingActivity = ChatId is not null
             ? await ChatActivity.GetStreamingActivity(ChatId, CancellationToken.None)
             : null;
         await base.OnParametersSetAsync();
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        if (ChatRecordingActivity == null)
+        if (ChatStreamingActivity == null)
             return null;
 
         var chatId = ChatId;
@@ -52,7 +52,7 @@
             return null;
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-        var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
+        var authorIds = await ChatStreamingActivity.GetStreamingAuthorIds(cancellationToken).ConfigureAwait(false);
 
         return new (chat, audioState, authorIds.Length > 0);
     }
