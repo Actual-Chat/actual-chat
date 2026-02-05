@@ -141,12 +141,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
             var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
-            using var processedFile =
-                await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
-            var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, cancellationToken)
-                .ConfigureAwait(false);
-            var changeStatus = Change.Update(new MediaStatusInfo(mediaId, MediaStatus.Ready));
-            await Commander.Run(new MediaStatusBackend_Change(mediaId, changeStatus), cancellationToken).ConfigureAwait(false);
+            using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
+            var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, cancellationToken).ConfigureAwait(false);
             return mediaContent;
         }
         catch (Exception e) {

@@ -99,11 +99,6 @@ public class Medias(IServiceProvider services) : IMedias
         // Process upload and bind to media
         var mediaContent = await Commander.Call(new UploadsBackend_ProcessAndSaveContent(uploadId, mediaId), cancellationToken).ConfigureAwait(false);
 
-        // Update status to Ready
-        var statusInfo = new MediaStatusInfo(mediaId, MediaStatus.Ready, MediaPreparingStage.None, 100);
-        var statusChange = new Change<MediaStatusInfo> { Update = statusInfo };
-        await Commander.Call(new MediaStatusBackend_Change(mediaId, statusChange), cancellationToken).ConfigureAwait(false);
-
         // Remove the upload
         await Commander.Call(new UploadsBackend_Remove(uploadId), cancellationToken).ConfigureAwait(false);
 

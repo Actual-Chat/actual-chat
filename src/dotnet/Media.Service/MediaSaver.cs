@@ -14,9 +14,11 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         var mediaContent = GetContentId(mediaId, processedFile);
         await SaveFileContent(processedFile.File, mediaContent.ContentId, cancellationToken).ConfigureAwait(false);
         await SaveMediaMetadata(mediaId, mediaContent.ContentId, processedFile.File, processedFile.Size, isUpdate, cancellationToken).ConfigureAwait(false);
+        await SetMediaStatusToReady(mediaId, cancellationToken).ConfigureAwait(false);
         if (processedFile.Thumbnail != null) {
             await SaveFileContent(processedFile.Thumbnail, mediaContent.ThumbnailContentId!, cancellationToken).ConfigureAwait(false);
             await SaveMediaMetadata(mediaContent.ThumbnailMediaId!, mediaContent.ThumbnailContentId!, processedFile.Thumbnail, processedFile.Size, false, cancellationToken).ConfigureAwait(false);
+            await SetMediaStatusToReady(mediaContent.ThumbnailMediaId!, cancellationToken).ConfigureAwait(false);
         }
         return mediaContent;
     }
@@ -77,5 +79,11 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
             : new Change<MediaFull> { Create = media };
         var changeCommand = new MediaBackend_Change(mediaId, change);
         await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SetMediaStatusToReady(MediaId mediaId, CancellationToken cancellationToken)
+    {
+        var changeStatus = Change.Update(new MediaStatusInfo(mediaId, MediaStatus.Ready));
+        await Commander.Run(new MediaStatusBackend_Change(mediaId, changeStatus), cancellationToken).ConfigureAwait(false);
     }
 }
