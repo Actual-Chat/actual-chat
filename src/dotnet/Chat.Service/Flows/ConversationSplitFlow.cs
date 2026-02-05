@@ -68,7 +68,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
     {
         var now = ResumedAt;
         LastRunAt = now;
-        Console.Log($"Process: started at {LastLid}");
+        Console.Log($"Process: LastLid={LastLid}");
 
         var (entries, hasMore, hasImmature) = await GetEntries(LastLid, cancellationToken).ConfigureAwait(false);
         Console.Log($"Fetched {entries.Count} entries, hasMore={hasMore}, hasImmature={hasImmature}");
