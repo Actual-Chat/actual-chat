@@ -46,6 +46,8 @@ The most important files related to build process are:
 - `Directory.Packages.props` file listing versions of C# project dependencies.
 - You can also look at `.github/workflows/build-test-deploy-dev.yml` and `.config/dotnet-tools.json`.
 
+### C# Build
+
 - To build the main solution, use:
   ```powershell
   dotnet build
@@ -55,6 +57,31 @@ The most important files related to build process are:
   ```powershell
   dotnet build path/to/project.csproj
   ```
+
+### TypeScript Build
+
+**Important:** `dotnet build` does NOT build TypeScript files. TypeScript has a separate build process.
+
+- To build TypeScript (debug mode):
+  ```powershell
+  ./npm-build.cmd
+  # Or manually:
+  cd src/nodejs
+  npm ci        # Install dependencies (run once, or after package.json changes)
+  npm run build:Debug
+  ```
+
+- To build TypeScript (release mode):
+  ```powershell
+  ./npm-build-release.cmd
+  # Or manually:
+  cd src/nodejs
+  npm run build:Release
+  ```
+
+- TypeScript source files are in:
+  - `src/nodejs/` - shared TypeScript code
+  - `src/dotnet/**/*.ts` - TypeScript counterparts for Blazor components
 
 ## Testing
 
@@ -81,7 +108,8 @@ See [`CODING_STYLE.md`](./CODING_STYLE.md) for detailed coding style guidelines.
 
 ## Programmatic Checks
 
-- After making changes, run at least `dotnet build ActualChat.sln` to verify they at least don't break the build.
+- After making C# changes, run `dotnet build ActualChat.sln` to verify they don't break the build.
+- After making TypeScript changes, run `npm run build:Debug` (from `src/nodejs/`) to verify they compile.
 - Ensure all builds pass before submitting changes.
 
 ## Additional Notes
