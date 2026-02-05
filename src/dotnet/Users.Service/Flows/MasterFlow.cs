@@ -36,7 +36,7 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
     private async Task StartDigestFlows(CancellationToken cancellationToken)
     {
         const int pageSize = 1000;
-        var dbHub = Runtime.Services.DbHub<UsersDbContext>();
+        var dbHub = Services.DbHub<UsersDbContext>();
         var dbContext = await dbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var accountIds = dbContext.Accounts
