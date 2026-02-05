@@ -1,15 +1,22 @@
+using ActualChat.Chat;
 using ActualChat.Live;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
-public class LiveBackend : ShardComputeService, ILiveBackend
+public partial class LiveBackend : ShardComputeService, ILiveBackend
 {
-    private readonly ConcurrentDictionary<ChatId, ChatStreamSet> _chatStreams = new();
+    private readonly ConcurrentDictionary<ChatId, ChatState> _chatStates = new();
+
+    internal IChatsBackend ChatsBackend { get; }
+    internal MomentClock ServerClock { get; }
 
     public LiveBackend(IServiceProvider services)
         : base(services, ShardScheme.AudioBackend)
     {
+        ChatsBackend = services.GetRequiredService<IChatsBackend>();
+        ServerClock = services.Clocks().ServerClock;
+
         var stopToken = ShardOwner.StopToken;
         foreach (var shardIndex in ShardScheme.ShardIndexes) {
             var shardIndexCopy = shardIndex; // Capture for closure
@@ -20,17 +27,17 @@ public class LiveBackend : ShardComputeService, ILiveBackend
                     shardState = await shardState.WhenNext(stopToken).ConfigureAwait(false);
                     // Only clear when we lose ownership (not when gaining or during startup)
                     if (shardState.OwnershipStatus == ShardOwnershipStatus.MappedToOtherNode)
-                        ClearAndRerouteStreams(shardIndexCopy);
+                        PurgeShard(shardIndexCopy);
                 }
             }, CancellationToken.None);
         }
     }
 
     // [ComputeMethod]
-    public virtual Task<ApiArray<LiveStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<LiveStreamInfo>> ListActiveStreams(ChatId chatId, CancellationToken cancellationToken)
     {
-        var chatStreams = GetChatStreams(chatId);
-        return Task.FromResult(chatStreams.ActiveStreams);
+        var chatState = GetChatState(chatId);
+        return await chatState.ListActiveStreams(cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<RpcStream<LiveStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken)
@@ -40,86 +47,50 @@ public class LiveBackend : ShardComputeService, ILiveBackend
         // linkedCts will be either cancelled (most likely) or GC collected - that's why we don't dispose it explicitly
         var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
 
-        var observations = GetChatStreams(chatId).ObserveStreams(linkedCts.Token);
+        var chatState = GetChatState(chatId);
+        var observations = chatState.ObserveStreams(linkedCts.Token);
         return RpcStream.New(observations, isReconnectable: false);
     }
 
     public virtual async Task RegisterActiveStream(ChatId chatId, LiveStreamInfo activeStream, CancellationToken cancellationToken)
     {
-        var chatStreams = GetChatStreams(chatId);
-        if (chatStreams.TryAdd(activeStream)) {
+        var chatState = GetChatState(chatId);
+        if (await chatState.Register(activeStream, cancellationToken).ConfigureAwait(false))
             InvalidateListActiveStreams(chatId);
-            await chatStreams.NotifyNew(activeStream, cancellationToken).ConfigureAwait(false);
-        }
     }
 
-    public virtual Task UnregisterActiveStream(ChatId chatId, string streamId, CancellationToken cancellationToken)
+    public virtual async Task UnregisterActiveStream(ChatId chatId, string streamId, CancellationToken cancellationToken)
     {
-        if (!_chatStreams.TryGetValue(chatId, out var chatStreams))
-            return Task.CompletedTask;
-        if (chatStreams.TryRemove(streamId))
+        if (!_chatStates.TryGetValue(chatId, out var chatState))
+            return;
+        if (await chatState.Unregister(streamId, cancellationToken).ConfigureAwait(false))
             InvalidateListActiveStreams(chatId);
-        return Task.CompletedTask;
     }
 
     // Private methods
 
-    private ChatStreamSet GetChatStreams(ChatId chatId)
-        => _chatStreams.GetOrAdd(chatId, _ => new ChatStreamSet());
+    private ChatState GetChatState(ChatId chatId)
+        => _chatStates.GetOrAdd(chatId, static (id, self) => new ChatState(self, id), this);
+
+    private void PurgeShard(int shardIndex)
+    {
+        // Only clear streams for chats that belong to this shard
+        var chatIdsToRemove = _chatStates.Keys
+            .Where(chatId => ShardScheme.GetShardIndex(chatId) == shardIndex)
+            .ToList();
+
+        foreach (var chatId in chatIdsToRemove) {
+            if (!_chatStates.TryRemove(chatId, out var chatState))
+                continue;
+
+            InvalidateListActiveStreams(chatId);
+            chatState.Complete(RpcRerouteException.MustReroute());
+        }
+    }
 
     private void InvalidateListActiveStreams(ChatId chatId)
     {
         using (Invalidation.Begin())
             _ = ListActiveStreams(chatId, default);
-    }
-
-    private void ClearAndRerouteStreams(int shardIndex)
-    {
-        // Only clear streams for chats that belong to this shard
-        var chatIdsToRemove = _chatStreams.Keys
-            .Where(chatId => ShardScheme.GetShardIndex(chatId) == shardIndex)
-            .ToList();
-
-        foreach (var chatId in chatIdsToRemove) {
-            if (!_chatStreams.TryRemove(chatId, out var chatStreams))
-                continue;
-
-            InvalidateListActiveStreams(chatId);
-            chatStreams.Complete(RpcRerouteException.MustReroute());
-        }
-    }
-
-    // Nested types
-
-    private sealed class ChatStreamSet
-    {
-        private readonly ConcurrentDictionary<string, LiveStreamInfo> _streams = new(StringComparer.Ordinal);
-        private readonly Channel<LiveStreamInfo> _newStreams = ChannelExt.Create<LiveStreamInfo>(ChannelExt.UnboundedPipeOptions);
-
-        public ApiArray<LiveStreamInfo> ActiveStreams => new(_streams.Values);
-
-        public async IAsyncEnumerable<LiveStreamInfo> ObserveStreams(
-            [EnumeratorCancellation] CancellationToken cancellationToken)
-        {
-            // Yield all currently active streams first
-            foreach (var stream in _streams.Values)
-                yield return stream;
-
-            // Then yield new streams as they come
-            await foreach (var stream in _newStreams.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-                yield return stream;
-        }
-
-        public bool TryAdd(LiveStreamInfo stream)
-            => _streams.TryAdd(stream.StreamId, stream);
-
-        public bool TryRemove(string streamId)
-            => _streams.TryRemove(streamId, out _);
-
-        public ValueTask NotifyNew(LiveStreamInfo stream, CancellationToken cancellationToken)
-            => _newStreams.Writer.WriteAsync(stream, cancellationToken);
-
-        public void Complete(Exception? error = null)
-            => _newStreams.Writer.TryComplete(error);
     }
 }

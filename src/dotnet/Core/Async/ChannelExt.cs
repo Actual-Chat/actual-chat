@@ -11,11 +11,10 @@ public static partial class ChannelExt
         SingleWriter = true,
         AllowSynchronousContinuations = false,
     };
-
-    public static readonly UnboundedChannelOptions UnboundedSyncPipeOptions = new() {
-        SingleReader = true,
+    public static readonly UnboundedChannelOptions UnboundedFanOutOptions = new() {
+        SingleReader = false,
         SingleWriter = true,
-        AllowSynchronousContinuations = true,
+        AllowSynchronousContinuations = false,
     };
 
     // Just an alias
