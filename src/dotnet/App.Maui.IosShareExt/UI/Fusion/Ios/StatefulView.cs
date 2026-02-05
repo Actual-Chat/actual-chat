@@ -13,7 +13,7 @@ public interface IStatefulView<T> : IStatefulView
     new IState<T> State { get; }
 }
 
-public abstract class StatefulView : UIView, IStatefulView
+public abstract class StatefulView : UIView, IStatefulView, IEnumerable<UIView>
 {
     protected IosHub Hub { get; }
     public IServiceProvider Services => Hub.Services;
@@ -120,6 +120,9 @@ public abstract class StatefulView : UIView, IStatefulView
                 }
             }
         };
+
+    public new IEnumerator<UIView> GetEnumerator()
+        => ((IEnumerable<UIView>)Subviews).GetEnumerator();
 }
 
 public abstract class StatefulView<T>(IosHub hub) : StatefulView(hub), IStatefulView<T>
