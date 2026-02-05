@@ -24,6 +24,7 @@ public partial class MainPage : ContentPage
         RecreateWebView();
 
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public void RecreateWebView()
@@ -48,6 +49,12 @@ public partial class MainPage : ContentPage
         => Content = null;
 
     private void OnLoaded(object? sender, EventArgs e) => OnLoaded_Platform();
+
+    private void OnUnloaded(object? sender, EventArgs e)
+    {
+        Loaded -= OnLoaded;
+        Unloaded -= OnUnloaded;
+    }
 
     private partial void OnLoaded_Platform();
 }
