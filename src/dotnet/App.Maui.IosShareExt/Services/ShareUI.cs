@@ -7,7 +7,6 @@ using ActualChat.Search;
 using ActualChat.UI.Services;
 using ActualLab.Fusion.UI;
 using ActualLab.Generators;
-using Microsoft.Maui.ApplicationModel;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
@@ -98,9 +97,6 @@ public class ShareUI : UIServiceBase, IComputeService
             _ = ListContacts(default);
     }
 
-    public Task CloseApp(CancellationToken cancellationToken = default)
-        => MainThread.InvokeOnMainThreadAsync(() => UIKitExt.ExtensionContext.CompleteRequestAsync([]));
-
     public void StartSending()
     {
         _isUploading.Value = true;
@@ -110,7 +106,7 @@ public class ShareUI : UIServiceBase, IComputeService
     public async Task CancelUploading(CancellationToken cancellationToken)
     {
         await _sendWorker.DisposeSilentlyAsync().ConfigureAwait(false);
-        await CloseApp(cancellationToken).ConfigureAwait(false);
+        await UIKitExt.CloseApp(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task SendInternal(CancellationToken cancellationToken)
@@ -147,7 +143,7 @@ public class ShareUI : UIServiceBase, IComputeService
             }
             _isCompleted.Value = true;
             await Task.Delay(TimeSpan.FromSeconds(1.5), cancellationToken).ConfigureAwait(false);
-            await CloseApp(cancellationToken).ConfigureAwait(false);
+            await UIKitExt.CloseApp(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e)
         {
