@@ -5,7 +5,7 @@ import {
     AudioContextRef,
     AudioContextAction,
 } from '../../Services/audio-context-source';
-import { AudioContextTrait, AttachedAudioContextTrait } from '../../Services/audio-context-traits';
+import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait } from '../../Services/audio-context-traits';
 import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
@@ -65,8 +65,8 @@ class FeederNodeTrait implements AudioContextTrait {
         await decoderWorker.init(this.internalId, decoderToFeederWorkletChannel.port1);
 
         // Connect to destination
-        const destinationOverride = context.destination_ ?? context.destination;
-        feederNode.connect(destinationOverride);
+        const destination = DestinationFallbackTrait.getDestination(context);
+        feederNode.connect(destination);
 
         return new AttachedFeederNode(
             this.player,

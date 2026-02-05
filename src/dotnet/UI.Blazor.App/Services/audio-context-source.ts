@@ -37,9 +37,8 @@ export type AudioContextPurpose = 'recording' | 'playback';
 
 export type AppAudioContext = AudioContext & {
     wasInteractive?: boolean;
-    destination_?: MediaStreamAudioDestinationNode;
-    traits_?: Map<string, AttachedAudioContextTrait>;
-    attachingTraits_?: Set<string>;
+    traits?: Map<string, AttachedAudioContextTrait>;
+    _attachingTraits?: Set<string>;
 };
 
 // Utility Functions
@@ -145,7 +144,7 @@ export class AudioContextRef implements Disposable {
         this._context = context;
 
         // Copy relevant attached traits for this ref's requested traits
-        const contextTraits = context.traits_;
+        const contextTraits = context.traits;
         if (contextTraits) {
             for (const trait of this._traits) {
                 const attached = contextTraits.get(trait.name);
@@ -532,21 +531,21 @@ export class AudioContextSource {
 
     private async attachTrait(trait: AudioContextTrait, context: AppAudioContext): Promise<void> {
         // Skip if already attached or currently attaching
-        if (context.traits_?.has(trait.name) || context.attachingTraits_?.has(trait.name)) {
+        if (context.traits?.has(trait.name) || context._attachingTraits?.has(trait.name)) {
             debugLog?.log(`attachTrait: '${trait.name}' already attached or attaching`);
             return;
         }
 
         // Mark as attaching to prevent double attach during async operation
-        context.attachingTraits_ ??= new Set();
-        context.attachingTraits_.add(trait.name);
+        context._attachingTraits ??= new Set();
+        context._attachingTraits.add(trait.name);
 
         try {
             debugLog?.log(`attachTrait: attaching '${trait.name}' to context`, Log.ref(context));
             const attached = await trait.attach(context);
 
-            context.traits_ ??= new Map();
-            context.traits_.set(trait.name, attached);
+            context.traits ??= new Map();
+            context.traits.set(trait.name, attached);
 
             // If already in use, call onUsed
             if (this._refCount > 0 && attached.onUsed) {
@@ -555,13 +554,13 @@ export class AudioContextSource {
         } catch (e) {
             warnLog?.log(`attachTrait: failed to attach '${trait.name}':`, e);
         } finally {
-            context.attachingTraits_?.delete(trait.name);
+            context._attachingTraits?.delete(trait.name);
         }
     }
 
     private async attachAllTraits(context: AppAudioContext): Promise<void> {
-        context.traits_ = new Map();
-        context.attachingTraits_ = new Set();
+        context.traits = new Map();
+        context._attachingTraits = new Set();
         const attachPromises: Promise<void>[] = [];
         for (const trait of this._traits.values()) {
             attachPromises.push(this.attachTrait(trait, context));
@@ -570,19 +569,19 @@ export class AudioContextSource {
     }
 
     private async detachAllTraits(context: AppAudioContext | null): Promise<void> {
-        if (!context?.traits_)
+        if (!context?.traits)
             return;
 
         const closePromises: Promise<void>[] = [];
-        for (const attached of context.traits_.values()) {
+        for (const attached of context.traits.values()) {
             if (attached.onClosed) {
                 closePromises.push(Promise.resolve(attached.onClosed()).catch(e =>
                     warnLog?.log('detachAllTraits: onClosed failed:', e)));
             }
         }
         await Promise.all(closePromises);
-        context.traits_.clear();
-        context.attachingTraits_?.clear();
+        context.traits.clear();
+        context._attachingTraits?.clear();
     }
 
     private async onFirstRefCreated(): Promise<void> {
@@ -591,7 +590,7 @@ export class AudioContextSource {
         this._closeContextDebounced.reset();
 
         // Call onUsed on all attached traits
-        const traits = this._context?.traits_;
+        const traits = this._context?.traits;
         if (!traits)
             return;
 
@@ -609,7 +608,7 @@ export class AudioContextSource {
         debugLog?.log('onLastRefDisposed');
 
         // Call onUnused on all attached traits
-        const traits = this._context?.traits_;
+        const traits = this._context?.traits;
         if (traits) {
             const unusedPromises: Promise<void>[] = [];
             for (const attached of traits.values()) {
@@ -744,8 +743,8 @@ export class AudioContextSource {
         const silenceBuffer = context['silenceBuffer'] as AudioBuffer ?? this.createSilenceBuffer(context);
         const source = context.createBufferSource();
         source.buffer = silenceBuffer;
-        const destinationOverride = context.destination_ ?? context.destination;
-        source.connect(destinationOverride);
+        const destination = DestinationFallbackTrait.getDestination(context);
+        source.connect(destination);
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         source.onended = () => source.disconnect();
@@ -827,9 +826,9 @@ export class AudioContextSource {
         await context.suspend();
 
         // Call onUnused on all traits when suspending
-        if (context.traits_) {
+        if (context.traits) {
             const unusedPromises: Promise<void>[] = [];
-            for (const attached of context.traits_.values()) {
+            for (const attached of context.traits.values()) {
                 if (attached.onUnused) {
                     unusedPromises.push(Promise.resolve(attached.onUnused()).catch(e =>
                         warnLog?.log('suspendContext: onUnused failed:', e)));

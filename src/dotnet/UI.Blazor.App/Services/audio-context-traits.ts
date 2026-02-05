@@ -41,6 +41,17 @@ export class DestinationFallbackTrait implements AudioContextTrait {
     /** Returns true if this fallback is required on the current platform */
     public static get isRequired(): boolean { return DeviceInfo.isIos; }
 
+    /** Gets the fallback destination node if present, or undefined */
+    public static getDestinationFallback(context: AppAudioContext): AudioNode | undefined {
+        const fallback = context.traits?.get('destination-fallback') as AttachedDestinationFallback | undefined;
+        return fallback?.destination;
+    }
+
+    /** Gets the destination node to use (fallback if present, otherwise default) */
+    public static getDestination(context: AppAudioContext): AudioNode {
+        return this.getDestinationFallback(context) ?? context.destination;
+    }
+
     public attach(context: AppAudioContext): AttachedDestinationFallback {
         return new AttachedDestinationFallback(context);
     }
@@ -75,9 +86,6 @@ export class AttachedDestinationFallback implements AttachedAudioContextTrait, D
 
         this.destinationNode = context.createMediaStreamDestination();
         this.destinationNode.channelInterpretation = 'speakers';
-
-        // Set the destination override on the context
-        (context as AppAudioContext).destination_ = this.destinationNode;
 
         resetMediaSessionMetadata();
 

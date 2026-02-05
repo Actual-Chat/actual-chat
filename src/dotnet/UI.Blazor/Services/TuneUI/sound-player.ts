@@ -1,5 +1,6 @@
 import { PromiseSource, PromiseSourceWithTimeout } from 'promises';
 import { audioContextSource, AppAudioContext, AudioContextAction } from '../../../UI.Blazor.App/Services/audio-context-source';
+import { DestinationFallbackTrait } from '../../../UI.Blazor.App/Services/audio-context-traits';
 import { Log } from 'logging';
 import { AUDIO_PLAY as AP } from '_constants';
 
@@ -39,9 +40,8 @@ export class SoundPlayer {
                 let isEnded = false;
                 try {
                     source.buffer = buffer;
-                    const overridenContext = context as AppAudioContext;
-                    const destinationOverride = overridenContext.destination_ ?? context.destination;
-                    source.connect(destinationOverride);
+                    const destination = DestinationFallbackTrait.getDestination(context as AppAudioContext);
+                    source.connect(destination);
                     source.start();
                     source.stop(context.currentTime + 5);
                     const playTask = new PromiseSourceWithTimeout<boolean>();
