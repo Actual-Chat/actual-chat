@@ -6,7 +6,7 @@ public class MediaProcessor(IServiceProvider services) : IMediaProcessor
     private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
         = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
 
-    public async Task<ProcessedFile> ProcessUpload(UploadedFile uploadedFile, CancellationToken cancellationToken)
+    public async Task<ProcessedFile> ProcessUpload(UploadedFile uploadedFile, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         var processor = UploadProcessors.FirstOrDefault(x => x.Supports(uploadedFile.ContentType));
         if (processor is null)
@@ -14,10 +14,11 @@ public class MediaProcessor(IServiceProvider services) : IMediaProcessor
             return new ProcessedFile(uploadedFile, null);
 
         var tempFile = await DumpToTempFile(uploadedFile, cancellationToken).ConfigureAwait(false);
-        var processedFile = await processor.Process(tempFile, cancellationToken).ConfigureAwait(false);
+        var processedFile = await processor.Process(tempFile, progress, cancellationToken).ConfigureAwait(false);
         if (tempFile != processedFile.File)
             tempFile.Delete();
 
+        progress?.Report(100);
         return processedFile;
     }
 

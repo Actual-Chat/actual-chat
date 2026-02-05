@@ -183,10 +183,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     public async Task<MediaId> GetOrReserveMedia(string sessionId, CancellationToken cancellationToken)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
-        if (session.ReservedMediaId is not null) {
-            Hub.UploadSessionsState.SetReservedMediaId(sessionId, session.ReservedMediaId);
+        if (session.ReservedMediaId is not null)
             return session.ReservedMediaId;
-        }
 
         var metadata = await Hub.AttachmentRegistry.GetUploadSessionMetadata(sessionId, cancellationToken).ConfigureAwait(false);
         var command = new Medias_ReserveMedia(Session, session.ChatId.Value) { Metadata = metadata };

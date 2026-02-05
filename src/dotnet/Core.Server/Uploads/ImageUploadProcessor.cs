@@ -12,8 +12,9 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
     public bool Supports(string contentType)
         => MediaTypeExt.IsImage(contentType);
 
-    public async Task<ProcessedFile> Process(UploadedTempFile upload, CancellationToken cancellationToken)
+    public async Task<ProcessedFile> Process(UploadedTempFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
+        progress?.Report(0);
         var imageInfo = await GetImageInfo(upload).ConfigureAwait(false);
         if (imageInfo == null) {
             var fileInfo = upload with {
@@ -32,6 +33,7 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
         if (!imageProcessingRequired)
             return new ProcessedFile(upload, imageInfo.Size);
 
+        progress?.Report(20);
         Size imageSize;
         var outPath = FilePath.GetApplicationTempDirectory() & (Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(upload.FileName));
         var outStream = File.OpenWrite(outPath);
@@ -39,6 +41,7 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
             var inputStream = await upload.Open().ConfigureAwait(false);
             await using var __ = inputStream.ConfigureAwait(false);
             using (Image image = await Image.LoadAsync(inputStream, cancellationToken).ConfigureAwait(false)) {
+                progress?.Report(50);
                 image.Mutate(img => {
                     // https://github.com/SixLabors/ImageSharp/issues/790#issuecomment-447581798
                     img.AutoOrient();
@@ -47,6 +50,7 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
                 });
                 image.Metadata.ExifProfile = null;
                 imageSize = image.Size;
+                progress?.Report(80);
                 await image.SaveAsync(outStream, image.Metadata.DecodedImageFormat!, cancellationToken: cancellationToken).ConfigureAwait(false);
                 outStream.Position = 0;
             }

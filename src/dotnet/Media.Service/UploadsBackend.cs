@@ -146,7 +146,8 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
             var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
-            using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
+            var progress = CreateMediaConvertingProgressTracker(mediaId);
+            using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, progress, cancellationToken).ConfigureAwait(false);
             var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, cancellationToken).ConfigureAwait(false);
             return mediaContent;
         }
@@ -196,5 +197,26 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             upload.Length!.Value,
             () => UploadsStorage.GetDataFile(upload.Id, cancellationToken));
         return uploadedFile;
+    }
+
+    private Progress<double> CreateMediaConvertingProgressTracker(MediaId mediaId)
+    {
+        var progress = new Progress<double>(p => {
+            // Fire and forget - we don't want to block processing for status updates
+            _ = UpdateMediaStatus(mediaId, MediaPreparingStage.Converting, p, CancellationToken.None);
+        });
+        return progress;
+    }
+
+    private async Task UpdateMediaStatus(MediaId mediaId, MediaPreparingStage stage, double progress, CancellationToken cancellationToken)
+    {
+        try {
+            var statusInfo = new MediaStatusInfo(mediaId, MediaStatus.Preparing, stage, progress);
+            var change = new Change<MediaStatusInfo> { Update = statusInfo };
+            await Commander.Call(new MediaStatusBackend_Change(mediaId, change), true, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to update media status for '{MediaId}'", mediaId);
+        }
     }
 }
