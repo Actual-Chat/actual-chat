@@ -47,7 +47,7 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
                 _errorView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
             ]);
 
-            var animator = new UIViewPropertyAnimator(0.3,
+            var animator = new UIViewPropertyAnimator(0.5,
                 UIViewAnimationCurve.EaseInOut,
                 () => {
                     _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
@@ -78,7 +78,7 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
                 _successView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
             ]);
 
-            var animator = new UIViewPropertyAnimator(0.3,
+            var animator = new UIViewPropertyAnimator(0.5,
                 UIViewAnimationCurve.EaseInOut,
                 () => {
                     _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
