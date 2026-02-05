@@ -1200,17 +1200,25 @@ export class VirtualList {
                 if (!lastItemRef)
                     return false;
 
-                const hasAnchor = lastItemRef.classList.contains('anchor');
                 const isNewItem = old?.itemKey != null && old.itemKey !== stickyEdge.itemKey;
-                // Add classes synchronously to avoid flicker
-                if (!hasAnchor)
-                    lastItemRef.classList.add('anchor');
-                if (isNewItem) {
-                    lastItemRef.classList.add('appearing');
-                    lastItemRef.addEventListener('animationend', () => {
-                        lastItemRef.classList.remove('appearing');
-                    }, { once: true });
-                }
+                let hasAnchor = false;
+                fastRaf({
+                    read: () => {
+                        hasAnchor = lastItemRef.classList.contains('anchor');
+                    },
+                    write: () => {
+                        if (!hasAnchor)
+                            lastItemRef.classList.add('anchor');
+                        if (isNewItem) {
+                            lastItemRef.classList.add('appearing');
+                            lastItemRef.addEventListener('animationend', () => {
+                                fastRaf({
+                                    write: () => lastItemRef.classList.remove('appearing'),
+                                });
+                            }, { once: true });
+                        }
+                    },
+                });
             }
             return true;
         }
