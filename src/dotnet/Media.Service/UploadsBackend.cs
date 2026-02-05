@@ -115,6 +115,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
     public virtual async Task<MediaContent> OnConvertToMediaContent(UploadsBackend_ConvertToMediaContent command, CancellationToken cancellationToken)
     {
+        if (Invalidation.IsActive)
+            return default!;
+
         var uploadId = command.UploadId;
         var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
         if (upload is null)
@@ -131,8 +134,10 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
 
     public virtual async Task<MediaContent> OnProcessAndSaveContent(UploadsBackend_ProcessAndSaveContent command, CancellationToken cancellationToken)
     {
-        var (uploadId, mediaId) = command;
+        if (Invalidation.IsActive)
+            return default!;
 
+        var (uploadId, mediaId) = command;
         try {
             var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
             if (upload == null)
