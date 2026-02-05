@@ -94,29 +94,15 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             entry.AfterSendMessageHandlerArgs,
             checkResend);
 
-    private record AttachExtra(Task<bool> WhenFilePermissionGranted, Task<string> GetPreviewUrl)
-    {
-        public string PreviewUrl {
-            get {
-                if (!GetPreviewUrl.IsCompleted)
-                    throw StandardError.Constraint("Preview not yet resolved.");
-
-                if (!GetPreviewUrl.IsCompletedSuccessfully)
-                    return "";
- #pragma warning disable VSTHRD002
-                return GetPreviewUrl.Result;
- #pragma warning restore VSTHRD002
-            }
-        }
-    }
+    private record AttachExtra(Task<bool> WhenFilePermissionGranted, Task<string> GetPreviewUrl);
 
     private record RestoredAttachment(
         string FileName,
         string FileType,
-        long FileLength,
+        long Length,
         int Width,
         int Height,
-        AttachExtra Extras) : Attachment(FileName, FileType, FileLength, Width, Height)
+        AttachExtra Extras) : Attachment(FileName, FileType, Length, Width, Height)
     {
         public bool NoFileAccess { get; init; }
     }
@@ -334,13 +320,12 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                     resultSource.TrySetCanceled();
                 }
             }
-            else if (cancellationToken1.IsCancellationRequested) {
-                chatSendingMessages.ConfirmMessageFailedToSend(sendingMessage, exception);
-                resultSource.TrySetCanceled();
-            }
             else {
                 chatSendingMessages.ConfirmMessageFailedToSend(sendingMessage, exception);
-                resultSource.TrySetException(exception);
+                if (cancellationToken1.IsCancellationRequested)
+                    resultSource.TrySetCanceled();
+                else
+                    resultSource.TrySetException(exception);
             }
         }
         catch (Exception e) {
