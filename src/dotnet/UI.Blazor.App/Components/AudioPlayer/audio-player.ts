@@ -1,9 +1,11 @@
 import {
     audioContextSource,
-    OverridenAudioContext,
+    AppAudioContext,
     resetMediaSessionDebounced,
+    AudioContextRef,
+    AudioContextAction,
 } from '../../Services/audio-context-source';
-import { AudioContextInUse, AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
+import { AudioContextTrait, AttachedAudioContextTrait } from '../../Services/audio-context-traits';
 import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
@@ -24,6 +26,103 @@ const EnableFrequentDebugLog = false;
 let decoderWorkerInstance: Worker;
 let decoderWorker: OpusDecoderWorker & Disposable;
 
+/** Trait that manages the FeederAudioWorkletNode lifecycle for audio playback */
+class FeederNodeTrait implements AudioContextTrait {
+    public readonly name: string;
+    private readonly player: AudioPlayer;
+    private readonly internalId: string;
+
+    constructor(player: AudioPlayer, internalId: string) {
+        this.name = `feeder-node-${internalId}`;
+        this.player = player;
+        this.internalId = internalId;
+    }
+
+    public async attach(context: AppAudioContext): Promise<AttachedFeederNode> {
+        debugLog?.log(`#${this.internalId}.feederNodeTrait.attach: context:`, Log.ref(context));
+
+        await AudioPlayer.ensureInitialized();
+
+        // Create decoder to feeder channel
+        const decoderToFeederWorkletChannel = new MessageChannel();
+        const feederNodeOptions: AudioWorkletNodeOptions = {
+            channelCount: 1,
+            channelCountMode: 'explicit',
+            numberOfInputs: 0,
+            numberOfOutputs: 1,
+            outputChannelCount: [1],
+        };
+
+        const feederNode = await FeederAudioWorkletNode.create(
+            this.internalId,
+            decoderToFeederWorkletChannel.port2,
+            context,
+            'feederWorklet',
+            feederNodeOptions,
+        );
+
+        // Initialize decoder worker
+        await decoderWorker.init(this.internalId, decoderToFeederWorkletChannel.port1);
+
+        // Connect to destination
+        const destinationOverride = context.destination_ ?? context.destination;
+        feederNode.connect(destinationOverride);
+
+        return new AttachedFeederNode(
+            this.player,
+            this.internalId,
+            feederNode,
+            decoderToFeederWorkletChannel,
+        );
+    }
+}
+
+/** Attached feeder node that manages the worklet and decoder lifecycle */
+class AttachedFeederNode implements AttachedAudioContextTrait {
+    private readonly player: AudioPlayer;
+    private readonly internalId: string;
+    public readonly feederNode: FeederAudioWorkletNode;
+    private readonly channel: MessageChannel;
+
+    constructor(
+        player: AudioPlayer,
+        internalId: string,
+        feederNode: FeederAudioWorkletNode,
+        channel: MessageChannel,
+    ) {
+        this.player = player;
+        this.internalId = internalId;
+        this.feederNode = feederNode;
+        this.channel = channel;
+
+        // Wire up state change handler
+        this.feederNode.onStateChanged = (state) => this.player.onFeederStateChanged(state);
+    }
+
+    public async onClosed(): Promise<void> {
+        debugLog?.log(`#${this.internalId}.attachedFeederNode.onClosed`);
+
+        // Close decoder worker
+        await catchErrors(
+            () => decoderWorker.close(this.internalId),
+            e => warnLog?.log(`#${this.internalId}.onClosed decoderWorker.close error:`, e));
+
+        // Close channel ports
+        await catchErrors(
+            () => this.channel?.port1.close(),
+            e => warnLog?.log(`#${this.internalId}.onClosed port1.close error:`, e));
+        await catchErrors(
+            () => this.channel?.port2.close(),
+            e => warnLog?.log(`#${this.internalId}.onClosed port2.close error:`, e));
+
+        // Disconnect feeder node
+        this.feederNode.onStateChanged = undefined;
+        await catchErrors(
+            () => this.feederNode.disconnect(),
+            e => warnLog?.log(`#${this.internalId}.onClosed feederNode.disconnect error:`, e));
+    }
+}
+
 export class AudioPlayer implements Resettable {
     private static readonly pool: ObjectPool<AudioPlayer> = new ObjectPool<AudioPlayer>(() => new AudioPlayer());
     private static whenInitialized = new PromiseSource<void>();
@@ -31,15 +130,14 @@ export class AudioPlayer implements Resettable {
     private static initStarted = false;
 
     private readonly internalId: string;
-    private readonly contextRef: AudioContextRef;
+    private readonly feederNodeTrait: FeederNodeTrait;
 
     private blazorRef?: DotNet.DotNetObject;
-    private playing?: AudioContextInUse;
+    private contextRef?: AudioContextRef;
+    private playingAction?: AudioContextAction;
     private whenEnded?: PromiseSource<void>;
 
     private playbackState: PlaybackState = 'paused';
-    private decoderToFeederWorkletChannel?: MessageChannel;
-    private feederNode?: FeederAudioWorkletNode;
 
     public static get isInitialized() {
         return AudioPlayer.whenInitialized && AudioPlayer.whenInitialized.isCompleted();
@@ -64,7 +162,7 @@ export class AudioPlayer implements Resettable {
         this.whenInitialized.resolve(undefined);
     }
 
-    private static async ensureInitialized(): Promise<void> {
+    public static async ensureInitialized(): Promise<void> {
         if (AudioPlayer.initStarted)
             await AudioPlayer.whenInitialized;
         else
@@ -89,72 +187,7 @@ export class AudioPlayer implements Resettable {
     public constructor() {
         this.internalId = String(AudioPlayer.nextInternalId++);
         debugLog?.log(`#${this.internalId}.constructor`);
-
-        const attach = async (context: OverridenAudioContext) => {
-            debugLog?.log(`#${this.internalId}.contextRef.attach: context:`, Log.ref(context));
-
-            await AudioPlayer.ensureInitialized();
-            this.playbackState = 'paused';
-
-            // Create whatever isn't created
-            this.decoderToFeederWorkletChannel = new MessageChannel();
-            const feederNodeOptions: AudioWorkletNodeOptions = {
-                channelCount: 1,
-                channelCountMode: 'explicit',
-                numberOfInputs: 0,
-                numberOfOutputs: 1,
-                outputChannelCount: [1],
-            };
-            let feederNode = this.feederNode = await FeederAudioWorkletNode.create(
-                this.internalId,
-                this.decoderToFeederWorkletChannel.port2,
-                context,
-                'feederWorklet',
-                feederNodeOptions,
-            );
-            feederNode.onStateChanged = this.onFeederStateChanged;
-
-            // Create decoder worker
-            await decoderWorker.init(this.internalId, this.decoderToFeederWorkletChannel.port1);
-
-            const destinationOverride = context.destination_ ?? context.destination;
-            feederNode.connect(destinationOverride);
-        };
-
-        const detach = async () => {
-            debugLog?.log(`#${this.internalId}.contextRef.detach`);
-
-            const decoderToFeederWorkletChannel = this.decoderToFeederWorkletChannel;
-            if (decoderToFeederWorkletChannel) {
-                await catchErrors(
-                    () => decoderWorker.close(this.internalId),
-                    e => warnLog?.log(`#${this.internalId}.start.detach error:`, e));
-                this.decoderToFeederWorkletChannel = undefined;
-                await catchErrors(
-                    () => decoderToFeederWorkletChannel?.port1.close(),
-                    e => warnLog?.log(`#${this.internalId}.start.detach error:`, e));
-                await catchErrors(
-                    () => decoderToFeederWorkletChannel?.port2.close(),
-                    e => warnLog?.log(`#${this.internalId}.start.detach error:`, e));
-            }
-
-            const feederNode = this.feederNode;
-            if (feederNode) {
-                this.feederNode?.disconnect();
-                this.feederNode = undefined;
-                await catchErrors(
-                    () => feederNode.disconnect(),
-                    e => warnLog?.log(`#${this.internalId}.start.detach error:`, e));
-                feederNode.onStateChanged = undefined;
-            }
-        }
-
-        const options: AudioContextRefOptions = {
-            attach: attach,
-            detach: detach,
-            dispose: () => this.end(true),
-        }
-        this.contextRef = audioContextSource.getRef('playback', options);
+        this.feederNodeTrait = new FeederNodeTrait(this, this.internalId);
     }
 
     public async startPlayback(
@@ -166,36 +199,53 @@ export class AudioPlayer implements Resettable {
 
         debugLog?.log(`#${this.internalId} -> startPlayback()`);
         this.blazorRef = blazorRef;
-        this.playing = this.contextRef.use(async () => {
-            await decoderWorker.resume(this.internalId, rpcNoWait);
-            await this.feederNode?.resume(preSkip);
-        });
         this.playbackState = 'paused';
         this.whenEnded = new PromiseSource<void>();
-        await this.playing.whenInUse;
+
+        // Create a ref with the feeder node trait
+        this.contextRef = audioContextSource.createRef(this.feederNodeTrait);
+
+        // Run the playback action
+        this.playingAction = this.contextRef.run(async () => {
+            const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
+            if (attachedFeeder) {
+                await decoderWorker.resume(this.internalId, rpcNoWait);
+                await attachedFeeder.feederNode.resume(preSkip);
+            }
+        });
+
+        // Wait for context to be ready
+        await this.contextRef.whenReady();
+
         this.setMediaSession(title, album);
         debugLog?.log(`#${this.internalId} <- startPlayback()`);
     }
 
     public reset(): void {
         debugLog?.log(`#${this.internalId} reset()`);
-        void this.feederNode?.pause(rpcNoWait);
+        const attachedFeeder = this.contextRef?.getTrait<AttachedFeederNode>(this.feederNodeTrait);
+        if (attachedFeeder) {
+            void attachedFeeder.feederNode.pause(rpcNoWait);
+        }
         this.blazorRef = undefined;
         this.playbackState = 'ended';
-        this.playing?.dispose();
-        this.playing = undefined;
+        this.playingAction?.dispose();
+        this.playingAction = undefined;
+        this.contextRef?.dispose();
+        this.contextRef = undefined;
         this.whenEnded?.resolve(undefined);
         resetMediaSessionDebounced();
     }
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public async frame(bytes: Uint8Array): Promise<void> {
-        // debugLog?.log(`#${this.internalId} frame()`, this.playbackState);
         if (this.playbackState === 'ended')
             return;
 
-        // debugLog?.log(`#${this.internalId}.frame, ${bytes.length} byte(s)`);
-        await this.playing?.whenInUse;
+        // Wait for context to be ready
+        if (this.contextRef && !this.contextRef.isReady) {
+            await this.contextRef.whenReady();
+        }
 
         void decoderWorker.frame(
             this.internalId,
@@ -211,13 +261,19 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.end, mustAbort:`, mustAbort);
-        await this.playing?.whenInUse;
+
+        // Wait for context to be ready
+        if (this.contextRef && !this.contextRef.isReady) {
+            await this.contextRef.whenReady();
+        }
 
         // This ensures 'end' hit the feeder processor which in turn sends feeder status back and resolves this.whenEnded
         await decoderWorker.end(this.internalId, mustAbort);
         await this.whenEnded;
-        this.playing?.dispose();
-        this.playing = undefined;
+        this.playingAction?.dispose();
+        this.playingAction = undefined;
+        this.contextRef?.dispose();
+        this.contextRef = undefined;
         resetMediaSessionDebounced();
     }
 
@@ -227,10 +283,20 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.pause`);
-        await this.playing?.whenInUse;
-        await this.feederNode?.pause(rpcNoWait);
-        this.playing?.dispose();
-        this.playing = undefined;
+
+        // Wait for context to be ready
+        if (this.contextRef && !this.contextRef.isReady) {
+            await this.contextRef.whenReady();
+        }
+
+        const attachedFeeder = this.contextRef?.getTrait<AttachedFeederNode>(this.feederNodeTrait);
+        if (attachedFeeder) {
+            await attachedFeeder.feederNode.pause(rpcNoWait);
+        }
+        this.playingAction?.dispose();
+        this.playingAction = undefined;
+        this.contextRef?.dispose();
+        this.contextRef = undefined;
         this.playbackState = 'paused';
 
         this.setMediaSessionState('paused');
@@ -242,12 +308,49 @@ export class AudioPlayer implements Resettable {
             return;
 
         debugLog?.log(`#${this.internalId}.resume`);
-        this.playing = this.contextRef.use(async () => {
-            await this.feederNode?.resume(0);
+
+        // Create new ref and action for resumed playback
+        this.contextRef = audioContextSource.createRef(this.feederNodeTrait);
+        this.playingAction = this.contextRef.run(async () => {
+            const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
+            if (attachedFeeder) {
+                await attachedFeeder.feederNode.resume(0);
+            }
         });
         this.playbackState = 'paused';
 
         this.setMediaSessionState('playing');
+    }
+
+    // Event handler for feeder state changes (called by AttachedFeederNode)
+    public onFeederStateChanged = async (state: FeederState) => {
+        if (this.playbackState === 'ended')
+            return;
+
+        if (EnableFrequentDebugLog)
+            debugLog?.log(
+                `#${this.internalId}.onFeederStateChanged: ${state.playbackState} @ ${state.playingAt}, ` +
+                `buffer: ${state.bufferState} (${state.bufferedDuration}s)`);
+
+        this.playbackState = state.playbackState;
+        if (this.playbackState === 'ended') {
+            try {
+                await this.reportEnded();
+            }
+            finally {
+                this.playingAction?.dispose();
+                this.playingAction = undefined;
+                this.contextRef?.dispose();
+                this.contextRef = undefined;
+                this.whenEnded?.resolve(undefined);
+                AudioPlayer.pool.release(this);
+            }
+        }
+        else {
+            const isPaused = state.playbackState === 'paused';
+            const isBufferLow = state.bufferState !== 'ok';
+            void this.reportPlaying(state.playingAt, isPaused, isBufferLow);
+        }
     }
 
     // Private methods
@@ -281,36 +384,6 @@ export class AudioPlayer implements Resettable {
             }
         } catch (e) {
             warnLog?.log(`#${this.internalId}.startPlayback: error setting metadata:`, e);
-        }
-    }
-
-    // Event handlers
-
-    private onFeederStateChanged = async (state: FeederState) => {
-        if (this.playbackState === 'ended')
-            return;
-
-        if (EnableFrequentDebugLog)
-            debugLog?.log(
-                `#${this.internalId}.onFeederStateChanged: ${state.playbackState} @ ${state.playingAt}, ` +
-                `buffer: ${state.bufferState} (${state.bufferedDuration}s)`);
-
-        this.playbackState = state.playbackState;
-        if (this.playbackState === 'ended') {
-            try {
-                await this.reportEnded();
-            }
-            finally {
-                this.playing?.dispose();
-                this.playing = undefined;
-                this.whenEnded?.resolve(undefined);
-                AudioPlayer.pool.release(this);
-            }
-        }
-        else {
-            const isPaused = state.playbackState === 'paused';
-            const isBufferLow = state.bufferState !== 'ok';
-            void this.reportPlaying(state.playingAt, isPaused, isBufferLow);
         }
     }
 

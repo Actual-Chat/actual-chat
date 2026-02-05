@@ -1,8 +1,7 @@
 import { PromiseSource, PromiseSourceWithTimeout } from 'promises';
-import { audioContextSource } from '../../../UI.Blazor.App/Services/audio-context-source';
+import { audioContextSource, AppAudioContext, AudioContextAction } from '../../../UI.Blazor.App/Services/audio-context-source';
 import { Log } from 'logging';
 import { AUDIO_PLAY as AP } from '_constants';
-import { AudioContextInUse, AudioContextRef } from '../../../UI.Blazor.App/Services/audio-context-ref';
 
 const { debugLog, warnLog } = Log.get('SoundsPlayer');
 const DEFAULT_COOLDOWN = 3; // 3s
@@ -12,14 +11,9 @@ export class SoundPlayer {
     private readonly buffers = new Map<string, AudioBuffer>();
     private readonly offlineContext = new OfflineAudioContext(1, 5000 * AP.SAMPLES_PER_MS, AP.SAMPLE_RATE);
     private readonly recentlyPlayedMap = new Map<string, number>;
-    private readonly contextRef: AudioContextRef;
     private static _instance?: SoundPlayer;
 
     constructor() {
-        this.contextRef = audioContextSource.getRef('play-tunes', {
-            attach: () => { },
-            detach: () => { },
-        });
     }
 
     public static get instance(): SoundPlayer {
@@ -34,17 +28,19 @@ export class SoundPlayer {
         if (playedAt - lastPlayedAt <= (cooldown ?? DEFAULT_COOLDOWN) * 1000)
             return; // do not play same sound too often
 
-        const contextRef = this.contextRef;
-        let playing: AudioContextInUse | null = null;
+        let action: AudioContextAction | null = null;
         try {
             const buffer = await this.getSound(url);
+
+            // Use the run() API directly - no need to maintain a persistent ref
             const whilePlaying = new PromiseSource<void>();
-            playing = contextRef.use(async context => {
+            action = audioContextSource.run(async (context) => {
                 const source = context.createBufferSource();
                 let isEnded = false;
                 try {
                     source.buffer = buffer;
-                    const destinationOverride = context.destination_ ?? context.destination;
+                    const overridenContext = context as AppAudioContext;
+                    const destinationOverride = overridenContext.destination_ ?? context.destination;
                     source.connect(destinationOverride);
                     source.start();
                     source.stop(context.currentTime + 5);
@@ -68,13 +64,12 @@ export class SoundPlayer {
                     } catch (e) {
                         // Ignore disconnect errors
                     }
-
                 }
             });
             await whilePlaying;
         }
         finally {
-            playing?.dispose();
+            action?.dispose();
         }
         debugLog?.log('<- play', url);
     }
