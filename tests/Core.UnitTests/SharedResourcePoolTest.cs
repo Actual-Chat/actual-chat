@@ -96,12 +96,12 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
         // When a resource factory task fails asynchronously with a non-transient error,
         // it causes that pool infinitely tries to execute Lease.BeginRent.
         async Task<Resource> ResourceFactory1(int _, CancellationToken cancellationToken) {
-            await Task.Delay(1000, cancellationToken);
+            await Task.Delay(1500, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             return new Resource();
         }
 
-        using var cancellationTokenSource = new CancellationTokenSource(200);
+        using var cancellationTokenSource = new CancellationTokenSource(100);
         var cancellationToken = cancellationTokenSource.Token;
         var pool = new SharedResourcePool<int, Resource>(ResourceFactory1) {
             ResourceDisposeDelay = TimeSpan.Zero,
