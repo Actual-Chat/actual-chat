@@ -6,8 +6,8 @@ import { catchErrors, delayAsync, delayAsyncWith, PromiseSource, ResolvedPromise
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { audioContextSource, recordingAudioContextSource } from '../../Services/audio-context-source';
-import { AudioContextRef, AudioContextRefOptions } from '../../Services/audio-context-ref';
+import { audioContextSource, recordingAudioContextSource, AppAudioContext, AudioContextRef, AudioContextAction } from '../../Services/audio-context-source';
+import { AudioContextTrait, AttachedAudioContextTrait } from '../../Services/audio-context-traits';
 import { AudioVadWorker } from './workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';
@@ -48,22 +48,156 @@ import { RecorderStateHub } from './recorder-state-hub';
 
 const { logScope, infoLog, debugLog, warnLog, errorLog } = Log.get('OpusMediaRecorder');
 
+/** Trait that manages the recording pipeline (VAD + encoder worklets) */
+class RecordingPipelineTrait implements AudioContextTrait {
+    public readonly name = 'recording-pipeline';
+    private readonly recorder: OpusMediaRecorder;
+
+    constructor(recorder: OpusMediaRecorder) {
+        this.recorder = recorder;
+    }
+
+    public async attach(context: AppAudioContext): Promise<AttachedRecordingPipeline> {
+        debugLog?.log(`-> RecordingPipelineTrait.attach()`);
+        return new AttachedRecordingPipeline(this.recorder, context);
+    }
+}
+
+/** Attached recording pipeline that manages VAD and encoder worklets */
+class AttachedRecordingPipeline implements AttachedAudioContextTrait {
+    private readonly recorder: OpusMediaRecorder;
+    private readonly context: AudioContext;
+    public encoderWorkletInstance: AudioWorkletNode | null = null;
+    public encoderWorklet: OpusEncoderWorklet & Disposable | null = null;
+    public vadWorkletInstance: AudioWorkletNode | null = null;
+    public vadWorklet: AudioVadWorklet & Disposable | null = null;
+
+    constructor(recorder: OpusMediaRecorder, context: AudioContext) {
+        this.recorder = recorder;
+        this.context = context;
+    }
+
+    public async initialize(): Promise<void> {
+        const context = this.context;
+        const recorder = this.recorder;
+
+        const encoderWorkerToWorkletChannel = new MessageChannel();
+        const encoderWorkerToVadWorkerChannel = new MessageChannel();
+        const t1 = recorder.encoderWorker.init(
+            encoderWorkerToWorkletChannel.port1,
+            encoderWorkerToVadWorkerChannel.port1);
+
+        debugLog?.log(`AttachedRecordingPipeline.initialize(): encoder worklet init...`);
+        // Encoder worklet init
+        const encoderWorkletOptions: AudioWorkletNodeOptions = {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            channelCount: 1,
+            channelInterpretation: 'speakers',
+            channelCountMode: 'explicit',
+            processorOptions: {
+                timeSlice: 20, // hard-coded 20ms at the codec level
+                sampleRate: context.sampleRate,
+            } as OpusEncoderProcessorOptions,
+        };
+        this.encoderWorkletInstance = new AudioWorkletNode(
+            context,
+            'opus-encoder-worklet-processor',
+            encoderWorkletOptions);
+        this.encoderWorklet = rpcClientServer<OpusEncoderWorklet>(
+            `${logScope}.encoderWorklet`,
+            this.encoderWorkletInstance.port,
+            recorder);
+        await this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
+        debugLog?.log(`AttachedRecordingPipeline.initialize(): encoder worklet init completed`);
+
+        const vadWorkerChannel = new MessageChannel();
+        const t2 = recorder.vadWorker.init(vadWorkerChannel.port1, encoderWorkerToVadWorkerChannel.port2);
+
+        debugLog?.log(`AttachedRecordingPipeline.initialize(): vad worklet init...`);
+        // VAD worklet init
+        const vadWorkletOptions: AudioWorkletNodeOptions = {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            channelCount: 1,
+            channelInterpretation: 'speakers',
+            channelCountMode: 'explicit',
+            processorOptions: {
+                sampleRate: context.sampleRate,
+            } as AudioVadProcessorOptions,
+        };
+        this.vadWorkletInstance = new AudioWorkletNode(
+            context,
+            'audio-vad-worklet-processor',
+            vadWorkletOptions);
+        this.vadWorklet = rpcClient<AudioVadWorklet>(`${logScope}.vadWorklet`, this.vadWorkletInstance.port);
+        void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
+        debugLog?.log(`AttachedRecordingPipeline.initialize(): vad worklet init completed`);
+
+        await Promise.all([t1, t2]);
+    }
+
+    public async onClosed(): Promise<void> {
+        debugLog?.log(`AttachedRecordingPipeline.onClosed()`);
+
+        await catchErrors(
+            () => this.encoderWorkletInstance?.disconnect(),
+            e => warnLog?.log('onClosed encoderWorkletInstance.disconnect error:', e));
+        this.encoderWorkletInstance = null;
+        await catchErrors(
+            () => {
+                if (this.encoderWorklet) {
+                    void this.encoderWorklet.terminate(rpcNoWait);
+                    this.encoderWorklet.dispose();
+                }
+            },
+            e => warnLog?.log('onClosed encoderWorklet.dispose error:', e));
+        this.encoderWorklet = null;
+
+        await catchErrors(
+            () => this.vadWorkletInstance?.disconnect(),
+            e => warnLog?.log('onClosed vadWorkletInstance.disconnect error:', e));
+        this.vadWorkletInstance = null;
+        await catchErrors(
+            () => {
+                if (this.vadWorklet) {
+                    void this.vadWorklet.terminate(rpcNoWait);
+                    this.vadWorklet.dispose();
+                }
+            },
+            e => warnLog?.log('onClosed vadWorklet.dispose error:', e));
+        this.vadWorklet = null;
+
+        await this.recorder.stopMicrophoneStream();
+        debugLog?.log(`onClosed(): microphone stream has been closed`);
+
+        await catchErrors(
+            () => this.recorder.encoderWorker?.stop(),
+            e => warnLog?.log('onClosed encoderWorker.stop error:', e));
+        await catchErrors(
+            () => this.recorder.vadWorker?.reset(),
+            e => warnLog?.log('onClosed vadWorker.reset error:', e));
+        await catchErrors(
+            () => this.recorder.source?.disconnect(),
+            e => warnLog?.log('onClosed source.disconnect error:', e));
+        this.recorder.source = null;
+        this.recorder.stream = null;
+    }
+}
+
 export class OpusMediaRecorder implements RecorderStateServer {
     private state: 'inactive' | 'initializing' | 'recording' | 'stopped'  = 'inactive';
     private whenInitialized: PromiseSource<void>;
 
     private encoderWorkerInstance: Worker;
-    private encoderWorker: OpusEncoderWorker & Disposable;
+    public encoderWorker: OpusEncoderWorker & Disposable;
     private vadWorkerInstance: Worker;
-    private vadWorker: AudioVadWorker & Disposable;
-    private encoderWorkletInstance: AudioWorkletNode | null = null;
-    private encoderWorklet: OpusEncoderWorklet & Disposable | null = null;
-    private vadWorkletInstance: AudioWorkletNode | null = null;
-    private vadWorklet: AudioVadWorklet & Disposable | null = null;
-    private recordingContextRef: AudioContextRef;
-    private contextRef: AudioContextRef;
-    private recording?: Disposable;
-    private playing?: Disposable;
+    public vadWorker: AudioVadWorker & Disposable;
+
+    private readonly recordingPipelineTrait: RecordingPipelineTrait;
+    private recordingContextRef?: AudioContextRef;
+    private playbackContextRef?: AudioContextRef;
+    private recordingAction?: AudioContextAction;
     private chatId?: string;
     private sessionToken: string | null;
     private encoderWorkerSessionToken: string | null;
@@ -174,6 +308,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
     constructor() {
         this.whenInitialized = new PromiseSource<void>();
+        this.recordingPipelineTrait = new RecordingPipelineTrait(this);
     }
 
     public async init(baseUri: string, canUseNNVad: boolean): Promise<void> {
@@ -215,150 +350,9 @@ export class OpusMediaRecorder implements RecorderStateServer {
             { type: 'rpc-timeout', timeoutMs: 5_000 });
         debugLog?.log(`init(): vadWorker created`);
 
-        const detach = async () => {
-            await catchErrors(
-                () => this.encoderWorkletInstance?.disconnect(),
-                e => warnLog?.log('start.detach encoderWorkletInstance.disconnect error:', e));
-            this.encoderWorkletInstance = null;
-            await catchErrors(
-                () => {
-                    if (this.encoderWorklet) {
-                        void this.encoderWorklet.terminate(rpcNoWait);
-                        this.encoderWorklet.dispose();
-                    }
-                },
-                e => warnLog?.log('start.detach encoderWorklet.dispose error:', e));
-            this.encoderWorklet = null;
+        // Register the trait with the recording context source
+        recordingAudioContextSource.addTrait(this.recordingPipelineTrait);
 
-            await catchErrors(
-                () => this.vadWorkletInstance?.disconnect(),
-                e => warnLog?.log('start.detach vadWorkletInstance.disconnect error:', e));
-            this.vadWorkletInstance = null;
-            await catchErrors(
-                () => {
-                    if (this.vadWorklet) {
-                        void this.vadWorklet.terminate(rpcNoWait);
-                        this.vadWorklet.dispose();
-                    }
-                },
-                e => warnLog?.log('start.detach vadWorklet.dispose error:', e));
-            this.vadWorklet = null;
-
-            await this.stopMicrophoneStream();
-            debugLog?.log(`start.detach(): microphone stream has been closed`);
-
-            await catchErrors(
-                () => this.encoderWorker?.stop(),
-                e => warnLog?.log('start.detach encoderWorker.stop error:', e));
-            await catchErrors(
-                () => this.vadWorker?.reset(),
-                e => warnLog?.log('start.detach vadWorker.reset error:', e));
-            await catchErrors(
-                () => this.source?.disconnect(),
-                e => warnLog?.log('start.detach source.disconnect error:', e));
-            this.source = null;
-            this.stream = null;
-        }
-
-        const attach = async (context: AudioContext) => {
-            debugLog?.log(`-> init.attach()`);
-
-            if (!this.encoderWorkletInstance
-                || !this.vadWorkletInstance
-                || this.encoderWorkletInstance.context !== context
-                || this.vadWorkletInstance.context !== context) {
-
-                if (this.encoderWorkletInstance) {
-                    void this.vadWorklet?.terminate(rpcNoWait);
-                    void this.encoderWorklet?.terminate(rpcNoWait);
-                    await detach();
-                }
-
-                const encoderWorkerToWorkletChannel = new MessageChannel();
-                const encoderWorkerToVadWorkerChannel = new MessageChannel();
-                const t1 = this.encoderWorker.init(
-                    encoderWorkerToWorkletChannel.port1,
-                    encoderWorkerToVadWorkerChannel.port1);
-
-                debugLog?.log(`init.attach(): encoder worklet init...`);
-                // Encoder worklet init
-                const encoderWorkletOptions: AudioWorkletNodeOptions = {
-                    numberOfInputs: 1,
-                    numberOfOutputs: 1,
-                    channelCount: 1,
-                    channelInterpretation: 'speakers',
-                    channelCountMode: 'explicit',
-                    processorOptions: {
-                        timeSlice: 20, // hard-coded 20ms at the codec level
-                        sampleRate: context.sampleRate,
-                    } as OpusEncoderProcessorOptions,
-                };
-                this.encoderWorkletInstance = new AudioWorkletNode(
-                    context,
-                    'opus-encoder-worklet-processor',
-                    encoderWorkletOptions);
-                this.encoderWorklet = rpcClientServer<OpusEncoderWorklet>(
-                    `${logScope}.encoderWorklet`,
-                    this.encoderWorkletInstance.port,
-                    this);
-                await this.encoderWorklet.init(encoderWorkerToWorkletChannel.port2);
-                debugLog?.log(`init.attach(): encoder worklet init completed`);
-
-                const vadWorkerChannel = new MessageChannel();
-                const t2 = this.vadWorker.init(vadWorkerChannel.port1, encoderWorkerToVadWorkerChannel.port2);
-
-                debugLog?.log(`init.attach(): vad worklet init...`);
-                // VAD worklet init
-                const vadWorkletOptions: AudioWorkletNodeOptions = {
-                    numberOfInputs: 1,
-                    numberOfOutputs: 1,
-                    channelCount: 1,
-                    channelInterpretation: 'speakers',
-                    channelCountMode: 'explicit',
-                    processorOptions: {
-                        sampleRate: context.sampleRate,
-                    } as AudioVadProcessorOptions,
-                };
-                this.vadWorkletInstance = new AudioWorkletNode(
-                    context,
-                    'audio-vad-worklet-processor',
-                    vadWorkletOptions);
-                this.vadWorklet = rpcClient<AudioVadWorklet>(`${logScope}.vadWorklet`, this.vadWorkletInstance.port);
-                void this.vadWorklet.init(vadWorkerChannel.port2, rpcNoWait);
-                debugLog?.log(`init.attach(): vad worklet init completed`);
-
-                await Promise.all([t1, t2]);
-            }
-
-            // Acquire new stream and terminate old one if recording
-            if (this.state === 'recording' && this.recording) {
-                const chatId = this.chatId;
-                if (chatId) {
-                    debugLog?.log(`attach(): awaiting encoder worker start, worklet start and vad worker reset ...`);
-                    await Promise.all([
-                        this.encoderWorker.start(chatId, ""), // Reuse chatId and repliedChatEntryId, last rpc arg cannot be null
-                        this.vadWorker.reset(),
-                        this.encoderWorklet?.start(rpcNoWait)
-                    ]);
-                    await this.startMicrophoneStream(context);
-                }
-            }
-            else {
-                await this.stopMicrophoneStream();
-                this.state = 'stopped';
-                this.recording?.dispose();
-                this.recording = undefined;
-            }
-
-            debugLog?.log(`<- init.attach()`);
-        }
-
-        const options: AudioContextRefOptions = {
-            attach: attach,
-            detach: _ => retry(2, () => detach()),
-        }
-        this.recordingContextRef = recordingAudioContextSource.getRef('recording', options);
-        this.contextRef = audioContextSource.getRef('recording', { }); // No op, we just need to have a reference to the AudioContextSource to call useRef
         this.state = 'stopped';
         this.whenInitialized.resolve(undefined);
         debugLog?.log(`<- init()`);
@@ -376,21 +370,37 @@ export class OpusMediaRecorder implements RecorderStateServer {
         debugLog?.log(`start(): whenInitialized completed`);
 
         this.state = 'recording';
-        const recordingContextRef = this.recordingContextRef;
-        this.recording = recordingContextRef.use(async context => {
+        this.chatId = chatId;
+
+        // Create refs for both recording and playback contexts
+        this.recordingContextRef = recordingAudioContextSource.createRef(this.recordingPipelineTrait);
+        this.playbackContextRef = audioContextSource.createRef(); // No-op ref for playback
+
+        // Run the recording action
+        this.recordingAction = this.recordingContextRef.run(async (context) => {
             try {
                 debugLog?.log(`start(): awaiting encoder worker start, worklet start and vad worker reset ...`);
                 if (this.chatId === chatId && this.stream)
                     return; // Already started
 
+                // Get the attached pipeline
+                const pipeline = this.recordingContextRef?.getTrait<AttachedRecordingPipeline>(this.recordingPipelineTrait);
+                if (!pipeline) {
+                    throw new Error('Recording pipeline not attached');
+                }
+
+                // Initialize pipeline if not already done
+                if (!pipeline.encoderWorkletInstance) {
+                    await pipeline.initialize();
+                }
+
                 await Promise.all([
                     this.encoderWorker.start(chatId, repliedChatEntryId),
                     this.vadWorker.reset(),
-                    this.encoderWorklet?.start(rpcNoWait)
+                    pipeline.encoderWorklet?.start(rpcNoWait)
                 ]);
 
-                this.chatId = chatId;
-                await this.startMicrophoneStream(context);
+                await this.startMicrophoneStream(context, pipeline);
                 RecorderStateHub.setRecording(this.isRecording);
             }
             catch (e) {
@@ -400,7 +410,6 @@ export class OpusMediaRecorder implements RecorderStateServer {
             }
             debugLog?.log('<- start()');
         });
-
     }
 
     public setSessionToken(sessionToken: string): void {
@@ -436,10 +445,12 @@ export class OpusMediaRecorder implements RecorderStateServer {
             RecorderStateHub.setRecording(this.isRecording);
         }
         finally {
-            this.recording?.dispose();
-            this.recording = undefined;
-            this.playing?.dispose();
-            this.playing = undefined;
+            this.recordingAction?.dispose();
+            this.recordingAction = undefined;
+            this.recordingContextRef?.dispose();
+            this.recordingContextRef = undefined;
+            this.playbackContextRef?.dispose();
+            this.playbackContextRef = undefined;
             debugLog?.log(`<- stop()`);
         }
     }
@@ -447,15 +458,14 @@ export class OpusMediaRecorder implements RecorderStateServer {
     public async terminate(): Promise<void> {
         await this.encoderWorker?.stop();
         await this.vadWorker?.reset();
-        this.recording?.dispose();
-        this.recording = undefined;
-        this.playing?.dispose();
-        this.playing = undefined;
-        this.recordingContextRef = undefined!;
+        this.recordingAction?.dispose();
+        this.recordingAction = undefined;
+        this.recordingContextRef?.dispose();
+        this.recordingContextRef = undefined;
+        this.playbackContextRef?.dispose();
+        this.playbackContextRef = undefined;
         this.encoderWorkerInstance.terminate();
         this.vadWorkerInstance.terminate();
-        void this.vadWorklet?.terminate(rpcNoWait);
-        void this.encoderWorklet?.terminate(rpcNoWait);
         this.whenInitialized = new PromiseSource<void>();
         AudioInitializer.isRecorderInitialized = false;
     }
@@ -478,10 +488,11 @@ export class OpusMediaRecorder implements RecorderStateServer {
         warnLog?.log('runDiagnostics: ', diagnosticsState);
 
         const timeout = 500;
+        const pipeline = this.recordingContextRef?.getTrait<AttachedRecordingPipeline>(this.recordingPipelineTrait);
         diagnosticsState = (await Promise.race([this.vadWorker?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
         diagnosticsState = (await Promise.race([this.encoderWorker?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
-        diagnosticsState = (await Promise.race([this.vadWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
-        diagnosticsState = (await Promise.race([this.encoderWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
+        diagnosticsState = (await Promise.race([pipeline?.vadWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
+        diagnosticsState = (await Promise.race([pipeline?.encoderWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
 
         // As we are having issues with starting recording - let's recreate AudioContext
         await recordingAudioContextSource.reset();
@@ -513,7 +524,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         return ResolvedPromise.Void;
     }
 
-    // Private methods
+    // Private/Internal methods
 
     private async ensureInitialized(): Promise<void> {
         if (this.state !== 'inactive') {
@@ -533,7 +544,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
         }
         await this.init(baseUri, true);
     }
-    private async startMicrophoneStream(context: AudioContext): Promise<void> {
+
+    private async startMicrophoneStream(context: AudioContext, pipeline: AttachedRecordingPipeline): Promise<void> {
         if (this.stream?.active && this.source?.context === context)
             return;
 
@@ -542,22 +554,21 @@ export class OpusMediaRecorder implements RecorderStateServer {
         try {
             this.stream = await OpusMediaRecorder.getMicrophoneStream();
             this.source = context.createMediaStreamSource(this.stream);
-            // With high probability we are going to perform playback, so we need to use audioContextSource
-            this.playing = this.contextRef.use(_ => Promise.resolve());
+
             // After acquiring the stream, AudioContext might be suspended, so we need to resume it
             if (Interactive.isAlwaysInteractive) {
                 await context.resume();
             }
             else if (context.state === 'suspended') {
-                await recordingAudioContextSource.interactiveResume(context);
+                await recordingAudioContextSource.interactiveResume(context as AppAudioContext);
             }
 
-            if (!this.vadWorkletInstance)
+            if (!pipeline.vadWorkletInstance)
                 throw new Error('startMicrophoneStream(): vadWorkletInstance is not initialized');
-            if (!this.encoderWorkletInstance)
+            if (!pipeline.encoderWorkletInstance)
                 throw new Error('startMicrophoneStream(): encoderWorkletInstance is not initialized');
-            this.source.connect(this.vadWorkletInstance);
-            this.source.connect(this.encoderWorkletInstance);
+            this.source.connect(pipeline.vadWorkletInstance);
+            this.source.connect(pipeline.encoderWorkletInstance);
             debugLog?.log(`startMicrophoneStream(): microphone stream has been connected to the pipeline`);
         } catch (e) {
             await this.stopMicrophoneStream();
@@ -565,7 +576,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
         }
     }
 
-    private async stopMicrophoneStream(): Promise<void> {
+    public async stopMicrophoneStream(): Promise<void> {
         if (!this.stream && !this.source)
             return;
 
@@ -575,8 +586,6 @@ export class OpusMediaRecorder implements RecorderStateServer {
             this.source?.disconnect();
             this.source = null;
             this.stream = null;
-            this.playing?.dispose();
-            this.playing = undefined;
         }
         finally {
             await OpusMediaRecorder.stopStreamTracks(stream);

@@ -55,6 +55,7 @@ export type LogScope =
     // Audio
     | 'AudioContextRef'
     | 'AudioContextSource'
+    | 'AudioContextTraits'
     | 'AudioInfo'
     // Audio playback
     | 'AudioPlayer'
