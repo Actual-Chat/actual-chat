@@ -122,6 +122,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         services.AddKeyedSingleton<Translator>(Constants.Translation.RealtimeServiceKey);
         services.AddSingleton<LanguageDetector>();
         services.AddAIServices();
+        services.AddChatMLServices();
 
         // Keyed registration for ConversationSplitFlow
         services.AddKeyedSingleton<IEntryGroupExtractor>(EntryGroupLimit.None,
