@@ -22,12 +22,13 @@ body {
     100% { opacity: 1; }
 }
 
+/* iOS-specific styles */
 body.device-ios {
     @apply ios-height;
 }
 
 body.device-ios :has(input:focus),
-body.device-ios :has([contenteditable]:focus){
+body.device-ios :has([contenteditable]:focus) {
     animation: blink_input_opacity_to_prevent_scrolling_when_focus 0.01s;
 }
 
@@ -35,6 +36,17 @@ body.device-ios * {
     /* disable pinch zoom gestures and double-tap to zoom in iOS Safari */
     touch-action: pan-x pan-y;
 }
+
+/* Android-specific styles */
+body.device-android {
+    @apply ios-height;
+    overflow: hidden;
+}
+body.device-android #app {
+    @apply ios-height;
+    overflow: hidden;
+}
+
 body.no-select {
     user-select: none !important;
     -webkit-user-select: none !important;
