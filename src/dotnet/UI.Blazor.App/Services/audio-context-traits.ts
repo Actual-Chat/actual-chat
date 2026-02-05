@@ -32,6 +32,7 @@ export interface AttachedAudioContextTrait {
 /** Symbol for empty attached trait (no lifecycle callbacks needed) */
 export const emptyAttachedTrait: AttachedAudioContextTrait = Object.freeze({});
 
+
 // Specific Traits
 
 /** Fallback destination node for iOS Safari to expose mediaSession metadata at lock screen */
@@ -56,9 +57,6 @@ export class DestinationFallbackTrait implements AudioContextTrait {
         return new AttachedDestinationFallback(context);
     }
 }
-
-/** Singleton instance of DestinationFallbackTrait */
-export const destinationFallbackTrait = new DestinationFallbackTrait();
 
 /** Attached destination fallback that manages the audio element lifecycle */
 export class AttachedDestinationFallback implements AttachedAudioContextTrait, Disposable {

@@ -1,12 +1,11 @@
 import { AUDIO_PLAY as AP, AUDIO_REC as AR } from '_constants';
 import { debounce, delayAsync, PromiseSource, ResolvedPromise, waitAsync, Cancelled } from 'promises';
-import { EventHandler } from 'event-handling';
 import { Interactive } from 'interactive';
 import { OnDeviceAwake } from 'on-device-awake';
 import { firstValueFrom, Observable, Subject } from 'rxjs';
 import { Versioning } from 'versioning';
 import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait, destinationFallbackTrait } from './audio-context-traits';
+import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait } from './audio-context-traits';
 import { Log } from 'logging';
 import { AudioInitializer, BackgroundState } from './audio-initializer';
 import { Disposable } from 'disposable';
@@ -1106,6 +1105,6 @@ if (BrowserInfo.hostKind !== 'MauiApp') {
 
     // Register DestinationFallbackTrait for iOS Safari
     if (DestinationFallbackTrait.isRequired) {
-        audioContextSource.addTrait(destinationFallbackTrait);
+        audioContextSource.addTrait(new DestinationFallbackTrait());
     }
 }
