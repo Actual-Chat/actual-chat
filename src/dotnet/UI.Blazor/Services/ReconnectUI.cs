@@ -6,12 +6,26 @@ namespace ActualChat.UI.Blazor.Services;
 public class ReconnectUI(UIHub hub)
     : RpcPeerStateMonitor(hub.Services, hub.HostInfo.HostKind.IsApp() ? RpcPeerRef.Default : null, false)
 {
+    private readonly TimeSpan _maxKeepAliveDelayOnDeviceAwake = hub.RpcHub.Limits.KeepAlivePeriod * 1.5;
+    private TimeSpan _lastTotalSleepDuration = TimeSpan.Zero;
+
     private UIHub Hub { get; } = hub;
     private RpcClientPeerReconnectDelayer RpcReconnectDelayer
-        => RpcHub.InternalServices.ClientPeerReconnectDelayer;
+        => field ??= RpcHub.InternalServices.ClientPeerReconnectDelayer;
 
     public bool IsClient => Hub.HostInfo.HostKind.IsApp();
-    public Moment CpuNow => Now;
+    public Moment SystemNow => Now;
+
+    public RpcClientPeer? GetPeer()
+    {
+        try {
+            return IsClient ? RpcHub.GetClientPeer(RpcPeerRef.Default) : null;
+        }
+        catch {
+            // Intended
+            return null;
+        }
+    }
 
     public void ReconnectIfDisconnected()
     {
@@ -24,16 +38,32 @@ public class ReconnectUI(UIHub hub)
 
     public void ResetReconnectDelays()
     {
-        if (!IsClient)
+        if (GetPeer() is not { } peer)
             return;
 
-        try {
-            RpcHub.GetClientPeer(RpcPeerRef.Default).ResetTryIndex();
-        }
-        catch {
-            // Intended
-        }
+        peer.ResetTryIndex();
         RpcReconnectDelayer.CancelDelays();
+    }
+
+    public void TryReconnectOnDeviceAwake(TimeSpan totalSleepDuration)
+    {
+        TimeSpan sleepDuration;
+        lock (Lock) {
+            sleepDuration = totalSleepDuration - _lastTotalSleepDuration;
+            _lastTotalSleepDuration = totalSleepDuration;
+        }
+        if (GetPeer() is not { } peer || !peer.IsConnected())
+            return;
+
+        var keepAliveDelay = Moment.Now - peer.LastKeepAliveAt;
+        if (keepAliveDelay < _maxKeepAliveDelayOnDeviceAwake)
+            return;
+
+        Log.LogInformation(
+            "Reconnecting on device awake ({SleepDuration} of sleep, {LastKeepAliveDelay} keep-alive delay)",
+            sleepDuration.ToShortString(), keepAliveDelay.ToShortString());
+        peer.ResetTryIndex();
+        _ = peer.Disconnect();
     }
 
 }

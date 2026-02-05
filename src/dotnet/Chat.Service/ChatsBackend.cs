@@ -1981,7 +1981,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 throw StandardError.NotFound<Avatar>();
 
             var delay = retryPolicy.GetDelay(tryIndex);
-            await Clocks.CoarseCpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
         }
         var authorId = readAuthor.IsAnonymous ? null : author.Id;
         var authorName = readAuthor.IsAnonymous ? "Someone" : readAuthor.Avatar.Name;

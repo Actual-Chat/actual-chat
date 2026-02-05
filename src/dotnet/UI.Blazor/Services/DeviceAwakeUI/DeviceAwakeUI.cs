@@ -67,5 +67,9 @@ public class DeviceAwakeUI : UIServiceBase<UIHub>, ISleepDurationProvider, IDevi
 
     [JSInvokable]
     public void OnDeviceAwake(double totalSleepDurationMs)
-        => _totalSleepDuration.Value = TimeSpan.FromMilliseconds(totalSleepDurationMs);
+    {
+        var totalSleepDuration = TimeSpan.FromMilliseconds(totalSleepDurationMs);
+        _totalSleepDuration.Value = totalSleepDuration;
+        Hub.ReconnectUI.TryReconnectOnDeviceAwake(totalSleepDuration);
+    }
 }

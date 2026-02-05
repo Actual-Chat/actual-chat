@@ -30,7 +30,7 @@
     [Parameter] public TimeSpan UpdateDelay { get; set; } = TimeSpan.FromSeconds(0.5);
     [Parameter] public EventCallback Click { get; set; }
 
-    private MomentClock Clock => Clocks.CoarseCpuClock;
+    private MomentClock Clock => Clocks.CpuClock;
 
     public void Dispose() {
         _cancelRenderDelayCts.CancelAndDisposeSilently();
@@ -48,7 +48,7 @@
 
         _cancelRenderDelayCts = new CancellationTokenSource();
         var cancelDelayToken = _cancelRenderDelayCts.Token;
-        Clock.Delay(remainingDelay, cancelDelayToken).ContinueWith(_ => {
+        Task.Delay(remainingDelay, cancelDelayToken).ContinueWith(_ => {
             if (cancelDelayToken.IsCancellationRequested)
                 return;
 

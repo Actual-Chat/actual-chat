@@ -40,7 +40,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         _hub = hub;
         _streamer = new AudioStreamer(hub);
         _noSignalDetectedDebouncer = Debouncer.New<Unit>(
-            hub.Clocks.CoarseCpuClock,
+            hub.Clocks.CpuClock,
             RecordingFailedInterval,
             _ => SetSignalDetected(false).AsTask());
     }
