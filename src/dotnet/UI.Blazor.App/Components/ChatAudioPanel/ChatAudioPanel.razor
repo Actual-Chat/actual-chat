@@ -5,9 +5,10 @@
     var audioState = m.AudioState;
     var isRecording = audioState?.IsRecording == true;
     var isOwnVideoStreaming = m.IsOwnVideoStreaming;
+    var isAnyoneVideoStreaming = m.IsAnyoneVideoStreaming;
     var isHeaderVisible = audioState != null && IsNarrow
         && audioState.IsListening
-        && (audioState.IsRecording || isOwnVideoStreaming);
+        && (audioState.IsRecording || isOwnVideoStreaming || isAnyoneVideoStreaming);
     var enableIncompleteUI = m.EnableIncompleteUI;
     var allowVideo = m.IsVideoFeatureEnabled;
 }
@@ -32,7 +33,7 @@
              data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
             <PlaybackToggle Chat="@Chat"/>
         </div>
-        @if (allowVideo && !IsNarrow && (isRecording || isOwnVideoStreaming)) {
+        @if (allowVideo && !IsNarrow && (isRecording || isOwnVideoStreaming || isAnyoneVideoStreaming)) {
             <VideoToggle Chat="@Chat" />
         }
         <div class="recorder-button">
@@ -67,18 +68,20 @@
         var settings = await AccountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
         var isVideoFeatureEnabled = settings.AreExperimentalFeaturesEnabled ?? false;
         if (chat?.Id is null)
-            return new(null, enableIncompleteUI, false, isVideoFeatureEnabled);
+            return new(null, enableIncompleteUI, false, false, isVideoFeatureEnabled);
 
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
         var isOwnVideoStreaming = await ChatVideoUI.GetRecordingChatId(cancellationToken).ConfigureAwait(false) == chat.Id;
+        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chat.Id, cancellationToken).ConfigureAwait(false);
         return new(
             audioState,
             enableIncompleteUI,
             isOwnVideoStreaming,
+            isAnyoneVideoStreaming,
             isVideoFeatureEnabled);
     }
 
     // Nested classes
 
-    public sealed record Model(ChatAudioState? AudioState, bool EnableIncompleteUI, bool IsOwnVideoStreaming, bool IsVideoFeatureEnabled);
+    public sealed record Model(ChatAudioState? AudioState, bool EnableIncompleteUI, bool IsOwnVideoStreaming, bool IsAnyoneVideoStreaming, bool IsVideoFeatureEnabled);
 }

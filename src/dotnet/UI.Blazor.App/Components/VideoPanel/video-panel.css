@@ -64,6 +64,14 @@ body.hoverable .btn-h.expand-btn:hover {
     @apply text-white;
     @apply opacity-80;
 }
+.video-panel .btn-h.settings-btn {
+    @apply absolute top-2 left-2;
+    @apply text-white text-lg;
+}
+body.hoverable .btn-h.settings-btn:hover {
+    @apply text-white;
+    @apply opacity-80;
+}
 .video-panel .show-with-delay {
     @apply invisible;
 }
