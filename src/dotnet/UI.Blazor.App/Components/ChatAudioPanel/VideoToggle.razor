@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<AppUIHub, VideoToggle.Model>
 @{
     var m = State.Value;
-    var isVideoOn = m.IsOwnVideoStreaming || m.IsLocalVideoRecording;
+    var isVideoOn = m.IsLocalVideoRecording;
     var stateCls = isVideoOn ? "video-on" : "video-off";
     var narrowCls = IsNarrow ? "narrow" : "";
     var wrapperCls = $"{stateCls} {narrowCls}";
@@ -49,7 +49,7 @@
 
     private void OnVideoClick() {
         var m = State.Value;
-        if (m.IsOwnVideoStreaming || m.IsLocalVideoRecording) {
+        if (m.IsLocalVideoRecording) {
             // Stop own video recording (keep panel open for remote streams)
             ChatVideoUI.SetRecordingChatId(null);
         } else {
