@@ -778,6 +778,7 @@ switch ($mode) {
             "-e", "ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY"
             "-e", "Claude_GeminiAPIKey=$env:Claude_GeminiAPIKey"
             "-e", "DISABLE_AUTOUPDATER=1"
+            "-e", "DOTNET_SYSTEM_NET_DISABLEIPV6=1"
             "-e", "AC_ProjectRoot=/proj"
         ) + $projectEnvVars + $propagatedEnvVars
 
