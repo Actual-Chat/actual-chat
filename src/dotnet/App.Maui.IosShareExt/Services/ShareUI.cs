@@ -20,6 +20,7 @@ public class ShareUI : UIServiceBase, IComputeService
     private readonly MutableState<bool> _isUploading;
     private readonly MutableState<bool> _isFailed;
     private readonly MutableState<bool> _isCompleted;
+    private TaskCompletionSource? _successViewDisplayedSource;
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
     public IState<bool> IsUploading => _isUploading;
@@ -142,7 +143,9 @@ public class ShareUI : UIServiceBase, IComputeService
                     await CreateChatEntry(chatId, entryText, [], cancellationToken).ConfigureAwait(false);
             }
             _isCompleted.Value = true;
-            await Task.Delay(TimeSpan.FromSeconds(1.5), cancellationToken).ConfigureAwait(false);
+
+            UIKitExt.PlaySuccessHaptic();
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
             await UIKitExt.CloseApp(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e)

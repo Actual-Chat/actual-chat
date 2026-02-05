@@ -10,4 +10,11 @@ public static class UIKitExt
 
     public static Task CloseApp(CancellationToken cancellationToken = default)
         => MainThread.InvokeOnMainThreadAsync(() => ExtensionContext.CompleteRequestAsync([])).WaitAsync(cancellationToken);
+
+    public static void PlaySuccessHaptic()
+        => MainThread.BeginInvokeOnMainThread(() => {
+            var generator = new UINotificationFeedbackGenerator();
+            generator.Prepare();
+            generator.NotificationOccurred(UINotificationFeedbackType.Success);
+        });
 }
