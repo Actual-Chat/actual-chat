@@ -9,14 +9,38 @@ public class SuccessView(IosHub hub) : ComputedStateView<SuccessView.Model>(hub)
     {
         TranslatesAutoresizingMaskIntoConstraints = false;
 
-        // Checkmark icon using SF Symbols
-        var config = UIImageSymbolConfiguration.Create(80, UIImageSymbolWeight.Medium);
-        var checkmarkImage = UIImage.GetSystemImage("checkmark.circle.fill", config);
-        var imageView = new UIImageView(checkmarkImage) {
+        var iconContainer = new UIView {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+        };
+
+        // Semi-transparent white circle background (20% opacity like in SVG)
+        var circleView = new UIView {
+            TranslatesAutoresizingMaskIntoConstraints = false,
+            BackgroundColor = UIColor.White.ColorWithAlpha(0.1f),
+        };
+        circleView.Layer.CornerRadius = 50; // Half of 100pt size
+        iconContainer.AddSubview(circleView);
+
+        // White checkmark on top
+        var config = UIImageSymbolConfiguration.Create(48, UIImageSymbolWeight.Medium);
+        var checkmarkImage = UIImage.GetSystemImage("checkmark", config);
+        var checkmarkView = new UIImageView(checkmarkImage) {
             TranslatesAutoresizingMaskIntoConstraints = false,
             ContentMode = UIViewContentMode.ScaleAspectFit,
-            TintColor = new UIColor(red: 0.298f, green: 0.686f, blue: 0.314f, alpha: 1.0f), // Green color
+            TintColor = UIColor.White,
         };
+        iconContainer.AddSubview(checkmarkView);
+
+        // Layout circle and checkmark within container
+        NSLayoutConstraint.ActivateConstraints([
+            circleView.LeadingAnchor.ConstraintEqualTo(iconContainer.LeadingAnchor),
+            circleView.TrailingAnchor.ConstraintEqualTo(iconContainer.TrailingAnchor),
+            circleView.TopAnchor.ConstraintEqualTo(iconContainer.TopAnchor),
+            circleView.BottomAnchor.ConstraintEqualTo(iconContainer.BottomAnchor),
+
+            checkmarkView.CenterXAnchor.ConstraintEqualTo(iconContainer.CenterXAnchor),
+            checkmarkView.CenterYAnchor.ConstraintEqualTo(iconContainer.CenterYAnchor),
+        ]);
 
         // Label
         var label = new UILabel {
@@ -28,7 +52,7 @@ public class SuccessView(IosHub hub) : ComputedStateView<SuccessView.Model>(hub)
         };
 
         // Vertical stack view
-        var stackView = new UIStackView([imageView, label]) {
+        var stackView = new UIStackView([iconContainer, label]) {
             TranslatesAutoresizingMaskIntoConstraints = false,
             Axis = UILayoutConstraintAxis.Vertical,
             Alignment = UIStackViewAlignment.Center,
@@ -43,8 +67,8 @@ public class SuccessView(IosHub hub) : ComputedStateView<SuccessView.Model>(hub)
             stackView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 24),
             stackView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor, -24),
 
-            imageView.HeightAnchor.ConstraintEqualTo(100),
-            imageView.WidthAnchor.ConstraintEqualTo(100),
+            iconContainer.HeightAnchor.ConstraintEqualTo(100),
+            iconContainer.WidthAnchor.ConstraintEqualTo(100),
         ]);
     }
 
