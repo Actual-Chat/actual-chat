@@ -50,10 +50,8 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
             var animator = new UIViewPropertyAnimator(0.3,
                 UIViewAnimationCurve.EaseInOut,
                 () => {
-                    if (_contactSelectionView != null)
-                        _contactSelectionView.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                    if (_uploadProgressView != null)
-                        _uploadProgressView.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                    _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                    _uploadProgressView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
                     _errorView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
                     _errorView.Alpha = 1;
                 });
@@ -83,10 +81,8 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
             var animator = new UIViewPropertyAnimator(0.3,
                 UIViewAnimationCurve.EaseInOut,
                 () => {
-                    if (_contactSelectionView != null)
-                        _contactSelectionView.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                    if (_uploadProgressView != null)
-                        _uploadProgressView.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                    _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                    _uploadProgressView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
                     _successView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
                     _successView.Alpha = 1;
                 });
