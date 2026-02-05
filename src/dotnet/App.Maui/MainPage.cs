@@ -4,7 +4,7 @@ using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
 
 namespace ActualChat.App.Maui;
 
-public class MainPage : ContentPage
+public partial class MainPage : ContentPage
 {
     private static volatile MainPage _current = null!;
 
@@ -22,6 +22,8 @@ public class MainPage : ContentPage
 #endif
         BackgroundColor = MauiSettings.SplashBackgroundColor;
         RecreateWebView();
+
+        Loaded += OnLoaded;
     }
 
     public void RecreateWebView()
@@ -44,4 +46,8 @@ public class MainPage : ContentPage
 
     public void Unload()
         => Content = null;
+
+    private void OnLoaded(object? sender, EventArgs e) => OnLoaded_Platform();
+
+    private partial void OnLoaded_Platform();
 }
