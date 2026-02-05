@@ -17,7 +17,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
         closeButton.SetImage(UIImage.GetSystemImage("xmark"), UIControlState.Normal);
         closeButton.TintColor = UIColor.White;
-        closeButton.TouchUpInside += Safe(ShareUI.CloseApp);
+        closeButton.TouchUpInside += Safe(UIKitExt.CloseApp);
         AddSubview(closeButton);
 
         // Title label

@@ -31,7 +31,7 @@ public class ErrorView(IosHub hub) : ComputedStateView<ErrorView.Model>(hub)
         closeButton.TranslatesAutoresizingMaskIntoConstraints = false;
         closeButton.SetTitle("Close", UIControlState.Normal);
         closeButton.TitleLabel.Font = UIFont.SystemFontOfSize(20, UIFontWeight.Semibold);
-        closeButton.TouchUpInside += Safe(ct => ShareUI.CloseApp(ct));
+        closeButton.TouchUpInside += Safe(UIKitExt.CloseApp);
 
         // Vertical stack view
         var stackView = new UIStackView([imageView, label, closeButton]) {
