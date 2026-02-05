@@ -377,10 +377,11 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plans", "plans", "{A0CDF5EA-4040-448A-A15D-FA54A07A9DBE}"
 	ProjectSection(SolutionItems) = preProject
 		docs\plans\BigTasks.md = docs\plans\BigTasks.md
-		docs\plans\live-hub.md = docs\plans\live-hub.md
 		docs\plans\Search.md = docs\plans\Search.md
 		docs\plans\SmallTasks.md = docs\plans\SmallTasks.md
 		docs\plans\user-account-merge.md = docs\plans\user-account-merge.md
+		docs\plans\audio-context-source-refactor.md = docs\plans\audio-context-source-refactor.md
+		docs\plans\live-streams.md = docs\plans\live-streams.md
 	EndProjectSection
 EndProject
 Global
