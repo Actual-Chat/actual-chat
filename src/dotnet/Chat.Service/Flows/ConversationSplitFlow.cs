@@ -71,8 +71,10 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         Console.Log($"Process: started at {LastLid}");
 
         var (entries, hasMore, hasImmature) = await GetEntries(LastLid, cancellationToken).ConfigureAwait(false);
+        Console.Log($"Fetched {entries.Count} entries, hasMore={hasMore}, hasImmature={hasImmature}");
         var (state, groups, replySequences) = EntryGroupExtractor.ExtractGroups(ExtractorState ?? new ExtractorState(null, null), entries);
         ExtractorState = state;
+        Console.Log($"Extracted {groups.Count} groups, {replySequences.Count} replies, state: {state.EntryCount} entries, {state.WordCount} words");
         var hasEntries = entries.Count > 0;
 
         // Process replies
@@ -102,22 +104,30 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             if (entries.Count > 0)
                 LastLid = entries[^1].LocalId;
 
+            Console.Log($"No groups yet, continuing from {LastLid}");
             // Continue immediately to process the next batch
             Runtime.StageResume();
             return;
         }
 
         foreach (var group in groups) {
-            if (group.WordCount < Settings.Summarization.MinConversationWords)
+            if (group.WordCount < Settings.Summarization.MinConversationWords) {
+                Console.Log($"Skipping group: {group.WordCount} words < {Settings.Summarization.MinConversationWords} min");
                 continue;
+            }
 
-            if (group.Entries.Count < Settings.Summarization.MinConversationEntries)
+            if (group.Entries.Count < Settings.Summarization.MinConversationEntries) {
+                Console.Log($"Skipping group: {group.Entries.Count} entries < {Settings.Summarization.MinConversationEntries} min");
                 continue;
+            }
 
             var idRanges = group.LocalIdRanges;
-            if (LastSummaryRanges.SequenceEqual(idRanges))
+            if (LastSummaryRanges.SequenceEqual(idRanges)) {
+                Console.Log("Skipping group: ranges match LastSummaryRanges");
                 continue;
+            }
 
+            Console.Log($"Enqueuing summarize for group: {group.Entries.Count} entries, {group.WordCount} words");
             var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
             await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
             LastSummaryAt = now;
@@ -142,6 +152,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
                 && state.WordCount >= Settings.Summarization.MinConversationWords
                 && state.EntryCount >= Settings.Summarization.MinConversationEntries
                 && !rangesAreEqual;
+            Console.Log($"End-of-stream: readyToSummarize={readyToSummarize}, tooOften={tooOften}, rangesAreEqual={rangesAreEqual}, hasCurrentRanges={hasCurrentRanges}");
 
             if (readyToSummarize && !tooOften) {
                 // Summarize the current group
@@ -150,6 +161,7 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
                 var idRanges = group.LocalIdRanges;
                 if (!LastSummaryRanges.SequenceEqual(idRanges)) {
+                    Console.Log($"Enqueuing end-of-stream summarize: {group.Entries.Count} entries, {group.WordCount} words");
                     var summarize = new ConversationBackend_Summarize(ChatId, [.. idRanges]);
                     await Services.Queues().Enqueue(summarize, cancellationToken).ConfigureAwait(false);
                     LastSummaryAt = now;
@@ -164,15 +176,25 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
             }
 
             // Schedule next resume
-            if (hasImmature || (tooOften && !rangesAreEqual && hasCurrentRanges))
+            if (hasImmature || (tooOften && !rangesAreEqual && hasCurrentRanges)) {
+                Console.Log($"Scheduling delayed resume: hasImmature={hasImmature}, tooOften={tooOften}");
                 Runtime.StageResumeIn(Settings.Summarization.ChatEntrySummarizationDelay);
+            }
+            else
+                Console.Log("End-of-stream: completing (no resume needed)");
             return;
         }
 
-        if (hasMore)
+        if (hasMore) {
+            Console.Log("Resuming immediately: hasMore=true");
             Runtime.StageResume(); // Continue immediately
-        else if (hasImmature)
+        }
+        else if (hasImmature) {
+            Console.Log("Scheduling delayed resume: hasImmature=true");
             Runtime.StageResumeIn(Settings.Summarization.ChatEntrySummarizationDelay);
+        }
+        else
+            Console.Log("Completing: no more entries");
     }
 
     // Private methods

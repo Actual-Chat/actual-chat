@@ -112,7 +112,7 @@ public abstract class Flow : IFlowImpl
                 goto exit;
             }
 
-            Console.Log("[Resume]");
+            Console.Log($"[Resume] at {ResumedAt.ToDateTime():yy-MM-dd HH:mm:ss.fff}");
             await Resume(cancellationToken).ConfigureAwait(false);
 
             exit:
