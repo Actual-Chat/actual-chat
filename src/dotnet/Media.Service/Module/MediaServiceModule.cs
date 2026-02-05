@@ -30,7 +30,6 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IUploads, Uploads>();
         rpcHost.AddBackend<IUploadsBackend, UploadsBackend>();
         services.AddSingleton<IMediaSaver, MediaSaver>();
-        services.AddSingleton<IMediaProcessor, MediaProcessor>();
 
         if (isBackendClient)
             return;
