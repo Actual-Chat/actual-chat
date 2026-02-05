@@ -37,6 +37,20 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         }
     }
 
+    public virtual async Task<double?> GetProgress(UploadId uploadId, CancellationToken cancellationToken)
+    {
+        var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
+        if (upload is null)
+            return null;
+
+        var length = upload.Length;
+        if (length is null or 0)
+            return 0;
+
+        var offset = await GetOffset(uploadId, cancellationToken).ConfigureAwait(false);
+        return (double)offset / length.Value * 100;
+    }
+
     public virtual async Task OnCreate(UploadsBackend_Create command, CancellationToken cancellationToken)
     {
         var uploadId = command.UploadId;
@@ -110,6 +124,10 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         var stream = new MemoryStream(data, writable: false);
         await using (stream.ConfigureAwait(false))
             await UploadsStorage.AppendDataAsync(uploadId, stream, cancellationToken).ConfigureAwait(false);
+
+        using (Invalidation.Begin())
+            _ = GetProgress(uploadId, default);
+
         return expectedNewOffset;
     }
 

@@ -19,12 +19,14 @@ public class DbMedia : IHasId<string>, IRequirementTarget
     public string ContentId { get; set; } = "";
     public string UserId { get; set; } = "";
     public string MetadataJson { get; set; } = "";
+    public string UploadId { get; set; } = "";
 
     public MediaFull ToModel()
         => new (MediaId.Parse(Id)) {
             ContentId = ContentId,
             UserId = ActualChat.UserId.ParseNullable(UserId),
             Metadata = MetadataSerializer.Read(MetadataJson),
+            UploadId = ActualChat.UploadId.ParseNullable(UploadId),
         };
 
     public void UpdateFrom(MediaFull model)
@@ -40,6 +42,7 @@ public class DbMedia : IHasId<string>, IRequirementTarget
         }
         ContentId = model.ContentId;
         MetadataJson = MetadataSerializer.Write(model.Metadata);
+        UploadId = model.UploadId?.Value ?? "";
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbMedia>

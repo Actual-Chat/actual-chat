@@ -20,7 +20,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         _fileUploader = new FileUploaderService(
             hub.LogFor<FileUploaderService>(),
             GetOrRegisterUpload,
-            GetMediaId,
+            GetOrReserveMedia,
+            SetupLink,
             ConvertUpload,
             ClearUploadId);
         _fileUploader.ProgressChanged += OnProgressChanged;
@@ -212,7 +213,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
         session.ProgressTracker.ReportProgress(progress);
-        ReportMediaUploadProgress(session.ReservedMediaId, progress, false);
     }
 
     private async Task OnCompleted(string sessionId, MediaContent mediaContent)
@@ -224,21 +224,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.LastUpdatedAt = Now;
         session.MediaContent = mediaContent;
         await _repo.Save(session).ConfigureAwait(false);
-        ReportMediaUploadProgress(session.ReservedMediaId, 100, true);
-    }
-
-    private void ReportMediaUploadProgress(MediaId? mediaId, double progress, bool completed)
-    {
-        // TODO(DF): media uploads status should be taken from upload
-        if (mediaId is null)
-            return;
-
-        _ = BackgroundTask.Run(async () => {
-            var cmd = completed
-                ? new Medias_UpdateStatus(Session, mediaId, MediaStatus.Preparing, MediaPreparingStage.ServerProcessing, 0)
-                : new Medias_UpdateStatus(Session, mediaId, MediaStatus.Preparing, MediaPreparingStage.Uploading, progress);
-            await Commander.Run(cmd, default).ConfigureAwait(false);
-        });
     }
 
     private async Task OnFailed(string sessionId, Exception error)
@@ -272,18 +257,25 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         return session.UploadId;
     }
 
-    private async Task<MediaId> GetMediaId(string sessionId, CancellationToken cancellationToken)
+    private async Task SetupLink(string sessionId, CancellationToken cancellationToken)
     {
-        return await GetOrReserveMedia(sessionId, cancellationToken).ConfigureAwait(false);
-        //
-        // var c = await Computed.New(Services,
-        //         async ct => await Hub.UploadSessionsState.GetReservedMediaId(sessionId, ct).ConfigureAwait(false))
-        //     .Update(cancellationToken)
-        //     .ConfigureAwait(false);
-        // var c2 = await c.When(x => x is not null, cancellationToken).ConfigureAwait(false);
-        // return c2.Value!;
-        // var session = await GetSession(sessionId).ConfigureAwait(false);
-        // return session.ReservedMediaId ?? throw new InvalidOperationException($"No reserved media id for the session '{sessionId}'.");
+        var session = await GetSession(sessionId).ConfigureAwait(false);
+        if (session.UploadId is null)
+            throw StandardError.Constraint("UploadId is null");
+        if (session.ReservedMediaId is null)
+            throw StandardError.Constraint("ReservedMediaId is null");
+
+        // NOTE: in future we may want to link upload with multiple medias
+        MediaId[] mediaIds = [session.ReservedMediaId];
+        if (session.Consumers is { } consumers)
+            if (consumers.UploadId == session.UploadId &&
+                consumers.MediaIds.Order().SequenceEqual(mediaIds.Order()))
+                return;
+
+        await Commander.Call(new Uploads_LinkWithMedia(Session, session.UploadId, mediaIds), cancellationToken).ConfigureAwait(false);
+        session.Consumers = new UploadConsumers { UploadId = session.UploadId, MediaIds = mediaIds };
+        session.LastUpdatedAt = Now;
+        await _repo.Save(session).ConfigureAwait(false);
     }
 
     private Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken ct)
@@ -298,6 +290,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session.UploadId is null)
             return;
         session.UploadId = null;
+        session.Consumers = null;
         session.LastUpdatedAt = Now;
         await _repo.Save(session).ConfigureAwait(false);
     }

@@ -10,6 +10,7 @@ namespace ActualChat.Media;
 public sealed partial record MediaFull : Media
 {
     [DataMember, MemoryPackOrder(2)] public UserId? UserId { get; init; }
+    [DataMember, MemoryPackOrder(3)] public UploadId? UploadId { get; init; }
 
     public MediaFull(MediaId id) : base(id) { }
 

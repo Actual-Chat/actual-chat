@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -10,6 +9,7 @@ public class FileUploaderService
     private readonly OperationQueue _operationQueue;
     private readonly Func<string, CancellationToken, Task<UploadId>> _getUploadId;
     private readonly Func<string, CancellationToken, Task<MediaId>> _getMediaId;
+    private readonly Func<string, CancellationToken, Task> _setupLink;
     private readonly Func<UploadId, MediaId, CancellationToken, Task<MediaContent>> _convertUpload;
     private readonly Func<string, CancellationToken, Task> _clearUploadId;
     private ILogger Log { get; }
@@ -23,11 +23,13 @@ public class FileUploaderService
         ILogger log,
         Func<string, CancellationToken, Task<UploadId>> getUploadId,
         Func<string, CancellationToken, Task<MediaId>> getMediaId,
+        Func<string, CancellationToken, Task> setupLink,
         Func<UploadId, MediaId, CancellationToken, Task<MediaContent>> convertUpload,
         Func<string, CancellationToken, Task> clearUploadId)
     {
         _getUploadId = getUploadId;
         _getMediaId = getMediaId;
+        _setupLink = setupLink;
         _convertUpload = convertUpload;
         _clearUploadId = clearUploadId;
         // TODO: add queues with different priorities for small and big files.
@@ -73,6 +75,9 @@ public class FileUploaderService
 
     private Task<MediaId> GetMediaId(string sessionId, CancellationToken cancellationToken)
         => _getMediaId(sessionId, cancellationToken);
+
+    private Task SetupLink(string sessionId, CancellationToken cancellationToken)
+        => _setupLink(sessionId, cancellationToken);
 
     private Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken cancellationToken)
         => _convertUpload(uploadId, mediaId, cancellationToken);
@@ -165,6 +170,7 @@ public class FileUploaderService
         {
             var mediaId = await Owner.GetMediaId(Session.SessionId, ct).ConfigureAwait(false);
             var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
+            await Owner.SetupLink(Session.SessionId, ct).ConfigureAwait(false);
             await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
             return await Owner.ConvertUpload(uploadId, mediaId, ct).ConfigureAwait(false);
         }

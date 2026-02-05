@@ -8,6 +8,8 @@ public interface IUploadsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Upload?> Get(UploadId uploadId, CancellationToken cancellationToken);
     Task<long> GetOffset(UploadId uploadId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<double?> GetProgress(UploadId uploadId, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnCreate(UploadsBackend_Create command, CancellationToken cancellationToken);
     [CommandHandler]
