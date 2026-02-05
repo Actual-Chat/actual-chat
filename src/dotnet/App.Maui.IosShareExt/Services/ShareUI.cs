@@ -20,10 +20,12 @@ public class ShareUI : UIServiceBase, IComputeService
     private SearchPhrase _searchPhrase = SearchPhrase.None;
     private readonly MutableState<bool> _isUploading;
     private readonly MutableState<bool> _isFailed;
+    private readonly MutableState<bool> _isCompleted;
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
     public IState<bool> IsUploading => _isUploading;
     public IState<bool> IsFailed => _isFailed;
+    public IState<bool> IsCompleted => _isCompleted;
     public IState<double> UploadPct => _uploadPct;
     public IState<bool> CanSend => _canSend;
 
@@ -40,6 +42,7 @@ public class ShareUI : UIServiceBase, IComputeService
         Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
         _isUploading = Hub.StateFactory.NewMutable<bool>();
         _isFailed = Hub.StateFactory.NewMutable<bool>();
+        _isCompleted = Hub.StateFactory.NewMutable<bool>();
         _uploadPct = Hub.StateFactory.NewMutable<double>();
         _canSend = Hub.StateFactory.NewMutable<bool>();
         _sendWorker = FuncWorker.New(ct
@@ -142,6 +145,8 @@ public class ShareUI : UIServiceBase, IComputeService
                 if (!entryText.IsNullOrWhiteSpace())
                     await CreateChatEntry(chatId, entryText, [], cancellationToken).ConfigureAwait(false);
             }
+            _isCompleted.Value = true;
+            await Task.Delay(TimeSpan.FromSeconds(1.5), cancellationToken).ConfigureAwait(false);
             await CloseApp(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e)

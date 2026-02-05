@@ -9,8 +9,10 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
     private ContactSelectionView? _contactSelectionView;
     private UploadProgressView? _uploadProgressView;
     private ErrorView? _errorView;
+    private SuccessView? _successView;
     private bool _isUploadingDisplayed;
     private bool _isFailedDisplayed;
+    private bool _isCompletedDisplayed;
 
     protected override void OnInitialRender(Model model)
     {
@@ -65,6 +67,39 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
             return;
         }
 
+        if (model.IsCompleted && !_isCompletedDisplayed) {
+            _successView = new SuccessView(Hub);
+            _successView.TranslatesAutoresizingMaskIntoConstraints = false;
+            _successView.Alpha = 0;
+            AddSubview(_successView);
+
+            NSLayoutConstraint.ActivateConstraints([
+                _successView.TopAnchor.ConstraintEqualTo(TopAnchor),
+                _successView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+                _successView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+                _successView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
+            ]);
+
+            var animator = new UIViewPropertyAnimator(0.3,
+                UIViewAnimationCurve.EaseInOut,
+                () => {
+                    if (_contactSelectionView != null)
+                        _contactSelectionView.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                    if (_uploadProgressView != null)
+                        _uploadProgressView.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                    _successView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
+                    _successView.Alpha = 1;
+                });
+            animator.AddCompletion(_ => {
+                _contactSelectionView?.RemoveFromSuperview();
+                _uploadProgressView?.RemoveFromSuperview();
+            });
+            animator.StartAnimation();
+
+            _isCompletedDisplayed = true;
+            return;
+        }
+
         if (model.IsUploading && !_isUploadingDisplayed) {
             _uploadProgressView = new UploadProgressView(Hub);
             _uploadProgressView.TranslatesAutoresizingMaskIntoConstraints = false;
@@ -98,9 +133,10 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
     {
         var isUploading = await ShareUI.IsUploading.Use(cancellationToken).ConfigureAwait(false);
         var isFailed = await ShareUI.IsFailed.Use(cancellationToken).ConfigureAwait(false);
-        return new Model(isUploading, isFailed);
+        var isCompleted = await ShareUI.IsCompleted.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(isUploading, isFailed, isCompleted);
     }
 
     // Nested types
-    public record Model(bool IsUploading, bool IsFailed);
+    public record Model(bool IsUploading, bool IsFailed, bool IsCompleted);
 }
