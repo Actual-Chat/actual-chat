@@ -1,6 +1,7 @@
 using ActualChat.Flows;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Versioning;
 using MemoryPack;
 using Microsoft.EntityFrameworkCore;
 
@@ -66,6 +67,11 @@ public partial class AccountTouchFlow : Flow<Unit>
                 // Trigger update with the same data (fake update)
                 var updateCommand = new AccountsBackend_Update(account, account.Version);
                 await commander.Call(updateCommand, cancellationToken).ConfigureAwait(false);
+                processedInBatch++;
+            }
+            catch (VersionMismatchException) {
+                // Account was modified recently, so it's already "touched" - count as success
+                Console.Log($"Account {item.Id} was recently modified, counting as touched");
                 processedInBatch++;
             }
             catch (Exception e) {
