@@ -33,7 +33,7 @@ export class OnDeviceAwake {
         this._worker.onmessage = onSleepDetected;
         this._worker.onerror = onWorkerError;
 
-        DocumentEvents.passive.visibilityChange$.subscribe(_ => {
+        DocumentEvents.passive.visibilityChange$.subscribe(() => {
             if (!document.hidden)
                 this._worker?.postMessage(null);
         });
