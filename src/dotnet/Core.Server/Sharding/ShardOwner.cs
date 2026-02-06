@@ -225,7 +225,11 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         var ownership = ownedShardState.Ownership!;
         var isAdded = Dispatcher.Add(ownership, throwIfDisposed: false);
 
-        await TaskExt.NeverEnding(lockToken).SilentAwait(false);
+        // Wait for lock loss OR cancellation (shard reassignment).
+        // We must respond to cancellationToken so workers are stopped while the lock is still held,
+        // preventing overlap with the new host's workers.
+        using var linkedCts = lockToken.LinkWith(cancellationToken);
+        await TaskExt.NeverEnding(linkedCts.Token).SilentAwait(false);
 
         if (isAdded)
             await Dispatcher.Remove(ownership).SilentAwait(false);
