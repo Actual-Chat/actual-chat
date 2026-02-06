@@ -48,7 +48,8 @@ public partial class MainPage : ContentPage
     public void Unload()
         => Content = null;
 
-    private void OnLoaded(object? sender, EventArgs e) => OnLoaded_Platform();
+    private void OnLoaded(object? sender, EventArgs e)
+        => OnLoaded_Platform();
 
     private void OnUnloaded(object? sender, EventArgs e)
     {
