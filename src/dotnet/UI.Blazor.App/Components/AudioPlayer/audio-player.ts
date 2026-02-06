@@ -203,7 +203,7 @@ export class AudioPlayer implements Resettable {
         this.whenEnded = new PromiseSource<void>();
 
         // Create a ref with the feeder node trait
-        this.contextRef = audioContextSource.createRef(this.feederNodeTrait);
+        this.contextRef = audioContextSource.createRef(true, this.feederNodeTrait);
 
         // Run the playback action
         this.playingAction = this.contextRef.run(async () => {
@@ -241,18 +241,10 @@ export class AudioPlayer implements Resettable {
     public async frame(bytes: Uint8Array): Promise<void> {
         if (this.playbackState === 'ended')
             return;
+        if (this.contextRef && !this.contextRef.isReady)
+            return; // Skip frames when audio context isn't running (e.g. broken/suspended)
 
-        // Wait for context to be ready
-        if (this.contextRef && !this.contextRef.isReady) {
-            await this.contextRef.whenReady();
-        }
-
-        void decoderWorker.frame(
-            this.internalId,
-            bytes.buffer,
-            bytes.byteOffset,
-            bytes.length,
-            rpcNoWait);
+        void decoderWorker.frame(this.internalId, bytes.buffer, bytes.byteOffset, bytes.length, rpcNoWait);
     }
 
     /** Called by Blazor */
@@ -310,7 +302,7 @@ export class AudioPlayer implements Resettable {
         debugLog?.log(`#${this.internalId}.resume`);
 
         // Create new ref and action for resumed playback
-        this.contextRef = audioContextSource.createRef(this.feederNodeTrait);
+        this.contextRef = audioContextSource.createRef(true, this.feederNodeTrait);
         this.playingAction = this.contextRef.run(async () => {
             const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
             if (attachedFeeder) {

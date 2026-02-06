@@ -28,15 +28,15 @@ public partial class AppActivity
     }
 
     [ComputeMethod]
-    protected virtual async Task<ActivityState> ComputeState(CancellationToken cancellationToken)
+    protected virtual async Task<AppActivityState> ComputeState(CancellationToken cancellationToken)
     {
         var isBackground = await BackgroundStateTracker.IsBackground.Use(cancellationToken).ConfigureAwait(false);
         if (!isBackground)
-            return ActivityState.Foreground;
+            return AppActivityState.Foreground;
 
         var isActiveInBackground = await MustBeBackgroundActive(cancellationToken).ConfigureAwait(false);
         return isActiveInBackground
-            ? ActivityState.BackgroundActive
-            : ActivityState.BackgroundIdle;
+            ? AppActivityState.BackgroundActive
+            : AppActivityState.BackgroundIdle;
     }
 }

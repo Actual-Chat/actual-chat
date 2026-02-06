@@ -9,7 +9,7 @@ public sealed partial class AudioInitializer(UIHub hub)
     : UIWorkerBase<UIHub>(hub), IAudioInitializer, IAudioInfoBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.AudioInitializer.init";
-    private static readonly string JSUpdateBackgroundStateMethod = $"{BlazorUIAppModule.ImportName}.AudioInitializer.setBackgroundState";
+    private static readonly string JSSetAppActivityStateMethod = $"{BlazorUIAppModule.ImportName}.AudioInitializer.setAppActivityState";
     private static readonly TimeSpan InitializeTimeout = TimeSpan.FromSeconds(5);
 
     [GeneratedRegex(@"^(?<type>mac|iPhone|iPad)(?:(?<version>\d+),\d*)?$")]
@@ -38,7 +38,7 @@ public sealed partial class AudioInitializer(UIHub hub)
             await _whenInitializedSource.TrySetFromTaskAsync(whenInitialized, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("AudioInitializer: initialized with status {Status}", whenInitialized.Status);
 
-            await AsyncChain.From(UpdateBackgroundState, $"{nameof(AudioInitializer)}.{nameof(UpdateBackgroundState)}")
+            await AsyncChain.From(PushAppActivityState, $"{nameof(AudioInitializer)}.{nameof(PushAppActivityState)}")
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
                 .Run(cancellationToken)
@@ -76,20 +76,20 @@ public sealed partial class AudioInitializer(UIHub hub)
         return NumberExt.TryParsePositiveLong(hwVersion, out var v) && v >= 11;
     }
 
-    private async Task UpdateBackgroundState(CancellationToken cancellationToken)
+    private async Task PushAppActivityState(CancellationToken cancellationToken)
     {
-        var prevState = (ActivityState?)null; // Assuming "unknown"
+        var prevState = (AppActivityState?)null; // Assuming "unknown"
         var changes = AppActivity.State.Computed.ChangesUntyped(cancellationToken);
         await foreach (var c in changes.ConfigureAwait(false)) {
-            var cState = (Computed<ActivityState>)c;
+            var cState = (Computed<AppActivityState>)c;
             var state = cState.Value;
             if (state == prevState)
                 continue;
 
-            Log.LogInformation("Background state has changed: {OldState} -> {State}", prevState, state);
+            Log.LogInformation("AppActivity.State changed: {OldState} -> {State}", prevState, state);
             prevState = state;
             await JS
-                .InvokeVoidAsync(JSUpdateBackgroundStateMethod, CancellationToken.None, state.ToString())
+                .InvokeVoidAsync(JSSetAppActivityStateMethod, CancellationToken.None, state.ToString())
                 .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         }
     }

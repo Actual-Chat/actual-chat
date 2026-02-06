@@ -42,16 +42,16 @@ public class AppActivityTest: TestBase
 
         var appActivity = (TestAppActivity)ScopedServices.GetRequiredService<AppActivity>();
         appActivity.Start();
-        appActivity.State.Value.Should().Be(ActivityState.Foreground);
+        appActivity.State.Value.Should().Be(AppActivityState.Foreground);
 
         MauiBackgroundStateTracker.SetBackgroundState(true);
         await appActivity.State.Computed
-            .When(x => x == ActivityState.BackgroundIdle)
+            .When(x => x == AppActivityState.BackgroundIdle)
             .WaitAsync(TimeSpan.FromSeconds(2));
 
         appActivity.SetIsActiveInBackground(true);
         await appActivity.State.Computed
-            .When(x => x == ActivityState.BackgroundActive)
+            .When(x => x == AppActivityState.BackgroundActive)
             .WaitAsync(TimeSpan.FromSeconds(2));
     }
 

@@ -3,16 +3,16 @@
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public abstract partial class AppActivity : UIWorkerBase<UIHub>, IComputeService
 {
-    private readonly MutableState<ActivityState> _state;
+    private readonly MutableState<AppActivityState> _state;
 
     protected BackgroundStateTracker BackgroundStateTracker
         => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 
-    public IState<ActivityState> State => _state;
+    public IState<AppActivityState> State => _state;
 
     protected AppActivity(UIHub hub) : base(hub)
         => _state = StateFactory.NewMutable(
-            ActivityState.Foreground,
+            AppActivityState.Foreground,
             StateCategories.Get(typeof(AppActivity), nameof(State)));
 
     [ComputeMethod]

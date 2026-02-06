@@ -35,7 +35,7 @@ export class SoundPlayer {
 
             // Use the run() API directly - no need to maintain a persistent ref
             const whilePlaying = new PromiseSource<void>();
-            action = audioContextSource.run(async (context) => {
+            action = audioContextSource.run(false, async (context) => {
                 const source = context.createBufferSource();
                 let isEnded = false;
                 try {

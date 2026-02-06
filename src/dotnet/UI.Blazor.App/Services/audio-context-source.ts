@@ -1,19 +1,20 @@
 import { AUDIO_PLAY as AP, AUDIO_REC as AR } from '_constants';
 import { debounce, delayAsync, PromiseSource, ResolvedPromise, waitAsync, Cancelled } from 'promises';
 import { Interactive } from 'interactive';
+import { InteractiveUI } from "../../UI.Blazor/Services/InteractiveUI/interactive-ui";
 import { OnDeviceAwake } from 'on-device-awake';
 import { firstValueFrom, Observable, Subject } from 'rxjs';
 import { Versioning } from 'versioning';
 import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait } from './audio-context-traits';
 import { Log } from 'logging';
-import { AudioInitializer, BackgroundState } from './audio-initializer';
+import { AudioInitializer, AppActivityState } from './audio-initializer';
 import { Disposable } from 'disposable';
 import { DeviceInfo } from 'device-info';
 
 const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
-const MaintainCyclePeriodMs = 2000;
+const MaintainCyclePeriodMs = 3000;
 const MaxResumeTimeMs = 2000;
 const ShortTestIntervalMs = 150;
 const LongTestIntervalMs = 1000;
@@ -68,11 +69,14 @@ export class AudioContextRef implements Disposable {
     private _whenFailed = new PromiseSource<void>();
     private _disposed = false;
 
+    /** When true, this ref represents active listening (e.g. audio playback). Used to trigger proactive demand on context break. */
+    public isListening = false;
+
     /** The current AudioContext, or null if not ready */
     public get context(): AudioContext | null { return this._context; }
 
     /** True if context is ready and available */
-    public get isReady(): boolean { return this._context !== null && this._context.state !== 'closed'; }
+    public get isReady(): boolean { return this._context !== null; }
 
     /** True if this ref has been disposed */
     public get isDisposed(): boolean { return this._disposed; }
@@ -80,7 +84,8 @@ export class AudioContextRef implements Disposable {
     /** Traits requested for this ref */
     public get traits(): ReadonlyArray<AudioContextTrait> { return this._traits; }
 
-    constructor(traits: AudioContextTrait[]) {
+    constructor(isListening: boolean, traits: AudioContextTrait[]) {
+        this.isListening = isListening;
         this._id = nextRefId++;
         this._traits = traits;
         debugLog?.log(`AudioContextRef#${this._id} created with traits:`, traits.map(t => t.name));
@@ -164,7 +169,7 @@ export class AudioContextRef implements Disposable {
 
     /** @internal Called when context becomes unavailable */
     _setFailed(): void {
-        if (this._disposed)
+        if (this._disposed || !this._context)
             return;
 
         this._context = null;
@@ -251,11 +256,12 @@ export class AudioContextSource {
     private readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
     private readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
     private _testRequested: PromiseSource<void> | null = null;
-    private _whileBackgroundIdle: PromiseSource<void> | null = null;
+    private _appActivityState: AppActivityState | null = null;
+    private _whileBackgroundIdleAppActivityState: PromiseSource<void> | null = null;
     private _context: AppAudioContext | null = null;
     private _refCount = 0;
-    private _isActive = false;
-    private _maintain: Promise<void> | null = null;
+    private _isMaintained = false;
+    private _maintainTask: Promise<void> | null = null;
     private _whenReady = new PromiseSource<AppAudioContext>();
     private _whenNotReady = new PromiseSource<void>();
     private _suspendContextDebounced = debounce(() => this.suspendContext(), SuspendDebounceTimeMs);
@@ -266,8 +272,16 @@ export class AudioContextSource {
     public readonly contextClosed$: Observable<AudioContext> = this._contextClosed$.asObservable();
     public breakProbability = 0;
     public get isContextRunning(): boolean { return !!this._context && this._context.state === 'running'; }
-    public get isMaintained(): boolean { return this._isActive; }
+    public get isMaintained(): boolean { return this._isMaintained; }
     public get isUsed(): boolean { return this._refCount > 0; }
+
+    private get _listeningRefCount(): number {
+        let count = 0;
+        for (const ref of this._refs) {
+            if (ref.isListening && !ref.isDisposed) count++;
+        }
+        return count;
+    }
 
     public constructor(public readonly purpose: AudioContextPurpose) {
         // Subscribe to device wake events - no need to store the handler since this is a singleton
@@ -284,7 +298,7 @@ export class AudioContextSource {
         // so it makes sense let other tasks to make some progress first.
         delayAsync(300)
             .then(() => {
-                this._maintain = this.maintain();
+                this._maintainTask = this.maintain();
             });
     }
 
@@ -308,13 +322,14 @@ export class AudioContextSource {
         }
     }
 
-    public createRef(...traits: AudioContextTrait[]): AudioContextRef {
+    public createRef(isListening: boolean, ...traits: AudioContextTrait[]): AudioContextRef {
         // Ensure all requested traits are registered
         for (const trait of traits) {
             this.addTrait(trait);
         }
 
         const ref = new AudioContextRef(traits);
+        ref.isListening = isListening;
         this._refs.add(ref);
 
         // Track ref count
@@ -348,23 +363,22 @@ export class AudioContextSource {
         return ref;
     }
 
-    public run(action: (context: AudioContext) => Promise<void>, ...traits: AudioContextTrait[]): AudioContextAction {
-        const ref = this.createRef(...traits);
-        const wrappedAction = new AudioContextAction(ref, async (context) => {
+    public run(isListening: boolean, action: (context: AudioContext) => Promise<void>, ...traits: AudioContextTrait[]): AudioContextAction {
+        const ref = this.createRef(isListening, ...traits);
+        return new AudioContextAction(ref, async (context) => {
             try {
                 await action(context);
             } finally {
                 ref.dispose();
             }
         });
-        return wrappedAction;
     }
 
     public async whenReady(cancel?: Promise<Cancelled>): Promise<AudioContext> {
         // Ensure the maintain loop is running so that `_whenReady` can eventually resolve.
-        if (!this._isActive) {
+        if (!this._isMaintained) {
             debugLog?.log(`whenReady: auto-start maintain (was inactive)`);
-            this._maintain = this.maintain();
+            this._maintainTask = this.maintain();
         }
 
         const whenReady = this._whenReady;
@@ -404,36 +418,39 @@ export class AudioContextSource {
             return;
         }
 
-        if (!this._isActive) {
-            if (this._maintain)
-                await this._maintain;
-            this._maintain = this.maintain();
+        if (!this._isMaintained) {
+            if (this._maintainTask)
+                await this._maintainTask;
+            this._maintainTask = this.maintain();
         }
     }
 
     public async reset(): Promise<void> {
-        this._isActive = false;
+        this._isMaintained = false;
         await this.closeContext();
-        if (this._maintain)
-            await this._maintain;
-        this._maintain = this.maintain();
+        if (this._maintainTask)
+            await this._maintainTask;
+        this._maintainTask = this.maintain();
     }
 
-    public async updateBackgroundState(state: BackgroundState): Promise<void> {
-        debugLog?.log(`updateBackgroundState:`, state, this.isUsed);
+    public async setAppActivityState(state: AppActivityState): Promise<void> {
+        debugLog?.log(`setAppActivityState:`, state, this.isUsed);
+        if (state === this._appActivityState)
+            return;
+
+        this._appActivityState = state;
         if (state === 'BackgroundIdle') {
-            if (!this._whileBackgroundIdle)
-                this._whileBackgroundIdle = new PromiseSource<void>();
+            this._whileBackgroundIdleAppActivityState ??= new PromiseSource<void>();
             if (!this.isUsed)
                 this._suspendContextDebounced();
-            this._isActive = false;
+            this._isMaintained = false;
             return;
         }
         else {
             this._suspendContextDebounced.reset();
             this._closeContextDebounced.reset();
-            this._whileBackgroundIdle?.resolve(undefined);
-            this._whileBackgroundIdle = null;
+            this._whileBackgroundIdleAppActivityState?.resolve(undefined);
+            this._whileBackgroundIdleAppActivityState = null;
         }
 
         const context = this._context;
@@ -460,6 +477,10 @@ export class AudioContextSource {
         }
         else {
             // Resume can be called during user interaction only
+            if (this._listeningRefCount > 0) {
+                debugLog?.log(`interactiveResume: listening refs exist, demanding interaction`);
+                void InteractiveUI.demand("listening");
+            }
         }
 
         debugLog?.log(`interactiveResume: waiting for interaction`);
@@ -607,7 +628,7 @@ export class AudioContextSource {
         }
 
         // Check if should suspend
-        const backgroundState = AudioInitializer.backgroundState;
+        const backgroundState = AudioInitializer.appActivityState;
         if (backgroundState === 'BackgroundIdle') {
             this._suspendContextDebounced();
         }
@@ -771,7 +792,6 @@ export class AudioContextSource {
         debugLog?.log(`close:`, Log.ref(context));
         if (!context)
             return;
-
         if (context.state === 'closed')
             return;
 
@@ -816,22 +836,21 @@ export class AudioContextSource {
             await Promise.all(unusedPromises);
         }
 
-        if (Interactive.isAlwaysInteractive && AudioInitializer.backgroundState === 'BackgroundIdle')
+        if (Interactive.isAlwaysInteractive && AudioInitializer.appActivityState === 'BackgroundIdle')
             this._closeContextDebounced();
     }
 
     private async closeContext(): Promise<void> {
-        infoLog?.log('closeContext()');
+        warnLog?.log("closeContext()");
+
         const context = this._context;
         this._context = null;
-
-        // Notify refs that context is gone
         this.notifyRefsFailed();
-
         await this.closeSilently(context);
-        if (AudioInitializer.backgroundState !== 'BackgroundIdle') {
-            this._whileBackgroundIdle?.resolve(undefined);
-            this._whileBackgroundIdle = null;
+
+        if (AudioInitializer.appActivityState !== "BackgroundIdle") {
+            this._whileBackgroundIdleAppActivityState?.resolve(undefined);
+            this._whileBackgroundIdleAppActivityState = null;
         }
     }
 
@@ -841,20 +860,18 @@ export class AudioContextSource {
         // - _whenReady is NOT completed
         // - _whenNotReady is completed.
 
-        this._context = null;
         debugLog?.log(`markNotReady`);
 
-        // Notify all refs that context failed
+        this._context = null;
         this.notifyRefsFailed();
-
         // _whenReady must be replaced first
         this._whenReady = new PromiseSource<AudioContext>();
-
+        // Complete _whenNotReady
         if (!this._whenNotReady.isCompleted())
             this._whenNotReady.resolve(undefined);
     }
 
-    private markReady(context: AudioContext): void {
+    private setContextAndMarkReady(context: AudioContext): void {
         // Invariant it maintains on exit:
         // - _context != null
         // - _whenReady is completed
@@ -869,10 +886,8 @@ export class AudioContextSource {
         // _whenNotReady must be replaced first
         if (this._whenNotReady.isCompleted())
             this._whenNotReady = new PromiseSource<void>();
-
+        // Complete _whenReady
         this._whenReady.resolve(context);
-
-        // Notify all refs that context is ready
         this.notifyRefsReady(context);
     }
 
@@ -888,11 +903,10 @@ export class AudioContextSource {
 
     private async maintain(): Promise<void> {
         debugLog?.log('maintain: starting');
-        this._isActive = true;
+        this._isMaintained = true;
 
         // noinspection InfiniteLoopJS
-        let retryCount = 0;
-        while (this._isActive) { // Renew loop
+        while (this._isMaintained) { // Renew loop
             try {
                 // debugLog?.log('maintain: loop 1');
                 let context = this._context;
@@ -900,10 +914,13 @@ export class AudioContextSource {
                 // @ts-ignore
                 if (!context || context.state === 'closed') {
                     context = await this.create();
-                    this.markReady(context);
+                    this.setContextAndMarkReady(context);
                 }
 
                 if (context.state === 'suspended') {
+                    const whileIdle = this._whileBackgroundIdleAppActivityState;
+                    if (whileIdle)
+                        await whileIdle;
                     if (context.wasInteractive)
                         await this.resume(context, true);
                     else {
@@ -912,10 +929,11 @@ export class AudioContextSource {
                         await Promise.race([this._whenNotReady, interactiveResume]);
                     }
                 }
+                debugLog?.log('maintain: context is running');
                 let lastTestAt = Date.now();
 
                 // noinspection InfiniteLoopJS
-                while (this._isActive) { // Health check loop
+                while (this._isMaintained) { // Health check loop
                     this._testRequested = new PromiseSource<void>();
                     const testRequested = this._testRequested;
                     const minDelay = lastTestAt + MaintainCyclePeriodMs - Date.now();
@@ -927,7 +945,7 @@ export class AudioContextSource {
                         await Promise.race([this._whenNotReady, whenDelayCompleted, testRequested]);
                     }
 
-                    if (!this._isActive)
+                    if (!this._isMaintained)
                         break;
 
                     const isWakeUpTest = testRequested.isCompleted();
@@ -935,35 +953,20 @@ export class AudioContextSource {
                     try {
                         await this.test(context, !isWakeUpTest);
                     } catch (e) {
-                        if (isWakeUpTest) {
+                        if (isWakeUpTest && !Interactive.isAlwaysInteractive) {
                             // After wake-up, the browser may have revoked audio permission;
                             // force a new user gesture on next context creation.
                             Interactive.isInteractive = false;
                         }
                         throw e;
                     }
-                    retryCount = 0;
-                    this.markReady(context);
                 }
             }
             catch (e) {
                 warnLog?.log(`maintain: error:`, e);
                 this.markNotReady();
-                if (retryCount++ > 1) {
-                    // wait for the next user interaction to prevent creating broken AudioContexts
-                    warnLog?.log(`maintain: waiting for user interaction...`);
-                    const whileBackgroundIdle = this._whileBackgroundIdle;
-                    if (whileBackgroundIdle)
-                        await whileBackgroundIdle;
-                    else
-                        await firstValueFrom(Interactive.interactionEvent$);
-                    warnLog?.log(`maintain: resuming maintain cycle`);
-                }
             }
-            finally {
-                if (this._isActive)
-                    await this.closeContext();
-            }
+            await this.closeContext();
         }
     }
 

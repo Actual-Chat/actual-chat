@@ -29,11 +29,16 @@ public class InteractiveUI : UIServiceBase<UIHub>, IInteractiveUIBackend
     [JSInvokable]
     public Task IsInteractiveChanged(bool value)
     {
-        lock (_lock) {
+        lock (_lock)
             _isInteractive.Value = value;
-            _activeDemand.Value = null;
-        }
         return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task Demand(string operation)
+    {
+        _ = IsInteractiveChanged(false);
+        return Demand(operation, CancellationToken.None);
     }
 
     public async Task<bool> Demand(string operation, CancellationToken cancellationToken)
@@ -48,22 +53,20 @@ public class InteractiveUI : UIServiceBase<UIHub>, IInteractiveUIBackend
 
         // Wait a bit, probably user just pressed "Play" or "Record", but
         // IsInteractive update hasn't made it to Blazor yet.
-        await IsInteractive.Computed
-            .When(x => x, cancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
-            .SuppressExceptions(e => e is TimeoutException)
-            .ConfigureAwait(false);
+        var whenInteractive = IsInteractive.Computed.When(x => x, CancellationToken.None);
+        await whenInteractive.WaitAsync(TimeSpan.FromSeconds(1), cancellationToken).SilentAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         if (IsInteractive.Value)
             return true;
 
-        Log.LogDebug("Demand(), operation = '{Operation}'", operation);
+        DebugLog?.LogDebug("Demand(), operation = '{Operation}'", operation);
 
         ActiveDemandModel? activeDemand;
         lock (_lock) { // We need this lock to update ActiveDemand
             activeDemand = _activeDemand.Value;
             if (activeDemand == null) {
                 // No active demand, so we need to create modal
-                var modalRefTask = ShowModal();
+                var modalRefTask = ShowModal(whenInteractive);
                 activeDemand = new ActiveDemandModel(
                     ImmutableList.Create(operation),
                     modalRefTask,
@@ -85,30 +88,38 @@ public class InteractiveUI : UIServiceBase<UIHub>, IInteractiveUIBackend
 
         var modalRef = await activeDemand.WhenModalRef.WaitAsync(cancellationToken).ConfigureAwait(false);
         await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-        var isConfirmed = activeDemand.WhenConfirmed.IsCompletedSuccessfully;
-        if (isConfirmed) // If confirmed, let's wait for interactivity as well
-            await IsInteractive.Computed.When(x => x, cancellationToken).ConfigureAwait(false);
-
-        return isConfirmed;
+        return activeDemand.WhenConfirmed.IsCompletedSuccessfully;
     }
 
-    private Task<ModalRef> ShowModal()
+    private Task<ModalRef> ShowModal(Task whenInteractive)
     {
-        var modalRefTask = Dispatcher.InvokeAsync(() => ModalUI.Show(DemandUserInteractionModal.Model.Instance));
-        _ = modalRefTask.ContinueWith(async _ => {
-            if (modalRefTask.IsCompletedSuccessfully) {
-                // If modal was successfully created, let's wait when it gets closed
+        Task<ModalRef> modalRefTask;
+        return Dispatcher.InvokeAsync(() => {
+            modalRefTask = ModalUI.Show(DemandUserInteractionModal.Model.Instance);
+            _ = RemoveActiveDemand();
+            _ = CloseWhenInteractive();
+            return modalRefTask;
+        });
+
+        async Task RemoveActiveDemand() {
+            try {
                 var modalRef = await modalRefTask.ConfigureAwait(false);
                 await modalRef.WhenClosed.ConfigureAwait(false);
             }
-            lock (_lock) {
-                var activeDemand = _activeDemand.Value;
-                var whenConfirmed = activeDemand?.WhenConfirmedSource;
-                whenConfirmed?.TrySetCanceled();
+            finally {
+                lock (_lock) {
+                    var activeDemand = _activeDemand.Value;
+                    (activeDemand?.WhenConfirmedSource)?.TrySetCanceled();
+                    _activeDemand.Value = null;
+                }
             }
-        }, TaskScheduler.Default);
-        return modalRefTask;
+        }
+
+        async Task CloseWhenInteractive() {
+            await whenInteractive.ConfigureAwait(false);
+            var modalRef = await modalRefTask.ConfigureAwait(false);
+            modalRef.Close();
+        }
     }
 
     // Nested types
