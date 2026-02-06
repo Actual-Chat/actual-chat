@@ -7,6 +7,8 @@ namespace ActualChat.Sharding;
 
 public sealed class ShardOwner : WorkerBase, IHasServices
 {
+    private static readonly TimeSpan LockToUseDelay = TimeSpan.FromSeconds(1);
+
     internal ILogger Log => field ??= Services.LoggerFactory().CreateLogger(GetType(), $"@{ShardScheme.Name}");
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.ShardOwners);
 
@@ -220,16 +222,29 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         var lockToken = lockHolder.StopToken;
         DebugLog?.LogDebug("Shard #{ShardIndex}: ++ {ThisNodeId}", shardIndex, ThisNode.Ref);
 
-        var ownedShardState = new ShardState(mutableState.Value, mustOwn: true, lockHolder);
-        mutableState.Value = ownedShardState;
-        var ownership = ownedShardState.Ownership!;
-        var isAdded = Dispatcher.Add(ownership, throwIfDisposed: false);
+        bool isAdded = false;
+        ShardOwnership ownership = null!;
+        var linkedCts = lockToken.LinkWith(cancellationToken);
+        var linkedToken = linkedCts.Token;
+        try {
+            await Task.Delay(LockToUseDelay, linkedToken).ConfigureAwait(false);
 
-        // Wait for lock loss OR cancellation (shard reassignment).
-        // We must respond to cancellationToken so workers are stopped while the lock is still held,
-        // preventing overlap with the new host's workers.
-        using var linkedCts = lockToken.LinkWith(cancellationToken);
-        await TaskExt.NeverEnding(linkedCts.Token).SilentAwait(false);
+            var ownedShardState = new ShardState(mutableState.Value, mustOwn: true, lockHolder);
+            mutableState.Value = ownedShardState;
+            ownership = ownedShardState.Ownership!;
+            isAdded = Dispatcher.Add(ownership, throwIfDisposed: false);
+
+            // Wait for lock loss OR cancellation (shard reassignment).
+            // We must respond to cancellationToken so workers are stopped while the lock is still held,
+            // preventing overlap with the new host's workers.
+            await TaskExt.NeverEnding(linkedToken).SilentAwait(false);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(linkedToken)) {
+            Log.LogError(e, "Shard #{ShardIndex}: LockAndUse failed", shardIndex);
+        }
+        finally {
+            linkedCts.CancelAndDisposeSilently();
+        }
 
         if (isAdded)
             await Dispatcher.Remove(ownership).SilentAwait(false);
