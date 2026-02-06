@@ -100,8 +100,8 @@ class DataHrefGesture extends Gesture {
 
         let [element, href] = getOrInheritData(event.target, 'href');
         const target = event.target as HTMLElement | null;
-        // TODO: Remove this workaround when MAUI issue is fixed: https://github.com/dotnet/maui/issues/25602
-        if (!href && DeviceInfo.isIos && BrowserInfo.hostKind === 'MauiApp') {
+        // NOTE: workaround for target blank links on android and ios maui
+        if (!href && (DeviceInfo.isIos || DeviceInfo.isAndroid) && BrowserInfo.hostKind === 'MauiApp') {
             const [anchor, aHref] = getOrInheritAttribute(target, 'href');
             if (anchor instanceof HTMLAnchorElement && anchor.target === '_blank') {
                 element = anchor;
