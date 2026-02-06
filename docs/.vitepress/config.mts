@@ -102,6 +102,7 @@ export default withMermaid(defineConfig({
               { text: "Running Voxt", link: "/running-voxt" },
               { text: "Implementing Features", link: "/development/implementing-features" },
               { text: "Coding Style", link: "/CODING_STYLE" },
+              { text: "API Index", link: "/api-index" },
               { text: "AI Agent Guide", link: "/AGENTS" },
             ],
           },
