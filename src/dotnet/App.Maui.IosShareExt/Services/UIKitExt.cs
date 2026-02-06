@@ -1,3 +1,4 @@
+using Intents;
 using Microsoft.Maui.ApplicationModel;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
@@ -17,4 +18,9 @@ public static class UIKitExt
             generator.Prepare();
             generator.NotificationOccurred(UINotificationFeedbackType.Success);
         });
+
+    public static ChatId? GetSuggestedRecipient()
+        => ExtensionContext.GetIntent() is INSendMessageIntent sendMessageIntent
+            ? ChatId.ParseNullable(sendMessageIntent.ConversationIdentifier)
+            : null;
 }

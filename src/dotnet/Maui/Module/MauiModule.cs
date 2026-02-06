@@ -39,5 +39,10 @@ public class MauiModule(IServiceProvider moduleServices)
         // Make LocalSettings singleton
         services.Replace(ServiceDescriptor.Singleton(c
             => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c)));
+
+        // sharing
+#if IOS
+        services.AddScoped<IntentDonation>();
+#endif
     }
 }

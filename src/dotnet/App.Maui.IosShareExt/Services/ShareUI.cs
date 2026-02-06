@@ -2,6 +2,7 @@ using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Chat;
 using ActualChat.Contacts;
+using ActualChat.Maui;
 using ActualChat.Media;
 using ActualChat.Search;
 using ActualChat.UI.Services;
@@ -20,7 +21,6 @@ public class ShareUI : UIServiceBase, IComputeService
     private readonly MutableState<bool> _isUploading;
     private readonly MutableState<bool> _isFailed;
     private readonly MutableState<bool> _isCompleted;
-    private TaskCompletionSource? _successViewDisplayedSource;
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
     public IState<bool> IsUploading => _isUploading;
@@ -29,12 +29,15 @@ public class ShareUI : UIServiceBase, IComputeService
     public IState<double> UploadPct => _uploadPct;
     public IState<bool> CanSend => _canSend;
 
+    private IAccounts Accounts => Hub.Accounts;
     private IContacts Contacts => Hub.Contacts;
+    private IChats Chats => Hub.Chats;
     private ShareInputs SharedInputs => Hub.SharedData;
     private ChunkedFileUploader FileUploader => Hub.FileUploader;
     private Session Session => Hub.Session;
     private UICommander UICommander => Hub.UICommander;
     private ICommander Commander => Hub.Commander;
+    private IntentDonation IntentDonation => field ??= Hub.Services.GetRequiredService<IntentDonation>();
 
     public ShareUI(IosHub hub) : base(hub)
     {
@@ -49,6 +52,22 @@ public class ShareUI : UIServiceBase, IComputeService
             => AsyncChain.From(SendInternal)
                 .LogError(Log)
                 .RunIsolated(ct));
+
+        _ = AutoSelectAndSend();
+    }
+
+    // TODO: refactor
+    private async Task AutoSelectAndSend()
+    {
+        if (UIKitExt.GetSuggestedRecipient() is not { } chatId)
+            return;
+
+        var ownAccount = await Accounts.GetOwn(Session, StopToken).ConfigureAwait(false);
+        var contactId = ContactId.NewAny(ownAccount.Id, chatId);
+
+        _selectedIds.Add(contactId);
+        _canSend.Value = true;
+        StartSending();
     }
 
     protected override Task DisposeAsyncCore()
@@ -115,6 +134,7 @@ public class ShareUI : UIServiceBase, IComputeService
         try
         {
             var chatIds = _selectedIds.Select(x => x.ChatId).Distinct().ToList();
+            _ = SuggestShareContacts(chatIds);
             var text = await SharedInputs.GetText(cancellationToken).ConfigureAwait(false);
             var fileInputs = await SharedInputs.ListFiles(cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Text: {Text}, Files: {Files}", text, fileInputs.Count);
@@ -142,6 +162,7 @@ public class ShareUI : UIServiceBase, IComputeService
                 if (!entryText.IsNullOrWhiteSpace())
                     await CreateChatEntry(chatId, entryText, [], cancellationToken).ConfigureAwait(false);
             }
+
             _isCompleted.Value = true;
 
             UIKitExt.PlaySuccessHaptic();
@@ -153,6 +174,23 @@ public class ShareUI : UIServiceBase, IComputeService
             Log.LogError(e, "Failed to send message");
             _isFailed.Value = true;
             throw;
+        }
+    }
+
+    // TODO: move out of this class
+    private async Task SuggestShareContacts(List<ChatId> chatIds)
+    {
+        try {
+            var cancellationToken = StopToken;
+            var chats = await chatIds.Select(x => Chats.Get(Session, x, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var chat in chats.SkipNullItems())
+                await IntentDonation.Donate(chat, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            if (!e.IsCancellationOf(StopToken))
+                Log.LogError(e, "Failed to donate intents for chats");
         }
     }
 
