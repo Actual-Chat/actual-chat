@@ -419,18 +419,22 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 .MarkMessageHasCreated(request.Uuid, chatEntry.LocalId, cancellationToken)
                 .ConfigureAwait(false);
 
+        ChatEntry? chatEntry1 = chatEntry;
         await request.AttachmentUploads.WhenUploaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (request.AttachmentUploads.Attachments.Count == 0 && chatEntry.Content.IsNullOrEmpty()) {
+            // Remove the message if it has no attachments and no content.
+            await RemoveChatEntry((TextEntryId)chatEntry.Id, cancellationToken).ConfigureAwait(false);
+            chatEntry1 = null;
+        }
 
-        // var chatEntry2 = await CreateAttachments(chatEntry, request.AttachmentUploads, cancellationToken)
-        //     .ConfigureAwait(false);
-        chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry, Now);
+        chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry1, Now);
         // Delete upload info with delay to avoid flickering in the UI.
         _ = BackgroundTask.Run(async () => {
                 await Task.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
                 _mediaUploadsUI.Delete(sendingMessage);
             },
             CancellationToken.None);
-        return chatEntry;
+        return chatEntry1;
     }
 
     private void InvokeAfterSendMessageHandler(string afterSendMessageHandlerKey, string afterSendMessageHandlerArgs, Result<ChatEntry?> result)
