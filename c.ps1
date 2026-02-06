@@ -162,7 +162,8 @@ $currentOS = Get-CurrentOS
 $mode = "docker"  # default mode
 $fromMode = $null  # set when self-invoked (e.g., from-docker, from-wsl)
 $worktreeSuffix = $null  # set when wt argument is used (regular worktree from current branch)
-$featureWorktreeSuffix = $null  # set when fwt argument is used (feature branch worktree)
+$featureWorktreeSuffix = $null  # set when fwt/bwt argument is used (worktree suffix)
+$wtType = $null  # worktree type: "feat" for fwt, "bugfix" for bwt
 $dryRun = $false
 $debugMode = $false
 $claudeArgs = @()
@@ -179,6 +180,7 @@ function Show-Help {
     Write-Host "  wsl          Run Claude in WSL (Windows only)"
     Write-Host "  wt <suffix>  Create/use worktree from current branch (e.g., wt experiment)"
     Write-Host "  fwt <suffix> Create/use feature worktree with feat/<suffix> branch (e.g., fwt feature1)"
+    Write-Host "  bwt <suffix> Create/use bugfix worktree with bugfix/<suffix> branch (e.g., bwt issue123)"
     Write-Host "  chrome       Start Chrome with remote debugging enabled (for Playwright)"
     Write-Host "  build        Build Docker image for current project"
     Write-Host "  help         Show this help message"
@@ -209,6 +211,7 @@ function Show-Help {
     Write-Host "  Worktrees are automatically detected when the folder name is {Project}-{Suffix}"
     Write-Host "  Use wt to create a regular worktree from current branch (push/pull go to that branch)"
     Write-Host "  Use fwt to create a feature worktree with a new feat/<suffix> branch from origin/dev or origin/master"
+    Write-Host "  Use bwt to create a bugfix worktree with a new bugfix/<suffix> branch from origin/dev or origin/master"
     Write-Host ""
     Write-Host "Examples:"
     Write-Host "  c                  Run Claude in Docker"
@@ -217,7 +220,9 @@ function Show-Help {
     Write-Host "  c wsl              Run Claude in WSL"
     Write-Host "  c wt experiment    Run in worktree from current branch"
     Write-Host "  c fwt feature1     Run in worktree with feat/feature1 branch"
-    Write-Host "  c os fwt bugfix    Run on host OS in feature worktree"
+    Write-Host "  c bwt issue123     Run in worktree with bugfix/issue123 branch"
+    Write-Host "  c os fwt feature1  Run on host OS in feature worktree"
+    Write-Host "  c os bwt issue1    Run on host OS in bugfix worktree"
     Write-Host "  c chrome           Start Chrome with remote debugging"
     Write-Host "  c build            Build Docker image"
     Write-Host "  c --resume abc     Pass --resume abc to Claude"
@@ -265,14 +270,15 @@ while ($argIndex -lt $args.Count) {
         continue
     }
 
-    # Check for fwt command (feature worktree with feat/<suffix> branch)
-    if ($currentArg -eq "fwt") {
+    # Check for fwt/bwt command (prefixed branch worktree)
+    if ($currentArg -eq "fwt" -or $currentArg -eq "bwt") {
+        $wtType = if ($currentArg -eq "fwt") { "feature" } else { "bugfix" }
         $argIndex++
         if ($argIndex -lt $args.Count) {
             $featureWorktreeSuffix = $args[$argIndex]
             $argIndex++
         } else {
-            Write-Error "The fwt command requires a worktree suffix argument"
+            Write-Error "The $currentArg command requires a worktree suffix argument"
             exit 1
         }
         continue
@@ -360,20 +366,21 @@ if ($worktreeSuffix) {
     Set-Location $worktreePath
 }
 
-# Handle fwt argument: create feature worktree with feat/<suffix> branch and switch to it
+# Handle fwt/bwt arguments: create worktree with prefixed branch and switch to it
 if ($featureWorktreeSuffix) {
     # Always use the main project path (not another worktree)
     $mainProjectPath = Join-Path $env:AC_ProjectRoot $projectName
     $worktreePath = Join-Path $env:AC_ProjectRoot "$projectName-$featureWorktreeSuffix"
 
     if (-not (Test-Path $worktreePath)) {
-        Write-Host "Creating feature worktree: $projectName-$featureWorktreeSuffix"
+        Write-Host "Creating $wtType worktree: $projectName-$featureWorktreeSuffix"
         $originalLocation = Get-Location
         Set-Location $mainProjectPath
         try {
             # Determine base branch based on project
             $baseBranch = if ($projectName -eq "ActualChat") { "dev" } else { "master" }
-            $featureBranch = "feat/$featureWorktreeSuffix"
+            $branchPrefix = if ($wtType -eq "feature") { "feat" } else { "bugfix" }
+            $featureBranch = "$branchPrefix/$featureWorktreeSuffix"
 
             # Make sure we have the latest
             git fetch origin 2>$null
