@@ -18,6 +18,7 @@ public class IosHub(IServiceProvider services) : ProcessorBase, IHasServices
     public Session Session => field ??= Services.GetRequiredService<Session>();
     public ISessionResolver SessionResolver => field ??= Services.GetRequiredService<ISessionResolver>();
 
+    public IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     public IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();
     public IChats Chats => field ??= Services.GetRequiredService<IChats>();
     public ShareUI ShareUI => field ??= Services.GetRequiredService<ShareUI>();

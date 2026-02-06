@@ -2,29 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-<!--	<key>CFBundleDisplayName</key>-->
-<!--	<string>App.Maui.IosShareExtShareExtension</string>-->
-<!--	<key>CFBundleName</key>-->
-<!--	<string>App.Maui.IosShareExtShareExtension</string>-->
-<!--	<key>CFBundleIdentifier</key>-->
-<!--	<string>chat.actual.dev.app.share</string>-->
-<!--	<key>CFBundleDevelopmentRegion</key>-->
-<!--	<string>en</string>-->
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
-<!--	<key>CFBundleShortVersionString</key>-->
-<!--	<string>1.0</string>-->
-<!--	<key>CFBundleVersion</key>-->
-<!--	<string>1.0</string>-->
-<!--	<key>MinimumOSVersion</key>-->
-<!--	<string>16.4</string>-->
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>
 		<dict>
-			<!-- Accepts any content type - public.item is the root UTI that all types conform to -->
 			<key>NSExtensionActivationRule</key>
 			<string>SUBQUERY (
 				extensionItems,
@@ -35,11 +20,15 @@
 					ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.item"
                         OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image"
                         OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.text"
-				).@count >= 1
-			).@count >= 1</string>
+				).@count &gt;= 1
+			).@count &gt;= 1</string>
+			<key>IntentsSupported</key>
+			<array>
+				<string>INSendMessageIntent</string>
+			</array>
 		</dict>
-        <key>NSExtensionPrincipalClass</key>
-        <string>ShareViewController</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>ShareViewController</string>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.share-services</string>
 	</dict>
