@@ -100,6 +100,27 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         if (!Env.IsDevelopment()) // disable compression for local development and hot reload
             app.UseResponseCompression();
 
+        // Cache headers for static files (must be before UseStaticFiles)
+        app.UseStaticDistCacheHeaders();
+
+        // Serve /dist/assets with custom MIME types for .ort, .onnx, etc.
+        // MUST be BEFORE UseRouting() so it runs before endpoint routing
+        // These files are not in the MapStaticAssets manifest (build-time warning expected)
+        if (!HostInfo.IsTested) {
+            var webRootPath = AppPathResolver.GetWebRootPath();
+            Log.LogInformation("WebRootPath resolved to: {WebRootPath}", webRootPath.Value);
+
+            var assetsPath = webRootPath & "dist/assets";
+            var assetsPathExists = Directory.Exists(assetsPath);
+            Log.LogInformation("AssetsPath: {AssetsPath}, exists: {Exists}", assetsPath.Value, assetsPathExists);
+            if (assetsPathExists)
+                app.UseStaticFiles(new StaticFileOptions {
+                    RequestPath = "/dist/assets",
+                    FileProvider = new PhysicalFileProvider(assetsPath),
+                    ContentTypeProvider = ContentTypeProvider.Instance,
+                });
+        }
+
         // API controllers & HTTP endpoints
         app.UseRouting();
         app.UseCors("Default");
@@ -109,14 +130,16 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         app.UseAntiforgery();
 
         // Endpoint mapping
-        app.UseStaticDistCacheHeaders(); // Customized cache headers for Static files from dist and _content folders
         if (!HostInfo.IsTested) {
-            var configPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/dist/config");
+            var webRootPath = AppPathResolver.GetWebRootPath();
+
+            var configPath = webRootPath & "dist/config";
             if (Directory.Exists(configPath))
                 app.UseStaticFiles(new StaticFileOptions {
                     RequestPath = "/dist/config", // For firebase.config.js
                     FileProvider = new PhysicalFileProvider(configPath),
                 });
+
             app.MapStaticAssets();
             app.MapRazorComponents<RootServerPage>()
                 .AddInteractiveServerRenderMode()

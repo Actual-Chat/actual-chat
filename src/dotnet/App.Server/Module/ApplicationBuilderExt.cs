@@ -1,9 +1,11 @@
+using System.Text.RegularExpressions;
+
 namespace ActualChat.App.Server.Module;
 
 /// <summary>
 /// Extension methods for configuring middleware including COOP headers, base URL, and static file caching.
 /// </summary>
-public static class ApplicationBuilderExt
+public static partial class ApplicationBuilderExt
 {
     public static IApplicationBuilder UseCoopHeaders(this IApplicationBuilder app)
         => app.Use((context, next) => {
@@ -63,8 +65,13 @@ public static class ApplicationBuilderExt
         return builder;
     }
 
-    private class CacheControlMiddleware(RequestDelegate next)
+    private partial class CacheControlMiddleware(RequestDelegate next)
     {
+        // Regex to detect fingerprinted files (10-char hash before extension)
+        // Matches patterns like: file.abc1234xyz.js, dotnet.native.kx5e2qo6u9.wasm
+        [GeneratedRegex(@"\.[a-z0-9]{10}\.(js|mjs|wasm|css|dll|webcil|onnx|ort)$", RegexOptions.IgnoreCase)]
+        private static partial Regex FingerprintRegex();
+
         public Task InvokeAsync(HttpContext context)
         {
             var requestPath = context.Request.Path;
@@ -75,13 +82,23 @@ public static class ApplicationBuilderExt
                 return next(context);
 
             var services = context.RequestServices;
+            var requestPathValue = requestPath.Value ?? "";
+
+            // Check if file is fingerprinted (has hash in filename)
+            var isFingerprinted = FingerprintRegex().IsMatch(requestPathValue);
+
+            // In DEBUG: only disable caching for non-fingerprinted files
+            // Fingerprinted files are immutable by definition - safe to cache
             var mustDisableCaching =
 #if DEBUG
-                true;
+                !isFingerprinted; // Allow caching fingerprinted files even in DEBUG
 #else
                 false;
 #endif
-            mustDisableCaching |= Constants.DebugMode.DisableStaticFileCaching && services.HostInfo().IsDevelopmentInstance;
+            mustDisableCaching |= Constants.DebugMode.DisableStaticFileCaching
+                && services.HostInfo().IsDevelopmentInstance
+                && !isFingerprinted;
+
             if (mustDisableCaching) {
                 context.Response.OnStarting(() => {
                     context.Response.Headers.Remove("Cache-Control");
@@ -92,8 +109,17 @@ public static class ApplicationBuilderExt
             }
 
             context.Response.OnStarting(() => {
-                var requestPathValue = requestPath.Value ?? "";
                 var currentCacheControl = (string?)context.Response.Headers.CacheControl;
+
+                // For fingerprinted files, always use immutable caching (1 year)
+                if (isFingerprinted) {
+                    context.Response.Headers.Remove("Cache-Control");
+                    context.Response.Headers.Append("Cache-Control", "public, max-age=31536000, immutable");
+                    return Task.CompletedTask;
+                }
+
+                // For framework files without fingerprint (blazor.boot.json, blazor.web.js)
+                // Allow no-cache from MapStaticAssets
                 var hasNoCache = string.Equals(currentCacheControl, "no-cache", StringComparison.OrdinalIgnoreCase);
                 if (hasNoCache && isFramework)
                     return Task.CompletedTask;
