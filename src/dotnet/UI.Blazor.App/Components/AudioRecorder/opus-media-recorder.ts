@@ -373,8 +373,8 @@ export class OpusMediaRecorder implements RecorderStateServer {
         this.chatId = chatId;
 
         // Create refs for both recording and playback contexts
-        this.recordingContextRef = recordingAudioContextSource.createRef(false, this.recordingPipelineTrait);
-        this.playbackContextRef = audioContextSource.createRef(false); // No-op ref for playback
+        this.recordingContextRef = recordingAudioContextSource.createRef(this.recordingPipelineTrait);
+        this.playbackContextRef = audioContextSource.createRef(); // No-op ref for playback
 
         // Run the recording action
         this.recordingAction = this.recordingContextRef.run(async (context) => {

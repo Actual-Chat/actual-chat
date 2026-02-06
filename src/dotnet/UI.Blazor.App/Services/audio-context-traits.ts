@@ -35,6 +35,18 @@ export const emptyAttachedTrait: AttachedAudioContextTrait = Object.freeze({});
 
 // Specific Traits
 
+/** Singleton marker trait: when present on a ref, signals that context break should proactively demand user interaction via InteractiveUI. */
+export class DemandInteractiveUI implements AudioContextTrait {
+    public static readonly instance = new DemandInteractiveUI();
+    public readonly name = 'demand-interactive-ui';
+
+    private constructor() {}
+
+    public attach(): AttachedAudioContextTrait {
+        return emptyAttachedTrait;
+    }
+}
+
 /** Fallback destination node for iOS Safari to expose mediaSession metadata at lock screen */
 export class DestinationFallbackTrait implements AudioContextTrait {
     public readonly name = 'destination-fallback';

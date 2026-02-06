@@ -5,7 +5,7 @@ import {
     AudioContextRef,
     AudioContextAction,
 } from '../../Services/audio-context-source';
-import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait } from '../../Services/audio-context-traits';
+import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait, DemandInteractiveUI } from '../../Services/audio-context-traits';
 import { FeederState, PlaybackState } from './worklets/feeder-audio-worklet-contract';
 import { Disposable } from 'disposable';
 import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
@@ -203,7 +203,7 @@ export class AudioPlayer implements Resettable {
         this.whenEnded = new PromiseSource<void>();
 
         // Create a ref with the feeder node trait
-        this.contextRef = audioContextSource.createRef(true, this.feederNodeTrait);
+        this.contextRef = audioContextSource.createRef(this.feederNodeTrait, DemandInteractiveUI.instance);
 
         // Run the playback action
         this.playingAction = this.contextRef.run(async () => {
@@ -302,7 +302,7 @@ export class AudioPlayer implements Resettable {
         debugLog?.log(`#${this.internalId}.resume`);
 
         // Create new ref and action for resumed playback
-        this.contextRef = audioContextSource.createRef(true, this.feederNodeTrait);
+        this.contextRef = audioContextSource.createRef(this.feederNodeTrait, DemandInteractiveUI.instance);
         this.playingAction = this.contextRef.run(async () => {
             const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
             if (attachedFeeder) {
