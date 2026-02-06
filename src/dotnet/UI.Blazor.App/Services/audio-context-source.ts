@@ -14,15 +14,10 @@ import { DeviceInfo } from 'device-info';
 const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
 const MaintainCyclePeriodMs = 2000;
-const FixCyclePeriodMs = 300;
 const MaxResumeTimeMs = 2000;
-const MaxResumeCount = 60;
-const MaxInteractiveResumeCount = 3;
-const MaxSuspendTimeMs = 600;
 const ShortTestIntervalMs = 150;
 const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
-const WakeUpDetectionIntervalMs = 5000;
 const SuspendDebounceTimeMs: number = 2000;
 const CloseUnusedContextDebounce: number = 60000; // 60 seconds usually enough on iOS Safari to make audio context broken while backgrounded
 
@@ -255,10 +250,7 @@ export class AudioContextSource {
     private readonly _refs: Set<AudioContextRef> = new Set();
     private readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
     private readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
-    private _deviceWokeUpAt = 0;
-    private _isInteractiveWasReset = false;
-    private _resumeCount = 0;
-    private _interactiveResumeCount = 0;
+    private _testRequested: PromiseSource<void> | null = null;
     private _whileBackgroundIdle: PromiseSource<void> | null = null;
     private _context: AppAudioContext | null = null;
     private _refCount = 0;
@@ -272,6 +264,7 @@ export class AudioContextSource {
     // Public properties
     public readonly contextCreated$: Observable<AudioContext> = this._contextCreated$.asObservable();
     public readonly contextClosed$: Observable<AudioContext> = this._contextClosed$.asObservable();
+    public breakProbability = 0;
     public get isContextRunning(): boolean { return !!this._context && this._context.state === 'running'; }
     public get isMaintained(): boolean { return this._isActive; }
     public get isUsed(): boolean { return this._refCount > 0; }
@@ -467,12 +460,6 @@ export class AudioContextSource {
         }
         else {
             // Resume can be called during user interaction only
-            const isWakeUp = this.isWakeUp();
-            if (isWakeUp && !this._isInteractiveWasReset) {
-                this._isInteractiveWasReset = true;
-                Interactive.isInteractive = false;
-                debugLog?.log(`interactiveResume: Interactive.isInteractive was reset on wake up`);
-            }
         }
 
         debugLog?.log(`interactiveResume: waiting for interaction`);
@@ -646,8 +633,6 @@ export class AudioContextSource {
         debugLog?.log(`create`);
         this._suspendContextDebounced.reset();
         this._closeContextDebounced.reset();
-        this._resumeCount = 0;
-        this._interactiveResumeCount = 0;
         // Try to create audio context early w/o waiting for user interaction.
         // It might be in suspended state in this case.
         const context: AppAudioContext = new AudioContext({
@@ -686,9 +671,6 @@ export class AudioContextSource {
         debugLog?.log(`resume:`, Log.ref(context), isInteractive);
 
         const resumeTask = context.resume().then(() => true);
-        this._resumeCount++;
-        if (isInteractive)
-            this._interactiveResumeCount++;
 
         if (this.isRunning(context)) {
             debugLog?.log(`resume: already resumed, AudioContext:`, Log.ref(context));
@@ -754,12 +736,8 @@ export class AudioContextSource {
         // NOTE(AK): Somehow - sporadically - currentTime starts ticking only when you log the context!
         console.log(`AudioContext is:`, Log.ref(context), `, its currentTime:`, context.currentTime);
         const isRunning = context.state === 'running';
-        if (isRunning) {
-            // Resume call was successful
-            this._resumeCount = 0;
-            this._interactiveResumeCount = 0;
+        if (isRunning)
             context[Debug.brokenKey] = undefined;
-        }
         return isRunning;
     }
 
@@ -768,6 +746,8 @@ export class AudioContextSource {
             throw new Error(`${logScope}.test: AudioContext isn't running.`);
         if (context[Debug.brokenKey])
             throw new Error(`${logScope}.test: AudioContext is broken via .break() call.`);
+        if (this.breakProbability > 0 && Math.random() < this.breakProbability)
+            throw new Error(`${logScope}.test: AudioContext failed due to breakProbability = ${this.breakProbability}.`);
 
         const lastTime = context.currentTime;
         const testCycleCount = 5;
@@ -898,24 +878,12 @@ export class AudioContextSource {
 
     private async onDeviceAwake(durationMs: number): Promise<void> {
         debugLog?.log(`onDeviceAwake`, durationMs);
-        if (durationMs < WakeUpDetectionIntervalMs)
-            return; // Skip, as device was sleeping for a short period of time
-
-        this._deviceWokeUpAt = Date.now();
-        this._isInteractiveWasReset = false;
-
-        // Proactively invalidate and close the current AudioContext, even if refs are in use.
-        // Rationale: after device sleep, an AudioContext may report "running" but be non-functional.
-        // Forcing re-creation ensures stable recovery across browsers/platforms.
-        const ctx = this._context;
-        if (!ctx)
+        if (!this._context)
             return;
 
-        // Signal to consumers that the context is not ready anymore to force detach/reattach.
-        this.markNotReady();
-
-        // Close current AudioContext as it might be corrupted and can produce clicking sound
-        await this.closeContext();
+        // Request an immediate short test from the maintain loop;
+        // if the test fails, the context will be recreated.
+        this._testRequested?.resolve(undefined);
     }
 
     private async maintain(): Promise<void> {
@@ -947,46 +915,32 @@ export class AudioContextSource {
                 let lastTestAt = Date.now();
 
                 // noinspection InfiniteLoopJS
-                while (this._isActive) { // Fix loop
-                    // debugLog?.log('maintain: loop 2');
+                while (this._isActive) { // Health check loop
+                    this._testRequested = new PromiseSource<void>();
+                    const testRequested = this._testRequested;
                     const minDelay = lastTestAt + MaintainCyclePeriodMs - Date.now();
                     if (minDelay > 0) {
-                        await delayAsync(minDelay);
+                        await Promise.race([delayAsync(minDelay), testRequested]);
                     }
                     else {
                         const whenDelayCompleted = delayAsync(MaintainCyclePeriodMs);
-                        await Promise.race([this._whenNotReady, whenDelayCompleted]);
+                        await Promise.race([this._whenNotReady, whenDelayCompleted, testRequested]);
                     }
 
                     if (!this._isActive)
                         break;
 
-                    // Let's try to test whether AudioContext is broken and fix if it is in use by any audioContextRef
+                    const isWakeUpTest = testRequested.isCompleted();
+                    lastTestAt = Date.now();
                     try {
-                        lastTestAt = Date.now();
-                        await this.test(context, true);
-                        // See the description of markReady/markNotReady to understand the invariant it maintains
-                        retryCount = 0;
-                        this.markReady(context);
-                        continue;
-                    }
-                    catch (e) {
-                        warnLog?.log(`maintain: AudioContext is actually broken:`, e);
-                        // See the description of markReady/markNotReady to understand the invariant it maintains
-                        this.markNotReady();
-                    }
-
-                    while (this._isActive) {
-                        // debugLog?.log('maintain: loop 3');
-                        this.throwIfClosed(context);
-                        this.throwIfTooManyResumes();
-                        try {
-                            await this.fix(context);
-                            break;
+                        await this.test(context, !isWakeUpTest);
+                    } catch (e) {
+                        if (isWakeUpTest) {
+                            // After wake-up, the browser may have revoked audio permission;
+                            // force a new user gesture on next context creation.
+                            Interactive.isInteractive = false;
                         }
-                        catch (e) {
-                            await delayAsync(FixCyclePeriodMs);
-                        }
+                        throw e;
                     }
                     retryCount = 0;
                     this.markReady(context);
@@ -994,6 +948,7 @@ export class AudioContextSource {
             }
             catch (e) {
                 warnLog?.log(`maintain: error:`, e);
+                this.markNotReady();
                 if (retryCount++ > 1) {
                     // wait for the next user interaction to prevent creating broken AudioContexts
                     warnLog?.log(`maintain: waiting for user interaction...`);
@@ -1012,78 +967,10 @@ export class AudioContextSource {
         }
     }
 
-    private async fix(context: AppAudioContext): Promise<void> {
-        debugLog?.log(`fix:`, Log.ref(context));
-
-        try {
-            if (!this._isActive)
-                return;
-
-            if (!await this.trySuspend(context)) {
-                // noinspection ExceptionCaughtLocallyJS
-                throw new Error(`${logScope}.fix: couldn't suspend AudioContext`);
-            }
-            if (context.wasInteractive)
-                await this.resume(context, true);
-            else
-                await this.interactiveResume(context);
-            await this.test(context);
-            debugLog?.log(`fix: success`, );
-        }
-        catch (e) {
-            warnLog?.log(`fix: failed, error:`, e);
-            throw e;
-        }
-    }
-
-    private async trySuspend(context: AppAudioContext): Promise<boolean> {
-        if (context.state === 'suspended') {
-            debugLog?.log(`trySuspend: already suspended, AudioContext:`, Log.ref(context));
-            return true;
-        }
-        if (context.state === 'closed') {
-            debugLog?.log(`trySuspend: unable to suspend closed AudioContext`);
-            return false;
-        }
-
-        debugLog?.log(`trySuspend:`, Log.ref(context));
-        const suspendTask = context.suspend().then(() => true);
-        const timerTask = delayAsync(MaxSuspendTimeMs).then(() => false);
-        if (await Promise.race([suspendTask, timerTask])) {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            if (context.state !== 'suspended') {
-                debugLog?.log(`trySuspend: completed suspend, but AudioContext.state != 'suspended'`);
-                return false;
-            }
-            debugLog?.log(`trySuspend: success`);
-            return true;
-        }
-        else {
-            debugLog?.log(`trySuspend: timed out`);
-            return false;
-        }
-    }
-
-    private throwIfTooManyResumes(): void {
-        if (this._resumeCount >= MaxResumeCount)
-            throw new Error(`maintain: resume attempt count is too high (${this._resumeCount}).`);
-        if (this._interactiveResumeCount >= MaxInteractiveResumeCount)
-            throw new Error(`maintain: interactive resume attempt count is too high (${this._interactiveResumeCount}).`);
-    }
-
-    private throwIfClosed(context: AudioContext): void {
-        if (context.state === 'closed')
-            throw new Error(`${logScope}.throwIfClosed: context is closed.`);
-    }
-
     private createSilenceBuffer(context: AudioContext): AudioBuffer {
         return context.createBuffer(1, 1, this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE);
     }
 
-    private isWakeUp(): boolean {
-        return (Date.now() - this._deviceWokeUpAt) <= WakeUpDetectionIntervalMs;
-    }
 }
 
 // =====================================================
