@@ -136,25 +136,27 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             try {
                 var session = await UploadSessions.TryGetSession(uploadSessionId).ConfigureAwait(false);
                 if (session is not null) {
-                    if (session.Status is UploadStatus.Completed && session.MediaContent is not null) {
-                        // If media was already uploaded, use it directly to display a preview.
-                        // Do not try to access the file.
-                        mediaContent = session.MediaContent;
-                        whenFilePermissionGranted = NeverGetFilePermission();
-                        async Task<bool> NeverGetFilePermission() {
-                            await TaskExt.NeverEnding(CancellationToken.None).ConfigureAwait(false);
-                            return false;
-                        }
-                        if (previewUrl.IsNullOrEmpty()) {
-                            var contentType = session.FileProvider.Metadata.FileType;
-                            if (MediaTypeExt.IsVisualMedia(contentType))
-                                previewUrl = UrlMapper.ContentUrl(session.MediaContent.ContentId);
-                        }
-                        if (!previewUrl.IsNullOrEmpty())
-                            getPreviewUrl = Task.FromResult(previewUrl);
-                        attachmentIsOk = true;
-                    }
-                    else {
+                    // TODO(DF): add upload result saving
+                    // if (session.Status is UploadStatus.Completed && session.MediaContent is not null) {
+                    //     // If media was already uploaded, use it directly to display a preview.
+                    //     // Do not try to access the file.
+                    //     mediaContent = session.MediaContent;
+                    //     whenFilePermissionGranted = NeverGetFilePermission();
+                    //     async Task<bool> NeverGetFilePermission() {
+                    //         await TaskExt.NeverEnding(CancellationToken.None).ConfigureAwait(false);
+                    //         return false;
+                    //     }
+                    //     if (previewUrl.IsNullOrEmpty()) {
+                    //         var contentType = session.FileProvider.Metadata.FileType;
+                    //         if (MediaTypeExt.IsVisualMedia(contentType))
+                    //             previewUrl = UrlMapper.ContentUrl(session.MediaContent.ContentId);
+                    //     }
+                    //     if (!previewUrl.IsNullOrEmpty())
+                    //         getPreviewUrl = Task.FromResult(previewUrl);
+                    //     attachmentIsOk = true;
+                    // }
+                    // else
+                    {
                         var fileProvider = session.FileProvider;
                         var canAccess = await fileProvider.CheckAccess().ConfigureAwait(false);
                         if (canAccess) {

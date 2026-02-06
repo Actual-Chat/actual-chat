@@ -21,7 +21,7 @@ public partial class UploadSession
     [DataMember, MemoryPackOrder(4)] public Moment LastUpdatedAt { get; set; } = Moment.EpochStart;
     [DataMember, MemoryPackOrder(5)] public ChatId ChatId { get; set; } = null!;
     [DataMember, MemoryPackOrder(6)] public UploadId? UploadId { get; set; }
-    [DataMember, MemoryPackOrder(7)] public MediaContent? MediaContent { get; set; }
+    // [DataMember, MemoryPackOrder(7)] public MediaContent? MediaContent { get; set; } Obsolete
     [DataMember, MemoryPackOrder(8)] public MediaId? ReservedMediaId { get; set; }
     [DataMember, MemoryPackOrder(9)] public UploadConsumers? Consumers { get; set; }
 

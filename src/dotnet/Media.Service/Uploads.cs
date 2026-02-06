@@ -97,6 +97,20 @@ public class Uploads(IServiceProvider services) : IUploads
         }
     }
 
+    // [CommandHandler]
+    public virtual async Task OnSignalCompleted(Uploads_SignalCompleted command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (session, uploadId) = command;
+        var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var upload = await Backend.Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
+        EnsureCanAccessUpload(upload, user);
+
+        await Commander.Call(new UploadsBackend_SignalCompleted(uploadId), cancellationToken).ConfigureAwait(false);
+    }
+
     private static void EnsureCanAccessUpload([NotNullWhen(true)] Upload? upload, Account user)
     {
         if (upload is null || upload.UserId != user.Id)

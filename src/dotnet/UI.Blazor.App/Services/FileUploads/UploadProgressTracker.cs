@@ -2,11 +2,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class UploadProgressTracker : IProgress<double>
 {
-    private readonly TaskCompletionSource<MediaContent> _tcs = TaskCompletionSourceExt.New<MediaContent>();
+    private readonly TaskCompletionSource _tcs = TaskCompletionSourceExt.New();
     private readonly Progress<double> _progress = new ();
     private double _progressValue;
 
-    public Task<MediaContent> Task => _tcs.Task;
+    public Task Task => _tcs.Task;
 
     public double Progress => _progressValue;
 
@@ -15,8 +15,8 @@ public class UploadProgressTracker : IProgress<double>
         remove => _progress.ProgressChanged -= value;
     }
 
-    public void SetResult(MediaContent result)
-        => _tcs.TrySetResult(result);
+    public void SetResult()
+        => _tcs.TrySetResult();
 
     public void SetCanceled()
         => _tcs.TrySetCanceled();

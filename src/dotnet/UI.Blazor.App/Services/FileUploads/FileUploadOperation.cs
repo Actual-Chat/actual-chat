@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class FileUploadOperation : IDisposable
 {
-    private readonly Func<CancellationToken, Task<MediaContent>> _startFunc;
+    private readonly Func<CancellationToken, Task> _startFunc;
     private readonly CancellationTokenSource _cts;
     private long _state;
 
@@ -11,7 +11,7 @@ public sealed class FileUploadOperation : IDisposable
     public bool HasStarted => Interlocked.Read(ref _state) != 0;
     public CancellationToken CancellationToken { get; }
 
-    public FileUploadOperation(Task whenFileStreamReady, Func<CancellationToken, Task<MediaContent>> startFunc, UploadProgressTracker progressTracker)
+    public FileUploadOperation(Task whenFileStreamReady, Func<CancellationToken, Task> startFunc, UploadProgressTracker progressTracker)
     {
         _startFunc = startFunc;
         _cts = new ();
@@ -35,7 +35,7 @@ public sealed class FileUploadOperation : IDisposable
                     else if (t.IsFaulted)
                         ProgressTracker.SetException(t.Exception);
                     else
-                        ProgressTracker.SetResult(t.Result);
+                        ProgressTracker.SetResult();
                 },
                 TaskScheduler.Default);
     }
