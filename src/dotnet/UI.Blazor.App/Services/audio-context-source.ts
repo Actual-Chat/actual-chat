@@ -328,8 +328,7 @@ export class AudioContextSource {
             this.addTrait(trait);
         }
 
-        const ref = new AudioContextRef(traits);
-        ref.isListening = isListening;
+        const ref = new AudioContextRef(isListening, traits);
         this._refs.add(ref);
 
         // Track ref count
