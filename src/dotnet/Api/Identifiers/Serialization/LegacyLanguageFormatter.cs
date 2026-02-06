@@ -4,6 +4,9 @@ using MemoryPack.Internal;
 
 namespace ActualChat.Serialization;
 
+/// <summary>
+/// MemoryPack formatter for legacy Language serialization format.
+/// </summary>
 public class LegacyLanguageFormatter : MemoryPackFormatter<Language>
 {
     public static readonly LegacyLanguageFormatter Default = new ();

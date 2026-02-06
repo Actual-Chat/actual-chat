@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// User preferences for email digest notifications.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserEmailsSettings : IHasOrigin, IHasKvasKey<UserEmailsSettings>
 {

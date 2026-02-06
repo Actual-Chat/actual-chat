@@ -3,6 +3,9 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Security;
 
+/// <summary>
+/// A session resolver that stores and provides the actual user session.
+/// </summary>
 #pragma warning disable CA1721 // Session is confusing w/ GetSession
 
 public sealed class TrueSessionResolver(IServiceProvider services) : ISessionResolver

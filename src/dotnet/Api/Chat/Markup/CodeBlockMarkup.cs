@@ -2,6 +2,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a fenced code block with optional language.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class CodeBlockMarkup(string code, string language = "") : Markup
 {

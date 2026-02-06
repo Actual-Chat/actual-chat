@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for managing emoji reactions on chat entries.
+/// </summary>
 public class Reactions(IServiceProvider services) : IReactions
 {
     private IReactionsBackend Backend { get; } = services.GetRequiredService<IReactionsBackend>();

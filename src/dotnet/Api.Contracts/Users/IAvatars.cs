@@ -2,6 +2,9 @@
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for managing user avatars.
+/// </summary>
 public interface IAvatars : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 10)]

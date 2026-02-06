@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Core application constants and configuration values.
+/// </summary>
 public static partial class CoreConstants
 {
     public const string AppName = "Voxt";

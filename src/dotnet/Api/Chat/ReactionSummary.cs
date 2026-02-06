@@ -4,6 +4,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Aggregates reaction counts and first authors for a chat entry.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget

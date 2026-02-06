@@ -5,6 +5,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for managing chat roles and permissions.
+/// </summary>
 public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IRolesBackend
 {
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();

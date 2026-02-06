@@ -1,5 +1,8 @@
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// Wraps an <see cref="IKvas"/> to automatically prefix all keys.
+/// </summary>
 public class PrefixedKvas(IKvas upstream, string prefix) : IKvas
 {
     public IServiceProvider Services => Upstream.Services;

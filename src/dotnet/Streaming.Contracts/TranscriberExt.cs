@@ -4,6 +4,9 @@ using static ActualChat.Constants.Transcription;
 
 namespace ActualChat.Streaming;
 
+/// <summary>
+/// Extension methods for <see cref="ITranscriber"/>.
+/// </summary>
 public static class TranscriberExt
 {
     public static async IAsyncEnumerable<Transcript> Transcribe(

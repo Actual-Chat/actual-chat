@@ -1,5 +1,8 @@
 namespace ActualChat.Mesh;
 
+/// <summary>
+/// Maintains a distributed lock with automatic renewal and dependency tracking.
+/// </summary>
 public class MeshLockHolder : WorkerBase, IHasId<string>
 {
     protected readonly IMeshLocksBackend Backend;

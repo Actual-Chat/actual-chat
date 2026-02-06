@@ -2,6 +2,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents inline monospace/code text wrapped in backticks.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class PreformattedTextMarkup(string text) : TextMarkup(text)
 {

@@ -4,6 +4,9 @@ using MessagePack;
 
 namespace ActualChat;
 
+/// <summary>
+/// Factory methods for creating <see cref="Maybe{T}"/> instances.
+/// </summary>
 public static class Maybe
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -15,6 +18,9 @@ public static class Maybe
         => new(false, default);
 }
 
+/// <summary>
+/// Represents an optional value that may or may not be present.
+/// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [MessagePackObject(true, SuppressSourceGeneration = true)]

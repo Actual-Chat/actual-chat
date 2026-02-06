@@ -1,5 +1,8 @@
 namespace ActualChat.Notification;
 
+/// <summary>
+/// Identifies the type of client device receiving notifications.
+/// </summary>
 // ReSharper disable once InconsistentNaming
 public enum DeviceType
 {

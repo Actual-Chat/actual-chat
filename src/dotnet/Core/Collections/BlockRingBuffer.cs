@@ -2,6 +2,9 @@ using System.Buffers;
 
 namespace ActualChat.Collections;
 
+/// <summary>
+/// A lock-free ring buffer optimized for single-producer single-consumer scenarios.
+/// </summary>
 public class BlockRingBuffer<T>: IDisposable
 {
     private readonly IMemoryOwner<T> _bufferOwner;

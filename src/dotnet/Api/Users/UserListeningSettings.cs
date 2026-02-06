@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// User preferences for which chats to always listen to.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserListeningSettings : IHasOrigin, IHasKvasKey<UserListeningSettings>
 {

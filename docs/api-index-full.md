@@ -1,0 +1,880 @@
+# API Index (Full)
+
+This document lists all public types with XML documentation in ActualChat projects.
+See also: [Condensed API Index](api-index.md).
+
+
+## ActualChat.Core
+
+- `Alphabet` - Defines character sets for string generation (alphanumeric, base64, etc.).
+- `AppKind` (enum) - Specifies the application kind (Web, Android, iOS, Windows, MacOS).
+- `AvatarKind` (enum) - Specifies the type of avatar (Default, Uploaded, Beam, etc.).
+- `Change<T>` (record struct) - Represents a change operation (create, update, remove).
+- `ChangeKind` (enum) - Specifies the type of change operation.
+- `DeltaText` - Represents a time delta as human-readable text.
+- `Email` (record struct) - Represents an email address.
+- `Emoji` (record struct) - Represents an emoji character or sequence.
+- `ExternalError` - Exception for external service errors.
+- `HashAlgorithm` (enum) - Specifies the hash algorithm to use.
+- `HashEncoding` (enum) - Specifies the encoding for hash output.
+- `HashInput` - Input for hash computation.
+- `HashOutput` (struct) - Output of a hash computation.
+- `InternalError` - Exception for internal application errors.
+- `Interest` (record struct) - Represents a user interest tag.
+- `Language` (record struct) - Represents a language identifier (BCP 47).
+- `MediaType` (enum) - Specifies the type of media content.
+- `NotFoundException` - Exception thrown when an entity is not found.
+- `Phone` (record struct) - Represents a phone number in E.164 format.
+- `PostponeException` - Exception indicating an operation should be postponed.
+- `RandomNameGenerator` - Generates random memorable names from word lists.
+- `StandardError` (static class) - Factory methods for creating standard errors.
+- `StandardError.Account` (static class) - Account-related error factory methods.
+- `StandardError.Chat` (static class) - Chat-related error factory methods.
+- `UploadException` - Exception for file upload errors.
+- `WrongShardException` - Exception thrown when accessing the wrong shard.
+- `AsyncMemoizer<T>` - Memoizes async operation results.
+- `CancellingDebouncer<T>` - Debouncer variant with cancellation token support.
+- `ChannelDemuxer<TKey, TItem>` - Demultiplexes one channel into multiple by key.
+- `ChannelMuxer<TKey, TItem>` - Multiplexes multiple channels into one.
+- `Debouncer<T>` - Delays action execution until interval passes without new items.
+- `IAsyncObservable<T>` - Observable with channel-based async subscribers.
+- `IAsyncSubscription<T>` - Async subscription with async dispose.
+- `MaybeHasNext<TItem>` (record struct) - Represents an item with "has next" flag.
+- `TaskSerializer` - Serializes task execution to run sequentially.
+- `Throttler<T>` - Limits action execution to at most once per interval.
+- `LruCache<TKey, TValue>` - Thread-safe LRU cache implementation.
+- `ThreadSafeLruCache<TKey, TValue>` - Thread-safe wrapper for LruCache.
+- `BlockRingBuffer<T>` - Ring buffer with block-level operations.
+- `SimpleConcurrentPool<T>` - Simple concurrent object pool.
+- `SharedResourcePool<TResource>` - Pooled resource lease management.
+- `IdAndVersionEqualityComparer` - Compares entities by ID and version.
+- `Change<TCreate, TUpdate>` (record) - Represents a change with separate create/update types.
+- `DiffEngine` - Processes diffs for entity changes.
+- `IDiff` - Interface for diff representations.
+- `RecordDiff<T>` - Diff for record types.
+- `FeatureDef<T>` - Feature flag definition.
+- `FeatureDefRegistry` - Registry of feature definitions.
+- `Features` - Aggregates client and server feature flags.
+- `FeaturesBase` (abstract class) - Base class for feature implementations.
+- `IClientFeatures` - Client-side feature flags.
+- `IFeatures` - Feature flag access interface.
+- `IServerFeatures` - Server-side feature flags.
+- `ServerFeatures` - Server feature implementation.
+- `HostInfo` (record) - Host environment information.
+- `HostKind` (enum) - Host environment type (Server, MauiApp, WasmApp).
+- `HostRole` (enum) - Host role (OneServer, OneApiServer, OneBackendServer).
+- `IDbInitializer` - Database initialization interface.
+- `IModuleInitializer` - Module initialization interface.
+- `ModuleHost` - Host for modules.
+- `ModuleHostBuilder` - Builder for module hosts.
+- `ServiceMode` (enum) - Service operation mode.
+- `BatchingKvas` - Batching KVAS with delayed persistence.
+- `IBatchingKvasBackend` - Backend for batching KVAS.
+- `IKvas` - Key-value store interface.
+- `IServerKvas` - Server-side KVAS interface.
+- `LocalSettings` - Local settings storage via KVAS.
+- `PrefixedKvas` - KVAS with key prefix.
+- `StoredState<T>` - State backed by KVAS.
+- `SyncedState<T>` - Synchronized state.
+- `IMessageProcessor<TMessage>` - Queue-based async message processor.
+- `ITerminalMessage` - Marker for terminal/final messages.
+- `MessageProcess<TMessage>` - Represents a single message processing task.
+- `MessageProcessingException` - Exception during message processing.
+- `MessageProcessor<TMessage>` - Generic message processor implementation.
+- `MessageProcessorBase<TMessage>` - Base class for message processors.
+- `Tracer` - Performance tracing.
+- `ISearchProvider` - Search functionality interface.
+- `SearchMatch` - Search match with matched text and parts.
+- `SearchMatchPart` - Part of a search match.
+- `SearchPhrase` - Represents a search phrase.
+- `SearchResult` - Base class for search results.
+- `ISecureTokens` - Secure token operations.
+- `ISecureTokensBackend` - Backend for secure tokens.
+- `SecureToken` - Secure token.
+- `SecureValue<T>` - Secure value wrapper.
+- `TrueSessionResolver` - Session resolution.
+- `Mutable<T>` - Mutable value holder.
+- `ThreadSafeMutable<T>` - Thread-safe mutable value holder.
+- `ActivatedWorkerBase` (abstract class) - Worker with activation tracking.
+- `WorkerBase` (abstract class) - Long-running background worker base.
+- `AsyncEnumerableExt` (static class) - Extension methods for IAsyncEnumerable.
+- `AsyncEnumerableOnce<T>` - IAsyncEnumerable wrapper that allows single enumeration.
+- `AsyncEnumerableWithUsedEnumerator<T>` - IAsyncEnumerable wrapper that tracks enumerator usage.
+- `ChannelExt` (static class) - Extension methods for channels.
+- `CachingKeyedFactory<TKey, TValue>` - Keyed factory with caching.
+- `CastingKeyedFactory<TKey, TValue>` - Keyed factory with type casting.
+- `KeyedFactory<TKey, TValue>` - Generic keyed factory.
+- `CompositeServiceProvider` - Service provider that combines multiple providers.
+- `ConcurrentLruCache<TKey, TValue>` - Concurrent LRU cache implementation.
+- `DefaultSessionResolver` - Default session resolver implementation.
+- `DelegatingWorker` - Worker that delegates to another worker.
+- `FuncWorker` - Worker that executes a function.
+- `LazyServiceProvider` - Lazy service provider wrapper.
+- `LazyWriter<T>` - Writer with lazy initialization.
+- `NoRecursionRegion` - Prevents recursive execution.
+- `NonLazyServiceAccessor<T>` - Eager service accessor.
+- `NodeRef` (struct) - Reference to a mesh node.
+- `IHasNodeRef` - Interface for types with a node reference.
+- `IHasOrigin` - Interface for types with an origin.
+- `IHasShardKey` - Interface for types with a shard key.
+- `IHasDelayQuanta` - Interface for types with delay quanta.
+- `IHasDelayUntil` - Interface for types with delay until.
+- `IHasKvasKey` - Interface for types with a KVAS key.
+- `SafeDisposable` - Safe disposable wrapper.
+- `SafeDisposableBase` (abstract class) - Base class for safe disposables.
+- `ScopedTracerProvider` - Scoped tracer provider.
+- `ScopedKvasProxy` - Scoped KVAS proxy.
+- `KvasAccessor<T>` - Typed KVAS accessor.
+- `KvasExt` (static class) - Extension methods for IKvas.
+- `KvasSerializer` - KVAS serialization utilities.
+- `ExpiringEntry<T>` (record) - Entry with expiration time.
+- `LogSinks` (static class) - Log sink utilities.
+- `TailLogger` - Logger that keeps recent entries.
+- `TailLoggerProvider` - Provider for tail loggers.
+- `RegionalValue<T>` (record) - Value with regional context.
+- `TimeSpanFormatExt` (static class) - TimeSpan formatting extensions.
+- `RefUnit` (struct) - Reference type unit value.
+- `RunningAverage` - Running average calculation.
+- `RunningEma` - Running exponential moving average.
+- `RunningUnitMedian` - Running median calculation.
+- `Countries` (static class) - Country data utilities.
+- `Country` (record) - Country information.
+- `Emojis` (static class) - Emoji utilities and lookup.
+- `Interests` (static class) - Interest tag utilities.
+- `Languages` (static class) - Language utilities and lookup.
+- `Bots` (static class) - Bot-related utilities.
+- `CoreModule` - Core module configuration.
+- `DbInitializer` (abstract class) - Database initializer base.
+- `IApiCommand` - Marker interface for API commands.
+- `IDispatcherResolver` - Dispatcher resolution interface.
+- `IServerSettings` - Server settings interface.
+- `IThreadSafeLruCache<TKey, TValue>` - Thread-safe LRU cache interface.
+- `LongAsStringKeyComparer` - Comparer for long keys as strings.
+- `StringIdentifier<T>` (abstract record struct) - Base for string-based identifiers.
+- `SymbolIdentifier<T>` (abstract record struct) - Base for Symbol-based identifiers.
+- `SystemRole` (enum) - System role types.
+- `MetadataExt` (static class) - Extension methods for metadata.
+- `AudioFocusService` - Manages audio focus across the app.
+- `StreamHub` - Hub for audio/video streams.
+- `StreamStore` - Store for stream data.
+- `Choice<T>` (record) - Represents a selectable choice.
+- `PlaybackCommands` - Playback command definitions.
+- `PlayerCommands` - Player command definitions.
+- `ServerKvasBackendClient` - Client for server KVAS backend.
+- `ServerKvasInviteKey` (record) - KVAS key for invites.
+- `ServerSettingsKvasClient` - Client for server settings via KVAS.
+- `GuestIdOption` (enum) - Guest ID options.
+- `LocalStorage` - Local browser storage access.
+- `LocalUrl` (record struct) - Represents a local (relative) URL.
+- `LocalUrlExt` (static class) - Extension methods for LocalUrl.
+- `DisplayUrl` (record) - URL with display properties.
+- `BaseUrlKind` (enum) - Specifies the type of base URL.
+- `UrlMapper` - Maps between different URL formats.
+- `Maybe<T>` (struct) - Optional value wrapper.
+- `MappingChannelReader<TIn, TOut>` - Channel reader with mapping.
+- `MemorySegment<T>` - Memory segment wrapper.
+- `TypeMap` - Maps types for serialization.
+- `TypeMapper` - Type mapping utilities.
+- `IUnion` - Marker interface for union types.
+- `NumericUnion<T>` (struct) - Union type for numeric values.
+- `ClientFeatures` - Client-side feature flags.
+- `TestFeatures` - Test feature flags.
+- `ServerFeaturesClient` - Client-side server features.
+- `ISleepDurationProvider` - Provides sleep durations.
+- `ILogConsumer` - Log consumer interface.
+- `INotFoundException` - Interface for not-found exceptions.
+- `CoreConstants` (static class) - Core constants.
+- `CoreSettings` (record) - Core settings.
+- `EventCommand` (record) - Event-based command.
+- `EventHandlerAttribute` (attribute) - Marks event handlers.
+- `QueueAttribute` (attribute) - Queue configuration attribute.
+- `QueueRef` (record) - Reference to a queue.
+- `BackendServiceAttribute` (attribute) - Marks backend services.
+- `BackendShardSchemeAttribute` (attribute) - Shard scheme configuration.
+- `IWebServerModule` - Web server module interface.
+- `ApiModule` - API module.
+- `ApiModuleInitializer` - API module initializer.
+- `HostModule` - Host module.
+- `LegacyLanguageFormatter` - Legacy language formatter.
+- `LegacyLanguageFormatterAttribute` (attribute) - Legacy formatter attribute.
+- `LegacyNullableLanguageFormatter` - Legacy nullable language formatter.
+- `LegacySessionAuthInfo` - Legacy session auth info.
+- `IgnoreComputeArg` - Marks arguments to ignore in compute.
+- `LinearMapExt` (static class) - Extension methods for linear maps.
+- `MasterFlowStarter` - Starts master flows.
+- `ShardSchemeExt` (static class) - Extension methods for shard schemes.
+- `RpcDependentReconnectDelayer` - RPC reconnect delayer.
+- `SessionInfo` (record) - Session information.
+- `SessionInfoExt` (static class) - Extension methods for SessionInfo.
+- `SessionEncoding` (static class) - Session encoding utilities.
+- `OggCRC32` (static class) - OGG CRC32 calculation.
+- `BlobPath` (record struct) - Path to a blob in storage.
+- `BlobScope` (enum) - Specifies the scope of blob storage.
+- `Crawler` - Web page crawler.
+- `MediaContent` (record) - Media content information.
+- `MediaProcessor` - Processes media files.
+- `MediaSaver` - Saves media files.
+- `TranscriptDiffStreamExt` (static class) - Extension methods for transcript diff streams.
+- `TranscriberExt` (static class) - Extension methods for transcibers.
+- `DeepgramTranscriber` - Deepgram speech-to-text transcriber.
+- `GoogleTranscriber` - Google speech-to-text transcriber.
+- `AliasId` (struct) - Unique identifier for an alias.
+- `AliasInfo` (record) - Alias information.
+
+
+## ActualChat.Core.Server
+
+- `BackendServiceDef` (record) - Defines a backend service with hosting role and service mode.
+- `BackendServiceDefs` (sealed class) - Registry of all backend service definitions.
+- `Content` - Content information.
+- `GoogleCloudBlobStorage` - Google Cloud Storage implementation.
+- `GoogleCloudBlobStorages` - Factory for Google Cloud storages.
+- `IBlobStorage` - Individual blob storage operations.
+- `IBlobStorages` - Blob storage service.
+- `IContentSaver` - Content saver interface.
+- `LocalFolderBlobStorage` - Local folder storage.
+- `LocalFolderBlobStorages` - Factory for local folder storages.
+- `BatchedIndexingFlow` (abstract class) - Batched indexing flow.
+- `BatchIndexingResult` (record) - Batch result.
+- `Flow` (abstract class) - Base for long-running operations.
+- `Flow<TResult>` (abstract class) - Typed flow with result.
+- `FlowAttribute` (attribute) - Flow decoration.
+- `FlowConsole` - Flow console output.
+- `FlowData` - Flow data.
+- `FlowDef` - Flow definition.
+- `FlowDefs` - Flow definitions registry.
+- `FlowHub` - Hub for flows.
+- `FlowRegistry` - Flow registry.
+- `FlowResumeEvent` (record) - Flow resume event.
+- `FlowRuntime` - Flow runtime.
+- `IFlowBackend` - Flow backend.
+- `IFlowImpl` - Flow implementation interface.
+- `IHasLastRunAt` - Has last run time.
+- `IMasterFlow` - Master flow.
+- `IndexingFlow` (abstract class) - Indexing with cursor tracking.
+- `IndexingFlowCursor` - Indexing cursor.
+- `IndexingMasterFlow` (abstract class) - Master indexing flow.
+- `PeriodicFlow` (abstract class) - Periodic execution flow.
+- `ThrottledFlow` (abstract class) - Throttled flow.
+- `ThrottledUpdateFlow` (abstract class) - Throttled update flow.
+- `IMeshLocks` - Distributed locking.
+- `MeshLockHolder` - Lock holder.
+- `MeshLockInfo` (record) - Lock info.
+- `MeshLocksBase` (abstract class) - Locks base.
+- `MeshLockOptions` (record) - Lock options.
+- `MeshLockReleaseResult` (record) - Release result.
+- `MeshNode` - Mesh node.
+- `MeshNodeState` (record) - Node state.
+- `MeshState` (enum) - Mesh state.
+- `MeshWatcher` - Watches mesh state changes.
+- `CommandKind` (enum) - Command type.
+- `InMemoryQueues` - In-memory queues.
+- `InMemoryQueueProcessor` - In-memory processor.
+- `IQueueProcessor` - Queue processor.
+- `IQueues` - Queue service.
+- `IQueueSender` - Queue sender.
+- `ITimeoutProvider` - Timeout provider.
+- `LocalQueueProcessor` - In-memory queue processor.
+- `NatsQueues` - NATS message broker queues.
+- `NatsQueueProcessor` - NATS queue processor.
+- `NatsSettings` - NATS settings.
+- `QueuedCommand` (record) - Queued command.
+- `QueuesBase` (abstract class) - Base for queues.
+- `ShardQueueProcessor` - Shard-aware processor.
+- `MeshRef` - Mesh reference.
+- `MeshRefResolvers` - Mesh reference resolvers.
+- `MeshRpcPeerRef` - RPC peer reference.
+- `MeshRpcPeerRefs` - RPC peer references.
+- `ShardedDbServiceBase` (abstract class) - Sharded database service base.
+- `ShardedDbWorkerBase` (abstract class) - Sharded database worker base.
+- `ShardKeyResolvers` - Shard key resolution.
+- `ShardMap` - Shard mapping.
+- `ShardOwner` - Shard owner.
+- `ShardOwners` - Shard owners collection.
+- `ShardOwnership` (record) - Ownership information.
+- `ShardOwnershipStatus` (enum) - Ownership status.
+- `ShardRunnable` (abstract class) - Shard runnable.
+- `ShardWorker` - Shard worker.
+- `IMediaProcessor` - Media processor.
+- `IMediaSaver` - Media saver.
+- `IUploadProcessor` - Upload processor.
+- `ProcessedFile` (record) - Processed file.
+- `UploadedFile` (record) - Uploaded file.
+- `UploadedStreamFile` - Uploaded stream file.
+- `UploadedTempFile` - Uploaded temp file.
+- `IHealthState` - Health state.
+
+
+## ActualChat.Db
+
+- `DbModule` - Database module configuration.
+- `DbSettings` - Database settings.
+- `IDbEntity` - Database entity marker.
+
+
+## ActualChat.Redis
+
+- `RedisModule` - Redis module configuration.
+- `RedisMeshLocks` - Redis-based distributed locks.
+- `RedisSettings` - Redis settings.
+- `RedisTokenBucketRateLimiter` - Token bucket rate limiting.
+- `RedisSlidingWindowRateLimiter` - Sliding window rate limiting.
+
+
+## ActualChat.Api.Contracts
+
+- `IAliases` - Service for resolving human-friendly aliases to chats and places.
+- `AliasKind` (enum) - Specifies the type of entity an alias points to.
+- `AliasTarget` (record) - Represents the target of an alias resolution.
+- `IAuthors` - Service for managing chat authors and membership.
+- `IChatMarkupHub` - Provides markup parsing and mention resolution services for a chat.
+- `IChatThreads` - Service for managing chat threads (reply threads attached to messages).
+- `ThreadStat` (record) - Statistics for a chat thread.
+- `IChats` - Service for managing chats, entries, and related operations.
+- `IConversations` - Service for managing conversation segments and their summaries.
+- `IDiagnostics` - Service for retrieving server mesh diagnostic information.
+- `IMentions` - Service for tracking mentions of users in chat messages.
+- `IPlaces` - Service for managing places and their members.
+- `IReactions` - Service for managing reactions (emoji responses) to chat messages.
+- `IRoles` - Service for managing chat roles and permissions.
+- `ITranslations` - Service for translating chat messages to different languages.
+- `IContacts` - Service for managing user contacts and contact lists.
+- `IExternalContactHashes` - Service for tracking external contact sync state via hashes.
+- `IExternalContacts` - Service for managing external contacts imported from devices.
+- `IInvites` - Service for generating and managing invitation links.
+- `ServerKvasClient` - Client-side KVAS implementation that delegates to IServerKvas.
+- `IMediaLinkPreviews` - Service for retrieving link preview metadata.
+- `IUploads` - Service for managing chunked file uploads.
+- `INotifications` - Service for managing user notifications and device registrations.
+- `ISearch` - Service for searching contacts and chat entries.
+- `IStreamClient` - Client-side interface for accessing audio and transcript streams.
+- `IStreamServer` - RPC service for streaming audio and transcripts from server.
+- `IAccounts` - Service for managing user accounts, sessions, and presence.
+- `IAvatars` - Service for managing user avatars.
+- `RecaptchaValidationResult` (record) - Result of a reCAPTCHA validation request.
+- `ICaptcha` - Service for reCAPTCHA token validation.
+- `IChatPositions` - Service for tracking user read and view positions in chats.
+- `IChatUsages` - Service for tracking recent chat usage patterns.
+- `IEmailAuth` - Service for email-based authentication with TOTP codes.
+- `IEmails` - Service for sending email communications.
+- `IMobileSessions` - Service for mobile app session creation and validation.
+- `INativeAuthClient` - HTTP client interface for native (iOS/Android) authentication flows.
+- `IPhoneAuth` - Service for phone-based authentication with TOTP codes.
+- `IPhones` - Service for parsing and validating phone numbers.
+- `ISystemProperties` - Service for system properties, version checking, and maintenance operations.
+- `ServerApiInfo` (record) - Server API version and compatibility information.
+- `ITimeZones` - Service for time zone lookup and conversion.
+- `IUserPresences` - Service for tracking and querying user online presence.
+  
+
+## ActualChat.Api
+
+- `CompatibilityLevel` (enum) - Indicates client-server version compatibility.
+- `ContentLinkInfo` (record) - Metadata for a content link including title, picture, and description.
+- `Gender` (enum) - User gender options.
+- `HostInfoExt` (static class) - Extension methods for HostInfo URL and host resolution.
+- `Links` (static class) - Factory methods for building application URLs.
+- `LocalAppSettings` (record) - Application settings stored locally on the device.
+- `ServiceProviderExt` (static class) - Service provider extension methods for ActualChat services.
+- `UrlMapperExt` (static class) - Extension methods for UrlMapper to generate picture preview URLs.
+- `ActualOpusStreamConverter` - Converts between ActualChat's native Opus stream format and AudioSource.
+- `ActualOpusStreamHeader` (record) - Header for ActualChat's native Opus stream format (A_OPUS_S).
+- `AudioCodecKind` (enum) - Specifies the audio codec type.
+- `AudioDownloader` (abstract class) - Base class for downloading audio from a URL and converting to AudioSource.
+- `AudioFormat` (record) - Describes audio encoding parameters including codec, sample rate, and channel count.
+- `AudioFrame` - Represents a single frame of audio data.
+- `AudioSettings` (sealed class) - Configuration settings for audio recording and listening behaviors.
+- `AudioSource` - Provides a stream of audio frames with format metadata.
+- `AudioSourceExt` (static class) - Extension methods for AudioSource concatenation and trimming.
+- `AudioStreamConverterExt` (static class) - Extension methods for IAudioStreamConverter.
+- `HttpClientAudioDownloader` - Downloads audio via HTTP using IHttpClientFactory.
+- `IAudioStreamConverter` - Converts between byte streams and AudioSource.
+- `OggHeader` (struct) - Represents an Ogg page header.
+- `OggHeaderType` (enum) - Ogg page header type flags.
+- `OggOpusStreamConverter` - Converts AudioSource to Ogg/Opus stream format.
+- `OggOpusWriter` - Writes Ogg/Opus format audio streams.
+- `OpusHead` (struct) - Opus identification header for Ogg/Opus streams.
+- `OpusTags` (struct) - Opus comment header containing vendor and user metadata.
+- `RecordingStreamExt` (static class) - Extension methods for converting byte streams to recording parts.
+- `WebMStreamConverter` (sealed class) - Converts between WebM container format and AudioSource.
+- `EbmlDataFormatException` - Exception thrown when EBML data format is invalid or corrupt.
+- `EbmlElement` - Represents a parsed EBML element with identifier, size, and type descriptor.
+- `EbmlElementDescriptor` - Describes an EBML element type including its identifier and data type.
+- `EbmlElementType` (enum) - Specifies the data type of an EBML element.
+- `EbmlHelper` (static class) - Helper methods for EBML (Extensible Binary Meta Language) element encoding.
+- `Lacing` (enum) - Specifies the lacing mode for WebM/Matroska blocks.
+- `MatroskaElementDescriptorAttribute` (attribute) - Maps a property or class to a Matroska element identifier.
+- `WebMReadResultKind` (enum) - Specifies the type of element returned by WebMReader.
+- `WebMReader` - Reads and parses WebM container format data.
+- `WebMWriter` - Writes data in WebM container format.
+- `WebMDocument` (record) - Represents a complete WebM document with header, segment, and clusters.
+- `WebMDocumentBuilder` (sealed class) - Builder for creating WebMDocument instances.
+- `BaseModel` (abstract class) - Base class for WebM/Matroska model elements.
+- `BlockAdditional` (sealed class) - Represents additional block data in a Matroska BlockGroup.
+- `BlockVirtual` (sealed class) - Represents a virtual block (deprecated Matroska element).
+- `EbmlEntryType` (enum) - Specifies the type of top-level EBML entry.
+- `EncryptedBlock` (sealed class) - Represents an encrypted block in a Matroska file.
+- `IParseRawBinary` - Interface for models that can parse raw binary data.
+- `RootEntry` (abstract class) - Base class for top-level WebM elements (EBML, Segment, Cluster).
+- `SimpleTag` (sealed class) - Represents a simple metadata tag in a Matroska file.
+- `TrackType` (enum) - Specifies the type of track in a WebM file.
+- `Author` (record) - Represents a chat participant with an avatar identity.
+- `AuthorFull` (record) - Extended author information with full profile details.
+- `AuthorRules` (record) - Permission rules for an author in a chat.
+- `CachingMarkupParser` - Caching decorator for IMarkupParser using LRU cache.
+- `Chat` (record) - Represents a chat with metadata, rules, and settings.
+- `ChatEntry` (abstract record) - Base class for chat entries (messages, system events).
+- `ChatPermissions` (enum) - Permission flags for chat operations.
+- `CodeBlockMarkup` (sealed class) - Represents a fenced code block with optional language.
+- `Conversation` (record) - Represents a conversation segment with AI-generated summary.
+- `IMarkupParser` - Parses text into markup elements.
+- `IMentionResolver` - Resolves MentionMarkup to its target entity.
+- `ListItemMarkup` (sealed class) - Represents a single item in a ListMarkup.
+- `ListMarkup` (sealed class) - Represents an unordered list of items in markup.
+- `Markup` (abstract class) - Base class for chat message markup elements.
+- `MarkupConsumer` (enum) - Defines the context where markup text is being displayed.
+- `MarkupConsumerExt` (static class) - Extension methods for MarkupConsumer to get display limits.
+- `MarkupExt` (static class) - Extension methods for Markup traversal and inspection.
+- `MarkupParser` - Parses chat message text into Markup elements.
+- `MarkupSeq` (sealed class) - Represents a sequence of markup elements.
+- `Mention` (record) - Represents a mention of a user in a chat entry.
+- `MentionMarkup` (sealed class) - Represents a mention of a user, group, or bot in markup.
+- `NewLineMarkup` (sealed class) - Represents a line break in markup.
+- `Place` (record) - Represents a place (community container for chats).
+- `PlacePermissions` (enum) - Permission flags for place operations.
+- `PlainTextMarkup` (sealed class) - Represents plain text content without formatting.
+- `PlayableTextMarkup` (sealed class) - Represents text in playable audio message markup.
+- `PreformattedTextMarkup` (sealed class) - Represents inline monospace/code text wrapped in backticks.
+- `Reaction` (record) - Represents an emoji reaction on a chat entry.
+- `ReactionSummary` (record) - Summary of reactions on a chat entry.
+- `Role` (record) - Represents a chat role with permissions.
+- `StylizedMarkup` (sealed class) - Represents styled text content (bold, italic).
+- `TextEntry` (record) - Represents a text message entry in a chat.
+- `TextEntryAttachment` (record) - Attachment on a text entry.
+- `ChatEntryHashExt` (static class) - Extension methods for chat entry hashing.
+- `TextMarkup` (abstract class) - Base class for text-based markup elements.
+- `TextMarkupKind` (enum) - Defines the type of text markup content.
+- `TextStyle` (enum) - Defines text styling options.
+- `Translation` (record) - Represents a translated version of chat entry content.
+- `UnparsedTextMarkup` (sealed class) - Represents text that should not be parsed for markup.
+- `UrlMarkup` (sealed class) - Represents a URL link in markup.
+- `UrlMarkupKind` (enum) - Defines the type of URL in markup.
+- `Contact` (record) - Represents a contact (chat membership or external contact).
+- `ExternalContact` (record) - Represents a contact imported from the device's address book.
+- `ExternalContactFull` (record) - Extended external contact with full name components and contact info hashes.
+- `ExternalContactExt` (static class) - Extension methods for modifying ExternalContactFull instances.
+- `ExternalContactHasher` (sealed class) - Computes SHA256 hashes for external contacts to detect changes.
+- `ExternalContactsHash` (record) - Hash of external contacts for sync detection.
+- `Invite` (record) - Represents an invitation to join a chat or place.
+- `InviteChatLinkPreview` (record) - Preview data for an invite link showing the target chat or place.
+- `LiveStreamSettings` (sealed class) - Configures audio playback behavior during live streaming.
+- `GrabStatus` (enum) - Specifies the status of a link preview grab/crawl operation.
+- `IMediaSource` - Provides access to a stream of media frames with format metadata.
+- `IMediaStreamPart` - Represents a part of a media stream (either format metadata or a frame).
+- `LinkPreview` (record) - Metadata for a webpage including title, description, and image.
+- `LinkPreviewMode` (enum) - Specifies the display mode for link previews.
+- `Media` (record) - Represents a media file with metadata and content reference.
+- `MediaExt` (static class) - Extension methods for Media.
+- `MediaFormat` (abstract record) - Base class for media format descriptors (audio, video).
+- `MediaFrame` - Represents a frame of media data with timing information.
+- `MediaSource` (abstract class) - Base class providing a memoized stream of media frames with format metadata.
+- `Picture` (record) - Represents a picture with multiple size variants.
+- `RecordingPart` - Represents a part of a recording stream (data, pause, or resume event).
+- `Upload` (record) - Represents a file upload session with progress tracking.
+- `UploadExt` (static class) - Extension methods for Upload.
+- `ActivePlaybackInfo` - Tracks currently playing tracks and their playback states.
+- `ITrackPlayerFactory` - Creates TrackPlayer instances for media sources.
+- `IPlaybackCommand` - Marker interface for playback control commands.
+- `IPlaybackFactory` - Creates Playback instances. Must be a scoped service.
+- `IPlayerCommand` - Marker interface for track player control commands.
+- `Playback` - Manages audio playback for a session.
+- `PlaybackFactory` - Default implementation of IPlaybackFactory.
+- `PlayerState` (record) - Represents the current state of a TrackPlayer.
+- `PlayerStateChangedEventArgs` (record) - Event arguments for player state changes.
+- `TrackInfo` (record) - Metadata about a media track being played.
+- `TrackPlayer` (abstract class) - Base class for playing audio tracks from a media source.
+- `DeviceType` (enum) - Specifies the type of push notification device.
+- `Notification` (record) - Represents a push notification to be sent to a user device.
+- `ContactSearchQuery` (record) - Query parameters for searching contacts.
+- `ContactIdExt` (static class) - Extension methods for ContactId.
+- `ContactSearchResult` - Represents a contact match from a search query.
+- `ContactSearchResultPage` - A paginated collection of contact search results.
+- `EntrySearchQuery` (record) - Query parameters for searching chat entries.
+- `EntrySearchResult` - Represents a chat entry match from a search query.
+- `EntrySearchResultPage` - A paginated collection of chat entry search results.
+- `SearchScope` (enum) - Defines the type of entities to search for.
+- `LinearMapDtwRemapper` - Remaps transcript diffs using dynamic time warping (DTW) alignment.
+- `Transcript` (record) - Represents a transcript of audio including text segments with timing.
+- `TranscriptDiff` (record) - Represents changes to a transcript (added, updated, removed segments).
+- `TranscriptException` - Exception thrown for invalid transcript operations.
+- `TranscriptionEngine` (enum) - Enumerates available speech-to-text transcription engines.
+- `TranscriptionOptions` (record) - Configures transcription settings including language and detection.
+- `Account` (record) - Represents a user account with associated avatar and status.
+- `AccountExt` (static class) - Extension methods for Account.
+- `AuthorId` (struct) - Unique identifier for a chat author (participant).
+- `AudioEntryId` (struct) - Unique identifier for an audio entry.
+- `ChatEntryId` (struct) - Unique identifier for a chat entry.
+- `ChatEntryKind` (enum) - Specifies the type of chat entry (text, audio, system).
+- `ChatId` (struct) - Unique identifier for a chat.
+- `ChatKind` (enum) - Specifies the type of chat (group, peer, place).
+- `GroupChatId` (struct) - Identifier for a group chat.
+- `LocalChatId` (struct) - Local identifier for a chat.
+- `PeerChatId` (struct) - Identifier for a peer-to-peer chat.
+- `PlaceChatId` (struct) - Identifier for a place chat.
+- `ThreadChatId` (struct) - Identifier for a thread chat.
+- `ContactId` (struct) - Unique identifier for a contact.
+- `ContactKind` (enum) - Specifies the type of contact (user, group, place).
+- `ContactSubset` (enum) - Specifies which subset of contacts to query.
+- `ContentId` (struct) - Unique identifier for content.
+- `ConversationId` (struct) - Unique identifier for a conversation segment.
+- `ExplicitNotificationId` (struct) - Unique identifier for an explicit notification.
+- `ExplicitNotificationKind` (enum) - Specifies the type of explicit notification.
+- `ExternalContactId` (struct) - Unique identifier for an external contact.
+- `MediaId` (struct) - Unique identifier for a media item.
+- `MentionId` (struct) - Unique identifier for a mention.
+- `NotificationId` (struct) - Unique identifier for a notification.
+- `NotificationKind` (enum) - Specifies the type of notification.
+- `PlaceId` (struct) - Unique identifier for a place.
+- `PrincipalId` (struct) - Unique identifier for a principal (user, role, or system).
+- `PrincipalKind` (enum) - Specifies the type of principal.
+- `RoleId` (struct) - Unique identifier for a role.
+- `StreamId` (struct) - Unique identifier for a stream.
+- `TextEntryId` (struct) - Unique identifier for a text entry.
+- `TranslationId` (struct) - Unique identifier for a translation.
+- `TranslationSourceId` (struct) - Unique identifier for a translation source.
+- `UploadId` (struct) - Unique identifier for an upload.
+- `UserId` (struct) - Unique identifier for a user.
+- `AccountFull` (record) - Extended account information including full details.
+- `AccountFullExt` (static class) - Extension methods for AccountFull.
+- `AccountStatus` (enum) - Specifies the status of a user account.
+- `Avatar` (record) - Represents a user's avatar with name, picture, and bio information.
+- `AvatarFull` (record) - Extended avatar information with all profile details.
+- `ChatNotificationMode` (enum) - Specifies the notification preference for a chat.
+- `ChatPosition` - Represents a user's read or view position in a chat.
+- `ChatPositionKind` (enum) - Specifies the type of position tracked in a chat.
+- `ChatUsageListKind` (enum) - Specifies the type of chat usage tracking list.
+- `ListeningMode` (enum) - Specifies the duration for listening to a chat.
+- `ListeningModeInfo` (sealed class) - Provides metadata for a ListeningMode including duration and display text.
+- `Presence` (enum) - Specifies a user's online presence status.
+- `TimeZone` (record) - Represents a time zone with identifier and display name.
+- `TotpPurpose` (enum) - Specifies the purpose of a time-based one-time password (TOTP).
+- `UserAppSettings` (record) - Application-level user preferences.
+- `UserAvatarSettings` (record) - Avatar and profile customization settings.
+- `UserBubblesSettings` (record) - Onboarding bubble tooltip configuration per user.
+- `UserChatSettings` (record) - Per-chat user preferences and state.
+- `UserEmailsSettings` (record) - Email notification and digest preferences.
+- `UserLanguageSettings` (record) - Language and localization preferences.
+- `UserListeningSettings` (record) - Audio listening mode and behavior preferences.
+- `UserNavbarSettings` (record) - Navigation bar customization settings.
+- `UserOnboardingSettings` (record) - Onboarding state and completion tracking.
+- `UserChatRecordingDetectedLanguage` (record) - Detected language for chat recording.
+- `UserChatSettingsExt` (static class) - Extension methods for UserChatSettings.
+- `UserDeviceId` (struct) - Unique identifier for a user device.
+- `UserIdentityExt` (static class) - Extension methods for user identity.
+- `UserTranscriptionEngineSettings` (record) - Transcription engine selection and configuration.
+- `VoiceMode` (enum) - Specifies whether messages include voice, text, or both.
+- `ChangeExt` (static class) - Extension methods for Change.
+- `DiffHandlerBase<T>` (abstract class) - Base class for diff handlers.
+- `MissingDiffHandler<T>` - Handler for missing diffs.
+- `NullableDiffHandler<T>` - Handler for nullable diffs.
+- `ObjectDiffHandler<T>` - Handler for object diffs.
+- `OptionDiffHandler<T>` - Handler for option diffs.
+- `RecordDiffHandler<T>` - Handler for record diffs.
+- `SetDiff<T>` (record) - Represents a set diff.
+- `SetDiffHandler<T>` - Handler for set diffs.
+- `StringDiff` (record) - Represents a string diff.
+- `StringDiffHandler` - Handler for string diffs.
+- `IDiffHandler<T>` - Interface for diff handlers.
+- `ThreadContact` (record) - Contact information for a thread.
+
+
+## ActualChat.Chat.Contracts
+
+- `ChangedAuthorsQuery` (record) - Query parameters for listing changed authors by version range.
+- `ChangedChatsQuery` (record) - Query parameters for listing changed chats by version range.
+- `ChangedEntriesQuery` (record) - Query parameters for listing changed chat entries by version range.
+- `IAliasBackend` - Backend service for managing chat and place aliases.
+- `IAuthorsBackend` - Backend service for managing chat authors (participants).
+- `IAuthorsUpgradeBackend` - Backend service for author migration and upgrade operations.
+- `IBackendChatMarkupHub` - Backend variant of IChatMarkupHub for server-side markup parsing.
+- `IChatEntryLanguagesBackend` - Backend service for detecting and storing chat entry languages.
+- `IChatThreadsBackend` - Backend service for managing chat threads (reply chains).
+- `IChatsBackend` - Backend service for chat operations including entries, tiles, and chat management.
+- `IChatsUpgradeBackend` - Backend service for chat migration and upgrade operations.
+- `IContentLinksBackend` - Backend service for resolving content links to their metadata.
+- `IConversationsBackend` - Backend service for managing conversations with AI summaries.
+- `IDiagnosticsBackend` - Backend service for system diagnostics and mesh health information.
+- `IMentionsBackend` - Backend service for tracking mentions in chat entries.
+- `IPlacesBackend` - Backend service for managing places (organizational containers for chats).
+- `IReactionsBackend` - Backend service for managing reactions on chat entries.
+- `IRolesBackend` - Backend service for managing chat roles and permissions.
+- `ITranslationsBackend` - Backend service for translating chat entry content between languages.
+- `ReadPositionsStatBackend` (record) - Tracks the top read positions for users in a chat.
+- `RequestedAuthorKind` (enum) - Specifies the level of detail to return for author queries.
+- `AuthorsBackendExt` (static class) - Extension methods for IAuthorsBackend.
+- `ChatsBackendExt` (static class) - Extension methods for IChatsBackend.
+- `PlacesBackendExt` (static class) - Extension methods for IPlacesBackend.
+- `RolesBackendExt` (static class) - Extension methods for IRolesBackend.
+
+
+## ActualChat.Users.Contracts
+
+- `IAccountsBackend` - Backend service for managing user accounts.
+- `IAvatarsBackend` - Backend service for managing user avatars.
+- `IChatPositionsBackend` - Backend service for tracking user chat positions.
+- `IChatUsagesBackend` - Backend service for tracking chat usage statistics.
+- `IEmailsBackend` - Backend service for email operations.
+- `ISessionsBackend` - Backend service for managing user sessions.
+- `IUserPresencesBackend` - Backend service for user presence tracking.
+- `IUsersUpgradeBackend` - Backend service for user migration and upgrade operations.
+- `IServerKvasBackend` - Backend service for server-side key-value store.
+- `ServerKvasBackendExt` (static class) - Extension methods for IServerKvasBackend.
+- `AccountsBackendExt` (static class) - Extension methods for IAccountsBackend.
+
+
+## ActualChat.Contacts.Contracts
+
+- `ChangedContactsQuery` (record) - Query parameters for listing changed contacts by version range.
+- `IContactsBackend` - Backend service for managing user contacts and memberships.
+- `IExternalContactHashesBackend` - Backend service for managing external contact hash checksums.
+- `IExternalContactsBackend` - Backend service for managing external contacts synced from devices.
+- `ContactsBackendExt` (static class) - Extension methods for IContactsBackend.
+
+
+## ActualChat.Invite.Contracts
+
+- `IInvitesBackend` - Backend service for managing invitation links.
+
+
+## ActualChat.Media.Contracts
+
+- `IGrabStatusesBackend` - Backend service for tracking link preview grab statuses.
+- `ILinkPreviewsBackend` - Backend service for link preview generation and caching.
+- `IMediaBackend` - Backend service for media management.
+- `IUploadsBackend` - Backend service for file upload handling.
+- `GrabStatusesBackendExt` (static class) - Extension methods for IGrabStatusesBackend.
+
+
+## ActualChat.Notification.Contracts
+
+- `Device` (record) - Represents a user's push notification device registration.
+- `ExplicitNotification` (record) - Represents an explicit notification to be sent.
+- `INotificationsBackend` - Backend service for push notification management.
+
+
+## ActualChat.Streaming.Contracts
+
+- `AudioRecord` (record) - Represents a recorded audio segment with metadata.
+- `ILiveBackend` - Backend service for live audio streaming.
+- `IStreamingBackend` - Backend service for audio streaming operations.
+- `ITranscriber` - Interface for audio transcription.
+- `ITranscriberFactory` - Factory for creating transcriber instances.
+
+
+## ActualChat.Search.Contracts
+
+- `ISearchBackend` - Backend service for full-text search operations.
+
+
+## ActualChat.Users.Service
+
+- `Accounts` - Implementation of IAccounts for user account management.
+- `AccountsBackend` - Implementation of IAccountsBackend.
+- `Avatars` - Implementation of IAvatars for user avatar management.
+- `AvatarsBackend` - Implementation of IAvatarsBackend.
+- `ChatPositions` - Implementation of IChatPositions for tracking chat positions.
+- `ChatPositionsBackend` - Implementation of IChatPositionsBackend.
+- `ChatUsages` - Implementation of IChatUsages for tracking chat usage.
+- `ChatUsagesBackend` - Implementation of IChatUsagesBackend.
+- `Emails` - Implementation of IEmails for email operations.
+- `EmailsBackend` - Implementation of IEmailsBackend.
+- `ServerKvas` - Implementation of IServerKvas for server-side key-value store.
+- `ServerKvasBackend` - Implementation of IServerKvasBackend.
+- `SessionsBackend` - Implementation of ISessionsBackend.
+- `UserPresences` - Implementation of IUserPresences for presence tracking.
+- `UserPresencesBackend` - Implementation of IUserPresencesBackend.
+
+
+## ActualChat.Chat.Service
+
+- `Aliases` - Implementation of IAliases for alias resolution.
+- `AliasBackend` - Implementation of IAliasBackend.
+- `Authors` - Implementation of IAuthors for chat author management.
+- `AuthorsBackend` - Implementation of IAuthorsBackend.
+- `BackendChatMarkupHub` - Implementation of IBackendChatMarkupHub.
+- `ChatMarkupHub` - Implementation of IChatMarkupHub.
+- `Chats` - Implementation of IChats for chat management.
+- `ChatsBackend` - Implementation of IChatsBackend.
+- `ChatThreads` - Implementation of IChatThreads.
+- `ChatThreadsBackend` - Implementation of IChatThreadsBackend.
+- `Conversations` - Implementation of IConversations.
+- `ConversationsBackend` - Implementation of IConversationsBackend.
+- `Diagnostics` - Implementation of IDiagnostics.
+- `DiagnosticsBackend` - Implementation of IDiagnosticsBackend.
+- `Mentions` - Implementation of IMentions.
+- `MentionsBackend` - Implementation of IMentionsBackend.
+- `Places` - Implementation of IPlaces for place management.
+- `PlacesBackend` - Implementation of IPlacesBackend.
+- `Reactions` - Implementation of IReactions for message reactions.
+- `ReactionsBackend` - Implementation of IReactionsBackend.
+- `Roles` - Implementation of IRoles for role management.
+- `RolesBackend` - Implementation of IRolesBackend.
+- `Translations` - Implementation of ITranslations.
+- `TranslationsBackend` - Implementation of ITranslationsBackend.
+
+
+## ActualChat.Contacts.Service
+
+- `Contacts` - Implementation of IContacts for contact management.
+- `ContactsBackend` - Implementation of IContactsBackend.
+- `ExternalContactHashes` - Implementation of IExternalContactHashes.
+- `ExternalContactHashesBackend` - Implementation of IExternalContactHashesBackend.
+- `ExternalContacts` - Implementation of IExternalContacts.
+- `ExternalContactsBackend` - Implementation of IExternalContactsBackend.
+
+
+## ActualChat.Invite.Service
+
+- `Invites` - Implementation of IInvites for invitation management.
+- `InvitesBackend` - Implementation of IInvitesBackend.
+
+
+## ActualChat.Media.Service
+
+- `GrabStatusesBackend` - Implementation of IGrabStatusesBackend.
+- `LinkPreviewsBackend` - Implementation of ILinkPreviewsBackend.
+- `MediaBackend` - Implementation of IMediaBackend.
+- `MediaLinkPreviews` - Implementation of IMediaLinkPreviews.
+- `Uploads` - Implementation of IUploads for file upload handling.
+- `UploadsBackend` - Implementation of IUploadsBackend.
+
+
+## ActualChat.Notification.Service
+
+- `Notifications` - Implementation of INotifications for push notifications.
+- `NotificationsBackend` - Implementation of INotificationsBackend.
+
+
+## ActualChat.Streaming.Service
+
+- `FlowBackend` - Implementation of IFlowBackend.
+- `LiveBackend` - Implementation of ILiveBackend.
+- `StreamingBackend` - Implementation of IStreamingBackend.
+- `TranscriberFactory` - Implementation of ITranscriberFactory.
+
+
+## ActualChat.Search.Service
+
+- `Search` - Implementation of ISearch.
+- `SearchBackend` - Implementation of ISearchBackend.
+
+
+## ActualChat.UI
+
+- `AppRemoteComputedCache` (abstract class) - Client-side computed value cache.
+- `ChunkedFileUploader` - Resumable file uploads with retry.
+- `SystemSettingsUI` - System settings UI.
+- `UICoreModule` - UI core module.
+
+
+## ActualChat.UI.Blazor
+
+- `AccountUI` - Account state and authentication flow.
+- `BubbleUI` - Onboarding bubble tooltips.
+- `ComponentBase<THub>` (abstract class) - Blazor component base with service shortcuts.
+- `ComputedStateComponent<TState, THub>` (abstract class) - Component with Fusion computed state.
+- `ContactsPermissionHandler` - Contacts permission handling.
+- `DebugUI` - Debugging utilities.
+- `DeviceAwakeUI` - Device wake state tracking.
+- `History` - Browser navigation history management.
+- `HistoryItem` (record) - Single entry in browser history.
+- `KeepAwakeUI` - Prevents screen sleep.
+- `LogUI` - Application log viewer.
+- `Menu<T>` - Menu component.
+- `MicrophonePermissionHandler` - Microphone permission handling.
+- `ModalRef` - Modal dialog reference.
+- `ModalUI` - Modal dialog management.
+- `NavbarUI` - Navbar management.
+- `PanelsUI` - Panel management.
+- `PermissionHandler` (abstract class) - Permission request handling base.
+- `ReconnectUI` - RPC connection state monitoring.
+- `ThemeUI` - Theme management.
+- `ToastUI` - Toast notification management.
+- `TotpUI` - TOTP code handling.
+- `TuneUI` - Haptic feedback and sounds.
+- `UIHub` - Central hub providing access to all UI services.
+- `UIServiceBase<THub>` (abstract class) - Base for UI services.
+- `UIWorkerBase<THub>` (abstract class) - Base for UI background workers.
+- `UserActivityUI` - User activity tracking.
+- `VirtualList<T>` - Virtualized list with windowed rendering.
+- `WebRemoteComputedCache` - IndexedDB-based remote computed cache.
+
+
+## ActualChat.UI.Blazor.App
+
+- `AppUIHub` - Extended UI hub with chat-specific services.
+- `AudioRecorder` - Audio recording component.
+- `ChatAudioUI` - Audio listening/recording state management.
+- `ChatList` - Chat list component.
+- `ChatListUI` - Chat list filtering and sorting.
+- `ChatPlayer` (abstract class) - Base class for playing audio entries.
+- `ChatPlayers` - Orchestrates audio playback across chats.
+- `ChatUI` - Chat selection, read positions, and chat state.
+- `ChatView` - Main chat view component.
+- `EditMembersUI` - Member editing utilities.
+- `LanguageUI` - Language preferences.
+- `LiveStreamUI` - Live streaming management.
+- `MarkupEditor` - Markup editing component.
+- `MarkupView` (abstract class) - Markup rendering component.
+- `OnboardingUI` - User onboarding flow.
+- `RecorderStateHub` - Recording state management.
+- `SearchUI` - Unified search across chats.
+- `SendingMessages` - Message sending with retry logic.
+
+
+## ActualChat.App.Server
+
+- `AppHost` - Main application host.
+- `AssetVersionHelper` (static class) - Asset versioning utilities.
+- `CommandLineHandler` (static class) - Command-line argument processing.
+- `ConfigOnlyAppHost` (static class) - Minimal AppHost for configuration access.
+- `LivelinessHealthCheck` - Kubernetes liveliness check.
+- `ReadinessHealthCheck` - Kubernetes readiness check.
+- `AggregateDbInitializer` - Orchestrates database initialization.
+- `AggregateModuleInitializer` - Orchestrates module initialization.
+- `DbInitializeOptions` (record) - Database initialization options.
+- `GoogleCloudConsoleFormatter` - Google Cloud logging format.
+- `LoggingBuilderExt` (static class) - Serilog configuration extensions.
+- `ProcessIdLogEventEnricher` - Adds process ID to log events.
+- `ThreadIdLogEventEnricher` - Adds thread ID to log events.
+- `AppServerModule` - Main server module configuration.
+- `ApplicationBuilderExt` (static class) - Middleware configuration extensions.
+- `EndpointsExt` (static class) - Health and metrics endpoint mapping.
+- `HostSettings` - Host configuration settings.
+
+
+## ActualChat.App.Maui
+
+- `Bars` - Platform status bar information.
+- `CustomBlazorWebViewHandler` - Custom Blazor WebView handler.
+- `FirebaseAnalyticsExt` (static class) - Firebase Analytics integration.
+- `MainThreadExt` (static class) - Main thread scheduling extensions.
+- `MainThreadTracker` (static class) - Main thread responsiveness monitoring.
+- `MauiHostBuilderExtensions` (static class) - MAUI app builder extensions.
+- `MauiRuntimeSettings` (static class) - Thread pool configuration.
+- `ParentContainerAccessor` (record) - Parent service container access.
+- `JSRuntimeErrors` (static class) - JS interop error factory.
+- `MauiAudioInitializer` - Audio initialization (no-op for native).
+- `MauiBrowser` (static class) - Platform browser URL opening.
+- `MauiBrowserInfo` - Platform device detection.
+- `MauiContactsPermissionHandler` - Contacts permission handling.
+- `MauiLoadingUI` (static class) - Loading milestone tracking.
+- `MauiMicrophonePermissionHandler` - Microphone permission handling.
+- `MauiNotifications` - Push notification registration.
+- `MauiReloadUI` - WebView reload.
+- `MauiShare` - Platform share dialogs.
+- `MauiSystemSettingsUI` - Platform system settings.
+- `MediaMetadataUI` - Lock screen media metadata.
+- `SafeJSObjectReference` - Safe JS object reference.
+- `SafeJSRuntime` - JS runtime with disconnection handling.
+- `PhoneParser` - Phone number parsing with LibPhoneNumbers.

@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// A thread-safe wrapper that tracks value changes and raises events.
+/// </summary>
 public sealed class ThreadSafeMutable<T>
 {
     private readonly Lock _lock = new();

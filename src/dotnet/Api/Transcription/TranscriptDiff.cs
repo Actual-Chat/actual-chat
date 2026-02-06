@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Transcription;
 
+/// <summary>
+/// Represents incremental changes to a <see cref="Transcript"/>.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record TranscriptDiff(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] StringDiff TextDiff,

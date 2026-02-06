@@ -2,6 +2,9 @@ using ActualLab.Generators;
 
 namespace ActualChat;
 
+/// <summary>
+/// Defines a character set with efficient validation and random string generation.
+/// </summary>
 #pragma warning disable CA1001 // Type 'Alphabet' owns disposable field(s) 'Generator16', 'Generator8' but is not disposable
 
 public sealed class Alphabet

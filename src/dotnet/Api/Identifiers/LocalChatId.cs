@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Represents the local portion of a chat identifier for parsing purposes.
+/// </summary>
 internal class LocalChatId
 {
     public string Id { get; }

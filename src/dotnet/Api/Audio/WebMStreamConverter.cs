@@ -4,6 +4,9 @@ using ActualChat.Audio.WebM.Models;
 
 namespace ActualChat.Audio;
 
+/// <summary>
+/// Converts between WebM container format and <see cref="AudioSource"/>.
+/// </summary>
 public sealed class WebMStreamConverter : IAudioStreamConverter
 {
     private MomentClockSet Clocks { get; }

@@ -3,6 +3,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Notification;
 
+/// <summary>
+/// Represents a user-created notification (e.g., reminder, scheduled message).
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ExplicitNotification(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] ExplicitNotificationId Id,

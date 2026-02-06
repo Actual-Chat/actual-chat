@@ -4,8 +4,14 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Distinguishes between real-time and historical audio playback modes.
+/// </summary>
 public enum ChatPlayerKind { Realtime, Historical }
 
+/// <summary>
+/// Base class for playing audio entries from a chat with pause/resume support.
+/// </summary>
 public abstract class ChatPlayer : ProcessorBase
 {
     /// <summary>

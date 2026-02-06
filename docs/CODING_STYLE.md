@@ -44,9 +44,40 @@ This document describes the coding conventions used in Voxt (formerly Actual Cha
 - Place accessor holder attributes on separate lines (unless the owner is single-line).
 
 #### Comments and XML Documentation:
-- Prefer regular comments over XML documentation
-- **DON'T write XML documentation comments for public APIs UNLESS they are already there**
-- When XML documentation exists, maintain its style and completeness.
+- **DO write `/// <summary>` XML documentation comments for every type**
+  (class, struct, record, interface, enum, delegate), including nested types
+- Keep XML summaries concise: 1-2 lines describing the type's purpose
+- Use `<see cref="..."/>` to reference related types
+- Prefer regular comments over XML documentation for members (methods, properties, fields)
+- When XML documentation exists on members, maintain its style and completeness
+
+**Placement order** (top to bottom):
+1. Regular `//` comment (optional, for extra context not suitable for API docs)
+2. Empty line (if regular comment is present)
+3. `/// <summary>` XML documentation
+4. `#pragma` directives (if any)
+5. Attributes
+6. Type declaration
+
+Example:
+```csharp
+// This type is used as an extra parameter of constructors to indicate newly generated Id required
+
+/// <summary>
+/// A unit-type constructor parameter indicating that a new identifier should be generated.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public readonly struct Generate : IEquatable<Generate>
+```
+
+Example with `<see cref="..."/>`:
+```csharp
+/// <summary>
+/// A thread-safe object pool backed by a <see cref="ConcurrentQueue{T}"/>
+/// and a <see cref="StochasticCounter"/> for approximate size tracking.
+/// </summary>
+public class ConcurrentPool<T> : IPool<T>
+```
 
 #### Multi-targeting
 - Follow the project's multi-targeting patterns with conditional compilation.

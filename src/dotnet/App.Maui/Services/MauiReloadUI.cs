@@ -2,6 +2,9 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// MAUI implementation of <see cref="ReloadUI"/> that recreates the WebView on reload.
+/// </summary>
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiReloadUI))]
 public class MauiReloadUI(IServiceProvider services) : ReloadUI(services)
 {

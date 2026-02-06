@@ -7,6 +7,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for managing chat authors (participants) with session-based access control.
+/// </summary>
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class Authors(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IAuthors
 {

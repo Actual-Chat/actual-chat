@@ -1,5 +1,8 @@
 namespace ActualChat.Audio.WebM;
 
+/// <summary>
+/// Specifies the data type of an EBML element.
+/// </summary>
 public enum EbmlElementType
 {
     SignedInteger,

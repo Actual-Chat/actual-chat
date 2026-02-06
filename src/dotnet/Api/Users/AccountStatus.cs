@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Specifies the status of a user account.
+/// </summary>
 public enum AccountStatus
 {
     Active = 0,

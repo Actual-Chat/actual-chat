@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Audio.Ogg;
 
+/// <summary>
+/// Opus identification header for Ogg/Opus streams.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct OpusHead
 {

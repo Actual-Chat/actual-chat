@@ -3,6 +3,9 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Crawls web URLs to extract metadata for link previews.
+/// </summary>
 public sealed class Crawler(
     EgressGuard egressGuard,
     IHttpClientFactory httpClientFactory,

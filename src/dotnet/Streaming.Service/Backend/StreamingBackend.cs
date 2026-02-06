@@ -9,6 +9,9 @@ using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Streaming;
 
+/// <summary>
+/// Backend service implementation for audio and transcript streaming with real-time transcription.
+/// </summary>
 public partial class StreamingBackend : IStreamingBackend, IDisposable
 {
     private readonly StreamStore<byte[]> _audioStreams;

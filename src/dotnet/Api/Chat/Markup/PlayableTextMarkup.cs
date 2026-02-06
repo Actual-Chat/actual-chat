@@ -3,6 +3,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Text markup with word-to-time mapping for synchronized playback.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial class PlayableTextMarkup : TextMarkup
 {

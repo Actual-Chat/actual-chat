@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Extension methods for <see cref="IRolesBackend"/>.
+/// </summary>
 public static class RolesBackendExt
 {
     public static async Task<Role?> GetSystem(

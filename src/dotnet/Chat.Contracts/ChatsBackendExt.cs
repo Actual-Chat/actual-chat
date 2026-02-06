@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Chat;
 
+/// <summary>
+/// Extension methods for <see cref="IChatsBackend"/>.
+/// </summary>
 public static class ChatsBackendExt
 {
     public static async ValueTask<ChatEntry?> GetEntry(

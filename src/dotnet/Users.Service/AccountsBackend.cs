@@ -12,6 +12,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service implementation for user account management.
+/// </summary>
 public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccountsBackend
 {
     private const string AdminEmailDomain = Constants.Team.EmailDomain;

@@ -1,5 +1,8 @@
 namespace ActualChat.Mathematics;
 
+/// <summary>
+/// Calculates a running exponential moving average (EMA) over samples.
+/// </summary>
 public sealed class RunningEma(float defaultValue, int minSampleCount, double? smoothingFactor = null)
 {
     private readonly RunningAverage _average = new (defaultValue);

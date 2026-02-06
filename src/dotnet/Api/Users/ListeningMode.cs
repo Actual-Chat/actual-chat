@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Specifies the duration for listening to a chat.
+/// </summary>
 public enum ListeningMode
 {
     Default = 0,
@@ -9,6 +12,9 @@ public enum ListeningMode
     Forever = 10_000,
 }
 
+/// <summary>
+/// Extension methods for <see cref="ListeningMode"/>.
+/// </summary>
 public static class ListeningModeExt
 {
     public static ListeningModeInfo GetInfo(this ListeningMode listeningMode)

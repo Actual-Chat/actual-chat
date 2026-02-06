@@ -112,6 +112,10 @@ See [`CODING_STYLE.md`](./CODING_STYLE.md) for detailed coding style guidelines.
 - After making TypeScript changes, run `npm run build:Debug` (from `src/nodejs/`) to verify they compile.
 - Ensure all builds pass before submitting changes.
 
+## Type Catalog
+
+Use `docs/api-index.md` first to quickly check whether an existing abstraction covers your need — it's a condensed reference (~170 types) of the most important types, structured by project. For the complete list of all public types (~770 types), see `docs/api-index-full.md`.
+
 ## Additional Notes
 
 `AGENTS.md` or `/agents/*.md` in other folders may extend and override instructions provided here.

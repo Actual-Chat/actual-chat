@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// User preferences for navigation bar including pinned chats and place ordering.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserNavbarSettings : IHasOrigin, IHasKvasKey<UserNavbarSettings>
 {

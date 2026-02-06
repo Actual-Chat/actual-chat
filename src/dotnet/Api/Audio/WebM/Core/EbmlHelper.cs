@@ -4,6 +4,9 @@ using ActualChat.Spans;
 
 namespace ActualChat.Audio.WebM;
 
+/// <summary>
+/// Helper methods for EBML (Extensible Binary Meta Language) element encoding.
+/// </summary>
 public static class EbmlHelper
 {
     private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;

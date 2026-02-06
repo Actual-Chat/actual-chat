@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.DependencyInjection;
 
+/// <summary>
+/// Combines eager and lazy service providers into a single provider.
+/// </summary>
 public sealed class CompositeServiceProvider :
     IServiceScope,
     IServiceProvider,

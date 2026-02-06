@@ -6,6 +6,9 @@ using static ActualChat.Chat.ParserExt;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Parses text into <see cref="Markup"/> using Pidgin parser combinators.
+/// </summary>
 #pragma warning disable CA1823 // Unused field ...
 
 public partial class MarkupParser : IMarkupParser

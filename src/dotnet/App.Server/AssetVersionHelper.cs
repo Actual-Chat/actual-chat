@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Server;
 
+/// <summary>
+/// Utilities for extracting version hashes from Blazor asset paths and processing import maps.
+/// </summary>
 public static partial class AssetVersionHelper
 {
     [GeneratedRegex(@"\.(?<hash>[a-z0-9]{10})\.(js|wasm)$")]

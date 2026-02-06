@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Base class for workers that can be externally activated and run periodically.
+/// </summary>
 public abstract class ActivatedWorkerBase(IServiceProvider services) : WorkerBase
 {
     private TaskCompletionSource _whenResumeSource = TaskCompletionSourceExt.New();

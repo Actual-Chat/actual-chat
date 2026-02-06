@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for chat operations including entries, tiles, and chat management.
+/// </summary>
 public interface IChatsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -135,6 +138,9 @@ public interface IChatsBackend : IComputeService, IBackendService
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create attachments for a text entry.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateAttachments(
@@ -146,6 +152,9 @@ public sealed partial record ChatsBackend_CreateAttachments(
     public ChatId ShardKey => Attachments.Length > 0 ? Attachments[0].EntryId.ChatId : throw new ArgumentException("No attachments provided", nameof(Attachments));
 }
 
+/// <summary>
+/// Command to create, update, or delete a chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_Change(
@@ -159,6 +168,9 @@ public sealed partial record ChatsBackend_Change(
     public ChatId? ShardKey => ChatId;
 }
 
+/// <summary>
+/// Command to create, update, or delete a chat entry.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_ChangeEntry(
@@ -171,6 +183,9 @@ public sealed partial record ChatsBackend_ChangeEntry(
     public ChatId ShardKey => ChatEntryId.ChatId;
 }
 
+/// <summary>
+/// Command to remove all chats owned by a user.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RemoveOwnChats(
@@ -181,6 +196,9 @@ public sealed partial record ChatsBackend_RemoveOwnChats(
     public UserId ShardKey => UserId;
 }
 
+/// <summary>
+/// Command to remove all chat entries created by a user.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RemoveOwnEntries(
@@ -191,6 +209,9 @@ public sealed partial record ChatsBackend_RemoveOwnEntries(
     public UserId ShardKey => UserId;
 }
 
+/// <summary>
+/// Command to create the user's personal notes chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateNotesChat(
@@ -201,6 +222,9 @@ public sealed partial record ChatsBackend_CreateNotesChat(
     public UserId ShardKey => UserId;
 }
 
+/// <summary>
+/// Command to copy a chat to a different place.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatBackend_CopyChat(
@@ -213,6 +237,9 @@ public sealed partial record ChatBackend_CopyChat(
     public ChatId ShardKey => ChatId;
 }
 
+/// <summary>
+/// Result of the chat copy operation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatBackend_CopyChatResult(
@@ -221,6 +248,9 @@ public sealed partial record ChatBackend_CopyChatResult(
     [property: DataMember, MemoryPackOrder(2)] long LastProcessedEntryId
 );
 
+/// <summary>
+/// Command to update the chat copy state during migration.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_ChangeChatCopyState(
@@ -233,6 +263,9 @@ public sealed partial record ChatsBackend_ChangeChatCopyState(
     public ChatId ShardKey => ChatId;
 }
 
+/// <summary>
+/// Command to update read positions statistics for a chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_UpdateReadPositionsStat(
@@ -245,6 +278,9 @@ public sealed partial record ChatsBackend_UpdateReadPositionsStat(
     public ChatId ShardKey => ChatId;
 }
 
+/// <summary>
+/// Command to re-transcribe an audio entry in a different language.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RetranscribeChatEntry(

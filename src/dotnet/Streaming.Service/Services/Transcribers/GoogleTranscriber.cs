@@ -12,6 +12,9 @@ using static ActualChat.Constants.Transcription.Google;
 
 namespace ActualChat.Streaming.Services.Transcribers;
 
+/// <summary>
+/// Transcriber implementation using Google Cloud Speech-to-Text API.
+/// </summary>
 public partial class GoogleTranscriber : ITranscriber
 {
     [GeneratedRegex(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]

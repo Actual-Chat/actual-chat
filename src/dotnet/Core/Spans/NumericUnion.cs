@@ -1,5 +1,8 @@
 namespace ActualChat.Spans;
 
+/// <summary>
+/// A union struct for reinterpreting numeric types without conversion.
+/// </summary>
 [StructLayout(LayoutKind.Explicit)]
 public struct NumericUnion
 {

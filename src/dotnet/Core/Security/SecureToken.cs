@@ -2,6 +2,9 @@
 
 namespace ActualChat.Security;
 
+/// <summary>
+/// A time-limited token used for secure operations.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record SecureToken(
     [property: DataMember, MemoryPackOrder(0)] string Token,

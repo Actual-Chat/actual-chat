@@ -1,5 +1,8 @@
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Manages navigation bar group selection and title display.
+/// </summary>
 public class NavbarUI(IServiceProvider services)
 {
     private readonly List<Group> _groups = new ();
@@ -67,6 +70,9 @@ public class NavbarUI(IServiceProvider services)
     }
 }
 
+/// <summary>
+/// Event arguments for navbar group selection changes.
+/// </summary>
 public class NavbarGroupChangedEventArgs(string id, bool isUserAction) : EventArgs
 {
     public string Id { get; } = id;

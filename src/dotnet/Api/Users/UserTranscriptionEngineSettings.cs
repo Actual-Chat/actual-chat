@@ -4,6 +4,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// User preference for the speech-to-text transcription engine.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserTranscriptionEngineSettings : IHasOrigin, IHasKvasKey<UserTranscriptionEngineSettings>
 {

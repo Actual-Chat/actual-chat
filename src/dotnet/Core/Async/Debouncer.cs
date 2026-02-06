@@ -1,7 +1,9 @@
 namespace ActualChat;
 
+/// <summary>
+/// Delays action execution until a specified interval has passed without new items.
+/// </summary>
 #pragma warning disable CA1001 // Type 'Debouncer' owns disposable field(s) '_cts' but is not disposable
-
 public class Debouncer<T>(MomentClock clock, TimeSpan interval, Func<T, Task> action)
 {
     private readonly Lock _lock = new();
@@ -83,6 +85,9 @@ public class Debouncer<T>(MomentClock clock, TimeSpan interval, Func<T, Task> ac
     }
 }
 
+/// <summary>
+/// Factory methods for creating <see cref="Debouncer{T}"/> and <see cref="CancellingDebouncer{T}"/> instances.
+/// </summary>
 public static class Debouncer
 {
     public static Debouncer<T> New<T>(MomentClock clock, TimeSpan interval, Func<T, Task> action)

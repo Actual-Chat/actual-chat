@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Serializes task execution to ensure only one task runs at a time.
+/// </summary>
 public sealed class TaskSerializer
 {
     private readonly Lock _lock = new();

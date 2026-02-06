@@ -2,6 +2,9 @@ using ActualLab.Internal;
 
 namespace ActualChat.IO;
 
+/// <summary>
+/// Batches items and writes them with configurable delay and retry logic.
+/// </summary>
 public class LazyWriter<T> : WorkerBase
 {
     private readonly Channel<Command> _commands;

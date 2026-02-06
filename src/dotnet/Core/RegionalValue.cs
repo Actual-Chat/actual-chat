@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// A scoped value that can be temporarily changed and automatically restored on dispose.
+/// </summary>
 public sealed class RegionalValue<T>
 {
     public T Value { get; private set; }

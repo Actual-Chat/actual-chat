@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// A worker that delegates execution to a provided job factory and returns a result.
+/// </summary>
 public class DelegatingWorker<TResult>(
     Func<CancellationToken, Task<TResult>> jobFactory,
     CancellationTokenSource? stopTokenSource = null
@@ -19,6 +22,9 @@ public class DelegatingWorker<TResult>(
     }
 }
 
+/// <summary>
+/// A worker that delegates execution to a provided job factory.
+/// </summary>
 public sealed class DelegatingWorker(
     Func<CancellationToken, Task> jobFactory,
     CancellationTokenSource? stopTokenSource = null)

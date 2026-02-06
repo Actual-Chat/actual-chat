@@ -1,12 +1,17 @@
 namespace ActualChat;
 
+/// <summary>
+/// Base interface for Symbol-based identifiers.
+/// </summary>
 #pragma warning disable CA1000, CA2252
-
 public interface ISymbolIdentifier : IHasId<Symbol>, ICanBeNone
 {
     public string Value { get; }
 }
 
+/// <summary>
+/// Generic interface for Symbol-based identifiers with parsing support.
+/// </summary>
 public interface ISymbolIdentifier<TSelf> : ISymbolIdentifier, IEquatable<TSelf>, IComparable<TSelf>, ICanBeNone<TSelf>
     where TSelf : struct, ISymbolIdentifier<TSelf>
 {
@@ -18,6 +23,9 @@ public interface ISymbolIdentifier<TSelf> : ISymbolIdentifier, IEquatable<TSelf>
         => string.CompareOrdinal(Id.Value, other.Id.Value);
 }
 
+/// <summary>
+/// Helper methods for parsing <see cref="ISymbolIdentifier{TSelf}"/> types.
+/// </summary>
 public static class SymbolIdentifier
 {
     public static T Parse<T>(string? s)

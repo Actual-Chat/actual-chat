@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Represents a time zone with Windows and IANA identifiers.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record TimeZone(
     [property: DataMember, MemoryPackOrder(0)] string Id) : IHasId<string>

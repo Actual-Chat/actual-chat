@@ -1,5 +1,8 @@
 namespace ActualChat.Mathematics;
 
+/// <summary>
+/// Calculates an approximate running median for values in [0,1] using buckets.
+/// </summary>
 public sealed class RunningUnitMedian(int bucketCount = 100, double defaultValue = 0.5)
 {
     private readonly int[] _buckets = new int[bucketCount];

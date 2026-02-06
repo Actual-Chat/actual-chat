@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Computes SHA256 hashes for external contacts to detect changes.
+/// </summary>
 public sealed class ExternalContactHasher
 {
     private IByteSerializer ByteSerializer { get; } = MemoryPackByteSerializer.Default;

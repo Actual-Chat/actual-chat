@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for managing aliases (short URLs for chats and users).
+/// </summary>
 public class AliasBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IAliasBackend
 {
     private IDbEntityResolver<string, DbAlias> DbAliasResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbAlias>>();

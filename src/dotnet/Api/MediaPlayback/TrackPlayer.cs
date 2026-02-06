@@ -3,8 +3,14 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.MediaPlayback;
 
+/// <summary>
+/// Event arguments for player state changes.
+/// </summary>
 public sealed record PlayerStateChangedEventArgs(PlayerState PreviousState, PlayerState State);
 
+/// <summary>
+/// Base class for playing audio tracks from a media source.
+/// </summary>
 public abstract class TrackPlayer(TrackInfo trackInfo, IMediaSource source, ILogger log) : ProcessorBase
 {
     private readonly AsyncTaskMethodBuilder _whenCompletedSource = AsyncTaskMethodBuilderExt.New();

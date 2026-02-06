@@ -5,6 +5,9 @@ using DeviceType = ActualChat.Notification.DeviceType;
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// Handles push notification token registration with the server for mobile devices.
+/// </summary>
 // Called from the root context (not scoped one!)
 public class MauiNotifications(IServiceProvider services)
 {

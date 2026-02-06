@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Provides static instances and lookup dictionary for supported languages.
+/// </summary>
 public static class Languages
 {
     // For Arabic, we need RTL support.

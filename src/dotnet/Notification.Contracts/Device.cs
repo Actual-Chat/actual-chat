@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Notification;
 
+/// <summary>
+/// Represents a device registered for push notifications.
+/// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Device(

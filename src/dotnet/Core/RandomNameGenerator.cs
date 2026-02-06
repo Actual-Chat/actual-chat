@@ -2,6 +2,9 @@ using ActualLab.Mathematics.Internal;
 
 namespace ActualChat;
 
+/// <summary>
+/// Generates random display names by combining prefixes and suffixes.
+/// </summary>
 public sealed record RandomNameGenerator
 {
     private static readonly string[] Prefixes = {

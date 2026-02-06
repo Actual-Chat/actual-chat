@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Provides static instances and lookup dictionary for reaction emojis.
+/// </summary>
 public static class Emojis
 {
     public static readonly Emoji ThumbsUp = new("👍", "Thumbs up");

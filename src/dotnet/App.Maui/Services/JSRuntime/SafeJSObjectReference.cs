@@ -2,6 +2,9 @@
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// Wrapper around <see cref="IJSObjectReference"/> that handles disconnection gracefully.
+/// </summary>
 public sealed class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObjectReference source)
     : IJSObjectReference, IHasDisposeStatus
 {

@@ -2,6 +2,9 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for resolving chat and user aliases to their targets.
+/// </summary>
 public class Aliases(IServiceProvider services) : IAliases
 {
     private IAliasBackend Backend { get; } = services.GetRequiredService<IAliasBackend>();

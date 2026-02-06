@@ -2,6 +2,9 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Plays haptic feedback and sound effects for UI interactions.
+/// </summary>
 public abstract class TuneUI : IDisposable
 {
     protected static readonly Dictionary<Tune, TuneInfo> Tunes = new () {
@@ -69,6 +72,9 @@ public abstract class TuneUI : IDisposable
     public abstract Task PlayAndWait(Tune tune);
 }
 
+/// <summary>
+/// Identifies specific UI feedback sounds and haptic patterns.
+/// </summary>
 // !!! keep in sync with tune-ui.ts
 public enum Tune
 {
@@ -101,4 +107,7 @@ public enum Tune
     ClickButton,
 }
 
+/// <summary>
+/// Defines vibration pattern and optional sound for a <see cref="Tune"/>.
+/// </summary>
 public record TuneInfo(int[] Vibration, string Sound = "");

@@ -3,6 +3,9 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a sequence of markup elements.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class MarkupSeq : Markup
 {

@@ -2,6 +2,9 @@ using ActualChat.Chat;
 using ActualChat.Search;
 using ActualChat.Users;
 
+/// <summary>
+/// Frontend service for AI-powered search across contacts and chat entries.
+/// </summary>
 #pragma warning disable MA0049
 namespace ActualChat.MLSearch;
 public class Search(ISearchBackend backend, IAccounts accounts, IPlaces places, IChats chats) : ISearch

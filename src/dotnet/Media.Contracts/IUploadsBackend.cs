@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Backend service for managing file upload sessions.
+/// </summary>
 public interface IUploadsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -18,6 +21,9 @@ public interface IUploadsBackend : IComputeService, IBackendService
     Task<MediaContent> OnConvertToMediaContent(UploadsBackend_ConvertToMediaContent command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create a new upload session.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_Create(
@@ -32,8 +38,9 @@ public sealed partial record UploadsBackend_Create(
     public UploadId ShardKey => UploadId;
 }
 
-// How should I apply sharding?
-
+/// <summary>
+/// Command to remove an upload session.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_Remove(
@@ -44,6 +51,9 @@ public sealed partial record UploadsBackend_Remove(
     public UploadId ShardKey => Id;
 }
 
+/// <summary>
+/// Command to append a chunk to an upload session.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_Append(
@@ -56,6 +66,9 @@ public sealed partial record UploadsBackend_Append(
     public UploadId ShardKey => UploadId;
 }
 
+/// <summary>
+/// Command to finalize an upload and convert it to media content.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_ConvertToMediaContent(

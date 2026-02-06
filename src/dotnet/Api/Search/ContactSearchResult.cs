@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
+/// <summary>
+/// Represents a contact match from a search query.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class ContactSearchResult : SearchResult
 {

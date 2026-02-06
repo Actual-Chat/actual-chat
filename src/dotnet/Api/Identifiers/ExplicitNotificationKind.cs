@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Specifies explicit notification targeting options.
+/// </summary>
 #pragma warning disable CS0659, CS0660, CS0661
 public enum ExplicitNotificationKind
 {

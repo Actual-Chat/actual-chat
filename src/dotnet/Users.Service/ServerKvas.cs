@@ -2,6 +2,9 @@ using ActualChat.Kvas;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Frontend service for server-side key-value storage with session-based access control.
+/// </summary>
 public class ServerKvas : IServerKvas
 {
     private IAccounts Accounts { get; }

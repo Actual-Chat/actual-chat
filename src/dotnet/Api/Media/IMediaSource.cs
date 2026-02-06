@@ -1,5 +1,8 @@
 namespace ActualChat.Media;
 
+/// <summary>
+/// Provides access to a stream of media frames with format metadata.
+/// </summary>
 public interface IMediaSource
 {
     bool IsCancelled { get; }

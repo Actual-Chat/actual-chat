@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for AI-powered conversation segmentation and summarization.
+/// </summary>
 public class ConversationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IConversationsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;

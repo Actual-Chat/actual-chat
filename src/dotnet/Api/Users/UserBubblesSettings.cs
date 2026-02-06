@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Tracks which help bubbles the user has read.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserBubbleSettings : IHasOrigin
 {

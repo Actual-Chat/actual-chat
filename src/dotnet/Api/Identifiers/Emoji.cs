@@ -6,6 +6,9 @@ using MessagePack;
 
 namespace ActualChat;
 
+/// <summary>
+/// Represents an emoji with its codepoint and title.
+/// </summary>
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]

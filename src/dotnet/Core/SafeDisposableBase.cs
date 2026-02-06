@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Base class for disposable objects that ensures disposal happens only once.
+/// </summary>
 public abstract class SafeDisposableBase : IDisposable, IHasDisposeStatus
 {
     private volatile int _isDisposed;

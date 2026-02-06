@@ -15,6 +15,9 @@ using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for real-time chat entry translation using AI.
+/// </summary>
 public class TranslationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), ITranslationsBackend
 {
     private static readonly TimeSpan TranslateThrottleDelay = TimeSpan.FromMilliseconds(500);

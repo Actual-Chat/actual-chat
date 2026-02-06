@@ -1,5 +1,8 @@
 namespace ActualChat.Internal;
 
+/// <summary>
+/// Wraps an enumerator as an enumerable that can only be iterated once.
+/// </summary>
 public class AsyncEnumerableOnce<T>(IAsyncEnumerator<T> enumerator, bool suppressDispose = false)
     : IAsyncEnumerable<T>
 {

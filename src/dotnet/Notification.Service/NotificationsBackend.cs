@@ -10,6 +10,9 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace ActualChat.Notification;
 
+/// <summary>
+/// Backend service implementation for managing push notifications and device tokens.
+/// </summary>
 #pragma warning disable CA1001 // Has disposable _recentChatsWithNotifications
 public class NotificationsBackend(IServiceProvider services)
     : DbServiceBase<NotificationDbContext>(services), INotificationsBackend

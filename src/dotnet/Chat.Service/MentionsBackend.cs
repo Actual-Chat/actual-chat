@@ -4,6 +4,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for tracking and querying chat mentions.
+/// </summary>
 public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IMentionsBackend
 {
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();

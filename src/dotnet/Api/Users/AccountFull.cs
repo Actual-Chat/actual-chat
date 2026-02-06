@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Extended <see cref="Account"/> with full user details including identities and claims.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record AccountFull : Account

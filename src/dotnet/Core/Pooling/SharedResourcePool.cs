@@ -1,5 +1,8 @@
 namespace ActualChat.Pooling;
 
+/// <summary>
+/// A pool of shared resources keyed by an identifier, with reference counting.
+/// </summary>
 public partial class SharedResourcePool<TKey, TResource>(
     Func<TKey, CancellationToken, Task<TResource>> resourceFactory,
     Func<TKey, TResource, ValueTask>? resourceDisposer = null) : IAsyncDisposable

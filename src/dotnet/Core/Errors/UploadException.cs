@@ -13,6 +13,9 @@ public static partial class StandardError
     }
 }
 
+/// <summary>
+/// Base exception for file upload errors.
+/// </summary>
 [Serializable]
 public abstract class UploadException : Exception
 {
@@ -21,6 +24,9 @@ public abstract class UploadException : Exception
     protected UploadException(string? message, Exception? innerException) : base(message, innerException) { }
 }
 
+/// <summary>
+/// Exception thrown when an upload session is not found.
+/// </summary>
 [Serializable]
 public class UploadNotFoundException : UploadException
 {
@@ -29,6 +35,9 @@ public class UploadNotFoundException : UploadException
     public UploadNotFoundException(string? message, Exception? innerException) : base(message, innerException) { }
 }
 
+/// <summary>
+/// Exception thrown when an upload offset conflicts with the server state.
+/// </summary>
 [Serializable]
 public class OffsetConflictException : UploadException
 {
@@ -37,6 +46,9 @@ public class OffsetConflictException : UploadException
     public OffsetConflictException(string? message, Exception? innerException) : base(message, innerException) { }
 }
 
+/// <summary>
+/// Exception thrown for transient upload failures that may be retried.
+/// </summary>
 [Serializable]
 public class UploadTransientException : UploadException
 {

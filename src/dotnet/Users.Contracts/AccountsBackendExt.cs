@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Extension methods for <see cref="IAccountsBackend"/>.
+/// </summary>
 public static class AccountsBackendExt
 {
     public static Task<UserId?> GetUserIdByPhoneHash(this IAccountsBackend accountsBackend, string phoneHash, CancellationToken cancellationToken)

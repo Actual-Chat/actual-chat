@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Factory methods for building application URLs.
+/// </summary>
 public static class Links
 {
     public const string ChatEntryLidQueryParameterName = "n";

@@ -2,6 +2,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a URL link in markup.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class UrlMarkup(string url, UrlMarkupKind kind) : Markup
 {

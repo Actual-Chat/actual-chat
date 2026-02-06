@@ -2,6 +2,9 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// Factory methods for JS interop disconnection errors in MAUI.
+/// </summary>
 public static class JSRuntimeErrors
 {
     private const string DisconnectedMessage =

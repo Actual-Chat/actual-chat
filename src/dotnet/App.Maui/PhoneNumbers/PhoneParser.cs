@@ -6,6 +6,9 @@
 // ReSharper disable once CheckNamespace
 namespace PhoneNumbers;
 
+/// <summary>
+/// Region-aware phone number parser using LibPhoneNumbers library.
+/// </summary>
 public class PhoneParser
 {
     public PhoneNumberUtil PhoneNumberUtil { get; }

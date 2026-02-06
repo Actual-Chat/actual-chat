@@ -4,6 +4,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Defines a permission role within a chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Role(
@@ -55,6 +58,9 @@ public sealed partial record Role(
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
+/// <summary>
+/// Represents changes to a <see cref="Role"/> for incremental updates.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record RoleDiff : RecordDiff
 {

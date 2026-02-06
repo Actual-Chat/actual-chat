@@ -9,6 +9,9 @@ using Plugin.Firebase.Analytics;
 
 namespace ActualChat.App.Maui;
 
+/// <summary>
+/// Firebase Analytics event tracking for iOS and Android platforms.
+/// </summary>
 public static class FirebaseAnalyticsExt
 {
     public static void ActivateOwnAnalyticsCollection(IServiceProvider serviceProvider)

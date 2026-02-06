@@ -3,6 +3,9 @@ using Microsoft.Maui.ApplicationModel.DataTransfer;
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// MAUI implementation of share functionality using platform-specific share dialogs.
+/// </summary>
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiShare))]
 public sealed class MauiShare(IServiceProvider services) : IMauiShare
 {

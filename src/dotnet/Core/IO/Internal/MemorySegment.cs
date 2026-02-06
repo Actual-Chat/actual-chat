@@ -2,6 +2,9 @@ using System.Buffers;
 
 namespace ActualChat.IO.Internal;
 
+/// <summary>
+/// A linked segment for building <see cref="ReadOnlySequence{T}"/> chains.
+/// </summary>
 public sealed class MemorySegment<T> : ReadOnlySequenceSegment<T>
 {
     public MemorySegment(ReadOnlyMemory<T> memory)

@@ -11,6 +11,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Flows;
 
+/// <summary>
+/// Backend service implementation for managing flow state persistence and resumption.
+/// </summary>
 public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 {
     private readonly AsyncLockSet<FlowId> _resumeLocks = new(LockReentryMode.CheckedPass);

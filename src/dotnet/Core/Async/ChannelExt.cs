@@ -2,6 +2,9 @@ using ChannelExtCore = ActualLab.Channels.ChannelExt;
 
 namespace ActualChat;
 
+/// <summary>
+/// Extension methods and factory methods for <see cref="Channel{T}"/>.
+/// </summary>
 public static partial class ChannelExt
 {
     private static readonly ChannelClosedException ChannelClosedError = new();

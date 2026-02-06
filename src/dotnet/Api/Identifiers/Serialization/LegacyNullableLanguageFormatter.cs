@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Serialization;
 
+/// <summary>
+/// MemoryPack formatter for nullable Language in legacy format.
+/// </summary>
 public class LegacyNullableLanguageFormatter : MemoryPackFormatter<Language?>
 {
     public static readonly LegacyNullableLanguageFormatter Default = new ();

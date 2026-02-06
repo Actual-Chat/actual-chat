@@ -17,6 +17,10 @@ namespace ActualChat.Users;
 //
 // All computed properties that access Id must handle the null case to avoid
 // NullReferenceException during command tracing/logging (which calls ToString()).
+
+/// <summary>
+/// Represents a user account with associated avatar and status.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Account(

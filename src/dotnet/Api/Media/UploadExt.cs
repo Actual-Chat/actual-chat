@@ -2,6 +2,9 @@ using ActualChat.Chat;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Extension methods for <see cref="Upload"/>.
+/// </summary>
 public static class UploadExt
 {
     public static string BuildTag(ChatId chatId)

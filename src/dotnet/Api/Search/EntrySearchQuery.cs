@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
+/// <summary>
+/// Query parameters for searching chat entries.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record EntrySearchQuery
 {

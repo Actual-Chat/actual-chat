@@ -2,6 +2,9 @@ using Serilog.Extensions.Logging;
 
 namespace ActualChat.App.Server.Logging;
 
+/// <summary>
+/// Extension methods for configuring Serilog with custom filtering in the logging builder.
+/// </summary>
 public static class LoggingBuilderExt
 {
     public static ILoggingBuilder AddFilteringSerilog(

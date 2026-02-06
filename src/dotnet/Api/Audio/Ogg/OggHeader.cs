@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Audio.Ogg;
 
+/// <summary>
+/// Represents an Ogg page header.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct OggHeader
 {

@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Pairs a <see cref="LocalUrl"/> with its absolute URL for display purposes.
+/// </summary>
 public readonly record struct DisplayUrl(LocalUrl LocalUrl, string AbsoluteUrl)
 {
     public string ShortLocalUrl

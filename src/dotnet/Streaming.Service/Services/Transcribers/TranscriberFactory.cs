@@ -2,6 +2,9 @@
 
 namespace ActualChat.Streaming.Services.Transcribers;
 
+/// <summary>
+/// Creates transcriber instances based on the configured transcription engine.
+/// </summary>
 public class TranscriberFactory(IServiceProvider services) : ITranscriberFactory
 {
     public ITranscriber Get(TranscriptionEngine engine)

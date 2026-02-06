@@ -2,6 +2,9 @@ using ActualLab.Fusion.Extensions;
 
 namespace ActualChat;
 
+/// <summary>
+/// Test feature that returns the current server time.
+/// </summary>
 // ReSharper disable once InconsistentNaming
 public class TestFeature_ServerTime : FeatureDef<Moment>, IServerFeatureDef
 {

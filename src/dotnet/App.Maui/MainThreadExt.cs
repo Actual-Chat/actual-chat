@@ -1,5 +1,8 @@
 namespace ActualChat.App.Maui;
 
+/// <summary>
+/// Extension methods for scheduling work on the main thread via thread pool indirection.
+/// </summary>
 public static class MainThreadExt
 {
     public static void InvokeLater(Action action)

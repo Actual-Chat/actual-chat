@@ -10,6 +10,9 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Extended UI hub with access to chat-specific services, audio, and playback functionality.
+/// </summary>
 public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
 {
     public IChats Chats => field ??= Services.GetRequiredService<IChats>();

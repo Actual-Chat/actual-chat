@@ -2,6 +2,9 @@ using System.Collections.Frozen;
 
 namespace ActualChat;
 
+/// <summary>
+/// Registry of all backend service definitions indexed by service type.
+/// </summary>
 public sealed class BackendServiceDefs
 {
     private readonly FrozenDictionary<Type, BackendServiceDef> _items;

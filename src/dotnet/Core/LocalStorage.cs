@@ -2,6 +2,9 @@ using Microsoft.JSInterop;
 
 namespace ActualChat;
 
+/// <summary>
+/// Provides access to browser local storage via JavaScript interop.
+/// </summary>
 public class LocalStorage(IJSRuntime js)
 {
     private IJSRuntime JS { get; } = js;

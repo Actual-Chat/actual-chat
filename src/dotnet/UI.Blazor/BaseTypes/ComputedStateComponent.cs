@@ -4,6 +4,9 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor;
 
+/// <summary>
+/// Base class for Blazor components with computed state and typed <see cref="UIHub"/> access.
+/// </summary>
 public abstract class ComputedStateComponent<THub, TState> : ComputedStateComponent<TState>
     where THub : UIHub
 {

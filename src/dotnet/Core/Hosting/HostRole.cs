@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Hosting;
 
+/// <summary>
+/// Defines roles that a host can fulfill (e.g., Api, Backend services, Queues).
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record struct HostRole(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol Id

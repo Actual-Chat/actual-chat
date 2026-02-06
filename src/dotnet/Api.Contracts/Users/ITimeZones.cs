@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for time zone lookup and conversion.
+/// </summary>
 public interface ITimeZones : IComputeService
 {
     // NOTE(AY): Should it really be a compute method? Let's discuss this.

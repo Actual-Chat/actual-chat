@@ -1,5 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
+/// <summary>
+/// Handles diffs for collection types by tracking added and removed items.
+/// </summary>
 public sealed class SetDiffHandler<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TSet,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TItem>

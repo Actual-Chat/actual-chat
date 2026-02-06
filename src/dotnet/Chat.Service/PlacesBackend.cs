@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for managing places (organizational containers for chats).
+/// </summary>
 public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IPlacesBackend
 {
     private IDbEntityResolver<string, DbPlace> DbPlaceResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbPlace>>();

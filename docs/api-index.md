@@ -1,0 +1,313 @@
+# API Index (Condensed)
+
+A condensed reference of the most important types in ActualChat.
+Use this to find existing abstractions before writing new code.
+See also: [Full API Index](api-index-full.md).
+
+
+## Core (`ActualChat.Core`)
+
+### Identifiers
+- `StringIdentifier<T>` — base for string-based identifiers (UserId, ChatId, etc.)
+- `SymbolIdentifier<T>` — base for Symbol-based identifiers
+
+### Async & Concurrency
+- `Debouncer<T>` — delays action execution until interval passes without new items
+- `Throttler<T>` — limits action execution to at most once per interval
+- `IAsyncObservable<T>` — observable with channel-based async subscribers
+- `TaskSerializer` — serializes task execution to run sequentially
+- `ChannelMuxer<TKey, TItem>` — multiplexes multiple channels into one
+
+### Collections & Caching
+- `LruCache<TKey, TValue>` — thread-safe LRU cache
+- `BlockRingBuffer<T>` — ring buffer with block-level operations
+- `SharedResourcePool<TResource>` — pooled resource lease management
+
+### State & Change Tracking
+- `Mutable<T>` — mutable value holder with change notifications
+- `Change<T>` (record struct) — represents create/update/remove operation
+- `IDiff`, `DiffEngine` — diff processing for entity changes
+
+### Key-Value Store (Kvas)
+- `IKvas` — key-value store interface
+- `BatchingKvas` — batching KVAS with delayed persistence
+- `LocalSettings` — local settings storage via KVAS
+- `StoredState<T>` — state backed by KVAS
+
+### Workers
+- `WorkerBase` — long-running background worker (start/stop/cancel)
+- `ActivatedWorkerBase` — worker with activation tracking
+
+### Error Handling
+- `StandardError` — factory for standard errors (NotFound, Unauthorized, etc.)
+- `ExternalError`, `InternalError` — categorized error types
+
+### Hosting
+- `HostInfo` (record) — host environment information
+- `HostKind`, `HostRole` (enum) — host type and role
+- `IModuleInitializer` — module initialization interface
+
+### Features
+- `Features` — aggregates client and server feature flags
+- `FeatureDef<T>` — feature flag definition
+
+### Security
+- `ISecureTokens` — secure token operations
+- `TrueSessionResolver` — session resolution
+
+
+## Database (`ActualChat.Db`)
+
+- `IDbEntity` — database entity marker
+- `DbModule` — database module configuration
+- `DbInitializer` — database initialization interface
+
+
+## Redis (`ActualChat.Redis`)
+
+- `RedisModule` — Redis module configuration
+- `RedisMeshLocks` — Redis-based distributed locks
+- `RedisTokenBucketRateLimiter` — rate limiting
+
+
+## API Types (`ActualChat.Api`)
+
+### Core Identifiers
+- `UserId` — user account identifier
+- `ChatId` — chat identifier (GroupChatId, PlaceChatId, PeerChatId, ThreadChatId)
+- `AuthorId` — author within a chat
+- `PlaceId` — place (community) identifier
+- `MediaId` — media content identifier
+- `ContactId` — contact identifier
+
+### Chat & Messaging
+- `Chat` (record) — chat information (kind, title, rules, settings)
+- `Author` (record) — author in a chat (user link, avatar, rules)
+- `ChatEntry` — base for chat entries (TextEntry, SystemEntry)
+- `TextEntry` (record) — text message with markup, attachments, reactions
+- `Place` (record) — community/place information
+- `Role` (record) — role definition with permissions
+
+### Markup
+- `IMarkupParser` — parses text into markup tree
+- `Markup` — base markup element (PlainText, Url, Mention, CodeBlock, etc.)
+- `MarkupFormatter` — formats markup to plain text
+- `MentionExtractor` — extracts mentions from markup
+
+### Media
+- `Media` (record) — media metadata (content type, size, dimensions)
+- `Picture` (record) — picture with multiple sizes
+- `LinkPreview` (record) — preview of linked content
+
+### Users & Accounts
+- `Account` (record) — user account (name, avatar, status)
+- `Avatar` (record) — user avatar configuration
+- `Presence` (record) — online/away/offline status
+
+### Audio
+- `AudioFrame` (record) — audio frame with format and data
+- `Transcript` — audio transcript with timing
+- `TranscriptionEngine` (enum) — transcription engine type
+
+### Contacts
+- `Contact` (record) — contact information
+
+
+## Service Contracts (`ActualChat.Api.Contracts`)
+
+### Chat Services
+- `IChats` — chat CRUD, listing, rules
+- `IAuthors` — author management within chats
+- `IPlaces` — place (community) management
+- `IRoles` — role management
+- `IReactions` — message reactions
+- `IMentions` — mention queries
+
+### User Services
+- `IAccounts` — account management
+- `IAvatars` — avatar management
+- `IUserPresences` — presence tracking
+
+### Contact Services
+- `IContacts` — contact management
+- `IExternalContacts` — device contact sync
+
+### Media Services
+- `IUploads` — file upload handling
+- `IMediaLinkPreviews` — link preview generation
+
+### Other Services
+- `INotifications` — push notifications
+- `IInvites` — invite link management
+- `ISearch` — full-text search
+- `IStreamServer`, `IStreamClient` — audio streaming
+
+
+## Backend Contracts (`*.Contracts`)
+
+Backend interfaces follow the pattern `I{Service}Backend` for internal service communication:
+- `IChatsBackend`, `IAuthorsBackend`, `IPlacesBackend` — chat backends
+- `IAccountsBackend`, `IAvatarsBackend` — user backends
+- `IContactsBackend` — contact backend
+- `IMediaBackend`, `IUploadsBackend` — media backends
+- `INotificationsBackend` — notification backend
+- `IStreamingBackend` — streaming backend
+
+
+## Server Infrastructure (`ActualChat.Core.Server`)
+
+### Flows (Long-Running Operations)
+- `Flow` — base for long-running operations with persistence
+- `PeriodicFlow` — periodic execution flow
+- `IndexingFlow` — indexing with cursor tracking
+- `ThrottledFlow` — throttled execution
+- `FlowHub` — manages flow instances
+
+### Queues
+- `IQueues` — queue service interface
+- `IQueueProcessor` — processes queued commands
+- `NatsQueues` — NATS-based queue implementation
+- `QueuedCommand` (record) — command in queue
+
+### Blob Storage
+- `IBlobStorages` — blob storage service
+- `IBlobStorage` — individual blob storage operations
+- `GoogleCloudBlobStorage` — Google Cloud Storage implementation
+
+### Sharding
+- `ShardMap` — maps keys to shards
+- `ShardWorker` — shard-aware worker
+- `ShardedDbServiceBase` — base for sharded database services
+
+### Mesh & Clustering
+- `MeshNode` — node in mesh cluster
+- `IMeshLocks` — distributed locking
+- `MeshWatcher` — monitors mesh state changes
+
+### Media Processing
+- `IUploadProcessor` — processes uploaded files
+- `IMediaProcessor` — processes media content
+- `IContentSaver` — saves content to blob storage
+
+
+## UI Core (`ActualChat.UI`)
+
+- `UICoreModule` — UI core module
+- `ChunkedFileUploader` — resumable file uploads with retry
+- `AppRemoteComputedCache` — client-side computed value cache
+
+
+## Blazor UI (`ActualChat.UI.Blazor`)
+
+### Base Types
+- `ComponentBase<THub>` — Blazor component base with service shortcuts
+- `ComputedStateComponent<TState, THub>` — component with Fusion computed state
+- `UIServiceBase<THub>` — base for UI services
+- `UIWorkerBase<THub>` — base for UI background workers
+
+### Core Services
+- `UIHub` — central hub providing access to all UI services
+- `History` — browser navigation history management
+- `ModalUI` — modal dialog management
+- `ToastUI` — toast notification management
+- `PanelsUI` — left/middle/right panel management
+- `AccountUI` — account state and authentication flow
+- `ThemeUI` — theme (light/dark) management
+- `ReconnectUI` — RPC connection state monitoring
+
+### Components
+- `VirtualList<T>` — virtualized list with windowed rendering
+- `Menu<T>` — menu component
+- `ModalRef` — modal dialog reference
+- `PermissionHandler` — permission request handling
+
+### Caching
+- `WebRemoteComputedCache` — IndexedDB-based remote computed cache
+
+
+## Blazor App (`ActualChat.UI.Blazor.App`)
+
+### Core Services
+- `AppUIHub` — extended UI hub with chat-specific services
+- `ChatUI` — chat selection, read positions, chat state
+- `ChatAudioUI` — audio listening/recording state
+- `ChatListUI` — chat list filtering and sorting
+- `SearchUI` — unified search across chats
+- `LanguageUI` — language preferences
+- `OnboardingUI` — user onboarding flow
+- `LiveStreamUI` — live streaming management
+
+### Playback
+- `ChatPlayers` — orchestrates audio playback across chats
+- `ChatPlayer` — plays audio entries (HistoricalChatPlayer, RealtimeChatPlayer)
+
+### Recording
+- `AudioRecorder` — audio recording component
+- `RecorderStateHub` — recording state management
+
+### Message Sending
+- `SendingMessages` — manages message sending with retry logic
+- `AttachmentsController` — attachment management
+
+### Components
+- `ChatView` — main chat view component
+- `ChatMessage` — message display
+- `MarkupView` — markup rendering
+- `MarkupEditor` — markup editing
+- `ChatList` — chat list component
+- `EditMembersUI` — member editing utilities
+
+
+## Server Application (`ActualChat.App.Server`)
+
+- `AppHost` — main application host
+- `AppServerModule` — server module configuration
+- `HostSettings` — host configuration settings
+- `AggregateDbInitializer` — orchestrates database initialization
+- `ReadinessHealthCheck`, `LivelinessHealthCheck` — Kubernetes health checks
+
+
+## MAUI Application (`ActualChat.App.Maui`)
+
+### Core
+- `CustomBlazorWebViewHandler` — Blazor WebView with service injection
+- `Bars` — platform status bar information
+- `MauiRuntimeSettings` — thread pool configuration
+
+### Services
+- `MauiBrowserInfo` — platform device detection
+- `MauiShare` — platform share dialogs
+- `MauiNotifications` — push notification registration
+- `MauiLoadingUI` — loading milestone tracking
+
+### Permissions
+- `MauiMicrophonePermissionHandler` — microphone permission
+- `MauiContactsPermissionHandler` — contacts permission
+
+### JS Interop
+- `SafeJSRuntime` — JS runtime with disconnection handling
+- `SafeJSObjectReference` — safe JS object reference
+
+
+## Key Patterns
+
+### Service/Backend Split
+Most services have two interfaces:
+- Public: `IChats`, `IAccounts`, etc. — for client use
+- Backend: `IChatsBackend`, `IAccountsBackend`, etc. — for internal server use
+
+### Module System
+Functionality organized into modules registered in DI:
+- `CoreModule`, `CoreServerModule` — core infrastructure
+- `ChatServiceModule`, `UsersServiceModule` — domain services
+- `BlazorUICoreModule`, `BlazorUIAppModule` — UI modules
+
+### Computed State
+UI uses Fusion's computed state for reactive updates:
+- `ComputedStateComponent<TState, THub>` for components
+- `[ComputeMethod]` attribute on service methods
+
+### Database Models
+Database entities prefixed with `Db`:
+- `DbChat`, `DbAuthor`, `DbTextEntry` — chat entities
+- `DbAccount`, `DbAvatar` — user entities

@@ -3,6 +3,9 @@ using ActualChat.Spans;
 
 namespace ActualChat.Audio.WebM;
 
+/// <summary>
+/// Writes data in WebM container format.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public ref struct WebMWriter
 {

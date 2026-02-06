@@ -2,6 +2,9 @@ using ActualChat.Search;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend implementation of markup hub for parsing and formatting chat messages.
+/// </summary>
 public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IBackendChatMarkupHub
 {
     private static MarkupTrimmer? _trimmer;

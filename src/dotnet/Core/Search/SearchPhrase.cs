@@ -5,6 +5,9 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
+/// <summary>
+/// Represents a parsed search query with terms and matching configuration.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class SearchPhrase
 {

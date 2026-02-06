@@ -4,6 +4,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Contains information about a user session including authentication state and metadata.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
 public partial record SessionInfo() : IRequirementTarget, IHasVersion<long>

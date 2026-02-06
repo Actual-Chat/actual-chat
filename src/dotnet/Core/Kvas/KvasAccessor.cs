@@ -1,5 +1,8 @@
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// Provides typed access to a single key in a <see cref="IKvas"/> store.
+/// </summary>
 public class KvasAccessor<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(IKvas kvas, string key) where T : class, new()
 {
     public async Task<T> Get(CancellationToken cancellationToken = default)

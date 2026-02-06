@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for phone-based authentication with TOTP codes.
+/// </summary>
 public interface IPhoneAuth : IComputeService
 {
     [ComputeMethod]

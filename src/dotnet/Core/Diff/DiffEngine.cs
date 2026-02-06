@@ -2,6 +2,9 @@ using ActualChat.Diff.Handlers;
 
 namespace ActualChat.Diff;
 
+/// <summary>
+/// Engine for computing and applying diffs between objects.
+/// </summary>
 public sealed class DiffEngine(
     IServiceProvider services,
     TypeMapper<IDiffHandler>? diffHandlerFinder = null

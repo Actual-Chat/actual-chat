@@ -2,6 +2,9 @@ using System.Text.RegularExpressions;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Extension methods for <see cref="Markup"/> conversion and formatting.
+/// </summary>
 public static partial class MarkupExt
 {
     [GeneratedRegex(@"\s+")]

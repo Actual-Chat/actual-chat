@@ -9,6 +9,9 @@ using MathExt = ActualLab.Mathematics.MathExt;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Manages chat selection, read positions, and chat state in the UI.
+/// </summary>
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IAsyncDisposable
 {

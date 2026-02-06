@@ -3,6 +3,9 @@ using Serilog.Events;
 
 namespace ActualChat.App.Server.Logging;
 
+/// <summary>
+/// Serilog enricher that adds the current process ID to log events.
+/// </summary>
 public class ProcessIdLogEventEnricher : ILogEventEnricher
 {
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)

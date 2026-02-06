@@ -4,6 +4,9 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Captures application logs in a ring buffer for display in the in-app log viewer.
+/// </summary>
 public class LogUI(UIHub hub) : UIWorkerBase<UIHub>(hub), IComputeService, ILogSink, INotifyInitialized
 {
     private static readonly string OwnLogCategory = $"{typeof(LogUI).Namespace}.{nameof(LogUI)}";

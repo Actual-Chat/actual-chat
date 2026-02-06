@@ -1,5 +1,8 @@
 namespace ActualChat.App.Server.Module;
 
+/// <summary>
+/// Extension methods for configuring middleware including COOP headers, base URL, and static file caching.
+/// </summary>
 public static class ApplicationBuilderExt
 {
     public static IApplicationBuilder UseCoopHeaders(this IApplicationBuilder app)

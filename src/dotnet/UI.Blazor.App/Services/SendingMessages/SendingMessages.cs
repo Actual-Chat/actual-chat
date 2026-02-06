@@ -4,6 +4,9 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Manages message sending with persistent retry, attachment uploads, and resend detection.
+/// </summary>
 public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService, IAsyncDisposable
 {
     public static class AfterSendMessageHandlerKeys

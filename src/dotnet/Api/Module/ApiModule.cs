@@ -5,6 +5,9 @@ using ActualChat.MediaPlayback;
 
 namespace ActualChat.Module;
 
+/// <summary>
+/// Registers Api project services with the DI container.
+/// </summary>
 #pragma warning disable IL2026 // Fine for modules
 
 public sealed class ApiModule(IServiceProvider moduleServices)

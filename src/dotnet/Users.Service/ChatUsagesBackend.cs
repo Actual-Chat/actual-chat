@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service implementation for tracking recently accessed chats per user.
+/// </summary>
 public class ChatUsagesBackend(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), IChatUsagesBackend
 {

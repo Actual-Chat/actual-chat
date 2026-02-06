@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for managing places (organizational containers for chats).
+/// </summary>
 public interface IPlacesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -23,6 +26,9 @@ public interface IPlacesBackend : IComputeService, IBackendService
     Task<Place> OnChange(PlacesBackend_Change command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create, update, or delete a place.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record PlacesBackend_Change(

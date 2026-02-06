@@ -1,5 +1,8 @@
 namespace ActualChat.DependencyInjection;
 
+/// <summary>
+/// Factory that creates service instances indexed by a key.
+/// </summary>
 public class KeyedFactory<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey>(
@@ -25,6 +28,9 @@ public class KeyedFactory<
         => (TService)typeof(TService).CreateInstance(services, key);
 }
 
+/// <summary>
+/// Factory that creates specific implementation instances indexed by a key.
+/// </summary>
 public sealed class KeyedFactory<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey,

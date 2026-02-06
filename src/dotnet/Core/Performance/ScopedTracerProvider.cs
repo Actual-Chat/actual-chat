@@ -1,5 +1,8 @@
 namespace ActualChat.Performance;
 
+/// <summary>
+/// Creates uniquely identified tracer scopes for request tracking.
+/// </summary>
 public sealed class ScopedTracerProvider
 {
     private static long _lastId;

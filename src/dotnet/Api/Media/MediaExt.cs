@@ -1,5 +1,8 @@
 namespace ActualChat.Media;
 
+/// <summary>
+/// Extension methods for <see cref="Media"/>.
+/// </summary>
 public static class MediaExt
 {
     public static Picture? ToPicture(this Media? media, string? externalPictureUrl = null, string? avatarKey = null)

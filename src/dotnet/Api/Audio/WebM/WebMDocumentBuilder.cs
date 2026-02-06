@@ -2,6 +2,9 @@ using ActualChat.Audio.WebM.Models;
 
 namespace ActualChat.Audio.WebM;
 
+/// <summary>
+/// Builder for creating <see cref="WebMDocument"/> instances.
+/// </summary>
 public sealed class WebMDocumentBuilder
 {
     private readonly List<Cluster> _clusters = new(4);

@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Wraps an async enumerable allowing reuse of an already-advanced enumerator.
+/// </summary>
 public sealed class AsyncEnumerableWithUsedEnumerator<T>(
     IAsyncEnumerable<T> enumerable,
     IAsyncEnumerator<T> usedEnumerator,

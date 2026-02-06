@@ -5,6 +5,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a chat participant with an avatar identity.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Author(

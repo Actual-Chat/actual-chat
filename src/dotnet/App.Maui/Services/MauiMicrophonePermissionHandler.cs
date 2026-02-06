@@ -6,6 +6,9 @@ using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// MAUI implementation of <see cref="MicrophonePermissionHandler"/> using platform permission APIs.
+/// </summary>
 public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
 {
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiMicrophonePermissionHandler))]

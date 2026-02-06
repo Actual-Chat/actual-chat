@@ -4,12 +4,18 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service for sending email notifications and digests.
+/// </summary>
 public interface IEmailsBackend : IComputeService, IBackendService
 {
     [CommandHandler]
     Task<Unit> OnSendDigest(EmailsBackend_SendDigest command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to send a digest email to a user.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailsBackend_SendDigest(

@@ -2,6 +2,9 @@ using ActualChat.Media;
 
 namespace ActualChat.Audio;
 
+/// <summary>
+/// Extension methods for converting byte streams to recording parts.
+/// </summary>
 public static class RecordingStreamExt
 {
     public static async IAsyncEnumerable<RecordingPart> ToRecordingStream(

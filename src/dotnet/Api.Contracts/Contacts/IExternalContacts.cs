@@ -2,6 +2,9 @@
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Service for managing external contacts imported from devices.
+/// </summary>
 public interface IExternalContacts : IComputeService
 {
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]

@@ -1,5 +1,8 @@
 namespace ActualChat.Audio.WebM;
 
+/// <summary>
+/// Describes an EBML element type including its identifier and data type.
+/// </summary>
 public class EbmlElementDescriptor
 {
     public EbmlElementDescriptor(ulong identifier, string name, EbmlElementType type, string? defaultvalue, bool listEntry)

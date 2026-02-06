@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Extension methods for <see cref="SessionInfo"/>.
+/// </summary>
 public static class SessionInfoExt
 {
     public static UserId? GetGuestId(this SessionInfo? sessionInfo)

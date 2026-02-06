@@ -1,5 +1,8 @@
 namespace ActualChat.Blobs;
 
+/// <summary>
+/// Service for saving, removing, and copying content in blob storage.
+/// </summary>
 public interface IContentSaver
 {
     Task Save(Content content, CancellationToken cancellationToken);

@@ -4,6 +4,9 @@ using MessagePack;
 
 namespace ActualChat;
 
+/// <summary>
+/// Factory methods for creating <see cref="Choice{T, TAlt}"/> instances.
+/// </summary>
 public static class Choice
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -15,6 +18,9 @@ public static class Choice
         => new(false, default, alternative);
 }
 
+/// <summary>
+/// Represents a value that is either <typeparamref name="T"/> or <typeparamref name="TAlt"/>.
+/// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [MessagePackObject(true, SuppressSourceGeneration = true)]

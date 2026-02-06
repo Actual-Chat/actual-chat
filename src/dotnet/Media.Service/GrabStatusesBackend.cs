@@ -4,6 +4,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Backend service implementation for tracking external content grab/crawl status.
+/// </summary>
 public class GrabStatusesBackend(IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), IGrabStatusesBackend
 {

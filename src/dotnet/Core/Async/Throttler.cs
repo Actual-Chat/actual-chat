@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Limits action execution to at most once per specified interval.
+/// </summary>
 public class Throttler<T>(MomentClock clock, TimeSpan interval, Action<T> action)
 {
     private readonly Lock _lock = new ();
@@ -17,6 +20,9 @@ public class Throttler<T>(MomentClock clock, TimeSpan interval, Action<T> action
     }
 }
 
+/// <summary>
+/// Factory methods for creating <see cref="Throttler{T}"/> instances.
+/// </summary>
 public static class Throttler
 {
     public static Throttler<T> New<T>(MomentClock clock, TimeSpan interval, Action<T> action)

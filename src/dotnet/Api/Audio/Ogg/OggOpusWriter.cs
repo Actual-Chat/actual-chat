@@ -2,6 +2,9 @@
 
 namespace ActualChat.Audio.Ogg;
 
+/// <summary>
+/// Writes Ogg/Opus formatted audio data to a span buffer.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
 {

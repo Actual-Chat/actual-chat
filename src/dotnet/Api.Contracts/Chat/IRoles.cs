@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Service for managing chat roles and permissions.
+/// </summary>
 public interface IRoles : IComputeService
 {
     [ComputeMethod]

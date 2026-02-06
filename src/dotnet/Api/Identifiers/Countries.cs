@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Provides static instances and lookup dictionary for all countries.
+/// </summary>
 public static class Countries
 {
     public static readonly Country Undefined = new ("", "Undefined");

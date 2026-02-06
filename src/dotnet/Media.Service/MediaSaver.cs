@@ -3,6 +3,9 @@ using SixLabors.ImageSharp;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Saves media files to blob storage and creates database records.
+/// </summary>
 public sealed class MediaSaver(ICommander commander, IContentSaver contentSaver) : IMediaSaver
 {
     public async Task<Media> Save(

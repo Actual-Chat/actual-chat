@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Service for managing chat threads (reply threads attached to messages).
+/// </summary>
 public interface IChatThreads : IComputeService
 {
     [ComputeMethod]
@@ -46,6 +49,9 @@ public sealed partial record ChatThreads_ToggleThreadFollowStatus(
     [property: DataMember, MemoryPackOrder(1)] ThreadChatId ThreadChatId
 ) : ISessionCommand<Unit>, IApiCommand;
 
+/// <summary>
+/// Statistics for a chat thread.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record ThreadStat(
     [property: DataMember, MemoryPackOrder(0)] long MessageCount,

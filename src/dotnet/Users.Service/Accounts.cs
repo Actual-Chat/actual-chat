@@ -6,6 +6,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Frontend service for user account operations with session-based access control.
+/// </summary>
 public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccounts
 {
     private ISessionsBackend SessionsBackend { get; } = services.GetRequiredService<ISessionsBackend>();

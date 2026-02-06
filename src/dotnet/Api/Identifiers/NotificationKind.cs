@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Specifies the type of notification.
+/// </summary>
 public enum NotificationKind
 {
     None = 0,

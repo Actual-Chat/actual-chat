@@ -1,5 +1,8 @@
 namespace ActualChat.Transcription;
 
+/// <summary>
+/// Extension methods for <see cref="LinearMap"/> in transcription context.
+/// </summary>
 public static class LinearMapExt
 {
     public static LinearMap Scale(this LinearMap timeMap, int fullLength, int newFullLength)

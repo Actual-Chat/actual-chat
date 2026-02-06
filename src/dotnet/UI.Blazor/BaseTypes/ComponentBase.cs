@@ -4,6 +4,9 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor;
 
+/// <summary>
+/// Base class for Blazor components with typed <see cref="UIHub"/> access and service shortcuts.
+/// </summary>
 public abstract class ComponentBase<THub> : ComponentBase, IHasCircuitHub
     where THub : UIHub
 {

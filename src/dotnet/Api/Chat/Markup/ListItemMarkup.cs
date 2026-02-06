@@ -2,6 +2,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a single item in a <see cref="ListMarkup"/>.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class ListItemMarkup(Markup content) : Markup
 {

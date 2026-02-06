@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for email-based authentication with TOTP codes.
+/// </summary>
 public interface IEmailAuth : IComputeService
 {
     [ComputeMethod]

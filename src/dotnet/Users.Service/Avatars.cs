@@ -2,6 +2,9 @@
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Frontend service for managing user avatars with session-based access control.
+/// </summary>
 public class Avatars(IServiceProvider services) : IAvatars
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();

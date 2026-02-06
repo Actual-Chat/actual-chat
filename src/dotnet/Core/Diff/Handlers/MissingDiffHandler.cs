@@ -1,5 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
+/// <summary>
+/// Throws when diff/patch operations are attempted on unsupported types.
+/// </summary>
 public sealed class MissingDiffHandler<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDiff>(DiffEngine engine)

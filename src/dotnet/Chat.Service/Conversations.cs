@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for accessing conversation segments and summaries.
+/// </summary>
 public class Conversations(IServiceProvider services) : IConversations
 {
     private IConversationsBackend Backend { get; } = services.GetRequiredService<IConversationsBackend>();

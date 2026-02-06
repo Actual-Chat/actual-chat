@@ -4,6 +4,9 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
+/// <summary>
+/// Backend service implementation for managing active live audio streams in chats.
+/// </summary>
 public partial class LiveBackend : ShardComputeService, ILiveBackend
 {
     private readonly ConcurrentDictionary<ChatId, ChatState> _chatStates = new();

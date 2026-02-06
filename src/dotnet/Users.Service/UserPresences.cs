@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Frontend service for tracking user online/offline presence status.
+/// </summary>
 public class UserPresences(IServiceProvider services) : IUserPresences
 {
     private static readonly TimeSpan SessionUpdatePeriod = TimeSpan.FromHours(1);

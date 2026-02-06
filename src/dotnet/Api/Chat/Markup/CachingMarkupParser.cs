@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Caching decorator for <see cref="IMarkupParser"/> using LRU cache.
+/// </summary>
 public class CachingMarkupParser(IMarkupParser parser, ILruCache<string, Markup> cache) : IMarkupParser
 {
     public Markup Parse(string text)

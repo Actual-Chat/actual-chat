@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Chat;
 
+/// <summary>
+/// Defines permission flags for chat operations.
+/// </summary>
 #pragma warning disable MA0062
 #pragma warning disable RCS1157
 

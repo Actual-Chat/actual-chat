@@ -2,6 +2,9 @@ using ActualChat.Users;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Frontend service for managing file uploads with session-based access control.
+/// </summary>
 public class Uploads(IServiceProvider services) : IUploads
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();

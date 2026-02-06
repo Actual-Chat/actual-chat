@@ -3,6 +3,9 @@ using ActualChat.Hashing;
 
 namespace ActualChat;
 
+/// <summary>
+/// Extension methods for <see cref="ContactId"/>.
+/// </summary>
 public static class ContactIdExt
 {
     public static UserId GetOtherUserId(this ContactId id)

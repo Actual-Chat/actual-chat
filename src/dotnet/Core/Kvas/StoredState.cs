@@ -1,14 +1,23 @@
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// A mutable state that persists its value to storage.
+/// </summary>
 public interface IStoredState : IMutableState
 {
     Task WhenRead { get; }
 }
 
+/// <summary>
+/// A typed mutable state that persists its value to storage.
+/// </summary>
 public interface IStoredState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : IMutableState<T>, IStoredState
     where T : class?;
 
+/// <summary>
+/// Implementation of <see cref="IStoredState{T}"/> with read/write persistence.
+/// </summary>
 public sealed class StoredState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : MutableState<T>, IStoredState<T>
     where T : class?

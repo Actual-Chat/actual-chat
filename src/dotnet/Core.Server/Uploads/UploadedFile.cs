@@ -2,6 +2,9 @@ using ActualLab.IO;
 
 namespace ActualChat.Uploads;
 
+/// <summary>
+/// Base class for uploaded file representations.
+/// </summary>
 public abstract record UploadedFile(FilePath FileName, string ContentType)
 {
     public abstract long Length { get; init; }

@@ -2,6 +2,9 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Tracks user interaction events to determine online presence activity status.
+/// </summary>
 public class UserActivityUI : UIServiceBase<UIHub>, IUserActivityUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.UserActivityUI.init";

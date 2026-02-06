@@ -2,6 +2,9 @@ using ActualChat.Kvas;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Client-side KVAS implementation that delegates to <see cref="IServerKvasBackend"/>.
+/// </summary>
 public class ServerKvasBackendClient(IServerKvasBackend serverKvasBackend, string prefix) : IKvas
 {
     public IServiceProvider Services => field ??= ServerKvasBackend.GetServices();

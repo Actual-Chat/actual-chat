@@ -1,5 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
+/// <summary>
+/// Base class for implementing <see cref="IDiffHandler{T,TDiff}"/>.
+/// </summary>
 public abstract class DiffHandlerBase<T, TDiff>(DiffEngine engine)
     : IDiffHandler<T, TDiff>
 {

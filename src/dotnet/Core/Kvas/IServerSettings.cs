@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// Server-side settings storage service.
+/// </summary>
 public interface IServerSettings : IComputeService
 {
     [ComputeMethod, RemoteComputeMethod(MinCacheDuration = 600)]
@@ -11,6 +14,9 @@ public interface IServerSettings : IComputeService
     Task OnSet(ServerSettings_Set command, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Command to set a server-side setting value.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public partial record ServerSettings_Set(

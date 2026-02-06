@@ -1,5 +1,8 @@
 namespace ActualChat.Logging;
 
+/// <summary>
+/// A logger that forwards log entries to <see cref="LogSinks"/>.
+/// </summary>
 public class TailLogger(IServiceProvider services, string categoryName) : ILogger
 {
     private LogSinks Sinks => field ??= services.GetRequiredService<LogSinks>();

@@ -1,5 +1,8 @@
 namespace ActualChat.Hosting;
 
+/// <summary>
+/// Container for registered <see cref="HostModule"/> instances.
+/// </summary>
 public sealed class ModuleHost
 {
     public IReadOnlyList<HostModule> Modules { get; }

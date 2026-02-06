@@ -5,6 +5,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service implementation for managing user avatars.
+/// </summary>
 public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAvatarsBackend
 {
     private IDbEntityResolver<string, DbAvatar> DbAvatarResolver { get; }

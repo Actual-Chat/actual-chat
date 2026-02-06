@@ -1,5 +1,8 @@
 namespace ActualChat.Performance;
 
+/// <summary>
+/// Provides lightweight performance tracing with named scopes and regions.
+/// </summary>
 public sealed class Tracer
 {
     private readonly CpuTimestamp _startedAt;

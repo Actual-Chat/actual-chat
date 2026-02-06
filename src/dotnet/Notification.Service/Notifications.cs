@@ -3,6 +3,9 @@ using ActualChat.Users;
 
 namespace ActualChat.Notification;
 
+/// <summary>
+/// Frontend service for managing push notifications with session-based access control.
+/// </summary>
 public class Notifications(IServiceProvider services) : INotifications
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();

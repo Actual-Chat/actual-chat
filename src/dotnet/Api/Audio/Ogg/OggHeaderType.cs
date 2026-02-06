@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Audio.Ogg;
 
+/// <summary>
+/// Flags for Ogg page header type.
+/// </summary>
 #pragma warning disable CA1028
 
 [Flags]

@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// A wrapper that performs disposal in the background with timeout protection.
+/// </summary>
 public class SafeDisposable(object disposable, TimeSpan timeout, ILogger? log = null)
     : IDisposable, IAsyncDisposable
 {

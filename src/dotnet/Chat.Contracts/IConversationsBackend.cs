@@ -5,6 +5,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for managing conversations (chat entry groupings with AI summaries).
+/// </summary>
 public interface IConversationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -31,6 +34,9 @@ public interface IConversationsBackend : IComputeService, IBackendService
     Task<Conversation?> OnAppendReply(ConversationBackend_AppendReply command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create, update, or delete a conversation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Change(
@@ -43,6 +49,9 @@ public sealed partial record ConversationBackend_Change(
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
+/// <summary>
+/// Command to generate an AI summary for a conversation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
@@ -60,6 +69,9 @@ public sealed partial record ConversationBackend_Summarize(
         => $"ConversationBackend_Summarize {{ ChatId={ChatId}, EntryIdRanges=[{string.Join(", ", EntryIdRanges.Select(r => r.Format()))}], DelayUntil={DelayUntil} }}";
 }
 
+/// <summary>
+/// Command to append a reply entry range to a conversation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_AppendReply(

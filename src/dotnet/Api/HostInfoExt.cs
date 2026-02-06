@@ -3,6 +3,9 @@ using ActualChat.Hosting;
 
 namespace ActualChat;
 
+/// <summary>
+/// Extension methods for <see cref="Hosting.HostInfo"/> URL and host resolution.
+/// </summary>
 public static class HostInfoExt
 {
     public static string GetAllowedBaseUrl(this HostInfo hostInfo, string host, string scheme = "https")

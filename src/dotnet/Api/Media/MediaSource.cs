@@ -1,5 +1,8 @@
 namespace ActualChat.Media;
 
+/// <summary>
+/// Base class providing a memoized stream of media frames with format metadata.
+/// </summary>
 public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     where TFormat : MediaFormat
     where TFrame : MediaFrame

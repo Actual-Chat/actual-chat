@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.App.Maui;
 
+/// <summary>
+/// Custom Blazor WebView handler that ensures the app services are ready before configuring the MAUI context.
+/// </summary>
 public partial class CustomBlazorWebViewHandler : BlazorWebViewHandler
 {
     public override void SetMauiContext(IMauiContext mauiContext)
@@ -29,4 +32,7 @@ public partial class CustomBlazorWebViewHandler : BlazorWebViewHandler
     }
 }
 
+/// <summary>
+/// Provides access to the parent service container for child services.
+/// </summary>
 public record ParentContainerAccessor(IServiceProvider Services);

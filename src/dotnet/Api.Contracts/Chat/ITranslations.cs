@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Service for translating chat messages to different languages.
+/// </summary>
 public interface ITranslations : IComputeService
 {
     [Obsolete("2025.08: Use Get with translateIfMissing flag instead.")]

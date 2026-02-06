@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for sending email communications.
+/// </summary>
 public interface IEmails : IComputeService
 {
     [CommandHandler]

@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Extension methods for <see cref="MarkupConsumer"/> to get display limits.
+/// </summary>
 public static class MarkupConsumerExt
 {
     public static int? GetTrimLength(this MarkupConsumer consumer)

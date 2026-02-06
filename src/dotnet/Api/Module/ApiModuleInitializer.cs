@@ -4,6 +4,9 @@ using MemoryPack;
 
 namespace ActualChat.Module;
 
+/// <summary>
+/// Module initializer that registers MemoryPack formatters for identifiers.
+/// </summary>
 #pragma warning disable CA2255
 
 public static class ApiModuleInitializer

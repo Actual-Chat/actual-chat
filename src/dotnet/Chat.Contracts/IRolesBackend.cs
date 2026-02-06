@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for managing chat roles and permissions.
+/// </summary>
 public interface IRolesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -22,6 +25,9 @@ public interface IRolesBackend : IComputeService, IBackendService
     Task<Role> Change(RolesBackend_Change command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create, update, or delete a role.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record RolesBackend_Change(

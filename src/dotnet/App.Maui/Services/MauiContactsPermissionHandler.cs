@@ -5,6 +5,9 @@ using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// MAUI implementation of <see cref="ContactsPermissionHandler"/> using platform permission APIs.
+/// </summary>
 public class MauiContactsPermissionHandler : ContactsPermissionHandler
 {
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiContactsPermissionHandler))]

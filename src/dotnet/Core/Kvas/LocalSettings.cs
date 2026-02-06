@@ -1,5 +1,8 @@
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// Local key-value store for client-side settings persistence.
+/// </summary>
 public class LocalSettings : BatchingKvas
 {
     public new record Options : BatchingKvas.Options

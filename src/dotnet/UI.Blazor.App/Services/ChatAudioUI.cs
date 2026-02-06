@@ -4,6 +4,9 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Manages audio listening and recording state for chats in the UI.
+/// </summary>
 public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     private readonly MutableState<Moment?> _stopRecordingAt;

@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Manages toast notification display with auto-dismiss functionality.
+/// </summary>
 public class ToastUI
 {
     private readonly MutableList<ToastModel> _items = new();

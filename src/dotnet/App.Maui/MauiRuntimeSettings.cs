@@ -1,5 +1,8 @@
 namespace ActualChat.App.Maui;
 
+/// <summary>
+/// Configures thread pool settings based on hardware capabilities for mobile platforms.
+/// </summary>
 public static class MauiRuntimeSettings
 {
     private static readonly Tracer Tracer = Tracer.Default[nameof(MauiRuntimeSettings)];

@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Notification;
 
+/// <summary>
+/// Backend service for managing push notifications and devices.
+/// </summary>
 public interface INotificationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -50,6 +53,9 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task OnSignedOut(UserSignedOutEvent eventCommand, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to send a notification to a user.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Notify(
@@ -61,6 +67,9 @@ public sealed partial record NotificationsBackend_Notify(
     public UserId ShardKey => Notification.UserId;
 }
 
+/// <summary>
+/// Command to create or update a notification record.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Upsert(
@@ -71,6 +80,9 @@ public sealed partial record NotificationsBackend_Upsert(
     public UserId ShardKey => Notification.UserId;
 }
 
+/// <summary>
+/// Command to create or update an explicit (user-created) notification.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_UpsertExplicitNotification(
@@ -81,6 +93,9 @@ public sealed partial record NotificationsBackend_UpsertExplicitNotification(
     public UserId ShardKey => Notification.UserId;
 }
 
+/// <summary>
+/// Command to register a device for push notifications.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RegisterDevice(
@@ -94,6 +109,9 @@ public sealed partial record NotificationsBackend_RegisterDevice(
     public UserId ShardKey => UserId;
 }
 
+/// <summary>
+/// Command to unregister devices from push notifications.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveDevices(
@@ -104,6 +122,9 @@ public sealed partial record NotificationsBackend_RemoveDevices(
     public Symbol ShardKey => DeviceIds.FirstOrDefault();
 }
 
+/// <summary>
+/// Command to remove all notification data for a deleted account.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveAccount(
@@ -114,6 +135,9 @@ public sealed partial record NotificationsBackend_RemoveAccount(
     public UserId ShardKey => UserId;
 }
 
+/// <summary>
+/// Command to notify all members of a chat about new entries.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_NotifyMembers(
@@ -126,6 +150,9 @@ public sealed partial record NotificationsBackend_NotifyMembers(
     public UserId ShardKey => UserId;
 }
 
+/// <summary>
+/// Command to notify users who were mentioned in a message.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_NotifyMentionedMembers(

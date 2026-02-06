@@ -5,6 +5,9 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Manages unified search across people, groups, places, and messages with navigation support.
+/// </summary>
 public partial class SearchUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IDisposable
 {
     private static readonly SearchScope[] Scopes = [SearchScope.People, SearchScope.Groups, SearchScope.Places, SearchScope.Messages ];

@@ -1,5 +1,8 @@
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// Client-side KVAS implementation that delegates to <see cref="IServerKvas"/>.
+/// </summary>
 public class ServerKvasClient(IServerKvas serverKvas, Session session) : IKvas<Session>, IKvas<Account>
 {
     public IServiceProvider Services => field ??= ServerKvas.GetServices();

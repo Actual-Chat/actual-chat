@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Specifies a user's online presence status.
+/// </summary>
 public enum Presence
 {
     Unknown = 0,

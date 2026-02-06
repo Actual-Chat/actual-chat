@@ -3,12 +3,18 @@ using MemoryPack;
 
 namespace ActualChat;
 
+/// <summary>
+/// Represents a change operation (create, update, or remove) on an entity.
+/// </summary>
 public interface IChange : IRequirementTarget
 {
     ChangeKind Kind { get; }
     bool IsValid();
 }
 
+/// <summary>
+/// A serializable change record with separate create and update payload types.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record Change<TCreate, TUpdate> : IChange
 {
@@ -61,9 +67,15 @@ public partial record Change<TCreate, TUpdate> : IChange
     }
 }
 
+/// <summary>
+/// A serializable change record using the same type for create and update payloads.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record Change<T> : Change<T, T>;
 
+/// <summary>
+/// Factory methods for creating <see cref="Change{T}"/> instances.
+/// </summary>
 public static class Change
 {
     public static Change<T> Create<T>(T item)

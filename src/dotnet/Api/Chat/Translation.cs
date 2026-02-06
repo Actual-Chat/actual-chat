@@ -5,6 +5,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a translation of chat content to a target language.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Translation(
@@ -35,7 +38,9 @@ public sealed partial record Translation(
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
-
+/// <summary>
+/// Represents changes to a <see cref="Translation"/> for incremental updates.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record TranslationDiff : RecordDiff
 {

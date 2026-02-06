@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for chat migration and upgrade operations.
+/// </summary>
 public interface IChatsUpgradeBackend : ICommandService, IBackendService
 {
     [CommandHandler]
@@ -17,6 +20,9 @@ public interface IChatsUpgradeBackend : ICommandService, IBackendService
     Task OnFixCorruptedReadPositions(ChatsUpgradeBackend_FixCorruptedReadPositions command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create the default public chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_CreateDefaultChat(
@@ -26,6 +32,9 @@ public sealed partial record ChatsUpgradeBackend_CreateDefaultChat(
     public ChatId ShardKey => Constants.Chat.DefaultChatId;
 }
 
+/// <summary>
+/// Command to create the system announcements chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_CreateAnnouncementsChat(
@@ -35,6 +44,9 @@ public sealed partial record ChatsUpgradeBackend_CreateAnnouncementsChat(
     public ChatId ShardKey => Constants.Chat.AnnouncementsChatId;
 }
 
+/// <summary>
+/// Command to create the feedback template chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
@@ -44,6 +56,9 @@ public sealed partial record ChatsUpgradeBackend_CreateFeedbackTemplateChat(
     public ChatId ShardKey => Constants.Chat.FeedbackTemplateChatId;
 }
 
+/// <summary>
+/// Command to fix corrupted read position records.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_FixCorruptedReadPositions(
@@ -53,6 +68,9 @@ public sealed partial record ChatsUpgradeBackend_FixCorruptedReadPositions(
     public ChatId? ShardKey => null;
 }
 
+/// <summary>
+/// Command to upgrade a single chat to the latest schema.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsUpgradeBackend_UpgradeChat(

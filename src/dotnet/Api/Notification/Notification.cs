@@ -3,6 +3,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Notification;
 
+/// <summary>
+/// Represents a user notification with content and metadata.
+/// </summary>
 #pragma warning disable MA0049 // Allows ActualChat.Notification.Notification
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -89,19 +92,31 @@ public partial record Notification(
     }
 }
 
+/// <summary>
+/// Base class for notification type-specific data.
+/// </summary>
 public abstract record NotificationOption : IRequirementTarget;
 
+/// <summary>
+/// Notification data for a chat event.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ChatNotificationOption(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId
     ) : NotificationOption;
 
+/// <summary>
+/// Notification data for a new chat entry.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ChatEntryNotificationOption(
     [property: DataMember, MemoryPackOrder(0)] TextEntryId EntryId,
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
     ) : NotificationOption;
 
+/// <summary>
+/// Notification data for an attention request (e.g., incoming call).
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record GetAttentionNotificationOption(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,

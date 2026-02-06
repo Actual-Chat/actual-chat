@@ -5,6 +5,9 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Manages user language preferences and per-chat language settings for transcription.
+/// </summary>
 public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{BlazorUIAppModule.ImportName}.LanguageUI.getLanguages";

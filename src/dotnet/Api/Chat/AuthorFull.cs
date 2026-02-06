@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Extended <see cref="Author"/> with user association and role memberships.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
@@ -26,6 +29,9 @@ public sealed partial record AuthorFull(
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
+/// <summary>
+/// Represents changes to an <see cref="Author"/> for incremental updates.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record AuthorDiff : RecordDiff
 {

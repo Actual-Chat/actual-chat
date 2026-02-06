@@ -7,6 +7,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a message or media entry in a chat conversation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record ChatEntry(
@@ -144,6 +147,9 @@ public sealed partial record ChatEntry(
     public bool VersionEquals(ChatEntry? other) => VersionEqualityComparer.Equals(this, other);
 }
 
+/// <summary>
+/// Represents changes to a <see cref="ChatEntry"/> for incremental updates.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 public sealed partial record ChatEntryDiff() : RecordDiff

@@ -4,6 +4,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for detecting and storing chat entry languages.
+/// </summary>
 public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -26,6 +29,9 @@ public interface IChatEntryLanguagesBackend : IComputeService, IBackendService
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to detect the language of a chat entry.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_Detect(
@@ -39,6 +45,9 @@ public sealed partial record ChatEntryLanguagesBackend_Detect(
     string IHasUuid.Uuid => $"{Id}.{ContentHash.Hash}";
 }
 
+/// <summary>
+/// Command to update the detected language for a chat entry.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatEntryLanguagesBackend_Change(

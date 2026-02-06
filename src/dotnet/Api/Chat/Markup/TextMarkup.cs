@@ -2,6 +2,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Base class for text-based markup elements.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public abstract class TextMarkup(string text) : Markup
 {

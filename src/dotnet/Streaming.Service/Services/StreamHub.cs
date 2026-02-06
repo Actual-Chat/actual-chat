@@ -9,6 +9,9 @@ using Hub = Microsoft.AspNetCore.SignalR.Hub;
 
 namespace ActualChat.Streaming.Services;
 
+/// <summary>
+/// SignalR hub for real-time audio streaming from clients.
+/// </summary>
 public class StreamHub(IServiceProvider services) : Hub
 {
     private static readonly Task<string> PongTask = Task.FromResult("Pong");

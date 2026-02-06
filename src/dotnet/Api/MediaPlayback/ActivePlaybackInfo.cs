@@ -1,5 +1,8 @@
 namespace ActualChat.MediaPlayback;
 
+/// <summary>
+/// Tracks currently playing tracks and their playback states.
+/// </summary>
 public class ActivePlaybackInfo : SafeAsyncDisposableBase, IComputeService
 {
     private readonly ConcurrentDictionary<Symbol, TrackInfo> _trackInfos = new();

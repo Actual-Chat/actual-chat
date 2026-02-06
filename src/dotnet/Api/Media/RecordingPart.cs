@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Specifies the type of recording event.
+/// </summary>
 #pragma warning disable CA1028 // If possible, make the underlying type of RecordingEventKind System.Int32
 
 public enum RecordingEventKind : byte
@@ -11,6 +14,9 @@ public enum RecordingEventKind : byte
     Resume,
 }
 
+/// <summary>
+/// Represents a part of a recording stream (data, pause, or resume event).
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class RecordingPart(RecordingEventKind eventKind)
 {

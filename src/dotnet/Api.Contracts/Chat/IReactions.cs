@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Service for managing reactions (emoji responses) to chat messages.
+/// </summary>
 public interface IReactions : IComputeService
 {
     [ComputeMethod]

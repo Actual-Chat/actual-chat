@@ -6,6 +6,9 @@ using MessagePack;
 
 namespace ActualChat;
 
+/// <summary>
+/// Identifies the source content for a translation.
+/// </summary>
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
@@ -157,6 +160,9 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
         };
 }
 
+/// <summary>
+/// Specifies the type of content being translated.
+/// </summary>
 public enum TranslationIdKind
 {
     TextEntry = 0,
@@ -167,6 +173,9 @@ public enum TranslationIdKind
     ThreadDescription = 9,
 }
 
+/// <summary>
+/// Specifies conversation-specific content types for translation.
+/// </summary>
 public enum ConversationTranslationIdKind
 {
     Title,
@@ -174,6 +183,9 @@ public enum ConversationTranslationIdKind
     Summary,
 }
 
+/// <summary>
+/// Specifies thread-specific content types for translation.
+/// </summary>
 public enum ThreadTranslationIdKind
 {
     Title,

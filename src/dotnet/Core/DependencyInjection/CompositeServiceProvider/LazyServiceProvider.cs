@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.DependencyInjection;
 
+/// <summary>
+/// A service provider that lazily initializes from an async task.
+/// </summary>
 public sealed class LazyServiceProvider(
     Task<IServiceProvider> whenLazyServicesReady,
     Func<Type, bool>? lazyServiceFilter,

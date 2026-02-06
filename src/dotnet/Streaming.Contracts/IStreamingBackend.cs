@@ -4,6 +4,9 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
+/// <summary>
+/// Backend service for audio and transcript streaming.
+/// </summary>
 public interface IStreamingBackend : IRpcService, IBackendService
 {
     Task<RpcStream<byte[]>?> GetAudio(

@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Invite;
 
+/// <summary>
+/// Preview data for an invite link showing the target chat or place.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record InviteChatLinkPreview(
     [property: DataMember, MemoryPackOrder(0)] Chat.Chat? Chat,

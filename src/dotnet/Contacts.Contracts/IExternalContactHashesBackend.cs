@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Backend service for managing external contact hash checksums for sync.
+/// </summary>
 public interface IExternalContactHashesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -13,6 +16,9 @@ public interface IExternalContactHashesBackend : IComputeService, IBackendServic
     Task OnRemoveAccount(ExternalContactHashesBackend_RemoveAccount command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to update the external contacts hash for a device.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactHashesBackend_Change(
@@ -25,6 +31,9 @@ public sealed partial record ExternalContactHashesBackend_Change(
     public UserId ShardKey => Id.OwnerId;
 }
 
+/// <summary>
+/// Command to remove external contact hashes for a deleted account.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactHashesBackend_RemoveAccount(

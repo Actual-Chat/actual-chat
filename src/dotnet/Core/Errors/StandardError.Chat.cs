@@ -9,6 +9,9 @@ public static partial class StandardError
     }
 }
 
+/// <summary>
+/// Base exception for chat-related errors.
+/// </summary>
 public abstract class ChatException : Exception
 {
     protected ChatException() : this(null) { }
@@ -16,6 +19,9 @@ public abstract class ChatException : Exception
     protected ChatException(string? message, Exception? inner) : base(message, inner) { }
 }
 
+/// <summary>
+/// Exception thrown when a non-template chat is used where a template is expected.
+/// </summary>
 public class NonTemplateException : AccountException
 {
     public NonTemplateException() : this(null) { }

@@ -3,6 +3,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Frontend service for managing user's read positions in chats.
+/// </summary>
 [SuppressMessage("Usage", "MA0006:Use String.Equals instead of equality operator")]
 public class ChatPositions(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IChatPositions
 {

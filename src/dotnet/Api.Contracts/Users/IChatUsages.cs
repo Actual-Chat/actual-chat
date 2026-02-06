@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for tracking recent chat usage patterns.
+/// </summary>
 public interface IChatUsages : IComputeService
 {
     [ComputeMethod]

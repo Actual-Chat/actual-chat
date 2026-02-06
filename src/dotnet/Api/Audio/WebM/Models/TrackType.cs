@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Audio.WebM.Models;
 
+/// <summary>
+/// Specifies the type of media track in a WebM file.
+/// </summary>
 #pragma warning disable CA1028 // If possible, make the underlying enum type System.Int32
 
 [Flags]

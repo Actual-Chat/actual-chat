@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Service for tracking external contact sync state via hashes.
+/// </summary>
 public interface IExternalContactHashes : IComputeService
 {
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]

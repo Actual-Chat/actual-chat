@@ -5,6 +5,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for managing emoji reactions on chat entries.
+/// </summary>
 public class ReactionsBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), IReactionsBackend
 {

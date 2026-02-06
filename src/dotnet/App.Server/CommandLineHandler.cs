@@ -5,6 +5,9 @@ using static System.Console;
 
 namespace ActualChat.App.Server;
 
+/// <summary>
+/// Processes command-line arguments for URL, role, and multi-host configuration overrides.
+/// </summary>
 public static class CommandLineHandler
 {
     private const string UrlArgPrefix = "-url:";

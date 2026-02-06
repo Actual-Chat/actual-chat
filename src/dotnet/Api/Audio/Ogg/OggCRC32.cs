@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Audio.Ogg;
 
+/// <summary>
+/// Calculates CRC32 checksum for Ogg pages.
+/// </summary>
 internal static class OggCRC32
 {
     private static readonly uint[] _crcTable = {

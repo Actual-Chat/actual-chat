@@ -2,6 +2,9 @@
 
 namespace ActualChat.Audio.WebM.Models;
 
+/// <summary>
+/// Represents a virtual block (deprecated Matroska element).
+/// </summary>
 public sealed class BlockVirtual : Block
 {
     public override EbmlElementDescriptor Descriptor => MatroskaSpecification.BlockVirtualDescriptor;

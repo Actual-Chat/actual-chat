@@ -37,6 +37,9 @@ using OpenTelemetry.Trace;
 
 namespace ActualChat.App.Server.Module;
 
+/// <summary>
+/// Main server module configuring web hosting, Blazor, OpenTelemetry, and infrastructure services.
+/// </summary>
 public sealed class AppServerModule(IServiceProvider moduleServices)
     : HostModule<HostSettings>(moduleServices), IWebServerModule
 {

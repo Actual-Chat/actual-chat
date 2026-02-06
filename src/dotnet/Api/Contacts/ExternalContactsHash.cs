@@ -5,6 +5,9 @@ using MemoryPack;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Stores the combined hash of all external contacts for a user device.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record ExternalContactsHash(

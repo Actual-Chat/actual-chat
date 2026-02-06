@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Query parameters for listing changed chat entries by version range.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ChangedEntriesQuery
 {

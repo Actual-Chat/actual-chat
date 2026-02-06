@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Legacy session authentication info - use <see cref="SessionInfo"/> instead.
+/// </summary>
 [Obsolete("2025.01: Use SessionInfo instead.")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record LegacySessionAuthInfo : IRequirementTarget

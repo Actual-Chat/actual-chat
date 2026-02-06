@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Backend service for managing user contacts and memberships.
+/// </summary>
 public interface IContactsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -67,6 +70,9 @@ public interface IContactsBackend : IComputeService, IBackendService
         CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create, update, or delete a contact.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Change(
@@ -79,6 +85,9 @@ public sealed partial record ContactsBackend_Change(
     public ContactId ShardKey => Id;
 }
 
+/// <summary>
+/// Command to update a contact's last activity timestamp.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Touch(
@@ -89,6 +98,9 @@ public sealed partial record ContactsBackend_Touch(
     public ContactId ShardKey => Id;
 }
 
+/// <summary>
+/// Command to remove all contacts for a deleted account.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_RemoveAccount(
@@ -99,6 +111,9 @@ public sealed partial record ContactsBackend_RemoveAccount(
     public UserId ShardKey => UserId;
 }
 
+/// <summary>
+/// Command to remove all contacts for a deleted chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_RemoveChatContacts(
@@ -109,6 +124,9 @@ public sealed partial record ContactsBackend_RemoveChatContacts(
     public ChatId ShardKey => ChatId;
 }
 
+/// <summary>
+/// Command to send welcome messages to a new user.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Greet(
@@ -119,6 +137,9 @@ public sealed partial record ContactsBackend_Greet(
     public UserId ShardKey => UserId;
 }
 
+/// <summary>
+/// Command to update a user's membership status in a place.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_ChangePlaceMembership(
@@ -131,6 +152,9 @@ public sealed partial record ContactsBackend_ChangePlaceMembership(
     public PlaceId ShardKey => PlaceId;
 }
 
+/// <summary>
+/// Command to publish a chat that was copied to a place.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_PublishCopiedChat(
@@ -141,6 +165,9 @@ public sealed partial record ContactsBackend_PublishCopiedChat(
     public ChatId ShardKey => ChatId;
 }
 
+/// <summary>
+/// Command to review and update a contact's name from external contacts.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_ReviewExternalContactName(
@@ -151,6 +178,9 @@ public sealed partial record ContactsBackend_ReviewExternalContactName(
     public ContactId ShardKey => Id;
 }
 
+/// <summary>
+/// Command to create, update, or delete a thread contact.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_ChangeThreadContact(

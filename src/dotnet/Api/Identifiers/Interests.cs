@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Provides static instances and lookup dictionary for user interests.
+/// </summary>
 public static class Interests
 {
     public static readonly Interest Flexible = new ("flexible", "Flexible");

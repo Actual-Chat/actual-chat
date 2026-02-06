@@ -12,6 +12,9 @@ using static ActualChat.Constants.Transcription.Deepgram;
 
 namespace ActualChat.Streaming.Services.Transcribers;
 
+/// <summary>
+/// Transcriber implementation using Deepgram speech-to-text API.
+/// </summary>
 #pragma warning disable CA1826
 
 public partial class DeepgramTranscriber : ITranscriber

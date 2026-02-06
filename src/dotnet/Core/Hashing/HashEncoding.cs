@@ -1,5 +1,8 @@
 namespace ActualChat.Hashing;
 
+/// <summary>
+/// Specifies the encoding format for hash output strings.
+/// </summary>
 public enum HashEncoding
 {
     Base16 = 0,

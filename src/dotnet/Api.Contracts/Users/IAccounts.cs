@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for managing user accounts, sessions, and presence.
+/// </summary>
 public interface IAccounts : IComputeService
 {
     // Commands

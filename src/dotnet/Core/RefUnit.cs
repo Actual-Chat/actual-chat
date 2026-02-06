@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// A reference type equivalent of <see cref="Unit"/> for scenarios requiring non-value types.
+/// </summary>
 public sealed class RefUnit : IEquatable<RefUnit>
 {
     public static readonly RefUnit Instance = new();

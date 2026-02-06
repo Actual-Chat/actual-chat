@@ -3,6 +3,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Invite;
 
+/// <summary>
+/// Represents an invitation link for joining chats, places, or adding contacts.
+/// </summary>
 #pragma warning disable MA0049 // Allows ActualChat.Invite.Invite
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -56,6 +59,9 @@ public sealed partial record Invite(
         };
 }
 
+/// <summary>
+/// Contains the target details of an <see cref="Invite"/>.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record InviteDetails : IUnionRecord<InviteDetailsOption?>
 {
@@ -87,11 +93,17 @@ public sealed partial record InviteDetails : IUnionRecord<InviteDetailsOption?>
     public static implicit operator InviteDetails(InviteDetailsOption option) => new() { Option = option };
 }
 
+/// <summary>
+/// Base class for invite detail options.
+/// </summary>
 public abstract record InviteDetailsOption : IRequirementTarget
 {
     public abstract string GetSearchKey();
 }
 
+/// <summary>
+/// Invite option for joining a chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ChatInviteOption(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId
@@ -101,6 +113,9 @@ public partial record ChatInviteOption(
         => $"{nameof(ChatInviteOption)}:{ChatId}";
 }
 
+/// <summary>
+/// Invite option for joining a place.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record PlaceInviteOption(
     [property: DataMember, MemoryPackOrder(0)] PlaceId PlaceId
@@ -110,6 +125,9 @@ public partial record PlaceInviteOption(
         => $"{nameof(PlaceInviteOption)}:{PlaceId}";
 }
 
+/// <summary>
+/// Invite option for adding a user as a contact.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record UserInviteOption : InviteDetailsOption
 {

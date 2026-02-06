@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Kvas;
 
+/// <summary>
+/// Wraps an <see cref="IKvas"/> to provide scoped access via <see cref="IKvas{TScope}"/>.
+/// </summary>
 public sealed record ScopedKvasProxy<TScope>(IKvas Kvas) : IKvas<TScope>
 {
     public IServiceProvider Services => Kvas.Services;

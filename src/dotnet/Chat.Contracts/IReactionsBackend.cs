@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for managing reactions (emoji responses) on chat entries.
+/// </summary>
 public interface IReactionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -14,6 +17,9 @@ public interface IReactionsBackend : IComputeService, IBackendService
     Task OnReact(ReactionsBackend_React command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to add or remove a reaction on a chat entry.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ReactionsBackend_React(

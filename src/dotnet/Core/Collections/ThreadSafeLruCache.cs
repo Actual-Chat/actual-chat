@@ -1,5 +1,8 @@
 namespace ActualChat.Collections;
 
+/// <summary>
+/// A thread-safe wrapper around <see cref="LruCache{TKey, TValue}"/>.
+/// </summary>
 public class ThreadSafeLruCache<TKey, TValue>(LruCache<TKey, TValue> cache)
     : IThreadSafeLruCache<TKey, TValue>
     where TKey : notnull

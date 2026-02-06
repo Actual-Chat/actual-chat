@@ -6,6 +6,9 @@ using MessagePack;
 
 namespace ActualChat;
 
+/// <summary>
+/// Unique identifier for content that can be associated with reactions or other metadata.
+/// </summary>
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
@@ -149,6 +152,9 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
     }
 }
 
+/// <summary>
+/// Specifies the type of content a <see cref="ContentId"/> refers to.
+/// </summary>
 public enum ContentKind
 {
     User = 0,

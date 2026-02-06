@@ -2,6 +2,9 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Prevents the device screen from sleeping during active audio playback or recording.
+/// </summary>
 public class KeepAwakeUI(UIHub hub)
 {
     private static readonly string JSSetKeepAwakeMethod = $"{BlazorUICoreModule.ImportName}.KeepAwakeUI.setKeepAwake";

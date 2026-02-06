@@ -2,6 +2,9 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// Tracks mobile app loading milestones including WebView creation and splash removal.
+/// </summary>
 public static class MauiLoadingUI
 {
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];

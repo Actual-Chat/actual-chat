@@ -2,6 +2,9 @@ using System.Numerics;
 
 namespace ActualChat;
 
+/// <summary>
+/// Base interface for string-based identifiers with hash code caching.
+/// </summary>
 // ReSharper disable once PossibleInterfaceMemberAmbiguity
 public interface IStringIdentifier : IHasId<string>, IHasId<Symbol>
 {
@@ -9,6 +12,9 @@ public interface IStringIdentifier : IHasId<string>, IHasId<Symbol>
     int HashCode { get; }
 }
 
+/// <summary>
+/// Generic interface for string-based identifiers with parsing support.
+/// </summary>
 public interface IStringIdentifier<TSelf> : IStringIdentifier,
     IEquatable<TSelf>, IComparable<TSelf>, IEqualityOperators<TSelf, TSelf, bool>
     where TSelf : StringIdentifier, IStringIdentifier<TSelf>
@@ -22,6 +28,9 @@ public interface IStringIdentifier<TSelf> : IStringIdentifier,
         => string.CompareOrdinal(Value, other?.Value);
 }
 
+/// <summary>
+/// Base class for string-based identifiers with cached hash code.
+/// </summary>
 public abstract class StringIdentifier(string value) : IStringIdentifier
 {
     [DataMember(Order = 0)]

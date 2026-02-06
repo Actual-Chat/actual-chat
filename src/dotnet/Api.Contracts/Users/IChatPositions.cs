@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for tracking user read and view positions in chats.
+/// </summary>
 public interface IChatPositions : IComputeService
 {
     [ComputeMethod, RemoteComputeMethod(MinCacheDuration = 600)]

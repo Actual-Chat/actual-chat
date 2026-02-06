@@ -1,5 +1,8 @@
 namespace ActualChat.Transcription;
 
+/// <summary>
+/// Configures transcription settings including language and detection.
+/// </summary>
 public record TranscriptionOptions
 {
     public Language Language { get; init; } = Languages.Main;

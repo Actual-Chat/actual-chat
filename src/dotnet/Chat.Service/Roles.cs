@@ -4,6 +4,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for managing chat roles and permissions with session-based access control.
+/// </summary>
 public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IRoles
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();

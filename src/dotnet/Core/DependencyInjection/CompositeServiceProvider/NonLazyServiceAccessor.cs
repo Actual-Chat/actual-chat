@@ -2,6 +2,9 @@
 
 namespace ActualChat.DependencyInjection;
 
+/// <summary>
+/// Provides access to the non-lazy service provider from within lazy services.
+/// </summary>
 public class NonLazyServiceAccessor : IServiceProvider
 {
     private readonly Lock _lock = new();

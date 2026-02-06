@@ -1,5 +1,8 @@
 namespace ActualChat.Comparison;
 
+/// <summary>
+/// Compares strings as long integers when possible, falling back to string comparison.
+/// </summary>
 public sealed class LongAsStringKeyComparer : IComparer<string>
 {
     public static readonly LongAsStringKeyComparer Default = new();

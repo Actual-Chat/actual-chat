@@ -2,6 +2,9 @@ using ActualLab.Resilience;
 
 namespace ActualChat.Queues;
 
+/// <summary>
+/// Reference to a queue identified by its shard scheme.
+/// </summary>
 [StructLayout(LayoutKind.Auto)]
 public readonly struct QueueRef : ICanBeNone<QueueRef>, IEquatable<QueueRef>
 {

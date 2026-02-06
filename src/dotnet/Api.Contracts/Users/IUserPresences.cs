@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for tracking and querying user online presence.
+/// </summary>
 public interface IUserPresences : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 30)]

@@ -1,5 +1,8 @@
 namespace ActualChat.App.Server;
 
+/// <summary>
+/// Provides a minimal <see cref="AppHost"/> instance with only configuration services for early startup access.
+/// </summary>
 public static class ConfigOnlyAppHost
 {
     private static readonly LazySlim<AppHost> InstanceLazy = new(new AppHost().Build(coreServicesOnly: true));

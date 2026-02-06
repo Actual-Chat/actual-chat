@@ -2,6 +2,9 @@
 
 namespace ActualChat.Audio.WebM.Models;
 
+/// <summary>
+/// Represents a simple metadata tag in a Matroska file.
+/// </summary>
 public sealed class SimpleTag
 {
     [MatroskaElementDescriptor(MatroskaSpecification.TagName)]

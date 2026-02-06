@@ -4,6 +4,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// User preferences for spoken languages (primary, secondary, tertiary).
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserLanguageSettings : IHasOrigin, IHasKvasKey<UserLanguageSettings>
 {

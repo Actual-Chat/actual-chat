@@ -2,12 +2,17 @@ using ActualChat.Hardware;
 
 namespace ActualChat.MediaPlayback;
 
-/// <summary> Must be scoped service </summary>
+/// <summary>
+/// Creates <see cref="Playback"/> instances. Must be a scoped service.
+/// </summary>
 public interface IPlaybackFactory
 {
     Playback Create();
 }
 
+/// <summary>
+/// Default implementation of <see cref="IPlaybackFactory"/>.
+/// </summary>
 public class PlaybackFactory : IPlaybackFactory
 {
     private readonly ActivePlaybackInfo _activePlaybackInfo;

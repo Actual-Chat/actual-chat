@@ -1,5 +1,8 @@
 namespace ActualChat.DependencyInjection;
 
+/// <summary>
+/// A keyed factory that caches created instances using an LRU cache.
+/// </summary>
 public class CachingKeyedFactory<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey>
@@ -49,6 +52,9 @@ public class CachingKeyedFactory<
         };
 }
 
+/// <summary>
+/// A caching keyed factory with explicit implementation type.
+/// </summary>
 public class CachingKeyedFactory<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey,

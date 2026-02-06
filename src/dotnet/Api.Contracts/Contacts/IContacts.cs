@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Service for managing user contacts and contact lists.
+/// </summary>
 public interface IContacts : IComputeService
 {
     [ComputeMethod, RemoteComputeMethod(MinCacheDuration = 600)]

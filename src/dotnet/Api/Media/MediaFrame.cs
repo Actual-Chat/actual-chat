@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Base class for media data frames (audio, video).
+/// </summary>
 [DataContract, MemoryPackable]
 [MemoryPackUnion(0 ,typeof(AudioFrame))]
 public abstract partial class MediaFrame

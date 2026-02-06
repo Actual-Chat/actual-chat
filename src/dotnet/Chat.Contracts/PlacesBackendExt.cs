@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Extension methods for <see cref="IPlacesBackend"/>.
+/// </summary>
 public static class PlacesBackendExt
 {
     public static async IAsyncEnumerable<Place[]> BatchChanged(

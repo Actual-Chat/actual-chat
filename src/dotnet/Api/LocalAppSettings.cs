@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat;
 
+/// <summary>
+/// Application settings stored locally on the device.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record LocalAppSettings : IHasKvasKey<LocalAppSettings>
 {

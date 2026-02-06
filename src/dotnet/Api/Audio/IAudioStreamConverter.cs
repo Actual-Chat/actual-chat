@@ -1,5 +1,8 @@
 namespace ActualChat.Audio;
 
+/// <summary>
+/// Converts between byte streams and <see cref="AudioSource"/>.
+/// </summary>
 public interface IAudioStreamConverter
 {
     Task<AudioSource> FromByteStream(

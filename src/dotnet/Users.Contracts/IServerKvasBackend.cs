@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service for server-side key-value storage operations.
+/// </summary>
 public interface IServerKvasBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -14,6 +17,9 @@ public interface IServerKvasBackend : IComputeService, IBackendService
     Task OnSetMany(ServerKvasBackend_SetMany command, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Command to set multiple key-value pairs at once.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvasBackend_SetMany(

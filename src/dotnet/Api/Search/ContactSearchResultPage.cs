@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
+/// <summary>
+/// A paginated collection of contact search results.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class ContactSearchResultPage
 {

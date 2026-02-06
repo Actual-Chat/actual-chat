@@ -7,6 +7,9 @@ using MessagePack;
 
 namespace ActualChat;
 
+/// <summary>
+/// Unique identifier for a user account.
+/// </summary>
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]
@@ -100,6 +103,9 @@ public sealed partial class UserId : PrincipalId, IStringIdentifier<UserId>
     }
 }
 
+/// <summary>
+/// Extension methods for <see cref="UserId"/>.
+/// </summary>
 public static class UserIdExt
 {
     public static bool IsGuestOrNull([NotNullWhen(false)] this UserId? userId)

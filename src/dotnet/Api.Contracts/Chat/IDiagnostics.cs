@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Service for retrieving server mesh diagnostic information.
+/// </summary>
 public interface IDiagnostics : IComputeService
 {
     [ComputeMethod]

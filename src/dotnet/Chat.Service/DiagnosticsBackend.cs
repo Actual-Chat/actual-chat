@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for distributed mesh cluster diagnostics.
+/// </summary>
 public class DiagnosticsBackend(IServiceProvider services) : IDiagnosticsBackend
 {
     private DiagnosticsBackendLocal LocalBackend => field ??= services.GetRequiredService<DiagnosticsBackendLocal>();

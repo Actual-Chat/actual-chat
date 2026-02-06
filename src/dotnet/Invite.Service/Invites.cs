@@ -3,6 +3,9 @@ using ActualChat.Users;
 
 namespace ActualChat.Invite;
 
+/// <summary>
+/// Frontend service for managing chat and place invite links with session-based access control.
+/// </summary>
 public class Invites(IServiceProvider services) : IInvites
 {
     private static readonly TimeSpan MinInviteLifespan = TimeSpan.FromHours(1);

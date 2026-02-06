@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Users;
 
+/// <summary>
+/// Specifies whether messages include voice, text, or both.
+/// </summary>
 public enum VoiceMode
 {
     TextAndVoice,
@@ -7,6 +10,9 @@ public enum VoiceMode
     JustVoice,
 }
 
+/// <summary>
+/// Extension methods for <see cref="VoiceMode"/>.
+/// </summary>
 public static class VoiceModeExt
 {
     public static bool HasVoice(this VoiceMode voiceMode)

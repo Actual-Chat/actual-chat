@@ -5,6 +5,9 @@ using MemoryPack;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Tracks the status of a link preview grab operation.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]

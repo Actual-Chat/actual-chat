@@ -1,5 +1,8 @@
 namespace ActualChat.Search;
 
+/// <summary>
+/// Defines the type of entities to search for.
+/// </summary>
 public enum SearchScope
 {
     People = 0,

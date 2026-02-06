@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Invite;
 
+/// <summary>
+/// Service for generating and managing invitation links.
+/// </summary>
 public interface IInvites : IComputeService
 {
     [ComputeMethod, Obsolete("2025.02: User invites feature is removed.")]

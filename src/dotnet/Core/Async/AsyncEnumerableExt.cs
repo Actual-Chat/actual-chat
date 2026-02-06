@@ -3,8 +3,10 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat;
 
+/// <summary>
+/// Extension methods for <see cref="IAsyncEnumerable{T}"/> and <see cref="IAsyncEnumerator{T}"/>.
+/// </summary>
 #pragma warning disable CA1849 // Task.Result synchronously blocks
-
 public static partial class AsyncEnumerableExt
 {
     // PrependOne

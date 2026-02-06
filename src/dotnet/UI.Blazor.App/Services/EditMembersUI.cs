@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Provides utilities for checking member editing capabilities in chats.
+/// </summary>
 public class EditMembersUI(AppUIHub hub)
 {
     private AppUIHub Hub { get; } = hub;

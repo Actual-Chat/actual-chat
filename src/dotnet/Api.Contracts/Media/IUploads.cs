@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Service for managing chunked file uploads.
+/// </summary>
 public interface IUploads : IComputeService
 {
     // Non computed method

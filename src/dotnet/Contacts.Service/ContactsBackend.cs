@@ -11,6 +11,9 @@ using StackExchange.Redis;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Backend service implementation for managing user contacts and chat memberships.
+/// </summary>
 public class ContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services), IContactsBackend
 {
     public static readonly TimeSpan GreetTimeout = TimeSpan.FromSeconds(20);

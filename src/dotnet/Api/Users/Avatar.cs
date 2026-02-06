@@ -5,6 +5,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Represents a user's avatar with name, picture, and bio information.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Avatar(

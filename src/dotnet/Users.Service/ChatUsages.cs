@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Frontend service for tracking recently accessed chats per user.
+/// </summary>
 public class ChatUsages(IServiceProvider services) : IChatUsages
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();

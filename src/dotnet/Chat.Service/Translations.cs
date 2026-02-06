@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for retrieving chat entry translations.
+/// </summary>
 public class Translations(IServiceProvider services) : ITranslations
 {
     private ITranslationsBackend Backend => field ??= services.GetRequiredService<ITranslationsBackend>();

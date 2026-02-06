@@ -6,6 +6,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Represents a preview of a linked URL with title, description, and thumbnail.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IHasMetadata, IRequirementTarget

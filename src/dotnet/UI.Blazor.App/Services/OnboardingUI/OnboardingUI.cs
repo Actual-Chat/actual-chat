@@ -4,6 +4,9 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Manages user onboarding flow with step-by-step settings and modal display.
+/// </summary>
 public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
 {
     private static readonly SemaphoreSlim Lock = new (1);

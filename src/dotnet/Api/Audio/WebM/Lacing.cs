@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Audio.WebM;
 
+/// <summary>
+/// Specifies the lacing mode for WebM/Matroska blocks.
+/// </summary>
 #pragma warning disable CA1028 // If possible, make the underlying enum type System.Int32
 #pragma warning disable CA1008 // Change 'No' to 'None'
 

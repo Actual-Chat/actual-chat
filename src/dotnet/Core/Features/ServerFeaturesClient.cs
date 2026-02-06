@@ -1,8 +1,14 @@
 namespace ActualChat;
 
+/// <summary>
+/// Client interface for accessing server features via RPC.
+/// </summary>
 public interface IServerFeaturesClient : IServerFeatures
 { }
 
+/// <summary>
+/// Client-side implementation that fetches server features via <see cref="IServerFeaturesClient"/>.
+/// </summary>
 public class ServerFeaturesClient(IServiceProvider services) : IServerFeatures
 {
     protected IByteSerializer Serializer { get; set; } = ByteSerializer.Default;

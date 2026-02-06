@@ -3,6 +3,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Represents a file upload session with metadata.
+/// </summary>
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
 
 [ParameterComparer(typeof(ByRefParameterComparer))]

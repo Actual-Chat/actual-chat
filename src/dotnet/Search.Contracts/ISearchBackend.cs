@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
+/// <summary>
+/// Backend service for full-text search across contacts and chat entries.
+/// </summary>
 public interface ISearchBackend : IComputeService, IBackendService
 {
     // Non-compute methods
@@ -38,6 +41,9 @@ public interface ISearchBackend : IComputeService, IBackendService
     Task OnContactChangedEvent(ContactChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to refresh the search index.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 // ReSharper disable once InconsistentNaming

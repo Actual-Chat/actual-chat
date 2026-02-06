@@ -2,6 +2,9 @@
 
 namespace ActualChat.Messaging;
 
+/// <summary>
+/// Represents a message being processed with completion tracking.
+/// </summary>
 public interface IMessageProcess
 {
     object UntypedMessage { get; }
@@ -15,11 +18,17 @@ public interface IMessageProcess
     void MarkFailed(Exception error);
 }
 
+/// <summary>
+/// A typed message process with access to the original message.
+/// </summary>
 public interface IMessageProcess<out TMessage> : IMessageProcess
 {
     public TMessage Message { get; }
 }
 
+/// <summary>
+/// Base class for tracking message processing state and completion.
+/// </summary>
 public abstract class MessageProcess : IMessageProcess
 {
     private static readonly ConcurrentDictionary<
@@ -68,6 +77,9 @@ public abstract class MessageProcess : IMessageProcess
     }
 }
 
+/// <summary>
+/// Tracks processing state for a message of type <typeparamref name="TMessage"/>.
+/// </summary>
 public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage>
     where TMessage : class
 {

@@ -1,5 +1,8 @@
 namespace ActualChat.Internal;
 
+/// <summary>
+/// A channel reader that transforms items from an underlying reader using a mapper function.
+/// </summary>
 public sealed class MappingChannelReader<T, TFrom>(
     ChannelReader<TFrom> source,
     Func<TFrom, T> mapper,

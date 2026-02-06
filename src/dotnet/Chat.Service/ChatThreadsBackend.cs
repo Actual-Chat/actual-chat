@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for managing chat thread metadata.
+/// </summary>
 public class ChatThreadsBackend(IServiceProvider services) : IChatThreadsBackend
 {
     private IRolesBackend RolesBackend => field ??= services.GetRequiredService<IRolesBackend>();

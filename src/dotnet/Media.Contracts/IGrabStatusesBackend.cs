@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Backend service for tracking link preview grab operation statuses.
+/// </summary>
 public interface IGrabStatusesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -14,6 +17,9 @@ public interface IGrabStatusesBackend : IComputeService, IBackendService
     Task<GrabStatus> OnChange(GrabStatusesBackend_Change command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to update the status of a link preview grab operation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record GrabStatusesBackend_Change(

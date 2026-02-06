@@ -3,6 +3,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Represents uploaded media content (images, audio, video, files).
+/// </summary>
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
 
 [ParameterComparer(typeof(ByRefParameterComparer))]

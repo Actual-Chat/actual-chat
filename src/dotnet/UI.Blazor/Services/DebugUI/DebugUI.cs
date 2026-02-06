@@ -6,6 +6,9 @@ using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Provides debugging utilities accessible from JavaScript console for diagnostics.
+/// </summary>
 public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DebugUI.init";

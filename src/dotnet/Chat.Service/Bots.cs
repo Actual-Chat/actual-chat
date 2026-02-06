@@ -2,6 +2,9 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Provides utilities for working with bot authors (Walle AI assistant).
+/// </summary>
 public static class Bots
 {
     public static bool IsBot(AuthorId authorId)

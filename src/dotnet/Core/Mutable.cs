@@ -1,10 +1,16 @@
 namespace ActualChat;
 
+/// <summary>
+/// Factory methods for creating <see cref="Mutable{T}"/> instances.
+/// </summary>
 public static class Mutable
 {
     public static Mutable<T>New<T>(T initialValue) => new(initialValue);
 }
 
+/// <summary>
+/// A wrapper that tracks value changes and raises events.
+/// </summary>
 public sealed class Mutable<T>(T initialValue = default!)
 {
     private T _value = initialValue;

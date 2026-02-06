@@ -1,5 +1,8 @@
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// Backend interface for batched key-value store operations.
+/// </summary>
 public interface IBatchingKvasBackend
 {
     ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default);

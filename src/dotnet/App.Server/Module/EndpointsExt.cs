@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 namespace ActualChat.App.Server.Module;
 
+/// <summary>
+/// Extension methods for mapping health check and Prometheus metrics endpoints.
+/// </summary>
 public static class EndpointsExt
 {
     public const string HealthPathPrefix = "/health";

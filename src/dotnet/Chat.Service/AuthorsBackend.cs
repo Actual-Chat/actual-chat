@@ -6,6 +6,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for managing chat authors (participants).
+/// </summary>
 public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IAuthorsBackend
 {
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();

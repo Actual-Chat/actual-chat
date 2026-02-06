@@ -2,6 +2,9 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// Key-value store with batched read/write operations and caching.
+/// </summary>
 public class BatchingKvas : SafeAsyncDisposableBase, IKvas
 {
     public record Options

@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service for tracking user chat access patterns and recency lists.
+/// </summary>
 public interface IChatUsagesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -21,6 +24,9 @@ public interface IChatUsagesBackend : IComputeService, IBackendService
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to record a user's chat access.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatUsagesBackend_RegisterUsage(
@@ -34,6 +40,9 @@ public sealed partial record ChatUsagesBackend_RegisterUsage(
     public UserId ShardKey => UserId;
 }
 
+/// <summary>
+/// Command to trim the recency list to a maximum size.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatUsagesBackend_PurgeRecencyList(

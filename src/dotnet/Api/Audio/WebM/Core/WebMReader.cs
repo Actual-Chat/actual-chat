@@ -3,6 +3,9 @@ using ActualChat.Spans;
 
 namespace ActualChat.Audio.WebM;
 
+/// <summary>
+/// Reads and parses WebM container format data.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public ref struct WebMReader
 {

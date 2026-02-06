@@ -9,6 +9,9 @@ using ActualLab.Rpc;
 
 namespace ActualChat.Module;
 
+/// <summary>
+/// Configures core services for both server and client applications.
+/// </summary>
 #pragma warning disable IL2026, IL2111 // Fine for modules
 #pragma warning disable CA1822 // Method can be static
 

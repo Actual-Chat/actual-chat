@@ -1,5 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
+/// <summary>
+/// Handles property-by-property diffs for record types.
+/// </summary>
 public sealed class RecordDiffHandler<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TRecord,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDiff>

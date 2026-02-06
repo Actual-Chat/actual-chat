@@ -4,6 +4,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Represents a contact entry for a thread conversation.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record ThreadContact : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget

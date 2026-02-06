@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service for user account management.
+/// </summary>
 public interface IAccountsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -38,6 +41,9 @@ public interface IAccountsBackend : IComputeService, IBackendService
     Task OnNewAccountEvent(NewAccountEvent eventCommand, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to sign in a user with the given identity.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
 // ReSharper disable once InconsistentNaming
@@ -48,6 +54,9 @@ public sealed partial record AccountsBackend_SignIn(
     [property: DataMember, MemoryPackOrder(3)] ApiMap<string, string> Claims
 ) : ISessionCommand<Unit>, IBackendCommand;
 
+/// <summary>
+/// Command to update a user account.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Update(
@@ -59,6 +68,9 @@ public sealed partial record AccountsBackend_Update(
     public UserId ShardKey => Account.Id;
 }
 
+/// <summary>
+/// Command to delete a user account.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Delete(

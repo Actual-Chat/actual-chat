@@ -1,5 +1,8 @@
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// A mutable state that syncs bidirectionally with a remote storage.
+/// </summary>
 public interface ISyncedState : IMutableState, IDisposable
 {
     CancellationToken DisposeToken { get; }
@@ -11,6 +14,9 @@ public interface ISyncedState : IMutableState, IDisposable
     Task WhenWritten(CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// A typed synced state that maintains bidirectional sync with remote storage.
+/// </summary>
 public interface ISyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : IMutableState<T>, ISyncedState
     where T : class?
@@ -18,6 +24,9 @@ public interface ISyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedMem
     new ComputedState<T> ReadState { get; }
 }
 
+/// <summary>
+/// Factory methods and default options for <see cref="SyncedState{T}"/>.
+/// </summary>
 public static class SyncedState
 {
     public static class DefaultOptions
@@ -38,6 +47,9 @@ public static class SyncedState
         => OriginPrefix + Interlocked.Increment(ref _lastId).Format();
 }
 
+/// <summary>
+/// Implementation of <see cref="ISyncedState{T}"/> with read/write synchronization.
+/// </summary>
 public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
     : MutableState<T>, ISyncedState<T>
     where T : class?

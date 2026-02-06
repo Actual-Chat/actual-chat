@@ -1,5 +1,8 @@
 namespace ActualChat.Audio;
 
+/// <summary>
+/// Extension methods for <see cref="AudioSource"/> concatenation and trimming.
+/// </summary>
 public static class AudioSourceExt
 {
     public static AudioSource Concat(

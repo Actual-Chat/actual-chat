@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service for session management and authentication state.
+/// </summary>
 public interface ISessionsBackend : IComputeService, IBackendService
 {
     // Queries
@@ -21,6 +24,9 @@ public interface ISessionsBackend : IComputeService, IBackendService
     Task OnSignOut(SessionsBackend_SignOut command, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Command to create or update a session.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
 // ReSharper disable once InconsistentNaming
@@ -40,6 +46,9 @@ public partial record SessionsBackend_Upsert(
         : this(session, ipAddress, userAgent, default) { }
 }
 
+/// <summary>
+/// Command to sign out a session.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public partial record SessionsBackend_SignOut(

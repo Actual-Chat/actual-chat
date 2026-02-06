@@ -2,6 +2,9 @@ using RestEase;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// HTTP client interface for native (iOS/Android) authentication flows.
+/// </summary>
 [BasePath("native-auth")]
 public interface INativeAuthClient
 {

@@ -4,6 +4,9 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Detects device sleep/wake cycles and triggers reconnection when the device wakes up.
+/// </summary>
 public class DeviceAwakeUI : UIServiceBase<UIHub>, ISleepDurationProvider, IDeviceAwakeUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DeviceAwakeUI.init";

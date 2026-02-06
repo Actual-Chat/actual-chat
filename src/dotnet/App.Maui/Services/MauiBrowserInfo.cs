@@ -5,6 +5,9 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// MAUI implementation of <see cref="BrowserInfo"/> providing platform-specific device detection.
+/// </summary>
 public class MauiBrowserInfo : BrowserInfo
 {
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiBrowserInfo))]

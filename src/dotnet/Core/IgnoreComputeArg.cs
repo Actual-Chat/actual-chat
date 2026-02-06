@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Wrapper for computed method arguments that should be excluded from cache key calculation.
+/// </summary>
 public class IgnoreComputeArg<T>(T value) : IEquatable<IgnoreComputeArg<T>>
 {
     public T Value { get; } = value;

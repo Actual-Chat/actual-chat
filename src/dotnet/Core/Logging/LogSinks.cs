@@ -2,6 +2,9 @@ using ActualLab.Generators;
 
 namespace ActualChat.Logging;
 
+/// <summary>
+/// Manages a collection of <see cref="ILogSink"/> instances and broadcasts log entries.
+/// </summary>
 public sealed class LogSinks
 {
     private readonly ConcurrentDictionary<ILogSink, Unit> _sinks = [];

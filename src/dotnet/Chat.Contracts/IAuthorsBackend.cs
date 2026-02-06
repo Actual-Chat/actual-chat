@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for managing chat authors (participants).
+/// </summary>
 public interface IAuthorsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -37,6 +40,9 @@ public interface IAuthorsBackend : IComputeService, IBackendService
 
 // Commands
 
+/// <summary>
+/// Command to create or update a chat author.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_Upsert(
@@ -52,6 +58,9 @@ public sealed partial record AuthorsBackend_Upsert(
     public ChatId ShardKey => ChatId;
 }
 
+/// <summary>
+/// Command to remove a chat author by chat ID, author ID, or user ID.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_Remove(
@@ -69,6 +78,9 @@ public sealed partial record AuthorsBackend_Remove(
     };
 }
 
+/// <summary>
+/// Command to copy authors from one chat to another.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_CopyChat(

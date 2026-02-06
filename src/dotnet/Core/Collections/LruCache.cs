@@ -1,5 +1,8 @@
 namespace ActualChat.Collections;
 
+/// <summary>
+/// Interface for least-recently-used cache implementations.
+/// </summary>
 public interface ILruCache<TKey, TValue>
     where TKey : notnull
 {
@@ -16,6 +19,9 @@ public interface ILruCache<TKey, TValue>
     IEnumerable<KeyValuePair<TKey, TValue>> List(bool recentFirst = false);
 }
 
+/// <summary>
+/// A least-recently-used cache that evicts oldest entries when capacity is exceeded.
+/// </summary>
 public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
     where TKey : notnull
 {

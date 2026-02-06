@@ -2,6 +2,9 @@
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents plain text content without formatting.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class PlainTextMarkup(string text) : TextMarkup(text)
 {

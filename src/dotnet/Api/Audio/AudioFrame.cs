@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Audio;
 
+/// <summary>
+/// Represents a single frame of audio data.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial class AudioFrame : MediaFrame
 {

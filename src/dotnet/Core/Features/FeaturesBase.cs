@@ -2,6 +2,9 @@ using CommunityToolkit.HighPerformance.Buffers;
 
 namespace ActualChat;
 
+/// <summary>
+/// Service for computing and caching feature values.
+/// </summary>
 public interface IFeatures : IComputeService
 {
     [ComputeMethod]
@@ -12,6 +15,9 @@ public interface IFeatures : IComputeService
     Task<byte[]> GetData(TypeRef featureTypeRef, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Base implementation of <see cref="IFeatures"/> with registry-based computation.
+/// </summary>
 public abstract class FeaturesBase(
     IFeatureDefRegistry registry,
     IServiceProvider services

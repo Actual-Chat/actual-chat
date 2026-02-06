@@ -1,5 +1,8 @@
 namespace ActualChat.Hosting;
 
+/// <summary>
+/// Builds a <see cref="ModuleHost"/> by registering and initializing modules.
+/// </summary>
 public class ModuleHostBuilder
 {
     public List<HostModule> Modules { get; } = new();

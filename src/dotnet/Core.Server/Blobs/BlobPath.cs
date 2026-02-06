@@ -1,5 +1,8 @@
 namespace ActualChat.Blobs;
 
+/// <summary>
+/// Utility methods for formatting and parsing blob storage paths.
+/// </summary>
 public static class BlobPath
 {
     public static readonly char ScopeDelimiterChar = '/';

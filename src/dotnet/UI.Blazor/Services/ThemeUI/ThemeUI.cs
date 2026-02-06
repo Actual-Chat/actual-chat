@@ -1,5 +1,8 @@
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Manages light/dark theme switching and applies theme changes to registered handlers.
+/// </summary>
 public class ThemeUI(UIHub hub) : UIWorkerBase<UIHub>(hub)
 {
     private static readonly string JSThemeClassName = "window.Theme";

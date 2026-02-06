@@ -6,6 +6,9 @@ using MessagePack;
 
 namespace ActualChat;
 
+/// <summary>
+/// Reference to a mentioned user or author in chat content.
+/// </summary>
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 // TODO(AY): Rename to MentionRef

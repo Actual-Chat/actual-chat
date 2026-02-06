@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Audio;
 
+/// <summary>
+/// Describes audio encoding parameters including codec, sample rate, and channel count.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record AudioFormat : MediaFormat
 {

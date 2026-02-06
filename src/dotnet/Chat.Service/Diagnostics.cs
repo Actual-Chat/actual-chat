@@ -2,6 +2,9 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for accessing mesh cluster diagnostics (admin-only).
+/// </summary>
 public class Diagnostics(IServiceProvider services) : IDiagnostics
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();

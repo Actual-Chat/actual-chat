@@ -6,6 +6,9 @@ using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Manages browser navigation history with state preservation and back/forward navigation.
+/// </summary>
 public partial class History : UIServiceBase<UIHub>, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.History.init";

@@ -1,5 +1,8 @@
 namespace ActualChat.DependencyInjection;
 
+/// <summary>
+/// Resolves implementation types from a <see cref="TypeMap{TScope}"/> with caching.
+/// </summary>
 public sealed class TypeMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TScope>
 {
     private readonly Dictionary<Type, Type> _map;

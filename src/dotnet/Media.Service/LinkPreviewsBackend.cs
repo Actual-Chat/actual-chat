@@ -7,6 +7,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Backend service implementation for generating and caching URL link previews.
+/// </summary>
 public class LinkPreviewsBackend(IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {

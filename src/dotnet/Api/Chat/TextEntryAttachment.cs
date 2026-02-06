@@ -4,6 +4,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a media attachment on a text chat entry.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record TextEntryAttachment(

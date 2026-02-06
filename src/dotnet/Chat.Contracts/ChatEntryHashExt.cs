@@ -2,6 +2,9 @@ using ActualChat.Hashing;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Extension methods for computing chat entry content hashes.
+/// </summary>
 public static class ChatEntryHashExt
 {
     public static HashString GetContentHashString(this ChatEntry entry)

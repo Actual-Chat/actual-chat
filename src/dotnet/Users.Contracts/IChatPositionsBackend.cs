@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service for tracking user read positions in chats.
+/// </summary>
 public interface IChatPositionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -12,6 +15,9 @@ public interface IChatPositionsBackend : IComputeService, IBackendService
     Task OnSet(ChatPositionsBackend_Set command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to set a user's read position in a chat.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatPositionsBackend_Set(

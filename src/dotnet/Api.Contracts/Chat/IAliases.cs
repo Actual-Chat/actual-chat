@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Service for resolving human-friendly aliases to chats and places.
+/// </summary>
 public interface IAliases : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 60), RemoteComputeMethod(MinCacheDuration = 600)]
@@ -12,8 +15,14 @@ public interface IAliases : IComputeService
     Task<UserId?> GetUserIdByAlias(AliasId aliasId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Specifies the type of entity an alias points to.
+/// </summary>
 public enum AliasKind { Chat, Place }
 
+/// <summary>
+/// Represents the target of an alias resolution.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record AliasTarget(
     [property: DataMember, MemoryPackOrder(0)] AliasKind Kind,

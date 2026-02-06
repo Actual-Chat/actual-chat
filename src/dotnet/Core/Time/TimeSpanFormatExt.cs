@@ -1,11 +1,17 @@
 namespace ActualChat.Time;
 
+/// <summary>
+/// Specifies the format for displaying time span values.
+/// </summary>
 public enum TimeSpanFormat
 {
     Default = 0,
     Short,
 }
 
+/// <summary>
+/// Extension methods for formatting <see cref="TimeSpan"/> values.
+/// </summary>
 public static class TimeSpanFormatExt
 {
     public static string Format(this TimeSpan value, string format)

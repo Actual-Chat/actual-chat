@@ -2,6 +2,9 @@ using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Represents a single entry in the browser history with URL and associated state.
+/// </summary>
 public sealed record HistoryItem(
     History History,
     long BackItemId,

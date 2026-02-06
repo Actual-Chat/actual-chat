@@ -4,6 +4,9 @@ using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Hosting;
 
+/// <summary>
+/// Describes the runtime environment and configuration of the current host.
+/// </summary>
 public sealed record HostInfo
 {
     private readonly LazySlim<HostInfo, BaseUrlKind> _baseUrlKindLazy;

@@ -3,6 +3,9 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Orchestrates audio playback across multiple chats, handling real-time and historical modes.
+/// </summary>
 public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     private static bool DebugMode => Constants.DebugMode.ChatPlayers;

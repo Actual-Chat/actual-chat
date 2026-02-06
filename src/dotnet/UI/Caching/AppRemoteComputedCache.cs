@@ -8,6 +8,9 @@ using ActualLab.Rpc.Serialization;
 
 namespace ActualChat.UI.Caching;
 
+/// <summary>
+/// Abstract base for client-side caching of remote computed values with batched persistence.
+/// </summary>
 public abstract class AppRemoteComputedCache : BatchingKvas, IRemoteComputedCache
 {
     public new record Options : BatchingKvas.Options

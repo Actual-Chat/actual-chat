@@ -2,6 +2,9 @@
 
 namespace ActualChat.Messaging;
 
+/// <summary>
+/// Processes messages asynchronously in a queue-based manner.
+/// </summary>
 public interface IMessageProcessor<TMessage> : IAsyncDisposable
     where TMessage : class
 {
@@ -13,6 +16,9 @@ public interface IMessageProcessor<TMessage> : IAsyncDisposable
         => (IMessageProcess<TSpecific>)Enqueue((TMessage)message, cancellationToken);
 }
 
+/// <summary>
+/// Base class for message processors with queue-based async processing.
+/// </summary>
 public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? stopTokenSource = null)
     : WorkerBase(stopTokenSource), IMessageProcessor<TMessage>
     where TMessage : class
@@ -148,6 +154,9 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
     }
 }
 
+/// <summary>
+/// A message processor that delegates to a provided processing function.
+/// </summary>
 public sealed class MessageProcessor<TMessage>(
     Func<TMessage, CancellationToken, Task<object?>> processor,
     CancellationTokenSource? stopTokenSource = null

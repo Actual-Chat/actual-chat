@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Serialization;
 
+/// <summary>
+/// Attribute to apply legacy Language serialization format to a property.
+/// </summary>
 #pragma warning disable CA1019 // Define accessors for attribute arguments
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]

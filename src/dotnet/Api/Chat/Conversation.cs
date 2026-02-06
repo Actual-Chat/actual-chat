@@ -5,6 +5,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a thread conversation within a chat, grouping related entries.
+/// </summary>
 [ParameterComparer(typeof(ByIdAndVersionParameterComparer<ConversationId, long>))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Conversation(
@@ -36,6 +39,9 @@ public sealed partial record Conversation(
     public bool VersionEquals(Conversation? other) => VersionEqualityComparer.Equals(this, other);
 }
 
+/// <summary>
+/// Represents changes to a <see cref="Conversation"/> for incremental updates.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method:MemoryPackConstructor]
 public sealed partial record ConversationDiff() : RecordDiff

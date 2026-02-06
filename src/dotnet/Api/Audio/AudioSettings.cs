@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Audio;
 
+/// <summary>
+/// Configuration settings for audio recording and listening behaviors.
+/// </summary>
 public sealed class AudioSettings
 {
     public TimeSpan IdleRecordingCheckPeriod { get; init; } = TimeSpan.FromSeconds(1);

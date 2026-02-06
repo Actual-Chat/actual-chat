@@ -3,6 +3,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Extended <see cref="Avatar"/> with user association and anonymity flag.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record AvatarFull(

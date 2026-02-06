@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Backend service for generating and caching link preview metadata.
+/// </summary>
 public interface ILinkPreviewsBackend : IComputeService, IBackendService
 {
     [ComputeMethod(AutoInvalidationDelay = 25 * 60 * 60 * 1000)]
@@ -22,6 +25,9 @@ public interface ILinkPreviewsBackend : IComputeService, IBackendService
     Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create, update, or delete a link preview.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record LinkPreviewsBackend_Change(

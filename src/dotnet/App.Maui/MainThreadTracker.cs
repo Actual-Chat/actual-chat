@@ -1,5 +1,8 @@
 namespace ActualChat.App.Maui;
 
+/// <summary>
+/// Diagnostic utility that monitors main thread responsiveness during app startup.
+/// </summary>
 public static class MainThreadTracker
 {
     private static ILogger Log { get; } = StaticLog.For(typeof(MainThreadTracker));

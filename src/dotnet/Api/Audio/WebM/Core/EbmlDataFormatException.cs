@@ -1,5 +1,8 @@
 namespace ActualChat.Audio.WebM;
 
+/// <summary>
+/// Exception thrown when EBML data format is invalid or corrupt.
+/// </summary>
 public class EbmlDataFormatException : IOException
 {
     public EbmlDataFormatException() { }

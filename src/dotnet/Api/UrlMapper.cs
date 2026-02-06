@@ -4,6 +4,9 @@ using ActualChat.Hosting;
 
 namespace ActualChat;
 
+/// <summary>
+/// Maps local URLs to absolute URLs and provides content/image proxy URLs.
+/// </summary>
 public sealed partial class UrlMapper
 {
     [GeneratedRegex(@"^[\w\d]+://")]

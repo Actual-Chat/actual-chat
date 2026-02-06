@@ -2,6 +2,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents a line break in markup.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class NewLineMarkup() : TextMarkup("\r\n")
 {

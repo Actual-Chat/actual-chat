@@ -7,6 +7,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Backend service implementation for managing external contacts (phone contacts).
+/// </summary>
 public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
     IExternalContactsBackend
 {

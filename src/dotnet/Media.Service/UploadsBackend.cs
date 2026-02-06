@@ -6,6 +6,9 @@ using Google.Cloud.Storage.V1;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Backend service implementation for managing file uploads including resumable uploads.
+/// </summary>
 public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbContext>(services), IUploadsBackend
 {
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();

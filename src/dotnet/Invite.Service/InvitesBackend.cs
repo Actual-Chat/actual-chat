@@ -7,6 +7,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Invite;
 
+/// <summary>
+/// Backend service implementation for managing invite links and activation keys.
+/// </summary>
 public class InvitesBackend(IServiceProvider services)
     : DbServiceBase<InviteDbContext>(services), IInvitesBackend
 {

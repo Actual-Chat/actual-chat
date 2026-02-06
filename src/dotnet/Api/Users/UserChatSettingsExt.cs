@@ -2,6 +2,9 @@ using ActualChat.Kvas;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Extension methods for <see cref="UserChatSettings"/>.
+/// </summary>
 public static class UserChatSettingsExt
 {
     public static Task<Language> LanguageOrPrimary(

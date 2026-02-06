@@ -3,6 +3,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Base class for chat message markup elements.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public abstract class Markup
 {

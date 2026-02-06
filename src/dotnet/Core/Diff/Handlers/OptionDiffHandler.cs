@@ -1,5 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
+/// <summary>
+/// Handles diffs using <see cref="Option{T}"/> to represent changes.
+/// </summary>
 public sealed class OptionDiffHandler<T>(DiffEngine engine) : DiffHandlerBase<T, Option<T>>(engine)
 {
     public override Option<T> Diff(T source, T target)

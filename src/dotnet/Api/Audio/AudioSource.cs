@@ -2,6 +2,9 @@ using ActualChat.Media;
 
 namespace ActualChat.Audio;
 
+/// <summary>
+/// Provides a stream of audio frames with format metadata.
+/// </summary>
 public class AudioSource(
     Moment createdAt,
     AudioFormat format,

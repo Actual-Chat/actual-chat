@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Factory methods for creating <see cref="ExpiringEntry{TKey,TValue}"/> instances.
+/// </summary>
 public static class ExpiringEntry
 {
     public static ExpiringEntry<TKey, TValue> New<TKey, TValue>(
@@ -10,6 +13,9 @@ public static class ExpiringEntry
         => new(dictionary, key, value, disposeTokenSource);
 }
 
+/// <summary>
+/// A dictionary entry that auto-disposes after a specified expiration time.
+/// </summary>
 public sealed class ExpiringEntry<TKey, TValue> : IDisposable
     where TKey : notnull
 {

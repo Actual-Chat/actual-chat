@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Lightweight representation of a text chat entry for streaming and translation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor, JsonConstructor]
 public sealed partial record TextEntry(

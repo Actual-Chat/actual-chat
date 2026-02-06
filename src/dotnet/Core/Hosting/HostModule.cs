@@ -2,13 +2,27 @@ using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Hosting;
 
-public interface IServerModule; // A tagging interface for server-side modules
-public interface IAppModule; // A tagging interface for client-side modules
+/// <summary>
+/// Marker interface for server-side modules.
+/// </summary>
+public interface IServerModule;
+
+/// <summary>
+/// Marker interface for client-side app modules.
+/// </summary>
+public interface IAppModule;
+
+/// <summary>
+/// Interface for Blazor UI modules that require JavaScript imports.
+/// </summary>
 public interface IBlazorUIModule
 {
     public static abstract string ImportName { get; }
 }
 
+/// <summary>
+/// Base class for modules that register services with a <see cref="ModuleHost"/>.
+/// </summary>
 public abstract class HostModule(IServiceProvider moduleServices)
 {
     public IServiceProvider ModuleServices { get; } = moduleServices;
@@ -34,6 +48,9 @@ public abstract class HostModule(IServiceProvider moduleServices)
     protected internal abstract void InjectServices(IServiceCollection services);
 }
 
+/// <summary>
+/// Base class for modules with strongly-typed configuration settings.
+/// </summary>
 public abstract class HostModule<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TSettings>(
     IServiceProvider moduleServices

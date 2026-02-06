@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Defines built-in system roles for chat participants.
+/// </summary>
 #pragma warning disable RCS1130
 
 public enum SystemRole

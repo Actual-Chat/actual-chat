@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Base class for media format descriptors (audio, video).
+/// </summary>
 [DataContract]
 public abstract record MediaFormat
 {

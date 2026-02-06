@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service implementation for session management and authentication state.
+/// </summary>
 public class SessionsBackend(
     SessionsBackend.Options settings,
     IServiceProvider services)

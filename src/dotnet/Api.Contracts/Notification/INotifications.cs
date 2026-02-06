@@ -2,6 +2,9 @@
 
 namespace ActualChat.Notification;
 
+/// <summary>
+/// Service for managing user notifications and device registrations.
+/// </summary>
 public interface INotifications : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 10)]

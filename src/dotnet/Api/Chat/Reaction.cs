@@ -5,6 +5,10 @@ using ActualLab.Versioning;
 namespace ActualChat.Chat;
 
 // TODO(FC): remove this model since it should not be used from client side
+
+/// <summary>
+/// Represents an emoji reaction to a chat entry.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Reaction : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget

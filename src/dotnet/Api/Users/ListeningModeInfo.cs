@@ -2,6 +2,9 @@ using System.Collections.Frozen;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Provides metadata for a <see cref="ListeningMode"/> including duration and display text.
+/// </summary>
 public sealed class ListeningModeInfo
 {
     public static readonly ListeningModeInfo Default = new(default);

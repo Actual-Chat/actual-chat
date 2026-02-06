@@ -1,5 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
+/// <summary>
+/// Handles diffs for value types using nullable as the diff representation.
+/// </summary>
 public sealed class NullableDiffHandler<T>(DiffEngine engine) : DiffHandlerBase<T, T?>(engine)
     where T : struct
 {

@@ -1,5 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
+/// <summary>
+/// Default diff handler that uses full replacement for reference types.
+/// </summary>
 public sealed class ObjectDiffHandler<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]T>(DiffEngine engine)
     : DiffHandlerBase<T, T>(engine)

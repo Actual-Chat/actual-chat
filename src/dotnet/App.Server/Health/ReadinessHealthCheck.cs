@@ -4,6 +4,9 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ActualChat.App.Server.Health;
 
+/// <summary>
+/// Checks if the server is ready to accept new requests based on CPU usage.
+/// </summary>
 public class ReadinessHealthCheck(IServiceProvider services): IHealthCheck
 {
     private const double CpuUsageLimit = 70;

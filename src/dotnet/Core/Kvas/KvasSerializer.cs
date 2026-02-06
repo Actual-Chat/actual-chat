@@ -4,6 +4,9 @@ using MemoryPack;
 
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// Serializer for <see cref="IKvas"/> that supports both binary and text formats.
+/// </summary>
 #pragma warning disable IL2026, IL2046, IL2092 // We change everything to DynamicallyAccessedMemberTypes.All here
 
 [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCodeAttribute", Justification = "Type is already marked with DynamicallyAccessedMembers.")]

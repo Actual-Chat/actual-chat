@@ -1,5 +1,8 @@
 namespace ActualChat.Transcription;
 
+/// <summary>
+/// Extension methods for converting between <see cref="Transcript"/> and <see cref="TranscriptDiff"/> streams.
+/// </summary>
 public static class TranscriptStreamExt
 {
     public static async IAsyncEnumerable<TranscriptDiff> ToTranscriptDiffs(this IAsyncEnumerable<Transcript> transcripts)

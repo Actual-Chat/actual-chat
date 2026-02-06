@@ -4,6 +4,9 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for managing chat threads (nested conversations within a chat).
+/// </summary>
 public class ChatThreads(IServiceProvider services) : IChatThreads
 {
     private IChatThreadsBackend Backend => field ??= services.GetRequiredService<IChatThreadsBackend>();

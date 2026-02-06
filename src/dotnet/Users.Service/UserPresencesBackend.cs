@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service implementation for tracking user online/offline presence status.
+/// </summary>
 public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresencesBackend, IAsyncDisposable
 {
     private readonly UserPresenceTracker _userPresences;

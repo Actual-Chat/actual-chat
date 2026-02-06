@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Service provider extension methods for ActualChat services.
+/// </summary>
 public static class ServiceProviderExt
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

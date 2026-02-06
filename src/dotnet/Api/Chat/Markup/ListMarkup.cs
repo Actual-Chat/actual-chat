@@ -2,6 +2,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents an unordered list of items in markup.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class ListMarkup : Markup
 {

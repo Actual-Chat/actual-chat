@@ -2,6 +2,9 @@ using ActualLab.Pooling;
 
 namespace ActualChat.Collections;
 
+/// <summary>
+/// A simple thread-safe object pool with capacity limit.
+/// </summary>
 public class SimpleConcurrentPool<T>(
     Func<T> resourceFactory,
     Func<T, bool>? resourceValidator,

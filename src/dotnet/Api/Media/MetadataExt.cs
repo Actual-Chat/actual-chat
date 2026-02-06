@@ -1,5 +1,8 @@
 namespace ActualChat.Media;
 
+/// <summary>
+/// Interface for types that have a metadata property bag.
+/// </summary>
 public interface IHasMetadata
 {
     PropertyBag Metadata { get; init; }

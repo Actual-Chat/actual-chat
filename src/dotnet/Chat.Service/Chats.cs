@@ -4,6 +4,9 @@ using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for chat operations with session-based access control.
+/// </summary>
 public class Chats(IServiceProvider services) : IChats
 {
     public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;

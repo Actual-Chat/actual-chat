@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Components;
 
 namespace ActualChat;
 
+/// <summary>
+/// Represents a normalized local URL path starting with '/'.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public readonly partial struct LocalUrl : IEquatable<LocalUrl>
 {

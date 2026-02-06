@@ -8,6 +8,9 @@ using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor;
 
+/// <summary>
+/// Central hub providing access to all UI services and utilities for Blazor components.
+/// </summary>
 // AppUIHub extends this type, and its instance is actually used
 public class UIHub : CircuitHub, IDispatcherResolver
 {

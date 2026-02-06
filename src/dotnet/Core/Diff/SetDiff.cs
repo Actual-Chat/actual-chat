@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Diff;
 
+/// <summary>
+/// Represents changes to a collection as added and removed items.
+/// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
@@ -40,8 +43,9 @@ public readonly partial struct SetDiff<TItem>(
         => !left.Equals(right);
 }
 
-// SetDiff<T> version which also "encodes" original collection type.
-// It's the one used by SetDiffHandler.
+/// <summary>
+/// Represents changes to a typed collection as added and removed items.
+/// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]

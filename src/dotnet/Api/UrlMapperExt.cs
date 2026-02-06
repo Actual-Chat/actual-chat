@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Extension methods for <see cref="UrlMapper"/> to generate picture preview URLs.
+/// </summary>
 public static class UrlMapperExt
 {
     extension(UrlMapper mapper)

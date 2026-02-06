@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service for tracking user online presence and last activity.
+/// </summary>
 public interface IUserPresencesBackend : IComputeService, IBackendService
 {
     [ComputeMethod(MinCacheDuration = 30)]
@@ -14,6 +17,9 @@ public interface IUserPresencesBackend : IComputeService, IBackendService
     Task OnCheckIn(UserPresencesBackend_CheckIn command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to record a user's presence check-in.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UserPresencesBackend_CheckIn(

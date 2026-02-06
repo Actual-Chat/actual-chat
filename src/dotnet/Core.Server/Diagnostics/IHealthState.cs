@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Diagnostics;
 
+/// <summary>
+/// Provides CPU usage metrics for health monitoring.
+/// </summary>
 public interface IHealthState
 {
     IState<double> CpuMean { get; }

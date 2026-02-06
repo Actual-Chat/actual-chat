@@ -2,6 +2,9 @@
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Service for managing places and their members.
+/// </summary>
 public interface IPlaces : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 60)]

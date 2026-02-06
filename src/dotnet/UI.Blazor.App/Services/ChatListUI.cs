@@ -4,6 +4,9 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+/// <summary>
+/// Manages chat list filtering, sorting, pinning, and unread count tracking.
+/// </summary>
 public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     public static readonly TileStack<int> ChatTileStack = Constants.Chat.ChatTileStack;

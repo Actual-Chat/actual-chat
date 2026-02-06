@@ -1,5 +1,8 @@
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Extension methods for <see cref="IAuthorsBackend"/>.
+/// </summary>
 public static class AuthorsBackendExt
 {
     public static async Task<AuthorFull> EnsureJoined(

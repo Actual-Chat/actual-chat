@@ -15,6 +15,9 @@ public static partial class StandardError
     }
 }
 
+/// <summary>
+/// Base exception for account-related errors.
+/// </summary>
 public abstract class AccountException : Exception
 {
     protected AccountException() : this(null) { }
@@ -22,6 +25,9 @@ public abstract class AccountException : Exception
     protected AccountException(string? message, Exception? inner) : base(message, inner) { }
 }
 
+/// <summary>
+/// Exception thrown when a guest user attempts an action requiring authentication.
+/// </summary>
 public class GuestAccountException : AccountException
 {
     public GuestAccountException() : this(null) { }
@@ -29,6 +35,9 @@ public class GuestAccountException : AccountException
     public GuestAccountException(string? message, Exception? inner) : base(message, inner) { }
 }
 
+/// <summary>
+/// Exception thrown when an inactive account attempts an action.
+/// </summary>
 public class InactiveAccountException : AccountException
 {
     public InactiveAccountException() : this(null) { }
@@ -36,6 +45,9 @@ public class InactiveAccountException : AccountException
     public InactiveAccountException(string? message, Exception? inner) : base(message, inner) { }
 }
 
+/// <summary>
+/// Exception thrown when a suspended account attempts an action.
+/// </summary>
 public class SuspendedAccountException : AccountException
 {
     public SuspendedAccountException() : this(null) { }
@@ -43,6 +55,9 @@ public class SuspendedAccountException : AccountException
     public SuspendedAccountException(string? message, Exception? inner) : base(message, inner) { }
 }
 
+/// <summary>
+/// Exception thrown when a non-admin user attempts an admin-only action.
+/// </summary>
 public class NonAdminAccountException : AccountException
 {
     public NonAdminAccountException() : this(null) { }

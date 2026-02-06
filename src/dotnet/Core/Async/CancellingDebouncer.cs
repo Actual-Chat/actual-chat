@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Defines when a <see cref="CancellingDebouncer{T}"/> should cancel its executing task.
+/// </summary>
 [Flags]
 public enum DebouncerCancellationPoints
 {
@@ -8,6 +11,9 @@ public enum DebouncerCancellationPoints
     OnDispose = 4,
 }
 
+/// <summary>
+/// A debouncer that cancels the previous task when a new item is enqueued or executed.
+/// </summary>
 public class CancellingDebouncer<T> : WorkerBase
 {
     private readonly Channel<Item> _queue = Channel.CreateUnbounded<Item>();

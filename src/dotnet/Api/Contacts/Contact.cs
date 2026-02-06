@@ -5,6 +5,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Represents a user's contact entry (chat, user, or place).
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Contact(

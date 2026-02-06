@@ -2,6 +2,9 @@ using ActualChat.Hashing;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Extension methods for modifying <see cref="ExternalContactFull"/> instances.
+/// </summary>
 public static class ExternalContactExt
 {
     public static ExternalContactFull WithoutPhone(this ExternalContactFull externalContact, Phone phone)

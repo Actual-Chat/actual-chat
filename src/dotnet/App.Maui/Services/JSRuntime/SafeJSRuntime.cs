@@ -22,6 +22,10 @@ namespace ActualChat.App.Maui.Services;
 //   in DisposeSilentlyAsync
 // - Manually throw JSRuntimeDisconnected from SafeJSRuntime, if it
 //   wraps a disconnected JS runtime.
+
+/// <summary>
+/// Wrapper around <see cref="IJSRuntime"/> that tracks connection state and handles disconnection gracefully.
+/// </summary>
 public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
 {
     internal const DynamicallyAccessedMemberTypes JsonSerialized =

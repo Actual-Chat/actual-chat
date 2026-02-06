@@ -2,6 +2,9 @@
 
 namespace ActualChat.Audio.WebM.Models;
 
+/// <summary>
+/// Represents an encrypted block in a Matroska file.
+/// </summary>
 public sealed class EncryptedBlock : Block
 {
     public override EbmlElementDescriptor Descriptor => MatroskaSpecification.EncryptedBlockDescriptor;

@@ -1,5 +1,8 @@
 namespace ActualChat.MediaPlayback;
 
+/// <summary>
+/// Represents the current state of a <see cref="TrackPlayer"/>.
+/// </summary>
 public sealed record PlayerState
 {
     public TimeSpan PlayingAt { get; init; }

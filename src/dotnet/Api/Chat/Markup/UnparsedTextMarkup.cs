@@ -2,6 +2,9 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Represents text that should not be parsed for markup.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class UnparsedTextMarkup(string text) : TextMarkup(text)
 {

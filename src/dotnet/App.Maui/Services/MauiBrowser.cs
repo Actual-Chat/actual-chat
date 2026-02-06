@@ -5,6 +5,9 @@ using UIKit;
 
 namespace ActualChat.App.Maui.Services;
 
+/// <summary>
+/// Platform-specific browser URL opening with iOS/Mac Catalyst workarounds.
+/// </summary>
 public static class MauiBrowser
 {
     public static Task<bool> Open(string url)

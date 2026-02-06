@@ -1,5 +1,8 @@
 namespace ActualChat.Diff.Handlers;
 
+/// <summary>
+/// Handles string diffs with null value encoding.
+/// </summary>
 public sealed class StringDiffHandler(DiffEngine engine) : DiffHandlerBase<string?, string?>(engine)
 {
     private const char EscapeChar = '\x1b'; // ACSII ESC character, extremely unlikely to be the first one in any string

@@ -2,6 +2,9 @@ using System.Security;
 
 namespace ActualChat;
 
+/// <summary>
+/// Factory methods for creating standard exception types.
+/// </summary>
 public static partial class StandardError
 {
     public static Exception NotFound<TTarget>(string? message = null)

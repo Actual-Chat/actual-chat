@@ -4,6 +4,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for managing chat and place aliases.
+/// </summary>
 public interface IAliasBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -15,6 +18,9 @@ public interface IAliasBackend : IComputeService, IBackendService
     Task<Alias?> OnChange(AliasBackend_Change command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create, update, or delete an alias.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AliasBackend_Change(
@@ -27,6 +33,9 @@ public sealed partial record AliasBackend_Change(
     public AliasId ShardKey => Id;
 }
 
+/// <summary>
+/// Represents a named alias pointing to a chat or place.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Alias(
     [property: DataMember, MemoryPackOrder(0)] AliasId Id,

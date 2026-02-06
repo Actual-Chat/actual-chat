@@ -3,6 +3,9 @@ using MessagePack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Service for system properties, version checking, and maintenance operations.
+/// </summary>
 public interface ISystemProperties : IComputeService
 {
     // Not a [ComputeMethod]!
@@ -40,6 +43,9 @@ public sealed partial record SystemProperties_PruneComputedGraph(
     [property: DataMember, MemoryPackOrder(1)] bool Everywhere = false
 ) : ISessionCommand<Unit>; // NOTE(AY): Maybe add backend & implement IApiCommand?
 
+/// <summary>
+/// Server API version and compatibility information.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor, SerializationConstructor, JsonConstructor]
 public sealed partial record ServerApiInfo(

@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Extension methods for working with user identity collections.
+/// </summary>
 public static class UserIdentityExt
 {
     public static UserIdentity GetIdentity(this ApiMap<UserIdentity, string> identities, string schema)

@@ -3,6 +3,9 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for retrieving chat mentions with session-based access control.
+/// </summary>
 public class Mentions(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IMentions
 {
     private IMentionsBackend Backend { get; } = services.GetRequiredService<IMentionsBackend>();

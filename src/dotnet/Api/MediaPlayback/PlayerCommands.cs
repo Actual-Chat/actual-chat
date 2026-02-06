@@ -1,5 +1,8 @@
 namespace ActualChat.MediaPlayback;
 
+/// <summary>
+/// Marker interface for track player control commands.
+/// </summary>
 public interface IPlayerCommand { }
 
 public sealed class PlayCommand : IPlayerCommand

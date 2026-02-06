@@ -1,5 +1,8 @@
 namespace ActualChat.Concurrency;
 
+/// <summary>
+/// A locked region that throws if entered recursively.
+/// </summary>
 public sealed class NoRecursionRegion(string name, object @lock, ILogger log)
 {
     private Action? _exitAction;

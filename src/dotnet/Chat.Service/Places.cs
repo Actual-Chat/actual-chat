@@ -2,6 +2,9 @@
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Frontend service for managing places (organizational containers for chats) with session-based access control.
+/// </summary>
 public class Places(IServiceProvider services) : IPlaces
 {
     private IAccounts Accounts => field ??= services.GetRequiredService<IAccounts>();

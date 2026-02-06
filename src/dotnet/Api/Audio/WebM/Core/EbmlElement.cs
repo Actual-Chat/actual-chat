@@ -1,5 +1,8 @@
 namespace ActualChat.Audio.WebM;
 
+/// <summary>
+/// Represents a parsed EBML element with identifier, size, and type descriptor.
+/// </summary>
 public readonly struct EbmlElement
 {
     public static readonly EbmlElement Empty = new EbmlElement(VInt.UnknownSize(2), 0, MatroskaSpecification.UnknownDescriptor);

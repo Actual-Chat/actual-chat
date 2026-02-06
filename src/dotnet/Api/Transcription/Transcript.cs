@@ -4,6 +4,9 @@ using MemoryPack;
 
 namespace ActualChat.Transcription;
 
+/// <summary>
+/// Represents transcribed text with character-to-time mapping.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
 public sealed partial record Transcript(

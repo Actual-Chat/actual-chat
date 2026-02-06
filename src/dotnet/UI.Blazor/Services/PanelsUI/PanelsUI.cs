@@ -2,6 +2,9 @@ using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Manages the visibility and state of left, middle, and right UI panels.
+/// </summary>
 public partial class PanelsUI : UIWorkerBase<UIHub>
 {
     public IState<ScreenSize> ScreenSize { get; }

@@ -1,5 +1,8 @@
 ﻿namespace ActualChat.Audio.Ogg;
 
+/// <summary>
+/// Opus comment header containing vendor and user metadata.
+/// </summary>
 [StructLayout(LayoutKind.Sequential)]
 public struct OpusTags
 {

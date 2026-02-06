@@ -1,5 +1,8 @@
 namespace ActualChat.Collections;
 
+/// <summary>
+/// A sharded LRU cache for high-concurrency scenarios.
+/// </summary>
 public class ConcurrentLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue>
     where TKey : notnull
 {

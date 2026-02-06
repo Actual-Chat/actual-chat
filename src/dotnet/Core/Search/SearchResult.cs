@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
+/// <summary>
+/// Base class for search results with ID and match information.
+/// </summary>
 [DataContract]
 public abstract class SearchResult(string id, SearchMatch searchMatch)
 {

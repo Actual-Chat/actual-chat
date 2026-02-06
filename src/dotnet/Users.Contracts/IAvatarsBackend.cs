@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Backend service for user avatar management.
+/// </summary>
 public interface IAvatarsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -12,6 +15,9 @@ public interface IAvatarsBackend : IComputeService, IBackendService
     Task<AvatarFull> OnChange(AvatarsBackend_Change command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create, update, or delete an avatar.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AvatarsBackend_Change(

@@ -2,6 +2,9 @@ using System.Security.Claims;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Extension methods for <see cref="AccountFull"/>.
+/// </summary>
 public static class AccountFullExt
 {
     public static bool IsActive([NotNullWhen(true)] this AccountFull? account)

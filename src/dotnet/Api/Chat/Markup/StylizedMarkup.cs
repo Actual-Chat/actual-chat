@@ -2,8 +2,14 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Defines text styling options.
+/// </summary>
 public enum TextStyle { None = 0, Italic = 1, Bold = 2 }
 
+/// <summary>
+/// Represents styled text content (bold, italic).
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class StylizedMarkup(Markup content, TextStyle style) : Markup
 {

@@ -3,6 +3,9 @@ using ActualChat.Rpc.Internal;
 
 namespace ActualChat.App.Server;
 
+/// <summary>
+/// Main application host that configures and runs the ASP.NET Core web server.
+/// </summary>
 public partial class AppHost : SafeAsyncDisposableBase
 {
     public static readonly string DefaultServerUrls = "http://localhost:7080";

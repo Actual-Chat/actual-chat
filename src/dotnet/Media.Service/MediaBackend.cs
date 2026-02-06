@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Backend service implementation for managing media files (images, audio, video).
+/// </summary>
 public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbContext>(services), IMediaBackend
 {
     private IDbEntityResolver<string, DbMedia> DbMediaResolver { get; }

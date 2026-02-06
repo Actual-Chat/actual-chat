@@ -1,7 +1,9 @@
 namespace ActualChat;
 
+/// <summary>
+/// Exception indicating that the request was routed to the wrong shard.
+/// </summary>
 #pragma warning disable SYSLIB0051
-
 [Serializable]
 public class WrongShardException : Exception // Must not be ITransientException!
 {

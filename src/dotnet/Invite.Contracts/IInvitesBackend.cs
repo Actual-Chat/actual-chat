@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Invite;
 
+/// <summary>
+/// Backend service for managing chat and place invitations.
+/// </summary>
 public interface IInvitesBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -22,6 +25,9 @@ public interface IInvitesBackend : IComputeService, IBackendService
     Task OnRevoke(InvitesBackend_Revoke command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to revoke an invitation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Revoke(
@@ -33,6 +39,9 @@ public sealed partial record InvitesBackend_Revoke(
     public string ShardKey => InviteId;
 }
 
+/// <summary>
+/// Command to use (accept) an invitation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Use(
@@ -44,6 +53,9 @@ public sealed partial record InvitesBackend_Use(
     public string ShardKey => InviteId;
 }
 
+/// <summary>
+/// Command to generate a new invitation.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Generate(

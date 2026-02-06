@@ -1,5 +1,8 @@
 namespace ActualChat.Audio;
 
+/// <summary>
+/// Base class for downloading audio from a URL and converting to <see cref="AudioSource"/>.
+/// </summary>
 public abstract class AudioDownloader(IServiceProvider services)
 {
     protected IServiceProvider Services { get; } = services;

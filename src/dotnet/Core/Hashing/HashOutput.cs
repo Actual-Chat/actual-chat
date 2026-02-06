@@ -2,6 +2,9 @@ using CommunityToolkit.HighPerformance;
 
 namespace ActualChat.Hashing;
 
+/// <summary>
+/// Interface for fixed-size hash output with efficient byte access.
+/// </summary>
 #pragma warning disable CA1721
 
 public interface IHashOutput
@@ -17,6 +20,9 @@ public interface IHashOutput
     Span<T> AsSpan<T>() where T : unmanaged;
 }
 
+/// <summary>
+/// A 16-byte (128-bit) hash output buffer.
+/// </summary>
 [InlineArray(16)]
 public struct HashOutput16 : IHashOutput, IEquatable<HashOutput16>
 {
@@ -50,6 +56,9 @@ public struct HashOutput16 : IHashOutput, IEquatable<HashOutput16>
     public static bool operator !=(HashOutput16 left, HashOutput16 right) => !left.Equals(right);
 }
 
+/// <summary>
+/// A 20-byte (160-bit) hash output buffer.
+/// </summary>
 [InlineArray(20)]
 public struct HashOutput20 : IHashOutput, IEquatable<HashOutput20>
 {
@@ -83,6 +92,9 @@ public struct HashOutput20 : IHashOutput, IEquatable<HashOutput20>
     public static bool operator !=(HashOutput20 left, HashOutput20 right) => !left.Equals(right);
 }
 
+/// <summary>
+/// A 32-byte (256-bit) hash output buffer.
+/// </summary>
 [InlineArray(32)]
 public struct HashOutput32 : IHashOutput, IEquatable<HashOutput32>
 {
@@ -116,6 +128,9 @@ public struct HashOutput32 : IHashOutput, IEquatable<HashOutput32>
     public static bool operator !=(HashOutput32 left, HashOutput32 right) => !left.Equals(right);
 }
 
+/// <summary>
+/// A 64-byte (512-bit) hash output buffer.
+/// </summary>
 [InlineArray(64)]
 public struct HashOutput64 : IHashOutput, IEquatable<HashOutput64>
 {

@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Transcription;
 
+/// <summary>
+/// Represents incremental string changes as a start index and suffix text.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public readonly partial record struct StringDiff(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] int Start,

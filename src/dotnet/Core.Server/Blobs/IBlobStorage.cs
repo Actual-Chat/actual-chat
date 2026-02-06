@@ -1,5 +1,8 @@
 namespace ActualChat.Blobs;
 
+/// <summary>
+/// Provides blob storage operations for reading and writing binary data.
+/// </summary>
 public interface IBlobStorage : IAsyncDisposable
 {
     Task<bool> Exists(string path, CancellationToken cancellationToken);

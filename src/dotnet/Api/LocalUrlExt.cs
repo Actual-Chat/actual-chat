@@ -2,6 +2,9 @@ using System.Text.RegularExpressions;
 
 namespace ActualChat;
 
+/// <summary>
+/// Extension methods for <see cref="LocalUrl"/> navigation and parsing.
+/// </summary>
 public static partial class LocalUrlExt
 {
     private const string UserPagePath = "/u/";

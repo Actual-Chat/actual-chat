@@ -2,6 +2,9 @@ using ActualChat.Uploads;
 
 namespace ActualChat.Media;
 
+/// <summary>
+/// Processes uploaded media files including thumbnail generation.
+/// </summary>
 public class MediaProcessor(IServiceProvider services) : IMediaProcessor
 {
     private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();

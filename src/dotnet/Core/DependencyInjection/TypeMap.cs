@@ -1,5 +1,8 @@
 namespace ActualChat.DependencyInjection;
 
+/// <summary>
+/// A mutable dictionary mapping types to implementation types.
+/// </summary>
 public sealed class TypeMap<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]TScope>
 {
     public Dictionary<Type, Type> Map { get; }

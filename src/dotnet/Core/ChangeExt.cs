@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Extension methods for <see cref="IChange"/> validation.
+/// </summary>
 public static class ChangeExt
 {
     public static TChange RequireValid<TChange>(this TChange change)

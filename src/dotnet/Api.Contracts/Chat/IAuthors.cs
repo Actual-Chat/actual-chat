@@ -3,6 +3,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Service for managing chat authors and membership.
+/// </summary>
 public interface IAuthors : IComputeService
 {
     [ComputeMethod, RemoteComputeMethod(MinCacheDuration = 600)]

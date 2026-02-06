@@ -1,5 +1,8 @@
 namespace ActualChat.Queues;
 
+/// <summary>
+/// Manages message queues for distributed command processing.
+/// </summary>
 public interface IQueues : IWorker, IHasServices
 {
     IReadOnlyDictionary<QueueRef, IQueueProcessor> Processors { get; }

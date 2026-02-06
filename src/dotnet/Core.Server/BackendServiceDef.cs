@@ -2,6 +2,9 @@ using ActualChat.Hosting;
 
 namespace ActualChat;
 
+/// <summary>
+/// Defines a backend service with its hosting role, service mode, and sharding scheme.
+/// </summary>
 public sealed record BackendServiceDef(
     Type ServiceType,
     Type ImplementationType,

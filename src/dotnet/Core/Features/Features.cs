@@ -1,5 +1,8 @@
 namespace ActualChat;
 
+/// <summary>
+/// Aggregates client and server feature flags.
+/// </summary>
 public class Features(IServiceProvider services) : IFeatures
 {
     public IServiceProvider Services { get; } = services;

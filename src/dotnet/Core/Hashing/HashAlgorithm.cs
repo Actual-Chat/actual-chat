@@ -1,5 +1,8 @@
 namespace ActualChat.Hashing;
 
+/// <summary>
+/// Specifies the cryptographic hash algorithm to use.
+/// </summary>
 public enum HashAlgorithm
 {
     None = 0,

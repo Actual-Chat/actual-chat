@@ -1,5 +1,8 @@
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Manages modal dialog display and lifecycle in the UI.
+/// </summary>
 public sealed class ModalUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
     private TypeMapper<IModalView> ViewResolver { get; } = hub.Services.GetRequiredService<TypeMapper<IModalView>>();

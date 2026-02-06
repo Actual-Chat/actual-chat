@@ -15,6 +15,9 @@ using IndexedEntry = ActualChat.MLSearch.Documents.IndexedEntry;
 
 namespace ActualChat.MLSearch;
 
+/// <summary>
+/// Backend service implementation for AI-powered search using OpenSearch.
+/// </summary>
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDbContext>(services), ISearchBackend
 {

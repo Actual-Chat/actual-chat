@@ -4,6 +4,9 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ActualChat.App.Server.Health;
 
+/// <summary>
+/// Checks server liveliness based on sustained CPU usage to detect unresponsive instances.
+/// </summary>
 public class LivelinessHealthCheck(IServiceProvider services): IHealthCheck
 {
     private const double CpuUsageLimit = 70;

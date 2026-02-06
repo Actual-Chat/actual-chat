@@ -2,6 +2,9 @@ using ActualChat.Media;
 
 namespace ActualChat.UI.Services;
 
+/// <summary>
+/// Handles resumable file uploads with adaptive chunk sizing and retry logic.
+/// </summary>
 public sealed class ChunkedFileUploader(IServiceProvider services)
 {
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5d, 3);
@@ -111,6 +114,9 @@ public sealed class ChunkedFileUploader(IServiceProvider services)
     }
 }
 
+/// <summary>
+/// Stores the recommended chunk size multiplier across uploads within an app session.
+/// </summary>
 public sealed class ChunkSizeSelectorRecommendation
 {
     public const int DefaultMultiplier = 8;

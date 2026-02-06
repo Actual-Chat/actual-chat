@@ -16,6 +16,9 @@ using ActualLab.Resilience;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service implementation for chat operations including entries, tiles, and chat management.
+/// </summary>
 public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private const string CreatedChatEntryId = "CreatedChatEntryId";

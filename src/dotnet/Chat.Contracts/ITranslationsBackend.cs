@@ -5,6 +5,9 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
+/// <summary>
+/// Backend service for translating chat entry content between languages.
+/// </summary>
 public interface ITranslationsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
@@ -24,6 +27,9 @@ public interface ITranslationsBackend : IComputeService, IBackendService
     Task<StreamId?> OnTranslateStream(TranslationsBackend_TranslateStream command, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Command to create, update, or delete a translation record.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_Change(
@@ -35,6 +41,9 @@ public sealed partial record TranslationsBackend_Change(
     public TranslationSourceId ShardKey => Id.SourceId;
 }
 
+/// <summary>
+/// Command to translate content to a target language.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_Translate(
@@ -54,6 +63,9 @@ public sealed partial record TranslationsBackend_Translate(
     public TimeSpan? Timeout => TimeSpan.FromSeconds(180);
 }
 
+/// <summary>
+/// Command to translate an audio stream to a target language in real-time.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_TranslateStream(

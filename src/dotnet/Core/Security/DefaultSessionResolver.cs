@@ -1,5 +1,8 @@
 namespace ActualChat.Security;
 
+/// <summary>
+/// A session resolver that always returns <see cref="Session.Default"/>.
+/// </summary>
 #pragma warning disable CA1721 // Session is confusing with GetSession
 
 public sealed class DefaultSessionResolver(IServiceProvider services) : ISessionResolver

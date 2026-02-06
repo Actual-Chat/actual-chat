@@ -3,6 +3,9 @@ using ActualChat.Users;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Frontend service for managing user contacts and memberships with session-based access control.
+/// </summary>
 #pragma warning disable MA0049
 
 public class Contacts(IServiceProvider services) : IContacts

@@ -1,5 +1,8 @@
 namespace ActualChat.Mathematics;
 
+/// <summary>
+/// Calculates a running arithmetic average over samples.
+/// </summary>
 public sealed class RunningAverage(double defaultValue)
 {
     private double _sum;

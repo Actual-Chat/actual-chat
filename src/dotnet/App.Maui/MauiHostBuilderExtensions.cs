@@ -3,6 +3,9 @@ using Microsoft.Maui.Handlers;
 
 namespace ActualChat.App.Maui;
 
+/// <summary>
+/// Extension methods for configuring a MAUI Blazor hybrid application with custom handlers.
+/// </summary>
 public static class MauiHostBuilderExtensions
 {
     public static MauiAppBuilder UseMauiBlazorApp<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TApp>(this MauiAppBuilder builder)

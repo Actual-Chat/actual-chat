@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Search;
 
+/// <summary>
+/// Represents a matched portion of text in a search result.
+/// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record SearchMatchPart(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Range<int> Range,

@@ -3,6 +3,9 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Manages onboarding bubble tooltips with user-specific read/unread state.
+/// </summary>
 public sealed class BubbleUI : UIServiceBase<UIHub>
 {
     private readonly SyncedState<UserBubbleSettings> _settings;

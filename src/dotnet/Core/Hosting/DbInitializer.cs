@@ -1,5 +1,8 @@
 namespace ActualChat.Hosting;
 
+/// <summary>
+/// Interface for database schema and data initialization.
+/// </summary>
 public interface IDbInitializer : IHasServices
 {
 #pragma warning disable CA2227
@@ -14,6 +17,9 @@ public interface IDbInitializer : IHasServices
     Task VerifyData(CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Helper methods for accessing the current <see cref="IDbInitializer"/> instance.
+/// </summary>
 public static class DbInitializer
 {
     private static readonly AsyncLocal<IDbInitializer?> _current = new();

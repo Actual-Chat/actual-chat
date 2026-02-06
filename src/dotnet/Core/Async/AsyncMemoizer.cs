@@ -3,6 +3,9 @@ using System.Runtime.ExceptionServices;
 
 namespace ActualChat;
 
+/// <summary>
+/// Memoizes an async sequence and allows multiple consumers to replay from the beginning.
+/// </summary>
 public sealed class AsyncMemoizer<T>
 {
     private readonly IAsyncEnumerator<T> _source;

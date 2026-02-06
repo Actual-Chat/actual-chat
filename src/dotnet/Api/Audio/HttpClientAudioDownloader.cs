@@ -1,5 +1,8 @@
 namespace ActualChat.Audio;
 
+/// <summary>
+/// Downloads audio via HTTP using <see cref="IHttpClientFactory"/>.
+/// </summary>
 public class HttpClientAudioDownloader(IServiceProvider services) : AudioDownloader(services)
 {
     private IHttpClientFactory HttpClientFactory => field ??= Services.HttpClientFactory();

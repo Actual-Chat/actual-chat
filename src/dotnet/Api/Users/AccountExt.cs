@@ -1,5 +1,8 @@
 namespace ActualChat.Users;
 
+/// <summary>
+/// Extension methods for <see cref="Account"/>.
+/// </summary>
 public static class AccountExt
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

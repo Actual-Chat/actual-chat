@@ -2,6 +2,9 @@ using ActualChat.Hosting;
 
 namespace ActualChat.App.Server.Initializers;
 
+/// <summary>
+/// Orchestrates all <see cref="IDbInitializer"/> instances to initialize database schema and data.
+/// </summary>
 public class AggregateDbInitializer(IServiceProvider services): WorkerBase
 {
     protected override async Task OnRun(CancellationToken cancellationToken)

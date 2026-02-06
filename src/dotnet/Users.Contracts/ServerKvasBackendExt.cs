@@ -2,6 +2,9 @@ using ActualChat.Kvas;
 
 namespace ActualChat.Users;
 
+/// <summary>
+/// Extension methods for <see cref="IServerKvasBackend"/>.
+/// </summary>
 public static class ServerKvasBackendExt
 {
     public static IKvas<Account> GetUserClient(this IServerKvasBackend serverKvasBackend, Account account)

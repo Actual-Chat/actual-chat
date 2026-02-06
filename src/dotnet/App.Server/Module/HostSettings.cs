@@ -2,6 +2,9 @@ using ActualChat.Hosting;
 
 namespace ActualChat.App.Server.Module;
 
+/// <summary>
+/// Configuration settings for the application server host.
+/// </summary>
 public sealed class HostSettings
 {
     public HostKind? AppKind { get; set; }

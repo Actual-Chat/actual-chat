@@ -2,6 +2,9 @@ using ActualChat.Flows.Infrastructure;
 
 namespace ActualChat.Flows;
 
+/// <summary>
+/// Starts master flows (singleton background processes) on their owning shard.
+/// </summary>
 internal class MasterFlowStarter(IServiceProvider services) : ShardWorker(services, ShardScheme.FlowsBackend)
 {
     private readonly ConcurrentDictionary<Type, Unit> _flowTypesToStart = new();

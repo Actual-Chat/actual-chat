@@ -6,24 +6,26 @@
 // - Similarity computed on trimmed core only.
 // - Produces LinearMap whose X = character offset in NEW text, Y = seconds.
 
+/// <summary>
+/// Provides DTW-based text-to-time map realignment with trigram signatures.
+/// </summary>
 using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace ActualChat.Transcription
 {
-    // ---------------------------------------------------------------
-    // Alignment mode: control trim behavior & DTW band defaults.
-    // ---------------------------------------------------------------
+    /// <summary>
+    /// Specifies how DTW alignment should handle leading/trailing trims.
+    /// </summary>
     public enum AlignmentMode
     {
         RetranscribeSameAudio, // trims presumed zero, tighter band
         UserEditedTranscript // detect leading/trailing trims
     }
 
-    // ---------------------------------------------------------------
-    // Public entry: DTW remap + (optional) trims + core similarity gate.
-    // Produces new LinearMap: X=new char offsets, Y=seconds.
-    // ---------------------------------------------------------------
+    /// <summary>
+    /// Remaps text-to-time mappings using DTW alignment with similarity gating.
+    /// </summary>
     public static class LinearMapDtwRemapper
     {
         public static LinearMap Remap(

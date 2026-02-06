@@ -1,5 +1,8 @@
 namespace ActualChat.DependencyInjection;
 
+/// <summary>
+/// A keyed factory that casts from another factory's service type.
+/// </summary>
 public sealed class CastingKeyedFactory<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey,

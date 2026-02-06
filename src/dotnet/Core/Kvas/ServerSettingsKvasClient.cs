@@ -1,5 +1,8 @@
 namespace ActualChat.Kvas;
 
+/// <summary>
+/// Implements <see cref="IKvas"/> using <see cref="IServerSettings"/> as backend storage.
+/// </summary>
 public class ServerSettingsKvasClient(IServerSettings serverSettings, Session session) : IKvas
 {
     public IServiceProvider Services => field ??= ServerSettings.GetServices();

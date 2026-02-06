@@ -3,6 +3,9 @@
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Frontend service for managing external contacts (phone contacts) with session-based access control.
+/// </summary>
 public class ExternalContacts(IServiceProvider services) : IExternalContacts
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();

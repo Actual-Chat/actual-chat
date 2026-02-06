@@ -2,6 +2,9 @@ using MemoryPack;
 
 namespace ActualChat.Live;
 
+/// <summary>
+/// Flags indicating the types of live stream content.
+/// </summary>
 [Flags]
 public enum LiveStreamKind
 {

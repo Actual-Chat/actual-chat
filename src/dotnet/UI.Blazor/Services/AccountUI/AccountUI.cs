@@ -3,6 +3,9 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
+/// <summary>
+/// Manages user account state, authentication flow, and sign-in/sign-out operations in the UI.
+/// </summary>
 public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyInitialized
 {
     private readonly AsyncTaskMethodBuilder _whenReadySource = AsyncTaskMethodBuilderExt.New();

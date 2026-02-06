@@ -5,6 +5,9 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Contacts;
 
+/// <summary>
+/// Represents a contact imported from the device's address book.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ExternalContact(
@@ -14,6 +17,9 @@ public partial record ExternalContact(
     [DataMember, MemoryPackOrder(13)] public HashString Hash { get; set; }
 }
 
+/// <summary>
+/// Extended external contact with full name components and contact info hashes.
+/// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record ExternalContactFull(ExternalContactId Id, long Version = 0) : ExternalContact(Id, Version)

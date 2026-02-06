@@ -1,5 +1,8 @@
 namespace ActualChat.Sharding;
 
+/// <summary>
+/// Extension methods for <see cref="ShardScheme"/>.
+/// </summary>
 public static class ShardSchemeExt
 {
     public static ShardScheme RequireValid(this ShardScheme? shardScheme)

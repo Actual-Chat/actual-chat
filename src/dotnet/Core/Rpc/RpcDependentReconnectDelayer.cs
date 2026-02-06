@@ -4,6 +4,9 @@ using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Rpc;
 
+/// <summary>
+/// Delays retries until the RPC connection is re-established.
+/// </summary>
 public sealed class RpcDependentReconnectDelayer : RpcServiceBase, IRetryDelayer
 {
     private RpcClientPeerReconnectDelayer ClientPeerReconnectDelayer { get; }
