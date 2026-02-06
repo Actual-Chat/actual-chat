@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import { EventHandlerSet } from 'event-handling';
+import { DocumentEvents, EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
 
@@ -32,6 +32,11 @@ export class OnDeviceAwake {
         this._worker = new Worker(workerPath, { type: 'module' });
         this._worker.onmessage = onSleepDetected;
         this._worker.onerror = onWorkerError;
+
+        DocumentEvents.passive.visibilityChange$.subscribe(_ => {
+            if (!document.hidden)
+                this._worker?.postMessage(null);
+        });
     }
 }
 
