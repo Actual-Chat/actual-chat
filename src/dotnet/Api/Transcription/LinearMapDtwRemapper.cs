@@ -6,23 +6,11 @@
 // - Similarity computed on trimmed core only.
 // - Produces LinearMap whose X = character offset in NEW text, Y = seconds.
 
-/// <summary>
-/// Provides DTW-based text-to-time map realignment with trigram signatures.
-/// </summary>
 using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace ActualChat.Transcription
 {
-    /// <summary>
-    /// Specifies how DTW alignment should handle leading/trailing trims.
-    /// </summary>
-    public enum AlignmentMode
-    {
-        RetranscribeSameAudio, // trims presumed zero, tighter band
-        UserEditedTranscript // detect leading/trailing trims
-    }
-
     /// <summary>
     /// Remaps text-to-time mappings using DTW alignment with similarity gating.
     /// </summary>
@@ -32,9 +20,22 @@ namespace ActualChat.Transcription
             string oldText,
             string newText,
             LinearMap oldMap,
-            AlignmentMode mode = AlignmentMode.RetranscribeSameAudio,
+            LinearMapAlignmentMode mode,
             int? bandWidth = null,
-            float similarityThreshold = 0.70f) // Option B as requested
+            float similarityThreshold = 0.70f)
+        {
+            var result = RemapWithSimilarity(oldText, newText, oldMap, mode, bandWidth);
+            return result.Similarity >= similarityThreshold && !result.Map.IsDegenerate
+                ? result.Map
+                : LinearMap.Zero;
+        }
+
+        public static LinearMapRemapResult RemapWithSimilarity(
+            string oldText,
+            string newText,
+            LinearMap oldMap,
+            LinearMapAlignmentMode mode,
+            int? bandWidth = null)
         {
             // Tokenize
             var oldToks = Tokenizer.TokenizeWithOffsets(oldText);
@@ -47,7 +48,7 @@ namespace ActualChat.Transcription
             for (int j = 0; j < newToks.Count; j++) newSig[j] = Trigram128.Signature(newToks[j].Text);
 
             // DTW band defaults per mode (can be overridden)
-            int bw = bandWidth ?? (mode == AlignmentMode.RetranscribeSameAudio ? 64 : 128);
+            int bw = bandWidth ?? (mode == LinearMapAlignmentMode.RetranscribeSameAudio ? 64 : 128);
 
             // DTW new->old mapping
             var newToOld = Dtw.Map(oldSig, newSig, bw);
@@ -55,9 +56,9 @@ namespace ActualChat.Transcription
             // Build alignment (trims + similarity on core)
             var alignment = AlignmentBuilder.Build(oldToks, newToks, newToOld, mode);
 
-            // Reject if core is empty or too dissimilar
-            if (alignment.CoreLength == 0 || alignment.Similarity < similarityThreshold)
-                return LinearMap.Zero;
+            // If core is empty, return zero
+            if (alignment.CoreLength == 0)
+                return LinearMapRemapResult.Zero;
 
             // Sample old times once (old token starts)
             var oldTimes = MapSampling.SampleOldTokenTimes(oldMap, oldToks);
@@ -80,13 +81,16 @@ namespace ActualChat.Transcription
             }
 
             if (points.Count == 0)
-                return LinearMap.Zero;
+                return new LinearMapRemapResult { Map = LinearMap.Zero, Similarity = alignment.Similarity };
 
             // Light smoothing to remove single-token jitter without changing meaning
             var map = new LinearMap(CollectionsMarshal.AsSpan(points))
                 .Simplify(new Vector2(0.01f, 0.005f)); // tweak if needed
 
-            return map.IsValid() ? map : map.RequireValid();
+            if (!map.IsValid())
+                map = map.RequireValid();
+
+            return new LinearMapRemapResult { Map = map, Similarity = alignment.Similarity };
         }
 
         // Nested types
@@ -286,14 +290,14 @@ namespace ActualChat.Transcription
                 IReadOnlyList<Token> oldTokens,
                 IReadOnlyList<Token> newTokens,
                 int[] newToOld,
-                AlignmentMode mode)
+                LinearMapAlignmentMode mode)
             {
                 int n = oldTokens.Count;
                 int m = newTokens.Count;
 
                 int leadingTrim = 0, trailingTrim = 0;
 
-                if (mode == AlignmentMode.UserEditedTranscript && n > 0 && m > 0) {
+                if (mode == LinearMapAlignmentMode.UserEditedTranscript && n > 0 && m > 0) {
                     // Count new-prefix tokens until the first exact text match along mapping.
                     while (leadingTrim < m) {
                         int map = newToOld[leadingTrim];

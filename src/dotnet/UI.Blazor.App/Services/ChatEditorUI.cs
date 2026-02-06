@@ -108,7 +108,7 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
                         chatIdRange,
                         x => x.AuthorId == author.Id
                             && x is {
-                                HasMediaEntry: false,
+                                HasVideoEntry: false,
                                 IsStreaming: false,
                                 ForwardedChatEntryId: null,
                             },

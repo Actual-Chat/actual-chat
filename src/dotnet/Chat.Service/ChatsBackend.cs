@@ -1874,7 +1874,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             timeMap = LinearMapDtwRemapper.Remap(textEntry.Content,
                 transcription.Text,
                 textEntry.TimeMap,
-                AlignmentMode.RetranscribeSameAudio);
+                LinearMapAlignmentMode.RetranscribeSameAudio);
         }
         await Commander.Run(new ChatsBackend_ChangeEntry(
             entryId,

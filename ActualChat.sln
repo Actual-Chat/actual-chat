@@ -382,6 +382,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plans", "plans", "{A0CDF5EA
 		docs\plans\user-account-merge.md = docs\plans\user-account-merge.md
 		docs\plans\audio-context-source-refactor.md = docs\plans\audio-context-source-refactor.md
 		docs\plans\live-streams.md = docs\plans\live-streams.md
+		docs\plans\e2ee.md = docs\plans\e2ee.md
 	EndProjectSection
 EndProject
 Global

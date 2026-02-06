@@ -1,4 +1,5 @@
 using ActualChat.Contacts;
+using ActualChat.Transcription;
 using ActualChat.Users;
 using ActualLab.Rpc.Infrastructure;
 
@@ -392,22 +393,51 @@ public class Chats(IServiceProvider services) : IChats
             // Check constraints
             if (textEntry.AuthorId != author.Id)
                 throw StandardError.Unauthorized("You can edit only your own messages.");
-            if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming || textEntry.AudioEntryLid.HasValue)
+            if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming)
                 throw StandardError.Constraint("Only text messages can be edited.");
             if (textEntry.ForwardedChatEntryId is not null && !OrdinalEquals(command.Text, textEntry.Content))
                 throw StandardError.Constraint("Forwarded messages cannot be edited.");
             if (repliedEntryLid.IsSome(out var v) && textEntry.RepliedEntryLid != v)
                 throw StandardError.Constraint("Replied entry Id cannot be changed.");
 
+            var diff = new ChatEntryDiff {
+                Content = text,
+                RepliedEntryLid = repliedEntryLid,
+                HasAttachmentUploads = command.HasAttachmentUploads,
+                Attachments = command.EntryAttachments,
+            };
+
+            // Audio-aware edit: remap TimeMap or strip audio link
+            if (textEntry.AudioEntryLid.HasValue) {
+                if (!textEntry.TimeMap.IsDegenerate) {
+                    var remapResult = LinearMapDtwRemapper.RemapWithSimilarity(
+                        textEntry.Content, text, textEntry.TimeMap,
+                        LinearMapAlignmentMode.UserEditedTranscript);
+                    if (remapResult is { Similarity: >= LinearMapRemapResult.MinorEditSimilarityThreshold, Map.IsDegenerate: false }) {
+                        // Minor edit: keep audio, update TimeMap
+                        diff = diff with { TimeMap = remapResult.Map };
+                    }
+                    else {
+                        // Major edit: strip audio link
+                        diff = diff with {
+                            AudioEntryLid = Option.Some<long?>(null),
+                            TimeMap = LinearMap.Zero,
+                        };
+                    }
+                }
+                else {
+                    // Degenerate TimeMap: can't remap, strip audio
+                    diff = diff with {
+                        AudioEntryLid = Option.Some<long?>(null),
+                        TimeMap = LinearMap.Zero,
+                    };
+                }
+            }
+
             var upsertCommand = new ChatsBackend_ChangeEntry(
                 textEntryId,
                 null,
-                Change.Update(new ChatEntryDiff {
-                    Content = text,
-                    RepliedEntryLid = repliedEntryLid,
-                    HasAttachmentUploads = command.HasAttachmentUploads,
-                    Attachments = command.EntryAttachments,
-                }));
+                Change.Update(diff));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
         else {
