@@ -7,17 +7,18 @@
     var preview = state.Preview;
     var previewState = preview.State;
     var previewUrl = preview.PreviewUrl;
-    var progress = state.Progress;
+    var uploadState = state.UploadState;
+    var progress = uploadState.Progress;
     var uploadProgressClass = "attachment-upload-progress";
     var plugClass = "blurred-plug";
-    if (state.Failed) {
+    if (uploadState.IsFailed) {
         progress = Math.Max(progress, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (state.Uploaded) {
+    } else if (uploadState.IsUploaded) {
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
-    var isUploading = state.UploadSessionId != "" && !(state.Uploaded || state.Failed);
+    var isUploading = state.UploadSessionId != "" && !(uploadState.IsUploaded || uploadState.IsFailed);
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -33,12 +34,12 @@
                         <source src="@previewUrl#t=0.5"/>
                     </video>
                 }
-                @if (!state.Uploaded) {
+                @if (!uploadState.IsUploaded) {
                     @if (isUploading) {
                         <span class="spinner-icon-wrapper">
                             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
                         </span>
-                    } else if (state.Failed && !state.NoAccess && RestartClick.HasDelegate) {
+                    } else if (uploadState.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
                         <span class="reload-icon-wrapper">
                             <ButtonRound Click="@RestartClick" Class="btn-sm">
                                 <i class="icon-sync text-2xl"></i>

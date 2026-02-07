@@ -218,7 +218,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 attachEntry.Width,
                 attachEntry.Height,
                 attachExtra) {
-                Id = attachEntry.AttachmentId,
                 UploadSessionId = uploadSessionId,
                 NoFileAccess = !attachmentIsOk
             };

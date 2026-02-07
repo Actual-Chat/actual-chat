@@ -4,21 +4,22 @@
 @{
     var attachment = Attachment;
     var state = State.Value;
-    var progress = state.Progress;
+    var uploadState = state.UploadState;
+    var progress = uploadState.Progress;
     // NOTE: For attachment item preview state should always be in OK state, so we can use previewUrl.
     var previewUrl = state.Preview.PreviewUrl;
     var uploadProgressClass = "attachment-upload-progress";
     var plugClass = "blurred-plug";
-    if (state.Failed) {
+    if (uploadState.IsFailed) {
         progress = Math.Max(progress, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (state.Uploaded) {
+    } else if (uploadState.IsUploaded) {
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
 
     var uploadStyle = $"width: {progress}%;";
-    var isUploading = state.UploadSessionId != "" && !(state.Uploaded || state.Failed);
+    var isUploading = state.UploadSessionId != "" && !(uploadState.IsUploaded || uploadState.IsFailed);
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -35,11 +36,11 @@
             } else {
                 <FileAttachmentView FileType="@attachment.FileType"/>
             }
-            @if (!state.Uploaded) {
+            @if (!uploadState.IsUploaded) {
                 <span class="spinner-icon-wrapper">
                     @if (isUploading) {
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                    } else if (state.Failed && !state.NoAccess && RestartClick.HasDelegate) {
+                    } else if (uploadState.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
                         <ButtonRound Click="@RestartClick">
                             <i class="icon-sync text-2xl"></i>
                         </ButtonRound>
