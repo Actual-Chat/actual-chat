@@ -127,8 +127,8 @@
         }
 
         foreach (var chatId in selectedChatIds) {
-            var request = new SendMessageRequest(chatId, null, text);
-            _ = await SendingMessages.Post(request, CancellationToken.None);
+            var request = SendMessageRequest.NewMessage(chatId, text);
+            _ = await SendingMessages.Send(request, CancellationToken.None);
         }
         Modal.Close(true);
     }

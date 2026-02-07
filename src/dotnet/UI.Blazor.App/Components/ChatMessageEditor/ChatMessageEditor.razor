@@ -204,22 +204,26 @@
         var clearMarkupTask = MarkupEditorRef.Clear();
         try {
             var relatedChatEntry = ChatEditorUI.RelatedEntryRef.Value;
-            var relatedChatEntryId = relatedChatEntry?.EntryId;
             await ChatEditorUI.HideRelatedEntry(false);
 
             SendMessageRequest cmd;
-            if (relatedChatEntry is { Kind: RelatedEntryKind.Edit }) {
-                if (relatedChatEntryId is null)
-                    throw new InternalError("Invalid ChatUI.RelatedChatEntry value.");
-                cmd = new SendMessageRequest(relatedChatEntryId.ChatId, relatedChatEntryId.LocalId, text);
-            } else {
-                var repliedEntryLid = relatedChatEntryId?.LocalId;
-                cmd = new SendMessageRequest(Chat.Id, null, text) {
-                    RepliedEntryLid = repliedEntryLid,
-                    Attachments = attachmentListSnapshot.Attachments,
+            UploadsHandle? uploads = null;
+            if (relatedChatEntry is not null) {
+                cmd = relatedChatEntry.Kind switch {
+                    RelatedEntryKind.Reply
+                        => SendMessageRequest.ReplyMessage(Chat.Id, relatedChatEntry.EntryId, text),
+                    RelatedEntryKind.Edit
+                        => SendMessageRequest.EditMessage(relatedChatEntry.EntryId, text),
+                    _ => throw new InternalError("Invalid RelatedEntryKind")
                 };
+            } else {
+                var attachments = attachmentListSnapshot.Attachments;
+
+                uploads = await SendingMessages.Upload(attachments);
+                cmd = SendMessageRequest.NewMessage(Chat.Id, text, uploads);
             }
-            var postTask = await SendingMessages.Post(cmd, CancellationToken.None);
+            var postTask = await SendingMessages.Send(cmd, CancellationToken.None);
+            uploads?.Dispose();
             _ = ForegroundTask.Run(async () => {
                 try {
                     var chatEntry = await postTask.ConfigureAwait(true);

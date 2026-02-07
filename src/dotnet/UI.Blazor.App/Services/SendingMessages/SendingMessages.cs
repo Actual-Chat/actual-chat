@@ -53,7 +53,18 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             .RunIsolated(cancellationToken);
     }
 
-    public async Task<Task<ChatEntry?>> Post(SendMessageRequest cmd, CancellationToken cancellationToken)
+    public async Task<UploadsHandle?> Upload(IAttachmentList attachments)
+    {
+        if (attachments.Count == 0)
+            return null;
+
+        throw new NotImplementedException();
+        return new UploadsHandle {
+            Count = attachments.Count
+        };
+    }
+
+    public async Task<Task<ChatEntry?>> Send(SendMessageRequest cmd, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("Post '{Text}'", cmd.Text);
         var now = Clocks.SystemClock.Now;
@@ -90,8 +101,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             uploads,
             entry.ClientId,
             entry.NewChatEntryLocalId,
-            entry.AfterSendMessageHandlerKey,
-            entry.AfterSendMessageHandlerArgs,
+            !entry.AfterSendMessageHandlerKey.IsNullOrEmpty() ? new AfterSendMessageHandler(entry.AfterSendMessageHandlerKey, entry.AfterSendMessageHandlerArgs) : null,
             checkResend);
 
     private record AttachExtra(Task<bool> WhenFilePermissionGranted, Task<string> GetPreviewUrl);
@@ -358,8 +368,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             : Result.NewError<ChatEntry?>(task.Exception!);
 
         InvokeAfterSendMessageHandler(
-            request.AfterSendMessageHandlerKey,
-            request.AfterSendMessageHandlerArgs,
+            request.AfterSendMessageHandler,
             result2);
     }
 
@@ -437,17 +446,17 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         return chatEntry1;
     }
 
-    private void InvokeAfterSendMessageHandler(string afterSendMessageHandlerKey, string afterSendMessageHandlerArgs, Result<ChatEntry?> result)
+    private void InvokeAfterSendMessageHandler(AfterSendMessageHandler? afterSendMessageHandler, Result<ChatEntry?> result)
     {
-        if (afterSendMessageHandlerKey.IsNullOrEmpty())
+        if (afterSendMessageHandler is null)
             return;
 
-        IAfterSendMessageHandler handler = afterSendMessageHandlerKey switch {
+        IAfterSendMessageHandler handler = afterSendMessageHandler.Key switch {
             AfterSendMessageHandlerKeys.IncomingShare => Hub.Services.GetRequiredService<IncomingShareAfterSendMessageHandler>(),
-            _ => throw new InvalidOperationException($"Unknown after send message handler key '{afterSendMessageHandlerKey}'")
+            _ => throw new InvalidOperationException($"Unknown after send message handler key '{afterSendMessageHandler.Key}'")
         };
 
-        handler.Invoke(afterSendMessageHandlerArgs, result);
+        handler.Invoke(afterSendMessageHandler.Args, result);
     }
 
     private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, CancellationToken cancellationToken)
@@ -586,8 +595,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         AttachmentUploads? AttachmentUploads,
         string ClientId,
         long? NewChatEntryLocalId,
-        string AfterSendMessageHandlerKey,
-        string AfterSendMessageHandlerArgs,
+        AfterSendMessageHandler? AfterSendMessageHandler,
         bool CheckResend
     ) : IHasId<string>
     {

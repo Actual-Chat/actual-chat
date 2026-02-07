@@ -92,13 +92,9 @@
         var text = ModalModel.Text;
         CancellationToken cancellationToken = default;
         foreach (var chatId in selectedChatIds) {
-            if (!comment.IsNullOrEmpty()) {
-                var cmd2 = new SendMessageRequest(chatId, null, comment);
-                _ = SendingMessages.Post(cmd2, cancellationToken);
-            }
-
-            var cmd = new SendMessageRequest(chatId, null, text);
-            _ = SendingMessages.Post(cmd, cancellationToken);
+            if (!comment.IsNullOrEmpty())
+                await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, comment), cancellationToken);
+            await SendingMessages.Send(SendMessageRequest.NewMessage(chatId, text), cancellationToken);
         }
 
         Modal.Close(true);
@@ -124,16 +120,17 @@
         Modal.Close(true);
         try {
             var postTasks = new List<(Task, ChatId, int)>();
-            foreach (var chatId in selectedChatIds) {
-                var comment = _comment;
-                foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                    var attachmentList = await CreateAttachmentList(filesChunk);
-                    var postTask = PostMessage(chatId, comment, attachmentList);
-                    comment = "";
+            var comment = _comment;
+            foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
+                var attachmentList = await CreateAttachmentList(filesChunk);
+                var uploads = (await SendingMessages.Upload(attachmentList))!;
+                foreach (var chatId in selectedChatIds) {
+                    var postTask = PostMessage(chatId, comment, uploads);
                     postTasks.Add((postTask, chatId, filesChunk.Length));
                 }
+                uploads.Dispose();
+                comment = "";
             }
-
             await Task.WhenAll(postTasks.Select(c => c.Item1));
             var failedTasks = postTasks
                 .Where(c => !c.Item1.IsCompletedSuccessfully)
@@ -191,15 +188,12 @@
         return new ReadonlyAttachmentList(attachments);
     }
 
-    private async Task PostMessage(ChatId chatId, string comment, IAttachmentList attachments)
-    {
-        var cmd = new SendMessageRequest(chatId, null, comment) {
-            RepliedEntryLid = null,
-            Attachments = attachments,
-            AfterSendMessageHandlerKey = SendingMessages.AfterSendMessageHandlerKeys.IncomingShare,
-            AfterSendMessageHandlerArgs = attachments.Count.ToInvariantString(),
-        };
-        var postTask = await SendingMessages.Post(cmd, default).ConfigureAwait(false);
+    private async Task PostMessage(ChatId chatId, string text, UploadsHandle uploads) {
+        var afterHandler = new AfterSendMessageHandler(
+            SendingMessages.AfterSendMessageHandlerKeys.IncomingShare,
+            uploads.Count.ToInvariantString());
+        var cmd = SendMessageRequest.NewMessage(chatId, text, uploads, afterHandler);
+        var postTask = await SendingMessages.Send(cmd, default).ConfigureAwait(false);
         await postTask.SilentAwait(); // IncomingShareAfterSendMessageHandler will handle a send result.
     }
 

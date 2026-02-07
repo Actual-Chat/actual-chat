@@ -88,7 +88,7 @@ partial class SendingMessages
             uuid, now,
             cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid,
             attachEntries.ToArray(), clientId,
-            cmd.AfterSendMessageHandlerKey, cmd.AfterSendMessageHandlerArgs);
+            cmd.AfterSendMessageHandler?.Key ?? "", cmd.AfterSendMessageHandler?.Args ?? "");
         return entry;
     }
 }
