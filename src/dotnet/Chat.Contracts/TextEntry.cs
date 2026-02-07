@@ -1,4 +1,3 @@
-
 namespace ActualChat.Chat;
 
 /// <summary>
