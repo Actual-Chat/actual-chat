@@ -122,10 +122,10 @@
             var postTasks = new List<(Task, ChatId, int)>();
             var comment = _comment;
             foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                var attachmentList = await CreateAttachmentList(filesChunk);
-                var uploads = (await SendingMessages.Upload(attachmentList))!;
+                var attachments = await CreateAttachmentList(filesChunk);
+                var uploads = (await SendingMessages.Upload(attachments))!;
                 foreach (var chatId in selectedChatIds) {
-                    var postTask = PostMessage(chatId, comment, uploads);
+                    var postTask = PostMessage(chatId, comment, uploads, attachments.Length);
                     postTasks.Add((postTask, chatId, filesChunk.Length));
                 }
                 uploads.Dispose();
@@ -149,7 +149,7 @@
         }
     }
 
-    private async Task<ReadonlyAttachmentList> CreateAttachmentList(IEnumerable<AttachFileInfo> fileInfos) {
+    private async Task<ImmutableArray<Attachment>> CreateAttachmentList(IEnumerable<AttachFileInfo> fileInfos) {
         Exception? fileSizeLimitError = null;
         var attachments = new List<Attachment>();
         foreach (var fileInfo in fileInfos) {
@@ -185,13 +185,13 @@
         }
         if (fileSizeLimitError != null)
             Services.UICommander().ShowError(fileSizeLimitError);
-        return new ReadonlyAttachmentList(attachments);
+        return [..attachments];
     }
 
-    private async Task PostMessage(ChatId chatId, string text, UploadsHandle uploads) {
+    private async Task PostMessage(ChatId chatId, string text, FilesUploadHandle uploads, int attachmentCount) {
         var afterHandler = new AfterSendMessageHandler(
             SendingMessages.AfterSendMessageHandlerKeys.IncomingShare,
-            uploads.Count.ToInvariantString());
+            attachmentCount.ToInvariantString());
         var cmd = SendMessageRequest.NewMessage(chatId, text, uploads, afterHandler);
         var postTask = await SendingMessages.Send(cmd, default).ConfigureAwait(false);
         await postTask.SilentAwait(); // IncomingShareAfterSendMessageHandler will handle a send result.

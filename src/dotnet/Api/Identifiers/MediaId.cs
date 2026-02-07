@@ -24,6 +24,7 @@ public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaI
     private static ILogger Log => _log ??= StaticLog.For<MediaId>();
     private static readonly ILruCache<string, MediaId> Cache = CreateCache<MediaId>(128);
     private static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
+    private static readonly RandomStringGenerator ScopeGenerator = new(16, Alphabet.AlphaNumeric);
 
     public const char Delimiter = ':';
 
@@ -46,6 +47,9 @@ public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaI
 
     public static MediaId New(string scope, string localId)
         => new (Format(scope, localId), scope, localId);
+
+    public static string GenerateScope()
+        => ScopeGenerator.Next();
 
     private MediaId(string value, string scope, string localId) : base(value)
     {

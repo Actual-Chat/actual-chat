@@ -23,6 +23,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     // ReSharper disable once NotAccessedField.Local
     private readonly Task _pruneSendingMessagesTask;
     private readonly ChatSendingMessagesTriggers _triggers;
+    private readonly FilesUploadRegistry _filesUploadRegistry = new();
 
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private UploadSessions UploadSessions => Hub.UploadSessions;
@@ -53,15 +54,26 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             .RunIsolated(cancellationToken);
     }
 
-    public async Task<UploadsHandle?> Upload(IAttachmentList attachments)
+    public async Task<FilesUploadHandle?> Upload(ImmutableArray<Attachment> attachments)
     {
-        if (attachments.Count == 0)
+        if (attachments.Length == 0)
             return null;
 
-        throw new NotImplementedException();
-        return new UploadsHandle {
-            Count = attachments.Count
-        };
+        var uploadEntries = new List<UploadFileRequestEntry>();
+        foreach (var attachment in attachments) {
+            var uploadSessionId = attachment.UploadSessionId;
+            if (uploadSessionId.IsNullOrEmpty()) {
+                if (attachment.FileProvider is not { } fileProvider)
+                    throw new InvalidOperationException($"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
+
+                var uploadSession = await UploadSessions.CreateSession(fileProvider).ConfigureAwait(false);
+                uploadSessionId = uploadSession.SessionId;
+            }
+            var attachEntry = new UploadFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Length, attachment.Width, attachment.Height, attachment.Id);
+            uploadEntries.Add(attachEntry);
+        }
+        var upload = new FilesUpload(attachments, uploadEntries.ToArray());
+        return _filesUploadRegistry.Register(upload);
     }
 
     public async Task<Task<ChatEntry?>> Send(SendMessageRequest cmd, CancellationToken cancellationToken)
@@ -71,11 +83,14 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
         await _whenStoredRequestsProcessed.ConfigureAwait(false);
         var uuid = Ulid.NewUlid().ToString();
-        var entry = await CreateStoredSendRequest(uuid, now, cmd).ConfigureAwait(false);
+        var filesUpload = cmd.Uploads is not null ? _filesUploadRegistry.Get(cmd.Uploads) : null;
+        var entry = CreateStoredSendRequest(uuid, now, cmd, filesUpload);
         DebugLog?.LogDebug("About to store post request '{Text}'", cmd.Text);
         await _requestsRepo.Add(entry, cancellationToken).ConfigureAwait(false);
 
-        var uploads = await CreateAttachmentUploads(entry, cmd.Attachments).ConfigureAwait(false);
+        if (filesUpload is not null)
+            filesUpload.AddReference();
+        var uploads = await CreateAttachmentUploads(entry, filesUpload?.GetAttachments()).ConfigureAwait(false);
         var requestInternal = CreatePostMessageRequestInternal(entry, uploads, false);
         _ = BackgroundTask.Run(async () => {
             DebugLog?.LogDebug("About to post internal '{Text}'", cmd.Text);
@@ -117,21 +132,20 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         public bool NoFileAccess { get; init; }
     }
 
-    private async Task<AttachmentUploads?> CreateAttachmentUploads(SendMessageRequestEntry entry, IAttachmentList? sourceAttachments)
+    private async Task<AttachmentUploads?> CreateAttachmentUploads(SendMessageRequestEntry entry, IReadOnlyList<Attachment>? sourceAttachments)
     {
         var attachEntries = entry.AttachFileRequests;
         if (attachEntries.Length == 0)
             return null;
 
-        var sourceAttachmentsCopy = sourceAttachments?.Items.ToArray();
-        if (sourceAttachmentsCopy is not null && sourceAttachmentsCopy.Length != attachEntries.Length)
-            sourceAttachmentsCopy = null;
+        if (sourceAttachments is not null && sourceAttachments.Count != attachEntries.Length)
+            throw StandardError.Internal("Source attachments count is not equal to attach file requests count.");
 
         var attachments = new List<RestoredAttachment>();
         var attachmentRegistry = Hub.AttachmentRegistry;
         for (var i = 0; i < attachEntries.Length; i++) {
             var attachEntry = attachEntries[i];
-            var sourceAttachment = sourceAttachmentsCopy?[i];
+            var sourceAttachment = sourceAttachments?[i];
             var previewUrl = "";
             Task<string> getPreviewUrl = Task.FromResult("");
             if (sourceAttachment is SourceAttachment s) {

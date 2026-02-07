@@ -1,17 +1,5 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public record SendFilesRequest(IAttachmentList Attachments);
-
-public record UploadsHandle : IDisposable
-{
-    public int Count { get; init; }
-
-    public void Dispose()
-    {
-
-    }
-}
-
 public sealed record AfterSendMessageHandler(string Key, string Args);
 
 public sealed class SendMessageRequest
@@ -20,10 +8,10 @@ public sealed class SendMessageRequest
     public required string Text { get; init; }
     public long? LocalId { get; private set;  }
     public Option<long?> RepliedEntryLid { get; private set; }
-    public UploadsHandle? Uploads { get; private set; }
+    public FilesUploadHandle? Uploads { get; private set; }
     public AfterSendMessageHandler? AfterSendMessageHandler { get; private set; }
 
-    public static SendMessageRequest NewMessage(ChatId chatId, string text, UploadsHandle? uploads = null, AfterSendMessageHandler? afterSendMessageHandler = null)
+    public static SendMessageRequest NewMessage(ChatId chatId, string text, FilesUploadHandle? uploads = null, AfterSendMessageHandler? afterSendMessageHandler = null)
         => new () {
             ChatId = chatId,
             Text = text,

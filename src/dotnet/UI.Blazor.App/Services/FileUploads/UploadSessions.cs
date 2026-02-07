@@ -2,8 +2,6 @@ using ActualChat.Media;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-using System.Collections.Concurrent;
-
 public partial class UploadSessions : UIServiceBase<AppUIHub>
 {
     private readonly UploadSessionRepo _repo;
@@ -31,7 +29,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     public async Task<UploadSession> CreateSession(
-        ChatId chatId,
         IFileProvider fileProvider)
     {
         if (fileProvider == null)
@@ -46,7 +43,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             Status = UploadStatus.Pending,
             CreatedAt = Now,
             LastUpdatedAt = Now,
-            ChatId = chatId,
         };
 
         _sessions[session.SessionId] = session;
@@ -188,7 +184,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             return session.ReservedMediaId;
 
         var metadata = await Hub.AttachmentRegistry.GetUploadSessionMetadata(sessionId, cancellationToken).ConfigureAwait(false);
-        var command = new Medias_ReserveMedia(Session, session.ChatId.Value) { Metadata = metadata };
+        // TODO(DF): review how we choose media scope and whether we need a new media id here or not.
+        var mediaScope = MediaId.GenerateScope();     //session.ChatId.Value;
+        var command = new Medias_ReserveMedia(Session, mediaScope) { Metadata = metadata };
         var mediaId = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
         session.ReservedMediaId = mediaId;
         session.LastUpdatedAt = Now;
@@ -243,13 +241,12 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session.Status is not UploadStatus.Uploading)
             throw new InvalidOperationException("Cannot register an upload for a session that is not uploading");
 
-        var tag = UploadExt.BuildTag(session.ChatId);
         var fileMetadata = session.FileProvider.Metadata;
         var length = fileMetadata.Length;
         var metadata = new PropertyBag()
             .Set(nameof(Media.Media.FileName), fileMetadata.FileName)
             .Set(nameof(Media.Media.ContentType), fileMetadata.FileType);
-        var uploadId = await Commander.Call(new Uploads_Create(Hub.Session, length, tag, metadata), cancellationToken).ConfigureAwait(false);
+        var uploadId = await Commander.Call(new Uploads_Create(Hub.Session, length, "", metadata), cancellationToken).ConfigureAwait(false);
         session.UploadId = uploadId;
         session.LastUpdatedAt = Now;
         await _repo.Save(session).ConfigureAwait(false);

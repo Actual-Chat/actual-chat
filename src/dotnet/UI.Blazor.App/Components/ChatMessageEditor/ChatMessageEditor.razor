@@ -4,7 +4,6 @@
 @using ActualChat.Kvas
 @using ActualLab.Locking
 @using ActualChat.Pooling
-@using System.Diagnostics.CodeAnalysis
 @inherits ComponentBase<AppUIHub>
 @implements IAttachmentWebFilePickerBackend
 @implements IAsyncDisposable
@@ -205,25 +204,27 @@
         try {
             var relatedChatEntry = ChatEditorUI.RelatedEntryRef.Value;
             await ChatEditorUI.HideRelatedEntry(false);
-
-            SendMessageRequest cmd;
-            UploadsHandle? uploads = null;
-            if (relatedChatEntry is not null) {
-                cmd = relatedChatEntry.Kind switch {
-                    RelatedEntryKind.Reply
-                        => SendMessageRequest.ReplyMessage(Chat.Id, relatedChatEntry.EntryId, text),
-                    RelatedEntryKind.Edit
-                        => SendMessageRequest.EditMessage(relatedChatEntry.EntryId, text),
-                    _ => throw new InternalError("Invalid RelatedEntryKind")
-                };
-            } else {
-                var attachments = attachmentListSnapshot.Attachments;
-
-                uploads = await SendingMessages.Upload(attachments);
-                cmd = SendMessageRequest.NewMessage(Chat.Id, text, uploads);
+            Task<ChatEntry?> postTask;
+            FilesUploadHandle? uploads = null;
+            try {
+                SendMessageRequest cmd;
+                if (relatedChatEntry is not null) {
+                    cmd = relatedChatEntry.Kind switch {
+                        RelatedEntryKind.Reply
+                            => SendMessageRequest.ReplyMessage(Chat.Id, relatedChatEntry.EntryId, text),
+                        RelatedEntryKind.Edit
+                            => SendMessageRequest.EditMessage(relatedChatEntry.EntryId, text),
+                        _ => throw new InternalError("Invalid RelatedEntryKind")
+                    };
+                } else {
+                    uploads = await SendingMessages.Upload([..attachmentListSnapshot.Attachments.Items]);
+                    cmd = SendMessageRequest.NewMessage(Chat.Id, text, uploads);
+                }
+                postTask = await SendingMessages.Send(cmd, CancellationToken.None);
             }
-            var postTask = await SendingMessages.Send(cmd, CancellationToken.None);
-            uploads?.Dispose();
+            finally {
+                uploads?.Dispose();
+            }
             _ = ForegroundTask.Run(async () => {
                 try {
                     var chatEntry = await postTask.ConfigureAwait(true);

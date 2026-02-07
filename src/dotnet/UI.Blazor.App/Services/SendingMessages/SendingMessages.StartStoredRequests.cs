@@ -66,28 +66,18 @@ partial class SendingMessages
         }
     }
 
-    private async Task<SendMessageRequestEntry> CreateStoredSendRequest(string uuid, Moment now, SendMessageRequest cmd)
+    private SendMessageRequestEntry CreateStoredSendRequest(
+        string uuid,
+        Moment now,
+        SendMessageRequest cmd,
+        FilesUpload? filesUpload)
     {
-        var attachEntries = new List<AttachFileRequestEntry>();
-        if (cmd.Attachments is not null) {
-            foreach (var attachment in cmd.Attachments.Items) {
-                var uploadSessionId = attachment.UploadSessionId;
-                if (uploadSessionId.IsNullOrEmpty()) {
-                    if (attachment.FileProvider is not { } fileProvider)
-                        throw new InvalidOperationException($"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
-
-                    var uploadSession = await UploadSessions.CreateSession(cmd.ChatId, fileProvider).ConfigureAwait(false);
-                    uploadSessionId = uploadSession.SessionId;
-                }
-                var attachEntry = new AttachFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Length, attachment.Width, attachment.Height, attachment.Id);
-                attachEntries.Add(attachEntry);
-            }
-        }
+        var attachEntries = filesUpload?.CreateAttachFileRequests() ?? [];
         var clientId = !cmd.LocalId.HasValue ? Guid.NewGuid().ToString() : "";
         var entry = new SendMessageRequestEntry(
             uuid, now,
             cmd.ChatId, cmd.LocalId, cmd.Text, cmd.RepliedEntryLid,
-            attachEntries.ToArray(), clientId,
+            attachEntries, clientId,
             cmd.AfterSendMessageHandler?.Key ?? "", cmd.AfterSendMessageHandler?.Args ?? "");
         return entry;
     }
