@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 /// Lightweight representation of a text chat entry for streaming and translation.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: MemoryPackConstructor, JsonConstructor]
+[method: MemoryPackConstructor, JsonConstructor, Newtonsoft.Json.JsonConstructor]
 public sealed partial record TextEntry(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] long LocalId,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string Content,

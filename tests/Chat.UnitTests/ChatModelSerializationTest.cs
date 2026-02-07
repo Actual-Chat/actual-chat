@@ -1,0 +1,588 @@
+using ActualChat.Contacts;
+using ActualChat.Hashing;
+using ActualChat.Media;
+using ActualChat.Search;
+using ActualLab.Mathematics;
+using ChatModel = ActualChat.Chat.Chat;
+
+namespace ActualChat.Chat.UnitTests;
+
+public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
+{
+    [Fact]
+    public void Chat_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var chat = new ChatModel(chatId, 42) {
+            Title = "Test Chat",
+            IsPublic = true,
+            CreatedAt = new Moment(DateTime.UtcNow),
+            AllowGuestAuthors = true,
+            AllowAnonymousAuthors = false,
+            Description = "A test chat",
+            SystemTag = "system",
+        };
+
+        var s = chat.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(chat.Id);
+        s.Version.Should().Be(chat.Version);
+        s.Title.Should().Be(chat.Title);
+        s.IsPublic.Should().Be(chat.IsPublic);
+        s.CreatedAt.Should().Be(chat.CreatedAt);
+        s.AllowGuestAuthors.Should().Be(chat.AllowGuestAuthors);
+        s.AllowAnonymousAuthors.Should().Be(chat.AllowAnonymousAuthors);
+        s.Description.Should().Be(chat.Description);
+        s.SystemTag.Should().Be(chat.SystemTag);
+    }
+
+    [Fact]
+    public void ChatDiff_Basic()
+    {
+        var diff = new ChatDiff {
+            Title = "Updated Title",
+            IsPublic = true,
+            AllowGuestAuthors = false,
+            Description = "Updated description",
+        };
+        diff.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void ChatEntry_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var entry = new ChatEntry(entryId, 1) {
+            AuthorId = AuthorId.New(chatId, 10),
+            BeginsAt = new Moment(DateTime.UtcNow),
+            Content = "Hello, world!",
+            HasReactions = true,
+            IsRemoved = false,
+            ContentHash = new HashString("SHA256 Base16 abc123"),
+        };
+
+        var s = entry.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(entry.Id);
+        s.Version.Should().Be(entry.Version);
+        s.AuthorId.Should().Be(entry.AuthorId);
+        s.BeginsAt.Should().Be(entry.BeginsAt);
+        s.Content.Should().Be(entry.Content);
+        s.HasReactions.Should().Be(entry.HasReactions);
+        s.IsRemoved.Should().Be(entry.IsRemoved);
+        s.ContentHash.Should().Be(entry.ContentHash);
+    }
+
+    [Fact]
+    public void ChatEntry_WithNullableMoments()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 2);
+        var now = new Moment(DateTime.UtcNow);
+        var entry = new ChatEntry(entryId, 1) {
+            AuthorId = AuthorId.New(chatId, 10),
+            BeginsAt = now,
+            ClientSideBeginsAt = now,
+            EndsAt = now + TimeSpan.FromMinutes(5),
+            ContentEndsAt = now + TimeSpan.FromMinutes(4),
+            Content = "Test",
+        };
+
+        var s = entry.PassThroughAllSerializers(Out);
+        s.ClientSideBeginsAt.Should().Be(entry.ClientSideBeginsAt);
+        s.EndsAt.Should().Be(entry.EndsAt);
+        s.ContentEndsAt.Should().Be(entry.ContentEndsAt);
+    }
+
+    [Fact]
+    public void ChatEntry_WithNullMoments()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 3);
+        var entry = new ChatEntry(entryId, 1) {
+            AuthorId = AuthorId.New(chatId, 10),
+            BeginsAt = new Moment(DateTime.UtcNow),
+            ClientSideBeginsAt = null,
+            EndsAt = null,
+            ContentEndsAt = null,
+            Content = "Test",
+        };
+
+        var s = entry.PassThroughAllSerializers(Out);
+        s.ClientSideBeginsAt.Should().BeNull();
+        s.EndsAt.Should().BeNull();
+        s.ContentEndsAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void ChatEntryDiff_Basic()
+    {
+        var diff = new ChatEntryDiff {
+            Content = "Updated content",
+            IsRemoved = true,
+        };
+        diff.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void Author_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var authorId = AuthorId.New(chatId, 5);
+        var author = new Author(authorId, 1) {
+            AvatarId = "avatar-1",
+            IsAnonymous = false,
+            HasLeft = false,
+            Avatar = new Avatar("avatar-1") { Name = "TestUser" },
+        };
+
+        var s = author.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(author.Id);
+        s.Version.Should().Be(author.Version);
+        s.AvatarId.Should().Be(author.AvatarId);
+        s.IsAnonymous.Should().Be(author.IsAnonymous);
+        s.HasLeft.Should().Be(author.HasLeft);
+        s.Avatar.Name.Should().Be(author.Avatar.Name);
+    }
+
+    [Fact]
+    public void AuthorFull_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var authorId = AuthorId.New(chatId, 5);
+        var userId = UserId.New();
+        var author = new AuthorFull(userId, authorId, 1) {
+            AvatarId = "avatar-1",
+            IsAnonymous = false,
+            HasLeft = false,
+            Avatar = new Avatar("avatar-1") { Name = "TestUser" },
+            RoleIds = [RoleId.New(chatId, 1)],
+            CreatedAt = new Moment(DateTime.UtcNow),
+        };
+
+        var s = author.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(author.Id);
+        s.UserId.Should().Be(author.UserId);
+        s.RoleIds.Should().BeEquivalentTo(author.RoleIds);
+        s.CreatedAt.Should().Be(author.CreatedAt);
+    }
+
+    [Fact]
+    public void AuthorRules_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var rules = new AuthorRules(chatId, null, null, ChatPermissions.Write);
+
+        var s = rules.PassThroughAllSerializers(Out);
+        s.ChatId.Should().Be(rules.ChatId);
+        s.Permissions.Should().Be(rules.Permissions);
+        s.Author.Should().BeNull();
+        s.Account.Should().BeNull();
+    }
+
+    [Fact]
+    public void ChatTile_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var entries = new[] {
+            new ChatEntry(entryId, 1) {
+                AuthorId = AuthorId.New(chatId, 10),
+                BeginsAt = new Moment(DateTime.UtcNow),
+                Content = "Hello",
+            },
+        };
+        var tile = new ChatTile(new Range<long>(0, 100), false, entries);
+
+        var s = tile.PassThroughAllSerializers(Out);
+        s.IdTileRange.Should().Be(tile.IdTileRange);
+        s.IncludesRemoved.Should().Be(tile.IncludesRemoved);
+        s.Entries.Length.Should().Be(tile.Entries.Length);
+    }
+
+    [Fact]
+    public void ChatNews_Basic()
+    {
+        var news = new ChatNews(new Range<long>(1, 100));
+        news.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void ChatRangeMeta_Basic()
+    {
+        var meta = new ChatRangeMeta(
+            new Range<long>(0, 100),
+            [new Range<long>(0, 50), new Range<long>(50, 100)],
+            [new Range<long>(0, 25)],
+            10,
+            null,
+            100);
+
+        var s = meta.PassThroughAllSerializers(Out);
+        s.IdRange.Should().Be(meta.IdRange);
+        s.EntryIdRanges.Should().BeEquivalentTo(meta.EntryIdRanges);
+        s.ConversationIdRanges.Should().BeEquivalentTo(meta.ConversationIdRanges);
+        s.MinCount.Should().Be(meta.MinCount);
+        s.PreviousIdTileStart.Should().Be(meta.PreviousIdTileStart);
+        s.NextIdTileStart.Should().Be(meta.NextIdTileStart);
+    }
+
+    [Fact]
+    public void ChatEntryRangeMeta_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var meta = new ChatEntryRangeMeta(
+            chatId,
+            [new Range<long>(0, 50)],
+            null,
+            50);
+
+        var s = meta.PassThroughAllSerializers(Out);
+        s.ChatId.Should().Be(meta.ChatId);
+        s.EntryRanges.Should().BeEquivalentTo(meta.EntryRanges);
+        s.PreviousEntryId.Should().Be(meta.PreviousEntryId);
+        s.NextEntryId.Should().Be(meta.NextEntryId);
+    }
+
+    [Fact]
+    public void ChatEntryLanguage_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var lang = new ChatEntryLanguage(entryId, 1) {
+            Languages = [Languages.English, Languages.Russian],
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow,
+        };
+
+        // MessagePack fails due to mixed key types on ChatEntryLanguage - will be fixed during migration
+        var s1 = lang.PassThroughSystemJsonSerializer(Out);
+        s1.Id.Should().Be(lang.Id);
+        var s2 = lang.PassThroughNewtonsoftJsonSerializer(Out);
+        s2.Id.Should().Be(lang.Id);
+        var s3 = lang.PassThroughMemoryPackByteSerializer(Out);
+        s3.Id.Should().Be(lang.Id);
+        s3.Languages.Should().BeEquivalentTo(lang.Languages);
+    }
+
+    [Fact]
+    public void ChatLanguageTile_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var tile = new ChatLanguageTile(
+            new Range<long>(0, 100),
+            [new ChatEntryLanguage(entryId, 1) { Languages = [Languages.English] }]);
+
+        // MessagePack fails due to mixed key types on ChatEntryLanguage - will be fixed during migration
+        var s1 = tile.PassThroughSystemJsonSerializer(Out);
+        s1.IdTileRange.Should().Be(tile.IdTileRange);
+        var s2 = tile.PassThroughNewtonsoftJsonSerializer(Out);
+        s2.IdTileRange.Should().Be(tile.IdTileRange);
+        var s3 = tile.PassThroughMemoryPackByteSerializer(Out);
+        s3.IdTileRange.Should().Be(tile.IdTileRange);
+        s3.Entries.Length.Should().Be(tile.Entries.Length);
+    }
+
+    [Fact]
+    public void ChatCopyState_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        ChatId sourceId = GroupChatId.New();
+        var state = new ChatCopyState(chatId, 1) {
+            SourceChatId = sourceId,
+            CreatedAt = new Moment(DateTime.UtcNow),
+            LastCopyingAt = new Moment(DateTime.UtcNow),
+            LastProcessedEntryId = 42,
+            LastCorrelationId = "corr-1",
+            IsCopiedSuccessfully = true,
+            IsPublished = false,
+        };
+
+        var s = state.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(state.Id);
+        s.SourceChatId.Should().Be(state.SourceChatId);
+        s.LastProcessedEntryId.Should().Be(state.LastProcessedEntryId);
+        s.IsCopiedSuccessfully.Should().Be(state.IsCopiedSuccessfully);
+    }
+
+    [Fact]
+    public void ChatCopyStateDiff_Basic()
+    {
+        var diff = new ChatCopyStateDiff {
+            LastProcessedEntryId = 100,
+            IsCopiedSuccessfully = true,
+        };
+        diff.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void Conversation_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var convId = ConversationId.New(chatId, 0);
+        var conv = new Conversation(convId, 1) {
+            Title = "Test Conversation",
+            Description = "Test description",
+            Summary = "A summary",
+            StartsAt = new Moment(DateTime.UtcNow),
+            EndsAt = new Moment(DateTime.UtcNow) + TimeSpan.FromHours(1),
+            MessageCount = 42,
+        };
+
+        var s = conv.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(conv.Id);
+        s.Title.Should().Be(conv.Title);
+        s.Description.Should().Be(conv.Description);
+        s.Summary.Should().Be(conv.Summary);
+        s.MessageCount.Should().Be(conv.MessageCount);
+    }
+
+    [Fact]
+    public void ConversationDiff_Basic()
+    {
+        var diff = new ConversationDiff {
+            Title = "Updated",
+            MessageCount = 10,
+        };
+
+        var s = diff.PassThroughAllSerializers(Out);
+        s.Title.Should().Be(diff.Title);
+        s.MessageCount.Should().Be(diff.MessageCount);
+    }
+
+    [Fact]
+    public void ConversationRangeMeta_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var meta = new ConversationRangeMeta(
+            chatId,
+            [new Range<long>(0, 100)],
+            null,
+            new Range<long>(100, 200));
+
+        var s = meta.PassThroughAllSerializers(Out);
+        s.ChatId.Should().Be(meta.ChatId);
+        s.ConversationRanges.Should().BeEquivalentTo(meta.ConversationRanges);
+        s.PreviousConversationRange.Should().Be(meta.PreviousConversationRange);
+        s.NextConversationRange.Should().Be(meta.NextConversationRange);
+    }
+
+    [Fact]
+    public void Place_Basic()
+    {
+        var placeId = PlaceId.New();
+        var place = new Place(placeId, 1) {
+            Title = "Test Place",
+            IsPublic = true,
+            CreatedAt = new Moment(DateTime.UtcNow),
+            Description = "A test place",
+        };
+
+        var s = place.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(place.Id);
+        s.Title.Should().Be(place.Title);
+        s.IsPublic.Should().Be(place.IsPublic);
+        s.Description.Should().Be(place.Description);
+    }
+
+    [Fact]
+    public void PlaceDiff_Basic()
+    {
+        var diff = new PlaceDiff {
+            Title = "Updated Place",
+            IsPublic = false,
+        };
+        diff.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void PlaceRules_Basic()
+    {
+        var placeId = PlaceId.New();
+        var rules = new PlaceRules(placeId, null, null, PlacePermissions.Write);
+
+        var s = rules.PassThroughAllSerializers(Out);
+        s.PlaceId.Should().Be(rules.PlaceId);
+        s.Permissions.Should().Be(rules.Permissions);
+    }
+
+    [Fact]
+    public void Role_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var roleId = RoleId.New(chatId, 1);
+        var role = new Role(roleId, 1) {
+            Name = "Moderator",
+            Permissions = ChatPermissions.Write,
+            SystemRole = SystemRole.None,
+        };
+
+        var s = role.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(role.Id);
+        s.Name.Should().Be(role.Name);
+        s.Permissions.Should().Be(role.Permissions);
+    }
+
+    [Fact]
+    public void RoleDiff_Basic()
+    {
+        var diff = new RoleDiff {
+            Name = "Admin",
+            Permissions = ChatPermissions.Owner,
+        };
+
+        var s = diff.PassThroughAllSerializers(Out);
+        s.Name.Should().Be(diff.Name);
+        s.Permissions.Should().Be(diff.Permissions);
+    }
+
+    [Fact]
+    public void Reaction_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = TextEntryId.New(chatId, 1);
+        var authorId = AuthorId.New(chatId, 5);
+        var reaction = new Reaction {
+            Id = "reaction-1",
+            AuthorId = authorId,
+            EntryId = entryId,
+            Emoji = Emojis.ThumbsUp,
+            ModifiedAt = new Moment(DateTime.UtcNow),
+        };
+
+        var s = reaction.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(reaction.Id);
+        s.AuthorId.Should().Be(reaction.AuthorId);
+        s.EntryId.Should().Be(reaction.EntryId);
+        s.Emoji.Should().Be(reaction.Emoji);
+    }
+
+    [Fact]
+    public void ReactionSummary_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = TextEntryId.New(chatId, 1);
+        var authorId = AuthorId.New(chatId, 5);
+        var summary = new ReactionSummary {
+            Id = "summary-1",
+            EntryId = entryId,
+            Emoji = Emojis.ThumbsUp,
+            Count = 5,
+            FirstAuthorIds = [authorId],
+        };
+
+        var s = summary.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(summary.Id);
+        s.EntryId.Should().Be(summary.EntryId);
+        s.Count.Should().Be(summary.Count);
+    }
+
+    [Fact]
+    public void ReadPositionsStat_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var authorId = AuthorId.New(chatId, 5);
+        var stat = new ReadPositionsStat(
+            chatId,
+            10,
+            [new AuthorReadPosition(authorId, 42)]);
+
+        var s = stat.PassThroughAllSerializers(Out);
+        s.ChatId.Should().Be(stat.ChatId);
+        s.StartTrackingEntryLid.Should().Be(stat.StartTrackingEntryLid);
+        s.TopReadPositions.Should().BeEquivalentTo(stat.TopReadPositions);
+    }
+
+    [Fact]
+    public void Mention_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var mentionId = MentionId.Parse("u:user123456");
+        var mention = new Mention {
+            Id = "mention-1",
+            EntryId = entryId,
+            MentionId = mentionId,
+        };
+
+        var s = mention.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(mention.Id);
+        s.EntryId.Should().Be(mention.EntryId);
+        s.MentionId.Should().Be(mention.MentionId);
+    }
+
+    [Fact]
+    public void SystemEntry_MembersChanged()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var authorId = AuthorId.New(chatId, 5);
+        var option = new MembersChangedOption(authorId, "TestUser", false);
+        SystemEntry entry = option;
+
+        var s = entry.PassThroughAllSerializers(Out);
+        s.MembersChanged.Should().NotBeNull();
+        s.MembersChanged!.AuthorId.Should().Be(authorId);
+        s.MembersChanged.AuthorName.Should().Be("TestUser");
+        s.MembersChanged.HasLeft.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SystemEntry_NotifyMembers()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var authorId = AuthorId.New(chatId, 5);
+        var option = new NotifyMembersOption(authorId, "TestUser");
+        SystemEntry entry = option;
+
+        var s = entry.PassThroughAllSerializers(Out);
+        s.NotifyMembers.Should().NotBeNull();
+        s.NotifyMembers!.AuthorId.Should().Be(authorId);
+        s.NotifyMembers.AuthorName.Should().Be("TestUser");
+    }
+
+    [Fact]
+    public void TextEntryAttachment_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var entryId = TextEntryId.New(chatId, 1);
+        var mediaId = MediaId.New("scope1");
+        var attachment = new TextEntryAttachment("att-1", 1) {
+            EntryId = entryId,
+            Index = 0,
+            MediaId = mediaId,
+        };
+
+        var s = attachment.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(attachment.Id);
+        s.EntryId.Should().Be(attachment.EntryId);
+        s.Index.Should().Be(attachment.Index);
+        s.MediaId.Should().Be(attachment.MediaId);
+    }
+
+    [Fact]
+    public void Translation_Basic()
+    {
+        var chatId = ChatId.Parse("the-actual-one");
+        var sourceId = TranslationSourceId.New(TextEntryId.New(chatId, 1));
+        var translationId = TranslationId.New(sourceId, Languages.Russian);
+        var translation = new Translation(translationId, 1) {
+            Content = "Привет, мир!",
+            CreatedAt = new Moment(DateTime.UtcNow),
+            ModifiedAt = new Moment(DateTime.UtcNow),
+        };
+
+        var s = translation.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(translation.Id);
+        s.Content.Should().Be(translation.Content);
+    }
+
+    [Fact]
+    public void TranslationDiff_Basic()
+    {
+        var diff = new TranslationDiff {
+            Content = "Updated translation",
+            Version = 2,
+        };
+        diff.AssertPassesThroughAllSerializers();
+    }
+}

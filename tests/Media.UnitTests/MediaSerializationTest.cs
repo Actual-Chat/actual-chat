@@ -1,0 +1,115 @@
+using ActualChat.Media;
+
+namespace ActualChat.Media.UnitTests;
+
+public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
+{
+    private static readonly Session TestSession = Session.New();
+    private static readonly UserId TestUserId = UserId.New();
+
+    [Fact]
+    public void Media_Basic()
+    {
+        var mediaId = MediaId.New(TestUserId.Value, "local1");
+        var media = new Media(mediaId, "content-1", new PropertyBag());
+
+        var s = media.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(media.Id);
+        s.ContentId.Should().Be(media.ContentId);
+    }
+
+    [Fact]
+    public void LinkPreview_Basic()
+    {
+        var preview = new LinkPreview {
+            Id = "preview-1",
+            Version = 1,
+            Url = "https://example.com",
+            Title = "Example",
+            Description = "An example page",
+            CreatedAt = new Moment(DateTime.UtcNow),
+            ModifiedAt = new Moment(DateTime.UtcNow),
+        };
+
+        var s = preview.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(preview.Id);
+        s.Url.Should().Be(preview.Url);
+        s.Title.Should().Be(preview.Title);
+        s.Description.Should().Be(preview.Description);
+    }
+
+    [Fact]
+    public void GrabStatus_Basic()
+    {
+        var status = new GrabStatus("grab-1", 1) {
+            IsSuccessful = true,
+            ModifiedAt = new Moment(DateTime.UtcNow),
+        };
+
+        var s = status.PassThroughAllSerializers(Out);
+        s.Id.Should().Be(status.Id);
+        s.IsSuccessful.Should().Be(status.IsSuccessful);
+    }
+
+    [Fact]
+    public void MediaContent_Basic()
+    {
+        var mediaId = MediaId.New(TestUserId.Value, "local1");
+        var content = new MediaContent(mediaId, "content-1");
+        var s = content.PassThroughAllSerializers(Out);
+        s.MediaId.Should().Be(content.MediaId);
+        s.ContentId.Should().Be(content.ContentId);
+    }
+
+    [Fact]
+    public void MediaContent_WithThumbnail()
+    {
+        var mediaId = MediaId.New(TestUserId.Value, "local1");
+        var thumbId = MediaId.New(TestUserId.Value, "thumb1");
+        var content = new MediaContent(mediaId, "content-1", thumbId, "thumb-content-1");
+        var s = content.PassThroughAllSerializers(Out);
+        s.MediaId.Should().Be(content.MediaId);
+        s.ContentId.Should().Be(content.ContentId);
+        s.ThumbnailMediaId.Should().Be(content.ThumbnailMediaId);
+        s.ThumbnailContentId.Should().Be(content.ThumbnailContentId);
+    }
+
+    [Fact]
+    public void Picture_Basic()
+    {
+        var mediaId = MediaId.New(TestUserId.Value, "local1");
+        var content = new MediaContent(mediaId, "content-1");
+        var picture = new Picture(content, "https://example.com/pic.jpg", "avatar-key");
+        var s = picture.PassThroughAllSerializers(Out);
+        s.MediaContent.Should().NotBeNull();
+        s.MediaContent!.MediaId.Should().Be(picture.MediaContent!.MediaId);
+        s.ExternalUrl.Should().Be(picture.ExternalUrl);
+        s.AvatarKey.Should().Be(picture.AvatarKey);
+    }
+
+    [Fact]
+    public void Picture_ExternalOnly()
+    {
+        var picture = new Picture(null, "https://example.com/pic.jpg");
+        var s = picture.PassThroughAllSerializers(Out);
+        s.MediaContent.Should().BeNull();
+        s.ExternalUrl.Should().Be(picture.ExternalUrl);
+    }
+
+    // Upload commands
+
+    [Fact]
+    public void Uploads_Create_Basic()
+    {
+        var cmd = new Uploads_Create(TestSession, 1024, "image", new PropertyBag());
+        cmd.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void Uploads_Remove_Basic()
+    {
+        var uploadId = UploadId.New();
+        var cmd = new Uploads_Remove(TestSession, uploadId);
+        cmd.AssertPassesThroughAllSerializers();
+    }
+}

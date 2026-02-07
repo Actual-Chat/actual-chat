@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Chat.UnitTests;
 
-public class AuthorSerializationTest
+public class AuthorSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
     public void BasicTest()
@@ -12,7 +12,7 @@ public class AuthorSerializationTest
                 Name = "Alex",
             },
         };
-        var sa = author.PassThroughSystemJsonSerializer();
+        var sa = author.PassThroughAllSerializers(Out);
         sa.Id.Should().Be(author.Id);
         sa.Version.Should().Be(author.Version);
         sa.UserId.Should().Be(userId);

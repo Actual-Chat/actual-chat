@@ -1,0 +1,192 @@
+using ActualChat.Chat;
+using ActualChat.Contacts;
+using ChatModel = ActualChat.Chat.Chat;
+
+namespace ActualChat.Chat.UnitTests;
+
+public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
+{
+    private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
+    private static readonly UserId TestUserId = UserId.New();
+    private static readonly PlaceId TestPlaceId = PlaceId.New();
+
+    [Fact]
+    public void TextEntryChangedEvent_Basic()
+    {
+        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var authorId = AuthorId.New(TestChatId, 5);
+        var entry = new ChatEntry(entryId, 1) {
+            AuthorId = authorId,
+            BeginsAt = new Moment(DateTime.UtcNow),
+            Content = "Hello",
+        };
+        var author = new AuthorFull(TestUserId, authorId, 1) {
+            Avatar = new Avatar("avatar-1") { Name = "Test" },
+        };
+        var evt = new TextEntryChangedEvent(entry, author, ChangeKind.Create, null);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Entry.Id.Should().Be(original.Entry.Id);
+                deserialized.Author.Id.Should().Be(original.Author.Id);
+                deserialized.ChangeKind.Should().Be(original.ChangeKind);
+            }, Out);
+    }
+
+    [Fact]
+    public void ChatChangedEvent_Basic()
+    {
+        var chat = new ChatModel(TestChatId, 1) { Title = "Test" };
+        var evt = new ChatChangedEvent(chat, null, ChangeKind.Create);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Chat.Id.Should().Be(original.Chat.Id);
+                deserialized.ChangeKind.Should().Be(original.ChangeKind);
+            }, Out);
+    }
+
+    [Fact]
+    public void AccountChangedEvent_Basic()
+    {
+        var account = new AccountFull(TestUserId, 1) {
+            Status = AccountStatus.Active,
+            Name = "Test",
+        };
+        var evt = new AccountChangedEvent(account, null, ChangeKind.Create);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Account.Id.Should().Be(original.Account.Id);
+                deserialized.ChangeKind.Should().Be(original.ChangeKind);
+            }, Out);
+    }
+
+    [Fact]
+    public void AuthorUpsertedEvent_Basic()
+    {
+        var authorId = AuthorId.New(TestChatId, 5);
+        var author = new AuthorFull(TestUserId, authorId, 1) {
+            Avatar = new Avatar("avatar-1") { Name = "Test" },
+        };
+        var evt = new AuthorUpsertedEvent(author, null);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Author.Id.Should().Be(original.Author.Id);
+            }, Out);
+    }
+
+    [Fact]
+    public void AuthorsRemovedEvent_Basic()
+    {
+        var authorId = AuthorId.New(TestChatId, 5);
+        var author = new AuthorFull(TestUserId, authorId, 1) {
+            Avatar = new Avatar("avatar-1") { Name = "Test" },
+        };
+        var evt = new AuthorsRemovedEvent([author]);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Authors.Length.Should().Be(original.Authors.Length);
+                deserialized.Authors[0].Id.Should().Be(original.Authors[0].Id);
+            }, Out);
+    }
+
+    [Fact]
+    public void AvatarChangedEvent_Basic()
+    {
+        var avatar = new AvatarFull(TestUserId, "avatar-1", 1) { Name = "Test" };
+        var evt = new AvatarChangedEvent(avatar, null, ChangeKind.Create);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Avatar.Id.Should().Be(original.Avatar.Id);
+                deserialized.ChangeKind.Should().Be(original.ChangeKind);
+            }, Out);
+    }
+
+    [Fact]
+    public void ContactChangedEvent_Basic()
+    {
+        var contactId = ContactId.NewAny(TestUserId, TestChatId);
+        var contact = new Contact(contactId, 1) {
+            Chat = new ChatModel(TestChatId),
+        };
+        var evt = new ContactChangedEvent(contact, null, ChangeKind.Create);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Contact.Id.Should().Be(original.Contact.Id);
+                deserialized.ChangeKind.Should().Be(original.ChangeKind);
+            }, Out);
+    }
+
+    [Fact]
+    public void ExternalContactNameMayHaveChangedEvent_Basic()
+    {
+        var evt = new ExternalContactNameMayHaveChangedEvent(TestUserId, ["hash1", "hash2"]);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.OwnerUserId.Should().Be(original.OwnerUserId);
+            }, Out);
+    }
+
+    [Fact]
+    public void NewAccountEvent_Basic()
+    {
+        var evt = new NewAccountEvent(TestUserId);
+        evt.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void PlaceChangedEvent_Basic()
+    {
+        var place = new Place(TestPlaceId, 1) { Title = "Test Place" };
+        var evt = new PlaceChangedEvent(place, null, ChangeKind.Create);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Place.Id.Should().Be(original.Place.Id);
+                deserialized.ChangeKind.Should().Be(original.ChangeKind);
+            }, Out);
+    }
+
+    [Fact]
+    public void PlaceMembershipChangedEvent_Basic()
+    {
+        var evt = new PlaceMembershipChangedEvent(TestUserId, TestPlaceId, false);
+        evt.AssertPassesThroughAllSerializers();
+    }
+
+    [Fact]
+    public void ReactionChangedEvent_Basic()
+    {
+        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var authorId = AuthorId.New(TestChatId, 5);
+        var reactionAuthorId = AuthorId.New(TestChatId, 10);
+        var entry = new ChatEntry(entryId, 1) {
+            AuthorId = authorId,
+            BeginsAt = new Moment(DateTime.UtcNow),
+            Content = "Hello",
+        };
+        var entryIdText = TextEntryId.New(TestChatId, 1);
+        var reaction = new Reaction {
+            Id = "reaction-1",
+            AuthorId = reactionAuthorId,
+            EntryId = entryIdText,
+            Emoji = Emojis.ThumbsUp,
+        };
+        var author = new AuthorFull(TestUserId, authorId, 1) {
+            Avatar = new Avatar("avatar-1") { Name = "Author" },
+        };
+        var reactionAuthor = new AuthorFull(UserId.New(), reactionAuthorId, 1) {
+            Avatar = new Avatar("avatar-2") { Name = "Reactor" },
+        };
+        var evt = new ReactionChangedEvent(reaction, entry, author, reactionAuthor, ChangeKind.Create);
+        evt.AssertPassesThroughAllSerializers(
+            (deserialized, original) => {
+                deserialized.Reaction.Id.Should().Be(original.Reaction.Id);
+                deserialized.ChangeKind.Should().Be(original.ChangeKind);
+            }, Out);
+    }
+
+    [Fact]
+    public void UserSignedOutEvent_Basic()
+    {
+        var evt = new UserSignedOutEvent("session-1", false, TestUserId);
+        evt.AssertPassesThroughAllSerializers();
+    }
+}
