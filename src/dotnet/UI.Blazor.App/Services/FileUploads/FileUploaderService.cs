@@ -10,12 +10,12 @@ public class FileUploaderService
     private readonly Func<string, CancellationToken, Task<UploadId>> _getUploadId;
     private readonly Func<string, CancellationToken, Task<MediaId>> _getMediaId;
     private readonly Func<string, CancellationToken, Task> _setupLink;
-    private readonly Func<UploadId, CancellationToken, Task> _signalUploadCompleted;
+    private readonly Func<UploadId, MediaId, CancellationToken, Task<MediaContent>> _convertUpload;
     private readonly Func<string, CancellationToken, Task> _clearUploadId;
     private ILogger Log { get; }
 
     public event Func<string, double, Task>? ProgressChanged;
-    public event Func<string, Task>? Completed;
+    public event Func<string, MediaContent, Task>? Completed;
     public event Func<string, Exception, Task>? Failed;
     public event Func<string, Task>? Canceled;
 
@@ -24,13 +24,13 @@ public class FileUploaderService
         Func<string, CancellationToken, Task<UploadId>> getUploadId,
         Func<string, CancellationToken, Task<MediaId>> getMediaId,
         Func<string, CancellationToken, Task> setupLink,
-        Func<UploadId, CancellationToken, Task> signalUploadCompleted,
+        Func<UploadId, MediaId, CancellationToken, Task<MediaContent>> convertUpload,
         Func<string, CancellationToken, Task> clearUploadId)
     {
         _getUploadId = getUploadId;
         _getMediaId = getMediaId;
         _setupLink = setupLink;
-        _signalUploadCompleted = signalUploadCompleted;
+        _convertUpload = convertUpload;
         _clearUploadId = clearUploadId;
         // TODO: add queues with different priorities for small and big files.
         _operationQueue = new OperationQueue();
@@ -79,8 +79,8 @@ public class FileUploaderService
     private Task SetupLink(string sessionId, CancellationToken cancellationToken)
         => _setupLink(sessionId, cancellationToken);
 
-    private Task SignalUploadCompleted(UploadId uploadId, CancellationToken cancellationToken)
-        => _signalUploadCompleted(uploadId, cancellationToken);
+    private Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken cancellationToken)
+        => _convertUpload(uploadId, mediaId, cancellationToken);
 
     private Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
         => _clearUploadId(sessionId, cancellationToken);
@@ -154,10 +154,10 @@ public class FileUploaderService
             PropagateFileUploadProgress(uploadOperation, Session, Owner);
             return uploadOperation;
 
-            async Task StartFunc(CancellationToken ct)
+            async Task<MediaContent> StartFunc(CancellationToken ct)
             {
                 try {
-                    await PrepareAndUpload(ct, fileProvider, progress).ConfigureAwait(false);
+                    return await UploadAndConvert(fileProvider, progress, ct).ConfigureAwait(false);
                 }
                 catch (UploadNotFoundException) {
                     await Owner.ClearUploadId(Session.SessionId, ct).ConfigureAwait(false);
@@ -166,14 +166,14 @@ public class FileUploaderService
             }
         }
 
-        private async Task PrepareAndUpload(CancellationToken ct, IFileProvider fileProvider, UploadProgressTracker progress)
+        private async Task<MediaContent> UploadAndConvert(IFileProvider fileProvider, UploadProgressTracker progress, CancellationToken ct)
         {
             var mediaId = await Owner.GetMediaId(Session.SessionId, ct).ConfigureAwait(false);
             mediaId.Require();
             var uploadId = await Owner.GetUploadId(Session.SessionId, ct).ConfigureAwait(false);
             await Owner.SetupLink(Session.SessionId, ct).ConfigureAwait(false);
             await fileProvider.UploadData(uploadId, progress, ct).ConfigureAwait(false);
-            await Owner.SignalUploadCompleted(uploadId, ct).ConfigureAwait(false);
+            return await Owner.ConvertUpload(uploadId, mediaId, ct).ConfigureAwait(false);
         }
 
         private void PropagateFileUploadProgress(
@@ -193,7 +193,8 @@ public class FileUploaderService
             _ = progressTracker.Task.ContinueWith(async t => {
                 if (t.IsCompletedSuccessfully) {
                     Log.LogInformation("**** Uploaded file '{FileName}' for '{SessionId}'", session.FileName, sessionId);
-                    await (owner.Completed?.Invoke(sessionId) ?? Task.CompletedTask).ConfigureAwait(false);
+                    var mediaContent = t.Result;
+                    await (owner.Completed?.Invoke(sessionId, mediaContent) ?? Task.CompletedTask).ConfigureAwait(false);
                 }
                 else if (t.IsFaulted) {
                     foreach (var ex in t.Exception.Flatten().InnerExceptions)

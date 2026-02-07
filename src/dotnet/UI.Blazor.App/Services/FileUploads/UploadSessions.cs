@@ -20,7 +20,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             GetOrRegisterUpload,
             GetOrReserveMedia,
             SetupLink,
-            SignalUploadCompleted,
+            ConvertUpload,
             ClearUploadId);
         _fileUploader.ProgressChanged += OnProgressChanged;
         _fileUploader.Completed += OnCompleted;
@@ -162,9 +162,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             Hub.UploadSessionsState.SetReservedMediaId(sessionId, session.ReservedMediaId);
         session.FileProvider.Initialize(Hub.Services);
         switch (session.Status) {
-            case UploadStatus.Completed:
+            case UploadStatus.Completed when session.MediaContent is not null:
                 session.ProgressTracker.ReportProgress(100);
-                session.ProgressTracker.SetResult();
+                session.ProgressTracker.SetResult(session.MediaContent);
                 break;
             case UploadStatus.Canceled:
                 session.ProgressTracker.SetCanceled();
@@ -213,13 +213,14 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.ProgressTracker.ReportProgress(progress);
     }
 
-    private async Task OnCompleted(string sessionId)
+    private async Task OnCompleted(string sessionId, MediaContent mediaContent)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
         session.ProgressTracker.ReportProgress(100);
-        session.ProgressTracker.SetResult();
+        session.ProgressTracker.SetResult(mediaContent);
         session.Status = UploadStatus.Completed;
         session.LastUpdatedAt = Now;
+        session.MediaContent = mediaContent;
         await _repo.Save(session).ConfigureAwait(false);
     }
 
@@ -274,8 +275,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await _repo.Save(session).ConfigureAwait(false);
     }
 
-    private Task SignalUploadCompleted(UploadId uploadId, CancellationToken ct)
-        => Commander.Call(new Uploads_SignalCompleted(Session, uploadId), ct);
+    private Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken ct)
+        => Commander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), ct);
 
     private async Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
     {

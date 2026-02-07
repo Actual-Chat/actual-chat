@@ -13,7 +13,6 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     private GoogleResumableUploads GoogleResumableUploads => field ??= new GoogleResumableUploads(StorageClient.Create(), Services.LogFor<GoogleResumableUploads>());
     private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
     private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
-    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
 
     private bool IsGoogleStorage => Blobs is GoogleCloudBlobStorages;
 
@@ -145,8 +144,13 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
         var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
-        var chatId = upload.ExtractChatIdFromTag();
-        var mediaId = MediaId.New(chatId.Value);
+        MediaId mediaId;
+        if (upload.Tag.IsNullOrEmpty())
+            mediaId = MediaId.New(MediaId.GenerateScope());
+        else {
+            var chatId = upload.ExtractChatIdFromTag();
+            mediaId = MediaId.New(chatId.Value);
+        }
         using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, cancellationToken).ConfigureAwait(false);
         return await MediaSaver.Save(mediaId, processedFile, isUpdate:false, cancellationToken).ConfigureAwait(false);
     }
@@ -173,39 +177,6 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         catch (Exception e) {
             Log.LogError(e, "Failed to process and save content for upload '{UploadId}' and media '{MediaId}'", uploadId, mediaId);
             throw;
-        }
-    }
-
-    public virtual async Task OnSignalCompleted(UploadsBackend_SignalCompleted command, CancellationToken cancellationToken)
-    {
-        var uploadId = command.UploadId;
-        if (Invalidation.IsActive) {
-            _ = Get(uploadId, default);
-            _ = GetProgress(uploadId, default);
-            return;
-        }
-
-        var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
-        if (upload is null)
-            throw UploadNotFound();
-
-        await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
-        await ProcessUploadAndSaveMedia(upload, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task ProcessUploadAndSaveMedia(Upload upload, CancellationToken cancellationToken)
-    {
-        // TODO(DF): rework to Flow.
-        var mediaIds = await MediaBackend.GetIdsByUploadId(upload.Id, cancellationToken).ConfigureAwait(false);
-        if (mediaIds.Length == 0)
-            return;
-
-        var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
-        var progress = CreateMediaConvertingProgressTracker(mediaIds);
-        using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, progress, cancellationToken).ConfigureAwait(false);
-        foreach (var mediaId in mediaIds) {
-            var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, cancellationToken)
-                .ConfigureAwait(false);
         }
     }
 

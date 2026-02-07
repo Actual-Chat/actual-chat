@@ -17,8 +17,6 @@ public interface IUploads : IComputeService
     Task<MediaContent> OnConvertToMediaContent(Uploads_ConvertToMediaContent command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnLinkWithMedia(Uploads_LinkWithMedia command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnSignalCompleted(Uploads_SignalCompleted command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -59,11 +57,4 @@ public sealed partial record Uploads_LinkWithMedia(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] UploadId UploadId,
     [property: DataMember, MemoryPackOrder(2)] MediaId[] MediaIds
-) : ISessionCommand<Unit>, IApiCommand;
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-// ReSharper disable once InconsistentNaming
-public sealed partial record Uploads_SignalCompleted(
-    [property: DataMember, MemoryPackOrder(0)] Session Session,
-    [property: DataMember, MemoryPackOrder(1)] UploadId UploadId
 ) : ISessionCommand<Unit>, IApiCommand;
