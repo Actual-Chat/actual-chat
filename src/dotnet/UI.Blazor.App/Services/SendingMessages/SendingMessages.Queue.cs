@@ -1,3 +1,5 @@
+using ActualChat.Media;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 partial class SendingMessages
@@ -10,32 +12,22 @@ private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, Cance
         return chatEntry;
     }
 
-    private async Task<ChatEntry> ProcessCommand(PostMessageQueueItem command, CancellationToken cancellationToken)
+    private async Task<ChatEntry> ProcessCommand(PostMessageQueueItem item, CancellationToken cancellationToken)
     {
-        var request = command.Request;
+        var request = item.Request;
         if (request.CheckResend) {
             var chatEntry1 = await TryFindPreviouslySendEntry(request.ChatId, request.ClientId, cancellationToken).ConfigureAwait(false);
             if (chatEntry1 is not null)
                 return chatEntry1;
         }
-        var mediaIds = new List<MediaId>();
-        if (request.AttachmentUploads is not null) {
-            // TODO(DF): convert to durable commands
-            foreach (var attachment in request.AttachmentUploads.Attachments.Items) {
-                var mediaId = await UploadSessions.GetOrReserveMedia(attachment.UploadSessionId, cancellationToken).ConfigureAwait(false);
-                mediaIds.Add(mediaId);
-            }
-        }
+        var mediaIds = await ReservedMediaIds(request, cancellationToken).ConfigureAwait(false);
+        var textEntryAttachments = mediaIds
+            .Select(x => new TextEntryAttachment { MediaId = x })
+            .ToArray();
         var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId, request.Text, request.RepliedEntryLid) {
             ClientId = request.ClientId,
+            EntryAttachments = textEntryAttachments,
         };
-        if (mediaIds.Count > 0) {
-            cmd = cmd with {
-                EntryAttachments = mediaIds
-                    .Select(x => new TextEntryAttachment { MediaId = x })
-                    .ToArray()
-            };
-        }
         // // Simulate long sending
         // await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
         var postResult = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
@@ -83,6 +75,38 @@ private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, Cance
                 break;
         }
         return null;
+    }
+
+    private async Task<MediaId[]> ReservedMediaIds(PostMessageRequestInternal request, CancellationToken cancellationToken)
+    {
+        if (request.AttachmentUploads is null)
+            return [];
+
+        // TODO(DF): convert to durable commands
+        var mediaIds = new List<MediaId>();
+        var attachmentRegistry = Hub.AttachmentRegistry;
+        try {
+            foreach (var attachment in request.AttachmentUploads.Attachments.Items) {
+                var reservedMediaId = attachmentRegistry.GetReservedMediaIdNonComputed(attachment.Id);
+                if (reservedMediaId is not null)
+                    continue;
+
+                var sessionId = attachment.UploadSessionId;
+                var metadata = await attachmentRegistry.GetUploadSessionMetadata(sessionId, cancellationToken)
+                    .ConfigureAwait(false);
+                // TODO(DF): review how we choose media scope and whether we need a new media id here or not.
+                var mediaScope = request.ChatId.Value;
+                var reserveCmd = new Medias_ReserveMedia(Session, mediaScope) { Metadata = metadata };
+                var mediaId = await Commander.Call(reserveCmd, cancellationToken).ConfigureAwait(false);
+                attachmentRegistry.SetReservedMediaId(attachment.Id, mediaId);
+                await _requestsRepo.SetReservedMediaId(request.Uuid, attachment.UploadSessionId, mediaId, cancellationToken).ConfigureAwait(false);
+                mediaIds.Add(mediaId);
+            }
+        }
+        finally {
+            await _requestsRepo.Flush(cancellationToken).ConfigureAwait(false);
+        }
+        return mediaIds.ToArray();
     }
 
     // Nested types

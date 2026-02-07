@@ -121,7 +121,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private record AttachExtra(Task<bool> WhenFilePermissionGranted, Task<string> GetPreviewUrl);
 
-    private record RestoredAttachment(
+    private record UploadAttachment(
         string FileName,
         string FileType,
         long Length,
@@ -141,7 +141,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         if (sourceAttachments is not null && sourceAttachments.Count != attachEntries.Length)
             throw StandardError.Internal("Source attachments count is not equal to attach file requests count.");
 
-        var attachments = new List<RestoredAttachment>();
+        var attachments = new List<UploadAttachment>();
         var attachmentRegistry = Hub.AttachmentRegistry;
         for (var i = 0; i < attachEntries.Length; i++) {
             var attachEntry = attachEntries[i];
@@ -211,7 +211,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 => await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
 
             var attachExtra = new AttachExtra(whenFilePermissionGranted ?? Task.FromResult(false), getPreviewUrl);
-            var attachment = new RestoredAttachment(
+            var attachment = new UploadAttachment(
                 attachEntry.FileName,
                 attachEntry.FileType,
                 attachEntry.FileLength,
@@ -225,9 +225,9 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
             attachmentRegistry.Unregister(attachment.Id);
             attachmentRegistry.Register(attachment);
-            //attachmentRegistry.SetUploadSessionId(attachment.Id, uploadSessionId);
+            if (attachEntry.ReservedMediaId is not null)
+                attachmentRegistry.SetReservedMediaId(attachment.Id, attachEntry.ReservedMediaId);
             if (!attachmentIsOk)
-                //attachmentRegistry.Update(attachment.Id, s => s with { Failed = true, Preview = AttachmentPreviewState.NoFileAccess });
                 attachmentRegistry.SetPreviewState(attachment.Id, AttachmentPreviewState.NoFileAccess);
             else if (mediaContent is not null)
                 attachmentRegistry.SetMediaContent(attachment.Id, mediaContent);

@@ -33,8 +33,7 @@ public class FilesUpload(ImmutableArray<Attachment> attachments, UploadFileReque
                 c.FileType,
                 c.FileLength,
                 c.Width,
-                c.Height,
-                c.AttachmentId
+                c.Height
             ))
             .ToArray();
 }
