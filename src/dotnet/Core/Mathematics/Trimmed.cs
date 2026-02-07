@@ -1,11 +1,13 @@
 using System.Numerics;
+using ActualChat.Serialization.Internal;
 using MemoryPack;
+using MessagePack;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Mathematics;
 
 [StructLayout(LayoutKind.Auto)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(TrimmedMessagePackFormatter<>))]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 public readonly partial record struct Trimmed<T>
     : IAdditionOperators<Trimmed<T>, Trimmed<T>, Trimmed<T>>,

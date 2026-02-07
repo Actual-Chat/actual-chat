@@ -7,6 +7,13 @@
   <PropertyGroup Condition="$(IsServerSideProject) or $(IsStandaloneProject)">
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer> <!-- Disable it for server-side logic -->
   </PropertyGroup>
+  <PropertyGroup>
+    <!-- MsgPack006: False positive error on open generic [MessagePackFormatter] types.
+         The source generator can't validate IMessagePackFormatter on unbound generic types
+         (Roslyn returns empty AllInterfaces for unbound generics).
+         See: https://github.com/dotnet/roslyn/issues/66512 -->
+    <NoWarn>$(NoWarn);MsgPack006</NoWarn>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(ProjectKind)' == 'Migration'">
     <!-- CA1861: Prefer 'static readonly' fields over constant array arguments ... -->
     <NoWarn>$(NoWarn);CA1861</NoWarn>

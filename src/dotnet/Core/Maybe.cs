@@ -23,7 +23,7 @@ public static class Maybe
 /// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[MessagePackObject(true, SuppressSourceGeneration = true)]
+[MessagePackObject(true)]
 [DebuggerDisplay("{" + nameof(DebugValue) + "}")]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
