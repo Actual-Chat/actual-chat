@@ -1,5 +1,7 @@
+using ActualChat.Serialization.Internal;
 using ActualLab.Versioning;
 using MemoryPack;
+using MessagePack;
 
 namespace ActualChat;
 
@@ -15,7 +17,7 @@ public interface IChange : IRequirementTarget
 /// <summary>
 /// A serializable change record with separate create and update payload types.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(ChangeMessagePackFormatter<,>))]
 public partial record Change<TCreate, TUpdate> : IChange
 {
     [DataMember, MemoryPackOrder(0)]
@@ -70,7 +72,7 @@ public partial record Change<TCreate, TUpdate> : IChange
 /// <summary>
 /// A serializable change record using the same type for create and update payloads.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(ChangeMessagePackFormatter<>))]
 public partial record Change<T> : Change<T, T>;
 
 /// <summary>

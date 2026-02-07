@@ -1,4 +1,6 @@
+using ActualChat.Serialization.Internal;
 using MemoryPack;
+using MessagePack;
 
 namespace ActualChat.Diff;
 
@@ -6,7 +8,7 @@ namespace ActualChat.Diff;
 /// Represents changes to a collection as added and removed items.
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(SetDiffMessagePackFormatter<>))]
 [method: MemoryPackConstructor]
 public readonly partial struct SetDiff<TItem>(
     TItem[]? addedItems,
@@ -47,7 +49,7 @@ public readonly partial struct SetDiff<TItem>(
 /// Represents changes to a typed collection as added and removed items.
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(SetDiffMessagePackFormatter<,>))]
 [method: MemoryPackConstructor]
 public readonly partial struct SetDiff<TCollection, TItem>(
     TItem[]? addedItems,
