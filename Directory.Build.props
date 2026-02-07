@@ -54,6 +54,13 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <UseMemoryPack>true</UseMemoryPack>
+    <UseMessagePack>false</UseMessagePack>
+    <DefineConstants Condition="$(UseMemoryPack)">$(DefineConstants);USE_MEMORYPACK</DefineConstants>
+    <DefineConstants Condition="$(UseMessagePack)">$(DefineConstants);USE_MESSAGEPACK</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <CompressionEnabled>false</CompressionEnabled>
   </PropertyGroup>
 
