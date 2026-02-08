@@ -13,7 +13,7 @@ public sealed partial record Device(
 {
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(3)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(3), IgnoreMember]
     private ApiNullable8<Moment> MemoryPackAccessedAt {
         get => AccessedAt;
         init => AccessedAt = value;
@@ -21,5 +21,5 @@ public sealed partial record Device(
 
     #endregion
 
-    [DataMember(Order = 3), MemoryPackIgnore, IgnoreMember] public Moment? AccessedAt { get; init; }
+    [DataMember(Order = 3), MemoryPackIgnore] public Moment? AccessedAt { get; init; }
 }

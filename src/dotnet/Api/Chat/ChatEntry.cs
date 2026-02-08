@@ -32,43 +32,43 @@ public sealed partial record ChatEntry(
 
     #region MemoryPackXxx properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(13)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(13), IgnoreMember]
     private ApiNullable8<Moment> MemoryPackClientSideBeginsAt {
         get => ClientSideBeginsAt;
         init => ClientSideBeginsAt = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(14)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(14), IgnoreMember]
     private ApiNullable8<Moment> MemoryPackEndsAt {
         get => EndsAt;
         init => EndsAt = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(15)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(15), IgnoreMember]
     private ApiNullable8<Moment> MemoryPackContentEndsAt {
         get => ContentEndsAt;
         init => ContentEndsAt = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(20)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(20), IgnoreMember]
     private ApiNullable8<long> MemoryPackAudioEntryId {
         get => AudioEntryLid;
         init => AudioEntryLid = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(21)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(21), IgnoreMember]
     private ApiNullable8<long> MemoryPackVideoEntryId {
         get => VideoEntryLid;
         init => VideoEntryLid = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(23)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(23), IgnoreMember]
     private ApiNullable8<long> MemoryPackRepliedEntryLocalId {
         get => RepliedEntryLid;
         init => RepliedEntryLid = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(26)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(26), IgnoreMember]
     private ApiNullable8<Moment> MemoryPackForwardedChatEntryBeginsAt {
         get => ForwardedChatEntryBeginsAt;
         init => ForwardedChatEntryBeginsAt = value;
@@ -79,21 +79,21 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 10), MemoryPackOrder(10)] public bool IsRemoved { get; init; }
     [DataMember(Order = 11), MemoryPackOrder(11)] public AuthorId AuthorId { get; init; } = null!;
     [DataMember(Order = 12), MemoryPackOrder(12)] public Moment BeginsAt { get; init; }
-    [DataMember(Order = 13), MemoryPackIgnore, IgnoreMember] public Moment? ClientSideBeginsAt { get; init; }
-    [DataMember(Order = 14), MemoryPackIgnore, IgnoreMember] public Moment? EndsAt { get; init; }
-    [DataMember(Order = 15), MemoryPackIgnore, IgnoreMember] public Moment? ContentEndsAt { get; init; }
+    [DataMember(Order = 13), MemoryPackIgnore] public Moment? ClientSideBeginsAt { get; init; }
+    [DataMember(Order = 14), MemoryPackIgnore] public Moment? EndsAt { get; init; }
+    [DataMember(Order = 15), MemoryPackIgnore] public Moment? ContentEndsAt { get; init; }
     [DataMember(Order = 16), MemoryPackOrder(16)] public string Content { get; init; } = "";
     [DataMember(Order = 32), MemoryPackOrder(32)] public HashString ContentHash { get; init; }
     [DataMember(Order = 17), MemoryPackOrder(17)] public SystemEntry? SystemEntry { get; init; }
     [DataMember(Order = 18), MemoryPackOrder(18)] public bool HasReactions { get; init; }
     [DataMember(Order = 19), MemoryPackOrder(19)] public string StreamId { get; init; } = "";
-    [DataMember(Order = 20), MemoryPackIgnore, IgnoreMember] public long? AudioEntryLid { get; init; }
-    [DataMember(Order = 21), MemoryPackIgnore, IgnoreMember] public long? VideoEntryLid { get; init; }
+    [DataMember(Order = 20), MemoryPackIgnore] public long? AudioEntryLid { get; init; }
+    [DataMember(Order = 21), MemoryPackIgnore] public long? VideoEntryLid { get; init; }
     [DataMember(Order = 22), MemoryPackOrder(22)] public LinearMap TimeMap { get; init; }
-    [DataMember(Order = 23), MemoryPackIgnore, IgnoreMember] public long? RepliedEntryLid { get; init; }
+    [DataMember(Order = 23), MemoryPackIgnore] public long? RepliedEntryLid { get; init; }
     [DataMember(Order = 24), MemoryPackOrder(24)] public ChatEntryId? ForwardedChatEntryId { get; init; }
     [DataMember(Order = 25), MemoryPackOrder(25)] public AuthorId? ForwardedAuthorId { get; init; }
-    [DataMember(Order = 26), MemoryPackIgnore, IgnoreMember] public Moment? ForwardedChatEntryBeginsAt { get; init; }
+    [DataMember(Order = 26), MemoryPackIgnore] public Moment? ForwardedChatEntryBeginsAt { get; init; }
     [DataMember(Order = 27), MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
     [DataMember(Order = 28), MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
     [DataMember(Order = 31), MemoryPackOrder(31)] public Symbol[] LinkPreviewIds { get; init; } = [];
