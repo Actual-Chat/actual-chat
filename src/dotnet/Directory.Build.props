@@ -7,11 +7,11 @@
   <PropertyGroup Condition="$(IsServerSideProject) or $(IsStandaloneProject)">
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer> <!-- Disable it for server-side logic -->
   </PropertyGroup>
-  <PropertyGroup>
-    <!-- MsgPack006: False positive error on open generic [MessagePackFormatter] types.
-         The source generator can't validate IMessagePackFormatter on unbound generic types
-         (Roslyn returns empty AllInterfaces for unbound generics).
-         See: https://github.com/dotnet/roslyn/issues/66512 -->
+  <!-- MsgPack006: False positive error on open generic [MessagePackFormatter] types.
+       The source generator can't validate IMessagePackFormatter on unbound generic types
+       (Roslyn returns empty AllInterfaces for unbound generics).
+       See: https://github.com/dotnet/roslyn/issues/66512 -->
+  <PropertyGroup Condition="$(UseMessagePack)">
     <NoWarn>$(NoWarn);MsgPack006</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(ProjectKind)' == 'Migration'">
@@ -122,7 +122,27 @@
   <!-- Generators -->
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' AND '$(MSBuildProjectName)' != 'App.Maui' AND '$(MSBuildProjectName)' != 'Maui'">
     <PackageReference Include="ActualLab.Generators" PrivateAssets="all" />
-    <PackageReference Include="MemoryPack.Generator" PrivateAssets="all" />
+    <PackageReference Include="MemoryPack.Generator" PrivateAssets="all" Condition="$(UseMemoryPack)" />
+  </ItemGroup>
+
+  <!-- Disable MessagePack source generator when UseMessagePack is false.
+       Note: Core.csproj has its own unconditional disable (StackOverflow workaround). -->
+  <Target Name="DisableMessagePackSourceGenerator" BeforeTargets="CoreCompile"
+          Condition="'$(MSBuildProjectExtension)' == '.csproj' AND !$(UseMessagePack)">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)"
+        Condition="'%(Filename)' == 'MessagePack.SourceGenerator' Or '%(Filename)' == 'MessagePack.Analyzers.CodeFixes'" />
+    </ItemGroup>
+  </Target>
+
+  <!-- When a serializer is disabled, hide its NuGet attribute types at compile time.
+       The DLLs remain available at runtime (Fusion depends on them internally).
+       Our shim attributes in Core/Serialization/Shims/ replace them for compilation. -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' AND !$(UseMessagePack)">
+    <PackageReference Include="MessagePack.Annotations" ExcludeAssets="compile" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' AND !$(UseMemoryPack)">
+    <PackageReference Include="MemoryPack.Core" ExcludeAssets="compile" />
   </ItemGroup>
 
   <!-- Analyzers -->
