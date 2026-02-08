@@ -23,9 +23,25 @@ public static class CoreSerializerAndRpcSetup
 
         RpcSerializationFormatResolver.Default
 #if true // DEBUG
-            = new("mempack6");
+            = new(GetFullRpcSerializationFormat().Key);
 #else
-            = isServer ? new("mempack6") : new("mempack6c");
+            = new((isServer ? GetFullRpcSerializationFormat() : GetCompactRpcSerializationFormat()).Key);
 #endif
     }
+
+    // Private methods
+
+    private static RpcSerializationFormat GetFullRpcSerializationFormat()
+#if USE_MESSAGEPACK
+        => RpcSerializationFormat.MessagePackV6;
+#else
+        => RpcSerializationFormat.MemoryPackV6;
+#endif
+
+    private static RpcSerializationFormat GetCompactRpcSerializationFormat()
+#if USE_MESSAGEPACK
+        => RpcSerializationFormat.MessagePackV6C;
+#else
+        => RpcSerializationFormat.MemoryPackV6C;
+#endif
 }
