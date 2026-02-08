@@ -27,7 +27,11 @@ public sealed class ChangeMessagePackFormatter<TCreate, TUpdate> : IMessagePackF
         var create = options.Resolver.GetFormatterWithVerify<Option<TCreate>>().Deserialize(ref reader, options);
         var update = options.Resolver.GetFormatterWithVerify<Option<TUpdate>>().Deserialize(ref reader, options);
         var remove = reader.ReadBoolean();
-        return new Change<TCreate, TUpdate> { Create = create, Update = update, Remove = remove };
+        return new Change<TCreate, TUpdate> {
+            Create = create,
+            Update = update,
+            Remove = remove,
+        };
     }
 }
 
@@ -43,6 +47,10 @@ public sealed class ChangeMessagePackFormatter<T> : IMessagePackFormatter<Change
         var result = _inner.Deserialize(ref reader, options);
         return ReferenceEquals(result, null)
             ? null!
-            : new Change<T> { Create = result.Create, Update = result.Update, Remove = result.Remove };
+            : new Change<T> {
+                Create = result.Create,
+                Update = result.Update,
+                Remove = result.Remove,
+            };
     }
 }
