@@ -135,7 +135,7 @@ public static class TestSearchDataGenerator
         var map = new Dictionary<TestEntryKey, ChatEntry>();
         for (int i = 0; i < entryIndexCount; i++)
             foreach (var group in groups)
-                map[new TestEntryKey(group.Key, i)] = await tester.CreateTextEntry(group.Value.Id, $"Message {GetIndexString(i)} in chat #{group.Value.Id} {uniquePart}".Trim());
+                map[new TestEntryKey(group.Key, i)] = await tester.CreateTextEntry(group.Value.Id, $"Message {GetIndexString(i)} {uniquePart}".Trim());
         var userToRestore = await tester.GetOwnAccount();
         await tester.SignIn(contactOwner);
         for (int i = 0; i < entryIndexCount; i++)
