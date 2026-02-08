@@ -1,5 +1,4 @@
-
-namespace ActualChat.Chat.ML;
+﻿namespace ActualChat.Chat.ML;
 
 public record EntryGroup(IReadOnlyList<TextEntry> Entries, int WordCount = 0, bool IsCompleted = false)
 {

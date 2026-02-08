@@ -1,5 +1,4 @@
-
-namespace ActualChat.Flows.Infrastructure;
+﻿namespace ActualChat.Flows.Infrastructure;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]

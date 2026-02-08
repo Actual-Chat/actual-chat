@@ -1,5 +1,4 @@
-
-namespace ActualChat;
+﻿namespace ActualChat;
 
 /// <summary>
 /// Metadata for a content link including title, picture, and description.

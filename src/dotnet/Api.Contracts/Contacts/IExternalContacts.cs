@@ -1,5 +1,4 @@
-
-namespace ActualChat.Contacts;
+﻿namespace ActualChat.Contacts;
 
 /// <summary>
 /// Service for managing external contacts imported from devices.

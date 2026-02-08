@@ -1,5 +1,4 @@
-
-namespace ActualChat.UI.Blazor.App.Services;
+﻿namespace ActualChat.UI.Blazor.App.Services;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record LocalOnboardingSettings

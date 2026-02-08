@@ -1,5 +1,4 @@
-
-namespace ActualChat.Media;
+﻿namespace ActualChat.Media;
 
 /// <summary>
 /// Specifies the type of recording event.

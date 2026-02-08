@@ -1,5 +1,4 @@
-
-namespace ActualChat.Chat;
+﻿namespace ActualChat.Chat;
 
 /// <summary>
 /// Service for resolving human-friendly aliases to chats and places.

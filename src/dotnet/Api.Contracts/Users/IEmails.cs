@@ -1,5 +1,4 @@
-
-namespace ActualChat.Users;
+﻿namespace ActualChat.Users;
 
 /// <summary>
 /// Service for sending email communications.

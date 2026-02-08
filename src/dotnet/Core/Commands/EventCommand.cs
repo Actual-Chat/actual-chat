@@ -1,5 +1,4 @@
-
-namespace ActualChat;
+﻿namespace ActualChat;
 
 /// <summary>
 /// Base record for event commands that can be chained together.

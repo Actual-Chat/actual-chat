@@ -1,5 +1,4 @@
-
-namespace ActualChat.Search;
+﻿namespace ActualChat.Search;
 
 /// <summary>
 /// Represents a contact match from a search query.

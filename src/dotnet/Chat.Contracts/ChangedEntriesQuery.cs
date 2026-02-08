@@ -1,5 +1,4 @@
-
-namespace ActualChat.Chat;
+﻿namespace ActualChat.Chat;
 
 /// <summary>
 /// Query parameters for listing changed chat entries by version range.

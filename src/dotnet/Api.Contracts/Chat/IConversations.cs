@@ -1,5 +1,4 @@
-
-namespace ActualChat.Chat;
+﻿namespace ActualChat.Chat;
 
 /// <summary>
 /// Service for managing conversation segments and their summaries.

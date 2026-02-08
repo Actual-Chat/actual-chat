@@ -1,5 +1,4 @@
-
-namespace ActualChat.Streaming;
+﻿namespace ActualChat.Streaming;
 
 /// <summary>
 /// Represents an active audio recording session for a chat entry.

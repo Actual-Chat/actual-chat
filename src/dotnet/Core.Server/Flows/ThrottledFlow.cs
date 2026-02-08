@@ -1,5 +1,4 @@
-
-namespace ActualChat.Flows;
+﻿namespace ActualChat.Flows;
 
 /// <summary>
 /// A flow that throttles its execution to at most once per <see cref="ThrottlePeriod"/>.

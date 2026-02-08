@@ -1,5 +1,4 @@
-
-namespace ActualChat.Chat;
+﻿namespace ActualChat.Chat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class ChatLanguageTile

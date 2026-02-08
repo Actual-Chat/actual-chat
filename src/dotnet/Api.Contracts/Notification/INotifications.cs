@@ -1,5 +1,4 @@
-
-namespace ActualChat.Notification;
+﻿namespace ActualChat.Notification;
 
 /// <summary>
 /// Service for managing user notifications and device registrations.

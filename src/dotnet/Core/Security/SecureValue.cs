@@ -1,5 +1,4 @@
-
-namespace ActualChat.Security;
+﻿namespace ActualChat.Security;
 
 /// <summary>
 /// A value with an expiration time for secure operations.

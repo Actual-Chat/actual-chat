@@ -1,5 +1,4 @@
-
-namespace ActualChat.Flows;
+﻿namespace ActualChat.Flows;
 
 // Base class for flows that run periodically.
 // Implements a simple pattern where Run is called at scheduled intervals.

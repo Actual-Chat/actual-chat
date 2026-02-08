@@ -1,5 +1,4 @@
-
-namespace ActualChat.UI.Blazor.App.Services;
+﻿namespace ActualChat.UI.Blazor.App.Services;
 
 [MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class FileMetadata

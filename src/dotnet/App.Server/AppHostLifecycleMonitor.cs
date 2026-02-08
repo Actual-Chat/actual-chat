@@ -1,5 +1,4 @@
-﻿
-namespace ActualChat.App.Server;
+﻿namespace ActualChat.App.Server;
 
 internal sealed class AppHostLifecycleMonitor(IServiceProvider services) : IHostedLifecycleService
 {

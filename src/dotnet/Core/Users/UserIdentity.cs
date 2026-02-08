@@ -1,5 +1,4 @@
-
-namespace ActualChat.Users;
+﻿namespace ActualChat.Users;
 
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]

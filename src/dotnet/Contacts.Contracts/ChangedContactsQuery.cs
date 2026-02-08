@@ -1,5 +1,4 @@
-
-namespace ActualChat.Contacts;
+﻿namespace ActualChat.Contacts;
 
 /// <summary>
 /// Query parameters for listing changed contacts by version range.

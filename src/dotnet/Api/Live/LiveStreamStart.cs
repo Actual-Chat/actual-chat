@@ -1,5 +1,4 @@
-
-namespace ActualChat.Live;
+﻿namespace ActualChat.Live;
 
 /// <summary>
 /// Announces the start of a new audio stream within the multiplexed live stream.

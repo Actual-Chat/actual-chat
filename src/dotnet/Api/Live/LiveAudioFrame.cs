@@ -1,5 +1,4 @@
-
-namespace ActualChat.Live;
+﻿namespace ActualChat.Live;
 
 /// <summary>
 /// Audio data packet in a multiplexed live stream.

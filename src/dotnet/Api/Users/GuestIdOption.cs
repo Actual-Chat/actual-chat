@@ -1,5 +1,4 @@
-
-namespace ActualChat.Users;
+﻿namespace ActualChat.Users;
 
 /// <summary>
 /// Session option storing the guest user ID.

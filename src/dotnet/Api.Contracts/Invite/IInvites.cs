@@ -1,5 +1,4 @@
-
-namespace ActualChat.Invite;
+﻿namespace ActualChat.Invite;
 
 /// <summary>
 /// Service for generating and managing invitation links.

@@ -1,5 +1,4 @@
-
-using System.Diagnostics.Metrics;
+﻿using System.Diagnostics.Metrics;
 
 namespace ActualChat.MLSearch.Diagnostics;
 

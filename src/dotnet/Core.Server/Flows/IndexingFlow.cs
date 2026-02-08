@@ -1,5 +1,4 @@
-
-namespace ActualChat.Flows;
+﻿namespace ActualChat.Flows;
 
 // Base class for flows that perform cursor-based indexing operations.
 public abstract class IndexingFlow<TCursor> : Flow<string>, IHasLastRunAt

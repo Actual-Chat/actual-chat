@@ -1,5 +1,4 @@
-
-namespace ActualChat.Media;
+﻿namespace ActualChat.Media;
 
 /// <summary>
 /// Base class for media format descriptors (audio, video).

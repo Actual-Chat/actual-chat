@@ -1,5 +1,4 @@
-
-namespace ActualChat.Search;
+﻿namespace ActualChat.Search;
 
 /// <summary>
 /// Query parameters for searching contacts.

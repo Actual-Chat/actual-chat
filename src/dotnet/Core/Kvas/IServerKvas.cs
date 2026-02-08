@@ -1,5 +1,4 @@
-
-namespace ActualChat.Kvas;
+﻿namespace ActualChat.Kvas;
 
 /// <summary>
 /// Server-side key-value store service for session-scoped settings.

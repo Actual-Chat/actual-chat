@@ -1,5 +1,4 @@
-
-namespace ActualChat.Mesh;
+﻿namespace ActualChat.Mesh;
 
 public sealed record MeshLockOptions(
     TimeSpan ExpirationPeriod,

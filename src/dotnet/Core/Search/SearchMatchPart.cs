@@ -1,5 +1,4 @@
-
-namespace ActualChat.Search;
+﻿namespace ActualChat.Search;
 
 /// <summary>
 /// Represents a matched portion of text in a search result.

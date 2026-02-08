@@ -1,5 +1,4 @@
-
-using OpenSearch.Net;
+﻿using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Serializer.Converters;
 

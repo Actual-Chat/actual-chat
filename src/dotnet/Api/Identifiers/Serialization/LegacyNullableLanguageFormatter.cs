@@ -1,5 +1,4 @@
-
-namespace ActualChat.Serialization;
+﻿namespace ActualChat.Serialization;
 
 /// <summary>
 /// MemoryPack formatter for nullable Language in legacy format.

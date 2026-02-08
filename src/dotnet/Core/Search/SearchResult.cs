@@ -1,5 +1,4 @@
-
-namespace ActualChat.Search;
+﻿namespace ActualChat.Search;
 
 /// <summary>
 /// Base class for search results with ID and match information.

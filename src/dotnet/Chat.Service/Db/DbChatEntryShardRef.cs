@@ -1,5 +1,4 @@
-
-namespace ActualChat.Chat.Db;
+﻿namespace ActualChat.Chat.Db;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record DbChatEntryShardRef(

@@ -1,5 +1,4 @@
-
-namespace ActualChat.Security;
+﻿namespace ActualChat.Security;
 
 /// <summary>
 /// A time-limited token used for secure operations.

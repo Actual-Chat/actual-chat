@@ -1,5 +1,4 @@
-
-namespace ActualChat.Contacts;
+﻿namespace ActualChat.Contacts;
 
 /// <summary>
 /// Defines the category of contacts to query.

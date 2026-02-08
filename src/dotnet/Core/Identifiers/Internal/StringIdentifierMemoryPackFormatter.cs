@@ -1,5 +1,4 @@
-
-namespace ActualChat.Internal;
+﻿namespace ActualChat.Internal;
 
 public sealed class StringIdentifierMemoryPackFormatter<TId> : MemoryPackFormatter<TId>
     where TId : StringIdentifier, IStringIdentifier<TId>

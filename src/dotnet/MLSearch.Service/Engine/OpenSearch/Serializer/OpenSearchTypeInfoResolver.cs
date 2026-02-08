@@ -1,5 +1,4 @@
-
-using System.Text.Json.Serialization.Metadata;
+﻿using System.Text.Json.Serialization.Metadata;
 using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Serializer;

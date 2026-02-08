@@ -1,5 +1,4 @@
-
-namespace ActualChat.Invite;
+﻿namespace ActualChat.Invite;
 
 /// <summary>
 /// Preview data for an invite link showing the target chat or place.

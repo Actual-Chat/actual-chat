@@ -1,5 +1,4 @@
-
-namespace ActualChat.UI.Blazor.App.Services;
+﻿namespace ActualChat.UI.Blazor.App.Services;
 
 public enum RelatedEntryKind
 {

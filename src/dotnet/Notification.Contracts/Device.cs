@@ -1,5 +1,4 @@
-
-namespace ActualChat.Notification;
+﻿namespace ActualChat.Notification;
 
 /// <summary>
 /// Represents a device registered for push notifications.

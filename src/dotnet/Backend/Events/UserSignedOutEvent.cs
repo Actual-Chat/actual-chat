@@ -1,5 +1,4 @@
-
-namespace ActualChat;
+﻿namespace ActualChat;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record UserSignedOutEvent(

@@ -1,5 +1,4 @@
-
-namespace ActualChat.Hosting;
+﻿namespace ActualChat.Hosting;
 
 /// <summary>
 /// Defines roles that a host can fulfill (e.g., Api, Backend services, Queues).

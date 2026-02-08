@@ -1,5 +1,4 @@
-
-namespace ActualChat.Transcription;
+﻿namespace ActualChat.Transcription;
 
 /// <summary>
 /// Represents incremental changes to a <see cref="Transcript"/>.

@@ -1,5 +1,4 @@
-
-namespace ActualChat.UI.Blazor.Components;
+﻿namespace ActualChat.UI.Blazor.Components;
 
 public class RequireFailure : RequirementComponent
 {

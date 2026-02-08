@@ -1,5 +1,4 @@
-
-namespace ActualChat.UI.Blazor.App.Services;
+﻿namespace ActualChat.UI.Blazor.App.Services;
 
 #pragma warning disable MsgPack005 // Union attr required — handled by custom formatter, Maui subtype unavailable in CI
 

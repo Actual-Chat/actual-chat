@@ -1,5 +1,4 @@
-
-namespace ActualChat.Serialization;
+﻿namespace ActualChat.Serialization;
 
 /// <summary>
 /// Attribute to apply legacy Language serialization format to a property.

@@ -1,5 +1,4 @@
-
-namespace ActualChat.Contacts;
+﻿namespace ActualChat.Contacts;
 
 /// <summary>
 /// Service for tracking external contact sync state via hashes.
