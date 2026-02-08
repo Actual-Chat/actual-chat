@@ -16,10 +16,10 @@ public sealed class ChangeMessagePackFormatter<TCreate, TUpdate> : IMessagePackF
         writer.Write(value.Remove);
     }
 
-    public Change<TCreate, TUpdate>? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
+    public Change<TCreate, TUpdate> Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
     {
         if (reader.TryReadNil())
-            return null;
+            return null!;
         var count = reader.ReadArrayHeader();
         if (count != 3)
             throw new MessagePackSerializationException($"Expected 3 items for Change<,>, but got {count}.");
@@ -38,9 +38,11 @@ public sealed class ChangeMessagePackFormatter<T> : IMessagePackFormatter<Change
     public void Serialize(ref MessagePackWriter writer, Change<T>? value, MessagePackSerializerOptions options)
         => _inner.Serialize(ref writer, value, options);
 
-    public Change<T>? Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
+    public Change<T> Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
     {
         var result = _inner.Deserialize(ref reader, options);
-        return result is null ? null : new Change<T> { Create = result.Create, Update = result.Update, Remove = result.Remove };
+        return ReferenceEquals(result, null)
+            ? null!
+            : new Change<T> { Create = result.Create, Update = result.Update, Remove = result.Remove };
     }
 }
