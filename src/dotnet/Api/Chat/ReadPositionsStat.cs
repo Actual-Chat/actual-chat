@@ -1,8 +1,7 @@
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ReadPositionsStat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] long StartTrackingEntryLid,
@@ -28,7 +27,7 @@ public partial record ReadPositionsStat(
     }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record AuthorReadPosition(
     [property: DataMember, MemoryPackOrder(0)] AuthorId AuthorId,
     [property: DataMember, MemoryPackOrder(1)] long EntryLid);

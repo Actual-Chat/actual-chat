@@ -1,11 +1,10 @@
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
 /// <summary>
 /// Tracks the top read positions for users in a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ReadPositionsStatBackend(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] long StartTrackingEntryLid,
@@ -14,7 +13,7 @@ public partial record ReadPositionsStatBackend(
 /// <summary>
 /// Represents a user's read position in a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public readonly partial record struct UserReadPosition(
     [property: DataMember, MemoryPackOrder(0)] UserId? UserId,
     [property: DataMember, MemoryPackOrder(1)] long EntryLid)

@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Chat.ML;
 
@@ -34,20 +33,20 @@ public record EntryGroup(IReadOnlyList<TextEntry> Entries, int WordCount = 0, bo
 
 public record ReplySequence(IReadOnlyList<TextEntry> Entries);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ExtractorState(
     [property: DataMember, MemoryPackOrder(0)] EntryGroupBuilder? CurrentGroup,
     [property: DataMember, MemoryPackOrder(1)] EntryGroupBuilder? CurrentChunk)
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MinLid => CurrentGroup?.MinLid ?? (CurrentChunk?.MinLid ?? 0);
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MaxLid => Math.Max(CurrentChunk?.MaxLid ?? 0, CurrentGroup?.MaxLid ?? 0);
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TextEntry? LastEntry => CurrentChunk?.Entries.LastOrDefault() ?? CurrentGroup?.Entries.LastOrDefault();
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int WordCount => (CurrentGroup?.WordCount ?? 0) + (CurrentChunk?.WordCount ?? 0);
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int EntryCount => (CurrentGroup?.Entries.Count ?? 0) + (CurrentChunk?.Entries.Count ?? 0);
 }
 

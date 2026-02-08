@@ -1,4 +1,3 @@
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat;
@@ -6,7 +5,7 @@ namespace ActualChat;
 /// <summary>
 /// Represents an image from media content, external URL, or avatar key.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Picture(
     [property: DataMember, MemoryPackOrder(0)] MediaContent? MediaContent,

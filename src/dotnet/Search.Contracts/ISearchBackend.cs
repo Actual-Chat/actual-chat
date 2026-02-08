@@ -1,5 +1,4 @@
-﻿using ActualLab.Rpc;
-using MemoryPack;
+using ActualLab.Rpc;
 
 namespace ActualChat.Search;
 
@@ -44,8 +43,8 @@ public interface ISearchBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to refresh the search index.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: MemoryPackConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[method: MemoryPackConstructor, SerializationConstructor]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SearchBackend_Refresh(
     [property: DataMember, MemoryPackOrder(0)] bool RefreshUsers = false,
@@ -54,6 +53,6 @@ public sealed partial record SearchBackend_Refresh(
     [property: DataMember, MemoryPackOrder(3)] bool RefreshEntries = false
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId?> // Review
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId? ShardKey => null;
 }

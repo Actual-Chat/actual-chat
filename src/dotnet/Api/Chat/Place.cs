@@ -1,4 +1,3 @@
-﻿using MemoryPack;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
@@ -6,7 +5,7 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Place(
     [property: DataMember, MemoryPackOrder(0)] PlaceId Id,
@@ -26,7 +25,7 @@ public sealed partial record Place(
     [DataMember, MemoryPackOrder(12)] public Media.Media? Picture { get; init; }
     [DataMember, MemoryPackOrder(13)] public Media.Media? Background { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public AliasInfo<PlaceId> AliasInfo => field ??= new(Id, AliasId);
 
     // This record relies on referential equality
@@ -34,7 +33,7 @@ public sealed partial record Place(
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record PlaceDiff : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public string? Title { get; init; }

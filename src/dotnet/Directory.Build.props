@@ -87,6 +87,8 @@
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
     <Using Include="System.Runtime.Serialization" />
+    <Using Include="MemoryPack" />
+    <Using Include="MessagePack" />
     <Using Include="System.Text.Json" />
     <Using Include="System.Text.Json.Serialization" />
     <Using Include="System.Threading" />
@@ -100,6 +102,8 @@
     <Using Include="ActualChat.Blobs" />
     <Using Include="ActualChat.Mesh" />
     <Using Include="ActualChat.Sharding" />
+    <!-- Resolve ambiguity: server projects use DataAnnotations.Key for EF, not MessagePack.Key -->
+    <Using Include="System.ComponentModel.DataAnnotations.KeyAttribute" Alias="KeyAttribute" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">

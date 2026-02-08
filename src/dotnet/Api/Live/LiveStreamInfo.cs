@@ -1,12 +1,11 @@
 using ActualChat.Audio;
-using MemoryPack;
 
 namespace ActualChat.Live;
 
 /// <summary>
 /// Information about an active audio stream in a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record LiveStreamInfo
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]

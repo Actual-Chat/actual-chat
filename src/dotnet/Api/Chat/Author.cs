@@ -1,6 +1,5 @@
 using ActualChat.Users;
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
@@ -8,7 +7,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Represents a chat participant with an avatar identity.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Author(
     [property: DataMember, MemoryPackOrder(0)] AuthorId Id,
@@ -27,14 +26,14 @@ public partial record Author(
     [DataMember, MemoryPackOrder(5)] public Avatar Avatar { get; init; } = null!;
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ChatId => Id.ChatId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long LocalId => Id.LocalId;
 
     private Author() : this(null!, 0) { }
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public Author(Symbol avatarId, bool isAnonymous, bool hasLeft, Avatar avatar, AuthorId id, long version = 0)
         : this(id, version)
     {

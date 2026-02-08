@@ -1,4 +1,3 @@
-﻿using MemoryPack;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Media;
@@ -9,7 +8,7 @@ namespace ActualChat.Media;
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
@@ -18,31 +17,31 @@ public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirement
 
     // Computed properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long Length {
         get => this.GetMetadataValue(0L);
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string FileName {
         get => this.GetMetadataValue("");
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string ContentType {
         get => this.GetMetadataValue("");
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int Width {
         get => this.GetMetadataValue<int>();
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int Height {
         get => this.GetMetadataValue<int>();
         init => this.SetMetadataValue(value);
@@ -51,7 +50,7 @@ public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirement
     public Media(MediaId id)
         => Id = id;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public Media(MediaId id, string contentId, PropertyBag metadata)
     {
         Id = id;

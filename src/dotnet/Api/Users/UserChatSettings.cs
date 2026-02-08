@@ -1,12 +1,11 @@
 using ActualChat.Serialization;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// Per-chat user preferences for notifications, language, and voice mode.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserChatSettings
 {
     public static readonly UserChatSettings Default = new();

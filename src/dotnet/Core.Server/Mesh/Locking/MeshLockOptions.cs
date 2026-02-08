@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Mesh;
 
@@ -27,7 +26,7 @@ public sealed record MeshLockOptions(
     public bool LinkCancellationToken { get; init; } = true;
 
     // Computed properties
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TimeSpan RenewalPeriod => ExpirationPeriod * RenewalPeriodRatio;
 
     public MeshLockOptions(double expirationPeriod, float renewalPeriodRatio = 0.4f)

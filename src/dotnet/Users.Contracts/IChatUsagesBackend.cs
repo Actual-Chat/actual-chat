@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -27,7 +26,7 @@ public interface IChatUsagesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to record a user's chat access.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatUsagesBackend_RegisterUsage(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId,
@@ -36,14 +35,14 @@ public sealed partial record ChatUsagesBackend_RegisterUsage(
     [property: DataMember, MemoryPackOrder(3)] DateTime? AccessTime
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => UserId;
 }
 
 /// <summary>
 /// Command to trim the recency list to a maximum size.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatUsagesBackend_PurgeRecencyList(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId,
@@ -51,6 +50,6 @@ public sealed partial record ChatUsagesBackend_PurgeRecencyList(
     [property: DataMember, MemoryPackOrder(2)] int Size
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => UserId;
 }

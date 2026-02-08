@@ -1,4 +1,3 @@
-using MemoryPack;
 using Microsoft.AspNetCore.Components;
 
 namespace ActualChat;
@@ -6,7 +5,7 @@ namespace ActualChat;
 /// <summary>
 /// Represents a normalized local URL path starting with '/'.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public readonly partial struct LocalUrl : IEquatable<LocalUrl>
 {
     private readonly string _value;
@@ -14,10 +13,10 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
     [DataMember, MemoryPackOrder(0)]
     public string Value => _value ?? "/";
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string DisplayText => Value.Length <= 1 ? Value : Value[1..];
 
-    [MemoryPackConstructor]
+    [MemoryPackConstructor, SerializationConstructor]
     public LocalUrl(string? value)
     {
         // Normalizing it

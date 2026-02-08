@@ -1,7 +1,6 @@
 using ActualChat.Sharding;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -30,21 +29,21 @@ public interface ITranslationsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a translation record.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] TranslationId Id,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(2)] Change<TranslationDiff> Change) : ICommand<Translation>, IBackendCommand, IHasShardKey<TranslationSourceId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TranslationSourceId ShardKey => Id.SourceId;
 }
 
 /// <summary>
 /// Command to translate content to a target language.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_Translate(
     [property: DataMember, MemoryPackOrder(0)] TranslationSourceId SourceId,
@@ -53,32 +52,32 @@ public sealed partial record TranslationsBackend_Translate(
     [property: DataMember, MemoryPackOrder(3)] bool SkipRealtimeTranslation
 ) : ICommand<Translation?>, IBackendCommand, IHasShardKey<TranslationSourceId>, IHasUuid, IHasTimeout
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TranslationSourceId ShardKey => SourceId;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     string IHasUuid.Uuid => $"Translate:{SourceId.Value}:{TargetLanguage.Value}";
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public TimeSpan? Timeout => TimeSpan.FromSeconds(180);
 }
 
 /// <summary>
 /// Command to translate an audio stream to a target language in real-time.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record TranslationsBackend_TranslateStream(
     [property: DataMember, MemoryPackOrder(0)] StreamId Id,
     [property: DataMember, MemoryPackOrder(1)] Language TargetLanguage
 ) : ICommand<StreamId?>, IBackendCommand, IHasShardKey<StreamId>, IHasUuid
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public StreamId ShardKey => Id;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     string IHasUuid.Uuid => TargetStreamId.Value;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public StreamId TargetStreamId { get; } = StreamId.New(Id, TargetLanguage);
 }

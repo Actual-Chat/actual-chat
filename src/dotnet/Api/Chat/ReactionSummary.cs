@@ -1,5 +1,4 @@
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
@@ -7,7 +6,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Aggregates reaction counts and first authors for a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {

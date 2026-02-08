@@ -1,5 +1,4 @@
 using System.Security;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -7,7 +6,7 @@ namespace ActualChat.Users;
 /// Legacy session authentication info - use <see cref="SessionInfo"/> instead.
 /// </summary>
 [Obsolete("2025.01: Use SessionInfo instead.")]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record LegacySessionAuthInfo : IRequirementTarget
 {
     public static Requirement<LegacySessionAuthInfo> MustBeAuthenticated { get; set; } = Requirement.New(
@@ -27,7 +26,7 @@ public partial record LegacySessionAuthInfo : IRequirementTarget
     [DataMember(Order = 3), MemoryPackOrder(3)]
     public bool IsSignOutForced { get; init; }
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public LegacySessionAuthInfo()
         => SessionHash = "";
     public LegacySessionAuthInfo(Session? session)

@@ -1,9 +1,7 @@
-using MemoryPack;
-using MessagePack;
 
 namespace ActualChat.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [method: MemoryPackConstructor, SerializationConstructor, JsonConstructor, Newtonsoft.Json.JsonConstructor]
 public readonly partial record struct FlowReadiness(string SuspensionReason, TimeSpan? ResumeDelay = null)
 {
@@ -15,7 +13,7 @@ public readonly partial record struct FlowReadiness(string SuspensionReason, Tim
     public TimeSpan? ResumeDelay { get => IsSuspended ? field : TimeSpan.Zero; init; } = ResumeDelay;
 
     // Computed
-    [IgnoreDataMember, MemoryPackIgnore, JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember, JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsSuspended => !SuspensionReason.IsNullOrEmpty();
 
     public override string ToString()

@@ -1,8 +1,6 @@
 using System.ComponentModel;
 using ActualChat.Internal;
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
-using MessagePack;
 
 namespace ActualChat;
 
@@ -25,11 +23,11 @@ public sealed partial class ExplicitNotificationId : StringIdentifier, IStringId
     public const char Delimiter = ':';
 
     // Set on deserialization
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId UserId { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ExplicitNotificationKind Kind { get; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string SimilarityKey { get; }
 
     public static ExplicitNotificationId New(UserId userId, ExplicitNotificationKind kind, string similarityKey)

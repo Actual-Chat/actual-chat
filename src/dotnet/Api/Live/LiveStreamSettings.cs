@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Live;
 
@@ -15,7 +14,7 @@ public enum LiveStreamKind
 /// <summary>
 /// Configuration for a live stream subscription.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record LiveStreamSettings
 {
     public static readonly LiveStreamSettings Default = new();

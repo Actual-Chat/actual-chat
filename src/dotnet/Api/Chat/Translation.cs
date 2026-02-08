@@ -1,14 +1,13 @@
 using ActualChat.Hashing;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
 /// <summary>
 /// Represents a translation of chat content to a target language.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Translation(
     [property: DataMember, MemoryPackOrder(0)] TranslationId Id,
@@ -21,10 +20,10 @@ public sealed partial record Translation(
     [DataMember, MemoryPackOrder(5)] public Moment ModifiedAt { get; init; }
     [DataMember, MemoryPackOrder(6)] public StreamId? StreamId { get; set; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Language TargetLanguage => Id.Language;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsStreaming => StreamId is not null;
 
     public bool MatchesOriginal(string originalContent)
@@ -41,7 +40,7 @@ public sealed partial record Translation(
 /// <summary>
 /// Represents changes to a <see cref="Translation"/> for incremental updates.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record TranslationDiff : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public long? Version { get; init; }

@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -20,7 +19,7 @@ public interface IUserPresencesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to record a user's presence check-in.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UserPresencesBackend_CheckIn(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId,
@@ -28,6 +27,6 @@ public sealed partial record UserPresencesBackend_CheckIn(
     [property: DataMember, MemoryPackOrder(2)] bool IsActive
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => UserId;
 }

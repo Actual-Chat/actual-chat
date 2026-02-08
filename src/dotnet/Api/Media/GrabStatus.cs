@@ -1,7 +1,6 @@
 using System.Text;
 using ActualChat.Hashing;
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 
 namespace ActualChat.Media;
 
@@ -9,8 +8,8 @@ namespace ActualChat.Media;
 /// Tracks the status of a link preview grab operation.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 public sealed partial record GrabStatus(
     [property: DataMember, MemoryPackOrder(0)] Symbol Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0)

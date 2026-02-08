@@ -1,9 +1,8 @@
 using System.Text;
-using MemoryPack;
 
 namespace ActualChat.Chat.ML;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class EntryGroupBuilder
 {
     private readonly List<TextEntry> _entries = [];
@@ -17,25 +16,25 @@ public partial class EntryGroupBuilder
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public IReadOnlyList<TextEntry> Entries => _entries;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IDictionary<AuthorId, int> AuthorActivity { get; } = new Dictionary<AuthorId, int>();
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int WordCount => _wordCount;
 
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public double[] Embeddings { get; set; } = [];
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int AveragePauseBetweenEntries => _averagePauseBetweenEntries;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MinLid => _minLid;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long MaxLid => _maxLid;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Text {
         get {
             if (_text is not null)
@@ -67,7 +66,7 @@ public partial class EntryGroupBuilder
         Initialize();
     }
 
-    [JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public EntryGroupBuilder(IReadOnlyList<TextEntry> entries)
     {
         _entries = [.. entries];

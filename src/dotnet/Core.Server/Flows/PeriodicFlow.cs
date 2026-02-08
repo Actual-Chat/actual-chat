@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Flows;
 
@@ -6,7 +5,7 @@ namespace ActualChat.Flows;
 // Implements a simple pattern where Run is called at scheduled intervals.
 public abstract class PeriodicFlow : Flow<string>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected virtual TimeSpan MaxResumeDelay => TimeSpan.FromDays(7);
 
     // Persisted state

@@ -1,4 +1,3 @@
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
@@ -6,7 +5,7 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Chat(
     [property: DataMember, MemoryPackOrder(0)] ChatId Id,
@@ -46,12 +45,12 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(11)] public AuthorRules Rules { get; init; } = null!;
     [DataMember, MemoryPackOrder(12)] public Media.Media? Picture { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatKind Kind => Id.Kind;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool HasSingleAuthor => SystemTag == Constants.Chat.SystemTags.Notes;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public AliasInfo<ChatId> AliasInfo => field ??= new(Id, AliasId);
 
     public bool CanInvite()
@@ -69,7 +68,7 @@ public sealed partial record Chat(
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ChatDiff : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public string? Title { get; init; }

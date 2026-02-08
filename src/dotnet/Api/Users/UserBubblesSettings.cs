@@ -1,12 +1,11 @@
 using ActualChat.Kvas;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// Tracks which help bubbles the user has read.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserBubbleSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserBubbleSettings);
@@ -17,7 +16,7 @@ public sealed partial record UserBubbleSettings : IHasOrigin
         init => ReadBubbles = value.ToList();
     }
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IReadOnlyList<Symbol> ReadBubbles { get; init; } = [];
 
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";

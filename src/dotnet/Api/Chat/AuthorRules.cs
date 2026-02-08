@@ -1,12 +1,11 @@
 using ActualChat.Users;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
 /// <summary>
 /// Encapsulates an author's resolved permissions for a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record AuthorRules(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] AuthorFull? Author,

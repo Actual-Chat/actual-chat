@@ -1,11 +1,10 @@
-using MemoryPack;
 
 namespace ActualChat.Streaming;
 
 /// <summary>
 /// Represents an active audio recording session for a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record AudioRecord(
     [property: DataMember, MemoryPackOrder(0)] StreamId StreamId, // Ignored on upload
     [property: DataMember, MemoryPackOrder(1)] Session Session,
@@ -14,9 +13,9 @@ public sealed partial record AudioRecord(
     [property: DataMember, MemoryPackOrder(4)] TextEntryId? RepliedEntryId
     ) : IHasId<StreamId>, IHasNodeRef
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     NodeRef IHasNodeRef.NodeRef => StreamId.NodeRef;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     StreamId IHasId<StreamId>.Id => StreamId;
 
     // This record relies on referential equality

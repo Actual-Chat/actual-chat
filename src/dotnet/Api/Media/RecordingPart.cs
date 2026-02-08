@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Media;
 
@@ -17,7 +16,7 @@ public enum RecordingEventKind : byte
 /// <summary>
 /// Represents a part of a recording stream (data, pause, or resume event).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class RecordingPart(RecordingEventKind eventKind)
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]

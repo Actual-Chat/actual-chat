@@ -1,6 +1,5 @@
 using System.Buffers;
 using ActualLab.Serialization.Internal;
-using MemoryPack;
 
 namespace ActualChat.Kvas;
 

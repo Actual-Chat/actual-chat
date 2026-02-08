@@ -1,12 +1,11 @@
 using ActualChat.Media;
-using MemoryPack;
 
 namespace ActualChat.Audio;
 
 /// <summary>
 /// Describes audio encoding parameters including codec, sample rate, and channel count.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record AudioFormat : MediaFormat
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember]

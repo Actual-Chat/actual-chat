@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -21,7 +20,7 @@ public interface IConversations : IComputeService
     Task OnReSummarize(Conversations_Summarize command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Conversations_Summarize(
     [property: DataMember, MemoryPackOrder(0)] Session Session,

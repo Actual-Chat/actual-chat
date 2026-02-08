@@ -5,11 +5,10 @@ using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Queues;
 using ActualChat.Search;
-using MemoryPack;
 
 namespace ActualChat.MLSearch.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class PlaceContactIndexingFlow : BatchedIndexingFlow<Contact, ContactId>, IMasterFlow
 {
     private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();

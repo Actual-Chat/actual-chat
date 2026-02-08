@@ -1,5 +1,4 @@
-﻿using ActualChat.Media;
-using MemoryPack;
+using ActualChat.Media;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
@@ -8,7 +7,7 @@ namespace ActualChat.Users;
 /// <summary>
 /// Represents a user's avatar with name, picture, and bio information.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Avatar(
     [property: DataMember, MemoryPackOrder(0)] Symbol Id,
@@ -24,7 +23,7 @@ public partial record Avatar(
     [DataMember, MemoryPackOrder(2)] public string Name { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string PictureUrl { get; init; } = "";
     [DataMember, MemoryPackOrder(4)] public MediaId? MediaId { get; init; }
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Picture? Picture => Media.ToPicture(PictureUrl, AvatarKey);
     [DataMember, MemoryPackOrder(5)] public string Bio { get; init; } = "";
     [DataMember, MemoryPackOrder(9)] public string AvatarKey { get; init; } = "";

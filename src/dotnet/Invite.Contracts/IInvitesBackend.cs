@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Invite;
 
@@ -28,40 +27,40 @@ public interface IInvitesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to revoke an invitation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Revoke(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] string InviteId
 ) : ISessionCommand<Unit>, IHasShardKey<string>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string ShardKey => InviteId;
 }
 
 /// <summary>
 /// Command to use (accept) an invitation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Use(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] string InviteId
 ) : ISessionCommand<Invite>, IHasShardKey<string>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string ShardKey => InviteId;
 }
 
 /// <summary>
 /// Command to generate a new invitation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record InvitesBackend_Generate(
     [property: DataMember, MemoryPackOrder(0)] Invite Invite
 ) : ICommand<Invite>, IBackendCommand, IHasShardKey<Unit>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Unit ShardKey => default;
 }

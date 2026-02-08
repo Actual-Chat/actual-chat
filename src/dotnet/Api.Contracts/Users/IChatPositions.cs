@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -14,7 +13,7 @@ public interface IChatPositions : IComputeService
     Task OnSet(ChatPositions_Set command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatPositions_Set(
     [property: DataMember, MemoryPackOrder(0)] Session Session,

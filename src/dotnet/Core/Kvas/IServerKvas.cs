@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Kvas;
 
@@ -21,7 +20,7 @@ public interface IServerKvas : IComputeService
 /// <summary>
 /// Command to set a single key-value pair in the server KVAS.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_Set(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
@@ -32,7 +31,7 @@ public partial record ServerKvas_Set(
 /// <summary>
 /// Command to set multiple key-value pairs in the server KVAS.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_SetMany(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,
@@ -42,7 +41,7 @@ public partial record ServerKvas_SetMany(
 /// <summary>
 /// Command to migrate guest session keys to an authenticated session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public partial record ServerKvas_MigrateGuestKeys(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session

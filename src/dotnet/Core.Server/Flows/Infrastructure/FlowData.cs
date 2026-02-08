@@ -1,9 +1,8 @@
-using MemoryPack;
 
 namespace ActualChat.Flows.Infrastructure;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 // ReSharper disable once InconsistentNaming
 public partial record struct FlowData(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] long Version,

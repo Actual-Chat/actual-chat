@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -33,14 +32,14 @@ public interface IAccounts : IComputeService
     Task<bool> IsSignOutForced(Session session, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_SignOut(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] bool Force = false
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_Update(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -48,8 +47,7 @@ public sealed partial record Accounts_Update(
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion
 ) : ISessionCommand<Unit>, IApiCommand;
 
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Accounts_DeleteOwn(
     [property: DataMember, MemoryPackOrder(0)] Session Session

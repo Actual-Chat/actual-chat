@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -11,7 +10,7 @@ public interface IEmails : IComputeService
     Task OnSendDigest(Emails_SendDigest command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Emails_SendDigest(
     [property: DataMember, MemoryPackOrder(0)] Session Session

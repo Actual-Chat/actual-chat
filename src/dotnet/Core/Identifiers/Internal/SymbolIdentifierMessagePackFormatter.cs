@@ -1,4 +1,3 @@
-using MessagePack;
 using MessagePack.Formatters;
 
 namespace ActualChat.Internal;

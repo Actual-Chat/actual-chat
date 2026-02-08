@@ -1,7 +1,6 @@
 using ActualChat.Hashing;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Contacts;
 
@@ -9,7 +8,7 @@ namespace ActualChat.Contacts;
 /// Stores the combined hash of all external contacts for a user device.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ExternalContactsHash(
     [property: DataMember, MemoryPackOrder(0)] UserDeviceId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0)

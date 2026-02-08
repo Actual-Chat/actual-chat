@@ -1,13 +1,11 @@
 using ActualLab.Rpc;
-using MemoryPack;
-using MessagePack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// Result of a reCAPTCHA validation request.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record RecaptchaValidationResult(
     [property: MemoryPackOrder(0)] [property: Key(0)]
     bool Success,

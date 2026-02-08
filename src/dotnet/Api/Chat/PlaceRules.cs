@@ -1,9 +1,8 @@
-﻿using ActualChat.Users;
-using MemoryPack;
+using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record PlaceRules(
     [property: DataMember, MemoryPackOrder(0)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(1)] AuthorFull? Author,

@@ -1,12 +1,11 @@
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// Extended <see cref="Account"/> with full user details including identities and claims.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record AccountFull : Account
 {
@@ -44,7 +43,7 @@ public sealed partial record AccountFull : Account
     // User properties (flattened from User type)
 
     // Hidden from JSON/DataContract, JsonCompatibleIdentities is used instead
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ApiMap<UserIdentity, string> Identities { get; init; }
 
     [DataMember, MemoryPackOrder(18)] public ApiMap<string, string> Claims { get; init; }
@@ -56,7 +55,7 @@ public sealed partial record AccountFull : Account
 
     // Computed properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public AliasInfo<UserId> AliasInfo => field ??= new(Id, AliasId);
 
     // Implements JSON serialization for Identities (converts UserIdentity keys to strings)
@@ -68,7 +67,7 @@ public sealed partial record AccountFull : Account
     }
 
     [Obsolete("This property is for backward compatibility. Use Identities, Claims, Name properties directly.")]
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
 #pragma warning disable CS0618 // Type or member is obsolete
     public LegacyUser User => new(Id?.Value ?? "", Name) {
         Version = Version,
@@ -77,7 +76,7 @@ public sealed partial record AccountFull : Account
     };
 #pragma warning restore CS0618
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public AccountFull(UserId id, long version = 0) : base(id, version)
     {
         Identities = ApiMap<UserIdentity, string>.Empty;

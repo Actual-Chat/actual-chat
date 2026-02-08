@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Kvas;
 
@@ -17,7 +16,7 @@ public interface IServerSettings : IComputeService
 /// <summary>
 /// Command to set a server-side setting value.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public partial record ServerSettings_Set(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Session Session,

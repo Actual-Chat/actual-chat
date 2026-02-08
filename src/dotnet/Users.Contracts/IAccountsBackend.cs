@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -44,8 +43,8 @@ public interface IAccountsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to sign in a user with the given identity.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_SignIn(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -57,26 +56,26 @@ public sealed partial record AccountsBackend_SignIn(
 /// <summary>
 /// Command to update a user account.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Update(
     [property: DataMember, MemoryPackOrder(0)] AccountFull Account,
     [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => Account.Id;
 }
 
 /// <summary>
 /// Command to delete a user account.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Delete(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => UserId;
 }

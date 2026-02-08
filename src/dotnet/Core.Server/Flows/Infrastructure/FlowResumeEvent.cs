@@ -2,12 +2,10 @@ using ActualChat.Queues;
 using ActualChat.Time;
 using ActualLab.CommandR.Operations;
 using ActualLab.Generators;
-using MemoryPack;
-using MessagePack;
 
 namespace ActualChat.Flows.Infrastructure;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class FlowResumeEvent :
     IDelegatingCommand<long>, IBackendCommand,
     IHasDelayUntil, IHasDelayQuanta,

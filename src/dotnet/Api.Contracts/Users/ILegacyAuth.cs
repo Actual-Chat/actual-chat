@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -30,7 +29,7 @@ public interface ILegacyAuth : IComputeService
 }
 
 [Obsolete("Use Accounts_SignOut instead.")]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public partial record LegacyAuth_SignOut(
     [property: DataMember, MemoryPackOrder(0)] Session Session,

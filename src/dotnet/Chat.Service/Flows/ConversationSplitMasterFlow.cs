@@ -1,9 +1,8 @@
 using ActualChat.Flows;
-using MemoryPack;
 
 namespace ActualChat.Chat.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ConversationSplitMasterFlow
     : IndexingMasterFlow<ConversationSplitFlow, Chat, ChatId>, IMasterFlow
 {

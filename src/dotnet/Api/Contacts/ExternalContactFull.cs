@@ -1,5 +1,4 @@
-﻿using ActualChat.Hashing;
-using MemoryPack;
+using ActualChat.Hashing;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
@@ -9,7 +8,7 @@ namespace ActualChat.Contacts;
 /// Represents a contact imported from the device's address book.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ExternalContact(
     [property: DataMember, MemoryPackOrder(0)] ExternalContactId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0) : IHasId<ExternalContactId>, IHasVersion<long>, IRequirementTarget
@@ -21,7 +20,7 @@ public partial record ExternalContact(
 /// Extended external contact with full name components and contact info hashes.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ExternalContactFull(ExternalContactId Id, long Version = 0) : ExternalContact(Id, Version)
 {
     [DataMember, MemoryPackOrder(2)] public string DisplayName { get; init; } = "";

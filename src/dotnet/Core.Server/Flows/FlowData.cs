@@ -1,7 +1,6 @@
 using ActualChat.Flows.Infrastructure;
 using ActualLab.Caching;
 using ActualLab.IO;
-using MemoryPack;
 
 namespace ActualChat.Flows;
 
@@ -55,7 +54,7 @@ public static class FlowData
 
 #pragma warning disable CA1000 // Do not declare static members on generic types
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class FlowData<TFlow> : IFlowData
     where TFlow : Flow
 {
@@ -101,7 +100,7 @@ public partial class FlowData<TFlow> : IFlowData
 
     // Computed properties
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsCompleted => _flow is { } flow
         ? flow.UntypedResult is not null
         : ResultData.Length != 0;

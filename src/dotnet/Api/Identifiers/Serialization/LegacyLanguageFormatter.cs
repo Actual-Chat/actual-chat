@@ -1,5 +1,4 @@
 using ActualLab.Text.Internal;
-using MemoryPack;
 using MemoryPack.Internal;
 
 namespace ActualChat.Serialization;

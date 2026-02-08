@@ -1,11 +1,10 @@
-﻿using MemoryPack;
 
 namespace ActualChat.Security;
 
 /// <summary>
 /// A time-limited token used for secure operations.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record SecureToken(
     [property: DataMember, MemoryPackOrder(0)] string Token,
     [property: DataMember, MemoryPackOrder(1)] Moment ExpiresAt

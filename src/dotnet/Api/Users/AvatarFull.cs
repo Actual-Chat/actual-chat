@@ -1,4 +1,3 @@
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Users;
@@ -6,7 +5,7 @@ namespace ActualChat.Users;
 /// <summary>
 /// Extended <see cref="Avatar"/> with user association and anonymity flag.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record AvatarFull(
     [property: DataMember, MemoryPackOrder(7)] UserId UserId,

@@ -1,4 +1,3 @@
-﻿using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -20,7 +19,7 @@ public interface IAvatars : IComputeService
     Task OnSetDefault(Avatars_SetDefault command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Avatars_Change(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -29,7 +28,7 @@ public sealed partial record Avatars_Change(
     [property: DataMember, MemoryPackOrder(3)] Change<AvatarFull> Change
 ) : ISessionCommand<AvatarFull>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Avatars_SetDefault(
     [property: DataMember, MemoryPackOrder(0)] Session Session,

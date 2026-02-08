@@ -1,11 +1,10 @@
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
 /// <summary>
 /// Query parameters for listing changed authors by version range.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ChangedAuthorsQuery
 {
     [DataMember, MemoryPackOrder(0)] public long MinVersion { get; init; }

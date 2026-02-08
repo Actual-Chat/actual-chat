@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Contacts;
 
@@ -19,7 +18,7 @@ public interface IExternalContactHashesBackend : IComputeService, IBackendServic
 /// <summary>
 /// Command to update the external contacts hash for a device.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactHashesBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] UserDeviceId Id,
@@ -27,19 +26,19 @@ public sealed partial record ExternalContactHashesBackend_Change(
     [property: DataMember, MemoryPackOrder(2)] Change<ExternalContactsHash> Change
 ) : ICommand<ExternalContactsHash?>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => Id.OwnerId;
 }
 
 /// <summary>
 /// Command to remove external contact hashes for a deleted account.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactHashesBackend_RemoveAccount(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => UserId;
 }

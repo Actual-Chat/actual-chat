@@ -1,8 +1,7 @@
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ChatEntryRangeMeta(
     [property: DataMember, MemoryPackOrder(0)] ChatId? ChatId,
     [property: DataMember, MemoryPackOrder(1)] Range<long>[] EntryRanges,

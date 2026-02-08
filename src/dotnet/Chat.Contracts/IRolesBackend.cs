@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -28,7 +27,7 @@ public interface IRolesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a role.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record RolesBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
@@ -37,6 +36,6 @@ public sealed partial record RolesBackend_Change(
     [property: DataMember, MemoryPackOrder(3)] Change<RoleDiff> Change
 ) : ICommand<Role>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }

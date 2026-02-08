@@ -1,14 +1,13 @@
 using System.Security;
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// Contains information about a user session including authentication state and metadata.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 public partial record SessionInfo() : IRequirementTarget, IHasVersion<long>
 {
     public static Requirement<SessionInfo> MustBeAuthenticated { get; set; } = Requirement.New(

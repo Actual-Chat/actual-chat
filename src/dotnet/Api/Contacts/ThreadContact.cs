@@ -1,4 +1,3 @@
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
@@ -8,7 +7,7 @@ namespace ActualChat.Contacts;
 /// Represents a contact entry for a thread conversation.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ThreadContact : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0)] public ContactId Id { get; init; }
@@ -29,9 +28,9 @@ public sealed partial record ThreadContact : IHasId<ContactId>, IHasVersion<long
         new(() => StandardError.NotFound<ThreadContact>()));
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId OwnerId => Id.OwnerId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ThreadChatId ThreadChatId => (ThreadChatId)Id.ChatId;
 
     public void Deconstruct(out ContactId Id, out long Version)

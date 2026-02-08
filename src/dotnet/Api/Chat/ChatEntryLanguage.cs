@@ -1,11 +1,10 @@
 using ActualChat.Hashing;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record ChatEntryLanguage(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] ChatEntryId Id,

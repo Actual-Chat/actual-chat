@@ -2,12 +2,11 @@ using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
 using ActualChat.Queues;
-using MemoryPack;
 
 namespace ActualChat.Chat.Flows;
 
 [Flow(ResumeTimeout = 60)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 {
     private const int BatchSize = 100;

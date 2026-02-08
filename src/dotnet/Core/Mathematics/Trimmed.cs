@@ -1,7 +1,5 @@
 using System.Numerics;
 using ActualChat.Serialization.Internal;
-using MemoryPack;
-using MessagePack;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Mathematics;
@@ -18,10 +16,10 @@ public readonly partial record struct Trimmed<T>
     [DataMember, MemoryPackOrder(0)] public T Value { get; }
     [DataMember, MemoryPackOrder(1)] public T? Limit { get; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsTrimmed => Limit is { } t && EqualityComparer<T>.Default.Equals(Value, t);
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public Trimmed(T value, T? limit)
     {
         Limit = limit;

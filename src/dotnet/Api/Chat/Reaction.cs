@@ -1,5 +1,4 @@
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat;
@@ -9,7 +8,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Represents an emoji reaction to a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Reaction : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {

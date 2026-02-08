@@ -1,6 +1,5 @@
 using ActualChat.Internal;
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Module;
 

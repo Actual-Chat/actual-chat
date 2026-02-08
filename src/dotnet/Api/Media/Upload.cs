@@ -1,4 +1,3 @@
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Media;
@@ -9,7 +8,7 @@ namespace ActualChat.Media;
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0)] public UploadId Id { get; init; }
@@ -21,13 +20,13 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
 
     // Computed properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string FileName {
         get => this.GetMetadataValue("");
         init => this.SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string ContentType {
         get => this.GetMetadataValue("");
         init => this.SetMetadataValue(value);
@@ -42,7 +41,7 @@ public sealed partial record Upload : IHasId<UploadId>, IHasMetadata, IRequireme
         Metadata = metadata;
     }
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public Upload(UploadId id, UserId userId, long? length, string tag, string sessionUri, PropertyBag metadata)
         : this(id, userId, length, tag, metadata)
         => SessionUri = sessionUri;

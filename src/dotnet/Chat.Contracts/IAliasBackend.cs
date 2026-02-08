@@ -1,6 +1,5 @@
 using ActualLab.Rpc;
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -21,7 +20,7 @@ public interface IAliasBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete an alias.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AliasBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] AliasId Id,
@@ -29,14 +28,14 @@ public sealed partial record AliasBackend_Change(
     [property: DataMember, MemoryPackOrder(2)] Change<Alias> Change
 ) : ICommand<Alias?>, IBackendCommand, IHasShardKey<AliasId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public AliasId ShardKey => Id;
 }
 
 /// <summary>
 /// Represents a named alias pointing to a chat or place.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record Alias(
     [property: DataMember, MemoryPackOrder(0)] AliasId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0

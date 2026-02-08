@@ -1,5 +1,4 @@
-﻿using ActualLab.Rpc;
-using MemoryPack;
+using ActualLab.Rpc;
 
 namespace ActualChat.Users;
 
@@ -18,7 +17,7 @@ public interface IAvatarsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete an avatar.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AvatarsBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] Symbol AvatarId,
@@ -26,6 +25,6 @@ public sealed partial record AvatarsBackend_Change(
     [property: DataMember, MemoryPackOrder(2)] Change<AvatarFull> Change
 ) : ICommand<AvatarFull>, IBackendCommand, IHasShardKey<Symbol>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Symbol ShardKey => AvatarId;
 }

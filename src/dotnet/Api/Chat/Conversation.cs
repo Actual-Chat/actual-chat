@@ -1,7 +1,6 @@
 using ActualChat.Comparison;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -9,7 +8,7 @@ namespace ActualChat.Chat;
 /// Represents a thread conversation within a chat, grouping related entries.
 /// </summary>
 [ParameterComparer(typeof(ByIdAndVersionParameterComparer<ConversationId, long>))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record Conversation(
     [property: DataMember, MemoryPackOrder(0)] ConversationId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
@@ -23,7 +22,7 @@ public sealed partial record Conversation(
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string Description { get; init; } = "";
     [DataMember, MemoryPackOrder(4)] public string Summary { get; init; } = "";
-    [IgnoreDataMember, MemoryPackIgnore] public Range<long> EntryRange => new(Id.StartEntryLid, EndEntryLid + 1);
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public Range<long> EntryRange => new(Id.StartEntryLid, EndEntryLid + 1);
     [DataMember, MemoryPackOrder(5)] public long EndEntryLid { get; init; } = Id.StartEntryLid;
     [DataMember, MemoryPackOrder(6)] public Moment StartsAt { get; init; }
     [DataMember, MemoryPackOrder(7)] public Moment EndsAt { get; init; }
@@ -42,8 +41,8 @@ public sealed partial record Conversation(
 /// <summary>
 /// Represents changes to a <see cref="Conversation"/> for incremental updates.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method:MemoryPackConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[method:MemoryPackConstructor, SerializationConstructor]
 public sealed partial record ConversationDiff() : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public string? Title { get; init; }

@@ -1,4 +1,3 @@
-﻿using MemoryPack;
 
 namespace ActualChat.Contacts;
 
@@ -13,14 +12,14 @@ public interface IExternalContacts : IComputeService
     Task<Result<ExternalContactFull?>[]> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContacts_BulkChange(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ExternalContactChange[] Changes
 ) : ISessionCommand<Result<ExternalContactFull?>[]>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ExternalContactChange(
     [property: DataMember, MemoryPackOrder(1)] ExternalContactId Id,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,

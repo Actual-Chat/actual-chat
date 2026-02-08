@@ -1,5 +1,4 @@
-﻿using ActualLab.Rpc;
-using MemoryPack;
+using ActualLab.Rpc;
 
 namespace ActualChat.Media;
 
@@ -24,21 +23,21 @@ public interface IMediaBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a media record.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] MediaId Id,
     [property: DataMember, MemoryPackOrder(1)] Change<Media> Change
 ) : ICommand<Media?>, IBackendCommand, IHasShardKey<MediaId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public MediaId ShardKey => Id;
 }
 
 /// <summary>
 /// Command to copy media files to a new chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaBackend_CopyChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
@@ -46,6 +45,6 @@ public sealed partial record MediaBackend_CopyChat(
     [property: DataMember, MemoryPackOrder(2)] MediaId[] MediaIds
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => ChatId;
 }

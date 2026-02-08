@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Search;
 
@@ -11,6 +10,6 @@ public abstract class SearchResult(string id, SearchMatch searchMatch)
     [DataMember, MemoryPackOrder(0)] public string Id { get; } = id;
     [DataMember, MemoryPackOrder(1)] public SearchMatch SearchMatch { get; } = searchMatch;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Text => SearchMatch.Text;
 }

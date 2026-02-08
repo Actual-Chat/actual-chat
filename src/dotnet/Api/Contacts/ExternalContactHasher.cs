@@ -1,5 +1,4 @@
 using ActualChat.Hashing;
-using MemoryPack;
 
 namespace ActualChat.Contacts;
 
@@ -25,7 +24,7 @@ public sealed class ExternalContactHasher
             .ToBase64HashString(HashAlgorithm.SHA256Xor);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 internal sealed partial record HashedExternalContact
 {
     [DataMember, MemoryPackOrder(0)] public ExternalContactId Id { get; init; } = null!;

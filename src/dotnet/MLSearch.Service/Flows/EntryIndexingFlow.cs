@@ -4,12 +4,11 @@ using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Queues;
 using ActualChat.Search;
-using MemoryPack;
 
 namespace ActualChat.MLSearch.Flows;
 
 [Flow(DelayQuanta = 30)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, ChatEntryId>
 {
     private MLSearchSettings Settings => field ??= Services.GetRequiredService<MLSearchSettings>();
@@ -18,7 +17,7 @@ public sealed partial class EntryIndexingFlow : BatchedIndexingFlow<ChatEntry, C
     private IndexedDocuments IndexedDocuments => field ??= Services.GetRequiredService<IndexedDocuments>();
     private Task WhenReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     private ChatId ChatId { get; set; } = null!;
 
     protected override async ValueTask<FlowReadiness> Prepare(CancellationToken cancellationToken)

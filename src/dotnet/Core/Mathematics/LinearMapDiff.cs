@@ -1,9 +1,8 @@
 using System.Numerics;
-using MemoryPack;
 
 namespace ActualChat.Mathematics;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [StructLayout(LayoutKind.Auto)]
 public readonly partial record struct LinearMapDiff(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] LinearMap Suffix,
@@ -12,7 +11,7 @@ public readonly partial record struct LinearMapDiff(
 {
     public static LinearMapDiff None => default;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsNone => Suffix.IsEmpty && !IsRewrite;
 
     public static LinearMapDiff New(LinearMap map, LinearMap baseMap, Vector2 epsilon)

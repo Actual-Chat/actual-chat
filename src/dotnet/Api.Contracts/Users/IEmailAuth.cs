@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -17,7 +16,7 @@ public interface IEmailAuth : IComputeService
     Task<bool> OnVerifyEmail(EmailAuth_VerifyEmail command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailAuth_SendTotp(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -25,7 +24,7 @@ public sealed partial record EmailAuth_SendTotp(
     [property: DataMember, MemoryPackOrder(2)] TotpPurpose Purpose = TotpPurpose.SignInEmail
 ) : ISessionCommand<Moment>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailAuth_ValidateTotp(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -33,7 +32,7 @@ public sealed partial record EmailAuth_ValidateTotp(
     [property: DataMember, MemoryPackOrder(2)] int Totp
 ) : ISessionCommand<bool>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailAuth_VerifyEmail(
     [property: DataMember, MemoryPackOrder(0)] Session Session,

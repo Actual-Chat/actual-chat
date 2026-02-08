@@ -1,14 +1,13 @@
 using System.Numerics;
 using System.Text.RegularExpressions;
-using MemoryPack;
 
 namespace ActualChat.Transcription;
 
 /// <summary>
 /// Represents transcribed text with character-to-time mapping.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: MemoryPackConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[method: MemoryPackConstructor, SerializationConstructor]
 public sealed partial record Transcript(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMap TimeMap,
@@ -28,11 +27,11 @@ public sealed partial record Transcript(
     public static readonly Transcript Ellipsis = new("\u2026", new LinearMap(Vector2.Zero, new Vector2(1, 0)), []);
     public static readonly Transcript Unrecognized = new("\u2026\u200B\u2026", new LinearMap(Vector2.Zero, new Vector2(3, 0)), []);
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public int Length => Text.Length;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Range<int> TextRange => new(0, Text.Length);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Range<float> TimeRange => TimeMap.YRange;
 
     [DataMember(Order = 3), MemoryPackOrder(3)]

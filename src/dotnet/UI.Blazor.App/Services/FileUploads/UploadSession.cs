@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -11,7 +10,7 @@ public enum UploadStatus
     Canceled
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class UploadSession
 {
     [DataMember, MemoryPackOrder(0)] public string SessionId { get; set; } = "";
@@ -23,6 +22,6 @@ public partial class UploadSession
     [DataMember, MemoryPackOrder(6)] public UploadId? UploadId { get; set; }
     [DataMember, MemoryPackOrder(7)] public MediaContent? MediaContent { get; set; }
 
-    [IgnoreDataMember, MemoryPackIgnore] public string FileName => FileProvider.Metadata.FileName;
-    [IgnoreDataMember, MemoryPackIgnore] public UploadProgressTracker ProgressTracker { get; set; } = new ();
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public string FileName => FileProvider.Metadata.FileName;
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember] public UploadProgressTracker ProgressTracker { get; set; } = new ();
 }

@@ -1,8 +1,7 @@
-using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record LocalOnboardingSettings
 {
     public const string KvasKey = nameof(LocalOnboardingSettings);

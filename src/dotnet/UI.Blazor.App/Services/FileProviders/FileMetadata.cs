@@ -1,8 +1,7 @@
-using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-[MemoryPackable(GenerateType.VersionTolerant)]
+[MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class FileMetadata
 {
     [DataMember, MemoryPackOrder(0)]

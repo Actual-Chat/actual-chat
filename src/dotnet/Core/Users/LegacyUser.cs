@@ -3,7 +3,6 @@ using System.Security;
 using System.Security.Claims;
 using ActualLab.Requirements;
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -13,7 +12,7 @@ namespace ActualChat.Users;
 /// Use AccountFull.ToUser() to get a LegacyUser when needed for database operations.
 /// </summary>
 [Obsolete("Use AccountFull instead. This type will be removed in a future version.")]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
 public partial record LegacyUser : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
@@ -36,7 +35,7 @@ public partial record LegacyUser : IHasId<string>, IHasVersion<long>, IRequireme
     [DataMember, MemoryPackOrder(3)]
     public ApiMap<string, string> Claims { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ApiMap<UserIdentity, string> Identities { get; init; }
 
     // Computed properties
@@ -60,7 +59,7 @@ public partial record LegacyUser : IHasId<string>, IHasVersion<long>, IRequireme
         Identities = ApiMap<UserIdentity, string>.Empty;
     }
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public LegacyUser(
         string id,
         string name,

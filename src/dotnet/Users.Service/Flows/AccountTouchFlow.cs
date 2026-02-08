@@ -2,7 +2,6 @@ using ActualChat.Flows;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Versioning;
-using MemoryPack;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users.Flows;
@@ -12,7 +11,7 @@ namespace ActualChat.Users.Flows;
 /// Processes 600 accounts per batch, then sleeps for 1 minute (10 accounts/second average).
 /// </summary>
 [Flow(DataVersion = 2)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class AccountTouchFlow : Flow<Unit>
 {
     private const int BatchSize = 600;

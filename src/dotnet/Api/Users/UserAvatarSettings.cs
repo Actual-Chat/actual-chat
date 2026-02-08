@@ -1,12 +1,11 @@
 using ActualChat.Kvas;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// User preferences for avatar management and defaults.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserAvatarSettings : IHasKvasKey<UserAvatarSettings>
 {
     [DataMember, MemoryPackOrder(0), MemoryPackInclude]
@@ -15,7 +14,7 @@ public sealed partial record UserAvatarSettings : IHasKvasKey<UserAvatarSettings
         init => AvatarIds = value.ToList();
     }
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public IReadOnlyList<Symbol> AvatarIds { get; init; } = [];
 
     [DataMember, MemoryPackOrder(1)] public Symbol DefaultAvatarId { get; init; }

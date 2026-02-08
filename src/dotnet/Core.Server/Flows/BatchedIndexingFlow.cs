@@ -1,5 +1,4 @@
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Flows;
 
@@ -10,9 +9,9 @@ public abstract class BatchedIndexingFlow<TItem, TId> : IndexingFlow<IndexingFlo
     where TItem : class, IHasId<TId>, IHasVersion<long>
     where TId : StringIdentifier
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected virtual int BatchSize => 100;
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected virtual int Quota => 1000;
 
     // Overridable methods

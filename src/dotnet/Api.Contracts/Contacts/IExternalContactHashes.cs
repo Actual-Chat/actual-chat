@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Contacts;
 
@@ -13,7 +12,7 @@ public interface IExternalContactHashes : IComputeService
     Task<ExternalContactsHash?> OnChange(ExternalContactHashes_Change command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContactHashes_Change(
     [property: DataMember, MemoryPackOrder(0)] Session Session,

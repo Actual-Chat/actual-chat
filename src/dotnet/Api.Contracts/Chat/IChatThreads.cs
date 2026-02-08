@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -32,7 +31,7 @@ public interface IChatThreads : IComputeService
     Task<Unit> OnToggleThreadFollowStatus(ChatThreads_ToggleThreadFollowStatus command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatThreads_Start(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -42,7 +41,7 @@ public sealed partial record ChatThreads_Start(
     [property: DataMember, MemoryPackOrder(4)] TextEntryId[] EntryIds
 ) : ISessionCommand<Chat>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatThreads_ToggleThreadFollowStatus(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -52,7 +51,7 @@ public sealed partial record ChatThreads_ToggleThreadFollowStatus(
 /// <summary>
 /// Statistics for a chat thread.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ThreadStat(
     [property: DataMember, MemoryPackOrder(0)] long MessageCount,
     [property: DataMember, MemoryPackOrder(1)] AuthorId[] TopAuthorIds,

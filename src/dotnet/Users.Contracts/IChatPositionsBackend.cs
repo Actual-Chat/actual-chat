@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -18,7 +17,7 @@ public interface IChatPositionsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to set a user's read position in a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatPositionsBackend_Set(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId,
@@ -28,6 +27,6 @@ public sealed partial record ChatPositionsBackend_Set(
     [property: DataMember, MemoryPackOrder(4)] bool Force = false
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => UserId;
 }

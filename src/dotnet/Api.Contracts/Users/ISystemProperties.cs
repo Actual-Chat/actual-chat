@@ -1,5 +1,3 @@
-using MemoryPack;
-using MessagePack;
 
 namespace ActualChat.Users;
 
@@ -29,14 +27,14 @@ public interface ISystemProperties : IComputeService
     Task<SystemProperties_LegacyClientCompatibility> CheckClientCompatibility(string clientVersion, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SystemProperties_InvalidateEverything(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] bool Everywhere = false
 ) : ISessionCommand<Unit>; // NOTE(AY): Maybe add backend & implement IApiCommand?
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SystemProperties_PruneComputedGraph(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -46,7 +44,7 @@ public sealed partial record SystemProperties_PruneComputedGraph(
 /// <summary>
 /// Server API version and compatibility information.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [method: MemoryPackConstructor, SerializationConstructor, JsonConstructor]
 public sealed partial record ServerApiInfo(
     [property: DataMember, MemoryPackOrder(0)] CompatibilityLevel CompatibilityLevel,
@@ -58,8 +56,6 @@ public sealed partial record ServerApiInfo(
         : this(compatibilityLevel, ApiConstants.VersionString, ApiConstants.FullVersionString, ApiConstants.DisplayVersionString)
     { }
 }
-
-
 
 [Obsolete("2025.06: Retired in favour of GetServerApiInfo.")]
 public enum SystemProperties_LegacyClientCompatibility { Latest, Incompatible, UpgradeAvailable }

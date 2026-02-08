@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -27,8 +26,8 @@ public interface ISessionsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create or update a session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 // ReSharper disable once InconsistentNaming
 public partial record SessionsBackend_Upsert(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -39,7 +38,7 @@ public partial record SessionsBackend_Upsert(
     [property: DataMember, MemoryPackOrder(5)] string? AuthenticatedIdentity = null
 ) : ISessionCommand<SessionInfo>, IBackendCommand, INotLogged, IHasShardKey<Session>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Session ShardKey => Session;
 
     public SessionsBackend_Upsert(Session session, string ipAddress = "", string userAgent = "")
@@ -49,13 +48,13 @@ public partial record SessionsBackend_Upsert(
 /// <summary>
 /// Command to sign out a session.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public partial record SessionsBackend_SignOut(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] bool Force = false
 ) : ISessionCommand<Unit>, IBackendCommand, IHasShardKey<Session>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Session ShardKey => Session;
 }

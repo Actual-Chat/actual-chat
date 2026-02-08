@@ -4,11 +4,10 @@ using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Module;
 using ActualChat.Queues;
 using ActualChat.Search;
-using MemoryPack;
 
 namespace ActualChat.MLSearch.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class PlaceIndexingFlow : BatchedIndexingFlow<Place, PlaceId>, IMasterFlow
 {
     private Task WhenReady => field ??= Services.GetRequiredService<OpenSearchConfigurator>().WhenReady;

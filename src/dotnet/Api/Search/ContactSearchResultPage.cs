@@ -1,11 +1,10 @@
-using MemoryPack;
 
 namespace ActualChat.Search;
 
 /// <summary>
 /// A paginated collection of contact search results.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ContactSearchResultPage
 {
     public static readonly ContactSearchResultPage Empty = new ();

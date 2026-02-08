@@ -1,11 +1,10 @@
-using MemoryPack;
 
 namespace ActualChat.Search;
 
 /// <summary>
 /// Represents a matched portion of text in a search result.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record SearchMatchPart(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Range<int> Range,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] double Rank)

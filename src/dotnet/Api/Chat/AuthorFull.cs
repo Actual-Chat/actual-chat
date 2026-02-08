@@ -1,14 +1,13 @@
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
 /// <summary>
 /// Extended <see cref="Author"/> with user association and role memberships.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+[method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
 public sealed partial record AuthorFull(
     [property: DataMember, MemoryPackOrder(6)] UserId UserId,
     AuthorId Id, long Version = 0
@@ -32,7 +31,7 @@ public sealed partial record AuthorFull(
 /// <summary>
 /// Represents changes to an <see cref="Author"/> for incremental updates.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record AuthorDiff : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public Symbol? AvatarId { get; init; }

@@ -1,13 +1,13 @@
 using ActualChat.Audio;
-using MemoryPack;
 
 namespace ActualChat.Media;
 
 /// <summary>
 /// Base class for media data frames (audio, video).
 /// </summary>
-[DataContract, MemoryPackable]
+[DataContract, MemoryPackable, MessagePackObject(true)]
 [MemoryPackUnion(0 ,typeof(AudioFrame))]
+[Union(0, typeof(AudioFrame))]
 public abstract partial class MediaFrame
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]

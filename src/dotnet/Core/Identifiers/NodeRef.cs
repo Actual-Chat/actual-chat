@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using MemoryPack;
 using ActualLab.Generators;
 using ActualLab.Fusion.Blazor;
 
@@ -8,7 +7,7 @@ namespace ActualChat;
 /// <summary>
 /// Unique identifier for a cluster node.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [JsonConverter(typeof(Internal.SymbolIdentifierJsonConverter<NodeRef>))]
 [Newtonsoft.Json.JsonConverter(typeof(Internal.SymbolIdentifierNewtonsoftJsonConverter<NodeRef>))]
 [TypeConverter(typeof(Internal.SymbolIdentifierTypeConverter<NodeRef>))]
@@ -27,12 +26,12 @@ public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
     public Symbol Id { get; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsNone => Id.IsEmpty;
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public NodeRef(Symbol id)
         => this = Parse(id);
     public NodeRef(string? id)

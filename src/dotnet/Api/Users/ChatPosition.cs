@@ -1,5 +1,4 @@
 using ActualChat.Kvas;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -11,7 +10,7 @@ public enum ChatPositionKind { Read = 0, View };
 /// <summary>
 /// Represents a user's position within a chat conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ChatPosition(
     [property: DataMember, MemoryPackOrder(0)] long EntryLid = 0,
     [property: DataMember, MemoryPackOrder(1)] string Origin = ""

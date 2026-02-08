@@ -1,11 +1,10 @@
-using MemoryPack;
 
 namespace ActualChat.Contacts;
 
 /// <summary>
 /// Query parameters for listing changed contacts by version range.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ChangedContactsQuery
 {
     [DataMember, MemoryPackOrder(2)] public required ContactId? LastId { get; init; }

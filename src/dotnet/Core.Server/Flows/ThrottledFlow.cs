@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Flows;
 
@@ -7,7 +6,7 @@ namespace ActualChat.Flows;
 /// </summary>
 public abstract class ThrottledFlow : Flow<string>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected abstract TimeSpan ThrottlePeriod { get; }
 
     // Persisted state

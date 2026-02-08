@@ -1,12 +1,11 @@
 using ActualChat.Kvas;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// User preferences for navigation bar including pinned chats and place ordering.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserNavbarSettings : IHasOrigin, IHasKvasKey<UserNavbarSettings>
 {
     public static string KvasKey => nameof(UserNavbarSettings);

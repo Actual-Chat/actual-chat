@@ -1,6 +1,5 @@
 using System.Numerics;
 using ActualChat.Mathematics;
-using MessagePack;
 using MessagePack.Formatters;
 
 namespace ActualChat.Serialization.Internal;

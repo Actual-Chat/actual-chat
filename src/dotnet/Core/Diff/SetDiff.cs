@@ -1,6 +1,4 @@
 using ActualChat.Serialization.Internal;
-using MemoryPack;
-using MessagePack;
 
 namespace ActualChat.Diff;
 
@@ -9,7 +7,7 @@ namespace ActualChat.Diff;
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(SetDiffMessagePackFormatter<>))]
-[method: MemoryPackConstructor]
+[method: MemoryPackConstructor, SerializationConstructor]
 public readonly partial struct SetDiff<TItem>(
     TItem[]? addedItems,
     TItem[]? removedItems = null
@@ -17,7 +15,7 @@ public readonly partial struct SetDiff<TItem>(
 {
     public static readonly SetDiff<TItem> Unchanged = default!;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsEmpty => AddedItems.Length == 0 && RemovedItems.Length == 0;
 
     [DataMember(Order = 0), MemoryPackOrder(0), MemoryPackAllowSerialize]
@@ -50,7 +48,7 @@ public readonly partial struct SetDiff<TItem>(
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackFormatter(typeof(SetDiffMessagePackFormatter<,>))]
-[method: MemoryPackConstructor]
+[method: MemoryPackConstructor, SerializationConstructor]
 public readonly partial struct SetDiff<TCollection, TItem>(
     TItem[]? addedItems,
     TItem[]? removedItems = null
@@ -59,7 +57,7 @@ public readonly partial struct SetDiff<TCollection, TItem>(
 {
     public static readonly SetDiff<TCollection, TItem> Unchanged = default!;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsEmpty => AddedItems.Length == 0 && RemovedItems.Length == 0;
 
     [DataMember(Order = 0), MemoryPackOrder(0), MemoryPackAllowSerialize]

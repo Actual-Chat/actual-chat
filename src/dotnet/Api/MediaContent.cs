@@ -1,4 +1,3 @@
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat;
@@ -6,7 +5,7 @@ namespace ActualChat;
 /// <summary>
 /// References uploaded media and optional thumbnail.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record MediaContent(
     [property: DataMember, MemoryPackOrder(0)] MediaId MediaId,

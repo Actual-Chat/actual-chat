@@ -2,7 +2,6 @@ using ActualChat.Kvas;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Locking;
-using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -93,7 +92,7 @@ internal class PostRequestsStorageInternal : BatchingKvas
     }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record SendMessageRequestEntry(
     [property: DataMember, MemoryPackOrder(0)] string Uuid,
     [property: DataMember, MemoryPackOrder(1)] Moment Now,
@@ -112,7 +111,7 @@ public partial record SendMessageRequestEntry(
     [DataMember, MemoryPackOrder(10)] public long? NewChatEntryLocalId { get; init; }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record AttachFileRequestEntry(
     [property: DataMember, MemoryPackOrder(0)] string UploadSessionId,
     [property: DataMember, MemoryPackOrder(1)] string FileName,

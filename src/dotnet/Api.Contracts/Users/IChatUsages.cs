@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -14,7 +13,7 @@ public interface IChatUsages : IComputeService
     Task OnRegisterUsage(ChatUsages_RegisterUsage command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatUsages_RegisterUsage(
     [property: DataMember, MemoryPackOrder(0)] Session Session,

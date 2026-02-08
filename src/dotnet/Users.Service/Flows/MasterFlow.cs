@@ -2,11 +2,10 @@ using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
-using MemoryPack;
 
 namespace ActualChat.Users.Flows;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class MasterFlow : Flow<Unit>, IMasterFlow
 {
     [DataMember(Order = 0), MemoryPackOrder(0)]

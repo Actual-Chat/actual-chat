@@ -1,14 +1,13 @@
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record SystemEntry : IUnionRecord<SystemEntryOption?>
 {
     // Union options
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public SystemEntryOption? Option { get; init; }
 
     [DataMember, MemoryPackOrder(0)]
@@ -35,14 +34,14 @@ public abstract record SystemEntryOption : IRequirementTarget
     public abstract Markup ToMarkup();
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record MembersChangedOption : SystemEntryOption
 {
     [DataMember, MemoryPackOrder(0)] public AuthorId? AuthorId { get; init; }
     [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
     [DataMember, MemoryPackOrder(2)] public bool HasLeft { get; init; }
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public MembersChangedOption(AuthorId? authorId, string authorName, bool hasLeft)
     {
         AuthorId = authorId;
@@ -62,13 +61,13 @@ public sealed partial record MembersChangedOption : SystemEntryOption
     }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record NotifyMembersOption : SystemEntryOption
 {
     [DataMember, MemoryPackOrder(0)] public AuthorId AuthorId { get; init; }
     [DataMember, MemoryPackOrder(1)] public string AuthorName { get; init; } = "";
 
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
     public NotifyMembersOption(AuthorId authorId, string authorName)
     {
         AuthorId = authorId;

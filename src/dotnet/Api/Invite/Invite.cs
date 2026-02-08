@@ -1,4 +1,3 @@
-using MemoryPack;
 using ActualLab.Versioning;
 
 namespace ActualChat.Invite;
@@ -8,7 +7,7 @@ namespace ActualChat.Invite;
 /// </summary>
 #pragma warning disable MA0049 // Allows ActualChat.Invite.Invite
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record Invite(
     [property: DataMember, MemoryPackOrder(0)] Symbol Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
@@ -62,11 +61,11 @@ public sealed partial record Invite(
 /// <summary>
 /// Contains the target details of an <see cref="Invite"/>.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record InviteDetails : IUnionRecord<InviteDetailsOption?>
 {
     // Union options
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public InviteDetailsOption? Option { get; init; }
 
     [DataMember, MemoryPackOrder(0)]
@@ -104,7 +103,7 @@ public abstract record InviteDetailsOption : IRequirementTarget
 /// <summary>
 /// Invite option for joining a chat.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ChatInviteOption(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId
     ) : InviteDetailsOption
@@ -116,7 +115,7 @@ public partial record ChatInviteOption(
 /// <summary>
 /// Invite option for joining a place.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record PlaceInviteOption(
     [property: DataMember, MemoryPackOrder(0)] PlaceId PlaceId
 ) : InviteDetailsOption
@@ -128,7 +127,7 @@ public partial record PlaceInviteOption(
 /// <summary>
 /// Invite option for adding a user as a contact.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record UserInviteOption : InviteDetailsOption
 {
     public override string GetSearchKey()

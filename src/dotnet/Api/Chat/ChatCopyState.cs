@@ -1,9 +1,8 @@
 using ActualLab.Versioning;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ChatCopyState(
     [property: DataMember, MemoryPackOrder(0)] ChatId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
@@ -22,7 +21,7 @@ public partial record ChatCopyState(
     [DataMember, MemoryPackOrder(9)] public Moment PublishedAt { get; init; }
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ChatCopyStateDiff : RecordDiff
 {
     [DataMember, MemoryPackOrder(0)] public Option<ChatId> SourceChatId { get; init; }

@@ -1,11 +1,10 @@
-using MemoryPack;
 
 namespace ActualChat;
 
 /// <summary>
 /// Metadata for a content link including title, picture, and description.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ContentLinkInfo(
     [property: DataMember, MemoryPackOrder(0)] ContentId Id,
     [property: DataMember, MemoryPackOrder(1)] string Title,

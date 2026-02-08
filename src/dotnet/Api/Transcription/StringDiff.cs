@@ -1,12 +1,11 @@
 using Cysharp.Text;
-using MemoryPack;
 
 namespace ActualChat.Transcription;
 
 /// <summary>
 /// Represents incremental string changes as a start index and suffix text.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public readonly partial record struct StringDiff(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] int Start,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string? Suffix
@@ -14,7 +13,7 @@ public readonly partial record struct StringDiff(
 {
     public static StringDiff None => default;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsNone => ReferenceEquals(Suffix, null);
 
     public static StringDiff New(string text, string baseText)

@@ -1,4 +1,3 @@
-﻿using MemoryPack;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
@@ -8,7 +7,7 @@ namespace ActualChat.Chat;
 /// Represents a media attachment on a text chat entry.
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record TextEntryAttachment(
     [property: DataMember, MemoryPackOrder(0)] Symbol Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
@@ -25,7 +24,7 @@ public sealed partial record TextEntryAttachment(
 
     public TextEntryAttachment() : this(Symbol.Empty) { }
 
-    [MemoryPackConstructor]
+    [MemoryPackConstructor, SerializationConstructor]
     public TextEntryAttachment(
         Symbol Id,
         long Version,

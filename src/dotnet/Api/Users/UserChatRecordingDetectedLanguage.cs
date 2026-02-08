@@ -1,12 +1,11 @@
 using ActualChat.Kvas;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// Stores the most recently detected language from a user's voice recording.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserChatRecordingDetectedLanguage : IHasKvasKey<UserChatRecordingDetectedLanguage>
 {
     [DataMember, MemoryPackOrder(0)]

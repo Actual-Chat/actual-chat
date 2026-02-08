@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Media;
 
@@ -20,7 +19,7 @@ public interface IUploads : IComputeService
     Task<MediaContent> OnConvertToMediaContent(Uploads_ConvertToMediaContent command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_Create(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -29,7 +28,7 @@ public sealed partial record Uploads_Create(
     [property: DataMember, MemoryPackOrder(10)] PropertyBag Metadata
 ) : ISessionCommand<UploadId>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_Append(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -38,14 +37,14 @@ public sealed partial record Uploads_Append(
     [property: DataMember, MemoryPackOrder(3)] byte[] Chunk
 ) : ISessionCommand<long>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_Remove(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] UploadId UploadId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Uploads_ConvertToMediaContent(
     [property: DataMember, MemoryPackOrder(0)] Session Session,

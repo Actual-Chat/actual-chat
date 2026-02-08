@@ -1,11 +1,10 @@
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
 /// <summary>
 /// Query parameters for listing changed chats by version range.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record ChangedChatsQuery
 {
     [DataMember, MemoryPackOrder(2)] public required ChatId? LastId { get; init; }

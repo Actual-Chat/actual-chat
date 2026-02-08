@@ -1,13 +1,12 @@
 using ActualChat.Kvas;
 using ActualChat.Serialization;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// User preferences for spoken languages (primary, secondary, tertiary).
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserLanguageSettings : IHasOrigin, IHasKvasKey<UserLanguageSettings>
 {
     public static string KvasKey => nameof(UserLanguageSettings);

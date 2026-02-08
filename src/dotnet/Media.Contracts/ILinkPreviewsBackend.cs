@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Media;
 
@@ -28,7 +27,7 @@ public interface ILinkPreviewsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a link preview.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record LinkPreviewsBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] Symbol Id,
@@ -36,6 +35,6 @@ public sealed partial record LinkPreviewsBackend_Change(
     [property: DataMember, MemoryPackOrder(2)] Change<LinkPreview> Change
 ) : ICommand<LinkPreview?>, IBackendCommand, IHasShardKey<Symbol>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public Symbol ShardKey => Id;
 }

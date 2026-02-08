@@ -1,7 +1,6 @@
-﻿using ActualChat.Comparison;
+using ActualChat.Comparison;
 using ActualChat.Hashing;
 using ActualChat.Media;
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
@@ -10,7 +9,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Represents a message or media entry in a chat conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record ChatEntry(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] ChatEntryId Id,
@@ -80,21 +79,21 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 10), MemoryPackOrder(10)] public bool IsRemoved { get; init; }
     [DataMember(Order = 11), MemoryPackOrder(11)] public AuthorId AuthorId { get; init; } = null!;
     [DataMember(Order = 12), MemoryPackOrder(12)] public Moment BeginsAt { get; init; }
-    [DataMember(Order = 13), MemoryPackIgnore] public Moment? ClientSideBeginsAt { get; init; }
-    [DataMember(Order = 14), MemoryPackIgnore] public Moment? EndsAt { get; init; }
-    [DataMember(Order = 15), MemoryPackIgnore] public Moment? ContentEndsAt { get; init; }
+    [DataMember(Order = 13), MemoryPackIgnore, IgnoreMember] public Moment? ClientSideBeginsAt { get; init; }
+    [DataMember(Order = 14), MemoryPackIgnore, IgnoreMember] public Moment? EndsAt { get; init; }
+    [DataMember(Order = 15), MemoryPackIgnore, IgnoreMember] public Moment? ContentEndsAt { get; init; }
     [DataMember(Order = 16), MemoryPackOrder(16)] public string Content { get; init; } = "";
     [DataMember(Order = 32), MemoryPackOrder(32)] public HashString ContentHash { get; init; }
     [DataMember(Order = 17), MemoryPackOrder(17)] public SystemEntry? SystemEntry { get; init; }
     [DataMember(Order = 18), MemoryPackOrder(18)] public bool HasReactions { get; init; }
     [DataMember(Order = 19), MemoryPackOrder(19)] public string StreamId { get; init; } = "";
-    [DataMember(Order = 20), MemoryPackIgnore] public long? AudioEntryLid { get; init; }
-    [DataMember(Order = 21), MemoryPackIgnore] public long? VideoEntryLid { get; init; }
+    [DataMember(Order = 20), MemoryPackIgnore, IgnoreMember] public long? AudioEntryLid { get; init; }
+    [DataMember(Order = 21), MemoryPackIgnore, IgnoreMember] public long? VideoEntryLid { get; init; }
     [DataMember(Order = 22), MemoryPackOrder(22)] public LinearMap TimeMap { get; init; }
-    [DataMember(Order = 23), MemoryPackIgnore] public long? RepliedEntryLid { get; init; }
+    [DataMember(Order = 23), MemoryPackIgnore, IgnoreMember] public long? RepliedEntryLid { get; init; }
     [DataMember(Order = 24), MemoryPackOrder(24)] public ChatEntryId? ForwardedChatEntryId { get; init; }
     [DataMember(Order = 25), MemoryPackOrder(25)] public AuthorId? ForwardedAuthorId { get; init; }
-    [DataMember(Order = 26), MemoryPackIgnore] public Moment? ForwardedChatEntryBeginsAt { get; init; }
+    [DataMember(Order = 26), MemoryPackIgnore, IgnoreMember] public Moment? ForwardedChatEntryBeginsAt { get; init; }
     [DataMember(Order = 27), MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
     [DataMember(Order = 28), MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
     [DataMember(Order = 31), MemoryPackOrder(31)] public Symbol[] LinkPreviewIds { get; init; } = [];
@@ -108,37 +107,37 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 50), MemoryPackOrder(50)] public TextEntryAttachment[] Attachments { get; init; } = [];
     [DataMember(Order = 52), MemoryPackOrder(52)] public LinkPreview[] LinkPreviews { get; init; } = [];
     // Used on the client side only.
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string ClientUid { get; init; } = "";
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public object? SendingTag { get; init; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ChatId => Id.ChatId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public long LocalId => Id.LocalId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatEntryKind Kind => Id.Kind;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public double? Duration => EndsAt is { } endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsStreaming => !StreamId.IsNullOrEmpty();
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsSystemEntry => SystemEntry != null;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool HasAudioEntry => AudioEntryLid.HasValue;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool HasVideoEntry => VideoEntryLid.HasValue;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool HasMediaEntry => VideoEntryLid.HasValue || AudioEntryLid.HasValue;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool HasMarkup => Kind == ChatEntryKind.Text && !IsSystemEntry && !HasMediaEntry;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsSending => SendingTag is not null;
 
-    [MemoryPackConstructor]
+    [MemoryPackConstructor, SerializationConstructor]
     public ChatEntry() : this((ChatEntryId)null!) { }
 
     // This record relies on referential equality
@@ -150,8 +149,8 @@ public sealed partial record ChatEntry(
 /// <summary>
 /// Represents changes to a <see cref="ChatEntry"/> for incremental updates.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[method: MemoryPackConstructor]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+[method: MemoryPackConstructor, SerializationConstructor]
 public sealed partial record ChatEntryDiff() : RecordDiff
 {
     [DataMember, MemoryPackOrder(10)] public bool? IsRemoved { get; init; }

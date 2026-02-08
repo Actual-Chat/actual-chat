@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -29,7 +28,7 @@ public interface IPlacesBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a place.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record PlacesBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] PlaceId? PlaceId,
@@ -38,6 +37,6 @@ public sealed partial record PlacesBackend_Change(
     [property: DataMember, MemoryPackOrder(3)] UserId? OwnerId = null
 ) : ICommand<Place>, IBackendCommand, IHasShardKey<PlaceId?>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public PlaceId? ShardKey => PlaceId;
 }

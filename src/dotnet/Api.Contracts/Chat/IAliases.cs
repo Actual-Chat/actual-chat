@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -23,7 +22,7 @@ public enum AliasKind { Chat, Place }
 /// <summary>
 /// Represents the target of an alias resolution.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial record AliasTarget(
     [property: DataMember, MemoryPackOrder(0)] AliasKind Kind,
     [property: DataMember, MemoryPackOrder(1)] string TargetId);

@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -11,7 +10,7 @@ public interface IDiagnostics : IComputeService
     Task<MeshDiagInfo> GetMeshDiagInfo(Session session, string tag, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record MeshDiagInfo(
     [property: DataMember, MemoryPackOrder(0)] string ThisNodeId,
     [property: DataMember, MemoryPackOrder(1)] string Tag,
@@ -22,7 +21,7 @@ public sealed partial record MeshDiagInfo(
     [property: DataMember, MemoryPackOrder(6)] MeshDiagInfo[] Others,
     [property: DataMember, MemoryPackOrder(7)] string Extra);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record NodeDiagInfo(
     [property: DataMember, MemoryPackOrder(0)] string Id,
     [property: DataMember, MemoryPackOrder(1)] string Endpoint,
@@ -32,7 +31,7 @@ public sealed partial record NodeDiagInfo(
     [property: DataMember, MemoryPackOrder(5)] string Roles,
     [property: DataMember, MemoryPackOrder(6)] string Extra);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record RpcPeerDiagInfo(
     [property: DataMember, MemoryPackOrder(0)] string Id,
     [property: DataMember, MemoryPackOrder(1)] string Peer,
@@ -41,7 +40,7 @@ public sealed partial record RpcPeerDiagInfo(
     [property: DataMember, MemoryPackOrder(4)] string ConnectionInfo,
     [property: DataMember, MemoryPackOrder(5)] string Extra);
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record MeshRpcPeerRefDiagInfo(
     [property: DataMember, MemoryPackOrder(0)] string MeshRef,
     [property: DataMember, MemoryPackOrder(1)] string PeerRef,

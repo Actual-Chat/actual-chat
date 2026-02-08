@@ -1,12 +1,11 @@
 using ActualChat.Kvas;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
 /// <summary>
 /// User preferences for application-wide features.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record UserAppSettings : IHasOrigin, IHasKvasKey<UserAppSettings>
 {
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";

@@ -1,7 +1,6 @@
 using ActualChat.Time;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -37,7 +36,7 @@ public interface IConversationsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to create, update, or delete a conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] ConversationId ConversationId,
@@ -45,14 +44,14 @@ public sealed partial record ConversationBackend_Change(
     [property: DataMember, MemoryPackOrder(2)] Change<ConversationDiff> Change
 ) : ICommand<Conversation>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => ConversationId.ChatId;
 }
 
 /// <summary>
 /// Command to generate an AI summary for a conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Summarize(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
@@ -72,7 +71,7 @@ public sealed partial record ConversationBackend_Summarize(
 /// <summary>
 /// Command to append a reply entry range to a conversation.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_AppendReply(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,

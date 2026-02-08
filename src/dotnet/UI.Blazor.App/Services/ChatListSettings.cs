@@ -1,8 +1,7 @@
-using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record ChatListSettings(
     [property: DataMember, MemoryPackOrder(0)] ChatListOrder Order = ChatListOrder.ByLastEventTime,
     [property: DataMember, MemoryPackOrder(1)] Symbol FilterId = default
@@ -12,6 +11,6 @@ public sealed partial record ChatListSettings(
 
     public static string GetKvasKey(string placeId) => $"ChatListSettings({placeId})";
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatListFilter Filter => ChatListFilter.Parse(FilterId);
 }

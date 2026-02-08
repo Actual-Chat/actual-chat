@@ -1,10 +1,9 @@
 using ActualChat.UI.Services;
 using ActualLab.IO;
-using MemoryPack;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class MauiFileProvider : IFileProvider
 {
     private IServiceProvider _services = null!;

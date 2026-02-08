@@ -1,4 +1,3 @@
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
@@ -6,7 +5,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Represents a mention of a user or author in a chat entry.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed partial record Mention : IHasId<Symbol>, IRequirementTarget
 {
@@ -14,7 +13,7 @@ public sealed partial record Mention : IHasId<Symbol>, IRequirementTarget
     [DataMember, MemoryPackOrder(1)] public required ChatEntryId EntryId { get; init; }
     [DataMember, MemoryPackOrder(2)] public required MentionId MentionId { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ChatId => EntryId.ChatId;
 
     // This record relies on referential equality

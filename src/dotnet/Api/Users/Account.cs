@@ -1,5 +1,4 @@
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 using ActualLab.Versioning;
 
 namespace ActualChat.Users;
@@ -21,7 +20,7 @@ namespace ActualChat.Users;
 /// <summary>
 /// Represents a user account with associated avatar and status.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public partial record Account(
     [property: DataMember, MemoryPackOrder(0)] UserId Id,
@@ -39,7 +38,7 @@ public partial record Account(
     [DataMember, MemoryPackOrder(3)] public Avatar Avatar { get; init; } = null!; // Populated only on reads
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsGuest => Id?.IsGuest ?? true;
 
     // This record relies on referential equality

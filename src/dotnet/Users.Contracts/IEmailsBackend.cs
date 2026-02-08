@@ -1,6 +1,5 @@
 using ActualLab.Resilience;
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -16,7 +15,7 @@ public interface IEmailsBackend : IComputeService, IBackendService
 /// <summary>
 /// Command to send a digest email to a user.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record EmailsBackend_SendDigest(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
@@ -25,7 +24,7 @@ public sealed partial record EmailsBackend_SendDigest(
     [property: DataMember, MemoryPackOrder(1)]
     public bool IsDiagnosticsEnabled { get; init; }
 
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId ShardKey => UserId;
 
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(5);

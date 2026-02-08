@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Contacts;
 
@@ -10,7 +9,7 @@ public enum ContactSubsetKind { All, Chats, Place }
 /// <summary>
 /// Specifies a subset of contacts to retrieve.
 /// </summary>
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ContactSubset
 {
     [property: DataMember, MemoryPackOrder(0)] public ContactSubsetKind Kind { get; }

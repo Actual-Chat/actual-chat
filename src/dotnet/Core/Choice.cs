@@ -1,6 +1,4 @@
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
-using MessagePack;
 
 namespace ActualChat;
 
@@ -22,8 +20,7 @@ public static class Choice
 /// Represents a value that is either <typeparamref name="T"/> or <typeparamref name="TAlt"/>.
 /// </summary>
 [Newtonsoft.Json.JsonObject(Newtonsoft.Json.MemberSerialization.OptOut)]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-[MessagePackObject(true)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [DebuggerDisplay("{" + nameof(DebugValue) + "}")]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]

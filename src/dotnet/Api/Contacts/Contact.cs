@@ -1,5 +1,4 @@
 using ActualChat.Users;
-using MemoryPack;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 
@@ -9,7 +8,7 @@ namespace ActualChat.Contacts;
 /// Represents a user's contact entry (chat, user, or place).
 /// </summary>
 [ParameterComparer(typeof(ByRefParameterComparer))]
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public sealed partial record Contact(
     [property: DataMember, MemoryPackOrder(0)] ContactId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
@@ -27,13 +26,13 @@ public sealed partial record Contact(
     [DataMember, MemoryPackOrder(9)] public string ExternalContactName { get; init; } = "";
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ContactKind Kind => Id.Kind;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UserId OwnerId => Id.OwnerId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ChatId => Id.ChatId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public string? PeerRename => PeerContactName.NullIfWhiteSpace() ?? ExternalContactName.NullIfWhiteSpace();
 
     // Populated on backend on reads

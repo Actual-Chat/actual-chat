@@ -32,3 +32,10 @@ public sealed class IgnoreMemberAttribute : Attribute;
 
 [AttributeUsage(AttributeTargets.Constructor | AttributeTargets.Method)]
 public sealed class SerializationConstructorAttribute : Attribute;
+
+[AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, AllowMultiple = true)]
+public sealed class UnionAttribute(int key, Type subType) : Attribute
+{
+    public int Key { get; } = key;
+    public Type SubType { get; } = subType;
+}

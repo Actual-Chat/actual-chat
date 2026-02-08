@@ -1,5 +1,4 @@
 using ActualChat.Users;
-using MemoryPack;
 
 namespace ActualChat.Chat;
 
@@ -44,7 +43,7 @@ public interface IAuthors : IComputeService
     Task OnPromoteToOwner(Authors_PromoteToOwner command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Authors_SetAvatar(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -52,7 +51,7 @@ public sealed partial record Authors_SetAvatar(
     [property: DataMember, MemoryPackOrder(2)] Symbol AvatarId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Authors_Invite(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -61,28 +60,28 @@ public sealed partial record Authors_Invite(
     [property: DataMember, MemoryPackOrder(3)] bool? JoinAnonymously = null
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Authors_Exclude(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Authors_Restore(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Authors_Leave(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId
 ) : ISessionCommand<Unit>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Authors_Join(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
@@ -91,7 +90,7 @@ public sealed partial record Authors_Join(
     [property: DataMember, MemoryPackOrder(3)] bool? JoinAnonymously = null
 ) : ISessionCommand<AuthorFull>, IApiCommand;
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Authors_PromoteToOwner(
     [property: DataMember, MemoryPackOrder(0)] Session Session,

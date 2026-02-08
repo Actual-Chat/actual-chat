@@ -1,4 +1,3 @@
-using MemoryPack;
 
 namespace ActualChat.Users;
 
@@ -16,7 +15,7 @@ public interface IUserPresences : IComputeService
     Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UserPresences_CheckIn(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
