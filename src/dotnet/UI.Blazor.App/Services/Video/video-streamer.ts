@@ -1,6 +1,7 @@
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { HubConnectionState } from '@microsoft/signalr';
+import { encode } from '@msgpack/msgpack';
 import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
@@ -30,6 +31,29 @@ export interface VideoStreamFrame {
 // Helper to convert microseconds to .NET TimeSpan ticks
 export function microsecondsToTicks(microseconds: number): number {
     return microseconds * 10;
+}
+
+/**
+ * Encode a VideoStreamFrame as a MessagePack byte array.
+ * This matches the server-side VideoFrameDto MessagePack format
+ * with string keys (camelCase).
+ */
+function encodeFrame(frame: VideoStreamFrame): Uint8Array {
+    const obj: Record<string, unknown> = {
+        offset: frame.offset,
+        duration: frame.duration,
+        isKeyFrame: frame.isKeyFrame,
+        width: frame.width,
+        height: frame.height,
+        data: frame.data,
+    };
+    if (frame.description) {
+        obj.description = frame.description;
+    }
+    if (frame.codec) {
+        obj.codec = frame.codec;
+    }
+    return encode(obj);
 }
 
 export class VideoStream {
@@ -79,7 +103,9 @@ export class VideoStream {
             debugLog?.log('[VideoStream] Previous stream completed');
         }
 
-        let subject: signalR.Subject<VideoStreamFrame[]> | null = null;
+        // Subject sends byte[][] (each frame MessagePack-encoded as byte[])
+        // to match server-side PushVideo(... IAsyncEnumerable<byte[][]>)
+        let subject: signalR.Subject<Uint8Array[]> | null = null;
         const chunksToSend = new Array<VideoStreamFrame>();
 
         while (!this.isDisposed) {
@@ -93,7 +119,7 @@ export class VideoStream {
                     }
 
                     console.log('[VideoStream] Connected, creating subject and calling PushVideo with codecSettings:', this.config.codecSettings?.length ?? 0, 'chars');
-                    subject = new signalR.Subject<VideoStreamFrame[]>();
+                    subject = new signalR.Subject<Uint8Array[]>();
                     // Use PushVideo - simple forwarding, no processing
                     await VideoStreamer.connection.send(
                         'PushVideo',
@@ -127,8 +153,9 @@ export class VideoStream {
 
                     if (chunksToSend.length > 0) {
                         console.log('[VideoStream] Sending', chunksToSend.length, 'frames to server');
-                        // Send a copy of the array to avoid race condition with clearing
-                        subject.next([...chunksToSend]);
+                        // Encode each frame as MessagePack bytes, send as byte[][]
+                        const encodedFrames = chunksToSend.map(f => encodeFrame(f));
+                        subject.next(encodedFrames);
                     }
 
                     if (this.isCompleted && this.frames.length === 0) {

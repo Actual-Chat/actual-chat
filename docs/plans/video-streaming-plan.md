@@ -14,11 +14,9 @@ Real-time video streaming in chat allowing all participants to view recorded vid
 | VideoFormat type | Done | `src/dotnet/Api/Video/VideoFormat.cs` |
 | VideoSource type | Done | `src/dotnet/Api/Video/VideoSource.cs` |
 | VideoRecord contract | Done | `src/dotnet/Streaming.Contracts/VideoRecord.cs` |
-| IStreamingBackend video methods | Done | `src/dotnet/Streaming.Contracts/IStreamingBackend.cs` |
-| IRealtimeStreamingBackend | Done | `src/dotnet/Streaming.Contracts/IRealtimeStreamingBackend.cs` |
+| ILiveVideoBackend | Done | `src/dotnet/Streaming.Contracts/ILiveVideoBackend.cs` |
 | StreamHub.PushVideo | Done | `src/dotnet/Streaming.Service/Services/StreamHub.cs` |
-| StreamingBackend video methods | Done | `src/dotnet/Streaming.Service/Backend/StreamingBackend.cs` |
-| RealtimeStreamingBackend | Done | `src/dotnet/Streaming.Service/Backend/RealtimeStreamingBackend.cs` |
+| LiveVideoBackend (signaling + stream storage) | Done | `src/dotnet/Streaming.Service/Backend/LiveVideoBackend.cs` |
 | VideoStreamer (client) | Done | `src/dotnet/UI.Blazor.App/Services/Video/video-streamer.ts` |
 | VideoPipeline with streaming | Done | `src/dotnet/UI.Blazor.App/Services/Video/services/video-pipeline.ts` |
 | VideoPlayer (client) | Done | `src/dotnet/UI.Blazor.App/Services/Video/video-player.ts` |
@@ -43,8 +41,7 @@ flowchart TB
 
     subgraph Server[Server]
         SH[StreamHub]
-        SB[StreamingBackend]
-        RSB[RealtimeStreamingBackend]
+        LVB[LiveVideoBackend]
         VSS[StreamStore&lt;VideoFrame&gt;]
     end
 
@@ -59,14 +56,13 @@ flowchart TB
     VR -->|VideoFrame| EW
     EW -->|encoded chunks| VS
     VS -->|SignalR PushVideo| SH
-    SH -->|VideoFrame stream| SB
-    SB -->|Register| RSB
-    SB -->|Publish| VSS
-    RSB -->|VideoStreamEvent| CVUI
+    SH -->|VideoFrame stream| LVB
+    LVB -->|Register + Publish| VSS
+    LVB -->|ObserveStreams| CVUI
     CVUI -->|Subscribe| VTP
-    VTP -->|GetVideo| SB
-    VSS -->|Get| SB
-    SB -->|VideoFrame stream| VPE
+    VTP -->|GetVideo| LVB
+    VSS -->|Get| LVB
+    LVB -->|VideoFrame stream| VPE
     VPE -->|pushRemoteFrame| VPL
     VPL -->|decoded frames| Canvas
 ```
@@ -77,24 +73,22 @@ flowchart TB
 sequenceDiagram
     participant Sender
     participant StreamHub
-    participant StreamingBackend
-    participant RealtimeStreamingBackend
+    participant LiveVideoBackend
     participant Receivers
 
     Sender->>StreamHub: PushVideo(frames)
-    StreamHub->>StreamingBackend: PushVideo(record, stream)
-    StreamingBackend->>RealtimeStreamingBackend: RegisterVideoStream
-    RealtimeStreamingBackend-->>Receivers: VideoStreamEvent(Started)
+    StreamHub->>LiveVideoBackend: PushVideo(record, stream)
+    LiveVideoBackend->>LiveVideoBackend: RegisterActiveStream
+    LiveVideoBackend-->>Receivers: VideoStreamInfo
 
     loop For each frame
         Sender->>StreamHub: frame
-        StreamHub->>StreamingBackend: frame
-        StreamingBackend->>StreamStore: Publish
+        StreamHub->>LiveVideoBackend: frame
+        LiveVideoBackend->>StreamStore: Publish
     end
 
     Sender->>StreamHub: complete
-    StreamingBackend->>RealtimeStreamingBackend: UnregisterVideoStream
-    RealtimeStreamingBackend-->>Receivers: VideoStreamEvent(Ended)
+    LiveVideoBackend->>LiveVideoBackend: UnregisterActiveStream
 ```
 
 ## Key Components
@@ -139,26 +133,15 @@ public sealed partial record VideoRecord(
 ) : IHasId<StreamId>, IHasNodeRef;
 ```
 
-#### IStreamingBackend Video Methods
+#### ILiveVideoBackend
 
-```csharp
-Task<RpcStream<VideoFrame>?> GetVideo(
-    StreamId streamId,
-    TimeSpan skipTo,
-    CancellationToken cancellationToken);
-
-Task PushVideo(
-    VideoRecord record,
-    RpcStream<VideoFrame> videoStream,
-    CancellationToken cancellationToken);
-```
-
-#### IRealtimeStreamingBackend
-
-Handles real-time video stream signaling:
-- `GetActiveVideoStreams(chatId)` - Returns current streams for a chat
-- `SubscribeToVideoStreamEvents(chatId)` - Subscribe to stream start/end events
-- `OnRegisterVideoStream` / `OnUnregisterVideoStream` - Commands for tracking
+Consolidates all video backend logic — real-time signaling, stream storage, and push/get:
+- `GetVideo(streamId, skipTo)` - Get video stream from StreamStore with keyframe-based seeking
+- `PushVideo(record, videoStream)` - Push video stream, register/unregister active stream
+- `ListActiveStreams(chatId)` - Returns current streams for a chat
+- `ObserveStreams(chatId)` - Observe stream changes via RpcStream
+- `RegisterActiveStream` / `UnregisterActiveStream` - Direct methods for tracking
+- `GetVideoStreamingAuthorIds` / `GetVideoStreamMemberCount` - Computed queries
 
 ### Client-Side
 
@@ -216,7 +199,7 @@ Frames are batched in groups of up to 10 for SignalR transmission via `VideoStre
 
 ### Keyframe-Based Seeking
 
-`SkipToKeyFrame()` in StreamingBackend drops frames until reaching a keyframe at or after the requested offset.
+`SkipToKeyFrame()` in LiveVideoBackend drops frames until reaching a keyframe at or after the requested offset.
 
 ### Stream Memoization
 
@@ -238,17 +221,14 @@ Frames are batched in groups of up to 10 for SignalR transmission via `VideoStre
 | `src/dotnet/Api/Video/VideoFrame.cs` | Video frame with codec description |
 | `src/dotnet/Api/Video/VideoFormat.cs` | Video format with codec settings |
 | `src/dotnet/Api/Video/VideoSource.cs` | Memoizing video source wrapper |
-| `src/dotnet/Api/Streaming/VideoStreamEvent.cs` | Stream start/end events |
 | `src/dotnet/Api/Streaming/VideoStreamInfo.cs` | Stream metadata |
-| `src/dotnet/Api/Streaming/ActiveVideoStreams.cs` | Active streams per chat |
 | `src/dotnet/Api/Constants.Video.cs` | Video-related constants |
 
 ### Streaming Contracts
 
 | File | Description |
 |------|-------------|
-| `src/dotnet/Streaming.Contracts/IStreamingBackend.cs` | GetVideo/PushVideo methods |
-| `src/dotnet/Streaming.Contracts/IRealtimeStreamingBackend.cs` | Real-time signaling interface |
+| `src/dotnet/Streaming.Contracts/ILiveVideoBackend.cs` | Video backend interface (signaling + stream storage) |
 | `src/dotnet/Streaming.Contracts/VideoRecord.cs` | Video recording metadata |
 
 ### Streaming Service
@@ -256,8 +236,7 @@ Frames are batched in groups of up to 10 for SignalR transmission via `VideoStre
 | File | Description |
 |------|-------------|
 | `src/dotnet/Streaming.Service/Services/StreamHub.cs` | SignalR hub with PushVideo |
-| `src/dotnet/Streaming.Service/Backend/StreamingBackend.cs` | Video stream store and methods |
-| `src/dotnet/Streaming.Service/Backend/RealtimeStreamingBackend.cs` | Real-time signaling service |
+| `src/dotnet/Streaming.Service/Backend/LiveVideoBackend.cs` | Video backend (signaling, stream store, push/get) |
 | `src/dotnet/Streaming.Service/VideoStreamHeader.cs` | Wire format for stream header |
 
 ### Client-Side (TypeScript)
@@ -287,15 +266,3 @@ Frames are batched in groups of up to 10 for SignalR transmission via `VideoStre
 5. **Screen sharing** - Extend to screen capture (uses same pipeline)
 6. **AV1 codec** - Better compression when hardware support improves
 
-## Differences from Original Plan
-
-| Planned | Actual Implementation |
-|---------|----------------------|
-| `VideoFrame.Codec` field | Codec in `VideoFormat`, frame has `Description` |
-| `VideoFrame.SequenceNumber` | Not needed - using offset/duration |
-| `VideoRecord.AudioStreamId` | Not in current record, can be added |
-| Raw `byte[]` streams | Typed `VideoFrame` streams with metadata |
-| No real-time signaling | Full `IRealtimeStreamingBackend` for stream events |
-| `ProcessVideoChunks` method | `PushVideo` method name |
-| Separate `StreamingBackend.PushVideo.cs` | Integrated in main `StreamingBackend.cs` |
-| `VideoStreamHeader` for prepending | `VideoStreamHeader` exists but frames carry metadata |

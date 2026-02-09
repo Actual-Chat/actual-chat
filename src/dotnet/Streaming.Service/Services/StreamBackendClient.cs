@@ -16,6 +16,8 @@ public sealed class StreamBackendClient : IStreamClient
     private ILogger VideoSourceLog { get; }
     private MomentClockSet Clocks => field ??= Services.Clocks();
 
+    private ILiveVideoBackend LiveVideoBackend { get; }
+
     public StreamBackendClient(IServiceProvider services)
     {
         Services = services;
@@ -23,6 +25,7 @@ public sealed class StreamBackendClient : IStreamClient
         AudioSourceLog = services.LogFor<AudioSource>();
         VideoSourceLog = services.LogFor<VideoSource>();
         Backend = services.GetRequiredService<IStreamingBackend>();
+        LiveVideoBackend = services.GetRequiredService<ILiveVideoBackend>();
     }
 
     public async Task<AudioSource> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
@@ -55,7 +58,7 @@ public sealed class StreamBackendClient : IStreamClient
     public async Task<VideoSource> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         Log.LogDebug("GetVideo({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
-        var rpcStream = await Backend.GetVideo(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
+        var rpcStream = await LiveVideoBackend.GetVideo(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
         var stream = rpcStream ?? AsyncEnumerable.Empty<VideoFrame>();
         var frameStream = stream
             .SuppressException<VideoFrame, RpcReconnectFailedException>(cancellationToken)

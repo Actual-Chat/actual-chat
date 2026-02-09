@@ -35,7 +35,7 @@
     private ILogger Log => field ??= Services.LogFor<VideoTrackPlayer>();
     private IJSRuntime JS => field ??= Services.GetRequiredService<IJSRuntime>();
     private IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
-    private IRealtimeStreaming RealtimeStreaming => field ??= Services.GetRequiredService<IRealtimeStreaming>();
+    private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
     private Session Session => field ??= Services.Session();
 
     private ElementReference CanvasRef { get; set; }
@@ -223,7 +223,7 @@
             return;
 
         try {
-            await RealtimeStreaming.RegisterVideoStreamMember(Session, StreamInfo.ChatId, CancellationToken.None);
+            await LiveVideoStreams.RegisterVideoStreamMember(Session, StreamInfo.ChatId, CancellationToken.None);
             _isViewerRegistered = true;
             DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] Registered as viewer", StreamInfo.StreamId);
         }
@@ -238,7 +238,7 @@
             return;
 
         try {
-            await RealtimeStreaming.UnregisterVideoStreamMember(Session, StreamInfo.ChatId, CancellationToken.None);
+            await LiveVideoStreams.UnregisterVideoStreamMember(Session, StreamInfo.ChatId, CancellationToken.None);
             _isViewerRegistered = false;
             DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] Unregistered as viewer", StreamInfo.StreamId);
         }
