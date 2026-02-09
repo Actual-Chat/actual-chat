@@ -280,25 +280,34 @@
             console.error('Blazor is not loaded. Please check the script tag for blazor.web.js.');
         }
         else {
-            // Hook for debugUI.startDOMEventSniffer() - captures interop refs at startup,
-            // but only patches invokeMethodAsync when activated via __blazorEventSnifferHook()
+            // Suppress stale event handler errors in Blazor Server.
+            // When a component re-renders on the server (changing handler IDs) while an event
+            // is in-flight over SignalR, the event arrives with a stale handler ID, causing
+            // NullReferenceException in Renderer.DispatchEventAsync. This is a fundamental
+            // Blazor Server race condition that doesn't occur in WASM.
+            // Also exposes __blazorEventSnifferHook for debugUI.startDOMEventSniffer().
             (function() {
+                var snifferCallback = null;
                 var interops = [];
                 var origAttach = Blazor._internal.attachWebRendererInterop;
                 Blazor._internal.attachWebRendererInterop = function(rendererId, interopMethods) {
+                    var orig = interopMethods.invokeMethodAsync.bind(interopMethods);
+                    interopMethods.invokeMethodAsync = function(methodName) {
+                        if (methodName === 'DispatchEventAsync') {
+                            var fn = snifferCallback;
+                            if (fn) fn(arguments[1], arguments[2]);
+                            return orig.apply(null, arguments).catch(function(e) {
+                                if (e && e.message && e.message.indexOf('NullReferenceException') !== -1)
+                                    return; // Stale handler - suppress
+                                throw e;
+                            });
+                        }
+                        return orig.apply(null, arguments);
+                    };
                     interops.push(interopMethods);
                     return origAttach.apply(this, arguments);
                 };
-                window.__blazorEventSnifferHook = function(callback) {
-                    interops.forEach(function(m) {
-                        var orig = m.invokeMethodAsync.bind(m);
-                        m.invokeMethodAsync = function(methodName) {
-                            if (methodName === 'DispatchEventAsync')
-                                callback(arguments[1], arguments[2]);
-                            return orig.apply(null, arguments);
-                        };
-                    });
-                };
+                window.__blazorEventSnifferHook = function(callback) { snifferCallback = callback; };
             })();
             Blazor.start({
                 circuit: {
