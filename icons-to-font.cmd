@@ -1,1 +1,1 @@
-npm run font --prefix src/nodejs
+npm run font

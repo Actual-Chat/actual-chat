@@ -52,7 +52,7 @@ RUN dotnet workload install wasm-tools aspire \
 FROM node:20-alpine AS nodejs-restore
 ARG NPM_READ_TOKEN
 ENV NPM_READ_TOKEN=$NPM_READ_TOKEN
-WORKDIR /src/src/nodejs
+WORKDIR /src
 RUN apk update && apk add brotli gzip
 RUN npm -g config set audit false && \
     npm -g config set audit-level critical && \
@@ -63,12 +63,13 @@ RUN npm -g config set audit false && \
     npm -g config set loglevel warn && \
     npm -g config set depth 0 && \
     apk add --no-cache git
-COPY src/nodejs/package-lock.json src/nodejs/package.json src/nodejs/.npmrc ./
+COPY package-lock.json package.json .npmrc ./
 RUN cat .npmrc && npm ci
-COPY src/nodejs/ ./
+COPY src/nodejs/ ./src/nodejs/
+COPY build.mjs tsconfig.json tailwind.config.js postcss.config.mjs postcss-watch-plugin.js ./
 
 FROM scratch AS all-restore
-COPY --from=nodejs-restore /src/src/nodejs/package.json ./
+COPY --from=nodejs-restore /src/package.json ./
 COPY --from=dotnet-restore /src/nuget.config ./
 
 FROM nodejs-restore AS nodejs-build

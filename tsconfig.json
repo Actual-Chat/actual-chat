@@ -1,0 +1,76 @@
+{
+  "include": [
+    "src/nodejs/index.ts",
+    "src/nodejs/types/",
+    "src/nodejs/src/",
+    "src/dotnet/UI.Blazor.App/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts",
+    "src/dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder.ts",
+    "src/dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder-worker.ts",
+    "src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts",
+    "src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts",
+    "src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/audio-vad-worker.ts",
+    "src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/opus-encoder-worker.ts",
+    "src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/resampler-loader.ts",
+    "src/dotnet/UI.Blazor/Layouts/base-layout.ts",
+    "src/dotnet/UI.Blazor/Components/Skeleton/",
+    "src/dotnet/UI.Blazor/ServiceWorkers/service-worker.ts",
+  ],
+  "exclude": [
+  ],
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "alwaysStrict": true,
+    "downlevelIteration": false,
+    "moduleResolution": "node",
+    "newLine": "lf",
+    "emitBOM": false,
+    "noEmitOnError": true,
+    "importsNotUsedAsValues": "remove",
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "maxNodeModuleJsDepth": 1,
+    "esModuleInterop": true,
+    // change to true (?)
+    "noImplicitAny": false,
+    // change to true (?)
+    "strictNullChecks": true,
+    // Tells TypeScript to read JS files, as
+    // normally they are ignored as source files
+    "allowJs": true,
+    "checkJs": true,
+    "sourceMap": true,
+    /* Basic Options */
+    "target": "es2020",
+    "module": "es2020",
+    "jsx": "react",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es6",
+      "es2017",
+      "es2018",
+      "es2022",
+    ],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./node_modules/user-agent-data-types"
+    ],
+    "baseUrl": "src/dotnet/",
+    "rootDirs": [
+      "src/nodejs/",
+      "src/dotnet/"
+    ],
+    "paths": {
+      "@blazor/*": [
+        "../../node_modules/@types/blazor__*"
+      ],
+      "*": [
+        "*",
+        "../../node_modules/*",
+        "../../node_modules/@types/*",
+        "../../src/nodejs/src/*",
+        "../../src/nodejs/*"
+      ]
+    }
+  }
+}

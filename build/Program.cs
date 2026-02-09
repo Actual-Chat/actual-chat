@@ -127,7 +127,7 @@ internal static class Program
                 "web",
                 Utils.FindNpmExe(),
                 "run watch",
-                "src/nodejs",
+                ".",
                 new () {
                     ["CI"] = "true"
                 },
@@ -147,12 +147,12 @@ internal static class Program
                 "artifacts/obj/",
                 "artifacts/out/",
                 "artifacts/tests/",
-                "src/nodejs/node_modules/",
+                "node_modules/",
                 "src/dotnet/**/obj/");
         });
 
         Target(Targets.NpmInstall, async () => {
-            var nodeModulesDir = Path.Combine("src", "nodejs", "node_modules");
+            var nodeModulesDir = "node_modules";
             if (!Directory.Exists(nodeModulesDir)) {
                 await Npm()
                     .WithArguments("ci")

@@ -53,6 +53,7 @@ log.txt
 # Config files
 *.config.json
 *.config.js
+!tailwind.config.js
 .secrets
 
 # Test results

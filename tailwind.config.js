@@ -10,10 +10,10 @@ function _(file) {
   return path.normalize(path.resolve(__dirname, file));
 }
 
-const dirs = fs.readdirSync(_('./../dotnet/'), { withFileTypes: true })
+const dirs = fs.readdirSync(_('./src/dotnet/'), { withFileTypes: true })
   .filter(d => d.isDirectory() && d.name.indexOf("UI.Blazor") >= 0)
-  .map(d => `${_(`./../dotnet/${d.name}`)}${path.sep}**/*.{razor,cshtml}`)
-  .concat(`${_('./../dotnet/App.Server')}${path.sep}**/*.{razor,cshtml}`);
+  .map(d => `${_(`./src/dotnet/${d.name}`)}${path.sep}**/*.{razor,cshtml}`)
+  .concat(`${_('./src/dotnet/App.Server')}${path.sep}**/*.{razor,cshtml}`);
 
 module.exports = {
   content: dirs,
