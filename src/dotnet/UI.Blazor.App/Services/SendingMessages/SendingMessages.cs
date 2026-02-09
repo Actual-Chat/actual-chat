@@ -225,8 +225,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
             attachmentRegistry.Unregister(attachment.Id);
             attachmentRegistry.Register(attachment);
-            if (attachEntry.ReservedMediaId is not null)
-                attachmentRegistry.SetReservedMediaId(attachment.Id, attachEntry.ReservedMediaId);
             if (!attachmentIsOk)
                 attachmentRegistry.SetPreviewState(attachment.Id, AttachmentPreviewState.NoFileAccess);
             else if (mediaContent is not null)

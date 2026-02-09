@@ -46,31 +46,6 @@ public class SendMessageRequestsRepo
         await _internal.Flush(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task SetReservedMediaId(string entryUuid, string uploadSessionId, MediaId reservedMediaId, CancellationToken cancellationToken)
-    {
-        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
-        var entry = await _internal.Get<SendMessageRequestEntry>(entryUuid, cancellationToken).ConfigureAwait(false);
-        if (entry == null)
-            return; // Nothing do. Everything is cleaned up.
-
-        var attachRequests = entry.AttachFileRequests.ToList();
-        var i1 = attachRequests.FindIndex(c => OrdinalEquals(c.UploadSessionId, uploadSessionId));
-        if (i1 < 0)
-            throw new InvalidOperationException("Can not find given attach request entry.");
-
-        var attachFileRequestEntry = attachRequests[i1];
-        if (attachFileRequestEntry.ReservedMediaId is not null)
-            throw new InvalidOperationException("Reserved media id is already set.");
-        attachRequests[i1] = attachFileRequestEntry with {
-            ReservedMediaId = reservedMediaId,
-        };
-        entry = entry with {
-            AttachFileRequests = attachRequests.ToArray(),
-        };
-        await _internal.Set(entry.Uuid, entry, cancellationToken).ConfigureAwait(false);
-        //await _internal.Flush(cancellationToken).ConfigureAwait(false);
-    }
-
     public async Task MarkMessageHasCreated(string requestUuid, long chatEntryLocalId, CancellationToken cancellationToken)
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
@@ -96,12 +71,6 @@ public class SendMessageRequestsRepo
     {
         using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         await _internal.Set(uuid, null, cancellationToken).ConfigureAwait(false);
-        await _internal.Flush(cancellationToken).ConfigureAwait(false);
-    }
-
-    public async Task Flush(CancellationToken cancellationToken)
-    {
-        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         await _internal.Flush(cancellationToken).ConfigureAwait(false);
     }
 }
@@ -154,6 +123,4 @@ public partial record AttachFileRequestEntry(
 ) : IHasId<string>
 {
     string IHasId<string>.Id => UploadSessionId;
-
-    [DataMember, MemoryPackOrder(7)] public MediaId? ReservedMediaId { get; init; }
 }

@@ -20,7 +20,7 @@ private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, Cance
             if (chatEntry1 is not null)
                 return chatEntry1;
         }
-        var mediaIds = await ReservedMediaIds(request, cancellationToken).ConfigureAwait(false);
+        var mediaIds = await ReserveMediaIds(request, cancellationToken).ConfigureAwait(false);
         var textEntryAttachments = mediaIds
             .Select(x => new TextEntryAttachment { MediaId = x })
             .ToArray();
@@ -77,34 +77,17 @@ private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, Cance
         return null;
     }
 
-    private async Task<MediaId[]> ReservedMediaIds(PostMessageRequestInternal request, CancellationToken cancellationToken)
+    private async Task<MediaId[]> ReserveMediaIds(PostMessageRequestInternal request, CancellationToken cancellationToken)
     {
         if (request.AttachmentUploads is null)
             return [];
 
         // TODO(DF): convert to durable commands
         var mediaIds = new List<MediaId>();
-        var attachmentRegistry = Hub.AttachmentRegistry;
-        try {
-            foreach (var attachment in request.AttachmentUploads.Attachments.Items) {
-                var reservedMediaId = attachmentRegistry.GetReservedMediaIdNonComputed(attachment.Id);
-                if (reservedMediaId is not null)
-                    continue;
-
-                var sessionId = attachment.UploadSessionId;
-                var metadata = await attachmentRegistry.GetUploadSessionMetadata(sessionId, cancellationToken)
-                    .ConfigureAwait(false);
-                // TODO(DF): review how we choose media scope and whether we need a new media id here or not.
-                var mediaScope = request.ChatId.Value;
-                var reserveCmd = new Medias_ReserveMedia(Session, mediaScope) { Metadata = metadata };
-                var mediaId = await Commander.Call(reserveCmd, cancellationToken).ConfigureAwait(false);
-                attachmentRegistry.SetReservedMediaId(attachment.Id, mediaId);
-                await _requestsRepo.SetReservedMediaId(request.Uuid, attachment.UploadSessionId, mediaId, cancellationToken).ConfigureAwait(false);
-                mediaIds.Add(mediaId);
-            }
-        }
-        finally {
-            await _requestsRepo.Flush(cancellationToken).ConfigureAwait(false);
+        foreach (var attachment in request.AttachmentUploads.Attachments.Items) {
+            var sessionId = attachment.UploadSessionId;
+            var uploadMediaId = await UploadSessions.GetOrReserveMedia(sessionId, cancellationToken).ConfigureAwait(false);
+            mediaIds.Add(uploadMediaId);
         }
         return mediaIds.ToArray();
     }

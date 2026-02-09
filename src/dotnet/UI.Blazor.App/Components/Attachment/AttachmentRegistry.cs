@@ -9,7 +9,6 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     private readonly ConcurrentDictionary<AttachmentId, AttachmentPreviewState> _previews = new();
     private readonly ConcurrentDictionary<AttachmentId, MediaContent> _mediaContents = new();
     private readonly ConcurrentDictionary<AttachmentId, FailureState> _failureStates = new();
-    private readonly ConcurrentDictionary<AttachmentId, MediaId> _reservedMediaIds = new();
     private readonly ConcurrentDictionary<string, PropertyBag> _uploadSessionMetadata = new(StringComparer.Ordinal);
 
     public void Register(Attachment attachment)
@@ -218,24 +217,6 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     //     var attachmentInfo = await GetAttachmentInfo(id, cancellationToken).ConfigureAwait(false);
     //     return attachmentInfo?.UploadSessionId;
     // }
-
-    [ComputeMethod]
-    public virtual Task<MediaId?> GetReservedMediaId(AttachmentId id)
-    {
-        var mediaId = GetReservedMediaIdNonComputed(id);
-        return Task.FromResult(mediaId);
-    }
-
-    public MediaId? GetReservedMediaIdNonComputed(AttachmentId id)
-        => _reservedMediaIds.GetValueOrDefault(id);
-
-    public void SetReservedMediaId(AttachmentId attachmentId, MediaId mediaId)
-    {
-        if (!_reservedMediaIds.TryAdd(attachmentId, mediaId))
-            throw new InvalidOperationException("Reserved MediaId already registered");
-        using (Invalidation.Begin())
-            _ = GetReservedMediaId(attachmentId);
-    }
 }
 
 public sealed record AttachmentInfo(string UploadSessionId);
