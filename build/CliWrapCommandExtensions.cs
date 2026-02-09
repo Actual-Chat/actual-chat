@@ -16,7 +16,6 @@ namespace Build
 
         public static Command Npm()
             => Cli.Wrap(Utils.FindNpmExe())
-                .WithWorkingDirectory(Path.Combine("src", "nodejs"))
                 .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" });
 
         public static Command WithArguments(this Command command, params string[] args)

@@ -1,1 +1,1 @@
-npm ci --prefix src/nodejs/
+npm ci

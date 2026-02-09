@@ -66,7 +66,6 @@ The most important files related to build process are:
   ```powershell
   ./npm-build.cmd
   # Or manually:
-  cd src/nodejs
   npm ci        # Install dependencies (run once, or after package.json changes)
   npm run build:Debug
   ```
@@ -75,7 +74,6 @@ The most important files related to build process are:
   ```powershell
   ./npm-build-release.cmd
   # Or manually:
-  cd src/nodejs
   npm run build:Release
   ```
 
@@ -109,7 +107,7 @@ See [`CODING_STYLE.md`](./CODING_STYLE.md) for detailed coding style guidelines.
 ## Programmatic Checks
 
 - After making C# changes, run `dotnet build ActualChat.sln` to verify they don't break the build.
-- After making TypeScript changes, run `npm run build:Debug` (from `src/nodejs/`) to verify they compile.
+- After making TypeScript changes, run `npm run build:Debug` (from project root) to verify they compile.
 - Ensure all builds pass before submitting changes.
 
 ## Type Catalog

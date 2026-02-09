@@ -6,7 +6,7 @@
     "build:Release": "eslint && node build.mjs --production",
     "bundle-report": "node build.mjs --production --analyze",
     "watch": "node build.mjs --watch",
-    "font": "svgtofont --sources ./icons --output ./fonts/svgtofont",
+    "font": "svgtofont --sources ./src/nodejs/icons --output ./src/nodejs/fonts/svgtofont",
     "lint": "eslint",
     "lint:fix": "eslint --fix"
   },

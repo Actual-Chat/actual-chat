@@ -9,19 +9,19 @@ const isWatch = process.argv.slice(2).includes('--watch');
 const mustAnalyze = process.argv.slice(2).includes('--analyze');
 process.env.NODE_ENV = isProduction ? 'production' : 'development';
 
-const outputPath = path.normalize(path.resolve(import.meta.dirname, '../dotnet/App.Wasm/wwwroot/dist'));
-const mauiOutputPath = path.normalize(path.resolve(import.meta.dirname, '../dotnet/App.Maui/wwwroot/dist'));
+const outputPath = path.normalize(path.resolve(import.meta.dirname, 'src/dotnet/App.Wasm/wwwroot/dist'));
+const mauiOutputPath = path.normalize(path.resolve(import.meta.dirname, 'src/dotnet/App.Maui/wwwroot/dist'));
 
 await fs.promises.rm(outputPath, { recursive: true, force: true });
 await fs.promises.rm(mauiOutputPath, { recursive: true, force: true });
 
 // copy files
 await fs.promises.mkdir(`${outputPath}/config`, { recursive: true });
-if (fs.existsSync('../../firebase.config.json'))
+if (fs.existsSync('./firebase.config.json'))
     // only for local-dev build
-    await fs.promises.copyFile('../../firebase.config.json', `${outputPath}/config/firebase.config.js`, );
-await fs.promises.cp('./images', `${outputPath}/images`, { recursive: true });
-await fs.promises.cp('../../resources/sounds/converted', `${outputPath}/sounds`, {
+    await fs.promises.copyFile('./firebase.config.json', `${outputPath}/config/firebase.config.js`, );
+await fs.promises.cp('./src/nodejs/images', `${outputPath}/images`, { recursive: true });
+await fs.promises.cp('./resources/sounds/converted', `${outputPath}/sounds`, {
     recursive: true,
     filter: (src) => {
         const ext = path.extname(src).toLowerCase();
@@ -31,16 +31,16 @@ await fs.promises.cp('../../resources/sounds/converted', `${outputPath}/sounds`,
 
 const options = {
     entryPoints: [
-        { out: 'bundle', in: './index.ts' },
-        { out: 'sw', in: './../dotnet/UI.Blazor/ServiceWorkers/service-worker.ts' },
-        { out: 'opusDecoderWorker', in: './../dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder-worker.ts' },
-        { out: 'opusEncoderWorker', in: './../dotnet/UI.Blazor.App/Components/AudioRecorder/workers/opus-encoder-worker.ts' },
-        { out: 'vadWorker', in: './../dotnet/UI.Blazor.App/Components/AudioRecorder/workers/audio-vad-worker.ts' },
-        { out: 'onDeviceAwakeWorker', in: './src/on-device-awake-worker.ts' },
-        { out: 'warmUpWorklet', in: './src/worklets/warm-up-worklet-processor.ts' },
-        { out: 'feederWorklet', in: './../dotnet/UI.Blazor.App/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts' },
-        { out: 'opusEncoderWorklet', in: './../dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts' },
-        { out: 'vadWorklet', in: './../dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts' },
+        { out: 'bundle', in: './src/nodejs/index.ts' },
+        { out: 'sw', in: './src/dotnet/UI.Blazor/ServiceWorkers/service-worker.ts' },
+        { out: 'opusDecoderWorker', in: './src/dotnet/UI.Blazor.App/Components/AudioPlayer/workers/opus-decoder-worker.ts' },
+        { out: 'opusEncoderWorker', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/opus-encoder-worker.ts' },
+        { out: 'vadWorker', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/audio-vad-worker.ts' },
+        { out: 'onDeviceAwakeWorker', in: './src/nodejs/src/on-device-awake-worker.ts' },
+        { out: 'warmUpWorklet', in: './src/nodejs/src/worklets/warm-up-worklet-processor.ts' },
+        { out: 'feederWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts' },
+        { out: 'opusEncoderWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts' },
+        { out: 'vadWorklet', in: './src/dotnet/UI.Blazor.App/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts' },
     ],
     bundle: true,
     platform: 'browser',
@@ -77,7 +77,7 @@ const options = {
             name: 'ort-wasm-simd-mjs-as-file',
             setup(build) {
                 const target = path.normalize(
-                    path.resolve(import.meta.dirname, '../dotnet/UI.Blazor.App/Components/AudioRecorder/workers/ort-wasm-simd.mjs')
+                    path.resolve(import.meta.dirname, 'src/dotnet/UI.Blazor.App/Components/AudioRecorder/workers/ort-wasm-simd.mjs')
                 );
                 build.onLoad({ filter: /\.mjs$/ }, async (args) => {
                     // Only intercept the exact file; let others proceed

@@ -138,7 +138,7 @@ jobs:
           install: true
 
       - name: Replace git+ssh://git@ to https://
-        run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
+        run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' package-lock.json
 
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
@@ -783,7 +783,7 @@ jobs:
         run: dotnet workload install maui ios maui-ios
 
       - name: Replace git+ssh://git@ to https://
-        run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
+        run: sed -i -E 's/git+ssh:\/\/git@/https:\/\//g' package-lock.json
 
       - name: Generate version variables
         id: nbgv
@@ -925,7 +925,7 @@ jobs:
         run: dotnet workload install maui android maui-android
 
       - name: Replace git+ssh://git@ to https://
-        run: (Get-Content src/nodejs/package-lock.json) -replace 'git\+ssh:\/\/git@', 'https://' | Set-Content src/nodejs/package-lock.json
+        run: (Get-Content package-lock.json) -replace 'git\+ssh:\/\/git@', 'https://' | Set-Content package-lock.json
 
       - name: Generate version variables
         id: nbgv

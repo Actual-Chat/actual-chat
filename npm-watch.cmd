@@ -1,9 +1,9 @@
 :<<BATCH
     call "./npm-install.cmd"
-    npm run watch --prefix src/nodejs
+    npm run watch
 
     exit /b
 BATCH
 
 #!/bin/sh
-"./npm-install.cmd" && npm run watch --prefix src/nodejs
+"./npm-install.cmd" && npm run watch

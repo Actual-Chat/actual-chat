@@ -6,16 +6,19 @@ import prettier from 'eslint-plugin-prettier'
 function tsOnly(cfg) {
     return cfg.map((config) => ({
         ...config,
-        files: ['**/*.ts'], // We use TS config only for TS files
+        files: ['src/**/*.ts'], // We use TS config only for TS files
     }));
 }
 
 export default tseslint.config(
+    {
+        ignores: ['**/dist/', '**/node_modules/', '**/obj/', '**/bin/'],
+    },
     ...tsOnly(tseslint.configs.recommendedTypeChecked),
     ...tsOnly(tseslint.configs.strictTypeChecked),
     ...tsOnly(tseslint.configs.stylisticTypeChecked),
     {
-        files: ['**/*.ts'],
+        files: ['src/**/*.ts'],
         rules: {
             indent: ['error', 4],
             quotes: ['error', 'single', {

@@ -145,7 +145,7 @@ UI.Blazor.App/
 
 ## TypeScript Projects
 
-Located in `src/nodejs/`:
+Source files are in `src/nodejs/`, while config files (`package.json`, `tsconfig.json`, `eslint.config.mjs`, etc.) are in the project root:
 
 ```
 src/nodejs/
@@ -156,9 +156,10 @@ src/nodejs/
 │   ├── event-handling.ts    # Event system
 │   ├── gestures.ts          # Touch handling
 │   └── ...
-├── css/
+├── styles/
 │   └── Tailwind styles
-└── package.json
+├── index.ts                 # Main entry point
+└── types/                   # TypeScript type definitions
 ```
 
 ## Test Projects

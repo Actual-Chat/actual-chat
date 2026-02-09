@@ -16,22 +16,16 @@
     "artifacts": true
   },
   "typescript.enablePromptUseWorkspaceTsdk": false,
-  "typescript.tsdk": "./src/nodejs/node_modules/typescript/lib",
+  "typescript.tsdk": "./node_modules/typescript/lib",
   "typescript.preferences.quoteStyle": "single",
   "eslint.enable": true,
   "eslint.alwaysShowStatus": true,
   "eslint.codeAction.showDocumentation": {
     "enable": true
   },
-  "eslint.workingDirectories": [
-    {
-      "directory": "./src/nodejs/**"
-    }
-  ],
   "eslint.lintTask.enable": true,
-  "eslint.lintTask.options": "-c src/nodejs/.eslintrc.json --ignore-path src/nodejs/.eslintignore .",
+  "eslint.lintTask.options": ".",
   "eslint.runtime": null,
-  "eslint.nodePath": "src/nodejs/node_modules",
   "eslint.validate": [
     "javascript",
     "typescript"
