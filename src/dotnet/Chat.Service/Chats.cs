@@ -1,4 +1,5 @@
 using ActualChat.Contacts;
+using ActualChat.Hosting;
 using ActualChat.Transcription;
 using ActualLab.Rpc.Infrastructure;
 
@@ -7,7 +8,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Frontend service for chat operations with session-based access control.
 /// </summary>
-public class Chats(IServiceProvider services) : IChats
+public partial class Chats(IServiceProvider services) : IChats
 {
     public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
     public static readonly TileStack<long> ViewIdTileStack = Constants.Chat.ViewIdTileStack;
@@ -28,6 +29,7 @@ public class Chats(IServiceProvider services) : IChats
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
 
     private ICommander Commander { get; } = services.Commander();
+    private HostInfo HostInfo => field ??= services.HostInfo();
     private ILogger Log { get; } = services.LogFor<Chats>();
 
     // [ComputeMethod]
@@ -449,8 +451,12 @@ public class Chats(IServiceProvider services) : IChats
                 Change.Update(diff));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
-        else {
-            // Create
+        else { // Create
+            var commandResult = await TryHandleAdminCommand(session, chatId, author, text, cancellationToken)
+                .ConfigureAwait(false);
+            if (commandResult != null)
+                return commandResult;
+
             var textEntryId = TextEntryId.New(chatId, 0);
             var upsertCommand = new ChatsBackend_ChangeEntry(
                 textEntryId,
