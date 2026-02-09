@@ -410,7 +410,7 @@ public class Chats(IServiceProvider services) : IChats
                 // If the new text contains markup (mentions, URLs, bold, etc.),
                 // it must become a text message - audio playback can't render markup properly
                 var chatMarkupHub = ChatMarkupHubFactory[textEntry.ChatId];
-                var parsedMarkup = chatMarkupHub.Parser.Parse(textEntry.Content);
+                var parsedMarkup = chatMarkupHub.Parser.Parse(text);
                 if (!parsedMarkup.IsPlainText()) {
                     // Has markup: strip audio link, convert to text message
                     diff = diff with {
