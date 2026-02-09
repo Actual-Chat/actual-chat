@@ -23,11 +23,13 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<bool> _isUploading;
     private readonly MutableState<bool> _isFailed;
     private readonly MutableState<bool> _isCompleted;
+    private readonly MutableState<bool> _canSelectContacts;
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
     public IState<bool> IsUploading => _isUploading;
     public IState<bool> IsFailed => _isFailed;
     public IState<bool> IsCompleted => _isCompleted;
+    public IState<bool> CanSelectContacts => _canSelectContacts;
     public IState<double> UploadPct => _uploadPct;
     public IState<bool> CanSend => _canSend;
 
@@ -48,6 +50,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
         _isUploading = Hub.StateFactory.NewMutable<bool>();
         _isFailed = Hub.StateFactory.NewMutable<bool>();
         _isCompleted = Hub.StateFactory.NewMutable<bool>();
+        _canSelectContacts = Hub.StateFactory.NewMutable<bool>();
         _uploadPct = Hub.StateFactory.NewMutable<double>();
         _canSend = Hub.StateFactory.NewMutable<bool>();
         _sendWorker = FuncWorker.New(ct
@@ -61,15 +64,17 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        // Check if there's a suggested recipient from iOS contact suggestions
-        if (UIKitExt.GetSuggestedRecipient() is { } chatId) {
-            var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-            var contactId = ContactId.NewAny(ownAccount.Id, chatId);
-
-            _selectedIds.Add(contactId);
-            _canSend.Value = true;
-            StartSending();
+        if (UIKitExt.GetSuggestedRecipient() is not { } chatId) {
+            _canSelectContacts.Value = true;
+            return;
         }
+
+        var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+        var contactId = ContactId.NewAny(ownAccount.Id, chatId);
+
+        _selectedIds.Add(contactId);
+        _canSend.Value = true;
+        StartSending();
     }
 
     protected override Task DisposeAsyncCore()
