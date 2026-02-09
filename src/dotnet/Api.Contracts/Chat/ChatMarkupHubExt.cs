@@ -7,11 +7,7 @@ public static class ChatMarkupHubExt
         ChatEntry entry,
         MarkupConsumer consumer,
         CancellationToken cancellationToken)
-        => GetMarkup(markupHub,
-            entry,
-            null,
-            consumer,
-            cancellationToken);
+        => markupHub.GetMarkup(entry, null, consumer, cancellationToken);
 
     public static async ValueTask<Markup> GetMarkup(
         this IChatMarkupHub markupHub,
