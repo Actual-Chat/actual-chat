@@ -36,4 +36,12 @@ public static partial class MarkupExt
 
     public static bool IsBlockMarkup(this Markup markup)
         => markup is CodeBlockMarkup or ListMarkup;
+
+    public static bool IsPlainText(this Markup markup)
+        => markup switch {
+            PlainTextMarkup => true,
+            NewLineMarkup => true,
+            MarkupSeq seq => seq.Items.All(item => item is PlainTextMarkup or NewLineMarkup),
+            _ => markup == Markup.Empty,
+        };
 }

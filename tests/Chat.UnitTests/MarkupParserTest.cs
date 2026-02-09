@@ -416,6 +416,29 @@ code
             .Which.Code.Should().Be("some code\r\n");
     }
 
+    [Theory]
+    [InlineData("", true)]
+    [InlineData("hello world", true)]
+    [InlineData("hello world 123", true)]
+    [InlineData("line1\nline2", true)]
+    [InlineData("line1\r\nline2", true)]
+    [InlineData("  spaces  ", true)]
+    [InlineData("@a:chatid:1", false)] // mention
+    [InlineData("hello @a:chatid:1 world", false)] // mention in text
+    [InlineData("https://example.com", false)] // URL
+    [InlineData("hello https://example.com world", false)] // URL in text
+    [InlineData("**bold**", false)] // bold
+    [InlineData("*italic*", false)] // italic
+    [InlineData("`code`", false)] // preformatted
+    [InlineData("hello someone@email.com", false)] // email
+    public void IsPlainTextTest(string input, bool expected)
+    {
+        var parser = new MarkupParser();
+        var markup = parser.Parse(input);
+        markup.IsPlainText().Should().Be(expected,
+            $"markup type is {markup.GetType().Name} for input: \"{input}\"");
+    }
+
     // Helpers
 
     private TResult Parse<TResult>(string text, out string copy)
