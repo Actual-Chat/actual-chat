@@ -84,6 +84,7 @@ const SkeletonWatchdogInterval = 5000;
 
 export class VirtualList {
     private static readonly _instances = new Set<VirtualList>();
+    public static enableWatchdogFixes = false;
 
     public static dumpStateChangeLogs(lastN?: number, endStateEvery: number = 10): void {
         for (const instance of VirtualList._instances) {
@@ -129,6 +130,8 @@ export class VirtualList {
     private turnOffScrollingCallback?: () => void;
     private isPointerDown = false;
     private skeletonWatchdogTimer: ReturnType<typeof setInterval> | null = null;
+    private skeletonWatchdogLastVersion: number = -1;
+    private userScrollDirection: 'up' | 'down' | 'none' = 'none';
 
     private _state: VirtualListState;
     private readonly _stateHistory: VirtualListStateSnapshot[] = [];
@@ -851,21 +854,46 @@ export class VirtualList {
     }
 
     private checkSkeletonWatchdog(): void {
-        if (this.isDisposed || !this.state.isNearSkeleton)
-            return;
-        if (this.isRendering)
-            return;
-        const hasPendingRequest = this.whenRequestDataCompleted != null
-            && !this.whenRequestDataCompleted.isCompleted();
-        if (hasPendingRequest)
+        if (this.isDisposed)
             return;
 
-        // Skeletons visible, not rendering, no pending request — stuck
-        console.warn(
-            `[VirtualList:${this.identity}] ⚠ skeleton watchdog: skeletons visible with no pending request`,
-            this.getStateChangeLog(10));
-        // Try to break the deadlock
-        void this.requestData();
+        // Check DOM: are spacers actually visible on screen with non-trivial height?
+        const viewRect = this.ref.getBoundingClientRect();
+        const startRect = this.spacerRef.getBoundingClientRect();
+        const endRect = this.endSpacerRef.getBoundingClientRect();
+        const startVisible = startRect.height > VisibilityEpsilon
+            && startRect.bottom > viewRect.top && startRect.top < viewRect.bottom;
+        const endVisible = endRect.height > VisibilityEpsilon
+            && endRect.bottom > viewRect.top && endRect.top < viewRect.bottom;
+
+        if (!startVisible && !endVisible) {
+            this.skeletonWatchdogLastVersion = -1;
+            return;
+        }
+
+        // Skeletons visible in DOM — check if state is unchanged since last check
+        const version = this._stateVersion;
+        if (this.skeletonWatchdogLastVersion !== version) {
+            // First time seeing skeletons at this state version — remember and wait
+            this.skeletonWatchdogLastVersion = version;
+            return;
+        }
+
+        // Same state version twice in a row with visible skeletons — report
+        this.skeletonWatchdogLastVersion = -1; // reset so we don't spam
+        const msg = `[VirtualList:${this.identity}] ⚠ skeleton watchdog: spacers visible on screen for 2 checks`
+            + ` (stateVersion=${version})`
+            + `\n  startSpacer: h=${startRect.height.toFixed(0)} visible=${startVisible}`
+            + `\n  endSpacer: h=${endRect.height.toFixed(0)} visible=${endVisible}`
+            + `\n  viewport: [${viewRect.top.toFixed(0)}, ${viewRect.bottom.toFixed(0)}]`
+            + `\n  scrollTop: ${this.ref.scrollTop}`
+            + `\n  isRendering: ${this.isRendering}`;
+        if (VirtualList.enableWatchdogFixes) {
+            console.warn(msg + '\n  → requesting data', this.getStateChangeLog(10));
+            void this.requestData();
+        } else {
+            console.warn(msg, this.getStateChangeLog(10));
+        }
     }
 
     private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce);
@@ -1136,6 +1164,21 @@ export class VirtualList {
             this.setStickyEdge(null);
         }
 
+        // Detect user scroll direction on the first trusted scroll event
+        if (this.userScrollDirection === 'none') {
+            const scrollTop = this.ref.scrollTop;
+            const prevViewport = this.state.viewport ?? this.state.lastViewport;
+            if (prevViewport) {
+                const prevScrollTop = this.defaultEdge === VirtualListEdge.End
+                    ? prevViewport.end
+                    : prevViewport.start;
+                if (scrollTop !== prevScrollTop) {
+                    this.userScrollDirection = scrollTop < prevScrollTop ? 'up' : 'down';
+                    warnLog?.log(`User scroll: +${this.userScrollDirection}`);
+                }
+            }
+        }
+
         // Reset pivots on scroll
         this.updateState('onScroll: clearPivots', this.state, { pivots: [] });
         this.updateViewportThrottled();
@@ -1247,6 +1290,10 @@ export class VirtualList {
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce);
 
     private turnOffIsScrolling() {
+        if (this.userScrollDirection !== 'none') {
+            warnLog?.log(`User scroll: -${this.userScrollDirection}`);
+            this.userScrollDirection = 'none';
+        }
         this.updateState('turnOffIsScrolling', this.state, { isScrolling: false, scrollDirection: 'none' as const });
 
         // this line below can fix rendering artifacts when some entries are blank
