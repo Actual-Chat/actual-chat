@@ -5,7 +5,6 @@ public class Medias(IServiceProvider services) : IMedias
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private IMediaStatusBackend MediaStatusBackend { get; } = services.GetRequiredService<IMediaStatusBackend>();
-    private IUploadsBackend UploadsBackend { get; } = services.GetRequiredService<IUploadsBackend>();
     private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
@@ -20,15 +19,6 @@ public class Medias(IServiceProvider services) : IMedias
             return new MediaStatusInfo(mediaId, MediaStatus.Ready);
 
         var mediaStatusInfo = await MediaStatusBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-        if (mediaStatusInfo == null)
-            return null;
-
-        if (mediaStatusInfo.Status is MediaStatus.Preparing
-            && mediaStatusInfo.PreparingStage == MediaPreparingStage.Uploading
-            && media.UploadId is not null) {
-            var progress = await UploadsBackend.GetProgress(media.UploadId, cancellationToken).ConfigureAwait(false);
-            mediaStatusInfo = mediaStatusInfo with { StageProgress = progress ?? 0 };
-        }
         return mediaStatusInfo;
     }
 

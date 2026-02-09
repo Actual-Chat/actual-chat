@@ -19,7 +19,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             hub.LogFor<FileUploaderService>(),
             GetOrRegisterUpload,
             GetOrReserveMedia,
-            SetupLink,
             StartProcessing,
             ClearUploadId);
         _fileUploader.ProgressChanged += OnProgressChanged;
@@ -271,27 +270,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         return session.UploadId;
     }
 
-    private async Task SetupLink(string sessionId, CancellationToken cancellationToken)
-    {
-        var session = await GetSession(sessionId).ConfigureAwait(false);
-        if (session.UploadId is null)
-            throw StandardError.Constraint("UploadId is null");
-        if (session.ReservedMediaId is null)
-            throw StandardError.Constraint("ReservedMediaId is null");
-
-        // NOTE: in future we may want to link upload with multiple medias
-        MediaId[] mediaIds = [session.ReservedMediaId];
-        if (session.Consumers is { } consumers)
-            if (consumers.UploadId == session.UploadId &&
-                consumers.MediaIds.Order().SequenceEqual(mediaIds.Order()))
-                return;
-
-        await Commander.Call(new Uploads_LinkWithMedia(Session, session.UploadId, mediaIds), cancellationToken).ConfigureAwait(false);
-        session.Consumers = new UploadConsumers { UploadId = session.UploadId, MediaIds = mediaIds };
-        session.LastUpdatedAt = Now;
-        await _repo.Save(session).ConfigureAwait(false);
-    }
-
     private Task StartProcessing(UploadId uploadId, MediaId mediaId, CancellationToken ct)
         => Commander.Call(new Uploads_StartProcessUpload(Session, uploadId, mediaId), ct);
 
@@ -301,7 +279,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session.UploadId is null)
             return;
         session.UploadId = null;
-        session.Consumers = null;
         session.LastUpdatedAt = Now;
         await _repo.Save(session).ConfigureAwait(false);
     }

@@ -13,8 +13,6 @@ public interface IMediaBackend : IComputeService, IBackendService
     Task<Media?> GetByMediaIdScope(string mediaIdScope, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<Media?> GetByContentId(string contentId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    Task<MediaId[]> GetIdsByUploadId(UploadId uploadId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);

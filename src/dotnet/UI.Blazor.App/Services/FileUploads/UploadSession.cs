@@ -24,15 +24,7 @@ public partial class UploadSession
     [DataMember, MemoryPackOrder(6)] public UploadId? UploadId { get; set; }
     [DataMember, MemoryPackOrder(7)] public MediaContent? MediaContent { get; set; }
     [DataMember, MemoryPackOrder(8)] public MediaId? ReservedMediaId { get; set; }
-    [DataMember, MemoryPackOrder(9)] public UploadConsumers? Consumers { get; set; }
 
     [IgnoreDataMember, MemoryPackIgnore] public string FileName => FileProvider.Metadata.FileName;
     [IgnoreDataMember, MemoryPackIgnore] public UploadProgressTracker ProgressTracker { get; set; } = new ();
-}
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class UploadConsumers
-{
-    [DataMember, MemoryPackOrder(0)] public required UploadId UploadId { get; set; }
-    [DataMember, MemoryPackOrder(1)] public required MediaId[] MediaIds { get; set; }
 }

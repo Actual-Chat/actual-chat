@@ -8,7 +8,6 @@ public class Uploads(IServiceProvider services) : IUploads
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IUploadsBackend Backend { get; } = services.GetRequiredService<IUploadsBackend>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
-    private IMediaStatusBackend MediaStatusBackend { get; } = services.GetRequiredService<IMediaStatusBackend>();
     private ICommander Commander { get; } = services.Commander();
     private FlowHub FlowHub => field ??= services.FlowHub();
 
@@ -66,39 +65,6 @@ public class Uploads(IServiceProvider services) : IUploads
         var upload = await Backend.Get(uploadId, cancellationToken).ConfigureAwait(false);
         EnsureCanAccessUpload(upload, user);
         return await Commander.Call(new UploadsBackend_ConvertToMediaContent(uploadId), cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task OnLinkWithMedia(Uploads_LinkWithMedia command, CancellationToken cancellationToken)
-    {
-        if (Invalidation.IsActive)
-            return;
-
-        var (session, uploadId, mediaIds) = command;
-        var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var upload = await Backend.Get(uploadId, cancellationToken).ConfigureAwait(false);
-        EnsureCanAccessUpload(upload, user);
-
-        // TODO(DF): store link data on upload as well.
-        foreach (var mediaId in mediaIds) {
-            var media = await MediaBackend.GetFull(mediaId, cancellationToken).Require().ConfigureAwait(false);
-            if (media.UserId != user.Id)
-                throw StandardError.Unauthorized("You don't have permission to access this media.");
-            media = media with {
-                UploadId = uploadId
-            };
-            var changeMedia = new Change<MediaFull> { Update = media };
-            await Commander.Call(new MediaBackend_Change(mediaId, changeMedia), cancellationToken).ConfigureAwait(false);
-
-            var statusInfo = await MediaStatusBackend.Get(mediaId, cancellationToken).Require().ConfigureAwait(false);
-            statusInfo = statusInfo with {
-                Status = MediaStatus.Preparing,
-                PreparingStage = MediaPreparingStage.Uploading,
-                StageProgress = 0,
-            };
-            var changeStatus = new Change<MediaStatusInfo> { Update = statusInfo };
-            await Commander.Call(new MediaStatusBackend_Change(mediaId, changeStatus), cancellationToken).ConfigureAwait(false);
-        }
     }
 
     // [CommandHandler]

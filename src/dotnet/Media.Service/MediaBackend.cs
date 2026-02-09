@@ -64,20 +64,6 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         return dbMedia?.ToModel().ToMedia();
     }
 
-    // [ComputeMethod]
-    public virtual async Task<MediaId[]> GetIdsByUploadId(UploadId uploadId, CancellationToken cancellationToken)
-    {
-        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var mediaSids = await dbContext.Media
-            .Where(x => x.UploadId == uploadId.Value)
-            .Select(x => x.Id)
-            .ToArrayAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return mediaSids.Select(MediaId.Parse).ToArray();
-    }
-
     // [CommandHandler]
     public virtual async Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken)
     {
