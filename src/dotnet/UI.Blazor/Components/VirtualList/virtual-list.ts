@@ -2190,7 +2190,8 @@ export class VirtualList {
         const alreadyLoadedFromStart = viewport.start - alreadyLoaded.start;
         const alreadyLoadedTillEnd = alreadyLoaded.end - viewport.end;
         const loadZoneTrigger = viewportSize * this.expandMultiplier * 0.5;
-        if (alreadyLoadedFromStart > loadZoneTrigger && alreadyLoadedTillEnd > loadZoneTrigger)
+        if (alreadyLoadedFromStart > loadZoneTrigger && alreadyLoadedTillEnd > loadZoneTrigger
+            && !this.state.isNearSkeleton)
             return this.state.lastQuery; // No need to load more data
 
         const loadZoneSize = viewportSize * this.expandMultiplier;
