@@ -13,6 +13,15 @@ using ActualLab.Interception;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
+public enum ShareStep
+{
+    None,
+    ContactSelection,
+    Uploading,
+    Failed,
+    Completed,
+}
+
 public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
 {
     private readonly HashSet<ContactId> _selectedIds = new();
@@ -20,16 +29,10 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<double> _uploadPct;
     private readonly FuncWorker _sendWorker;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
-    private readonly MutableState<bool> _isUploading;
-    private readonly MutableState<bool> _isFailed;
-    private readonly MutableState<bool> _isCompleted;
-    private readonly MutableState<bool> _canSelectContacts;
+    private readonly MutableState<ShareStep> _step;
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
-    public IState<bool> IsUploading => _isUploading;
-    public IState<bool> IsFailed => _isFailed;
-    public IState<bool> IsCompleted => _isCompleted;
-    public IState<bool> CanSelectContacts => _canSelectContacts;
+    public IState<ShareStep> Step => _step;
     public IState<double> UploadPct => _uploadPct;
     public IState<bool> CanSend => _canSend;
 
@@ -47,10 +50,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
     {
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
         Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
-        _isUploading = Hub.StateFactory.NewMutable<bool>();
-        _isFailed = Hub.StateFactory.NewMutable<bool>();
-        _isCompleted = Hub.StateFactory.NewMutable<bool>();
-        _canSelectContacts = Hub.StateFactory.NewMutable<bool>();
+        _step = Hub.StateFactory.NewMutable<ShareStep>();
         _uploadPct = Hub.StateFactory.NewMutable<double>();
         _canSend = Hub.StateFactory.NewMutable<bool>();
         _sendWorker = FuncWorker.New(ct
@@ -66,12 +66,12 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
     {
         try {
             if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId) {
-                _canSelectContacts.Value = true;
+                _step.Value = ShareStep.ContactSelection;
                 return;
             }
 
             // Show upload progress immediately when sharing from a contact suggestion
-            _isUploading.Value = true;
+            _step.Value = ShareStep.Uploading;
 
             var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
             var contactId = ContactId.NewAny(ownAccount.Id, chatId);
@@ -82,7 +82,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize");
-            _isFailed.Value = true;
+            _step.Value = ShareStep.Failed;
         }
     }
 
@@ -135,7 +135,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
 
     public void StartSending()
     {
-        _isUploading.Value = true;
+        _step.Value = ShareStep.Uploading;
         _sendWorker.Start(true);
     }
 
@@ -179,7 +179,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
                     await CreateChatEntry(chatId, entryText, [], cancellationToken).ConfigureAwait(false);
             }
 
-            _isCompleted.Value = true;
+            _step.Value = ShareStep.Completed;
 
             UIKitExt.PlaySuccessHaptic();
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
@@ -188,7 +188,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
         catch (Exception e)
         {
             Log.LogError(e, "Failed to send message");
-            _isFailed.Value = true;
+            _step.Value = ShareStep.Failed;
             throw;
         }
     }
