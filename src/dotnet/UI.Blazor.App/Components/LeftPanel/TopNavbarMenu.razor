@@ -29,12 +29,6 @@
 </MenuEntry>
 @if (m.Account.IsAdmin) {
     <MenuEntrySeparator/>
-    @if (m.IsLogUIEnabled) {
-        <MenuEntry
-            Icon="icon-hash-fill"
-            Text="Logs"
-            Click="@OnLogsClick" />
-    }
     <MenuEntry
         Icon="icon-alert-triangle"
         Text="Test Pages"
@@ -45,19 +39,17 @@
 @code {
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
-    private LogUI LogUI => Hub.LogUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(AccountUI.OwnAccount.Value, ChatListUI.NotesChat.Value, LogUI.IsEnabled.Value),
+            InitialValue = new Model(AccountUI.OwnAccount.Value, ChatListUI.NotesChat.Value),
             Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         var notesChat = await ChatListUI.NotesChat.Use(cancellationToken).ConfigureAwait(false);
-        var isLogUIEnabled = await LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
-        return new (ownAccount, notesChat, isLogUIEnabled);
+        return new (ownAccount, notesChat);
     }
 
     private async Task OnNotesClick() {
@@ -87,13 +79,7 @@
         Services.GetRequiredService<ReloadUI>().Reload();
     }
 
-    private async Task OnLogsClick() {
-        await WhenClosed;
-        _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
-        _ = History.NavigateTo(Links.Logs);
-    }
-
     // Nested types
 
-    public sealed record Model(AccountFull Account, ChatInfo? NotesChat, bool IsLogUIEnabled);
+    public sealed record Model(AccountFull Account, ChatInfo? NotesChat);
 }

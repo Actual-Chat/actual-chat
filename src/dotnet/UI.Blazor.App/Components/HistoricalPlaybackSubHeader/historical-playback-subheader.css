@@ -32,7 +32,7 @@
 }
 
 .historical-playback-subheader .author-circle-group {
-    @apply flex-1;
+    @apply flex-none;
 }
 .historical-playback-subheader .author-circle-group > .c-container {
     @apply left-auto;

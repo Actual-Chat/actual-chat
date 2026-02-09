@@ -458,6 +458,8 @@
     --footer-fog-color-2: var(--transparent);
     --mobile-footer-fog-color-1: var(--violet-80);
     --leave-btn: var(--white);
+    --bottom-sheet-1: var(--indigo-90);
+    --bottom-sheet-2: var(--magenta-90);
 
     /* Skeletons */
     --left-panel-skeleton-header: var(--gray-70);
@@ -779,6 +781,8 @@
     --footer-fog-color-2: var(--transparent);
     --mobile-footer-fog-color-1: var(--violet-80);
     --leave-btn: var(--white-10);
+    --bottom-sheet-1: var(--indigo-60);
+    --bottom-sheet-2: var(--magenta-60);
 
     /* Skeletons */
     --left-panel-skeleton-header: var(--ash-26);
@@ -1099,6 +1103,8 @@
     --footer-fog-color-2: var(--transparent);
     --mobile-footer-fog-color-1: var(--violet-80);
     --leave-btn: var(--white);
+    --bottom-sheet-1: var(--indigo-90);
+    --bottom-sheet-2: var(--magenta-90);
 
     /* Skeletons */
     --left-panel-skeleton-header: var(--gray-70);

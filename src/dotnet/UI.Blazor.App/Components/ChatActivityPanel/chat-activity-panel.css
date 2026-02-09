@@ -53,48 +53,10 @@ body.narrow .chat-activity-panel.listening:after {
 }
 .chat-activity-panel > .author-circle-group .author-circle {
     box-shadow:
-        -2px -2px 2px 2px var(--magenta-60-10),
-        -1px -1px 2px 2px var(--magenta-60-20),
-        1px 1px 2px 2px var(--indigo-60-20),
-        2px 2px 2px 2px var(--indigo-60-10);
-        animation: rotating-shadow 3s linear infinite;
-}
-@keyframes rotating-shadow {
-    0% {
-        box-shadow:
-            -2px -2px 2px 2px var(--magenta-60-10),
-            -1px -1px 2px 2px var(--magenta-60-20),
-            1px 1px 2px 2px var(--indigo-60-20),
-            2px 2px 2px 2px var(--indigo-60-10);
-    }
-    25% {
-        box-shadow:
-            -2px 2px 2px 2px var(--magenta-60-10),
-            -1px 1px 2px 2px var(--magenta-60-20),
-            1px -1px 2px 2px var(--indigo-60-20),
-            2px -2px 2px 2px var(--indigo-60-10);
-    }
-    50% {
-        box-shadow:
-            2px 2px 2px 2px var(--magenta-60-10),
-            1px 1px 2px 2px var(--magenta-60-20),
-            -1px -1px 2px 2px var(--indigo-60-20),
-            -2px -2px 2px 2px var(--indigo-60-10);
-    }
-    75% {
-        box-shadow:
-            2px -2px 2px 2px var(--magenta-60-10),
-            1px -1px 2px 2px var(--magenta-60-20),
-            -1px 1px 2px 2px var(--indigo-60-20),
-            -2px 2px 2px 2px var(--indigo-60-10);
-    }
-    100% {
-        box-shadow:
-            -2px -2px 2px 2px var(--magenta-60-10),
-            -1px -1px 2px 2px var(--magenta-60-20),
-            1px 1px 2px 2px var(--indigo-60-20),
-            2px 2px 2px 2px var(--indigo-60-10);
-    }
+        -1px 0 0 0 var(--recorder-off-middle),
+        0 -1px 0 0 var(--recorder-off-bottom),
+        1px 0 0 0 var(--recorder-off-middle),
+        0 1px 0 0 var(--recorder-off-top)
 }
 .chat-activity-panel > .c-buttons {
     @apply flex-none flex-x items-center gap-x-4 md:gap-x-2;
@@ -173,57 +135,66 @@ body.narrow .chat-activity-panel.listening:after {
     background: linear-gradient(89deg, var(--magenta-90-10) 5.09%, var(--indigo-70-10) 94.69%);
 }
 
+.equalizer {
+    @apply flex-x items-center justify-center gap-x-1;
+}
 .equalizer .bar {
-    @apply opacity-50;
-    transform-origin: center;
-    animation: equalize 2s infinite linear;
+    @apply w-1 h-1 rounded-full;
+    @apply overflow-hidden;
+    @apply bg-primary;
+    transition: height 0.3s ease, background-color 0.3s ease;
 }
-.equalizer.active .bar {
-    @apply opacity-100;
-    transform-origin: center;
-    animation: equalize-active 2s infinite ease-in-out;
+.equalizer.active .bar.bar-1,
+.equalizer.active .bar.bar-3 {
+    @apply bg-danger;
+    animation: equalize-active-1 0.6s infinite ease-in-out;
 }
-.equalizer.active .bar-1 {
-    animation-duration: 0.8s;
+.equalizer.active .bar.bar-2 {
+    @apply bg-danger;
+    animation: equalize-active-2 0.6s infinite ease-in-out;
+}
+.equalizer.active .bar.bar-1 {
+    animation-duration: 0.55s;
     animation-delay: 0s;
 }
-.equalizer.active .bar-2 {
-    animation-duration: 0.9s;
+.equalizer.active .bar.bar-2 {
+    animation-duration: 0.65s;
+    animation-delay: 0.1s;
+}
+.equalizer.active .bar.bar-3 {
+    animation-duration: 0.6s;
     animation-delay: 0.2s;
 }
-.equalizer.active .bar-3 {
-    animation-duration: 0.7s;
-    animation-delay: 0.4s
-}
 
-@keyframes equalize {
-    0%   { transform: scaleY(1); }
-    25%  { transform: scaleY(1.15); }
-    50%  { transform: scaleY(1); }
-    75%  { transform: scaleY(0.85); }
-    100%  { transform: scaleY(1); }
+@keyframes equalize-active-1 {
+    0%, 100% {
+        height: 6px;
+    }
+    50% {
+        height: 14px;
+    }
 }
-@keyframes equalize-active {
-    0%   { transform: scaleY(0.6); }
-    20%  { transform: scaleY(1.1); }
-    40%  { transform: scaleY(0.7); }
-    60%  { transform: scaleY(1.2); }
-    80%  { transform: scaleY(0.8); }
-    100% { transform: scaleY(0.6); }
+@keyframes equalize-active-2 {
+    0%, 100% {
+        height: 8px;
+    }
+    50% {
+        height: 20px;
+    }
 }
-
 .header-activity-panel-wrapper {
-    @apply relative;
+    @apply relative overflow-visible;
+    transition: padding-bottom 0.3s ease-in-out;
     animation: smoothShow 0.3s ease-in-out forwards;
 }
 .header-activity-panel-wrapper .chat-activity-panel {
     @apply absolute z-10 bottom-0.5 inset-x-0;
     @apply h-14 w-auto;
     @apply pl-3 pr-2;
+    transition: bottom 0.3s ease-in-out;
 }
 
 .header-activity-panel-wrapper .chat-activity-panel {
-    background: linear-gradient(to left, var(--indigo-70-10), var(--magenta-70-10));
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 100%);
     mask-image: linear-gradient(to bottom, transparent 0%, black 20%);
 }
@@ -237,4 +208,25 @@ body.narrow .chat-activity-panel.listening:after {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.layout-header.collapsed .header-activity-panel-wrapper {
+    @apply pb-3;
+}
+.layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel {
+    @apply bottom-3;
+}
+.header-activity-panel-wrapper .bottom-sheet {
+    @apply absolute z-10;
+    @apply left-1/2 -translate-x-1/2;
+    @apply bottom-0.5;
+    @apply h-1.5 w-16;
+    @apply rounded-full;
+    @apply opacity-0 invisible;
+    background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
+    transition: opacity 0.15s ease-in-out 0.15s, visibility 0.15s ease-in-out 0.15s;
+}
+.layout-header.collapsed .header-activity-panel-wrapper .bottom-sheet {
+    @apply opacity-80 visible;
+    transition: opacity 0.2s ease-in-out 0.3s, visibility 0.2s ease-in-out 0.3s;
 }

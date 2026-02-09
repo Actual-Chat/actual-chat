@@ -23,11 +23,9 @@
      @onclick:preventDefault="true"
      @onclick:stopPropagation="true"
      @onclick="@Click">
-    @if (!m.IsAnyoneTalking) {
-        <div class="c-icon">
-            <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive"/>
-        </div>
-    }
+    <div class="c-icon">
+        <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive"/>
+    </div>
     @if (m.IsAnyoneTalking && chatId is not null) {
         <ChatActivities
             @key="@chatId.Value"

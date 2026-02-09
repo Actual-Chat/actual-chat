@@ -14,11 +14,11 @@ class ChatActivityPanelIconSvg extends LitElement {
 
     protected render(): unknown {
         return html`
-            <svg class="equalizer ${this.isActive ? " active" : ""}" width="${this.size * 4}" height="${this.size * 4}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 6L12 17" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" class="bar bar-1"/>
-                <path d="M7 9V15" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" class="bar bar-2"/>
-                <path d="M17 9V15" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" class="bar bar-3"/>
-            </svg>
+            <div class="equalizer ${this.isActive ? "active" : ""}" style="width: ${this.size * 4}px; height: ${this.size * 4}px;">
+                <div class="bar bar-1"></div>
+                <div class="bar bar-2"></div>
+                <div class="bar bar-3"></div>
+            </div>
         `;
     }
 }
