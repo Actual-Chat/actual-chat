@@ -1,12 +1,12 @@
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
+using ActualChat.UI.Blazor;
 
 namespace ActualChat.App.Maui.IosShareExt.UI;
 
 // TODO: if possible get rid of duplicating UIWorkerBase
-public abstract class UIWorkerBase(IosHub hub) : UIServiceBase(hub)
+public abstract class UIWorkerBase(IosHub hub) : UIServiceBase(hub), IUIWorker
 {
     private volatile Task? _whenRunning;
-
     public Task? WhenRunning => _whenRunning;
 
     public virtual Task Run()
