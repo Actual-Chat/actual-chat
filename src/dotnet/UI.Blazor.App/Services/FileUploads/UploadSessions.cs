@@ -24,7 +24,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             ClearUploadId);
         _fileUploader.ProgressChanged += OnProgressChanged;
         _fileUploader.Uploaded += OnUploaded;
-        _fileUploader.Failed += OnFailed;
+        _fileUploader.Failed += OnUploadFailed;
         _cleanupTask = BackgroundTask.Run(Cleanup);
     }
 
@@ -241,16 +241,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         Log.LogInformation("Processing completed for session {SessionId}", sessionId);
     }
 
-    private async Task OnProcessingFailed(string sessionId, Exception error)
-    {
-        var session = await GetSession(sessionId).ConfigureAwait(false);
-        session.ProgressTracker.SetException(error);
-        session.Status = UploadStatus.Failed;
-        session.LastUpdatedAt = Now;
-        await _repo.Save(session).ConfigureAwait(false);
-        Log.LogError(error, "Processing failed for session {SessionId}", sessionId);
-    }
-
     private async Task OnFailed(string sessionId, Exception error)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
@@ -316,6 +306,12 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await _repo.Save(session).ConfigureAwait(false);
     }
 
+    private async Task OnUploadFailed(string sessionId, Exception error)
+    {
+        Log.LogError(error, "Upload failed for session {SessionId}", sessionId);
+        await OnFailed(sessionId, error).ConfigureAwait(false);
+    }
+
     private async Task MonitorProcessing(string sessionId, MediaId mediaId)
     {
         var maxWaitTime = TimeSpan.FromMinutes(15);
@@ -335,7 +331,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
                     continue;
                 }
                 if (status == null) {
-                    await OnProcessingFailed(sessionId, new InvalidOperationException("Media not found")).ConfigureAwait(false);
+                    await OnProcessingFailed(new InvalidOperationException("Media not found")).ConfigureAwait(false);
                     return;
                 }
 
@@ -343,26 +339,32 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
                 case MediaStatus.Ready:
                     var content = await Hub.Medias.GetContent(Session, mediaId, CancellationToken.None).ConfigureAwait(false);
                     if (content == null) {
-                        await OnProcessingFailed(sessionId, new InvalidOperationException("Media content not found after Ready status")).ConfigureAwait(false);
+                        await OnProcessingFailed(new InvalidOperationException("Media content not found after Ready status")).ConfigureAwait(false);
                         return;
                     }
                     await OnProcessingCompleted(sessionId, content).ConfigureAwait(false);
                     return;
 
                 case MediaStatus.Failed:
-                    await OnProcessingFailed(sessionId, new InvalidOperationException("Media processing failed")).ConfigureAwait(false);
+                    await OnProcessingFailed(new InvalidOperationException("Media processing failed")).ConfigureAwait(false);
                     return;
                 }
             }
 
-            await OnProcessingFailed(sessionId, new TimeoutException("Media processing timed out")).ConfigureAwait(false);
+            await OnProcessingFailed(new TimeoutException("Media processing timed out")).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested) {
-            await OnProcessingFailed(sessionId, new TimeoutException("Media processing timed out")).ConfigureAwait(false);
+            await OnProcessingFailed(new TimeoutException("Media processing timed out")).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Error monitoring processing for session {SessionId}", sessionId);
-            await OnProcessingFailed(sessionId, e).ConfigureAwait(false);
+            await OnProcessingFailed(e).ConfigureAwait(false);
+        }
+
+        async Task OnProcessingFailed(Exception error)
+        {
+            Log.LogError(error, "Processing failed for session {SessionId}", sessionId);
+            await OnFailed(sessionId, error).ConfigureAwait(false);
         }
     }
 }
