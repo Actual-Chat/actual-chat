@@ -2127,7 +2127,7 @@ export class VirtualList {
 
         // When skeletons are visible, accept any genuinely new query —
         // the pixel-distance heuristics below can miss edge cases.
-        if (this.isNearSkeleton)
+        if (this.state.isNearSkeleton)
             return true;
 
         if (itemRange.contains(query.virtualRange))
@@ -2245,7 +2245,8 @@ export class VirtualList {
         const smallGap = viewportSize * 0.5;
         const isFirstItemInViewport = !rs.hasVeryFirstItem && firstItem.range!.end >= viewport.start;
         const isLastItemInViewport = !rs.hasVeryLastItem && lastItem.range!.start <= viewport.end;
-        if (startGap < smallGap && endGap < smallGap && firstItem.range!.start && !isFirstItemInViewport && !isLastItemInViewport)
+        if (startGap < smallGap && endGap < smallGap && firstItem.range!.start && !isFirstItemInViewport && !isLastItemInViewport
+            && !this.state.isNearSkeleton)
             return this.state.lastQuery;
 
         const query = new VirtualListDataQuery(keyRange, loadZone, moveRange);
