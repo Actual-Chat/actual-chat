@@ -10,10 +10,7 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
     private UploadProgressView? _uploadProgressView;
     private ErrorView? _errorView;
     private SuccessView? _successView;
-    private bool _isContactSelectionDisplayed;
-    private bool _isUploadingDisplayed;
-    private bool _isFailedDisplayed;
-    private bool _isCompletedDisplayed;
+    private ShareStep _displayedStep;
 
     protected override void OnInitialRender(Model model)
     {
@@ -23,121 +20,131 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
 
     protected override void OnStateChanged(Model model)
     {
-        if (model.CanSelectContacts && !_isContactSelectionDisplayed) {
-            _contactSelectionView = new ContactSelectionView(Hub);
-            _contactSelectionView.TranslatesAutoresizingMaskIntoConstraints = false;
-            AddSubview(_contactSelectionView);
-
-            NSLayoutConstraint.ActivateConstraints([
-                _contactSelectionView.TopAnchor.ConstraintEqualTo(TopAnchor),
-                _contactSelectionView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
-                _contactSelectionView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-                _contactSelectionView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
-            ]);
-
-            _isContactSelectionDisplayed = true;
-        }
-
-        if (model.IsUploading && !_isUploadingDisplayed) {
-            _uploadProgressView = new UploadProgressView(Hub);
-            _uploadProgressView.TranslatesAutoresizingMaskIntoConstraints = false;
-            _uploadProgressView.Alpha = 0;
-            AddSubview(_uploadProgressView);
-
-            NSLayoutConstraint.ActivateConstraints([
-                _uploadProgressView.TopAnchor.ConstraintEqualTo(TopAnchor),
-                _uploadProgressView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
-                _uploadProgressView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-                _uploadProgressView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
-            ]);
-
-            var animator = new UIViewPropertyAnimator(0.3,
-                UIViewAnimationCurve.EaseInOut,
-                () => {
-                    _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                    _uploadProgressView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
-                    _uploadProgressView.Alpha = 1;
-                });
-            animator.AddCompletion(_ => {
-                _contactSelectionView?.RemoveFromSuperview();
-            });
-            animator.StartAnimation();
-
-            _isUploadingDisplayed = true;
+        if (model.Step == _displayedStep)
             return;
+
+        switch (model.Step) {
+            case ShareStep.ContactSelection:
+                ShowContactSelection();
+                break;
+            case ShareStep.Uploading:
+                ShowUploading();
+                break;
+            case ShareStep.Failed:
+                ShowFailed();
+                break;
+            case ShareStep.Completed:
+                ShowCompleted();
+                break;
         }
+        _displayedStep = model.Step;
+    }
 
-        if (model.IsFailed && !_isFailedDisplayed) {
-            _errorView = new ErrorView(Hub);
-            _errorView.TranslatesAutoresizingMaskIntoConstraints = false;
-            _errorView.Alpha = 0;
-            AddSubview(_errorView);
+    private void ShowContactSelection()
+    {
+        _contactSelectionView = new ContactSelectionView(Hub);
+        _contactSelectionView.TranslatesAutoresizingMaskIntoConstraints = false;
+        AddSubview(_contactSelectionView);
 
-            NSLayoutConstraint.ActivateConstraints([
-                _errorView.TopAnchor.ConstraintEqualTo(TopAnchor),
-                _errorView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
-                _errorView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-                _errorView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
-            ]);
+        NSLayoutConstraint.ActivateConstraints([
+            _contactSelectionView.TopAnchor.ConstraintEqualTo(TopAnchor),
+            _contactSelectionView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            _contactSelectionView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+            _contactSelectionView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
+        ]);
+    }
 
-            var animator = new UIViewPropertyAnimator(0.5,
-                UIViewAnimationCurve.EaseInOut,
-                () => {
-                    _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                    _uploadProgressView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                    _errorView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
-                    _errorView.Alpha = 1;
-                });
-            animator.AddCompletion(_ => {
-                _contactSelectionView?.RemoveFromSuperview();
-                _uploadProgressView?.RemoveFromSuperview();
+    private void ShowUploading()
+    {
+        _uploadProgressView = new UploadProgressView(Hub);
+        _uploadProgressView.TranslatesAutoresizingMaskIntoConstraints = false;
+        _uploadProgressView.Alpha = 0;
+        AddSubview(_uploadProgressView);
+
+        NSLayoutConstraint.ActivateConstraints([
+            _uploadProgressView.TopAnchor.ConstraintEqualTo(TopAnchor),
+            _uploadProgressView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            _uploadProgressView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+            _uploadProgressView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
+        ]);
+
+        var animator = new UIViewPropertyAnimator(0.3,
+            UIViewAnimationCurve.EaseInOut,
+            () => {
+                _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                _uploadProgressView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
+                _uploadProgressView.Alpha = 1;
             });
-            animator.StartAnimation();
+        animator.AddCompletion(_ => {
+            _contactSelectionView?.RemoveFromSuperview();
+        });
+        animator.StartAnimation();
+    }
 
-            _isFailedDisplayed = true;
-            return;
-        }
+    private void ShowFailed()
+    {
+        _errorView = new ErrorView(Hub);
+        _errorView.TranslatesAutoresizingMaskIntoConstraints = false;
+        _errorView.Alpha = 0;
+        AddSubview(_errorView);
 
-        if (model.IsCompleted && !_isCompletedDisplayed) {
-            _successView = new SuccessView(Hub);
-            _successView.TranslatesAutoresizingMaskIntoConstraints = false;
-            _successView.Alpha = 0;
-            AddSubview(_successView);
+        NSLayoutConstraint.ActivateConstraints([
+            _errorView.TopAnchor.ConstraintEqualTo(TopAnchor),
+            _errorView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            _errorView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+            _errorView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
+        ]);
 
-            NSLayoutConstraint.ActivateConstraints([
-                _successView.TopAnchor.ConstraintEqualTo(TopAnchor),
-                _successView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
-                _successView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
-                _successView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
-            ]);
-
-            var animator = new UIViewPropertyAnimator(0.5,
-                UIViewAnimationCurve.EaseInOut,
-                () => {
-                    _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                    _uploadProgressView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
-                    _successView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
-                    _successView.Alpha = 1;
-                });
-            animator.AddCompletion(_ => {
-                _contactSelectionView?.RemoveFromSuperview();
-                _uploadProgressView?.RemoveFromSuperview();
+        var animator = new UIViewPropertyAnimator(0.5,
+            UIViewAnimationCurve.EaseInOut,
+            () => {
+                _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                _uploadProgressView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                _errorView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
+                _errorView.Alpha = 1;
             });
-            animator.StartAnimation();
+        animator.AddCompletion(_ => {
+            _contactSelectionView?.RemoveFromSuperview();
+            _uploadProgressView?.RemoveFromSuperview();
+        });
+        animator.StartAnimation();
+    }
 
-            _isCompletedDisplayed = true;
-        }
+    private void ShowCompleted()
+    {
+        _successView = new SuccessView(Hub);
+        _successView.TranslatesAutoresizingMaskIntoConstraints = false;
+        _successView.Alpha = 0;
+        AddSubview(_successView);
+
+        NSLayoutConstraint.ActivateConstraints([
+            _successView.TopAnchor.ConstraintEqualTo(TopAnchor),
+            _successView.LeadingAnchor.ConstraintEqualTo(LeadingAnchor),
+            _successView.TrailingAnchor.ConstraintEqualTo(TrailingAnchor),
+            _successView.BottomAnchor.ConstraintEqualTo(BottomAnchor),
+        ]);
+
+        var animator = new UIViewPropertyAnimator(0.5,
+            UIViewAnimationCurve.EaseInOut,
+            () => {
+                _contactSelectionView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                _uploadProgressView?.Transform = CGAffineTransform.MakeScale(0.0f, 0.0f);
+                _successView!.Transform = CGAffineTransform.MakeScale(1.0f, 1.0f);
+                _successView.Alpha = 1;
+            });
+        animator.AddCompletion(_ => {
+            _contactSelectionView?.RemoveFromSuperview();
+            _uploadProgressView?.RemoveFromSuperview();
+        });
+        animator.StartAnimation();
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var canSelectContacts = await ShareUI.CanSelectContacts.Use(cancellationToken).ConfigureAwait(false);
-        var isUploading = await ShareUI.IsUploading.Use(cancellationToken).ConfigureAwait(false);
-        var isFailed = await ShareUI.IsFailed.Use(cancellationToken).ConfigureAwait(false);
-        var isCompleted = await ShareUI.IsCompleted.Use(cancellationToken).ConfigureAwait(false);
-        return new Model(canSelectContacts, isUploading, isFailed, isCompleted);
+        var step = await ShareUI.Step.Use(cancellationToken).ConfigureAwait(false);
+        return new Model(step);
     }
 
     // Nested types
-    public record Model(bool CanSelectContacts, bool IsUploading, bool IsFailed, bool IsCompleted);
+    public record Model(ShareStep Step);
 }
