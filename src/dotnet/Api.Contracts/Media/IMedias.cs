@@ -6,6 +6,8 @@ public interface IMedias : IComputeService
 {
     [ComputeMethod]
     Task<MediaStatusInfo?> GetStatus(Session session, MediaId mediaId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<MediaContent?> GetContent(Session session, MediaId mediaId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<MediaId> OnReserveMedia(Medias_ReserveMedia command, CancellationToken cancellationToken);

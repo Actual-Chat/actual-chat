@@ -61,7 +61,10 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
         });
 
         // Flows
-        services.AddFlows().Add<LinkPreviewFlow>().Add<PreviewThumbnailUpdateFlow>();
+        services.AddFlows()
+            .Add<LinkPreviewFlow>()
+            .Add<PreviewThumbnailUpdateFlow>()
+            .Add<UploadProcessingFlow>();
 
         // Uploads
         services.AddSingleton<UploadsStorage>();

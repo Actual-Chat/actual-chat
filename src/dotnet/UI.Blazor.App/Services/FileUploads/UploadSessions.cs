@@ -275,8 +275,47 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await _repo.Save(session).ConfigureAwait(false);
     }
 
-    private Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken ct)
-        => Commander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId), ct);
+    private async Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken ct)
+    {
+        // Start processing (non-blocking)
+        await Commander.Call(new Uploads_StartProcessUpload(Session, uploadId, mediaId), ct).ConfigureAwait(false);
+
+        // Poll for completion
+        return await WaitForMediaReady(mediaId, ct).ConfigureAwait(false);
+    }
+
+    private async Task<MediaContent> WaitForMediaReady(MediaId mediaId, CancellationToken ct)
+    {
+        var pollDelay = TimeSpan.FromMilliseconds(500);
+        var maxWaitTime = TimeSpan.FromMinutes(10);
+        var startedAt = Now;
+
+        while (Now - startedAt < maxWaitTime) {
+            ct.ThrowIfCancellationRequested();
+
+            var status = await Hub.Medias.GetStatus(Session, mediaId, ct).ConfigureAwait(false);
+            if (status == null)
+                throw new InvalidOperationException("Media not found");
+
+            switch (status.Status) {
+                case MediaStatus.Ready:
+                    var content = await Hub.Medias.GetContent(Session, mediaId, ct).ConfigureAwait(false);
+                    if (content == null)
+                        throw new InvalidOperationException("Media content not found after Ready status");
+                    return content;
+
+                case MediaStatus.Failed:
+                    throw new InvalidOperationException("Media processing failed");
+
+                default:
+                    // Still processing, wait and poll again
+                    await Task.Delay(pollDelay, ct).ConfigureAwait(false);
+                    break;
+            }
+        }
+
+        throw new TimeoutException("Media processing timed out");
+    }
 
     private async Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
     {

@@ -32,6 +32,29 @@ public class Medias(IServiceProvider services) : IMedias
         return mediaStatusInfo;
     }
 
+    // [ComputeMethod]
+    public virtual async Task<MediaContent?> GetContent(Session session, MediaId mediaId, CancellationToken cancellationToken)
+    {
+        var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media == null)
+            return null;
+
+        await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
+        if (media.ContentId.IsNullOrEmpty())
+            return null;
+
+        return new MediaContent(mediaId, media.ContentId);
+        // // Get thumbnail media if available
+        // var thumbnailMediaId = media.Metadata.Get<MediaId?>(Constants.Media.ThumbnailMediaIdKey);
+        // string? thumbnailContentId = null;
+        // if (thumbnailMediaId is { } thumbId) {
+        //     var thumbMedia = await MediaBackend.Get(thumbId, cancellationToken).ConfigureAwait(false);
+        //     thumbnailContentId = thumbMedia?.ContentId;
+        // }
+        //
+        // return new MediaContent(mediaId, media.ContentId, thumbnailMediaId, thumbnailContentId);
+    }
+
     // [CommandHandler]
     public virtual async Task<MediaId> OnReserveMedia(Medias_ReserveMedia command, CancellationToken cancellationToken)
     {

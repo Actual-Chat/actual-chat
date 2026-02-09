@@ -1,3 +1,6 @@
+using ActualChat.Flows;
+using ActualChat.Media.Flows;
+
 namespace ActualChat.Media;
 
 public class Uploads(IServiceProvider services) : IUploads
@@ -7,6 +10,7 @@ public class Uploads(IServiceProvider services) : IUploads
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private IMediaStatusBackend MediaStatusBackend { get; } = services.GetRequiredService<IMediaStatusBackend>();
     private ICommander Commander { get; } = services.Commander();
+    private FlowHub FlowHub => field ??= services.FlowHub();
 
     public virtual async Task<long> GetOffset(Session session, UploadId uploadId, CancellationToken cancellationToken)
     {
@@ -95,6 +99,33 @@ public class Uploads(IServiceProvider services) : IUploads
             var changeStatus = new Change<MediaStatusInfo> { Update = statusInfo };
             await Commander.Call(new MediaStatusBackend_Change(mediaId, changeStatus), cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnStartProcessUpload(Uploads_StartProcessUpload command, CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        var (session, uploadId, mediaId) = command;
+
+        // Verify upload ownership
+        var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var upload = await Backend.Get(uploadId, cancellationToken).ConfigureAwait(false);
+        EnsureCanAccessUpload(upload, user);
+
+        // Verify media ownership
+        var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media == null)
+            throw StandardError.NotFound<Media>();
+        if (media.UserId != user.Id)
+            throw StandardError.Unauthorized("You don't have permission to access this media.");
+
+        // Schedule the UploadProcessingFlow
+        await FlowHub
+            .NewResumeEvent<UploadProcessingFlow>(UploadProcessingFlow.GetArguments(uploadId, mediaId))
+            .Schedule(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static void EnsureCanAccessUpload([NotNullWhen(true)] Upload? upload, Account user)
