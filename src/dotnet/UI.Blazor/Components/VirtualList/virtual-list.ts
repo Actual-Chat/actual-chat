@@ -354,7 +354,7 @@ export class VirtualList {
         }
     }
 
-     
+
     private onItemSetChange = (mutations: MutationRecord[], _observer: MutationObserver): void => {
         if (!this.isRendering) {
             if (mutations.length > 0)
@@ -387,7 +387,7 @@ export class VirtualList {
                 const nodeElement = node as HTMLElement;
                 const isGroup = nodeElement.classList?.contains('group');
                 // TODO(AK): fix eslint error
-                 
+
                 if (!nodeElement.dataset && !isGroup)
                     continue;
 
@@ -412,7 +412,7 @@ export class VirtualList {
                 const nodeElement = node as HTMLElement;
                 const isGroup = nodeElement.classList?.contains('group');
                 // TODO(AK): fix eslint error
-                 
+
                 if (!nodeElement.dataset && !isGroup)
                     continue;
 
@@ -728,6 +728,10 @@ export class VirtualList {
             this.query = VirtualListDataQuery.None;
             this.lastViewport = this.viewport;
         }
+        // Schedule viewport update AFTER finalize — isRendering is now false.
+        // The call inside restoreScrollPosition may get swallowed by the
+        // leading-edge throttle while isRendering was still true.
+        this.updateViewportThrottled();
     }
 
     private getScrollMetadata(rs: VirtualListRenderState): ScrollMetadata {
@@ -804,7 +808,7 @@ export class VirtualList {
         'default',
         'updateViewport');
 
-     
+
     private async updateViewport(isThrottled = false): Promise<void> {
         const rs = this.renderState;
         if (this.isDisposed || this.isRendering)
@@ -954,7 +958,7 @@ export class VirtualList {
             }
 
             const viewRect = this.ref.getBoundingClientRect();
-             
+
             const itemKeys: string[] = [interactiveKey ?? '', medianVisibleKey, this.query.keyRange?.end, this.query.keyRange?.start];
             for (const itemKey of itemKeys) {
                 if (!itemKey)
@@ -1903,7 +1907,7 @@ export class VirtualList {
         const alreadyLoadedTillEnd = alreadyLoaded.end - viewport.end;
         const loadZoneTrigger = viewportSize * this.expandMultiplier * 0.5;
         if (alreadyLoadedFromStart > loadZoneTrigger && alreadyLoadedTillEnd > loadZoneTrigger
-            && !this.state.isNearSkeleton)
+            && !this.isNearSkeleton)
             return this.lastQuery; // No need to load more data
 
         const loadZoneSize = viewportSize * this.expandMultiplier;
