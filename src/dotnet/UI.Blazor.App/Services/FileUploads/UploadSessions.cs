@@ -276,7 +276,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     private Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken ct)
-        => Commander.Call(new Uploads_ConvertToMediaContent(Session, uploadId), ct);
+        => Commander.Call(new Medias_ProcessUpload(Session, mediaId, uploadId), ct);
 
     private async Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
     {
