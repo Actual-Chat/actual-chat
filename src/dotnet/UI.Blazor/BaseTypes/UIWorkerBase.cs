@@ -2,11 +2,6 @@ namespace ActualChat.UI.Blazor;
 
 #pragma warning disable MA0064
 
-public interface IUIWorker
-{
-    Task Run();
-}
-
 public abstract class UIWorkerBase<THub>(THub hub)
     : UIServiceBase<THub>(hub), IUIWorker
     where THub : UIHub

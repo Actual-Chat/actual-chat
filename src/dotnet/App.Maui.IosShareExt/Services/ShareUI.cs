@@ -5,13 +5,15 @@ using ActualChat.Contacts;
 using ActualChat.Maui;
 using ActualChat.Media;
 using ActualChat.Search;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Services;
 using ActualLab.Fusion.UI;
 using ActualLab.Generators;
+using ActualLab.Interception;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
-public class ShareUI : UIServiceBase, IComputeService
+public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
 {
     private readonly HashSet<ContactId> _selectedIds = new();
     private readonly MutableState<bool> _canSend;
@@ -52,22 +54,22 @@ public class ShareUI : UIServiceBase, IComputeService
             => AsyncChain.From(SendInternal)
                 .LogError(Log)
                 .RunIsolated(ct));
-
-        _ = AutoSelectAndSend();
     }
 
-    // TODO: refactor
-    private async Task AutoSelectAndSend()
+    void INotifyInitialized.Initialized()
+        => this.Start();
+
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        if (UIKitExt.GetSuggestedRecipient() is not { } chatId)
-            return;
+        // Check if there's a suggested recipient from iOS contact suggestions
+        if (UIKitExt.GetSuggestedRecipient() is { } chatId) {
+            var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+            var contactId = ContactId.NewAny(ownAccount.Id, chatId);
 
-        var ownAccount = await Accounts.GetOwn(Session, StopToken).ConfigureAwait(false);
-        var contactId = ContactId.NewAny(ownAccount.Id, chatId);
-
-        _selectedIds.Add(contactId);
-        _canSend.Value = true;
-        StartSending();
+            _selectedIds.Add(contactId);
+            _canSend.Value = true;
+            StartSending();
+        }
     }
 
     protected override Task DisposeAsyncCore()
