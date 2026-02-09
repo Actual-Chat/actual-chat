@@ -6,19 +6,19 @@ import prettier from 'eslint-plugin-prettier'
 function tsOnly(cfg) {
     return cfg.map((config) => ({
         ...config,
-        files: ['src/**/*.ts'], // We use TS config only for TS files
+        files: ['src/nodejs/**/*.ts'], // We use TS config only for TS files
     }));
 }
 
 export default tseslint.config(
     {
-        ignores: ['**/dist/', '**/node_modules/', '**/obj/', '**/bin/'],
+        ignores: ['**/dist/', '**/node_modules/', '**/obj/', '**/bin/', '**/wwwroot/'],
     },
     ...tsOnly(tseslint.configs.recommendedTypeChecked),
     ...tsOnly(tseslint.configs.strictTypeChecked),
     ...tsOnly(tseslint.configs.stylisticTypeChecked),
     {
-        files: ['src/**/*.ts'],
+        files: ['src/nodejs/**/*.ts'],
         rules: {
             indent: ['error', 4],
             quotes: ['error', 'single', {
@@ -49,6 +49,7 @@ export default tseslint.config(
             },
         },
         plugins: {
+            '@typescript-eslint': tseslint.plugin,
             prettier,
         },
     },
