@@ -8,6 +8,8 @@ namespace ActualChat.Media;
 
 public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbContext>(services), IUploadsBackend
 {
+    private readonly ConcurrentDictionary<UploadId, long> _offsets = new();
+
     private IBlobStorages Blobs => field ??= Services.GetRequiredService<IBlobStorages>();
     private UploadsStorage UploadsStorage { get; } = services.GetRequiredService<UploadsStorage>();
     private GoogleResumableUploads GoogleResumableUploads => field ??= new GoogleResumableUploads(StorageClient.Create(), Services.LogFor<GoogleResumableUploads>());
@@ -28,12 +30,19 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (IsGoogleStorage) {
             var upload = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload.SessionUri.Require();
-            var offset = await GoogleResumableUploads.GetUploadStatusAsync(sessionUri, cancellationToken).ConfigureAwait(false);
-            return offset ?? upload.Length!.Value;
+            var offset = await GoogleResumableUploads.GetUploadStatusAsync(sessionUri, cancellationToken)
+                .ConfigureAwait(false);
+            offset ??= upload.Length!.Value;
+            UpdateUploadOffset(uploadId, offset.Value);
+            return offset.Value;
         }
         else {
             var offset = await UploadsStorage.GetUploadOffset(uploadId, cancellationToken).ConfigureAwait(false);
-            return offset ?? throw UploadNotFound();
+            if (offset is null)
+                throw UploadNotFound();
+
+            UpdateUploadOffset(uploadId, offset.Value);
+            return offset.Value;
         }
     }
 
@@ -47,8 +56,10 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         if (length is null or 0)
             return 0;
 
-        var offset = await GetOffset(uploadId, cancellationToken).ConfigureAwait(false);
-        return (double)offset / length.Value * 100;
+        var offset = await GetOffsetForProgress(uploadId, cancellationToken).ConfigureAwait(false);
+        if (offset is null)
+            return null;
+        return (double)offset.Value / length.Value * 100;
     }
 
     public virtual async Task OnCreate(UploadsBackend_Create command, CancellationToken cancellationToken)
@@ -56,6 +67,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         var uploadId = command.UploadId;
         if (Invalidation.IsActive) {
             _ = Get(uploadId, default);
+            _ = GetOffsetForProgress(uploadId, default);
             return;
         }
         var upload = new Upload(uploadId, command.UserId, command.Length, command.Tag, command.Metadata);
@@ -73,6 +85,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             await UploadsStorage.CreateMetadataFile(uploadId, json, cancellationToken).ConfigureAwait(false);
             await UploadsStorage.CreateEmptyDataFile(uploadId, contentType, cancellationToken).ConfigureAwait(false);
         }
+        _offsets[uploadId] = 0;
         await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
     }
 
@@ -81,6 +94,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         var uploadId = command.Id;
         if (Invalidation.IsActive) {
             _ = Get(uploadId, default);
+            _ = GetOffsetForProgress(uploadId, default);
             return;
         }
         if (IsGoogleStorage) {
@@ -89,6 +103,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
                 await GoogleResumableUploads.CancelUpload(upload.SessionUri.Require(), cancellationToken).ConfigureAwait(false);
         }
         await UploadsStorage.DeleteFiles(uploadId, cancellationToken).ConfigureAwait(false);
+        _offsets.TryRemove(uploadId, out _);
         await TriggerDistributedInvalidation(cancellationToken).ConfigureAwait(false);
     }
 
@@ -99,7 +114,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             var upload1 = await Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
             var sessionUri = upload1.SessionUri.Require();
             _ = await GoogleResumableUploads.UploadChunk(sessionUri, data, uploadOffset, upload1.Length!.Value, cancellationToken).ConfigureAwait(false);
-            return uploadOffset + data.Length;
+            var newOffset = uploadOffset + data.Length;
+            UpdateUploadOffset(uploadId, newOffset);
+            return newOffset;
         }
 
         // NOTE(DF): In production environment UploadsStorage is backed with gcp blob storage.
@@ -125,9 +142,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         await using (stream.ConfigureAwait(false))
             await UploadsStorage.AppendDataAsync(uploadId, stream, cancellationToken).ConfigureAwait(false);
 
-        using (Invalidation.Begin())
-            _ = GetProgress(uploadId, default);
-
+        UpdateUploadOffset(uploadId, expectedNewOffset);
         return expectedNewOffset;
     }
 
@@ -178,6 +193,13 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             Log.LogError(e, "Failed to process and save content for upload '{UploadId}' and media '{MediaId}'", uploadId, mediaId);
             throw;
         }
+    }
+
+    [ComputeMethod]
+    protected virtual Task<long?> GetOffsetForProgress(UploadId uploadId, CancellationToken cancellationToken)
+    {
+        var result = _offsets.TryGetValue(uploadId, out var offset) ? offset : (long?)null;
+        return Task.FromResult(result);
     }
 
     private async Task<Uri> InitiateUploadSession(Upload upload, CancellationToken cancellationToken)
@@ -245,5 +267,12 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         catch (Exception e) {
             Log.LogWarning(e, "Failed to update media status for '{MediaId}'", mediaId);
         }
+    }
+
+    private void UpdateUploadOffset(UploadId uploadId, long offset)
+    {
+        _offsets[uploadId] = offset;
+        using (Invalidation.Begin())
+            _ = GetOffsetForProgress(uploadId, default);
     }
 }
