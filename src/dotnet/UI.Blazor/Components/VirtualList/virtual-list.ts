@@ -974,7 +974,10 @@ export class VirtualList {
             this.whenRequestDataCompleted = null;
         }
 
-
+        // Schedule viewport update AFTER finalize — isRendering is now false.
+        // The call inside restoreScrollPosition may get swallowed by the
+        // leading-edge throttle while isRendering was still true.
+        this.updateViewportThrottled();
     }
 
     private getScrollMetadata(rs: VirtualListRenderState): ScrollMetadata {
