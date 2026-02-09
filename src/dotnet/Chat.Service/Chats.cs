@@ -1,6 +1,5 @@
 using ActualChat.Contacts;
 using ActualChat.Transcription;
-using ActualChat.Users;
 using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Chat;
@@ -37,8 +36,7 @@ public class Chats(IServiceProvider services) : IChats
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chatId.Kind == ChatKind.Peer) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            ContactId.TryParse(ContactId.Format(account.Id, chatId), out var contactId);
-            if (contactId is null)
+            if (!ContactId.TryParse(ContactId.Format(account.Id, chatId), out var contactId))
                 return null;
 
             var contact = await ContactsBackend.Get(account.Id, contactId, cancellationToken).ConfigureAwait(false);
@@ -409,7 +407,20 @@ public class Chats(IServiceProvider services) : IChats
 
             // Audio-aware edit: remap TimeMap or strip audio link
             if (textEntry.AudioEntryLid.HasValue) {
-                if (!textEntry.TimeMap.IsDegenerate) {
+                // If the new text contains markup (mentions, URLs, bold, etc.),
+                // it must become a text message - audio playback can't render markup properly
+                var chatMarkupHub = ChatMarkupHubFactory[textEntry.ChatId];
+                var parsedMarkup = await chatMarkupHub
+                    .GetMarkup(textEntry, MarkupConsumer.MessageView, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!parsedMarkup.IsPlainText()) {
+                    // Has markup: strip audio link, convert to text message
+                    diff = diff with {
+                        AudioEntryLid = Option.Some<long?>(null),
+                        TimeMap = LinearMap.Zero,
+                    };
+                }
+                else if (!textEntry.TimeMap.IsDegenerate) {
                     var remapResult = LinearMapDtwRemapper.RemapWithSimilarity(
                         textEntry.Content, text, textEntry.TimeMap,
                         LinearMapAlignmentMode.UserEditedTranscript);
