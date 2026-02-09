@@ -184,7 +184,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
             var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
-            var progress = CreateMediaConvertingProgressTracker([mediaId]);
+            var progress = CreateMediaConvertingProgressTracker(mediaId);
             using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, progress, cancellationToken).ConfigureAwait(false);
             var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, cancellationToken).ConfigureAwait(false);
             return mediaContent;
@@ -247,12 +247,11 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         return uploadedFile;
     }
 
-    private Progress<double> CreateMediaConvertingProgressTracker(MediaId[] mediaIds)
+    private Progress<double> CreateMediaConvertingProgressTracker(MediaId mediaId)
     {
         var progress = new Progress<double>(p => {
-            foreach (var mediaId in mediaIds)
-                // Fire and forget - we don't want to block processing for status updates
-                _ = UpdateMediaStatus(mediaId, MediaPreparingStage.Converting, p, CancellationToken.None);
+            // Fire and forget - we don't want to block processing for status updates
+            _ = UpdateMediaStatus(mediaId, MediaPreparingStage.Converting, p, CancellationToken.None);
         });
         return progress;
     }
