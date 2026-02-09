@@ -1,9 +1,43 @@
 .banner.reconnect-banner  {
+    @apply relative overflow-hidden;
     @apply gap-x-2;
-    @apply min-h-8 max-h-8 h-8;
-    @apply border-banner-error;
-    @apply bg-banner-error;
+    @apply h-10;
+    @apply border-none;
     @apply animate-opacity-from-0;
+    background: linear-gradient(
+        to left,
+        var(--indigo-70-10),
+        var(--magenta-70-10));
+}
+.banner.reconnect-banner::after {
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply opacity-70;
+    @apply pointer-events-none;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--magenta-70-20) 50%,
+        transparent 100%
+    );
+    animation: reconnect-wave 3s infinite ease-in-out;
+}
+@keyframes reconnect-wave {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+.banner.reconnect-banner::before {
+    @apply content-empty;
+    @apply absolute inset-0;
+    @apply p-0.5;
+    @apply rounded-lg;
+    @apply pointer-events-none;
+    background: linear-gradient(to right, var(--indigo-70-10), var(--magenta-70-10));
+    -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
 }
 .banner.reconnect-banner i {
     @apply text-2xl text-danger;

@@ -147,7 +147,6 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply z-50;
     @apply flex-none flex-y;
     @apply w-full;
-    @apply overflow-hidden;
     @apply bg-01;
     @apply border-b border-separator;
 }
@@ -234,6 +233,10 @@ body.narrow .layout-header > .c-content.selection-header {
     @apply border-transparent;
     transition: max-height 0.5s ease;
 }
+body.narrow .list-view-layout .layout-header:has(.header-activity-panel-wrapper):not(:has(.video-panel)),
+body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-header {
+    background: linear-gradient(to bottom, var(--violet-80-20) -20%, var(--transparent) 100%);
+}
 .list-view-layout .layout-header:has(.header-activity-panel-wrapper):has(.video-panel) {
     transition: none;
 }
@@ -297,8 +300,11 @@ body.narrow .list-view-layout .layout-header.collapsed .chat-header-title {
     @apply absolute z-minus inset-x-0 bottom-0;
     @apply h-40;
     @apply opacity-90;
-    background: radial-gradient(56.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
-    animation: smoothOpacity 1s ease forwards, bottomWave 3s ease-in 1s infinite;
+    background: radial-gradient(100.91% 85.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
+    animation: smoothOpacity 1s ease forwards, bottomWave 4s steps(30) 1s infinite;
+}
+body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfooter:before {
+    background: radial-gradient(80.91% 105.88% at 50% 100%, var(--footer-fog-color-1) 0%, var(--footer-fog-color-2) 100%);
 }
 @keyframes smoothOpacity {
     0% {

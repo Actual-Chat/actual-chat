@@ -2,8 +2,8 @@
 @inherits FusionComponentBase<AppUIHub>
 @{
     List<string> circles = ["bg-red-400", "bg-green-400", "bg-blue-400", "bg-yellow-400", "bg-gray-400", "bg-yellow-400", "bg-purple-400"];
-    var avatarSize = SquareSize.Size7;
-    var size = "w-7 h-7";
+    var avatarSize = SquareSize.Size8;
+    var size = "w-full h-full";
     var maxLength = circles.Count > MaxCount ? MaxCount - 1 : circles.Count;
     var currentCount = circles.Count;
 }
@@ -21,7 +21,7 @@
             zIndex++;
         }
         if (currentCount > MaxCount) {
-            <div class="author-circle">
+            <div class="author-circle z-10">
                 <div class="author-wrapper">
                     <div class="@size avatar-circle last">
                         @{

@@ -116,6 +116,10 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .chat-header-center {
     @apply flex-auto flex-x justify-between items-center grow gap-x-2;
     @apply truncate;
+    transition: padding-left 0.3s ease-in-out;
+}
+body.narrow .layout-header.collapsed .chat-header-center {
+    @apply pl-9;
 }
 .chat-header-center > .chat-header-title {
     @apply flex-1 flex-y items-start justify-center;
