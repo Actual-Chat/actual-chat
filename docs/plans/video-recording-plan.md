@@ -1,217 +1,159 @@
-# Video Recording Implementation Plan
+# Video Recording & Streaming Architecture
 
 ## Overview
-Implement video recording functionality by combining existing video encoding/decoding services with the VideoPanel UI component. The first stage focuses on rendering captured video after processing through the encode/decode pipeline.
 
-## Current State Analysis
+Video recording and streaming is implemented using a pipeline architecture built on WebCodecs, Web Workers, and SignalR. The system captures camera or screen input, processes it through an encode/decode pipeline with optional background blur, and streams encoded chunks to the server in real time.
 
-### Existing Video Infrastructure
-- **WebCodecsEncoder** ([`webcodecs-encoder.ts`](src/dotnet/UI.Blazor.App/Services/Video/webcodecs-encoder.ts)): Encodes VideoFrames to H.264/HEVC/AV1 chunks
-- **WebCodecsDecoder** ([`webcodecs-decoder.ts`](src/dotnet/UI.Blazor.App/Services/Video/webcodecs-decoder.ts)): Decodes chunks back to VideoFrames
-- **Encoder Worker** ([`encoder-worker.ts`](src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker.ts)): Runs encoding in dedicated thread via RPC
-- **Decoder Worker** ([`decoder-worker.ts`](src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts)): Runs decoding in dedicated thread via RPC
-- **Codec Support** ([`codec-support.ts`](src/dotnet/UI.Blazor.App/Services/Video/codec-support.ts)): Detects supported codecs with hardware acceleration
+## Current State
 
-### VideoPanel Component
-- **VideoPanel.razor** ([`VideoPanel.razor`](src/dotnet/UI.Blazor.App/Components/VideoPanel/VideoPanel.razor)): Currently displays static landing video
-- **video-panel.ts** ([`video-panel.ts`](src/dotnet/UI.Blazor.App/Components/VideoPanel/video-panel.ts)): Handles expand/collapse UI interactions
-- **video-panel.css** ([`video-panel.css`](src/dotnet/UI.Blazor.App/Components/VideoPanel/video-panel.css)): Styling with animations
+All core components are implemented and operational:
 
-### RPC Communication Pattern
-The project uses a custom RPC framework ([`rpc.ts`](src/nodejs/src/rpc.ts)) for worker communication:
-- [`rpcClient()`](src/nodejs/src/rpc.ts:217) - Creates typed proxy for calling worker methods
-- [`rpcServer()`](src/nodejs/src/rpc.ts:148) - Sets up message handler in worker
-- [`rpcClientServer()`](src/nodejs/src/rpc.ts:299) - Bidirectional communication
-- Supports transferable objects like VideoFrame and MessagePort
+- Camera/screen capture with device selection
+- H.264 / AV1 encoding via WebCodecs in dedicated workers
+- Background blur via ONNX segmentation model (WebGPU or WASM)
+- Network simulation for single-device testing
+- Real-time server streaming via SignalR
+- Remote playback with WebCodecs decoder
+- Canvas fallbacks for Safari (no MediaStreamTrackProcessor/Generator)
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    subgraph MainThread[Main Thread]
-        VR[VideoRecorder]
-        VP[VideoPanel]
-        Canvas[Canvas Element]
-    end
-    
-    subgraph CameraCapture[Camera Capture]
-        GUM[getUserMedia]
-        MST[MediaStreamTrackProcessor]
-    end
-    
-    subgraph EncoderWorkerThread[Encoder Worker Thread]
-        EW[encoder-worker.ts]
-        WCE[WebCodecsEncoder]
-    end
-    
-    subgraph DecoderWorkerThread[Decoder Worker Thread]
-        DW[decoder-worker.ts]
-        WCD[WebCodecsDecoder]
-    end
-    
-    GUM --> MST
-    MST -->|VideoFrame| VR
-    VR -->|RPC: encodeFrame| EW
-    EW --> WCE
-    WCE -->|EncodedChunk| EW
-    EW -->|RPC: decodeChunk| DW
-    DW --> WCD
-    WCD -->|VideoFrame| DW
-    DW -->|RPC: onDecodedFrame| VR
-    VR -->|drawImage| Canvas
-    Canvas --> VP
+```
+Camera/Screen → RecordingService → VideoPipeline {
+    MediaStreamTrackProcessor (frame extraction, canvas fallback for Safari)
+    → [optional SegmentationWorker for background blur]
+    → EncoderWorker (WebCodecs H.264/AV1)
+    → TransferSimulator or WebSocketTransfer
+    → DecoderWorker (WebCodecs, AV1 WASM fallback)
+    → MediaStreamTrackGenerator (output stream, canvas fallback for Safari)
+}
++ VideoStreamer (async: encoder chunks → SignalR → server)
++ Separate preview stream → canvas rendering in VideoPanel
 ```
 
-## Implementation Steps
+### Two-Stream Design
 
-### Step 1: Create video-recorder-contract.ts
-Define TypeScript interfaces for the VideoRecorder service:
+The system uses separate streams for preview and pipeline output:
+1. **Preview stream** — The raw camera MediaStream is rendered directly to a `<canvas>` in VideoPanel for low-latency local preview.
+2. **Pipeline output stream** — Frames flow through encode → transfer → decode to produce a processed MediaStream, used for recording and playback verification.
 
-```typescript
-// Location: src/dotnet/UI.Blazor.App/Services/Video/video-recorder-contract.ts
+### Canvas Fallbacks
 
-export interface VideoRecorderConfig {
-    width: number;
-    height: number;
-    frameRate: number;
-    codec: string;
-    bitrate: number;
-}
+Safari lacks `MediaStreamTrackProcessor` and `MediaStreamTrackGenerator`. The pipeline uses canvas-based fallbacks:
+- **Input**: A `<canvas>` + `requestAnimationFrame` loop draws video frames and extracts them manually.
+- **Output**: Decoded frames are drawn to a canvas, and `captureStream()` produces the output MediaStream.
 
-export interface VideoRecorderState {
-    isRecording: boolean;
-    hasCamera: boolean;
-    error: string | null;
-}
+## Component Reference
 
-export interface VideoRecorder {
-    initialize(config: VideoRecorderConfig): Promise<void>;
-    start(): Promise<void>;
-    stop(): Promise<void>;
-    dispose(): void;
-    getState(): VideoRecorderState;
-}
+### Core Services
 
-export interface VideoRecorderCallbacks {
-    onFrame(frame: VideoFrame): void;
-    onStateChange(state: VideoRecorderState): void;
-    onError(error: Error): void;
-}
-```
+| File | Purpose | Key API |
+|------|---------|---------|
+| [`services/video-pipeline.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/services/video-pipeline.ts) | Orchestrates the encode → transfer → decode pipeline using RPC workers | `start(inputStream)`, `stop()`, `reconfigure()`, `toggleBlur()`, `switchSegmentationBackend()`, `toggleAV1Decoder()` |
+| [`services/recording-service.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/services/recording-service.ts) | High-level recording lifecycle: stream acquisition, config, state | `start()`, `stop()`, `toggleBlur()`, `updateSegmentationBackend()`, `getState()`, `getInputStream()`, `getOutputStream()` |
+| [`video-streamer.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/video-streamer.ts) | SignalR-based real-time streaming of encoded chunks to server | `VideoStreamer.init(hubUrl)`, `VideoStreamer.addStream(token, chatId, config)`, `VideoStream.addFrame()` |
 
-### Step 2: Create video-recorder.ts
-Main service that orchestrates camera capture and worker communication:
+### UI Components
 
-**Key responsibilities:**
-1. Request camera access via `navigator.mediaDevices.getUserMedia()`
-2. Use `MediaStreamTrackProcessor` to extract VideoFrames from camera stream
-3. Create and manage encoder/decoder workers using existing RPC pattern
-4. Route frames: Camera → Encoder Worker → Decoder Worker → Canvas
-5. Handle lifecycle (start/stop/dispose)
+| File | Purpose | Key API |
+|------|---------|---------|
+| [`VideoPanel.razor`](../../src/dotnet/UI.Blazor.App/Components/VideoPanel/VideoPanel.razor) | Blazor component: recording controls, preview canvas, error display | `OnRecordingStarted()`, `OnRecordingStopped()`, `OnRecordingError()` |
+| [`video-panel.ts`](../../src/dotnet/UI.Blazor.App/Components/VideoPanel/video-panel.ts) | TypeScript controller: camera enumeration, recording toggle, preview rendering | `VideoPanel.create()`, `startRecording()`, `stopRecording()`, `enumerateVideoDevices()`, `setSelectedCamera()` |
+| [`video-player.ts`](../../src/dotnet/UI.Blazor.App/Components/VideoPanel/video-player.ts) | Remote video playback using WebCodecs decoder | Decodes incoming stream and renders to canvas |
 
-**Frame capture approach:**
-```typescript
-// Use MediaStreamTrackProcessor for efficient frame extraction
-const track = stream.getVideoTracks()[0];
-const processor = new MediaStreamTrackProcessor({ track });
-const reader = processor.readable.getReader();
+### Workers
 
-// Read frames in a loop
-while (recording) {
-    const { value: frame, done } = await reader.read();
-    if (done) break;
-    await encoderClient.encodeFrame(frame); // Transfer frame to worker
-}
-```
+| File | Purpose | Key RPC Methods |
+|------|---------|-----------------|
+| [`workers/encoder-worker.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker.ts) | WebCodecs video encoding (H.264/AV1) in dedicated thread | `initialize()`, `encodeFrame()`, `reconfigure()`, `stop()`, `getStats()` |
+| [`workers/decoder-worker.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts) | WebCodecs video decoding with frame reordering and error recovery | `initialize()`, `decodeChunk()`, `stop()`, `toggleDecoderType()`, `getStats()` |
+| [`workers/segmentation-worker.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/segmentation-worker.ts) | ONNX-based person segmentation for background blur (WebGPU/WASM) | `initialize()`, `processFrame()`, `updateConfig()`, `stop()`, `getStats()` |
 
-### Step 3: Update video-panel.ts
-Integrate VideoRecorder with the panel:
+### Worker Contracts
 
-1. Add canvas element reference for rendering decoded frames
-2. Create VideoRecorder instance on panel initialization
-3. Implement frame rendering callback using `canvas.getContext('2d').drawImage(frame, 0, 0)`
-4. Add start/stop methods callable from Blazor
-5. Maintain existing expand/collapse functionality
+| File | Purpose |
+|------|---------|
+| [`workers/encoder-worker-contract.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker-contract.ts) | TypeScript interfaces for encoder worker RPC |
+| [`workers/decoder-worker-contract.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker-contract.ts) | TypeScript interfaces for decoder worker RPC |
+| [`workers/segmentation-worker-contract.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/segmentation-worker-contract.ts) | TypeScript interfaces for segmentation worker RPC |
 
-### Step 4: Update VideoPanel.razor
-Modify the Blazor component:
+### Codec & Encoding
 
-1. Replace `<video>` element with `<canvas>` for live preview
-2. Add recording control buttons (Start/Stop)
-3. Add state indicators (recording status, camera status)
-4. Wire up JSInvokable methods for state changes
+| File | Purpose |
+|------|---------|
+| [`webcodecs-encoder.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/webcodecs-encoder.ts) | WebCodecs VideoEncoder wrapper with H.264/AV1 support |
+| [`webcodecs-decoder.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/webcodecs-decoder.ts) | WebCodecs VideoDecoder wrapper with error recovery |
+| [`codec-support.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/codec-support.ts) | Runtime codec detection with hardware acceleration probing |
+| [`hevc-parser.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/hevc-parser.ts) | HEVC/H.265 bitstream parser |
 
-**Updated markup structure:**
-```razor
-<div class="video-panel">
-    <div class="c-content">
-        <div class="video-frame">
-            <canvas @ref="CanvasRef" class="call-video"></canvas>
-        </div>
-        <div class="controls">
-            <button @onclick="ToggleRecording">
-                @(IsRecording ? "Stop" : "Start")
-            </button>
-        </div>
-        <HeaderButton Class="expand-btn">...</HeaderButton>
-    </div>
-</div>
-```
+### Network & Transfer
 
-### Step 5: Update exports.ts
-Add exports for new modules:
+| File | Purpose |
+|------|---------|
+| [`utils/transfer-simulator.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/utils/transfer-simulator.ts) | Simulates network conditions (latency, jitter, packet loss, bandwidth) for local testing |
+| [`utils/websocket-transfer.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/utils/websocket-transfer.ts) | Real WebSocket transfer for multi-device sessions |
+| [`utils/websocket-client.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/utils/websocket-client.ts) | WebSocket client utilities |
+| [`utils/mp4-muxer.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/utils/mp4-muxer.ts) | MediaRecorder-based video muxing to WebM/MP4 for local recording |
 
-```typescript
-export * from './Services/Video/video-recorder';
-export * from './Services/Video/video-recorder-contract';
-```
+### GPU & Segmentation Support
 
-### Step 6: Testing
-1. Verify camera permission request works
-2. Confirm frames flow through encode/decode pipeline
-3. Check decoded video renders correctly on canvas
-4. Test start/stop functionality
-5. Verify proper cleanup on dispose
+| File | Purpose |
+|------|---------|
+| [`webgpu-manager.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/webgpu-manager.ts) | WebGPU device/adapter management |
+| [`webgpu-blur.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/webgpu-blur.ts) | WebGPU-based blur shader |
+| [`gpu-support.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/gpu-support.ts) | GPU feature detection |
+| [`tensor-utils.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/tensor-utils.ts) | Tensor manipulation utilities for segmentation model |
+
+### Stats & Monitoring
+
+| File | Purpose |
+|------|---------|
+| [`services/stats-service.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/services/stats-service.ts) | Aggregates encoder/decoder/transfer/segmentation statistics |
 
 ## Technical Details
 
 ### Codec Configuration
-Based on [`codec-support.ts`](src/dotnet/UI.Blazor.App/Services/Video/codec-support.ts), use:
-- **Primary**: AV1 with hardware acceleration if available
-- **Fallback**: H.264 High profile (avc1.640028)
-- **Resolution**: 1280x720 (720p)
-- **Bitrate**: 2 Mbps
-- **Frame rate**: 30 fps
 
-### Worker Communication
-Follow existing pattern from [`encoder-worker.ts`](src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker.ts:344):
-```typescript
-// Main thread creates RPC client
-const encoderWorker = new Worker('./workers/encoder-worker.ts');
-const encoderClient = rpcClientServer<EncoderWorkerCallbacks>(
-    'VideoRecorder.encoder',
-    encoderWorker,
-    callbacksImpl
-);
-```
+Default codec is H.264 High profile (`avc1.640028`). AV1 is supported as an alternative.
 
-### Memory Management
-- Always call `frame.close()` after processing VideoFrames
-- Use transferable objects when sending frames to workers
-- Properly dispose workers on cleanup
+| Parameter | Default |
+|-----------|---------|
+| Codec | H.264 High 4.0 (`avc1.640028`) |
+| Resolution | 1280x720 |
+| Bitrate | 2 Mbps |
+| Frame rate | 30 fps |
+| Latency mode | `realtime` |
+| Hardware acceleration | `prefer-hardware` |
+| Keyframe interval | Every 1 second (= frame rate) |
 
-## Files to Create/Modify
+### Background Blur / Segmentation
 
-| File | Action | Description |
-|------|--------|-------------|
-| `Services/Video/video-recorder-contract.ts` | Create | Interface definitions |
-| `Services/Video/video-recorder.ts` | Create | Main recorder service |
-| `Components/VideoPanel/video-panel.ts` | Modify | Integrate recorder, add canvas rendering |
-| `Components/VideoPanel/VideoPanel.razor` | Modify | Replace video with canvas, add controls |
-| `exports.ts` | Modify | Export new modules |
+The segmentation worker runs an ONNX person-segmentation model to produce a mask, which is used to blur the background. Supports:
+- **WebGPU backend** — GPU-accelerated inference with zero-copy buffer tensors
+- **WASM backend** — CPU fallback for browsers without WebGPU
+- **Dynamic blur radius** — Configurable at runtime
+- **Frame skipping** — Drops queued frames to maintain low latency under load
 
-## Dependencies
-- Existing video workers and WebCodecs implementations
-- RPC communication framework ([`rpc.ts`](src/nodejs/src/rpc.ts))
-- UI.Blazor component infrastructure
-- Browser APIs: getUserMedia, MediaStreamTrackProcessor, WebCodecs
+### Server Streaming (VideoStreamer)
+
+Encoded chunks are streamed to the server via SignalR with MessagePack serialization:
+1. `VideoStreamer.init(hubUrl)` establishes the SignalR connection
+2. `VideoStreamer.addStream(token, chatId, config)` creates a `VideoStream`
+3. Each encoded chunk is added via `VideoStream.addFrame()` with timing metadata (offset in .NET ticks)
+4. H.264 streams include SPS/PPS codec settings for decoder initialization
+
+### RPC Worker Communication
+
+Workers communicate with the main thread using a custom RPC framework (`rpc.ts`):
+- `rpcClient()` — Creates a typed proxy for calling worker methods
+- `rpcServer()` — Sets up a message handler inside the worker
+- `rpcClientServer()` — Bidirectional communication (main ↔ worker)
+- Supports transferable objects (`VideoFrame`, `MessagePort`) for zero-copy transfer
+
+## Future Enhancements
+
+- SFU-based multi-participant video routing
+- Adaptive bitrate based on network conditions
+- Additional segmentation models (virtual backgrounds, face tracking)
+- Recording to cloud storage
+- Picture-in-picture support

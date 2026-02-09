@@ -69,6 +69,4 @@ export * from './Services/FileProviders/file-handle-permissions';
 export * from './Services/FileProviders/web-file-providers';
 export * from './Services/Video/webgpu-manager'
 export * from './Services/Video/codec-support'
-export * from './Services/Video/video-recorder'
-export * from './Services/Video/video-recorder-contract'
 
