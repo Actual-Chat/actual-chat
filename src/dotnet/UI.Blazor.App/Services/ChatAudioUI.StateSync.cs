@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -22,7 +23,7 @@ public partial class ChatAudioUI
             AsyncChain.From(PushRealtimePlaybackState),
             AsyncChain.From(StopHistoricalPlaybackWhenRecordingStarts),
             AsyncChain.From(StopListeningWhenIdle),
-            AsyncChain.From(StopRecordingOnAwake),
+            AsyncChain.From(ResetMicrophonePermissionAndStopRecordingOnDeviceAwake),
             AsyncChain.From(ReconnectOnRpcReconnect),
             AsyncChain.From(UpdateNextBeepAt),
             AsyncChain.From(PlayBeep),
@@ -373,13 +374,15 @@ public partial class ChatAudioUI
         }
     }
 
-    private async Task StopRecordingOnAwake(CancellationToken cancellationToken)
+    private async Task ResetMicrophonePermissionAndStopRecordingOnDeviceAwake(CancellationToken cancellationToken)
     {
         var totalSleepDuration = DeviceAwakeUI.TotalSleepDuration.Value;
         await DeviceAwakeUI.TotalSleepDuration.Computed
             .WhenUntyped(c => ((Computed<TimeSpan>)c).Value != totalSleepDuration, cancellationToken)
             .ConfigureAwait(false);
 
+        if (!HostInfo.AppKind.IsMaui())
+            AudioRecorder.MicrophonePermission.ForgetCached();
         await SetRecordingChatId(null).ConfigureAwait(false);
     }
 
