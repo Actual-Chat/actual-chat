@@ -3,6 +3,7 @@ using MemoryPack;
 
 namespace ActualChat.Media.Flows;
 
+[Flow(ResumeTimeout = 14.5 * 60)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial class UploadProcessingFlow : Flow<MediaContent>
 {
@@ -25,7 +26,7 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
         }
         if (!media.ContentId.IsNullOrEmpty()) {
             Console.Log("Media already has content");
-            SetResult(new Result<MediaContent>(new MediaContent(mediaId, media.ContentId)));
+            SetResult(new MediaContent(mediaId, media.ContentId));
             return;
         }
 
