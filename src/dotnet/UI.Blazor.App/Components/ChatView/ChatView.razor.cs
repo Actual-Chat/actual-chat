@@ -372,6 +372,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (dataQuery.ExistingIdRange.End + dataQuery.EndOffset + ChatUI.HalfLoadLimit >= chatIdRange.End)
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
+        DebugLog?.LogDebug(
+            "GetData: query keyRange={KeyRange} moveRange={MoveRange} -> dataQuery={DataQuery}, nav={Nav}",
+            query.IsNone ? "None" : query.KeyRange.Format(),
+            query.IsNone ? "None" : query.MoveRange.Format(),
+            dataQuery.Format(),
+            nav != null);
+
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
         activity?.SetTag("AC." + "ViewEntryLid", viewEntryLid);
         activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
@@ -400,6 +407,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         UpdateNewMessagesLineDebounce(items, readEntryLid);
+        DebugLog?.LogDebug(
+            "GetData: loaded {Count} items, first={First}, last={Last}, hasBefore={HasBefore}, hasAfter={HasAfter}, navKey={NavEntryLid}, mustScroll={MustScroll}",
+            items.Count,
+            items.Count > 0 ? items[0].Id : 0,
+            items.Count > 0 ? items[^1].Id : 0,
+            hasBefore,
+            hasAfter,
+            nav?.EntryLid,
+            mustScrollToEntry);
 
         if (tryUpdateShownReadEntryLid && TryUpdateShownReadEntryLid(items, ref readEntryLid)) {
             tryUpdateShownReadEntryLid = false;
@@ -487,7 +503,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         ChatViewNavigation? navigation,
         Range<long> chatIdRange)
     {
-        // DebugLog?.LogDebug("GetChatDataQuery: {ChatId}, {Query}, {OldData}, {Anchor}, {IdRange}", ChatId, query, oldData.KeyRange.Format(), navigation, chatIdRange.Format());
         var firstLayer = ChatUI.IdTileStack.FirstLayer;
         var secondLayer = ChatUI.IdTileStack.LastLayer;
         var itemVisibility = ItemVisibility.Value;
@@ -498,6 +513,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ? new Range<long>(firstItem.Id, lastItem!.Id + 1)
                 : chatIdRange.EnsureNonEmpty()
             : query.KeyRange.ToLongRange(true).EnsureNonEmpty();
+        var caseName = (!query.IsNone, firstItem != null) switch {
+            (false, false) => "no-query+no-data",
+            (false, true) when oldData.HasVeryLastItem => "no-query+has-data+hasVeryLastItem",
+            (false, true) => "no-query+has-data",
+            _ => "has-query",
+        };
         var dataQuery = (!query.IsNone, firstItem != null) switch {
             // Align the query params with the second tile layer
 
@@ -530,13 +551,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         };
 
         // If we are scrolling somewhere within idRange, let's extend the range to navigation & nearby entries.
-        if (navigation != null && chatIdRange.Contains(navigation.EntryLid))
+        if (navigation != null && chatIdRange.Contains(navigation.EntryLid)) {
+            caseName += "+navigation";
             dataQuery = new ChatDataQuery(
                 secondLayer.GetTile(navigation.EntryLid).Range,
                 -ChatUI.HalfLoadLimit,
                 ChatUI.LoadLimit) {
                     Navigation = navigation,
             };
+        }
+
+        DebugLog?.LogDebug(
+            "GetChatDataQuery: case={Case}, result={DataQuery}, chatIdRange={IdRange}",
+            caseName, dataQuery.Format(), chatIdRange.Format());
 
         return dataQuery;
     }

@@ -280,6 +280,26 @@
             console.error('Blazor is not loaded. Please check the script tag for blazor.web.js.');
         }
         else {
+            // Hook for debugUI.startDOMEventSniffer() - captures interop refs at startup,
+            // but only patches invokeMethodAsync when activated via __blazorEventSnifferHook()
+            (function() {
+                var interops = [];
+                var origAttach = Blazor._internal.attachWebRendererInterop;
+                Blazor._internal.attachWebRendererInterop = function(rendererId, interopMethods) {
+                    interops.push(interopMethods);
+                    return origAttach.apply(this, arguments);
+                };
+                window.__blazorEventSnifferHook = function(callback) {
+                    interops.forEach(function(m) {
+                        var orig = m.invokeMethodAsync.bind(m);
+                        m.invokeMethodAsync = function(methodName) {
+                            if (methodName === 'DispatchEventAsync')
+                                callback(arguments[1], arguments[2]);
+                            return orig.apply(null, arguments);
+                        };
+                    });
+                };
+            })();
             Blazor.start({
                 circuit: {
                     reconnectionOptions: {
