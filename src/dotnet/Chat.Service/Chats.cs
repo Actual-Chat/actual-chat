@@ -405,7 +405,6 @@ public class Chats(IServiceProvider services) : IChats
                 Attachments = command.EntryAttachments,
             };
 
-            // Audio-aware edit: remap TimeMap or strip audio link
             if (textEntry.AudioEntryLid.HasValue) {
                 // If the new text contains markup (mentions, URLs, bold, etc.),
                 // it must become a text message - audio playback can't render markup properly
@@ -419,6 +418,7 @@ public class Chats(IServiceProvider services) : IChats
                     };
                 }
                 else if (!textEntry.TimeMap.IsDegenerate) {
+                    // Audio-aware edit: remap TimeMap or strip audio link
                     var remapResult = LinearMapDtwRemapper.RemapWithSimilarity(
                         textEntry.Content, text, textEntry.TimeMap,
                         LinearMapAlignmentMode.UserEditedTranscript);
