@@ -194,3 +194,130 @@ Add logging at these critical points to correlate what happens at the exact mome
 
 6. **`ChatView.GetData()`** — Log the incoming `query`, the computed `ChatDataQuery`, and the resulting item count/range
 7. **`ChatView.GetChatDataQuery()`** — Log the key range conversion and the final data query with offsets
+
+## Investigating Specific Issues
+
+### Issue: Bottom skeletons stuck after top-to-bottom scroll
+
+**Symptom:** After scrolling from top to bottom and stopping, the bottom portion of the screen shows skeletons that never get replaced with messages. The list is stuck — no new data is requested.
+
+**Observed in log:** Chat `the-actual-one` with `chatIdRange=[1, 2706)`. After scrolling stops, items are loaded up to ~key 2670, but 36 more items exist. The log shows repeated:
+
+```
+requestData: skipped (mustRequestData=false)
+  queryRange: [-27520, -23340]     ← last query's virtual range (render #13)
+  itemRange:  [-25901, -20178]     ← items repositioned around viewport
+  viewport:   [-23028.5, -22192.5]
+  isSameQuery: true                ← deadlock: same query reference
+```
+
+**Root cause — deadlock between `getDataQuery` and `mustRequestData`:**
+
+1. **`resetItemRange(canUseViewport=true)` hides the data gap.** Every scroll tick, `ensureItemRangeCalculated` finds no pivots (cleared by `onScroll`) and no visible items with ranges → falls through to `resetItemRange(canUseViewport=true)`. This centers all items on the current viewport, so `itemRange` always wraps the viewport with ample margin. The pixel-based `alreadyLoaded` check in `getDataQuery` (line ~1951) sees:
+   - `alreadyLoadedFromStart = 2872px > loadZoneTrigger = 836px` ✓
+   - `alreadyLoadedTillEnd = 2014px > loadZoneTrigger = 836px` ✓
+   - Conclusion: "No need to load more data" → returns `this.lastQuery`
+
+2. **`mustRequestData` rejects via reference equality.** Since `getDataQuery` returned `this.lastQuery` (same object reference), `mustRequestData` at line ~1885 sees `this.lastQuery === query` → returns `false`.
+
+3. **No new render → no new query object → permanent deadlock.** No request means no render, which means the query object never changes, which means no request can ever fire.
+
+**Contributing factor — only 1 item loaded per request:** Each `GetData` call returns just 1 new item despite requesting ranges of 5-6 entries (e.g., query `[2667,2669)@[0-5]` → loaded only `first=2665, last=2665`). The list advances by 1 item per render cycle (~60ms), far too slow to keep up with scroll speed.
+
+**The fix should address:** `getDataQuery` must not rely solely on pixel-based `alreadyLoaded` checks when `resetItemRange` has repositioned items. When `!rs.hasVeryLastItem` (or `!rs.hasVeryFirstItem`), the viewport may be near the logical boundary of data even though it appears centered in pixel space. The item count between viewport and the edge of loaded data should be checked instead of (or in addition to) pixel distances.
+
+## Refactoring Progress
+
+### Step (a): State Snapshot Infrastructure — DONE
+
+**Branch:** `dev`
+**Commit range:** after `a859739c2`
+
+All 25 mutable state fields in `VirtualList` are now routed through a single `_state: VirtualListState` object. A `private get state()` getter exposes it for reads (`this.state.viewport`, `this.state.renderState`, etc.). Mutations go through `updateState(reason, prev, changes)`, which takes the previous state explicitly and returns the new state:
+
+- Detects which fields actually changed (skip if nothing changed)
+- Snapshots the previous state into a ring buffer (50 entries)
+- Applies changes immutably (`{ ...prev, ...changes }`)
+- Logs via `debugLog`: `[state] <reason> [changedFields] {changes}`
+
+**What was added:**
+
+| Item | Description |
+|------|-------------|
+| `VirtualListState` interface | 25 fields: scroll, items, range tracking, query, render, visibility, UI |
+| `VirtualListStateSnapshot` interface | `{ reason, time, state, changedFields }` |
+| `_state`, `_stateHistory[]`, `_stateVersion` | Replace 25 individual fields |
+| `private get state()` | Single getter returning `this._state` — all reads use `this.state.viewport`, `this.state.renderState`, etc. |
+| `updateState(reason, prev, changes): VirtualListState` | Core mutation method: takes previous state explicitly, returns new state. Change detection, snapshotting, logging. |
+| `snapshotState(state)` | Shallow copy with array cloning for `orderedItems` and `pivots` |
+| `dumpStateHistory(lastN?)` | Public — call `virtualList.dumpStateHistory()` in DevTools; uses `console.warn` |
+
+**Mutation sites replaced:** ~40 `updateState` calls covering ~122 individual assignment sites across all methods.
+
+**Infrastructure fields kept as regular fields:** `isDisposed`, `cachedAllItemRefs`, `whenRequestDataCompleted`, `turnOffScrollingCallback`.
+
+**Rollback:** Revert the single commit that contains these changes. No other files were modified; no API or behavioral changes. The refactoring is purely internal — all external behavior (Blazor interop, scroll handling, data queries) is identical.
+
+### Suggested Next Steps
+
+#### Step (b): State-diff based bug detection — DONE
+
+`validateState()` is called after every `updateState`. It checks for known-bad state transitions:
+
+- `itemRange` set to non-null while `orderedItems` is empty
+- `viewport` jumping by more than 2x its size in a single update (potential scroll jump)
+- `renderStartedAt` overwritten while already set (overlapping renders)
+- `stickyEdge` referencing an `itemKey` not present in `orderedItems`
+- `itemRange` jumping by more than 2x its size (potential positioning error from `resetItemRange`)
+
+When any violation is detected, warnings are logged via `console.warn` and the last 10 state history entries are auto-dumped.
+
+**Rollback:** Same as step (a) — all changes are in `virtual-list.ts` only.
+
+#### Step (c)+(d): Fix getDataQuery / mustRequestData deadlock — DONE
+
+**Root cause addressed:** After `resetItemRange(canUseViewport=true)` repositions items centered on the viewport, the pixel-based "already loaded" check in `getDataQuery` is fooled — `alreadyLoadedFromStart` and `alreadyLoadedTillEnd` both look large. So `getDataQuery` returns `this.lastQuery` (same reference). Then `mustRequestData` sees `this.lastQuery === query` and rejects. No new request → no new render → stuck forever.
+
+**Fix (in `getDataQuery`):** Added an item-count proximity check alongside the pixel-based check. Before concluding "no need to load more data", we now verify:
+
+```typescript
+const itemCountThreshold = Math.max(5, Math.ceil(viewportSize / this.statistics.itemSize));
+const isNearStartByCount = !rs.hasVeryFirstItem && orderedItems.length > 0
+    && orderedItems.length < itemCountThreshold * 3;
+const isNearEndByCount = !rs.hasVeryLastItem && orderedItems.length > 0
+    && orderedItems.length < itemCountThreshold * 3;
+```
+
+If we have fewer than ~3 viewports worth of items and haven't reached the logical first/last item, we skip the pixel-based early return and generate a new query. This breaks the deadlock because:
+
+1. `getDataQuery` creates a **new** query object (not `this.lastQuery`)
+2. `mustRequestData` doesn't reject via reference equality (different object)
+3. The request goes through → data loads → items grow → eventually pixel check is satisfied
+
+This also addresses the scroll jump scenario: when item count is low after rapid scrolling (pivots cleared → `resetItemRange` repositioned), the new query forces data to load, preventing the list from being stuck with incorrectly-positioned items.
+
+**Rollback:** Revert the changes in `getDataQuery` (the `itemCountThreshold` / `isNearStartByCount` / `isNearEndByCount` block). No other methods were modified for this fix.
+
+#### Step (e): Fix double-repositioning viewport jump in restoreScrollPosition — DONE
+
+**Root cause:** `restoreScrollPosition.read()` could trigger item repositioning twice:
+
+1. `ensureItemRangeCalculated()` (line ~1448) — when no cornerstone item with a range is found, it calls `resetItemRange(canUseViewport=true)` internally (line ~1752), shifting all items. The delta from this shift is **not captured**.
+2. Explicit `resetItemRange()` (lines ~1514/1520) — repositions items again. `scrollTopOffset = resetDelta` captures **only this second delta**.
+
+The total visual shift is delta1 + delta2, but only delta2 was compensated via `scrollTop` adjustment, causing a viewport jump (observed as 4462px in live testing).
+
+**Fix (in `restoreScrollPosition.read()`):** Instead of relying on `resetDelta` from individual `resetItemRange` calls, we now:
+
+1. Capture a reference item's position **before** any repositioning (`measureItems`, `ensureItemRangeCalculated`, or explicit `resetItemRange`)
+2. After all repositioning is complete, compute the **total delta** by comparing the reference item's final position to its original position
+3. Use this total delta as `scrollTopOffset`
+
+For End edge: tracks the last item with a range (`.end` position). For Start edge: tracks the first item with a range (`.start` position). If no item had a range before repositioning (all new items), delta is 0 — correct since there's no previous visual position to preserve.
+
+**Rollback:** Revert the changes in `restoreScrollPosition` method — remove the `preRepoRefIdx`/`preRepoRefPos` capture block at the start of `read()`, and restore the `scrollTopOffset = resetDelta` assignments in the 4 edge-specific branches.
+
+### Further Investigation Needed
+
+- **Scroll jump may still occur** in the initial positioning during `resetItemRange(canUseViewport=true)`. The item-count fix ensures data *eventually* loads, but the temporary misp positioning (items centered at wrong viewport coords) can still cause a visual jump. A more robust fix would preserve at least one pivot across scroll events or track that `resetItemRange` ran and defer scroll-position restoration.
+- **"Only 1 item loaded per request"** (contributing factor noted in the investigation) is a server-side issue in `ChatView.GetData()`. Each `GetData` call returns just 1 new item despite requesting ranges of 5-6 entries. This means the list needs many render cycles to catch up, amplifying any positioning errors.
