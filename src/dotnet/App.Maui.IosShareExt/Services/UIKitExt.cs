@@ -19,7 +19,10 @@ public static class UIKitExt
             generator.NotificationOccurred(UINotificationFeedbackType.Success);
         });
 
-    public static ChatId? GetSuggestedRecipient()
+    public static Task<ChatId?> GetSuggestedRecipient()
+        => MainThread.InvokeOnMainThreadAsync(GetSuggestedRecipientUnsafe);
+
+    private static ChatId? GetSuggestedRecipientUnsafe()
         => ExtensionContext.GetIntent() is INSendMessageIntent sendMessageIntent
             ? ChatId.ParseNullable(sendMessageIntent.ConversationIdentifier)
             : null;

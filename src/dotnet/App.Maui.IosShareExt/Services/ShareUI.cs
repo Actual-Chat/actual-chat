@@ -64,17 +64,26 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        if (UIKitExt.GetSuggestedRecipient() is not { } chatId) {
-            _canSelectContacts.Value = true;
-            return;
+        try {
+            if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId) {
+                _canSelectContacts.Value = true;
+                return;
+            }
+
+            // Show upload progress immediately when sharing from a contact suggestion
+            _isUploading.Value = true;
+
+            var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+            var contactId = ContactId.NewAny(ownAccount.Id, chatId);
+
+            _selectedIds.Add(contactId);
+            _canSend.Value = true;
+            StartSending();
         }
-
-        var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-        var contactId = ContactId.NewAny(ownAccount.Id, chatId);
-
-        _selectedIds.Add(contactId);
-        _canSend.Value = true;
-        StartSending();
+        catch (Exception e) {
+            Log.LogError(e, "Failed to initialize");
+            _isFailed.Value = true;
+        }
     }
 
     protected override Task DisposeAsyncCore()
