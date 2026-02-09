@@ -15,7 +15,7 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
     private readonly IMutableState<string?> _selectedCameraDeviceId;
     private readonly IMutableState<string?> _errorMessage;
 
-    private IRealtimeStreaming RealtimeStreaming => Hub.Services.GetRequiredService<IRealtimeStreaming>();
+    private ILiveVideoStreams LiveVideoStreams => Hub.Services.GetRequiredService<ILiveVideoStreams>();
     private IAuthors Authors => Hub.Authors;
 
     public ChatVideoUI(AppUIHub hub) : base(hub)
@@ -92,13 +92,13 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
     }
 
     [ComputeMethod]
-    public virtual async Task<ActiveVideoStreams?> GetActiveVideoStreams(ChatId? chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<ApiArray<VideoStreamInfo>> GetActiveVideoStreams(ChatId? chatId, CancellationToken cancellationToken = default)
     {
         if (chatId is null)
-            return null;
+            return default;
 
-        return await RealtimeStreaming
-            .GetActiveVideoStreams(Session, chatId, cancellationToken)
+        return await LiveVideoStreams
+            .ListActiveStreams(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -108,7 +108,7 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
         if (chatId is null)
             return [];
 
-        return await RealtimeStreaming
+        return await LiveVideoStreams
             .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -119,7 +119,7 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
         if (chatId is null)
             return false;
 
-        var authorIds = await RealtimeStreaming
+        var authorIds = await LiveVideoStreams
             .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
         return authorIds.Length > 0;
@@ -131,7 +131,7 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
         if (chatId is null)
             return 0;
 
-        return await RealtimeStreaming
+        return await LiveVideoStreams
             .GetVideoStreamMemberCount(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
     }

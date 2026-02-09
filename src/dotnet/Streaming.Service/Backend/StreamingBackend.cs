@@ -3,7 +3,6 @@ using ActualChat.Chat;
 using ActualChat.Diagnostics;
 using ActualChat.Kvas;
 using ActualChat.Streaming.Services;
-using ActualChat.Video;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
 using Microsoft.Extensions.Hosting;
@@ -16,7 +15,6 @@ namespace ActualChat.Streaming;
 public partial class StreamingBackend : IStreamingBackend, IDisposable
 {
     private readonly StreamStore<byte[]> _audioStreams;
-    private readonly StreamStore<VideoFrame> _videoStreams;
     private readonly StreamStore<TranscriptDiff> _transcriptStreams;
     private readonly ConcurrentDictionary<StreamId, StreamId> _translatingStreams = new();
 
@@ -51,12 +49,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
             Log = services.LogFor($"{typeFullName}.AudioStreams"),
         };
-        _videoStreams = new StreamStore<VideoFrame> {
-            StreamIdValidator = ValidateStreamId,
-            StreamCount = AppMeters.VideoStreamCount,
-            ExpirationDelay = Constants.Video.StreamExpirationDelay,
-            Log = services.LogFor($"{typeFullName}.VideoStreams"),
-        };
         _transcriptStreams = new StreamStore<TranscriptDiff> {
             StreamIdValidator = ValidateStreamId,
             ExpirationDelay = AudioSettings.StreamExpirationDelay,
@@ -68,7 +60,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
     public void Dispose()
     {
         _audioStreams.Dispose();
-        _videoStreams.Dispose();
         _transcriptStreams.Dispose();
     }
 
@@ -79,35 +70,6 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
             return null;
 
         stream = SkipTo(stream, skipTo, cancellationToken);
-        return RpcStream.New(stream);
-    }
-
-    public virtual async Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
-    {
-        Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}", streamId, skipTo);
-        var stream = await _videoStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
-        if (stream == null) {
-            Log.LogWarning("GetVideo: Stream {StreamId} not found in StreamStore", streamId);
-            return null;
-        }
-
-        Log.LogInformation("GetVideo: Stream {StreamId} found, wrapping with logging", streamId);
-
-        // Debug: wrap stream to count and log frames being sent to client
-        var frameCount = 0;
-        async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
-        {
-            await foreach (var frame in source.WithCancellation(cancellationToken)) {
-                frameCount++;
-                if (frameCount <= 3 || frameCount % 30 == 0)
-                    Log.LogInformation("GetVideo sending frame #{Count}: Offset={Offset}ms, Size={Size}, IsKey={IsKey}",
-                        frameCount, frame.Offset.TotalMilliseconds, frame.Data?.Length ?? 0, frame.IsKeyFrame);
-                yield return frame;
-            }
-            Log.LogInformation("GetVideo stream ended after {Count} frames", frameCount);
-        }
-
-        stream = SkipToKeyFrame(LogFrames(stream), skipTo, cancellationToken);
         return RpcStream.New(stream);
     }
 
@@ -176,17 +138,4 @@ public partial class StreamingBackend : IStreamingBackend, IDisposable
             .PrependOne(headerDataTask);
     }
 
-    private static IAsyncEnumerable<VideoFrame> SkipToKeyFrame(
-        IAsyncEnumerable<VideoFrame> stream,
-        TimeSpan skipTo,
-        CancellationToken cancellationToken)
-    {
-        _ = cancellationToken; // Reserved for future use
-        if (skipTo <= TimeSpan.Zero)
-            return stream;
-
-        // Skip frames until we find a keyframe at or after the requested position.
-        // For video, we must start from a keyframe to decode correctly.
-        return stream.SkipWhile(frame => frame.Offset < skipTo || !frame.IsKeyFrame);
-    }
 }

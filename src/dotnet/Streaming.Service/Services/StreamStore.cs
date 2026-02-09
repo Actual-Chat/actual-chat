@@ -3,7 +3,7 @@ using System.Diagnostics.Metrics;
 namespace ActualChat.Streaming.Services;
 
 /// <summary>
-/// In-memory store for sharing active audio and transcript streams.
+/// In-memory store for sharing active audio, video, transcript streams.
 /// </summary>
 public class StreamStore<TItem> : ProcessorBase
 {

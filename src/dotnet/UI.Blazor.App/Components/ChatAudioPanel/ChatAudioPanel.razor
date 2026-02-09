@@ -62,6 +62,14 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = new Model(null, false, false, false),
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);

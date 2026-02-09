@@ -20,7 +20,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         var (chatId, inviteId) = await bob.CreateChat(false);
         await alice.JoinChat(chatId, inviteId);
 
-        var backend = AppHost.Services.GetRequiredService<IRealtimeStreamingBackend>();
+        var backend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         bobAuthor.Should().NotBeNull();
 
@@ -34,18 +34,18 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
             Clocks.SystemClock.Now);
 
         // Act: register the video stream
-        await Commander.Call(new RealtimeStreamingBackend_RegisterVideoStream(streamInfo));
+        await backend.RegisterActiveStream(chatId, streamInfo, CancellationToken.None);
 
         // Assert: GetVideoStreamingAuthorIds should return Bob's AuthorId
         var authorIds = await backend.GetVideoStreamingAuthorIds(chatId, CancellationToken.None);
         authorIds.Should().HaveCount(1);
         authorIds.Should().Contain(bobAuthor.Id);
 
-        // Assert: GetActiveVideoStreams should include the stream
-        var activeStreams = await backend.GetActiveVideoStreams(chatId, CancellationToken.None);
-        activeStreams.Streams.Should().HaveCount(1);
-        activeStreams.Streams[0].StreamId.Should().Be(streamId);
-        activeStreams.Streams[0].AuthorId.Should().Be(bobAuthor.Id);
+        // Assert: ListActiveStreams should include the stream
+        var activeStreams = await backend.ListActiveStreams(chatId, CancellationToken.None);
+        activeStreams.Should().HaveCount(1);
+        activeStreams[0].StreamId.Should().Be(streamId);
+        activeStreams[0].AuthorId.Should().Be(bobAuthor.Id);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
 
         var (chatId, _) = await bob.CreateChat(true);
 
-        var backend = AppHost.Services.GetRequiredService<IRealtimeStreamingBackend>();
+        var backend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         bobAuthor.Should().NotBeNull();
 
@@ -76,7 +76,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
             new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
             Clocks.SystemClock.Now);
 
-        await Commander.Call(new RealtimeStreamingBackend_RegisterVideoStream(streamInfo));
+        await backend.RegisterActiveStream(chatId, streamInfo, CancellationToken.None);
 
         // Computed should be invalidated
         computed.IsConsistent().Should().BeFalse();
@@ -87,7 +87,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         computed.Value.Should().Contain(bobAuthor.Id);
 
         // Unregister the stream
-        await Commander.Call(new RealtimeStreamingBackend_UnregisterVideoStream(streamId, chatId));
+        await backend.UnregisterActiveStream(chatId, streamId, CancellationToken.None);
 
         // Computed should be invalidated again
         computed.IsConsistent().Should().BeFalse();
@@ -100,7 +100,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
     [Fact]
     public async Task ShouldDetectVideoStreamingViaFrontendService()
     {
-        // Arrange: this tests the full pipeline through IRealtimeStreaming (frontend)
+        // Arrange: this tests the full pipeline through ILiveVideoStreams (frontend)
         // which is what ChatVideoUI.IsAnyoneVideoStreaming calls
         await using var bob = AppHost.NewWebClientTester(Out);
         await using var alice = AppHost.NewWebClientTester(Out);
@@ -110,8 +110,8 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
         var (chatId, inviteId) = await bob.CreateChat(false);
         await alice.JoinChat(chatId, inviteId);
 
-        var backend = AppHost.Services.GetRequiredService<IRealtimeStreamingBackend>();
-        var frontend = AppHost.Services.GetRequiredService<IRealtimeStreaming>();
+        var backend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
+        var frontend = AppHost.Services.GetRequiredService<ILiveVideoStreams>();
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         bobAuthor.Should().NotBeNull();
 
@@ -128,7 +128,7 @@ public class VideoStreamActivityPanelTest(ChatAppHostFixture fixture, ITestOutpu
             new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
             Clocks.SystemClock.Now);
 
-        await Commander.Call(new RealtimeStreamingBackend_RegisterVideoStream(streamInfo));
+        await backend.RegisterActiveStream(chatId, streamInfo, CancellationToken.None);
 
         // Alice should see Bob's stream via frontend service
         authorIds = await frontend.GetVideoStreamingAuthorIds(alice.Session, chatId, CancellationToken.None);

@@ -1,8 +1,10 @@
+using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.Video;
 using ActualChat.Hosting;
 using ActualChat.Security;
 using ActualLab.Rpc;
+using MessagePack;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
@@ -11,7 +13,7 @@ using Hub = Microsoft.AspNetCore.SignalR.Hub;
 namespace ActualChat.Streaming.Services;
 
 /// <summary>
-/// SignalR hub for real-time audio streaming from clients.
+/// SignalR hub for real-time audio and video streaming from clients.
 /// </summary>
 public class StreamHub(IServiceProvider services) : Hub
 {
@@ -23,6 +25,7 @@ public class StreamHub(IServiceProvider services) : Hub
     private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
     private IHostApplicationLifetime HostLifetime { get; } = services.HostLifetime();
     private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
+    private ILiveVideoBackend LiveVideoBackend { get; } = services.GetRequiredService<ILiveVideoBackend>();
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 
     // Currently unused
@@ -46,8 +49,10 @@ public class StreamHub(IServiceProvider services) : Hub
             preSkip,
             audioStream.SelectMany(c => c.AsAsyncEnumerable()));
 
-    // Video streaming method for JS client
-    // VideoFrame is deserialized directly via MessagePack with camelCase keys
+    // Video streaming method for JS client.
+    // Uses byte[][] batches (like audio) to avoid MessagePack deserialization issues
+    // with VideoFrame's TimeSpan properties and [MessagePackObject] inheritance.
+    // Each byte[] in the batch is a MessagePack-encoded VideoFrameDto.
     public Task PushVideo(
         string sessionToken,
         string? chatId,
@@ -56,49 +61,52 @@ public class StreamHub(IServiceProvider services) : Hub
         int height,
         string? codecSettings, // Base64 encoded SPS/PPS for H.264
         double clientStartOffset,
-        IAsyncEnumerable<VideoFrame[]> videoStream)
+        IAsyncEnumerable<byte[][]> videoStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         Log.LogInformation("PushVideo: Started with codec={Codec}, {Width}x{Height}, codecSettings={CodecSettingsLen} chars",
             codec, width, height, codecSettings?.Length ?? 0);
 
-        // Debug wrapper to count incoming batches and add codec to keyframes
-        async IAsyncEnumerable<VideoFrame> LogBatches(IAsyncEnumerable<VideoFrame[]> source)
+        // Convert raw byte[][] batches to VideoFrame stream.
+        // Each byte[] is a MessagePack map with camelCase string keys from the JS client.
+        // We parse manually because the project's MessagePack attributes are shims.
+        async IAsyncEnumerable<VideoFrame> ToVideoFrames(IAsyncEnumerable<byte[][]> source)
         {
             var batchCount = 0;
             var frameCount = 0;
             await foreach (var batch in source) {
                 batchCount++;
-                if (batch == null) {
-                    Log.LogWarning("PushVideo: received null batch #{BatchCount}", batchCount);
+                if (batch.Length == 0)
                     continue;
-                }
-                Log.LogInformation("PushVideo: received batch #{BatchCount} with {FrameCount} frames", batchCount, batch.Length);
-                foreach (var frame in batch) {
+
+                if (batchCount <= 3 || batchCount % 30 == 0)
+                    Log.LogInformation("PushVideo: batch #{BatchCount} with {Count} frames", batchCount, batch.Length);
+
+                foreach (var frameBytes in batch) {
+                    if (frameBytes.Length == 0)
+                        continue;
+
+                    var frame = DeserializeVideoFrame(frameBytes, codec);
+                    if (frame == null) {
+                        if (batchCount <= 3)
+                            Log.LogWarning("PushVideo: failed to deserialize frame in batch #{BatchCount}, bytes[0..8]={Hex}",
+                                batchCount,
+                                Convert.ToHexString(frameBytes.AsSpan(0, Math.Min(8, frameBytes.Length))));
+                        continue;
+                    }
+
                     frameCount++;
                     if (frameCount <= 3 || frameCount % 30 == 0 || frame.IsKeyFrame)
                         Log.LogInformation("PushVideo frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
                             frameCount, frame.Offset.TotalMilliseconds, frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Description?.Length ?? 0);
 
-                    // Add codec to keyframes so receivers can extract format from stream
-                    if (frame.IsKeyFrame && frame.Codec == null)
-                        yield return new VideoFrame(true) {
-                            Data = frame.Data,
-                            Offset = frame.Offset,
-                            Duration = frame.Duration,
-                            Width = frame.Width,
-                            Height = frame.Height,
-                            Description = frame.Description,
-                            Codec = codec,
-                        };
-                    else
-                        yield return frame;
+                    yield return frame;
                 }
             }
             Log.LogInformation("PushVideo: stream ended after {BatchCount} batches, {FrameCount} total frames", batchCount, frameCount);
         }
 
-        return PushVideo(
+        return PushVideoInternal(
             sessionToken,
             chatId,
             codec,
@@ -106,7 +114,7 @@ public class StreamHub(IServiceProvider services) : Hub
             height,
             codecSettings,
             clientStartOffset,
-            LogBatches(videoStream));
+            ToVideoFrames(videoStream));
     }
 
     // Private methods
@@ -154,7 +162,7 @@ public class StreamHub(IServiceProvider services) : Hub
             .SilentAwait(false);
     }
 
-    private async Task PushVideo(
+    private async Task PushVideoInternal(
         string sessionToken,
         string? chatId,
         string codec,
@@ -187,24 +195,9 @@ public class StreamHub(IServiceProvider services) : Hub
         var videoRecord = new VideoRecord(streamId, session, chatIdTyped, clientStartOffset, format);
         Log.LogInformation("PushVideo: {VideoRecord}, CodecSettings={CodecSettingsLen} chars", videoRecord, (codecSettings ?? "").Length);
 
-        // Debug: wrap stream to count and log frames
-        var frameCount = 0;
-        async IAsyncEnumerable<VideoFrame> LogFrames(IAsyncEnumerable<VideoFrame> source)
-        {
-            await foreach (var frame in source) {
-                frameCount++;
-                if (frameCount <= 3 || frameCount % 30 == 0)
-                    Log.LogInformation("PushVideo frame #{Count}: Offset={Offset}ms, Duration={Duration}ms, IsKey={IsKey}, Size={Size}, W={W}, H={H}",
-                        frameCount, frame.Offset.TotalMilliseconds, frame.Duration.TotalMilliseconds,
-                        frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Width, frame.Height);
-                yield return frame;
-            }
-            Log.LogInformation("PushVideo stream ended after {Count} frames", frameCount);
-        }
-
-        var frames = LogFrames(videoStream.SuppressCancellation(stopCts.Token));
+        var frames = videoStream.SuppressCancellation(stopCts.Token);
         var frameStream = RpcStream.New(frames);
-        await Backend
+        await LiveVideoBackend
             .PushVideo(videoRecord, frameStream, CancellationToken.None)
             .SilentAwait(false);
     }
@@ -221,4 +214,73 @@ public class StreamHub(IServiceProvider services) : Hub
     private Session? GetSessionFromToken(string sessionToken)
         => sessionToken.IsNullOrEmpty() ? null
             : SecureTokensBackend.ParseSessionToken(sessionToken);
+
+    /// <summary>
+    /// Deserialize a MessagePack-encoded video frame from the JS client.
+    /// The JS client sends a map with camelCase string keys and numeric ticks.
+    /// We parse manually because the project's MessagePack attributes are shims
+    /// (MemoryPack is the primary serializer).
+    /// </summary>
+    private static VideoFrame? DeserializeVideoFrame(byte[] bytes, string fallbackCodec)
+    {
+        try {
+            var reader = new MessagePackReader(bytes);
+            var mapLen = reader.ReadMapHeader();
+
+            long offset = 0;
+            long duration = 0;
+            var isKeyFrame = false;
+            var width = 0;
+            var height = 0;
+            byte[]? data = null;
+            byte[]? description = null;
+            string? codec = null;
+
+            for (var i = 0; i < mapLen; i++) {
+                var key = reader.ReadString();
+                switch (key) {
+                    case "offset":
+                        offset = reader.ReadInt64();
+                        break;
+                    case "duration":
+                        duration = reader.ReadInt64();
+                        break;
+                    case "isKeyFrame":
+                        isKeyFrame = reader.ReadBoolean();
+                        break;
+                    case "width":
+                        width = reader.ReadInt32();
+                        break;
+                    case "height":
+                        height = reader.ReadInt32();
+                        break;
+                    case "data":
+                        data = reader.ReadBytes()?.ToArray();
+                        break;
+                    case "description":
+                        description = reader.TryReadNil() ? null : reader.ReadBytes()?.ToArray();
+                        break;
+                    case "codec":
+                        codec = reader.TryReadNil() ? null : reader.ReadString();
+                        break;
+                    default:
+                        reader.Skip();
+                        break;
+                }
+            }
+
+            return new VideoFrame(isKeyFrame) {
+                Data = data ?? [],
+                Offset = new TimeSpan(offset),
+                Duration = new TimeSpan(duration),
+                Width = width,
+                Height = height,
+                Description = description,
+                Codec = isKeyFrame ? (codec ?? fallbackCodec) : codec,
+            };
+        }
+        catch {
+            return null;
+        }
+    }
 }

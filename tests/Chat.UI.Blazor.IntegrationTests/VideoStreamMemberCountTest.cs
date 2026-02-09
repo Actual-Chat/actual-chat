@@ -19,7 +19,7 @@ public class VideoStreamMemberCountTest(ChatAppHostFixture fixture, ITestOutputH
         var (chatId, inviteId) = await bob.CreateChat(false);
         await alice.JoinChat(chatId, inviteId);
 
-        var backend = AppHost.Services.GetRequiredService<IRealtimeStreamingBackend>();
+        var backend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
         var bobSessionId = bob.Session.Id;
         var aliceSessionId = alice.Session.Id;
 
@@ -28,27 +28,27 @@ public class VideoStreamMemberCountTest(ChatAppHostFixture fixture, ITestOutputH
         count.Should().Be(0);
 
         // Register Bob as stream member
-        await Commander.Call(new RealtimeStreamingBackend_RegisterVideoStreamMember(chatId, bobSessionId));
+        await backend.RegisterVideoStreamMember(chatId, bobSessionId, CancellationToken.None);
         count = await backend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
         count.Should().Be(1);
 
         // Register Alice as stream member
-        await Commander.Call(new RealtimeStreamingBackend_RegisterVideoStreamMember(chatId, aliceSessionId));
+        await backend.RegisterVideoStreamMember(chatId, aliceSessionId, CancellationToken.None);
         count = await backend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
         count.Should().Be(2);
 
         // Duplicate registration of Bob should not increase count
-        await Commander.Call(new RealtimeStreamingBackend_RegisterVideoStreamMember(chatId, bobSessionId));
+        await backend.RegisterVideoStreamMember(chatId, bobSessionId, CancellationToken.None);
         count = await backend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
         count.Should().Be(2);
 
         // Unregister Bob
-        await Commander.Call(new RealtimeStreamingBackend_UnregisterVideoStreamMember(chatId, bobSessionId));
+        await backend.UnregisterVideoStreamMember(chatId, bobSessionId, CancellationToken.None);
         count = await backend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
         count.Should().Be(1);
 
         // Unregister Alice
-        await Commander.Call(new RealtimeStreamingBackend_UnregisterVideoStreamMember(chatId, aliceSessionId));
+        await backend.UnregisterVideoStreamMember(chatId, aliceSessionId, CancellationToken.None);
         count = await backend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
         count.Should().Be(0);
     }
@@ -63,11 +63,11 @@ public class VideoStreamMemberCountTest(ChatAppHostFixture fixture, ITestOutputH
         var (chatId1, _) = await bob.CreateChat(true, "Chat 1");
         var (chatId2, _) = await bob.CreateChat(true, "Chat 2");
 
-        var backend = AppHost.Services.GetRequiredService<IRealtimeStreamingBackend>();
+        var backend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
         var bobSessionId = bob.Session.Id;
 
         // Register Bob in chat 1 only
-        await Commander.Call(new RealtimeStreamingBackend_RegisterVideoStreamMember(chatId1, bobSessionId));
+        await backend.RegisterVideoStreamMember(chatId1, bobSessionId, CancellationToken.None);
 
         var count1 = await backend.GetVideoStreamMemberCount(chatId1, CancellationToken.None);
         var count2 = await backend.GetVideoStreamMemberCount(chatId2, CancellationToken.None);
@@ -85,7 +85,7 @@ public class VideoStreamMemberCountTest(ChatAppHostFixture fixture, ITestOutputH
 
         var (chatId, _) = await bob.CreateChat(true);
 
-        var backend = AppHost.Services.GetRequiredService<IRealtimeStreamingBackend>();
+        var backend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
         var bobSessionId = bob.Session.Id;
 
         // Capture initial computed value
@@ -95,7 +95,7 @@ public class VideoStreamMemberCountTest(ChatAppHostFixture fixture, ITestOutputH
         computed.IsConsistent().Should().BeTrue();
 
         // Register a member — computed should become inconsistent
-        await Commander.Call(new RealtimeStreamingBackend_RegisterVideoStreamMember(chatId, bobSessionId));
+        await backend.RegisterVideoStreamMember(chatId, bobSessionId, CancellationToken.None);
         computed.IsConsistent().Should().BeFalse();
 
         // Re-capture — should reflect new value

@@ -8,6 +8,7 @@ namespace ActualChat.Streaming.Services;
 public class StreamServer(IServiceProvider services) : IStreamServer
 {
     private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
+    private ILiveVideoBackend LiveVideoBackend { get; } = services.GetRequiredService<ILiveVideoBackend>();
     private ILogger Log { get; } = services.LogFor<StreamServer>();
 
     public async Task<RpcStream<byte[]>?> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
@@ -21,7 +22,7 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     {
         RpcStream<VideoFrame>? frames = null;
         try {
-            frames = await Backend.GetVideo(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
+            frames = await LiveVideoBackend.GetVideo(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (RpcReconnectFailedException) { }
