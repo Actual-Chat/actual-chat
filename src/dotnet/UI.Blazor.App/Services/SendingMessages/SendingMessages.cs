@@ -148,7 +148,9 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var sourceAttachment = sourceAttachments?[i];
             var previewUrl = "";
             Task<string> getPreviewUrl = Task.FromResult("");
+            AttachmentId? sourceAttachmentId = null;
             if (sourceAttachment is SourceAttachment s) {
+                sourceAttachmentId = s.Id;
                 previewUrl = s.PreviewUrl;
                 getPreviewUrl = Task.FromResult(previewUrl);
             }
@@ -223,7 +225,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             };
             attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
-            attachmentRegistry.Unregister(attachment.Id);
+            if (sourceAttachmentId is not null)
+                attachmentRegistry.Unregister(sourceAttachmentId.Value);
             attachmentRegistry.Register(attachment);
             if (!attachmentIsOk)
                 attachmentRegistry.SetPreviewState(attachment.Id, AttachmentPreviewState.NoFileAccess);
