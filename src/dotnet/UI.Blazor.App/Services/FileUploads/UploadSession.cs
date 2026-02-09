@@ -6,6 +6,7 @@ public enum UploadStatus
 {
     Pending,
     Uploading,
+    Uploaded,  // Data uploaded, server-side processing started
     Completed,
     Failed,
     Canceled

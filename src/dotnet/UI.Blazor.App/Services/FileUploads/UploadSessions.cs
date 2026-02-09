@@ -20,10 +20,10 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             GetOrRegisterUpload,
             GetOrReserveMedia,
             SetupLink,
-            ConvertUpload,
+            StartProcessing,
             ClearUploadId);
         _fileUploader.ProgressChanged += OnProgressChanged;
-        _fileUploader.Completed += OnCompleted;
+        _fileUploader.Uploaded += OnUploaded;
         _fileUploader.Failed += OnFailed;
         _cleanupTask = BackgroundTask.Run(Cleanup);
     }
@@ -162,6 +162,11 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             Hub.UploadSessionsState.SetReservedMediaId(sessionId, session.ReservedMediaId);
         session.FileProvider.Initialize(Hub.Services);
         switch (session.Status) {
+            case UploadStatus.Uploaded when session.ReservedMediaId is not null:
+                // Resume monitoring if session was restored in Uploaded state
+                session.ProgressTracker.ReportProgress(100);
+                _ = BackgroundTask.Run(() => MonitorProcessing(sessionId, session.ReservedMediaId));
+                break;
             case UploadStatus.Completed when session.MediaContent is not null:
                 session.ProgressTracker.ReportProgress(100);
                 session.ProgressTracker.SetResult(session.MediaContent);
@@ -213,15 +218,80 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         session.ProgressTracker.ReportProgress(progress);
     }
 
-    private async Task OnCompleted(string sessionId, MediaContent mediaContent)
+    private async Task OnUploaded(string sessionId, UploadId uploadId, MediaId mediaId)
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
         session.ProgressTracker.ReportProgress(100);
+        session.Status = UploadStatus.Uploaded;
+        session.LastUpdatedAt = Now;
+        await _repo.Save(session).ConfigureAwait(false);
+
+        // Start monitoring processing status in background
+        _ = BackgroundTask.Run(() => MonitorProcessing(sessionId, mediaId));
+    }
+
+    private async Task MonitorProcessing(string sessionId, MediaId mediaId)
+    {
+        var pollDelay = TimeSpan.FromMilliseconds(500);
+        var maxWaitTime = TimeSpan.FromMinutes(10);
+        var startedAt = Now;
+
+        try {
+            while (Now - startedAt < maxWaitTime) {
+                var status = await Hub.Medias.GetStatus(Session, mediaId, CancellationToken.None).ConfigureAwait(false);
+                if (status == null) {
+                    await OnProcessingFailed(sessionId, new InvalidOperationException("Media not found")).ConfigureAwait(false);
+                    return;
+                }
+
+                switch (status.Status) {
+                    case MediaStatus.Ready:
+                        var content = await Hub.Medias.GetContent(Session, mediaId, CancellationToken.None).ConfigureAwait(false);
+                        if (content == null) {
+                            await OnProcessingFailed(sessionId, new InvalidOperationException("Media content not found after Ready status")).ConfigureAwait(false);
+                            return;
+                        }
+                        await OnProcessingCompleted(sessionId, content).ConfigureAwait(false);
+                        return;
+
+                    case MediaStatus.Failed:
+                        await OnProcessingFailed(sessionId, new InvalidOperationException("Media processing failed")).ConfigureAwait(false);
+                        return;
+
+                    default:
+                        // Still processing, wait and poll again
+                        await Task.Delay(pollDelay).ConfigureAwait(false);
+                        break;
+                }
+            }
+
+            await OnProcessingFailed(sessionId, new TimeoutException("Media processing timed out")).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Error monitoring processing for session {SessionId}", sessionId);
+            await OnProcessingFailed(sessionId, e).ConfigureAwait(false);
+        }
+    }
+
+    private async Task OnProcessingCompleted(string sessionId, MediaContent mediaContent)
+    {
+        var session = await GetSession(sessionId).ConfigureAwait(false);
         session.ProgressTracker.SetResult(mediaContent);
         session.Status = UploadStatus.Completed;
         session.LastUpdatedAt = Now;
         session.MediaContent = mediaContent;
         await _repo.Save(session).ConfigureAwait(false);
+        Log.LogInformation("Processing completed for session {SessionId}", sessionId);
+    }
+
+    private async Task OnProcessingFailed(string sessionId, Exception error)
+    {
+        var session = await GetSession(sessionId).ConfigureAwait(false);
+        session.ProgressTracker.SetException(error);
+        session.Status = UploadStatus.Failed;
+        session.LastUpdatedAt = Now;
+        await _repo.Save(session).ConfigureAwait(false);
+        Log.LogError(error, "Processing failed for session {SessionId}", sessionId);
     }
 
     private async Task OnFailed(string sessionId, Exception error)
@@ -275,47 +345,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await _repo.Save(session).ConfigureAwait(false);
     }
 
-    private async Task<MediaContent> ConvertUpload(UploadId uploadId, MediaId mediaId, CancellationToken ct)
-    {
-        // Start processing (non-blocking)
-        await Commander.Call(new Uploads_StartProcessUpload(Session, uploadId, mediaId), ct).ConfigureAwait(false);
-
-        // Poll for completion
-        return await WaitForMediaReady(mediaId, ct).ConfigureAwait(false);
-    }
-
-    private async Task<MediaContent> WaitForMediaReady(MediaId mediaId, CancellationToken ct)
-    {
-        var pollDelay = TimeSpan.FromMilliseconds(500);
-        var maxWaitTime = TimeSpan.FromMinutes(10);
-        var startedAt = Now;
-
-        while (Now - startedAt < maxWaitTime) {
-            ct.ThrowIfCancellationRequested();
-
-            var status = await Hub.Medias.GetStatus(Session, mediaId, ct).ConfigureAwait(false);
-            if (status == null)
-                throw new InvalidOperationException("Media not found");
-
-            switch (status.Status) {
-                case MediaStatus.Ready:
-                    var content = await Hub.Medias.GetContent(Session, mediaId, ct).ConfigureAwait(false);
-                    if (content == null)
-                        throw new InvalidOperationException("Media content not found after Ready status");
-                    return content;
-
-                case MediaStatus.Failed:
-                    throw new InvalidOperationException("Media processing failed");
-
-                default:
-                    // Still processing, wait and poll again
-                    await Task.Delay(pollDelay, ct).ConfigureAwait(false);
-                    break;
-            }
-        }
-
-        throw new TimeoutException("Media processing timed out");
-    }
+    private Task StartProcessing(UploadId uploadId, MediaId mediaId, CancellationToken ct)
+        => Commander.Call(new Uploads_StartProcessUpload(Session, uploadId, mediaId), ct);
 
     private async Task ClearUploadId(string sessionId, CancellationToken cancellationToken)
     {
