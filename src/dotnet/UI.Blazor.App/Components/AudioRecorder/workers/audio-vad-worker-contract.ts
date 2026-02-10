@@ -1,5 +1,5 @@
 import { RpcNoWait, RpcTimeout } from 'rpc';
-import { AudioDiagnosticsState } from "../audio-recorder";
+import { AudioDiagnosticsState } from '../audio-recorder';
 
 export interface AudioVadWorker {
     create(artifactVersions: Map<string, string>, canUseNNVad: boolean, timeout?: RpcTimeout): Promise<void>;

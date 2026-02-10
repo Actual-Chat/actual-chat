@@ -16,7 +16,7 @@ export class ResamplerWrapper implements Resampler {
 
         this.ringBuffer.push([result]);
         if (this.ringBuffer.samplesAvailable >= expectedSamples) {
-            if (output && output.length === expectedSamples) {
+            if (output?.length === expectedSamples) {
                 ringBuffer.pull([output]);
                 return output;
             }
@@ -65,7 +65,7 @@ export class ResamplerLoader {
             await this.load();
         }
 
-        if (this.resampler && this.resampler.inSampleRate === fromSampleRate && this.resampler.outSampleRate === toSampleRate)
+        if (this.resampler?.inSampleRate === fromSampleRate && this.resampler.outSampleRate === toSampleRate)
             return this.resampler;
 
         if (this.resampler)
@@ -86,12 +86,12 @@ function getResamplerEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
             const codecWasmPath = Versioning.mapPath(ResamplerWasm);
-            if (filename.slice(-4) === 'wasm')
+            if (filename.endsWith('wasm'))
                 return codecWasmPath;
 
-                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
+            // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI
-            else if (filename.slice(0, 5) === 'data:')
+            else if (filename.startsWith('data:'))
                 return filename;
             else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
         },

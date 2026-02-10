@@ -8,13 +8,13 @@ import { Disposable } from 'disposable';
 import { RunningEMA } from 'math';
 import { rpcClientServer, RpcNoWait, rpcNoWait, RpcTimeout } from 'rpc';
 import { Versioning } from 'versioning';
-import { AudioDiagnosticsState } from "../audio-recorder";
+import { AudioDiagnosticsState } from '../audio-recorder';
 import { NO_VOICE_ACTIVITY, VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
 import { AudioVadWorker } from './audio-vad-worker-contract';
 import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
 import { NeuralVoiceActivityDetector, WebRtcVoiceActivityDetector } from './audio-vad';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
-import { RecorderStateServer } from "../opus-media-recorder-contracts";
+import { RecorderStateServer } from '../opus-media-recorder-contracts';
 // @ts-ignore
 import OnnxModel from './vad_batched.ort';
 import { Log } from 'logging';
@@ -58,7 +58,7 @@ class VadLoader {
         return this.neuralVad !== null ? 32 : 30;
     }
 
-    public load(useNeuralVad: boolean = true): Promise<void> {
+    public load(useNeuralVad = true): Promise<void> {
         if (this.whenWebRtcVadReady == null) {
             this.useNeuralVad = useNeuralVad;
             this.whenWebRtcVadReady = (async () => {
@@ -228,7 +228,7 @@ async function processQueue(): Promise<void> {
                     void stateServer.onAudioPowerChange(vadEvent, rpcNoWait);
             }
             else {
-                if (vadEvent.kind === "start") {
+                if (vadEvent.kind === 'start') {
                     if (vads.useNeuralVad && !vads.neuralVad)
                         VadLoader.cancelNeuralVadLoadDelay();
                 }
@@ -251,7 +251,7 @@ function getWebRTCVadEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
             const codecWasmPath = Versioning.mapPath(WebRtcVadWasm);
-            if (filename.slice(-4) === 'wasm')
+            if (filename.endsWith('wasm'))
                 return codecWasmPath;
             // /// #if DEBUG
             // else if (filename.slice(-3) === 'map')
@@ -259,7 +259,7 @@ function getWebRTCVadEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
             // /// #endif
             // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI
-            else if (filename.slice(0, 5) === 'data:')
+            else if (filename.startsWith('data:'))
                 return filename;
             else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
         },

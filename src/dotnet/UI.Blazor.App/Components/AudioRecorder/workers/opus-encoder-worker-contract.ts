@@ -1,5 +1,5 @@
 import { VoiceActivityChange } from './audio-vad-contract';
-import { AudioDiagnosticsState } from "../audio-recorder";
+import { AudioDiagnosticsState } from '../audio-recorder';
 import { RpcNoWait, RpcTimeout } from 'rpc';
 
 export interface OpusEncoderWorker {
