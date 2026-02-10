@@ -23,6 +23,10 @@ import type { SegmentationWorker, SegmentationWorkerCallbacks } from './segmenta
 import type { SegmentationConfig, SegmentationStats, ModelConfig } from './segmentation-worker-contract';
 import { getModelConfig, DEFAULT_MODEL_CONFIG } from './segmentation-worker-contract';
 
+// Import the ONNX model so esbuild copies it to dist/assets/onnx/
+// @ts-ignore
+import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
+
 // Worker state
 let session: ort.InferenceSession | null = null;
 let config: SegmentationConfig | null = null;
@@ -286,6 +290,9 @@ const serverImpl: SegmentationWorker = {
       ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
       ort.env.wasm.numThreads = 1; // Use single thread for WASM backend
 
+      // Use the bundled model URL (resolved by esbuild import)
+      const modelUrl = SegmentationModelUrl;
+
       try {
         // Configure session options for WebGPU (only supported backend)
         const sessionOptions: ort.InferenceSession.SessionOptions = {
@@ -301,10 +308,9 @@ const serverImpl: SegmentationWorker = {
           enableGraphCapture: true
         };
 
-        console.log('[SegmentationWorker] Loading model with WebGPU backend');
+        console.log(`[SegmentationWorker] Loading model from bundled URL: ${modelUrl}`);
 
-        // Load ONNX model directly from URL
-        session = await ort.InferenceSession.create(segmentationConfig.modelUrl, sessionOptions);
+        session = await ort.InferenceSession.create(modelUrl, sessionOptions);
 
         console.log('[SegmentationWorker] Successfully loaded model with WebGPU backend');
 
@@ -349,8 +355,8 @@ const serverImpl: SegmentationWorker = {
       console.log(`[SegmentationWorker] Model outputs:`, session.outputNames);
 
       // Resolve and cache model config for tensor conversion
-      resolvedModelConfig = segmentationConfig.modelConfig ?? getModelConfig(segmentationConfig.modelUrl);
-      console.log(`[SegmentationWorker] Model config resolved for ${segmentationConfig.modelUrl}:`);
+      resolvedModelConfig = segmentationConfig.modelConfig ?? getModelConfig(modelUrl);
+      console.log(`[SegmentationWorker] Model config resolved for ${modelUrl}:`);
       console.log(`[SegmentationWorker]   - Input tensor format: ${resolvedModelConfig.tensorFormat}`);
       console.log(`[SegmentationWorker]   - Output format: ${resolvedModelConfig.outputFormat ?? DEFAULT_MODEL_CONFIG.outputFormat}`);
       console.log(`[SegmentationWorker]   - Output layout: ${resolvedModelConfig.outputLayout ?? DEFAULT_MODEL_CONFIG.outputLayout}`);

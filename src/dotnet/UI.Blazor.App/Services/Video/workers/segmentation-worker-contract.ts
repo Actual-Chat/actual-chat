@@ -109,159 +109,29 @@ export interface ModelConfig {
 
 /**
  * Predefined model configurations for known ONNX models.
- * Maps model URLs to their expected tensor format configurations.
+ * Maps model filenames to their expected tensor format configurations.
+ * Used by getModelConfig() for filename-based matching.
  */
 export const MODEL_CONFIGS: Record<string, ModelConfig> = {
-  // Legacy MediaPipe models - single channel output NHWC [1,256,256,1]
-  '/models/model_wasm._quantized.onnx': {
-    tensorFormat: 'nhwc_uint8',
-    outputFormat: 'single_channel',
-    outputLayout: 'nhwc',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/model_wasm.onnx': {
-    tensorFormat: 'nhwc_uint8',
-    outputFormat: 'single_channel',
-    outputLayout: 'nhwc',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/model_fp16.onnx': {
-    tensorFormat: 'nhwc_uint8',
-    outputFormat: 'single_channel',
-    outputLayout: 'nhwc',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/model_uint8.onnx': {
-    tensorFormat: 'nhwc_uint8',
-    outputFormat: 'single_channel',
-    outputLayout: 'nhwc',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/model_uint8_wasm.onnx': {
-    tensorFormat: 'nhwc_uint8',
-    outputFormat: 'single_channel',
-    outputLayout: 'nhwc',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/model_q4f16.onnx': {
-    tensorFormat: 'nhwc_uint8',
-    outputFormat: 'single_channel',
-    outputLayout: 'nhwc',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/model.onnx': {
-    tensorFormat: 'nhwc_uint8',
-    outputFormat: 'single_channel',
-    outputLayout: 'nhwc',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  // WebGPU optimized MediaPipe model - single channel output NHWC [1,256,256,1]
-  '/models/model_webgpu.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nhwc',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  // Selfie segmentation models - single channel output NCHW [1,1,256,256]
-  '/models/selfie_segmentation_olive_wasm_uint8.onnx': {
+  // Selfie segmentation model (Olive-optimized for WebGPU)
+  // Single channel output NCHW [1,1,256,256]
+  'selfie_segmentation_olive_webgpu.onnx': {
     tensorFormat: 'nchw_float32',
     outputFormat: 'single_channel',
     outputLayout: 'nchw',
+    outputDataType: 'float32',
     outputChannels: 1,
     backgroundChannelIndex: 0
   },
-  '/models/selfie_segmentation_olive_webgpu_fp16.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputDataType: 'float32',  // Model outputs float32
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/selfie_segmentation_wasm.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/selfie_segmentation_olive_wasm.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/selfie_segmentation_olive_webgpu.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/selfie/model.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/selfie/model_merged.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/selfie/model_webgpu.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/selfie_segmentation.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  '/models/selfie_segmentation_webgpu.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
-  // SINet model - multi-channel output float32[1, 2, 224, 224] NCHW
-  // Channel 0 = background, Channel 1 = person
-  // We want to use the person mask (channel 1) for blur compositing
-  '/models/SINet/model_merged.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'multi_channel_nchw',
-    outputLayout: 'nchw',  // Multi-channel is always NCHW
-    outputChannels: 2,
-    backgroundChannelIndex: 1  // Channel 1 is background, we invert logic in worker
-  }
 };
 
 /**
- * Default model configuration for backward compatibility.
- * Uses nhwc_uint8 format which is compatible with the original MediaPipe models.
+ * Default model configuration matching the bundled selfie segmentation model.
  */
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
-  tensorFormat: 'nhwc_uint8',
+  tensorFormat: 'nchw_float32',
   outputFormat: 'single_channel',
-  outputLayout: 'nhwc',
+  outputLayout: 'nchw',
   outputDataType: 'float32',
   outputChannels: 1,
   backgroundChannelIndex: 0
@@ -271,8 +141,8 @@ export interface SegmentationConfig {
   /** Backend to use for ONNX Runtime inference */
   backend: 'webgpu' | 'webgl' | 'wasm';
 
-  /** URL to the ONNX model file */
-  modelUrl: string;
+  /** URL to the ONNX model file (optional; worker resolves from bundled import) */
+  modelUrl?: string;
 
   /** Whether background blur is enabled */
   blurEnabled: boolean;
@@ -337,24 +207,7 @@ export const DEFAULT_SEGMENTATION_CONFIG = {
   /** Default blur radius for background blur effect (pixels) */
   blurRadius: 15,
 
-  /** Default model URL (merged model for ONNX Runtime Web compatibility) */
-  // modelUrl: '/models/SINet/model_merged.onnx',
-  // modelUrl: '/models/selfie/model_merged.onnx',
-  // modelUrl: '/models/selfie_segmentation.onnx',
-  // modelUrl: '/models/modnet_webnn_model_fp16.onnx',
-  // modelUrl: '/models/selfie_segmentation_webgpu.onnx',
-  // modelUrl: '/models/model_fp16.onnx',
-  // modelUrl: '/models/model_fp16_fixed.onnx',
-  // modelUrl: '/models/model_webgpu.onnx',
-  // modelUrl: '/models/model_wasm.onnx',
-  // modelUrl: '/models/model_uint8_wasm.onnx',
-  // modelUrl: '/models/selfie_segmentation_olive_wasm.onnx',
-  modelUrl: '/models/selfie_segmentation_olive_webgpu.onnx',
-  // modelUrl: '/models/selfie_segmentation_olive_wasm_uint8.onnx',
-  // modelUrl: '/models/selfie_segmentation_olive_webgpu_fp16.onnx',
-  // modelUrl: '/models/model_wasm_quantized.onnx',
-
-  /** Default input dimensions for the model (MediaPipe standard) */
+  /** Default input dimensions for the model */
   inputWidth: 256,
   inputHeight: 256,
 
@@ -376,46 +229,43 @@ export const DEFAULT_SEGMENTATION_CONFIG = {
 
 /**
  * Extract the filename from a URL or path.
- * Handles various formats: full URLs, absolute paths, relative paths.
+ * Handles various formats: full URLs, absolute paths, relative paths,
+ * and esbuild asset URLs (e.g., /dist/assets/onnx/selfie_segmentation_olive_webgpu-HASH.onnx).
+ *
+ * For esbuild-hashed filenames, strips the hash suffix to match the original name.
  *
  * @param url - The URL or path to extract filename from
- * @returns The filename without path or query string
+ * @returns The filename without path, query string, or esbuild hash
  */
 function extractFilename(url: string): string {
   // Remove query string and hash
   const cleanUrl = url.split('?')[0].split('#')[0];
   // Extract filename from path
-  return cleanUrl.split('/').pop() ?? '';
+  const filename = cleanUrl.split('/').pop() ?? '';
+  // Strip esbuild content hash (e.g., "model-ABCDEF12.onnx" -> "model.onnx")
+  return filename.replace(/-[A-Z0-9]{8}\./i, '.');
 }
 
 /**
  * Get the model configuration for a given model URL.
- * Matches by exact URL first, then falls back to filename matching.
+ * Matches by filename (stripping esbuild hashes and path prefixes).
  * Falls back to DEFAULT_MODEL_CONFIG if no match is found.
- *
- * Supported URL formats:
- * - `/models/model.onnx` (absolute path)
- * - `./models/model.onnx` (relative path)
- * - `models/model.onnx` (relative without dot)
- * - `http://localhost:5173/models/model.onnx` (full URL)
  *
  * @param modelUrl - The URL/path of the ONNX model
  * @returns The ModelConfig for the specified model
  */
 export function getModelConfig(modelUrl: string): ModelConfig {
-  // Try exact match first (fastest path)
-  if (MODEL_CONFIGS[modelUrl]) {
-    console.log(`[getModelConfig] Exact match for URL: ${modelUrl}`);
-    return MODEL_CONFIGS[modelUrl];
-  }
-
-  // Extract filename for flexible matching
   const filename = extractFilename(modelUrl);
 
-  // Try matching by filename
+  // Try exact key match first (keys are now filenames)
+  if (MODEL_CONFIGS[filename]) {
+    console.log(`[getModelConfig] Match for filename: ${filename}`);
+    return MODEL_CONFIGS[filename];
+  }
+
+  // Try matching by extracted filename from keys
   for (const [key, config] of Object.entries(MODEL_CONFIGS)) {
-    const keyFilename = extractFilename(key);
-    if (keyFilename === filename) {
+    if (extractFilename(key) === filename) {
       console.log(`[getModelConfig] Filename match: "${filename}" (URL: ${modelUrl} -> Key: ${key})`);
       return config;
     }
