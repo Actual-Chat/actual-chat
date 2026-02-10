@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
-
 import { Disposable } from 'disposable';
 import {
     FeederAudioWorkletEventHandler,
@@ -27,6 +25,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         super(context, name, options);
         this.onprocessorerror = this.onProcessorError;
         const server: FeederAudioWorkletEventHandler = {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             onStateChanged: async (state: FeederState, _noWait?: RpcNoWait): Promise<void> => {
                 this.onStateChanged?.(state)
                 return ResolvedPromise.Void;
