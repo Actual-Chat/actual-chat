@@ -1,8 +1,8 @@
-import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
+import { customElement } from 'lit/decorators.js';
+import { css, html, LitElement } from 'lit';
 
 @customElement('error-cat-svg')
-class ErrorCatSvg extends LitElement {
+export class ErrorCatSvg extends LitElement {
     static styles = [css`
         :host {
         }
