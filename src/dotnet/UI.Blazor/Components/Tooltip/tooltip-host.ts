@@ -36,7 +36,7 @@ export class TooltipHost implements Disposable {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
@@ -77,7 +77,7 @@ export class TooltipHost implements Disposable {
     }
 
     private showTooltip(triggerRef: HTMLElement | SVGElement) {
-        const tooltipText = triggerRef.dataset['tooltip'];
+        const tooltipText = triggerRef.dataset.tooltip;
         if (!tooltipText)
             return;
 
@@ -92,13 +92,13 @@ export class TooltipHost implements Disposable {
     }
 
     private getPlacement(triggerRef: HTMLElement | SVGElement): Placement {
-        const placement = triggerRef.dataset['tooltipPosition'];
+        const placement = triggerRef.dataset.tooltipPosition;
         return placement ? placement as Placement : 'top';
     }
 
     private updatePosition(triggerRef: HTMLElement | SVGElement): void {
         const placement = this.getPlacement(triggerRef);
-        computePosition(triggerRef, this.tooltipRef, {
+        void computePosition(triggerRef, this.tooltipRef, {
             placement: placement,
             middleware: [
                 offset(6),
