@@ -74,7 +74,7 @@ export class LandingVideoModal {
                 .pipe(takeUntil(this.disposed$))
                 .subscribe(() => this.showControl(!this.isControlShowed));
 
-            this.video.oncanplay = _ => {
+            this.video.oncanplay = () => {
                 this.video.muted = true;
                 this.video.play().then(() => {
                     let durationDiv = this.controlFooter.querySelector('.c-duration');
@@ -191,7 +191,7 @@ export class LandingVideoModal {
             return;
 
         this.video.muted = true;
-        void this.video.play().then(_ => {
+        void this.video.play().then(() => {
             this.isVideoPlayStarted = true;
             const durationDiv = this.controlFooter.querySelector('.c-duration');
             durationDiv.innerHTML = this.formatTime(this.video.duration);

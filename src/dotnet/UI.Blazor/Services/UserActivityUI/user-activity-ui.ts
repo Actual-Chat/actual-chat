@@ -20,15 +20,15 @@ export class UserActivityUI {
         this.notifyBackendThrottled = throttle(() => this.notifyBackend(), notifyPeriodMs);
 
         const documentEvents = DocumentEvents.passive;
-        documentEvents.visibilityChange$.subscribe(_ => {
+        documentEvents.visibilityChange$.subscribe(() => {
             if (!document.hidden)
                 this.onInteraction();
             else
                 this.onInteraction(0, true);
         })
-        documentEvents.pointerMove$.subscribe(_ => this.onInteraction());
-        documentEvents.pointerDown$.subscribe(_ => this.onInteraction());
-        documentEvents.keyDown$.subscribe(_ => this.onInteraction());
+        documentEvents.pointerMove$.subscribe(() => this.onInteraction());
+        documentEvents.pointerDown$.subscribe(() => this.onInteraction());
+        documentEvents.keyDown$.subscribe(() => this.onInteraction());
 
         (async () => {
             await delayAsync(1000);

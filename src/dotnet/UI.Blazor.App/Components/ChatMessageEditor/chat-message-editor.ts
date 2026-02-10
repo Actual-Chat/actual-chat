@@ -133,7 +133,7 @@ export class ChatMessageEditor {
             this.attachmentListElement.removeEventListener('wheel', this.onHorizontalScroll);
         }
         this.attachmentListObserver.disconnect();
-        this.sideNavs.forEach(_ => {
+        this.sideNavs.forEach(() => {
             this.sideNavObserver.disconnect();
         });
         if (this.dragDropOverlay) {

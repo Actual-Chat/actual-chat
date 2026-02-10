@@ -262,7 +262,7 @@ export class BrowserInit {
                 sessionStorage.windowIds = JSON.stringify(windowIds);
         })();
 
-        window.addEventListener("beforeunload", _ => {
+        window.addEventListener("beforeunload", () => {
             const windowIds = JSON.parse(sessionStorage?.windowIds ?? "[]");
             windowIds.push(this.windowId);
             if (sessionStorage)
