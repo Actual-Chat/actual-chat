@@ -60,5 +60,5 @@ export class WebAuth {
     }
 }
 
-// eslint-disable-next-line
+ 
 window['FusionAuth'] = WebAuth; // Just in case (compatibility with the older code)
