@@ -486,13 +486,13 @@ export class VisualMediaViewer {
 
     private onYouTubePlayerStateChange(event: CustomEvent<YT.OnStateChangeEvent>): void {
         switch (event.detail.data) {
-            case YT.PlayerState.PAUSED:
-            case YT.PlayerState.ENDED:
-                void this.showHeaderAndFooter();
-                break;
-            case YT.PlayerState.PLAYING:
-                void this.hideHeaderAndFooter();
-                break;
+        case YT.PlayerState.PAUSED:
+        case YT.PlayerState.ENDED:
+            void this.showHeaderAndFooter();
+            break;
+        case YT.PlayerState.PLAYING:
+            void this.hideHeaderAndFooter();
+            break;
         }
     }
 
@@ -903,16 +903,16 @@ export class VisualMediaViewer {
 
     private playAndPauseHandler(e: Event, btn: HTMLElement) {
         switch (e.type) {
-            case 'play':
-                btn.classList.remove('is-paused');
-                if (!btn.classList.contains('is-playing'))
-                    btn.classList.add('is-playing');
-                break;
-            case 'pause':
-                btn.classList.remove('is-playing');
-                if (!btn.classList.contains('is-paused'))
-                    btn.classList.add('is-paused');
-                break;
+        case 'play':
+            btn.classList.remove('is-paused');
+            if (!btn.classList.contains('is-playing'))
+                btn.classList.add('is-playing');
+            break;
+        case 'pause':
+            btn.classList.remove('is-playing');
+            if (!btn.classList.contains('is-paused'))
+                btn.classList.add('is-paused');
+            break;
         }
     }
 }
