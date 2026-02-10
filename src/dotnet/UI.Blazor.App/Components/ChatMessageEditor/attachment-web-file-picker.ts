@@ -7,13 +7,13 @@ const { errorLog } = Log.get('Attachments');
 function hasShowOpenFilePicker(
     win: Window
 ): win is Window & { showOpenFilePicker: (options?: OpenFilePickerOptions) => Promise<FileSystemFileHandle[]> } {
-    return "showOpenFilePicker" in win;
+    return 'showOpenFilePicker' in win;
 }
 
 export class AttachmentWebFilePickerRegistry
 {
     private static filesMap: Map<number, PickFileResult> = new Map<number, PickFileResult>();
-    private static filesMapIdSeed: number = 0;
+    private static filesMapIdSeed = 0;
 
     public static Add(file: PickFileResult) : number
     {
@@ -97,10 +97,10 @@ export class AttachmentWebFilePicker {
         this.disposed$.complete();
     }
 
-    public showFilePicker = async (acceptTypes: string = "") => {
+    public showFilePicker = async (acceptTypes = '') => {
         TuneUI.play(Tune.ChangeAttachments);
         // NOTE: acceptTypes is not empty on an Android platform only. Let's implement it later.
-        if (acceptTypes === "" && hasShowOpenFilePicker(window)) {
+        if (acceptTypes === '' && hasShowOpenFilePicker(window)) {
             try {
                 const files = await window.showOpenFilePicker({
                     multiple: true,

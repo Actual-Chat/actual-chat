@@ -1,5 +1,5 @@
-import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
+import {customElement, property} from 'lit/decorators.js';
+import {css, html, LitElement} from 'lit';
 
 @customElement('chat-activity-svg')
 class ChatActivitySvg extends LitElement {
@@ -37,14 +37,10 @@ class ChatActivitySvg extends LitElement {
             }
         }
     `];
-    @property()
-    size = 4;
-    @property({ type: Boolean })
-    isActive = false;
-    @property()
-    activeColor = "text-02"
-    @property()
-    inactiveColor = "text-02"
+    @property() size = 4;
+    @property({ type: Boolean }) isActive = false;
+    @property() activeColor = 'text-02'
+    @property() inactiveColor = 'text-02'
 
     protected render(): unknown {
         if (this.isActive) {
