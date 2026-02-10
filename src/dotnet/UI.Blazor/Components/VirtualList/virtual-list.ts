@@ -1045,7 +1045,7 @@ export class VirtualList {
         if (ref.classList.contains('group')) {
             while (ref) {
                 ref = ref.lastElementChild;
-                if (ref && ref.classList.contains('item')) {
+                if (ref?.classList.contains('item')) {
                     // we have found list item in the group, let's find the first one
                     ref = ref.parentElement!.firstElementChild;
                     return ref as HTMLElement;
@@ -1072,7 +1072,7 @@ export class VirtualList {
         if (ref.classList.contains('group')) {
             while (ref) {
                 ref = ref.lastElementChild;
-                if (ref && ref.classList.contains('item'))
+                if (ref?.classList.contains('item'))
                     return ref as HTMLElement; // we have found list item in the group, let's return it
             }
             return null;
@@ -1134,7 +1134,7 @@ export class VirtualList {
 
     private scrollTo(
         itemRef?: HTMLElement,
-        useSmoothScroll: boolean = false,
+        useSmoothScroll = false,
         blockPosition: ScrollLogicalPosition = 'center') {
         debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef ?? null));
         this.scrollTime = Date.now();
@@ -1149,7 +1149,7 @@ export class VirtualList {
         }
     }
 
-    private scrollToEdge(edge: VirtualListEdge = VirtualListEdge.End, useSmoothScroll: boolean = false, reason: ScrollToEdgeReason = "unknown"): void {
+    private scrollToEdge(edge: VirtualListEdge = VirtualListEdge.End, useSmoothScroll = false, reason: ScrollToEdgeReason = 'unknown'): void {
 
         // debugLog?.log('scrollToEdge: schedule', edge, useSmoothScroll, reason);
         const isInitialRender = this.isInitialRender;
@@ -1160,7 +1160,7 @@ export class VirtualList {
             useSmoothScroll = false; // fix for scroll to the end on chat switch
         this.scrollTime = Date.now();
 
-        let scrollHeight = 0;
+        const scrollHeight = 0;
         fastRaf({
             read: () => {
                 const isFarFromEdge = edge == VirtualListEdge.End
@@ -1258,7 +1258,7 @@ export class VirtualList {
         let spacerSize = 0;
         let endSpacerSize = 0;
         let totalSizeDiff = 0;
-        let isInteractivePositioning = [...this.pivots].some(p => p.isInteractive)
+        const isInteractivePositioning = [...this.pivots].some(p => p.isInteractive)
             && scrollMetadata?.scrollType !== 'sticky-edge'
             && scrollMetadata?.scrollType !== 'last-item'
             && scrollMetadata?.scrollType !== 'item';
@@ -1541,7 +1541,7 @@ export class VirtualList {
             const itemKey = interactivePivot.itemKey;
             cornerstoneItemIndex = orderedItems.findIndex(i => i.key === itemKey);
             cornerstoneItem = orderedItems[cornerstoneItemIndex];
-            if (cornerstoneItem && cornerstoneItem.range && interactivePivot.stickyOffset) {
+            if (cornerstoneItem.range && interactivePivot.stickyOffset) {
                 // adjust cornerstone item range based on sticky offset
                 const offsetDelta = interactivePivot.stickyOffset;
                 cornerstoneItem.range = new NumberRange(
@@ -1552,7 +1552,7 @@ export class VirtualList {
         }
         const visibleItemKeys = [...visibleItems.keys()]
             .map(k => this.items.get(k))
-            .filter(i => i && i.range)
+            .filter(i => i?.range)
             .sort((a, b) => (a!.range?.start ?? 0) - (b!.range?.start ?? 0))
             .map(i => i!.key);
         if (!cornerstoneItem && visibleItemKeys.length > 0) {
@@ -1565,7 +1565,7 @@ export class VirtualList {
                 }
             }
         }
-        if (!cornerstoneItem || !cornerstoneItem.range) {
+        if (!cornerstoneItem?.range) {
             if (this.defaultEdge === VirtualListEdge.End) {
                 cornerstoneItemIndex = orderedItems.length - 1;
                 cornerstoneItem = orderedItems[cornerstoneItemIndex];
@@ -1637,7 +1637,7 @@ export class VirtualList {
         }
     }
 
-    private resetItemRange(canUseViewport: boolean = false): number | null {
+    private resetItemRange(canUseViewport = false): number | null {
         // This function is expected to be called with RAF
         const { orderedItems, defaultSpacerSize, endAnchorSize, renderState: rs } = this;
         const fullRangeSize = this.knownRange?.size;
