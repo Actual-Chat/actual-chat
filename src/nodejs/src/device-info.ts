@@ -15,8 +15,9 @@ export const DeviceInfo = {
     isWebKit: userAgentLowerCase.includes('webkit') && !isChromium,
     isFirefox: userAgentLowerCase.includes('firefox'),
     isEdge: userAgentLowerCase.includes('edg/'),
-    isTouchCapable: (typeof window !== 'undefined' && (('ontouchstart' in window)
-        || (navigator.maxTouchPoints > 0))),
+    isTouchCapable: (typeof window !== 'undefined'
+        && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0))
+        && window.matchMedia('(pointer: coarse)').matches),
 
     init: function (): void {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
