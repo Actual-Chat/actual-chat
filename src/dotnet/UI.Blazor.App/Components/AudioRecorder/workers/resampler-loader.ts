@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-misused-promises */
 import resamplerModuleFactory, { ResamplerModule, Resampler } from '@actual-chat/resampler';
 import ResamplerWasm from '@actual-chat/resampler/resampler.wasm';
 import { Versioning } from 'versioning';
@@ -74,7 +76,7 @@ export class ResamplerLoader {
     }
 
     private createResampler(fromSampleRate: number, toSampleRate: number): ResamplerWrapper {
-        // @ts-ignore
+        // @ts-expect-error intentional
         const resampler = new ResamplerLoader.resamplerModule.Resampler(fromSampleRate, toSampleRate);
         this.resampler = new ResamplerWrapper(resampler);
         return this.resampler;
