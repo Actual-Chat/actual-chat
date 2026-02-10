@@ -1,16 +1,16 @@
 import { clamp } from 'math';
 
-const DefaultItemSize: number = 48;
-const MinResponseFulfillmentRatio: number = 0.25;
-const MaxResponseFulfillmentRatio: number = 2;
-const ResponseExpectedCountSumResetThreshold: number = 1000;
-const ResponseExpectedCountSumResetValue: number = 800;
+const DefaultItemSize = 48;
+const MinResponseFulfillmentRatio = 0.25;
+const MaxResponseFulfillmentRatio = 2;
+const ResponseExpectedCountSumResetThreshold = 1000;
+const ResponseExpectedCountSumResetValue = 800;
 
 export class VirtualListStatistics {
-    private _itemCount: number = 0;
-    private _itemSizeSum: number = 0;
-    private _responseActualCountSum: number = 0;
-    private _responseExpectedCountSum: number = 0;
+    private _itemCount = 0;
+    private _itemSizeSum = 0;
+    private _responseActualCountSum = 0;
+    private _responseExpectedCountSum = 0;
 
     public get itemSize(): number {
         return this._itemCount == 0

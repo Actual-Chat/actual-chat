@@ -1,11 +1,9 @@
 import { Log } from 'logging';
-import { DeviceInfo } from 'device-info';
-
 const { debugLog } = Log.get('InertialScroll');
 
 export class InertialScroll {
     private overflowBackup: string;
-    private count: number = 0;
+    private count = 0;
 
     public constructor(private readonly element: HTMLElement) {
     }
