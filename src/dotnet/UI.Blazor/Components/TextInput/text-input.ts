@@ -27,7 +27,7 @@ export class TextInput implements Disposable {
             .pipe(
                 takeUntil(this.disposed$),
                 debounceTime(this.options.debounce),
-                switchMap((e: InputEvent) => this.blazorRef.invokeMethodAsync('OnTextChanged', (<HTMLInputElement>e.target).value))
+                switchMap((e: InputEvent) => this.blazorRef.invokeMethodAsync('OnTextChanged', (e.target as HTMLInputElement).value))
             ).subscribe();
 
         fromEvent(this.element, 'paste')
@@ -47,12 +47,13 @@ export class TextInput implements Disposable {
     }
 
     public async clear() {
-        this.element.value = "";
-        await this.blazorRef.invokeMethodAsync('OnTextChanged', "");
+        this.element.value = '';
+        await this.blazorRef.invokeMethodAsync('OnTextChanged', '');
     }
 
     /** Called by Blazor */
-    public set(value: string): void {
-        this.element.value = value ?? "";
+    // TODO: looks like it's not used anymore, remove it?
+    public set(value: string | undefined): void {
+        this.element.value = value ?? '';
     }
 }
