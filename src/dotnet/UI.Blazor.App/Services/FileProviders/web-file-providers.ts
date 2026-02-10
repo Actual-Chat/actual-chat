@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-misused-promises,@typescript-eslint/use-unknown-in-catch-callback-variable */
 import { deleteFileHandle, getFileHandle, saveFileHandle } from './file-handle-storage';
 import { grantFileUploadPermissionsInvoker, requestFileHandlePermission, GetFilePermissionsRequest } from './file-handle-permissions';
 import { Log } from 'logging';
@@ -15,6 +17,7 @@ type ProgressReporter = (progressPercent: number) => void;
 
 interface CreateWebFileProviderResult {
     previewUrl: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     fileProvider : any;
 }
 
@@ -31,7 +34,6 @@ export class WebFileProviders
             const file = fileResult.file;
             const provider = new WebFileProvider('', fileResult.fileHandle, file, null);
             previewUrl = provider.createPreviewUrl();
-            // @ts-ignore
             const jsObjectReference = DotNet.createJSObjectReference(provider);
             return {
                 previewUrl: previewUrl,
@@ -114,7 +116,7 @@ export class WebFileProvider {
                     this.userConsentGranted = x;
                     this.whenUserConsentGrantedSource.resolve(x);
                 })
-                .catch(e => {
+                .catch(() => {
                     this.userConsentGranted = false;
                     this.whenUserConsentGrantedSource.resolve(false);
                 });
@@ -130,8 +132,7 @@ export class WebFileProvider {
 
     public createPreviewUrl() : string
     {
-        if (!this.previewUrl)
-            this.previewUrl = URL.createObjectURL(this.GetFile());
+        this.previewUrl ??= URL.createObjectURL(this.GetFile());
         return this.previewUrl;
     }
 
@@ -156,7 +157,7 @@ export class WebFileProvider {
 
         const reporter = new FileUploadProgressReporter(blazorRef);
         this.fileUpload = new ChunkedFileUpload(uploadId, this.GetFile(), pct => reporter.reportProgress(pct));
-        this.fileUpload.whenCompleted.then(x => {
+        this.fileUpload.whenCompleted.then(() => {
             void reporter.reportUploadSucceed();
             this.fileUpload = null;
         }).catch(e => {
@@ -278,6 +279,7 @@ class ChunkedFileUpload {
         const maxRetries = 3;
         let run = true;
         const chunkSizeSelector = new ChunkSizeSelector();
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         while (run) {
             run = false;
             try {
@@ -505,19 +507,10 @@ class ChunkSizeSelector
 }
 
 class UploadNotFoundError extends Error {
-    constructor(message: string) {
-        super(message);
-    }
 }
 
 class UploadTransientFailure extends Error {
-    constructor(message: string) {
-        super(message);
-    }
 }
 
 class OffsetConflictError extends Error {
-    constructor(message?: string) {
-        super(message);
-    }
 }
