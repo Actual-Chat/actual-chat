@@ -39,16 +39,16 @@ export class PlayableTextMarkupView {
     }
 
     constructor(blazorRef: DotNet.DotNetObject,
-                playableText: HTMLElement,
-                words: Word[]) {
+        playableText: HTMLElement,
+        words: Word[]) {
         this.blazorRef = blazorRef;
         this.playableText = playableText;
 
         words.forEach(word => {
-            let wordValue = word.value;
-            let wordTextRange = new NumberRange(word.textRange.start, word.textRange.end);
-            let wordTimeRange = new NumberRange(word.timeRange.start, word.timeRange.end);
-            let wordItem = new Word(wordValue, wordTextRange, wordTimeRange);
+            const wordValue = word.value;
+            const wordTextRange = new NumberRange(word.textRange.start, word.textRange.end);
+            const wordTimeRange = new NumberRange(word.timeRange.start, word.timeRange.end);
+            const wordItem = new Word(wordValue, wordTextRange, wordTimeRange);
             this.words.push(wordItem);
         });
 
@@ -90,15 +90,15 @@ export class PlayableTextMarkupView {
                 if (!targetNodeParent)
                     return;
 
-                let wordIndex = Array.prototype.indexOf.call(this.playableText.childNodes, targetNodeParent);
-                let word = this.words[wordIndex];
+                const wordIndex = Array.prototype.indexOf.call(this.playableText.childNodes, targetNodeParent);
+                const word = this.words[wordIndex];
                 if (word) {
                     this.highlightClickedWord(selection, word, true);
                 }
             }
         } else if (childNodes.length < 2) {
             if (selection.rangeCount) {
-                let word = this.words.find(w =>
+                const word = this.words.find(w =>
                     w.textRange.start <= selection.focusOffset && w.textRange.end >= selection.focusOffset);
                 if (word) {
                     this.highlightClickedWord(selection, word, false);
@@ -147,12 +147,12 @@ export class PlayableTextMarkupView {
         }
 
         const rect = range.getBoundingClientRect();
-        const floatSpan = document.createElement("span");
+        const floatSpan = document.createElement('span');
         floatSpan.textContent = word.value;
-        floatSpan.className = "selected-word-float";
+        floatSpan.className = 'selected-word-float';
 
         Object.assign(floatSpan.style, {
-            position: "absolute",
+            position: 'absolute',
             top: `${rect.top + window.scrollY + 4}px`,
             left: `${rect.left + window.scrollX}px`,
             width: `${rect.width}px`,
@@ -163,7 +163,7 @@ export class PlayableTextMarkupView {
 
         setTimeout(() => {
             floatSpan.remove();
-            void this.blazorRef.invokeMethodAsync("OnMarkupClick", word.textRange);
+            void this.blazorRef.invokeMethodAsync('OnMarkupClick', word.textRange);
         }, 400);
     }
 }

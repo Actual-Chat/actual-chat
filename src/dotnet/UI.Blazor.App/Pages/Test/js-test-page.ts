@@ -32,12 +32,12 @@ export class JSTestPage {
                 console.log(`${name}(${currentCount}): completed`);
             }
         }
-        this.serialized = serialize(asyncLoggerFactory("serialized"));
-        this.serialized1 = serialize(asyncLoggerFactory("serialized1"), 1);
-        this.serialized2 = serialize(asyncLoggerFactory("serialized2"), 2);
+        this.serialized = serialize(asyncLoggerFactory('serialized'));
+        this.serialized1 = serialize(asyncLoggerFactory('serialized1'), 1);
+        this.serialized2 = serialize(asyncLoggerFactory('serialized2'), 2);
         this.throttledSkip = throttle(loggerFactory("throttled(mode = 'skip')"), 1000, 'skip', 'throttled-skip');
         this.throttledDelayHead = throttle(loggerFactory("throttled(mode = 'delayHead')"), 1000, 'delayHead', 'throrttled-delay-head');
-        this.debounced = debounce(loggerFactory("debounced"), 1000,  'debounced');
+        this.debounced = debounce(loggerFactory('debounced'), 1000,  'debounced');
 
         this.throttled2 = () => { this.throttled(); this.throttled(); }
         this.throttledSkip2 = () => { this.throttledSkip(); this.throttledSkip(); }

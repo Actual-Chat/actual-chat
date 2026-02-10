@@ -19,13 +19,13 @@ export class SortableList {
         this.blazorRef = blazorRef;
 
         const options: Sortable.Options = {
-                dataIdAttr: dataIdAttr,
-                animation: 150,
-                onUpdate: (_: SortableEvent) => {
-                    const places = this.sortable.toArray();
-                    void this.blazorRef.invokeMethodAsync('OnOrderChanged', places);
-                },
-            };
+            dataIdAttr: dataIdAttr,
+            animation: 150,
+            onUpdate: (_: SortableEvent) => {
+                const places = this.sortable.toArray();
+                void this.blazorRef.invokeMethodAsync('OnOrderChanged', places);
+            },
+        };
         if (DeviceInfo.isTouchCapable) {
             options.delay = 500;
             options.dragClass = 'sortable-target';

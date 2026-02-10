@@ -42,7 +42,7 @@ export class LandingVideoModal {
         const currentTimeDiv = this.controlFooter.querySelector('.c-current');
         currentTimeDiv.innerHTML = this.formatTime(0);
 
-        this.plug = this.landingVideoModal.querySelector('.c-video-plug') as HTMLImageElement;
+        this.plug = this.landingVideoModal.querySelector('.c-video-plug')!;
 
         if (this.video != null) {
             fromEvent(document, 'touchend', { passive: false, once: true })
@@ -65,7 +65,7 @@ export class LandingVideoModal {
                 .pipe(takeUntil(this.disposed$))
                 .subscribe((event: MouseEvent) => this.seekVideoPoint(event));
 
-            let clickElements = [this.pauseBtn, this.playBtn];
+            const clickElements = [this.pauseBtn, this.playBtn];
             fromEvent(clickElements, 'click')
                 .pipe(takeUntil(this.disposed$))
                 .subscribe((event: Event) => this.playOrPause(event));
@@ -77,7 +77,7 @@ export class LandingVideoModal {
             this.video.oncanplay = () => {
                 this.video.muted = true;
                 this.video.play().then(() => {
-                    let durationDiv = this.controlFooter.querySelector('.c-duration');
+                    const durationDiv = this.controlFooter.querySelector('.c-duration');
                     durationDiv.innerHTML = this.formatTime(this.video.duration);
                     this.plug.classList.remove('flex');
                     this.plug.hidden = true;
@@ -104,8 +104,8 @@ export class LandingVideoModal {
     private formatTime(time: number) : string {
         let minutes = '';
         let seconds = '';
-        let minNum = Math.floor((time / 60));
-        let secNum = Math.round(time - (minNum * 60));
+        const minNum = Math.floor((time / 60));
+        const secNum = Math.round(time - (minNum * 60));
         if (minNum.toString().length < 2)
             minutes = `0${minNum}`;
         else
@@ -169,20 +169,20 @@ export class LandingVideoModal {
     }
 
     private updateTimeline() {
-        let current = this.video.currentTime;
-        let percentage = Math.floor((100 / this.video.duration) * current);
+        const current = this.video.currentTime;
+        const percentage = Math.floor((100 / this.video.duration) * current);
         this.progressBar.value = percentage;
         this.progressBar.innerHTML = percentage + '% played';
-        let currentTimeDiv = this.controlFooter.querySelector('.c-current');
+        const currentTimeDiv = this.controlFooter.querySelector('.c-current');
         currentTimeDiv.innerHTML = this.formatTime(current);
     }
 
     private seekVideoPoint(e: MouseEvent) {
         e.stopPropagation();
-        let progressBar = this.progressBar;
-        let percent = e.offsetX / progressBar.offsetWidth;
+        const progressBar = this.progressBar;
+        const percent = e.offsetX / progressBar.offsetWidth;
         this.video.currentTime = percent * this.video.duration;
-        let value = progressBar.value = Math.floor(percent / 100);
+        const value = progressBar.value = Math.floor(percent / 100);
         progressBar.innerHTML = value + '% played';
     }
 

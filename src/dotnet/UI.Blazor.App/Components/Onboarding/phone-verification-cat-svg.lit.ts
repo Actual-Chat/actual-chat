@@ -1,5 +1,5 @@
-import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
+import {customElement, property} from 'lit/decorators.js';
+import {css, html, LitElement} from 'lit';
 
 @customElement('phone-verification-cat-svg')
 class PhoneVerificationCatSvg extends LitElement {
