@@ -13,10 +13,10 @@ const IsAnalyticsEnabledSetting = 'isAnalyticsEnabled';
 const sessionStorage = globalThis?.sessionStorage;
 
 export class BrowserInit {
-    public static apiVersion = "";
-    public static baseUri = "";
-    public static sessionHash = "";
-    public static windowId = "";
+    public static apiVersion = '';
+    public static baseUri = '';
+    public static sessionHash = '';
+    public static windowId = '';
     public static firebaseApp?: FirebaseApp;
     public static firebaseAnalytics?: Analytics;
     public static firebasePublicKey?: string;
@@ -24,10 +24,10 @@ export class BrowserInit {
     public static readonly whenInitialized = new PromiseSource<void>();
     public static readonly whenReloading = new PromiseSource<void>();
     public static readonly reconnectedEvents = new EventHandlerSet<void>();
-    public static connectionState = "";
-    public static reconnectingPromise: Promise<void> = null;
+    public static connectionState = '';
+    public static reconnectingPromise: Promise<void> = null!;
 
-    public static async init(
+    public static init(
         hostKind: HostKind,
         appKind: AppKind,
         apiVersion: string,
@@ -35,21 +35,22 @@ export class BrowserInit {
         supportedHosts: string[],
         sessionHash: string,
         browserInfoBackendRef: DotNet.DotNetObject
-    ): Promise<void> {
+    ): void {
         try {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
+            // eslint-disable-next-line
             window['App']?.markBlazorReady?.(); // It must be called no matter what at this point
             this.apiVersion = apiVersion;
-            let documentBaseUri = new URL(document.baseURI);
+            const documentBaseUri = new URL(document.baseURI);
             this.baseUri = supportedHosts.includes(documentBaseUri.host) ? `${documentBaseUri.protocol}//${documentBaseUri.host}` : baseUri;
             this.sessionHash = sessionHash;
             this.initWindowId();
-            void this.initAndroidWebViewClipboardHandlers();
+            this.initAndroidWebViewClipboardHandlers();
             if (hostKind !== 'MauiApp')
                 void this.initFirebase();
 
             // this.preventSuspend();
-            await BrowserInfo.init(browserInfoBackendRef, hostKind, appKind);
+            BrowserInfo.init(browserInfoBackendRef, hostKind, appKind);
         }
         catch (e) {
             errorLog?.log('init: error:', e);
@@ -68,13 +69,12 @@ export class BrowserInit {
     }
 
     public static getUrl(url: string) : string {
-        // @ts-ignore
         const baseUri = BrowserInit.baseUri;
         return baseUri ? new URL(url, baseUri).toString() : url;
     }
 
     public static resetAppConnectionState(): void {
-        if (this.connectionState === "")
+        if (this.connectionState === '')
             return; // Already reset
 
         this.setAppConnectionState();
@@ -82,12 +82,14 @@ export class BrowserInit {
     }
 
     public static startReconnecting(mustReconnectBlazor : boolean): void {
-        this.setAppConnectionState("Reconnecting...");
+        this.setAppConnectionState('Reconnecting...');
         if (!mustReconnectBlazor)
             return;
 
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         this.reconnectingPromise ??= (async (): Promise<void> => {
             try {
+                // eslint-disable-next-line
                 while (window['Blazor']) {
                     await Connectivity.whenOnline();
                     if (this.whenReloading.isCompleted())
@@ -122,7 +124,7 @@ export class BrowserInit {
             return; // Already reloading
 
         if (!this.isMauiApp) // No "Reloading..." on MAUI app
-            this.setAppConnectionState("Reloading...");
+            this.setAppConnectionState('Reloading...');
 
         warnLog?.log('startReloading: reloading...');
         this.whenReloading.resolve(undefined);
@@ -139,16 +141,16 @@ export class BrowserInit {
                         return;
 
                     const classList = reconnectDiv.classList;
-                    if (classList.length == 0 || classList.contains("components-reconnect-hide"))
+                    if (classList.length == 0 || classList.contains('components-reconnect-hide'))
                         this.resetAppConnectionState();
                     else if (classList.contains('components-reconnect-rejected'))
                         this.startReloading();
-                    else if (classList.contains("components-reconnect-failed"))
+                    else if (classList.contains('components-reconnect-failed'))
                         this.startReconnecting(true);
-                    else if (classList.contains("components-reconnect-show"))
+                    else if (classList.contains('components-reconnect-show'))
                         this.startReconnecting(false);
                 }
-                const observer = new MutationObserver((mutations, _) => checkReconnectDiv());
+                const observer = new MutationObserver(() => checkReconnectDiv());
                 observer.observe(reconnectDiv, { attributes: true });
                 checkReconnectDiv();
             }
@@ -161,7 +163,7 @@ export class BrowserInit {
                     if (errorDiv.style.display === 'block')
                         this.startReloading();
                 }
-                const observer = new MutationObserver((mutations, _) => checkErrorDiv());
+                const observer = new MutationObserver(() => checkErrorDiv());
                 observer.observe(errorDiv, { attributes: true });
                 checkErrorDiv();
             }
@@ -174,8 +176,8 @@ export class BrowserInit {
                 errorLog?.log(`startReloadWatchers: errors:`, errors);
         }
 
-        if (document.readyState === "loading")
-            document.addEventListener("DOMContentLoaded", () => attachWatchers());
+        if (document.readyState === 'loading')
+            document.addEventListener('DOMContentLoaded', () => attachWatchers());
         else
             attachWatchers();
     }
