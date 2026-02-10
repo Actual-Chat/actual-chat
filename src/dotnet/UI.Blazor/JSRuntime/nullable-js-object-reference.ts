@@ -1,8 +1,8 @@
 export class NullableJSObjectReference
 {
-    public value: null | any;
+    public value: unknown;
 
-    public static create(target: any | null) : NullableJSObjectReference
+    public static create(target: unknown) : NullableJSObjectReference
     {
         if (!target)
             return {
@@ -11,7 +11,6 @@ export class NullableJSObjectReference
 
         // From .NET10 it should be possible to return a JSObjectReference or null directly.
         // So far, we do it manually.
-        // @ts-ignore
         const jsObjectReference = DotNet.createJSObjectReference(target);
         return {
             value : jsObjectReference
