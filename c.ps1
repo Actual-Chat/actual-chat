@@ -276,6 +276,8 @@ while ($argIndex -lt $args.Count) {
         $argIndex++
         if ($argIndex -lt $args.Count) {
             $featureWorktreeSuffix = $args[$argIndex]
+            # Strip feat/ or bugfix/ prefix if provided (fwt/bwt already adds the prefix)
+            $featureWorktreeSuffix = $featureWorktreeSuffix -replace '^(feat|bugfix|hotfix|fix)/', ''
             $argIndex++
         } else {
             Write-Error "The $currentArg command requires a worktree suffix argument"
