@@ -55,7 +55,7 @@ public class KubeMeshLocks : MeshLocksBase
             try {
                 while (!cancellationToken.IsCancellationRequested)
                     // Watch leases with the specific label selector for some period of time, e.g. 30s
-                    await LeaseClient.Watch(Namespace, _labelSelector, OnChange, cancellationToken).ConfigureAwait(false);
+                    await LeaseClient.Watch(Namespace, _labelSelector, OnChange, RetryDelays, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                 Log.LogWarning(e, "Failed to watch leases");
