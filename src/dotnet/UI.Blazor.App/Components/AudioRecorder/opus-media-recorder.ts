@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/ban-types */
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-misused-promises,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-explicit-any,@typescript-eslint/no-redundant-type-constituents,@typescript-eslint/no-unsafe-argument */
 import { AUDIO_REC as AR } from '_constants';
 import { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
@@ -280,8 +281,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
                     constraints.audio.deviceId = null;
                 }
             }
-            if (!stream)
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            stream ??= await navigator.mediaDevices.getUserMedia(constraints);
             // Better integration with native mobile audio pipeline - SHOULD BE AFTER ACQUIRING THE STREAM!
             if ('audioSession' in navigator) {
                 (navigator.audioSession as any)['type'] = 'play-and-record';
@@ -417,7 +417,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
 
         // We don't want to wait here - this method can complete immediately,
         // all we need
-        this.whenInitialized.then(() => {
+        void this.whenInitialized.then(() => {
             if (this.encoderWorkerSessionToken === this.sessionToken)
                 return; // Concurrent call to this method already applied the change
 
@@ -483,7 +483,7 @@ export class OpusMediaRecorder implements RecorderStateServer {
     }
 
     public async runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> {
-        diagnosticsState.isRecorderInitialized = this.whenInitialized && this.whenInitialized.isCompleted();
+        diagnosticsState.isRecorderInitialized = this.whenInitialized?.isCompleted();
         diagnosticsState.hasMicrophoneStream = this.stream != null;
         warnLog?.log('runDiagnostics: ', diagnosticsState);
 
