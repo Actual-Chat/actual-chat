@@ -90,7 +90,9 @@ export class TuneUI {
     public static async playAndWait(tune: Tune): Promise<void> {
         try {
             await this.whenReady;
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             const tuneInfo = this.tunes[tune] ?? this.tunes[Tune[tune]];
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (!tuneInfo)
             {
                 errorLog?.log(`${logScope}.playAndWait: unexpected tune ${tune}.`)
@@ -106,8 +108,7 @@ export class TuneUI {
     // Private methods
 
     private static async playVibration(tune: Tune, tuneInfo: TuneInfo): Promise<void> {
-        if (!tuneInfo.vibration) {
-            warnLog?.log(`playVibration: no vibration for tune '${tune}'`);
+        if (tuneInfo.vibration.length == 0) {
             return;
         }
 
