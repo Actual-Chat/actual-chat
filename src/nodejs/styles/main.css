@@ -542,3 +542,20 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfoo
     background: radial-gradient(56.91% 105.88% at 50% 100%, rgba(211, 154, 255, 0.20) 0%, rgba(211, 154, 255, 0.00) 100%);
 }
 
+/* Bottom Sheet */
+.bottom-sheet {
+    @apply sticky z-10 left-1/2;
+    @apply h-1.5 w-16;
+    @apply -translate-x-1/2;
+    @apply rounded-full;
+    @apply opacity-0 invisible;
+    background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
+    transition: opacity 0.15s ease-in-out 0.15s, visibility 0.15s ease-in-out 0.15s;
+}
+.layout-subheader > :last-child.bottom-sheet {
+    @apply mt-1.5 -mb-3;
+}
+.list-view-layout:has(.layout-header.collapsed) .bottom-sheet {
+    @apply opacity-80 visible;
+    transition: opacity 0.2s ease-in-out 0.3s, visibility 0.2s ease-in-out 0.3s;
+}

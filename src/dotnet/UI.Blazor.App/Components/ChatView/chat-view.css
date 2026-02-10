@@ -815,26 +815,3 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     }
 }
 
-/* New message animation */
-@keyframes messageAppearHeight {
-    from {
-        max-height: 0;
-        overflow: clip;
-    } to {
-        max-height: 40rem;
-        overflow: visible;
-    }
-}
-@keyframes messageAppearOpacity {
-    from {
-        opacity: 0;
-    } to {
-        opacity: 1;
-    }
-}
-.virtual-list > .c-wrapper > ul.c-virtual-container .item.appearing:has(.show-author) {
-    opacity: 0;
-    animation:
-        messageAppearHeight 0.5s ease-out forwards,
-        messageAppearOpacity 0.3s ease-out 0.05s forwards;
-}
