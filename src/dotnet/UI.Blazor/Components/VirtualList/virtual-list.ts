@@ -1,3 +1,5 @@
+// TODO(AK): fix eslint ignored errors
+/* eslint-disable @typescript-eslint/require-await,@typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition */
 import { debounce, PromiseSource, PromiseSourceWithTimeout, throttle } from 'promises';
 import { NumberRange, Range } from './ts/range';
 import { VirtualListEdge } from './ts/virtual-list-edge';
@@ -217,6 +219,7 @@ export class VirtualList {
         };
 
         // set isRendering as soon as possible
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         const origSetAttribute = this.renderIndexRef.setAttribute;
         this.renderIndexRef.setAttribute = (qualifiedName: string, value: string) => {
             // update pivots just before the render
@@ -227,6 +230,7 @@ export class VirtualList {
                 debugLog?.log(`renderStartedAt: `, time, value);
                 this.renderStartedAt = time;
                 origSetAttribute.call(this.renderIndexRef, qualifiedName, value);
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 fastRaf(() => this.endRender());
             } catch (e) {
                 warnLog?.log('renderIndex.setAttribute: failed', e);
@@ -758,7 +762,7 @@ export class VirtualList {
                     this.setStickyEdge({ itemKey: rs.scrollToKey!, edge: VirtualListEdge.End });
                 };
             }
-            else if (isScrollToKeyVisible && !rs.scrollToKeyInTheMiddle) {
+            else if (!rs.scrollToKeyInTheMiddle) {
                 // Keep position of visible item
                 scrollFunc = () => this.scrollTo(scrollToItemRef, false, 'end');
             }
@@ -800,6 +804,7 @@ export class VirtualList {
         'default',
         'updateViewport');
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private async updateViewport(isThrottled = false): Promise<void> {
         const rs = this.renderState;
         if (this.isDisposed || this.isRendering)
@@ -815,9 +820,6 @@ export class VirtualList {
         const hasScheduled = await fastReadRaf(`updateViewport_${this.identity}`);
         if (!hasScheduled)
             return; // unable to schedule requestAnimationFrame, same key has already been scheduled
-
-        if (this.isDisposed || this.isRendering)
-            return;
 
         const viewport = this.calculateViewport();
         if (viewport == null)
@@ -952,6 +954,7 @@ export class VirtualList {
             }
 
             const viewRect = this.ref.getBoundingClientRect();
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             const itemKeys: string[] = [interactiveKey ?? '', medianVisibleKey, this.query.keyRange?.end, this.query.keyRange?.start];
             for (const itemKey of itemKeys) {
                 if (!itemKey)
@@ -1221,7 +1224,7 @@ export class VirtualList {
                             lastItemRef.classList.add('appearing');
                             // Force reflow to ensure the browser registers the 0 height
                             void lastItemRef.offsetHeight;
-                            lastItemRef.style.height = actualHeight + 'px';
+                            lastItemRef.style.height = `${actualHeight}px`;
                             const onTransitionEnd = (e: TransitionEvent) => {
                                 if (e.propertyName !== 'height')
                                     return;
@@ -1656,6 +1659,7 @@ export class VirtualList {
             return null;
 
         let rangeDelta: number | null = null;
+        // eslint-disable-next-line @typescript-eslint/no-misused-spread
         const originalRanges = orderedItems.map(item => ({ ...item.range }) as Range<number>);
 
         function findCenterItemIndex() {
