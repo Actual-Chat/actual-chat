@@ -4,10 +4,10 @@ import { Log } from 'logging';
 const { debugLog } = Log.get('UndoStack');
 
 export class UndoStack<T> {
-    private items: Array<T> = new Array<T>();
-    private position: number = 0;
-    private isPushEnabled: boolean = true;
-    public maxSize: number = 200;
+    private items: T[] = new Array<T>();
+    private position = 0;
+    private isPushEnabled = true;
+    public maxSize = 200;
     public pushThrottled: ResettableFunc<() => void>
 
     public constructor(
@@ -67,11 +67,15 @@ export class UndoStack<T> {
             while (true) {
                 const position = this.position - 1;
                 const storedValue = this.items[position];
-                if (position == 0)
-                    return this.writer(storedValue);
+                if (position == 0) {
+                    this.writer(storedValue);
+                    return;
+                }
                 this.position = position;
-                if (!this.equalityComparer(value, storedValue))
-                    return this.writer(storedValue);
+                if (!this.equalityComparer(value, storedValue)) {
+                    this.writer(storedValue);
+                    return;
+                }
             }
         }
         finally {
@@ -91,10 +95,14 @@ export class UndoStack<T> {
             while (true) {
                 this.position++;
                 const storedValue = this.items[this.position - 1];
-                if (this.position >= this.items.length)
-                    return this.writer(storedValue);
-                if (!this.equalityComparer(value, storedValue))
-                    return this.writer(storedValue);
+                if (this.position >= this.items.length) {
+                    this.writer(storedValue);
+                    return;
+                }
+                if (!this.equalityComparer(value, storedValue)) {
+                    this.writer(storedValue);
+                    return;
+                }
             }
         }
         finally {

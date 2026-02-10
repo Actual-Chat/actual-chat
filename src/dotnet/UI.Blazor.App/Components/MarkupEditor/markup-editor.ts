@@ -11,8 +11,8 @@ import { fastRaf } from 'fast-raf';
 const { debugLog, errorLog } = Log.get('MarkupEditor');
 
 const MentionListId = '@';
-const ZeroWidthSpace = "\u200b";
-const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, "g");
+const ZeroWidthSpace = '\u200b';
+const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, 'g');
 const CrlfRe = /\r\n/g;
 const DoubleLfRe = /\n\n/g;
 const SingleLfRe = /[^\n^]\n[^\n$]/g;
@@ -28,7 +28,7 @@ export class MarkupEditor {
     }
 
     public readonly contentDiv: HTMLDivElement;
-    public hasContent: boolean = false;
+    public hasContent = false;
     public changed: (html: string, text: string) => void = () => { };
 
     private isContentDivInitialized = false;
@@ -37,9 +37,9 @@ export class MarkupEditor {
     private currentTransaction: (() => void) | null = null;
     private lastHtml: string | null = null;
 
-    private readonly listHandlers: Array<ListHandler>;
+    private readonly listHandlers: ListHandler[];
     private listHandler?: ListHandler;
-    private listFilter: string = "";
+    private listFilter = '';
     private sizeObserver: ResizeObserver | null = null;
     private parent: HTMLElement | null = null;
 
@@ -50,16 +50,16 @@ export class MarkupEditor {
     ) {
         debugLog?.log(`constructor`);
 
-        this.contentDiv = editorDiv.querySelector(":scope > .editor-content") as HTMLDivElement;
+        this.contentDiv = editorDiv.querySelector(':scope > .editor-content')!;
         this.listHandlers = [new MentionListHandler(this)]
         this.undoStack = new UndoStack<string>(
             () => normalize(this.contentDiv.innerHTML),
             value => {
                 this.transaction('init', () => {
                     // To make sure both undo and redo stacks have something
-                    document.execCommand("insertHTML", false, "&#8203");
-                    document.execCommand("insertHTML", false, "&#8203");
-                    document.execCommand("undo", false);
+                    document.execCommand('insertHTML', false, '&#8203');
+                    document.execCommand('insertHTML', false, '&#8203');
+                    document.execCommand('undo', false);
                     this.setHtml(value, false, false);
                 });
             },
@@ -67,20 +67,20 @@ export class MarkupEditor {
             333);
 
         // Attach listeners & observers
-        this.contentDiv.addEventListener("focus", this.onFocus)
-        this.contentDiv.addEventListener("keydown", this.onKeyDown);
-        this.contentDiv.addEventListener("keypress", this.onKeyPress);
-        this.contentDiv.addEventListener("paste", this.onPaste);
-        this.contentDiv.addEventListener("beforeinput", this.onBeforeInput);
-        this.contentDiv.addEventListener("input", this.onInput);
-        document.addEventListener("selectionchange", this.onSelectionChange);
-        document.addEventListener("click", this.onDocumentClick);
+        this.contentDiv.addEventListener('focus', this.onFocus)
+        this.contentDiv.addEventListener('keydown', this.onKeyDown);
+        this.contentDiv.addEventListener('keypress', this.onKeyPress);
+        this.contentDiv.addEventListener('paste', this.onPaste);
+        this.contentDiv.addEventListener('beforeinput', this.onBeforeInput);
+        this.contentDiv.addEventListener('input', this.onInput);
+        document.addEventListener('selectionchange', this.onSelectionChange);
+        document.addEventListener('click', this.onDocumentClick);
 
         this.updateHasContent(this.contentDiv.innerHTML);
         if (autofocus)
             this.focus();
 
-        this.parent = this.editorDiv.parentElement as HTMLElement;
+        this.parent = this.editorDiv.parentElement!;
         if (parent) {
             this.sizeObserver = new ResizeObserver(this.onResize);
             this.sizeObserver.observe(this.editorDiv);
@@ -88,14 +88,14 @@ export class MarkupEditor {
     }
 
     public dispose() {
-        this.contentDiv.removeEventListener("focus", this.onFocus)
-        this.contentDiv.removeEventListener("keydown", this.onKeyDown);
-        this.contentDiv.removeEventListener("keypress", this.onKeyPress);
-        this.contentDiv.removeEventListener("paste", this.onPaste);
-        this.contentDiv.removeEventListener("beforeinput", this.onBeforeInput);
-        this.contentDiv.removeEventListener("input", this.onInput);
-        document.removeEventListener("selectionchange", this.onSelectionChange);
-        document.removeEventListener("click", this.onDocumentClick);
+        this.contentDiv.removeEventListener('focus', this.onFocus)
+        this.contentDiv.removeEventListener('keydown', this.onKeyDown);
+        this.contentDiv.removeEventListener('keypress', this.onKeyPress);
+        this.contentDiv.removeEventListener('paste', this.onPaste);
+        this.contentDiv.removeEventListener('beforeinput', this.onBeforeInput);
+        this.contentDiv.removeEventListener('input', this.onInput);
+        document.removeEventListener('selectionchange', this.onSelectionChange);
+        document.removeEventListener('click', this.onDocumentClick);
         this.sizeObserver?.disconnect();
     }
 
@@ -123,12 +123,12 @@ export class MarkupEditor {
             },
             write: () => {
                 if (contentHeight <= maxAutoHeight) {
-                    parent.style.transition = "height 0.25s ease";
-                    parent.style.height = "auto";
+                    parent.style.transition = 'height 0.25s ease';
+                    parent.style.height = 'auto';
                 } else {
-                    const newHeight = contentHeight + "px";
+                    const newHeight = `${contentHeight}px`;
                     if (parent.style.height !== newHeight) {
-                        parent.style.transition = "height 0.25s ease";
+                        parent.style.transition = 'height 0.25s ease';
                         parent.style.height = newHeight;
                     }
                 }
@@ -238,20 +238,20 @@ export class MarkupEditor {
         return this.contentDiv.innerHTML;
     }
 
-    public setHtml(html: string, mustFocus: boolean = false, clearUndoStack: boolean = true) {
+    public setHtml(html: string, mustFocus = false, clearUndoStack = true) {
         this.transaction('setHtml', () => {
             this.contentDiv.innerHTML = html;
             this.fixEverything();
         })
         // Moving cursor to the end, brings focus to the editor.
         // Will do it only when html is not empty or focus is requested explicitly.
-        if (html !== "" || mustFocus)
+        if (html !== '' || mustFocus)
             this.moveCursorToTheEnd();
         if (clearUndoStack)
             this.undoStack.clear();
     }
 
-    public insertHtml(html: string, listId?: string, needToFocus: boolean = true) {
+    public insertHtml(html: string, listId?: string, needToFocus = true) {
         if (!this.hasFocus() && needToFocus) {
             this.focus();
             this.restoreSelection();
@@ -283,7 +283,7 @@ export class MarkupEditor {
         if (mentionList == null)
             return;
 
-        let isMentionListOpen = !mentionList.classList.contains('non-visible');
+        const isMentionListOpen = !mentionList.classList.contains('non-visible');
         const { selection, range, caretPosition, prevChar } = this.getPrevCharInfo();
         let newCaretPosition = caretPosition;
         if (!isMentionListOpen) {
@@ -291,13 +291,13 @@ export class MarkupEditor {
             this.insertHtml(html);
         }
         else {
-            if (prevChar == "@") {
+            if (prevChar == '@') {
                 newCaretPosition = caretPosition - 1;
                 const oldText = range.endContainer.textContent || '';
                 const newText = oldText.substring(0, caretPosition - 1) + oldText.substring(caretPosition);
                 this.setHtml(newText);
             }
-            let newRange = document.createRange();
+            const newRange = document.createRange();
             if (this.contentDiv.childNodes.length > 0)
                 newRange.setStart(this.contentDiv.childNodes[0], newCaretPosition);
             newRange.collapse(true);
@@ -307,7 +307,7 @@ export class MarkupEditor {
     }
 
     private getPrevCharInfo(): { selection: Selection; caretPosition: number; range: Range; prevChar: string } {
-        let prevChar = "";
+        let prevChar = '';
         let range: Range;
         let clonedRange: Range = document.createRange();
         let caretPosition = 0;
@@ -341,20 +341,20 @@ export class MarkupEditor {
     // Backend method invokers
 
     private async onPost(): Promise<void> {
-        await this.blazorRef.invokeMethodAsync("OnPost", this.getText());
+        await this.blazorRef.invokeMethodAsync('OnPost', this.getText());
     }
 
     private async onCancel(): Promise<void> {
-        await this.blazorRef.invokeMethodAsync("OnCancel");
+        await this.blazorRef.invokeMethodAsync('OnCancel');
     }
 
     private async onOpenPrevious(): Promise<void> {
-        await this.blazorRef.invokeMethodAsync("OnOpenPrevious");
+        await this.blazorRef.invokeMethodAsync('OnOpenPrevious');
     }
 
     private async onListCommand(listId: string, command: ListCommand): Promise<void> {
         debugLog?.log(`onListCommand(): listId:`, listId, ', command:', command.kind, ', filter:', command.filter);
-        await this.blazorRef.invokeMethodAsync("OnListCommand", listId, command);
+        await this.blazorRef.invokeMethodAsync('OnListCommand', listId, command);
     }
 
     // Event handlers
@@ -364,8 +364,8 @@ export class MarkupEditor {
         if (!this.isContentDivInitialized) {
             this.isContentDivInitialized = true;
             this.transaction('onFocus - init', () => {
-                document.execCommand("insertBrOnReturn", false, "true");
-                document.execCommand("styleWithCSS", false, "false");
+                document.execCommand('insertBrOnReturn', false, 'true');
+                document.execCommand('styleWithCSS', false, 'false');
             });
             this.focus(true);
         }
@@ -381,36 +381,36 @@ export class MarkupEditor {
         if (listHandler) {
             if (e.code === 'Up' || e.code === 'ArrowUp') {
                 void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.GoToPreviousItem));
-                return ok();
+                ok(); return;
             }
             if (e.code === 'Down' || e.code === 'ArrowDown') {
                 void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.GoToNextItem));
-                return ok();
+                ok(); return;
             }
             if (e.code === 'Enter' || e.code === 'NumpadEnter') {
                 preventDefaultForEvent(e);
                 void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.InsertItem));
-                return ok();
+                ok(); return;
             }
             if (e.code === 'Escape') {
                 preventDefaultForEvent(e);
                 if (!this.expandSelection(listHandler))
-                    return ok();
+                { ok(); return; }
                 this.closeListUI();
-                return ok();
+                ok(); return;
             }
         }
 
         // Cancel on escape
         if (e.code === 'Escape') {
             void this.onCancel();
-            return ok();
+            ok(); return;
         }
 
         // Up key & empty content = open previous
         if (e.code === 'Up' || e.code === 'ArrowUp' && this.contentDiv.classList.contains('is-empty')) {
             void this.onOpenPrevious();
-            return ok();
+            ok(); return;
         }
     }
 
@@ -421,18 +421,18 @@ export class MarkupEditor {
 
         // Suppress bold, italic, and underline shortcuts
         if ((e.ctrlKey || e.metaKey)) {
-            let lowerCaseCode = e.code.toLowerCase();
-            if (lowerCaseCode === 'b' || lowerCaseCode === "i" || lowerCaseCode == "u")
-                return ok();
+            const lowerCaseCode = e.code.toLowerCase();
+            if (lowerCaseCode === 'b' || lowerCaseCode === 'i' || lowerCaseCode == 'u')
+            { ok(); return; }
         }
 
         // Post + fix the new line insertion when cursor is in the end of the document
         if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-            let isShiftKey = DeviceInfo.isMobile ? true : e.shiftKey;
+            const isShiftKey = DeviceInfo.isMobile ? true : e.shiftKey;
             const isPost = e.ctrlKey || e.metaKey || e.altKey || !isShiftKey;
             if (isPost) {
                 void this.onPost()
-                return ok();
+                ok(); return;
             }
 
             this.transaction('fix line feed', () => {
@@ -446,7 +446,7 @@ export class MarkupEditor {
                 }
                 this.fixContent();
             });
-            return ok();
+            ok(); return;
         }
     }
 
@@ -456,7 +456,7 @@ export class MarkupEditor {
 
         const data = e.clipboardData;
         if (!data)
-            return ok();
+        { ok(); return; }
 
         const plainText = data.getData('text');
         const text = cleanupPastedText(plainText, data.types.includes('text/html'));
@@ -467,7 +467,7 @@ export class MarkupEditor {
         this.transaction('onPaste', () => {
             this.insertTextAtCursor(concatenatedText);
         });
-        return ok();
+        ok();
     }
 
     private insertTextAtCursor(text)
@@ -503,15 +503,15 @@ export class MarkupEditor {
         const ok = () => e.preventDefault();
 
         switch (e.inputType) {
-            case "historyUndo":
-                this.undoStack.undo();
-                return ok();
-            case "historyRedo": {
-                this.undoStack.redo();
-                return ok();
-            }
-            default:
-                break;
+        case 'historyUndo':
+            this.undoStack.undo();
+            { ok(); return; }
+        case 'historyRedo': {
+            this.undoStack.redo();
+            ok(); return;
+        }
+        default:
+            break;
         }
     }
 
@@ -551,15 +551,15 @@ export class MarkupEditor {
         debugLog?.log(`updateListUI`);
         const cursorRange = this.getCursorRange();
         if (!cursorRange) {
-            void this.closeListUI();
+            this.closeListUI();
             return;
         }
 
         let listHandlers = this.listHandlers;
-        let listHandler = this.listHandler;
+        const listHandler = this.listHandler;
         if (listHandler)
             listHandlers = [listHandler].concat(listHandlers.filter(h => h != listHandler));
-        for (let h of listHandlers)
+        for (const h of listHandlers)
             this.tryUseListHandler(h, cursorRange);
     }
 
@@ -570,7 +570,7 @@ export class MarkupEditor {
             return;
 
         this.listHandler = undefined;
-        this.listFilter = "";
+        this.listFilter = '';
         void this.onListCommand(listHandler.listId, new ListCommand(ListCommandKind.Hide));
     }
 
@@ -581,7 +581,7 @@ export class MarkupEditor {
         const isActive = listHandler == this.listHandler;
         if (!matchText) {
             if (isActive)
-                void this.closeListUI();
+                this.closeListUI();
             return false;
         }
 
@@ -672,7 +672,7 @@ export class MarkupEditor {
         const hadFocus = this.hasFocus();
         const parents = listParents(node, this.contentDiv);
         parents.reverse();
-        for (let parent of parents) {
+        for (const parent of parents) {
             const mention = asMention(parent);
             if (mention) {
                 debugLog?.log(`fixSelection: mention:`, mention);
@@ -720,7 +720,7 @@ export class MarkupEditor {
                 let text = asText(node);
                 if (text) {
                     const oldText = text.textContent;
-                    const newText = oldText?.replace(ZeroWidthSpaceRe, ""); // \u200B (hex) = 8203 (dec)
+                    const newText = oldText?.replace(ZeroWidthSpaceRe, ''); // \u200B (hex) = 8203 (dec)
                     if (newText?.length !== oldText?.length) {
                         text.textContent = newText ?? null;
                         mustNormalize = true;
@@ -739,7 +739,7 @@ export class MarkupEditor {
                 }
 
                 text = getPostMentionText(element);
-                if (!text || !text.textContent?.startsWith(ZeroWidthSpace)) {
+                if (!text?.textContent?.startsWith(ZeroWidthSpace)) {
                     debugLog?.log('fixContent: removing mention', mention);
                     mention.remove();
                 } else
@@ -881,7 +881,7 @@ function asMention(node: Node): HTMLElement | null {
 }
 
 function getPostMentionText(mention: HTMLElement): Text | null {
-    if (!mention || !mention.nextSibling)
+    if (!mention?.nextSibling)
         return null;
 
     let text = asText(mention.nextSibling);
@@ -900,7 +900,7 @@ function cleanupPastedText(text: string, fixDoubleNewLines: boolean): string {
 }
 
 function normalize(text: string): string {
-    return text.normalize().replace(CrlfRe, "\n");
+    return text.normalize().replace(CrlfRe, '\n');
 }
 
 function listParents(start: Node, endExclusive: Node): HTMLElement[] {

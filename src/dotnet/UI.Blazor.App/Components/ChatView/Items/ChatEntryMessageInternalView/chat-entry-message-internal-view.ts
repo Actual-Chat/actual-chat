@@ -13,10 +13,10 @@ export class ChatEntryMessageInternalView {
     private blazorRef: DotNet.DotNetObject;
     private readonly messageMarkup: HTMLElement;
     private playableText: HTMLElement | null;
-    private markupHeight: number = 0;
+    private markupHeight = 0;
     private lastWidth: number | null = null;
-    private isHeightAuto: boolean = true;
-    private setHeightAutoAfterTransition: boolean = false;
+    private isHeightAuto = true;
+    private setHeightAutoAfterTransition = false;
     private classObserver: MutationObserver;
     private messageHeightObserver: MutationObserver;
     private messageWidthObserver: ResizeObserver;
@@ -27,8 +27,8 @@ export class ChatEntryMessageInternalView {
         characterData: true,
         characterDataOldValue: true,
     };
-    private isResizing: boolean = false;
-    private skipNext: boolean = false;
+    private isResizing = false;
+    private skipNext = false;
     private slowDebouncedChangeSize: ResettableFunc<(height: number) => Promise<void>>;
     private disposed$: Subject<void> = new Subject<void>();
 
@@ -42,7 +42,7 @@ export class ChatEntryMessageInternalView {
         if (!this.messageMarkup)
             return;
 
-        let content = this.messageMarkup.textContent;
+        const content = this.messageMarkup.textContent;
         if (!content && !this.messageMarkup.classList.contains('streaming'))
             this.messageMarkup.classList.add('empty');
 
@@ -95,7 +95,7 @@ export class ChatEntryMessageInternalView {
         return parseFloat(getComputedStyle(document.documentElement).fontSize);
     }
 
-    private observerHandler(observe: boolean = true) {
+    private observerHandler(observe = true) {
         if (observe) {
             this.messageHeightObserver = new MutationObserver(this.updateMarkupSize);
             this.messageHeightObserver.observe(this.messageMarkup, this.observerOptions);
@@ -240,7 +240,7 @@ export class ChatEntryMessageInternalView {
         this.changeSize(height)
     }, 50);
 
-    private changeSize(height: number, setHeightAuto: boolean = false) {
+    private changeSize(height: number, setHeightAuto = false) {
         if (this.isResizing && height <= this.markupHeight)
             return;
 
@@ -258,7 +258,7 @@ export class ChatEntryMessageInternalView {
         this.markupHeight = height;
     }
 
-    private changeSizeForText(slow: boolean = false) {
+    private changeSizeForText(slow = false) {
         fastRaf({
             read: () => requestAnimationFrame(() => {
                 const actualHeight = this.getActualHeight();

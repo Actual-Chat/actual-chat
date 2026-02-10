@@ -1,5 +1,5 @@
-import {customElement, property} from "lit/decorators.js";
-import {html, LitElement} from "lit";
+import {customElement, property} from 'lit/decorators.js';
+import {html, LitElement} from 'lit';
 
 @customElement('upgrade-app-cat-svg')
 class UpgradeAppCatSvg extends LitElement {
