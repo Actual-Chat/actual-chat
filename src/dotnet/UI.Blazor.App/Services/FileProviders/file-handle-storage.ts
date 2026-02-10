@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/prefer-promise-reject-errors */
 const DB_NAME = 'file-handles-database';
 const STORE_NAME = 'handles-storage';
 
