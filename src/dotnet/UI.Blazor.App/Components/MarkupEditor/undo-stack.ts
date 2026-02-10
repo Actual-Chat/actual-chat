@@ -16,6 +16,7 @@ export class UndoStack<T> {
         public equalityComparer: (first: T, second: T) => boolean,
         public pushThrottleInterval: number,
     ) {
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         this.pushThrottled = throttle(this.push, pushThrottleInterval)
         this.clear();
 
@@ -64,6 +65,7 @@ export class UndoStack<T> {
 
         try {
             const value = this.reader();
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             while (true) {
                 const position = this.position - 1;
                 const storedValue = this.items[position];
@@ -92,6 +94,7 @@ export class UndoStack<T> {
                 return;
 
             const value = this.reader();
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             while (true) {
                 this.position++;
                 const storedValue = this.items[this.position - 1];
