@@ -79,7 +79,7 @@ class ActiveRecordingSvg extends LitElement {
     `];
 
     private recentPowers: number[] = [];
-    private _isRecording: boolean = false;
+    private _isRecording = false;
     private observer: IntersectionObserver;
     private recorderStateChangedSubscription: Subscription;
     private signalPowerChangedSubscription: Subscription;
@@ -94,8 +94,7 @@ class ActiveRecordingSvg extends LitElement {
     @state()
     private isVisible = false;
 
-    @property({type: Number})
-    size = 10;
+    @property({type: Number}) size = 10;
 
     @property({type: Boolean})
     set isRecording(val: boolean) {
@@ -218,8 +217,8 @@ class ActiveRecordingSvg extends LitElement {
             const offset2 = 50 - height2 / 2;
             const offset3 = 50 - height3 / 2;
 
-            const edgeDotCls = shouldAnimate ? "active" : "non-active";
-            const centerDotCls = isVoiceActive || !isVisible ? "" : "in-rest";
+            const edgeDotCls = shouldAnimate ? 'active' : 'non-active';
+            const centerDotCls = isVoiceActive || !isVisible ? '' : 'in-rest';
 
             return html`
                 <svg xmlns='http://www.w3.org/2000/svg' width='${size * 4}' height='${size * 4}'
