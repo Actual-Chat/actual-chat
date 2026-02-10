@@ -1,3 +1,5 @@
+// TODO: remove eslint-disable and fix errors
+/* eslint-disable @typescript-eslint/no-floating-promises,@typescript-eslint/prefer-promise-reject-errors,@typescript-eslint/no-misused-promises,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment */
 import { getMessaging, getToken, deleteToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 import { Log } from 'logging';
 import { HostKind } from '../UI.Blazor/Services/BrowserInfo/browser-info';
@@ -6,8 +8,8 @@ import { BrowserInit } from '../UI.Blazor/Services/BrowserInit/browser-init';
 const { debugLog, warnLog, errorLog } = Log.get('NotificationUI');
 
 export class NotificationUI {
-    private static backendRef?: DotNet.DotNetObject = null;
-    private static hostKind?: HostKind = null;
+    private static backendRef?: DotNet.DotNetObject;
+    private static hostKind?: HostKind;
 
     public static async init(backendRef: DotNet.DotNetObject, hostKind: HostKind): Promise<void> {
         // probably init can be called multiple times on MAUI
@@ -44,17 +46,18 @@ export class NotificationUI {
                 : 'prompt';
 
         const status = await navigator.permissions.query({ name: 'notifications' });
-        if (!status.onchange)
-            status.onchange = () => this.setPermissionState(status.state);
+        status.onchange ??= () => this.setPermissionState(status.state);
         return status.state;
     }
 
     /** Called by Blazor */
+    // @ts-expect-error TODO: fix errors
     public static async getDeviceToken(): Promise<string | null>
     {
         let { firebaseApp, firebasePublicKey} = BrowserInit;
         try {
             if (!firebaseApp) {
+                // @ts-expect-error TODO: fix errors
                 firebaseApp = await BrowserInit.initFirebase();
                 firebasePublicKey = BrowserInit.firebasePublicKey;
             }
@@ -89,7 +92,9 @@ export class NotificationUI {
 
         const messaging = getMessaging(firebaseApp);
         deleteToken(messaging);
+        // @ts-expect-error TODO: fix errors
         BrowserInit.firebaseApp = null; // reset Firebase App registration
+        // @ts-expect-error TODO: fix errors
         BrowserInit.firebaseAnalytics = null;
     }
 
@@ -101,6 +106,7 @@ export class NotificationUI {
         element.removeEventListener('click', this.requestNotificationPermissionHandler);
     }
 
+    // @ts-expect-error TODO: fix errors
     public static async requestNotificationPermission(): Promise<boolean> {
         debugLog?.log('requestNotificationPermission()');
 
@@ -133,6 +139,7 @@ export class NotificationUI {
 
     private static async setPermissionState(state: PermissionState): Promise<void> {
         debugLog?.log(`setPermissionState(${state})`);
+        // @ts-expect-error TODO: fix errors
         await this.backendRef.invokeMethodAsync('SetPermissionState', state);
     }
 
@@ -145,6 +152,7 @@ export class NotificationUI {
                 return;
 
             const url = event.data?.url;
+            // @ts-expect-error TODO: fix errors
             await this.backendRef.invokeMethodAsync('NavigateToNotificationUrl', url);
         });
     }
@@ -161,7 +169,7 @@ function storeNotificationsPermission(permission: NotificationPermission) {
     // Whatever the user answers, we make sure Chrome stores the information
     if (!('permission' in Notification)) {
         debugLog?.log(`storeNotificationsPermission(${permission})`);
-        // @ts-ignore readonly property
+        // @ts-expect-error readonly property
         Notification['permission'] = permission;
     }
 }
@@ -170,6 +178,7 @@ function hasPromiseBasedNotificationApi(): boolean {
     try {
         Notification.requestPermission().then();
         return true;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch(e) {
         return false;
     }
