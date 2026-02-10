@@ -1,0 +1,165 @@
+using ActualChat.Streaming;
+using ActualChat.Testing.Host;
+using ActualChat.Video;
+
+namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
+
+/// <summary>
+/// Tests the backend video state transitions that drive video panel visibility
+/// in ChatHeader.razor. The panel is shown when IsRecording=true OR
+/// IsAnyoneVideoStreaming=true, and hidden when both are false.
+/// </summary>
+[Collection(nameof(ChatUICollection))]
+public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<ChatAppHostFixture>(fixture, @out)
+{
+    [Fact]
+    public async Task ShouldReportIsAnyoneStreamingViaBackend()
+    {
+        // Arrange: create two users and a chat
+        await using var bob = AppHost.NewWebClientTester(Out);
+        await using var alice = AppHost.NewWebClientTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+
+        var backend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
+        var frontend = AppHost.Services.GetRequiredService<ILiveVideoStreams>();
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        bobAuthor.Should().NotBeNull();
+
+        // Initially no one is streaming
+        var authorIds = await backend.GetVideoStreamingAuthorIds(chatId, CancellationToken.None);
+        authorIds.Should().BeEmpty();
+
+        // Register Bob's video stream
+        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamInfo = new VideoStreamInfo(
+            streamId,
+            chatId,
+            bobAuthor!.Id,
+            new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
+            Clocks.SystemClock.Now);
+
+        await backend.RegisterActiveStream(chatId, streamInfo, CancellationToken.None);
+
+        // IsAnyoneVideoStreaming equivalent: check via frontend
+        authorIds = await frontend.GetVideoStreamingAuthorIds(alice.Session, chatId, CancellationToken.None);
+        authorIds.Should().HaveCount(1);
+        authorIds.Should().Contain(bobAuthor.Id);
+
+        // Unregister the stream
+        await backend.UnregisterActiveStream(chatId, streamId, CancellationToken.None);
+
+        // Now no one should be streaming
+        authorIds = await frontend.GetVideoStreamingAuthorIds(alice.Session, chatId, CancellationToken.None);
+        authorIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ShouldInvalidateComputedOnStreamChange()
+    {
+        // Arrange
+        await using var bob = AppHost.NewWebClientTester(Out);
+        await bob.SignInAsUniqueBob();
+
+        var (chatId, _) = await bob.CreateChat(true);
+
+        var backend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        bobAuthor.Should().NotBeNull();
+
+        // Capture initial computed value
+        var computed = await Computed.Capture(
+            () => backend.GetVideoStreamingAuthorIds(chatId, CancellationToken.None));
+        computed.Value.Should().BeEmpty();
+        computed.IsConsistent().Should().BeTrue();
+
+        // Register a video stream — computed should become inconsistent
+        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamInfo = new VideoStreamInfo(
+            streamId,
+            chatId,
+            bobAuthor!.Id,
+            new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
+            Clocks.SystemClock.Now);
+
+        await backend.RegisterActiveStream(chatId, streamInfo, CancellationToken.None);
+        computed.IsConsistent().Should().BeFalse();
+
+        // Update — should reflect new state
+        computed = await computed.Update(CancellationToken.None);
+        computed.Value.Should().HaveCount(1);
+
+        // Unregister — should invalidate again
+        await backend.UnregisterActiveStream(chatId, streamId, CancellationToken.None);
+        computed.IsConsistent().Should().BeFalse();
+
+        computed = await computed.Update(CancellationToken.None);
+        computed.Value.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Simulates the ChatHeader.razor logic: when IsRecording=false AND
+    /// IsAnyoneVideoStreaming=false, the panel should hide; when either is true,
+    /// panel should show. This tests the backend state that drives those conditions.
+    /// </summary>
+    [Fact]
+    public async Task ShouldDetermineVideoPanelVisibility()
+    {
+        // Arrange
+        await using var bob = AppHost.NewWebClientTester(Out);
+        await using var alice = AppHost.NewWebClientTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+
+        var backend = AppHost.Services.GetRequiredService<ILiveVideoBackend>();
+        var frontend = AppHost.Services.GetRequiredService<ILiveVideoStreams>();
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        bobAuthor.Should().NotBeNull();
+
+        // Helper: simulate ChatHeader's panel visibility check
+        // Panel shows when isRecording OR isAnyoneVideoStreaming
+        async Task<bool> ShouldShowPanel(bool isRecording) {
+            var authorIds = await frontend.GetVideoStreamingAuthorIds(alice.Session, chatId, CancellationToken.None);
+            var isAnyoneVideoStreaming = authorIds.Length > 0;
+            return isRecording || isAnyoneVideoStreaming;
+        }
+
+        // Initially: not recording, no streams → panel hidden
+        var show = await ShouldShowPanel(isRecording: false);
+        show.Should().BeFalse("no recording and no streams → panel should be hidden");
+
+        // Bob starts recording (simulated by flag) → panel shown
+        show = await ShouldShowPanel(isRecording: true);
+        show.Should().BeTrue("recording is on → panel should show");
+
+        // Bob also starts a video stream
+        var streamId = StreamId.New(new NodeRef(Generate.Option));
+        var streamInfo = new VideoStreamInfo(
+            streamId,
+            chatId,
+            bobAuthor!.Id,
+            new VideoFormat { Codec = "avc1", Width = 640, Height = 480 },
+            Clocks.SystemClock.Now);
+        await backend.RegisterActiveStream(chatId, streamInfo, CancellationToken.None);
+
+        // Recording + streams → panel shown
+        show = await ShouldShowPanel(isRecording: true);
+        show.Should().BeTrue("recording + streams → panel should show");
+
+        // Bob stops recording but stream still active → panel stays
+        show = await ShouldShowPanel(isRecording: false);
+        show.Should().BeTrue("streams still active → panel should stay visible");
+
+        // Stream ends → panel hidden
+        await backend.UnregisterActiveStream(chatId, streamId, CancellationToken.None);
+        show = await ShouldShowPanel(isRecording: false);
+        show.Should().BeFalse("no recording and no streams → panel should hide");
+    }
+}

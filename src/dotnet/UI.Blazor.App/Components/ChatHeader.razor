@@ -9,10 +9,15 @@
     var showBackBtn = isThread || ScreenSize.IsNarrow();
     var isPanelVisible = IsRecordingHere || IsListeningHere || m.IsAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
 
-    // Show video panel when recording is requested (via JoinVideoCallModal)
-    if (m.VideoState?.IsRecording == true && !_showVideoPanel) {
+    // Show video panel when recording or remote streams exist
+    if ((m.VideoState?.IsRecording == true || m.IsAnyoneVideoStreaming) && !_showVideoPanel) {
         _showVideoPanel = true;
-        _pendingCameraDeviceId = m.VideoState.SelectedCameraDeviceId;
+        _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
+    }
+    // Hide video panel when recording stopped AND no remote video streams
+    else if (_showVideoPanel && m.VideoState?.IsRecording != true && !m.IsAnyoneVideoStreaming) {
+        _showVideoPanel = false;
+        _pendingCameraDeviceId = null;
     }
 }
 
@@ -190,17 +195,6 @@
 
     private void OnSearchClick()
         => Hub.PanelsUI.Right.SearchToggle();
-
-    private void OnShowVideoPanel() {
-        _showVideoPanel = !_showVideoPanel;
-        StateHasChanged();
-    }
-
-    private void OnJoinVideoCallClick() {
-        if (Chat != null) {
-            _ = ModalUI.Show(new JoinVideoCallModal.Model(Chat));
-        }
-    }
 
     // Nested types
 

@@ -28,6 +28,9 @@ body.narrow .video-panel.expanded {
     @apply relative h-full w-full;
     @apply flex items-center justify-center;
 }
+.video-panel .video-frame.preview-off {
+    display: none !important;
+}
 .video-panel .video-frame canvas {
     @apply h-full w-full;
     @apply object-contain;

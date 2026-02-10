@@ -13,7 +13,7 @@
     var recordingCls = isRecording ? "recording" : "";
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
     var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
-    var videoFrameCls = isRecording ? "" : "hidden";
+    var videoFrameCls = isRecording ? "" : "preview-off";
 }
 
 @if (_rendered) {
