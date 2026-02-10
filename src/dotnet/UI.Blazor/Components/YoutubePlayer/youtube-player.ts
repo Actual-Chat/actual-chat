@@ -23,7 +23,7 @@ export class YoutubePlayer {
                 new YT.Player(frame, {
                     events: {
                         onStateChange(stateChangeEvent: YT.OnStateChangeEvent) {
-                            const event = new CustomEvent("youtubeplayeronstatechange", {
+                            const event = new CustomEvent('youtubeplayeronstatechange', {
                                 bubbles: true,
                                 detail: {...stateChangeEvent},
                             });

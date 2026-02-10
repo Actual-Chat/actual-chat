@@ -3,14 +3,14 @@ import { audioContextSource, recordingAudioContextSource } from '../../UI.Blazor
 export class DemandUserInteraction {
     private static isInitialized = false;
 
-    public static async init(): Promise<void> {
+    public static init(): void {
         if (this.isInitialized)
             return;
 
         const buttons = [...document.querySelectorAll<HTMLButtonElement>('div.demand-interaction > button')];
         buttons.forEach(btn => {
-            btn.addEventListener('click', () => recordingAudioContextSource.initContextInteractively());
-            btn.addEventListener('click', () => audioContextSource.initContextInteractively());
+            btn.addEventListener('click', () => void recordingAudioContextSource.initContextInteractively());
+            btn.addEventListener('click', () => void audioContextSource.initContextInteractively());
         });
 
         this.isInitialized = true;
