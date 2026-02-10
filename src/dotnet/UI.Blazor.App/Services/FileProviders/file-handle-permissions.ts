@@ -1,5 +1,5 @@
 // TODO: remove eslint-disables and fix errors
-/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { DelayedInvoker } from '../../../UI.Blazor/Components/delayed-invoker';
 
 export async function requestFileHandlePermission(handle: FileSystemFileHandle, mode : FileSystemPermissionMode = 'read') : Promise<GetFilePermissionsRequest> {

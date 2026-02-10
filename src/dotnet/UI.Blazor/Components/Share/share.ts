@@ -1,4 +1,4 @@
-﻿import { APP_NAME } from '_constants';
+﻿import { APP_NAME, PROD_HOST } from '_constants';
 import { Log } from 'logging';
 
 const { infoLog } = Log.get('Share');

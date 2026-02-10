@@ -27,11 +27,7 @@ void (async () => {
         });
     }
 
-    // @ts-expect-error - window.App is defined root html
-    const app = window.App as {
-        whenBlazorReady: Promise<void>,
-        renderMode: string,
-    } | undefined;
+    const app = window.App;
     if (app) {
         await app.whenBlazorReady;
         BrowserInit.startReloadWatchers();
