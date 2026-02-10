@@ -1425,7 +1425,7 @@ export class VirtualList {
 
                 }
                 else if (totalSizeDiff != 0) {
-                    this.wrapperRef.style.height = totalSize + 'px';
+                    this.wrapperRef.style.height = `${totalSize}px`;
                 }
 
                 if (this.defaultEdge === VirtualListEdge.End) {
