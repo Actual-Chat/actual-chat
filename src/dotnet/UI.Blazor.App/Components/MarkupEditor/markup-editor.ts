@@ -1,6 +1,7 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-deprecated,@typescript-eslint/no-unsafe-argument,@typescript-eslint/no-unsafe-member-access */
 import { DeviceInfo } from 'device-info';
 import { getOrInheritData } from 'dom-helpers';
-import { Timeout } from 'timeout';
 import { throttle } from 'promises';
 import { preventDefaultForEvent } from 'event-handling';
 import { UndoStack } from './undo-stack';
@@ -29,7 +30,7 @@ export class MarkupEditor {
 
     public readonly contentDiv: HTMLDivElement;
     public hasContent = false;
-    public changed: (html: string, text: string) => void = () => { };
+    public changed: (html: string, text: string) => void = () => { /* empty */ };
 
     private isContentDivInitialized = false;
     private lastSelectedRange?: Range;
@@ -293,7 +294,7 @@ export class MarkupEditor {
         else {
             if (prevChar == '@') {
                 newCaretPosition = caretPosition - 1;
-                const oldText = range.endContainer.textContent || '';
+                const oldText = range.endContainer.textContent ?? '';
                 const newText = oldText.substring(0, caretPosition - 1) + oldText.substring(caretPosition);
                 this.setHtml(newText);
             }
@@ -678,7 +679,7 @@ export class MarkupEditor {
                 debugLog?.log(`fixSelection: mention:`, mention);
                 const newRange = document.createRange();
                 const text = getPostMentionText(mention);
-                if (text && text.textContent?.startsWith(ZeroWidthSpace)) {
+                if (text?.textContent?.startsWith(ZeroWidthSpace)) {
                     newRange.setStart(text, 1);
                     newRange.collapse(false);
                 }
@@ -843,6 +844,7 @@ enum ListCommandKind {
 
 // Helpers
 
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
 function castNode<TNode extends Node>(node: Node | null, nodeType: number): TNode | null {
     if (!node)
         return null;
