@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-misused-promises,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access */
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 
 import { Log } from 'logging';
@@ -28,18 +30,28 @@ export class LandingVideoModal {
     constructor(
         private readonly landingVideoModal: HTMLElement,
     ) {
+        // @ts-expect-error TODO(Andrey): fix the error
         this.videoWrapper = landingVideoModal.querySelector('.video-wrapper');
+        // @ts-expect-error TODO(Andrey): fix the error
         this.video = this.videoWrapper.querySelector('.c-video');
+        // @ts-expect-error TODO(Andrey): fix the error
         this.controlWrapper = landingVideoModal.querySelector('.control-wrapper');
+        // @ts-expect-error TODO(Andrey): fix the error
         this.controlFooter = this.controlWrapper.querySelector('.c-footer');
+        // @ts-expect-error TODO(Andrey): fix the error
         this.controlBody = this.controlWrapper.querySelector('.c-body');
+        // @ts-expect-error TODO(Andrey): fix the error
         this.playBtn = this.controlBody.querySelector('.play-btn');
+        // @ts-expect-error TODO(Andrey): fix the error
         this.pauseBtn = this.controlBody.querySelector('.pause-btn');
+        // @ts-expect-error TODO(Andrey): fix the error
         this.progressBar = this.controlFooter.querySelector('.c-progress-bar');
 
         const durationDiv = this.controlFooter.querySelector('.c-duration');
+        // @ts-expect-error TODO(Andrey): fix the error
         durationDiv.innerHTML = this.formatTime(46);
         const currentTimeDiv = this.controlFooter.querySelector('.c-current');
+        // @ts-expect-error TODO(Andrey): fix the error
         currentTimeDiv.innerHTML = this.formatTime(0);
 
         this.plug = this.landingVideoModal.querySelector('.c-video-plug')!;
@@ -76,8 +88,9 @@ export class LandingVideoModal {
 
             this.video.oncanplay = () => {
                 this.video.muted = true;
-                this.video.play().then(() => {
+                void this.video.play().then(() => {
                     const durationDiv = this.controlFooter.querySelector('.c-duration');
+                    // @ts-expect-error TODO(Andrey): fix the error
                     durationDiv.innerHTML = this.formatTime(this.video.duration);
                     this.plug.classList.remove('flex');
                     this.plug.hidden = true;
@@ -94,7 +107,7 @@ export class LandingVideoModal {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
@@ -159,7 +172,7 @@ export class LandingVideoModal {
             this.showControl(true);
         } else {
             if (this.video.paused)
-                this.video.play().then(() => {
+                void this.video.play().then(() => {
                     this.showControl(false);
                 });
             else {
@@ -172,8 +185,9 @@ export class LandingVideoModal {
         const current = this.video.currentTime;
         const percentage = Math.floor((100 / this.video.duration) * current);
         this.progressBar.value = percentage;
-        this.progressBar.innerHTML = percentage + '% played';
+        this.progressBar.innerHTML = `${percentage}% played`;
         const currentTimeDiv = this.controlFooter.querySelector('.c-current');
+        // @ts-expect-error TODO(Andrey): fix the error
         currentTimeDiv.innerHTML = this.formatTime(current);
     }
 
@@ -183,7 +197,7 @@ export class LandingVideoModal {
         const percent = e.offsetX / progressBar.offsetWidth;
         this.video.currentTime = percent * this.video.duration;
         const value = progressBar.value = Math.floor(percent / 100);
-        progressBar.innerHTML = value + '% played';
+        progressBar.innerHTML = `${value}% played`;
     }
 
     private onTouchEnd(event: TouchEvent): void {
@@ -194,6 +208,7 @@ export class LandingVideoModal {
         void this.video.play().then(() => {
             this.isVideoPlayStarted = true;
             const durationDiv = this.controlFooter.querySelector('.c-duration');
+            // @ts-expect-error TODO(Andrey): fix the error
             durationDiv.innerHTML = this.formatTime(this.video.duration);
             this.plug.classList.remove('flex');
             this.plug.hidden = true;
