@@ -2,8 +2,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build:Debug": "node build.mjs",
-    "build:Release": "eslint && node build.mjs --production",
+    "build:Debug": "tsc --noEmit && node build.mjs",
+    "build:Release": "tsc --noEmit && eslint && node build.mjs --production",
     "bundle-report": "node build.mjs --production --analyze",
     "watch": "node build.mjs --watch",
     "font": "svgtofont --sources ./src/nodejs/icons --output ./src/nodejs/fonts/svgtofont",

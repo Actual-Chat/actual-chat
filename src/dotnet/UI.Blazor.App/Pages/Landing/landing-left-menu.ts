@@ -26,7 +26,7 @@ export class LandingLeftMenu {
 
         fromEvent(document, 'click')
             .pipe(takeUntil(this.disposed$))
-            .subscribe(() => this.onClick());
+            .subscribe((event: Event) => this.onClick(event));
     }
 
     public dispose() {
@@ -39,11 +39,13 @@ export class LandingLeftMenu {
         this.disposed$.complete();
     }
 
-    private onClick = () => {
+    private onClick = (event: Event) => {
         if (!this._ref.classList.contains('open'))
             return;
 
         const container = this._ref.querySelector('.c-container');
+        if (!container)
+            return;
         const withinMenu = event.composedPath().includes(container);
         if (withinMenu)
             return;

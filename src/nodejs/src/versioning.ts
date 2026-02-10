@@ -29,7 +29,6 @@ export class Versioning {
             const stripOrigin = (s: string) => s.startsWith(origin) ? s.slice(origin.length) : s;
 
             const processAsset = (key: string, value: string) => {
-                // @ts-expect-error - capturing groups require ES2018 or later
                 const assetMatch = /\.(?<hash>[a-z0-9]{10})\.(js|wasm)$/.exec(value);
                 if (!assetMatch?.groups || !assetMap)
                     return;
@@ -73,6 +72,10 @@ export class Versioning {
             return path;
         }
     }
+}
+
+declare global {
+    var Versioning: typeof import('./versioning').Versioning;
 }
 
 globalThis.Versioning = Versioning;

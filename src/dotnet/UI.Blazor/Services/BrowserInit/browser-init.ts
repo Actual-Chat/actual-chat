@@ -40,8 +40,7 @@ export class BrowserInit {
     ): void {
         try {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
-            // eslint-disable-next-line
-            window['App']?.markBlazorReady?.(); // It must be called no matter what at this point
+            window.App?.markBlazorReady?.(); // It must be called no matter what at this point
             this.apiVersion = apiVersion;
             const documentBaseUri = new URL(document.baseURI);
             this.baseUri = supportedHosts.includes(documentBaseUri.host) ? `${documentBaseUri.protocol}//${documentBaseUri.host}` : baseUri;

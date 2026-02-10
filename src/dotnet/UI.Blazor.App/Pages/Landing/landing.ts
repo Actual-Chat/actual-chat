@@ -54,7 +54,7 @@ export class Landing {
 
         fromEvent(document, 'touchend', { passive: false, once: true })
             .pipe(takeUntil(this.disposed$))
-            .subscribe((event: TouchEvent) => this.onTouchEnd(event));
+            .subscribe(() => this.onTouchEnd());
 
         fromEvent(document, 'wheel', { passive: false }) // WheelEvent is passive by default
             .pipe(takeUntil(this.disposed$))

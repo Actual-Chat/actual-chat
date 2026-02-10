@@ -389,6 +389,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plans", "plans", "{A0CDF5EA
 		docs\plans\e2ee.md = docs\plans\e2ee.md
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "types", "types", "{CDA725E9-7CDB-46A4-9696-9A3BAB683662}"
+	ProjectSection(SolutionItems) = preProject
+		src\nodejs\types\audio-worklet-processor.d.ts = src\nodejs\types\audio-worklet-processor.d.ts
+		src\nodejs\types\general.d.ts = src\nodejs\types\general.d.ts
+		src\nodejs\types\global.d.ts = src\nodejs\types\global.d.ts
+		src\nodejs\types\modules.d.ts = src\nodejs\types\modules.d.ts
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1486,6 +1494,7 @@ Global
 		{AAA68B28-5BA5-49CA-8A47-8131B1C7AEC8} = {8F17CFD4-76C1-4CD5-B1D6-DAC6F9BEE9EA}
 		{F315A300-1761-4EFB-BCCB-3066D58DF306} = {8F17CFD4-76C1-4CD5-B1D6-DAC6F9BEE9EA}
 		{A0CDF5EA-4040-448A-A15D-FA54A07A9DBE} = {FC821FB9-92B2-4BC2-9970-8AFF829A1987}
+		{CDA725E9-7CDB-46A4-9696-9A3BAB683662} = {609C47B5-30E6-4B2A-A8DB-1B1FD644948F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

@@ -19,7 +19,23 @@ import './src/init';
 // Exports
 import * as ui from '../dotnet/UI.Blazor/exports';
 import * as blazorApp from '../dotnet/UI.Blazor.App/exports';
-import { Kvas } from './src/kvas';
+import { Kvas } from 'kvas';
+
+declare global {
+    interface Window {
+        ui: typeof ui;
+        FontSizes: typeof FontSizes;
+        Theme: typeof Theme;
+        blazorApp: typeof blazorApp;
+        Kvas: typeof Kvas;
+        App?: {
+            renderMode?: string;
+            whenBlazorReady?: Promise<void>;
+            markBundleReady?(): void;
+            markBlazorReady?(): void;
+        };
+    }
+}
 
 // Assign to window objects
 window.ui = {
@@ -30,5 +46,4 @@ window.Theme = Theme;
 window.blazorApp = blazorApp;
 window.Kvas = Kvas;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 window.App?.markBundleReady?.(); // "?." here ensures this code won't fail in workers, etc.

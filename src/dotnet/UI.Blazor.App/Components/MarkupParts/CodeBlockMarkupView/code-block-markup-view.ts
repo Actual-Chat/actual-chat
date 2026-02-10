@@ -1,5 +1,4 @@
 // TODO: Fix ESLint errors
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import hljs from 'highlight.js/lib/core';
 import { LanguageFn } from 'highlight.js';
 import bash from 'highlight.js/lib/languages/bash';
@@ -25,6 +24,8 @@ const { errorLog } = Log.get('CodeBlockMarkupView');
 export function highlightCode(pre: HTMLPreElement, languageName: string, code: string) {
     try {
         const codeElement = pre.querySelector('code');
+        if (!codeElement)
+            return;
         const language = hljs.getLanguage(languageName);
         if (language) {
             codeElement.innerHTML = hljs.highlight(code, { language: languageName }).value;
@@ -38,10 +39,10 @@ export function highlightCode(pre: HTMLPreElement, languageName: string, code: s
 
 function applyTheme(themeInfo: ThemeInfo){
     if (themeInfo.currentTheme === 'light') {
-        // @ts-ignore
+        // @ts-expect-error intentional
         void import('highlight.js/styles/intellij-light.css');
     } else {
-        // @ts-ignore
+        // @ts-expect-error intentional
         void import('highlight.js/styles/atom-one-dark.css');
     }
 }
@@ -63,7 +64,8 @@ function init() {
     hljs.registerLanguage('cpp', cpp);
     hljs.registerLanguage('csharp', csharp);
 
-    applyTheme(Theme.info);
+    if (Theme.info)
+        applyTheme(Theme.info);
     Theme.changed.add(applyTheme);
 }
 
