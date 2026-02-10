@@ -354,7 +354,7 @@ export class VirtualList {
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     private onItemSetChange = (mutations: MutationRecord[], _observer: MutationObserver): void => {
         if (!this.isRendering) {
             if (mutations.length > 0)
@@ -387,7 +387,7 @@ export class VirtualList {
                 const nodeElement = node as HTMLElement;
                 const isGroup = nodeElement.classList?.contains('group');
                 // TODO(AK): fix eslint error
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                 
                 if (!nodeElement.dataset && !isGroup)
                     continue;
 
@@ -412,7 +412,7 @@ export class VirtualList {
                 const nodeElement = node as HTMLElement;
                 const isGroup = nodeElement.classList?.contains('group');
                 // TODO(AK): fix eslint error
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                 
                 if (!nodeElement.dataset && !isGroup)
                     continue;
 
@@ -804,7 +804,7 @@ export class VirtualList {
         'default',
         'updateViewport');
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     private async updateViewport(isThrottled = false): Promise<void> {
         const rs = this.renderState;
         if (this.isDisposed || this.isRendering)
@@ -954,7 +954,7 @@ export class VirtualList {
             }
 
             const viewRect = this.ref.getBoundingClientRect();
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+             
             const itemKeys: string[] = [interactiveKey ?? '', medianVisibleKey, this.query.keyRange?.end, this.query.keyRange?.start];
             for (const itemKey of itemKeys) {
                 if (!itemKey)

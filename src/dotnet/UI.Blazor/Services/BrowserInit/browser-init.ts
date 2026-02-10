@@ -88,7 +88,6 @@ export class BrowserInit {
         if (!mustReconnectBlazor)
             return;
 
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         this.reconnectingPromise ??= (async (): Promise<void> => {
             try {
                 while (window['Blazor']) {
