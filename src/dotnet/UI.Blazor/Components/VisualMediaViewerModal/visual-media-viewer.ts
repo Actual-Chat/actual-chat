@@ -3,7 +3,9 @@ import { clearTimeout, setTimeout } from 'timerQueue';
 import { Swiper } from 'swiper';
 import { debounce, throttle } from 'promises';
 
+// TODO(Andrey) fix eslint errors
 interface SwiperElement extends HTMLElement {
+    // eslint-disable-next-line
     swiper: any;
     initialize: () => void;
 }
@@ -286,6 +288,7 @@ export class VisualMediaViewer {
         const footerHeight = (this.isHeaderAndFooterVisible && this.footer) ? this.footer.offsetHeight : 0;
 
         const videoWrapper = activeSlide.querySelector('.video-wrapper') as HTMLElement;
+        // eslint-disable-next-line
         if (!videoWrapper)
             return;
 
@@ -326,6 +329,7 @@ export class VisualMediaViewer {
         const footer = this.footer;
         const header = this.header;
         const viewer = this.imageViewer;
+        // eslint-disable-next-line
         const canContinue = (!this.thumbsEl && header && viewer) || (this.thumbsEl && footer && header && viewer);
         if (!canContinue)
             return;
@@ -356,6 +360,7 @@ export class VisualMediaViewer {
 
         if (this.thumbs) {
             setTimeout(() => {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
                 this.thumbs.update();
             }, 50);
         }
@@ -372,6 +377,7 @@ export class VisualMediaViewer {
         const footer = this.footer;
         const header = this.header;
         const viewer = this.imageViewer;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unnecessary-condition
         const canContinue = (!this.thumbsEl && header && viewer) || (this.thumbsEl && footer && header && viewer);
         if (!canContinue)
             return;
