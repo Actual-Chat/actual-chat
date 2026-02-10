@@ -17,14 +17,14 @@ import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
-const UpdateViewportInterval: number = 64;
-const UpdateItemVisibilityInterval: number = 250;
-const VisibilityEpsilon: number = 4;
-const EdgeEpsilon: number = 4;
-const ScrollDebounce: number = 200;
-const SkeletonDetectionBoundary: number = 200;
-const MinViewPortSize: number = 400;
-const RequestDataTimeout: number = 800;
+const UpdateViewportInterval = 64;
+const UpdateItemVisibilityInterval = 250;
+const VisibilityEpsilon = 4;
+const EdgeEpsilon = 4;
+const ScrollDebounce = 200;
+const SkeletonDetectionBoundary = 200;
+const MinViewPortSize = 400;
+const RequestDataTimeout = 800;
 
 type ScrollToEdgeReason = 'no-pivot' | 'last-item' | 'item' | 'sticky-edge' | 'non-item-resize' | 'item-resize' | 'unknown';
 interface ScrollMetadata {
@@ -64,22 +64,22 @@ export class VirtualList {
     private readonly rowGap: number = 2;
 
     private isDisposed = false;
-    private cachedAllItemRefs: Array<HTMLElement> | null = null;
+    private cachedAllItemRefs: HTMLElement[] | null = null;
     private stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
     private whenRequestDataCompleted: PromiseSource<void> | null = null;
     private pivots: Pivot[] = [];
     private minStart: number | null = null;
-    private isStartKnown: boolean = false;
+    private isStartKnown = false;
     private maxEnd: number | null = null;
-    private isEndKnown: boolean = false;
-    private windowScrollTop: number = 0;
+    private isEndKnown = false;
+    private windowScrollTop = 0;
 
     private renderStartedAt: number | null = null;
-    private renderCompletedAt: number = 0;
-    private scrollPositionRestoredAt: number = 0;
-    private isNearSkeleton: boolean = false;
-    private isEndAnchorVisible: boolean = false;
-    private isScrolling: boolean = false;
+    private renderCompletedAt = 0;
+    private scrollPositionRestoredAt = 0;
+    private isNearSkeleton = false;
+    private isEndAnchorVisible = false;
+    private isScrolling = false;
     private scrollTime: number | null = null;
     private scrollDirection: 'up' | 'down' | 'none' = 'none';
     private turnOffScrollingCallback?: () => void;
@@ -94,7 +94,7 @@ export class VirtualList {
     private viewport: NumberRange | null = null;
     private lastViewport: NumberRange | null = null;
     private endAnchorSize = 4;
-    private isUpdatingPivots: boolean = false;
+    private isUpdatingPivots = false;
 
     public static create(
         ref: HTMLElement,
@@ -123,7 +123,7 @@ export class VirtualList {
     ) {
         if (debugLog) {
             debugLog?.log(`constructor`);
-            globalThis['virtualList'] = this;
+            globalThis.virtualList = this;
         }
 
         this.createdAt = Date.now();
@@ -227,9 +227,7 @@ export class VirtualList {
                 debugLog?.log(`renderStartedAt: `, time, value);
                 this.renderStartedAt = time;
                 origSetAttribute.call(this.renderIndexRef, qualifiedName, value);
-                fastRaf(() => {
-                    void this.endRender();
-                });
+                fastRaf(() => this.endRender());
             } catch (e) {
                 warnLog?.log('renderIndex.setAttribute: failed', e);
             }
@@ -313,7 +311,7 @@ export class VirtualList {
     private get isInitialRender(): boolean {
         const now = Date.now();
         // debugLog?.log('scrollToEdge: schedule', edge, useSmoothScroll, reason);
-         // first 1.5 seconds after creating the virtual list
+        // first 1.5 seconds after creating the virtual list
         return now - this.createdAt < 1500;
     }
 
@@ -337,7 +335,7 @@ export class VirtualList {
             if (rs.renderIndex <= this.renderState.renderIndex)
                 return null;
 
-            const riText = this.renderIndexRef.dataset['renderIndex'];
+            const riText = this.renderIndexRef.dataset.renderIndex;
             if (riText == null || riText == '')
                 return null;
 
