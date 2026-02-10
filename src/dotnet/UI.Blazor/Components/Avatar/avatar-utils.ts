@@ -25,7 +25,7 @@ export function getAngle(x: number, y: number): number {
 }
 
 export function getUnit(number: number, range: number, index?: number): number {
-    let value = number % range;
+    const value = number % range;
 
     if (index && ((getDigit(number, index) % 2) === 0)) {
         return -value;
@@ -41,7 +41,7 @@ export function getRandomColor(number: number, colors: string[], range: number):
 export function getContrast(hexColor: string): string {
 
     // If a leading # is provided, remove it
-    if (hexColor.slice(0, 1) === '#') {
+    if (hexColor.startsWith('#')) {
         hexColor = hexColor.slice(1);
     }
 

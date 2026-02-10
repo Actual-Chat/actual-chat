@@ -8,9 +8,9 @@ const SIZE = 36;
 let id = 0;
 
 @customElement('beam-avatar')
-class BeamAvatar extends LitElement {
+export class BeamAvatar extends LitElement {
     @property() key: string;
-    @property() square: boolean = false;
+    @property() square = false;
     @property() colors: string[] = ['FFDBA0', 'BBBEFF', '9294E1', 'FF9BC0', '0F2FE8'];
 
     private maskId = `beam-avatar-${++id}`;
@@ -20,7 +20,7 @@ class BeamAvatar extends LitElement {
         const mouth = data.isMouthOpen
             ? svg`
                 <path
-                    d='${'M15 ' + (19 + data.mouthSpread) + 'c2 1 4 1 6 0'}'
+                    d='${'M15 ' + (19 + data.mouthSpread).toString() + 'c2 1 4 1 6 0'}'
                     stroke='${data.faceColor}'
                     fill='none'
                     stroke-linecap='round'
@@ -28,7 +28,7 @@ class BeamAvatar extends LitElement {
             `
             : svg`
                 <path
-                    d='${'M13,' + (19 + data.mouthSpread) + ' a1,0.75 0 0,0 10,0'}'
+                    d='${'M13,' + (19 + data.mouthSpread).toString() + ' a1,0.75 0 0,0 10,0'}'
                     fill='${data.faceColor}'
                 />
             `;
@@ -36,7 +36,7 @@ class BeamAvatar extends LitElement {
         return html`
             <svg
                 xmlns='http://www.w3.org/2000/svg'
-                viewBox='${'0 0 ' + SIZE + ' ' + SIZE}'
+                viewBox='${`0 0 ${SIZE} ${SIZE}`}'
                 fill='none'
                 role='img'
                 width='100%'
@@ -53,38 +53,12 @@ class BeamAvatar extends LitElement {
                         y='0'
                         width='${SIZE}'
                         height='${SIZE}'
-                        transform='${
-                            'translate(' +
-                            data.wrapperTranslateX +
-                            ' ' +
-                            data.wrapperTranslateY +
-                            ') rotate(' +
-                            data.wrapperRotate +
-                            ' ' +
-                            SIZE / 2 +
-                            ' ' +
-                            SIZE / 2 +
-                            ') scale(' +
-                            data.wrapperScale +
-                            ')'
-                        }'
+                        transform='${`translate(${data.wrapperTranslateX} ${data.wrapperTranslateY}) rotate(${data.wrapperRotate} ${SIZE / 2} ${SIZE / 2}) scale(${data.wrapperScale})`}'
                         fill='#${data.wrapperColor}'
                         rx='${data.isCircle ? SIZE : SIZE / 6}'
                     />
                     <g
-                        transform='${
-                            'translate(' +
-                            data.faceTranslateX +
-                            ' ' +
-                            data.faceTranslateY +
-                            ') rotate(' +
-                            data.faceRotate +
-                            ' ' +
-                            SIZE / 2 +
-                            ' ' +
-                            SIZE / 2 +
-                            ')'
-                        }'
+                        transform='${`translate(${data.faceTranslateX} ${data.faceTranslateY}) rotate(${data.faceRotate} ${SIZE / 2} ${SIZE / 2})`}'
                     >
                         ${mouth}
                         <rect
@@ -113,7 +87,7 @@ class BeamAvatar extends LitElement {
 
     private generateData(key: string, colors: string[]) {
         const numFromName = hashCode(key);
-        const range = colors && colors.length;
+        const range = colors.length;
         const wrapperColor = getRandomColor(numFromName, colors, range);
         const preTranslateX = getUnit(numFromName, 10, 1);
         const wrapperTranslateX = preTranslateX < 5 ? preTranslateX + SIZE / 9 : preTranslateX;
