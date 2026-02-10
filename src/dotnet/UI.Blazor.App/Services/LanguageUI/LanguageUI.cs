@@ -55,6 +55,13 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
     }
 
     [ComputeMethod]
+    public virtual async Task<bool> IsChatLanguageSelected(ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var (chatLanguage, _) = await GetChatLanguageAndPrimary(chatId, cancellationToken).ConfigureAwait(false);
+        return chatLanguage is not null;
+    }
+
+    [ComputeMethod]
     public virtual async Task<(Language?, Language)> GetChatLanguageAndPrimary(ChatId? chatId, CancellationToken cancellationToken = default)
     {
         chatId = chatId?.GetThreadOutermostParentOrSelf();
