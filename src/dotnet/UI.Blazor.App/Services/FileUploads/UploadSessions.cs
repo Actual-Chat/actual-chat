@@ -93,10 +93,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         return await ResetSessionInternal(session).ConfigureAwait(false);
     }
 
-    public Task CancelSession(string sessionId)
-        => CancelSessionIfNotCompleted(sessionId, true);
-
-    public Task CancelSessionIfNotCompleted(string sessionId)
+    private Task CancelSessionIfNotCompleted(string sessionId)
         => CancelSessionIfNotCompleted(sessionId, false);
 
     private async Task CancelSessionIfNotCompleted(string sessionId, bool force)
@@ -136,6 +133,29 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         Hub.UploadSessionsState.Remove(sessionId);
         _sessions.TryRemove(sessionId, out _);
         Log.LogInformation("Deleted session '{SessionId}'", sessionId);
+    }
+
+    public async Task AddReference(string sessionId)
+    {
+        var session = await TryGetSession(sessionId).ConfigureAwait(false);
+        if (session is null)
+            return;
+
+        Interlocked.Increment(ref session.ReferenceCount);
+    }
+
+    public async Task ReleaseReference(string sessionId)
+    {
+        var session = await TryGetSession(sessionId).ConfigureAwait(false);
+        if (session is null)
+            return;
+
+        var newCount = Interlocked.Decrement(ref session.ReferenceCount);
+        if (newCount > 0)
+            return;
+
+        await CancelSessionIfNotCompleted(sessionId).ConfigureAwait(false);
+        await DeleteSession(sessionId).ConfigureAwait(false);
     }
 
     public async Task<UploadSession> GetSession(string sessionId)

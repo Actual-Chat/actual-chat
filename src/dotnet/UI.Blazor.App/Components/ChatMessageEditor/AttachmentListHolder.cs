@@ -49,8 +49,19 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
         return ValueTask.CompletedTask;
     }
 
-    private ValueTask Release(AttachmentList attachments)
-        => ValueTask.CompletedTask;
+    private async ValueTask Release(AttachmentList attachments)
+    {
+        foreach (var attachment in attachments.Items) {
+            foreach (var cleanup in attachment.Cleanups.Items) {
+                try {
+                    await cleanup.Cleanup().ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    Log.LogWarning(e, "Failed to cleanup attachment {AttachmentId}", attachment.Id);
+                }
+            }
+        }
+    }
 
     private void SubscribeToListEvents(AttachmentList attachments)
         => attachments.Changed += OnAttachmentListChanged;

@@ -23,6 +23,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
                 UploadSessionId = uploadSession.SessionId,
             };
             // UploadSession cleanup will handle file cleanup. So just replace it.
+            await UploadSessions.AddReference(uploadSession.SessionId);
             attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSession.SessionId));
             return attachment;

@@ -224,6 +224,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 NoFileAccess = !attachmentIsOk
             };
             attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
+            await UploadSessions.AddReference(uploadSessionId).ConfigureAwait(false);
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
             if (sourceAttachmentId is not null)
                 attachmentRegistry.Unregister(sourceAttachmentId.Value);
