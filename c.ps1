@@ -441,6 +441,25 @@ if ($mode -ne "docker" -or $dryRun) {
     }
 }
 
+# Helper function: create a volume mount pair (-v host:container[:ro])
+function New-VolumeMount {
+    param(
+        [string]$HostPath,
+        [string]$ContainerPath,
+        [switch]$ReadOnly,
+        [switch]$EnsureExists
+    )
+    if ($EnsureExists -and -not (Test-Path $HostPath)) {
+        New-Item -ItemType Directory -Path $HostPath -Force | Out-Null
+    }
+    if ($currentOS -eq "Windows") {
+        $HostPath = ConvertTo-DockerPath $HostPath
+    }
+    $mount = "${HostPath}:${ContainerPath}"
+    if ($ReadOnly) { $mount += ":ro" }
+    return @("-v", $mount)
+}
+
 # Helper function for dry run output
 function Show-DryRun {
     param(
@@ -614,40 +633,19 @@ switch ($mode) {
 
     "docker" {
         # Build volume mounts for all projects
+        $homeDir = if ($currentOS -eq "Windows") { $env:USERPROFILE } else { $env:HOME }
         $volumeMounts = @()
         foreach ($proj in $Projects) {
             $hostPath = Join-Path $env:AC_ProjectRoot $proj
-            if ($currentOS -eq "Windows") {
-                $hostPath = ConvertTo-DockerPath $hostPath
-            }
-            $containerPath = "/proj/$proj"
-            $volumeMounts += "-v"
-            $volumeMounts += "${hostPath}:${containerPath}"
+            $volumeMounts += New-VolumeMount $hostPath "/proj/$proj"
 
-            # Create and mount artifacts/claude-docker folder for Docker builds
-            # This avoids permission conflicts with host artifacts folder
+            # Artifacts/claude-docker folder for Docker builds (avoids permission conflicts with host)
             $artifactsHostPath = Join-Path $env:AC_ProjectRoot $proj "artifacts" "claude-docker"
-            if (-not (Test-Path $artifactsHostPath)) {
-                New-Item -ItemType Directory -Path $artifactsHostPath -Force | Out-Null
-            }
-            if ($currentOS -eq "Windows") {
-                $artifactsHostPath = ConvertTo-DockerPath $artifactsHostPath
-            }
-            $artifactsContainerPath = "/proj/$proj/artifacts"
-            $volumeMounts += "-v"
-            $volumeMounts += "${artifactsHostPath}:${artifactsContainerPath}"
+            $volumeMounts += New-VolumeMount $artifactsHostPath "/proj/$proj/artifacts" -EnsureExists
 
-            # Mount node_modules from artifacts/claude-docker for persistence across container restarts
+            # node_modules from artifacts/claude-docker for persistence across container restarts
             $nodeModulesHostPath = Join-Path $env:AC_ProjectRoot $proj "artifacts" "claude-docker" "node_modules"
-            if (-not (Test-Path $nodeModulesHostPath)) {
-                New-Item -ItemType Directory -Path $nodeModulesHostPath -Force | Out-Null
-            }
-            if ($currentOS -eq "Windows") {
-                $nodeModulesHostPath = ConvertTo-DockerPath $nodeModulesHostPath
-            }
-            $nodeModulesContainerPath = "/proj/$proj/node_modules"
-            $volumeMounts += "-v"
-            $volumeMounts += "${nodeModulesHostPath}:${nodeModulesContainerPath}"
+            $volumeMounts += New-VolumeMount $nodeModulesHostPath "/proj/$proj/node_modules" -EnsureExists
         }
 
         # Add worktree mount if in a worktree
@@ -656,81 +654,42 @@ switch ($mode) {
         # Both are available so you can merge changes from worktree into main
         if ($worktree) {
             $worktreeHostPath = Join-Path $env:AC_ProjectRoot "$projectName-$worktree"
-            if ($currentOS -eq "Windows") {
-                $worktreeHostPath = ConvertTo-DockerPath $worktreeHostPath
-            }
-            $worktreeContainerPath = "/proj/$projectName-$worktree"
-            $volumeMounts += "-v"
-            $volumeMounts += "${worktreeHostPath}:${worktreeContainerPath}"
+            $volumeMounts += New-VolumeMount $worktreeHostPath "/proj/$projectName-$worktree"
         }
 
         # Also mount the original worktree if different (for c.ps1 access when switching worktrees)
         if ($originalWorktree -and $originalWorktree -ne $worktree) {
             $origWorktreeHostPath = Join-Path $env:AC_ProjectRoot "$projectName-$originalWorktree"
-            if ($currentOS -eq "Windows") {
-                $origWorktreeHostPath = ConvertTo-DockerPath $origWorktreeHostPath
-            }
-            $origWorktreeContainerPath = "/proj/$projectName-$originalWorktree"
-            $volumeMounts += "-v"
-            $volumeMounts += "${origWorktreeHostPath}:${origWorktreeContainerPath}"
+            $volumeMounts += New-VolumeMount $origWorktreeHostPath "/proj/$projectName-$originalWorktree"
         }
 
-        # Add Claude config mounts
-        if ($currentOS -eq "Windows") {
-            $volumeMounts += "-v"
-            $volumeMounts += "$env:USERPROFILE/.claude:/home/claude/.claude"
-            $volumeMounts += "-v"
-            $volumeMounts += "$env:USERPROFILE/.claude.json:/home/claude/.claude.json"
-        } else {
-            $volumeMounts += "-v"
-            $volumeMounts += "$env:HOME/.claude:/home/claude/.claude"
-            $volumeMounts += "-v"
-            $volumeMounts += "$env:HOME/.claude.json:/home/claude/.claude.json"
-        }
+        # Claude config mounts
+        $volumeMounts += New-VolumeMount "$homeDir/.claude" "/home/claude/.claude"
+        $volumeMounts += New-VolumeMount "$homeDir/.claude.json" "/home/claude/.claude.json"
 
-        # Add git config mount
-        $gitConfigPath = if ($currentOS -eq "Windows") {
-            "$env:USERPROFILE/.gitconfig"
-        } else {
-            "$env:HOME/.gitconfig"
-        }
+        # Git config mount
+        $gitConfigPath = "$homeDir/.gitconfig"
         if (Test-Path $gitConfigPath) {
-            $volumeMounts += "-v"
-            $volumeMounts += "${gitConfigPath}:/home/claude/.gitconfig:ro"
+            $volumeMounts += New-VolumeMount $gitConfigPath "/home/claude/.gitconfig" -ReadOnly
         }
 
-        # Add gcloud config mount (maps user's gcloud config to container)
-        $gcloudConfigPath = if ($currentOS -eq "Windows") {
-            "$env:APPDATA/gcloud"
-        } else {
-            "$env:HOME/.config/gcloud"
-        }
+        # Gcloud config mount
+        $gcloudConfigPath = if ($currentOS -eq "Windows") { "$env:APPDATA/gcloud" } else { "$homeDir/.config/gcloud" }
         if (Test-Path $gcloudConfigPath) {
-            $volumeMounts += "-v"
-            $volumeMounts += "${gcloudConfigPath}:/home/claude/.config/gcloud:ro"
+            $volumeMounts += New-VolumeMount $gcloudConfigPath "/home/claude/.config/gcloud" -ReadOnly
         }
 
-        # Add .gcp folder mount (for GOOGLE_APPLICATION_CREDENTIALS key file)
-        $gcpKeyPath = if ($currentOS -eq "Windows") {
-            "$env:USERPROFILE/.gcp"
-        } else {
-            "$env:HOME/.gcp"
-        }
+        # GCP key folder mount (for GOOGLE_APPLICATION_CREDENTIALS)
+        $gcpKeyPath = "$homeDir/.gcp"
         if (Test-Path $gcpKeyPath) {
-            $volumeMounts += "-v"
-            $volumeMounts += "${gcpKeyPath}:/home/claude/.gcp:ro"
+            $volumeMounts += New-VolumeMount $gcpKeyPath "/home/claude/.gcp" -ReadOnly
         }
 
         # Add .actual folder mount for ActualChat project (contains prompts and other config)
         if ($projectName -eq "ActualChat") {
-            $actualPath = if ($currentOS -eq "Windows") {
-                "$env:USERPROFILE/.actual"
-            } else {
-                "$env:HOME/.actual"
-            }
+            $actualPath = "$homeDir/.actual"
             if (Test-Path $actualPath) {
-                $volumeMounts += "-v"
-                $volumeMounts += "${actualPath}:/home/claude/.actual:ro"
+                $volumeMounts += New-VolumeMount $actualPath "/home/claude/.actual" -ReadOnly
             }
         }
 
