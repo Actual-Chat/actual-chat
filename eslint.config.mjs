@@ -3,10 +3,12 @@ import tseslint from 'typescript-eslint';
 import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-plugin-prettier'
 
+const tsFiles = ['src/nodejs/**/*.ts', 'src/dotnet/**/*.ts'];
+
 function tsOnly(cfg) {
     return cfg.map((config) => ({
         ...config,
-        files: ['src/nodejs/**/*.ts'], // We use TS config only for TS files
+        files: tsFiles,
     }));
 }
 
@@ -18,7 +20,7 @@ export default tseslint.config(
     ...tsOnly(tseslint.configs.strictTypeChecked),
     ...tsOnly(tseslint.configs.stylisticTypeChecked),
     {
-        files: ['src/nodejs/**/*.ts'],
+        files: tsFiles,
         rules: {
             indent: ['error', 4],
             quotes: ['error', 'single', {
