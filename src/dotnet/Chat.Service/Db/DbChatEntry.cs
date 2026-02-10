@@ -84,6 +84,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         var attachmentsArray = attachments == null
             ? []
             : attachments.OrderBy(x => x.Index).ToArray();
+        var hasAttachmentUploads = attachmentsArray.Any(c => c.Media.ContentId.IsNullOrEmpty());
         var chatId = ActualChat.ChatId.Parse(ChatId);
         var id = ChatEntryId.New(chatId, Kind, LocalId);
         var linkPreviewIds = GetLinkPreviewIds();
@@ -93,7 +94,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AuthorId = ActualChat.AuthorId.Parse(AuthorId),
             IsThreadStartEntry = IsThreadStartEntry,
             IsThreadEntry = IsThreadEntry,
-            HasAttachmentUploads = HasAttachmentUploads,
+            HasAttachmentUploads = HasAttachmentUploads || hasAttachmentUploads,
             ClientId = ClientId,
             BeginsAt = BeginsAt,
             ClientSideBeginsAt = ClientSideBeginsAt.ToMoment(),
@@ -112,7 +113,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ForwardedAuthorName = ForwardedAuthorName,
             ForwardedChatEntryId = ChatEntryId.ParseNullable(ForwardedChatEntryId),
             ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt.ToMoment(),
-            Attachments = attachmentsArray,
+            Attachments = !hasAttachmentUploads ? attachmentsArray : [],
+            AttachmentUploads = hasAttachmentUploads ? attachmentsArray : [],
             LinkPreviewIds = linkPreviewIds,
             LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
             LinkPreviews = linkPreviews,
