@@ -500,7 +500,7 @@ export class VisualMediaViewer {
         this.updateVideoPlayback();
         if (this.maxVideoWidth != 0 || this.maxVideoHeight != 0 || this.videoRatio != 0)
             this.maxVideoWidth = this.maxVideoHeight = this.videoRatio = 0;
-        void this.blazorRef.invokeMethodAsync('SlideChanged', swiper.activeIndex);
+        await this.blazorRef.invokeMethodAsync('SlideChanged', swiper.activeIndex);
     }
 
     private updateVideoPlayback(): void {
@@ -578,7 +578,7 @@ export class VisualMediaViewer {
         if (!thumbnail)
             return;
 
-        const spinner = wrapper.querySelector('.spinner-icon-wrapper') as HTMLElement;
+        const spinner = wrapper.querySelector('.spinner-icon-wrapper')!;
 
         if (video.readyState == 4) {
             thumbnailWrapper.remove();
@@ -815,15 +815,21 @@ export class VisualMediaViewer {
             return;
 
         const duration = video.duration;
-        let bufferId = setInterval(() => {
-            let buffered = video.buffered.end(0);
-            let maxWidth = progressBar.offsetWidth;
+        const bufferId = setInterval(() => {
+            const buffered = video.buffered.end(0);
+            // @ts-expect-error TODO(Andrey) fix eslint error
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const maxWidth = progressBar.offsetWidth;
             if (buffered == duration) {
                 clearInterval(bufferId);
+                // @ts-expect-error TODO(Andrey) fix eslint error
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
                 progressBar.style.setProperty('--data-media-loaded', `${maxWidth}px`);
                 return;
             }
-            let loadedValue = buffered / duration;
+            const loadedValue = buffered / duration;
+            // @ts-expect-error TODO(Andrey) fix eslint error
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
             progressBar.style.setProperty('--data-media-loaded', `${loadedValue * maxWidth}px`);
         }, 200);
     }
@@ -834,48 +840,58 @@ export class VisualMediaViewer {
     );
 
     private updateProgressBar(event: Event, video: HTMLVideoElement) {
-        const wrapper = video.closest('.video-wrapper') as HTMLElement;
+        const wrapper = video.closest('.video-wrapper')!;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!wrapper)
             return;
 
-        const control = wrapper.querySelector('.video-control') as HTMLElement;
+        const control = wrapper.querySelector('.video-control')!;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!control)
             return;
 
-        const progressBar = control.querySelector('.c-progress-bar') as HTMLElement;
+        const progressBar = control.querySelector('.c-progress-bar')!;
         const loadedBar = window.getComputedStyle(progressBar, ':before');
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!loadedBar)
             return;
 
-        let maxWidth = progressBar.offsetWidth;
+        // @ts-expect-error TODO(Andrey) fix eslint error
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const maxWidth = progressBar.offsetWidth;
+        // @ts-expect-error TODO(Andrey) fix eslint error
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call
         progressBar.style.setProperty('--data-media-loaded', `${maxWidth}px`);
     }
 
     private updateTimeline(video: HTMLMediaElement, control: HTMLElement, progressBar: HTMLProgressElement) {
-        let current = video.currentTime;
-        let percentage = Math.round(current / video.duration * 100);
+        const current = video.currentTime;
+        const percentage = Math.round(current / video.duration * 100);
         progressBar.value = percentage;
-        progressBar.innerHTML = percentage + '% played';
-        const thumb = control.querySelector('.c-thumb') as HTMLElement;
+        progressBar.innerHTML = `${percentage}% played`;
+        const thumb = control.querySelector('.c-thumb')!;
 
         if (!this.isDraggingThumb) {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (thumb) {
                 const rect = progressBar.getBoundingClientRect();
                 const left = (percentage / 100) * rect.width;
+                // @ts-expect-error TODO(Andrey) fix eslint error
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 thumb.style.left = `${left}px`;
             }
         }
-        let currentTimeDiv = control.querySelector('.c-current')!;
+        const currentTimeDiv = control.querySelector('.c-current')!;
         currentTimeDiv.innerHTML = this.formatTime(current);
-        let durationDiv = control.querySelector('.c-duration')!;
+        const durationDiv = control.querySelector('.c-duration')!;
         durationDiv.innerHTML = this.formatTime(video.duration);
     }
 
     private formatTime(time: number) : string {
         let minutes = '';
         let seconds = '';
-        let minNum = Math.floor((time / 60));
-        let secNum = Math.round(time - (minNum * 60));
+        const minNum = Math.floor((time / 60));
+        const secNum = Math.round(time - (minNum * 60));
         if (minNum.toString().length < 2)
             minutes = `0${minNum}`;
         else
@@ -889,7 +905,11 @@ export class VisualMediaViewer {
 
     private onPlayBtnClick(event: PointerEvent | MouseEvent, video: HTMLMediaElement) {
         event.stopPropagation();
-        video.paused ? video.play() : video.pause();
+        if (video.paused) {
+            void video.play();
+        } else {
+            video.pause();
+        }
     }
 
     private onJumpBtnClick(
