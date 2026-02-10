@@ -19,7 +19,7 @@ export class InteractiveUI {
     public static async demand(operation: string): Promise<void> {
         try {
             debugLog?.log(`demand: operation = '${operation}'`);
-            await this.backendRef.invokeMethodAsync("Demand", operation);
+            await this.backendRef.invokeMethodAsync('Demand', operation);
         } catch (error) {
             errorLog?.log(`demand: failed, error:`, error);
         }
@@ -38,7 +38,7 @@ export class InteractiveUI {
 
             try {
                 debugLog?.log(`sync: calling IsInteractiveChanged(${isInteractive}) on backend`);
-                await this.backendRef.invokeMethodAsync("IsInteractiveChanged", isInteractive);
+                await this.backendRef.invokeMethodAsync('IsInteractiveChanged', isInteractive);
                 this._backendIsInteractive = isInteractive;
             } catch (error) {
                 errorLog?.log(`sync: failed to reach the backend, error:`, error);
