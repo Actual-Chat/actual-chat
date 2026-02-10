@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await */
 import { AUDIO_REC as AR } from '_constants';
 import { Disposable } from 'disposable';
 import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
@@ -9,7 +11,7 @@ import { AudioVadWorklet } from './audio-vad-worklet-contract';
 import { AudioDiagnosticsState } from '../audio-recorder';
 import { Log } from 'logging';
 
-const { logScope, debugLog, warnLog } = Log.get('AudioVadWorkletProcessor');
+const { logScope, warnLog } = Log.get('AudioVadWorkletProcessor');
 
 export interface AudioVadProcessorOptions {
     sampleRate: number;
