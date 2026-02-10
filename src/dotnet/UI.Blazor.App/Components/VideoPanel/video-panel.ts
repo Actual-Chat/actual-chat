@@ -401,11 +401,15 @@ export class VideoPanel {
         this.videoPanel.classList.add('closing');
 
         const content = this.videoPanel.querySelector('.c-content')!;
-        const handler = () => {
-            content.removeEventListener('animationend', handler);
+        let handled = false;
+        const complete = () => {
+            if (handled) return;
+            handled = true;
+            content.removeEventListener('animationend', complete);
             this.blazorRef.invokeMethodAsync('CloseVideoPanel');
         };
 
-        content.addEventListener('animationend', handler);
+        content.addEventListener('animationend', complete);
+        setTimeout(complete, 500); // Safety fallback if animation doesn't fire
     }
 }

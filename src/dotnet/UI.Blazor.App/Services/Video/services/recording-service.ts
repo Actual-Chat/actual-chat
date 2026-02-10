@@ -245,7 +245,7 @@ export class RecordingService extends EventTarget {
       throw new Error('No active recording');
     }
 
-    console.log('RecordingService: Stopping recording (streaming mode)...');
+    console.log('RecordingService: Stopping recording...');
     this.setState({ status: 'stopping' });
 
     // Stop duration tracking
@@ -254,20 +254,26 @@ export class RecordingService extends EventTarget {
       this.durationInterval = null;
     }
 
-    // Stop input stream but keep pipeline alive for streaming
+    // Stop input stream
     if (this.inputStream) {
       this.inputStream.getTracks().forEach(track => track.stop());
       this.inputStream = null;
     }
 
-    // Don't call pipeline.stop() to keep output stream alive
-    // Just set state to indicate streaming mode
+    // Stop pipeline to tear down streaming and unregister backend stream
+    try {
+      await this.pipeline.stop();
+    } catch (error) {
+      console.warn('RecordingService: Pipeline stop error:', error);
+    }
+    this.pipeline = null;
+
     this.setState({
       isRecording: false,
-      status: 'streaming'
+      status: 'idle'
     });
 
-    console.log('RecordingService: Recording stopped, streaming continues');
+    console.log('RecordingService: Recording and streaming stopped');
   }
 
   private async acquireMediaStream(): Promise<MediaStream> {
