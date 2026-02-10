@@ -13,8 +13,10 @@
     @apply text-title-1 text-02;
 }
 .join-video-call-modal .video-frame .camera-preview {
+    @apply absolute inset-0;
     @apply w-full h-full;
     @apply object-cover;
+    @apply rounded-lg;
     transform: scaleX(-1);
 }
 .join-video-call-modal .video-frame .blur-canvas {
