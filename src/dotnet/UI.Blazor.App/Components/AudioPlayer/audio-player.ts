@@ -23,8 +23,8 @@ const { logScope, debugLog, warnLog } = Log.get('AudioPlayer');
 
 const EnableFrequentDebugLog = false;
 
-let decoderWorkerInstance: Worker;
-let decoderWorker: OpusDecoderWorker & Disposable;
+let decoderWorkerInstance: Worker | undefined;
+let decoderWorker: OpusDecoderWorker & Disposable | undefined;
 
 /** Trait that manages the FeederAudioWorkletNode lifecycle for audio playback */
 class FeederNodeTrait implements AudioContextTrait {
@@ -62,7 +62,7 @@ class FeederNodeTrait implements AudioContextTrait {
         );
 
         // Initialize decoder worker
-        await decoderWorker.init(this.internalId, decoderToFeederWorkletChannel.port1);
+        await decoderWorker!.init(this.internalId, decoderToFeederWorkletChannel.port1);
 
         // Connect to destination
         const destination = DestinationFallbackTrait.getDestination(context);
@@ -96,7 +96,7 @@ class AttachedFeederNode implements AttachedAudioContextTrait {
         this.channel = channel;
 
         // Wire up state change handler
-        this.feederNode.onStateChanged = (state) => this.player.onFeederStateChanged(state);
+        this.feederNode.onStateChanged = (state) => void this.player.onFeederStateChanged(state);
     }
 
     public async onClosed(): Promise<void> {
@@ -104,15 +104,15 @@ class AttachedFeederNode implements AttachedAudioContextTrait {
 
         // Close decoder worker
         await catchErrors(
-            () => decoderWorker.close(this.internalId),
+            () => decoderWorker!.close(this.internalId),
             e => warnLog?.log(`#${this.internalId}.onClosed decoderWorker.close error:`, e));
 
         // Close channel ports
         await catchErrors(
-            () => this.channel?.port1.close(),
+            () => this.channel.port1.close(),
             e => warnLog?.log(`#${this.internalId}.onClosed port1.close error:`, e));
         await catchErrors(
-            () => this.channel?.port2.close(),
+            () => this.channel.port2.close(),
             e => warnLog?.log(`#${this.internalId}.onClosed port2.close error:`, e));
 
         // Disconnect feeder node
@@ -140,7 +140,7 @@ export class AudioPlayer implements Resettable {
     private playbackState: PlaybackState = 'paused';
 
     public static get isInitialized() {
-        return AudioPlayer.whenInitialized && AudioPlayer.whenInitialized.isCompleted();
+        return AudioPlayer.whenInitialized.isCompleted();
     }
 
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
@@ -154,8 +154,7 @@ export class AudioPlayer implements Resettable {
             const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
             decoderWorkerInstance = new Worker(decoderWorkerPath, { type: 'module' });
         }
-        if (!decoderWorker)
-            decoderWorker = rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
+        decoderWorker ??= rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
 
         await decoderWorker.create(Versioning.assetMap, {type: 'rpc-timeout', timeoutMs: 20_000});
 
@@ -169,8 +168,8 @@ export class AudioPlayer implements Resettable {
             await AudioPlayer.init();
     }
 
-    public static async terminate(): Promise<void> {
-        decoderWorkerInstance.terminate();
+    public static terminate(): void {
+        decoderWorkerInstance?.terminate();
         AudioPlayer.whenInitialized = new PromiseSource<void>();
         AudioInitializer.isPlayerInitialized = false;
         this.initStarted = false;
@@ -209,7 +208,7 @@ export class AudioPlayer implements Resettable {
         this.playingAction = this.contextRef.run(async () => {
             const attachedFeeder = this.contextRef!.getTrait<AttachedFeederNode>(this.feederNodeTrait);
             if (attachedFeeder) {
-                await decoderWorker.resume(this.internalId, rpcNoWait);
+                await decoderWorker!.resume(this.internalId, rpcNoWait);
                 await attachedFeeder.feederNode.resume(preSkip);
             }
         });
@@ -238,12 +237,13 @@ export class AudioPlayer implements Resettable {
     }
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
-    public async frame(bytes: Uint8Array): Promise<void> {
+    public frame(bytes: Uint8Array): void {
         if (this.playbackState === 'ended')
             return;
         if (this.contextRef && !this.contextRef.isReady)
             return; // Skip frames when audio context isn't running (e.g. broken/suspended)
 
+        // @ts-expect-error TODO(AY): fix ts error
         void decoderWorker.frame(this.internalId, bytes.buffer, bytes.byteOffset, bytes.length, rpcNoWait);
     }
 
@@ -260,7 +260,7 @@ export class AudioPlayer implements Resettable {
         }
 
         // This ensures 'end' hit the feeder processor which in turn sends feeder status back and resolves this.whenEnded
-        await decoderWorker.end(this.internalId, mustAbort);
+        await decoderWorker!.end(this.internalId, mustAbort);
         await this.whenEnded;
         this.playingAction?.dispose();
         this.playingAction = undefined;
@@ -295,7 +295,7 @@ export class AudioPlayer implements Resettable {
     }
 
     /** Called by Blazor */
-    public async resume(): Promise<void> {
+    public resume(): void {
         if (this.playbackState === 'ended')
             return;
 
@@ -319,6 +319,7 @@ export class AudioPlayer implements Resettable {
         if (this.playbackState === 'ended')
             return;
 
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (EnableFrequentDebugLog)
             debugLog?.log(
                 `#${this.internalId}.onFeederStateChanged: ${state.playbackState} @ ${state.playingAt}, ` +
@@ -386,6 +387,7 @@ export class AudioPlayer implements Resettable {
             const stateText = isPaused ? 'paused' : 'playing';
             const bufferText = isBufferLow ? 'low' : 'ok';
 
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (EnableFrequentDebugLog)
                 debugLog?.log(`#${this.internalId}.reportPlaying: ${stateText} @ ${playingAt}, buffer: ${bufferText}`);
             await this.blazorRef?.invokeMethodAsync('OnPlaying', playingAt, isPaused, isBufferLow);
