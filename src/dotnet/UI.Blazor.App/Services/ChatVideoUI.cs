@@ -13,6 +13,7 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
     // Centralized video state
     private readonly IMutableState<ChatId?> _recordingChatId;
     private readonly IMutableState<string?> _selectedCameraDeviceId;
+    private readonly IMutableState<bool> _isBackgroundBlurEnabled;
     private readonly IMutableState<string?> _errorMessage;
 
     private ILiveVideoStreams LiveVideoStreams => Hub.Services.GetRequiredService<ILiveVideoStreams>();
@@ -22,6 +23,7 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
     {
         _recordingChatId = StateFactory.NewMutable((ChatId?)null);
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
+        _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _errorMessage = StateFactory.NewMutable((string?)null);
     }
 
@@ -36,6 +38,8 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
         var selectedCameraDeviceId = isRecording
             ? await _selectedCameraDeviceId.Use(cancellationToken).ConfigureAwait(false)
             : null;
+        var isBackgroundBlurEnabled = isRecording
+            && await _isBackgroundBlurEnabled.Use(cancellationToken).ConfigureAwait(false);
         var errorMessage = isRecording
             ? await _errorMessage.Use(cancellationToken).ConfigureAwait(false)
             : null;
@@ -44,6 +48,7 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
             chatId,
             isRecording,
             selectedCameraDeviceId,
+            isBackgroundBlurEnabled,
             isRecording && errorMessage != null,
             errorMessage);
     }
@@ -54,7 +59,7 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
 
     // State mutators
 
-    public void SetRecordingChatId(ChatId? chatId, string? cameraDeviceId = null)
+    public void SetRecordingChatId(ChatId? chatId, string? cameraDeviceId = null, bool isBackgroundBlurEnabled = false)
     {
         if (chatId is null) {
             _recordingChatId.Value = null;
@@ -63,11 +68,15 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
 
         _recordingChatId.Value = chatId;
         _selectedCameraDeviceId.Value = cameraDeviceId;
+        _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
         _errorMessage.Value = null;
     }
 
     public void SetSelectedCamera(string? cameraDeviceId)
         => _selectedCameraDeviceId.Value = cameraDeviceId;
+
+    public void SetBackgroundBlur(bool enabled)
+        => _isBackgroundBlurEnabled.Value = enabled;
 
     public void SetError(string? errorMessage)
         => _errorMessage.Value = errorMessage;

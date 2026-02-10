@@ -98,7 +98,7 @@
     protected override async Task OnInitializedAsync() {
         var settings = await Hub.LocalSettings.LocalAppSettings().Get();
         _selectedDeviceId = settings.SelectedCameraDeviceId ?? "";
-        _isBlurEnabled = settings.IsBackgroundBlurEnabledOrDefault;
+        _isBlurEnabled = settings.GetIsBackgroundBlurEnabled(Hub.BrowserInfo.IsMobile);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -177,13 +177,15 @@
         _isBlurEnabled = !_isBlurEnabled;
         await Hub.LocalSettings.LocalAppSettings().Update(
             s => s with { IsBackgroundBlurEnabled = _isBlurEnabled });
+        // Update live blur state so VideoPanel can react during an active call
+        ChatVideoUI.SetBackgroundBlur(_isBlurEnabled);
     }
 
     private async Task OnJoinClick() {
         await DisposeAsync();
         var chatId = ModalModel.Chat.Id;
         var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
-        ChatVideoUI.SetRecordingChatId(chatId, deviceId);
+        ChatVideoUI.SetRecordingChatId(chatId, deviceId, _isBlurEnabled);
         Modal.Close();
     }
 
