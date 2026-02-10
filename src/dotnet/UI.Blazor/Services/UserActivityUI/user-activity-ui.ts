@@ -1,5 +1,5 @@
 import { DocumentEvents } from 'event-handling';
-import { delayAsync, throttle } from "promises";
+import { delayAsync, throttle } from 'promises';
 import { Log } from 'logging';
 
 const { debugLog } = Log.get('UserActivityUI');
@@ -30,7 +30,7 @@ export class UserActivityUI {
         documentEvents.pointerDown$.subscribe(() => this.onInteraction());
         documentEvents.keyDown$.subscribe(() => this.onInteraction());
 
-        (async () => {
+        void (async () => {
             await delayAsync(1000);
             this.onInteraction();
         })();
