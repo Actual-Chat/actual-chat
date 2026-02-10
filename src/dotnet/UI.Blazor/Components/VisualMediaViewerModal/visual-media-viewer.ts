@@ -410,6 +410,7 @@ export class VisualMediaViewer {
 
         if (this.thumbs) {
             setTimeout(() => {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
                 this.thumbs.update();
             }, 50);
         }
@@ -430,6 +431,7 @@ export class VisualMediaViewer {
 
     private onZoomedSlideSwipe(swiper: Swiper, event: PointerEvent) {
         if (swiper.zoom.scale > 1) {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (!swiper)
                 return;
 
@@ -439,9 +441,11 @@ export class VisualMediaViewer {
             const prevButton = swiper.navigation.prevEl;
             const nextButton = swiper.navigation.nextEl;
 
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (prevButton && prevButton.contains(event.target as Node) && !prevButton.classList.contains('.swiper-button-disabled'))
                 return;
 
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (nextButton && nextButton.contains(event.target as Node) && !nextButton.classList.contains('.swiper-button-disabled'))
                 return;
 
@@ -509,12 +513,12 @@ export class VisualMediaViewer {
             [...activeSlides].forEach((element: HTMLElement) => {
                 const videos = element.getElementsByTagName('video');
                 [...videos].forEach((video: HTMLMediaElement) => {
-                    video.play()
-                        .then(_ => {
+                    void video.play()
+                        .then(() => {
                             this.hideSpinner(video);
                             this.fixVideoPosition();
-                            let control = video.parentElement!.querySelector('.video-control');
-                            if (control && control.classList.contains('hide-control')) {
+                            const control = video.parentElement!.querySelector('.video-control');
+                            if (control?.classList.contains('hide-control')) {
                                 control.classList.remove('hide-control');
                             }
                         });
@@ -559,15 +563,18 @@ export class VisualMediaViewer {
     }
 
     private videoPlugHandler(video: HTMLMediaElement) {
-        const wrapper = video.closest('.video-wrapper') as HTMLElement;
+        const wrapper = video.closest('.video-wrapper')!;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!wrapper)
             return;
 
-        const thumbnailWrapper = wrapper.querySelector('.video-thumbnail-wrapper') as HTMLElement;
+        const thumbnailWrapper = wrapper.querySelector('.video-thumbnail-wrapper')!;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!thumbnailWrapper)
             return;
 
-        const thumbnail = wrapper.querySelector('.video-thumbnail') as HTMLElement;
+        const thumbnail = wrapper.querySelector('.video-thumbnail')!;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!thumbnail)
             return;
 
@@ -575,30 +582,42 @@ export class VisualMediaViewer {
 
         if (video.readyState == 4) {
             thumbnailWrapper.remove();
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (spinner)
                 spinner.remove();
             return;
         }
 
-        const imagePlug = thumbnail.querySelector('image-skeleton') as HTMLImageElement;
+        const imagePlug = thumbnail.querySelector('image-skeleton')!;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (imagePlug) {
+            // @ts-expect-error TODO(Andrey) fix eslint error
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             const originalWidth = Number(thumbnail.dataset.width);
+            // @ts-expect-error TODO(Andrey) fix eslint error
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             const originalHeight = Number(thumbnail.dataset.height);
             const { width, height } = this.calculateSize(originalWidth, originalHeight);
 
+            // @ts-expect-error TODO(Andrey) fix eslint error
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/restrict-plus-operands
             thumbnail.style.width = width + 'px';
+            // @ts-expect-error TODO(Andrey) fix eslint error
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/restrict-plus-operands
             thumbnail.style.height = height + 'px';
         }
     }
 
     private addVideoListeners(video: HTMLMediaElement) {
-        const control = video.parentElement!.querySelector('.video-control') as HTMLElement;
-        const playBtn = control.querySelector('.play-btn') as HTMLElement;
-        const rewindBtn = control.querySelector('.rewind-btn') as HTMLElement;
-        const forwardBtn = control.querySelector('.forward-btn') as HTMLElement;
-        const progressBar = control.querySelector('progress') as HTMLProgressElement;
-        const thumb = control.querySelector('.c-thumb') as HTMLElement;
+        const control = video.parentElement!.querySelector('.video-control')!;
+        const playBtn = control.querySelector('.play-btn')!;
+        const rewindBtn = control.querySelector('.rewind-btn')!;
+        const forwardBtn = control.querySelector('.forward-btn')!;
+        const progressBar = control.querySelector('progress')!;
+        const thumb = control.querySelector('.c-thumb')!;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!control || !playBtn || !rewindBtn || !forwardBtn || !progressBar || !thumb) {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (control)
                 control.remove();
             video.controls = true;
