@@ -6,7 +6,7 @@ const { warnLog } = Log.get('KvasBackend');
 
 export class WebKvasBackend {
     private readonly _whenInitialized: Promise<void>;
-    public readonly versionKey = "(version)";
+    public readonly versionKey = '(version)';
 
     public get name() { return this.kvas.name; }
 
@@ -33,10 +33,10 @@ export class WebKvasBackend {
         return this._whenInitialized;
     }
 
-    public async getMany(keys: string[]): Promise<Array<string | null>> {
+    public async getMany(keys: string[]): Promise<(string | null)[]> {
         await this._whenInitialized;
         const values = await this.kvas.getMany(keys);
-        return values as Array<string | null>;
+        return values as (string | null)[];
     }
 
     public async getAll(): Promise<Record<string, string>> {
@@ -49,7 +49,7 @@ export class WebKvasBackend {
         ) as Record<string, string>;
     }
 
-    public async setMany(keys: string[], values: Array<string | null>): Promise<void> {
+    public async setMany(keys: string[], values: (string | null)[]): Promise<void> {
         await this._whenInitialized;
         await this.kvas.setMany(keys, values);
     }

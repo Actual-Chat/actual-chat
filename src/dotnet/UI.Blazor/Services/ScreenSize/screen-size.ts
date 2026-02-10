@@ -26,14 +26,14 @@ export class ScreenSize {
     public static event$ = new Subject<Event | null>();
 
     public static init() {
-        this.hoverMeasureDiv = document.createElement("div");
-        this.hoverMeasureDiv.className = "hover-measure";
+        this.hoverMeasureDiv = document.createElement('div');
+        this.hoverMeasureDiv.className = 'hover-measure';
         this.hoverMeasureDiv.innerHTML = `<div></div>`;
         document.body.appendChild(this.hoverMeasureDiv);
         this.innerHoverMeasureDiv = this.hoverMeasureDiv.children[0] as HTMLDivElement;
 
-        this.screenSizeMeasureDiv = document.createElement("div");
-        this.screenSizeMeasureDiv.className = "screen-size-measure";
+        this.screenSizeMeasureDiv = document.createElement('div');
+        this.screenSizeMeasureDiv.className = 'screen-size-measure';
         this.screenSizeMeasureDiv.innerHTML = `
             <div data-size='ExtraLarge2'></div>
             <div data-size='ExtraLarge'></div>
@@ -96,10 +96,10 @@ export class ScreenSize {
             const isVisible = window.getComputedStyle(itemDiv).getPropertyValue('width') !== 'auto';
             // debugLog?.log(`measure: size:`, itemDiv.dataset['size'], ', isVisible:', isVisible);
             if (isVisible)
-                return [itemDiv.dataset['size'] as Size, isHoverable];
+                return [itemDiv.dataset.size as Size, isHoverable];
         }
         // Returning the last "available" size
-        return [(itemDiv.dataset['size'] ?? "Unknown") as Size, isHoverable];
+        return [(itemDiv.dataset.size ?? 'Unknown') as Size, isHoverable];
     };
 
     private static updateBodyClasses() {
