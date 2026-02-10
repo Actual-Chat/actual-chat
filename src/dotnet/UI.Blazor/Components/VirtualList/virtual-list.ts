@@ -381,8 +381,10 @@ export class VirtualList {
 
             for (const node of mutation.removedNodes) {
                 const nodeElement = node as HTMLElement;
-                const isGroup = nodeElement.classList && nodeElement.classList.contains('group');
-                if (!node['dataset'] && !isGroup)
+                const isGroup = nodeElement.classList?.contains('group');
+                // TODO(AK): fix eslint error
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                if (!nodeElement.dataset && !isGroup)
                     continue;
 
                 const itemRefs = this.getChildItemRefs(nodeElement);
@@ -404,8 +406,10 @@ export class VirtualList {
 
             for (const node of mutation.addedNodes) {
                 const nodeElement = node as HTMLElement;
-                const isGroup = nodeElement.classList && nodeElement.classList.contains('group');
-                if (!node['dataset'] && !isGroup)
+                const isGroup = nodeElement.classList?.contains('group');
+                // TODO(AK): fix eslint error
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                if (!nodeElement.dataset && !isGroup)
                     continue;
 
                 if (isGroup) {
@@ -574,7 +578,7 @@ export class VirtualList {
                 continue;
             }
             const item = this.items.get(key);
-            if (item && item.shouldSkipKey) {
+            if (item?.shouldSkipKey) {
                 hasChanged ||= this.visibleItems.has(key);
                 this.visibleItems.delete(key);
             }
@@ -776,7 +780,7 @@ export class VirtualList {
                 if (this.stickyEdge.edge === VirtualListEdge.End) {
                     const itemRef = this.getItemRef(this.stickyEdge.itemKey);
                     if (itemRef)
-                        scrollFunc = () => this.scrollTo(itemRef!, false);
+                        scrollFunc = () => this.scrollTo(itemRef, false);
                 }
                 this.setStickyEdge(null);
             }
@@ -852,7 +856,7 @@ export class VirtualList {
         if (this.isDisposed || !this.renderState.keyRange.start)
             return;
 
-        const visibleItems = [...this.visibleItems].sort(this.keySortCollator.compare);
+        const visibleItems = [...this.visibleItems].sort((a, b) => this.keySortCollator.compare(a, b));
         const isEndAnchorVisible = this.stickyEdge?.edge === VirtualListEdge.End;
         // debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, isEndAnchorVisible);
         await this.blazorRef.invokeMethodAsync(
@@ -893,7 +897,7 @@ export class VirtualList {
         this.visibilityObserver.observe(itemRef);
         itemRef.addEventListener('touchend', this.onInteractiveEvent, { passive: true });
         itemRef.addEventListener('click', this.onInteractiveEvent, { passive: true });
-        newItem.shouldSkipKey = itemRef.dataset['skip'] === 'true';
+        newItem.shouldSkipKey = itemRef.dataset.skip === 'true';
         return newItem;
     }
 
@@ -914,7 +918,7 @@ export class VirtualList {
         this.updateViewportThrottled();
     };
 
-    private onScrollEnd = (ev: Event): void => {
+    private onScrollEnd = (): void => {
         this.turnOffIsScrolling();
     }
 
@@ -949,7 +953,7 @@ export class VirtualList {
 
             const viewRect = this.ref.getBoundingClientRect();
             const itemKeys: string[] = [interactiveKey ?? '', medianVisibleKey, this.query.keyRange?.end, this.query.keyRange?.start];
-            for (let itemKey of itemKeys) {
+            for (const itemKey of itemKeys) {
                 if (!itemKey)
                     continue;
 
