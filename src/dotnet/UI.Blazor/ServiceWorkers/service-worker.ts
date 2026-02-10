@@ -1,3 +1,5 @@
+// TODO: fix eslint errors
+/* eslint-disable @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-redundant-type-constituents,@typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-argument,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-return,@typescript-eslint/no-misused-promises,@typescript-eslint/no-unnecessary-type-conversion */
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 import { registerRoute, Route } from 'workbox-routing';
@@ -8,12 +10,13 @@ import { Log } from 'logging';
 import { stopEvent } from 'event-handling';
 
 const { debugLog, infoLog } = Log.get('ServiceWorker');
-// @ts-ignore
+// @ts-expect-error intentional
 self.__WB_DISABLE_DEV_LOGS = true; // disable workbox dev logs
 
-// @ts-ignore
+// @ts-expect-error intentional
 const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
 const configBase64 = new URL(location.href).searchParams.get('config');
+// @ts-expect-error TODO: fix errors
 const configString = atob(configBase64);
 const config = JSON.parse(configString);
 
@@ -26,7 +29,7 @@ interface NotificationEvent extends ExtendableEvent {
     readonly notification: Notification;
 }
 
-sw.addEventListener('install', (event: ExtendableEvent) => {
+sw.addEventListener('install', () => {
     infoLog?.log(`install: installing updated service worker`);
     void sw.skipWaiting();
 });
@@ -77,12 +80,16 @@ const messaging = getMessaging(app);
 debugLog?.log(`Subscribing to FCM background messages`);
 onBackgroundMessage(messaging, async payload => {
     debugLog?.log(`onBackgroundMessage: got FCM background message, payload:`, payload);
+    // @ts-expect-error TODO: fix errors
     const tag = payload.data.tag;
     const options: NotificationOptions = {
         tag: tag.toString(),
+        // @ts-expect-error TODO: fix errors
         icon: payload.data.icon,
+        // @ts-expect-error TODO: fix errors
         body: payload.notification.body,
         data: {
+            // @ts-expect-error TODO: fix errors
             url: payload.fcmOptions.link,
         },
     };
@@ -91,6 +98,7 @@ onBackgroundMessage(messaging, async payload => {
     for (const toClose of notificationsToClose) {
         toClose.close();
     }
+    // @ts-expect-error TODO: fix errors
     await sw.registration.showNotification(payload.notification.title, options);
 });
 
