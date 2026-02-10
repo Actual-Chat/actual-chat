@@ -1,7 +1,7 @@
 import { AUDIO_PLAY as AP, AUDIO_REC as AR } from '_constants';
 import { debounce, delayAsync, PromiseSource, ResolvedPromise, waitAsync, Cancelled } from 'promises';
 import { Interactive } from 'interactive';
-import { InteractiveUI } from "../../UI.Blazor/Services/InteractiveUI/interactive-ui";
+import { InteractiveUI } from '../../UI.Blazor/Services/InteractiveUI/interactive-ui';
 import { OnDeviceAwake } from 'on-device-awake';
 import { firstValueFrom, Observable, Subject } from 'rxjs';
 import { Versioning } from 'versioning';
@@ -19,8 +19,8 @@ const MaxResumeTimeMs = 2000;
 const ShortTestIntervalMs = 150;
 const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
-const SuspendDebounceTimeMs: number = 2000;
-const CloseUnusedContextDebounce: number = 60000; // 60 seconds usually enough on iOS Safari to make audio context broken while backgrounded
+const SuspendDebounceTimeMs = 2000;
+const CloseUnusedContextDebounce = 60000; // 60 seconds usually enough on iOS Safari to make audio context broken while backgrounded
 
 const Debug = {
     brokenKey: 'debugging_isBroken',
@@ -62,7 +62,7 @@ let nextRefId = 1;
 export class AudioContextRef implements Disposable {
     private readonly _id: number;
     private readonly _traits: AudioContextTrait[];
-    private readonly _attachedTraits: Map<string, AttachedAudioContextTrait> = new Map();
+    private readonly _attachedTraits = new Map<string, AttachedAudioContextTrait>();
     private readonly _whenDisposed = new PromiseSource<void>();
     private _context: AudioContext | null = null;
     private _whenReady = new PromiseSource<AudioContext>();
@@ -79,7 +79,7 @@ export class AudioContextRef implements Disposable {
     public get isDisposed(): boolean { return this._disposed; }
 
     /** Traits requested for this ref */
-    public get traits(): ReadonlyArray<AudioContextTrait> { return this._traits; }
+    public get traits(): readonly AudioContextTrait[] { return this._traits; }
 
     /** True when this ref carries the DemandInteractiveUI trait */
     public hasDemandInteractiveUITrait(): boolean {
@@ -252,8 +252,8 @@ export class AudioContextAction implements Disposable {
 
 export class AudioContextSource {
     // Private fields
-    private readonly _traits: Map<string, AudioContextTrait> = new Map();
-    private readonly _refs: Set<AudioContextRef> = new Set();
+    private readonly _traits = new Map<string, AudioContextTrait>();
+    private readonly _refs = new Set<AudioContextRef>();
     private readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
     private readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
     private _testRequested: PromiseSource<void> | null = null;
@@ -273,7 +273,7 @@ export class AudioContextSource {
     public readonly contextClosed$: Observable<AudioContext> = this._contextClosed$.asObservable();
     public breakProbability = 0;
     public get isContextRunning(): boolean {
-        return !!this._context && this._context.state === "running";
+        return !!this._context && this._context.state === 'running';
     }
     public get isMaintained(): boolean {
         return this._isMaintained;
@@ -285,11 +285,11 @@ export class AudioContextSource {
     public constructor(public readonly purpose: AudioContextPurpose) {
         // Subscribe to device wake events - no need to store the handler since this is a singleton
         OnDeviceAwake.events.add((durationMs) => this.onDeviceAwake(durationMs));
-        if (purpose === "playback") {
-            if ("audioSession" in navigator && typeof navigator.audioSession === "object") {
-                (navigator.audioSession as any)["type"] = "playback";
-                (navigator.audioSession as any)["type"] = "auto"; // Hack for iOS Safari
-                (navigator.audioSession as any)["type"] = "playback";
+        if (purpose === 'playback') {
+            if ('audioSession' in navigator && typeof navigator.audioSession === 'object') {
+                (navigator.audioSession as any)['type'] = 'playback';
+                (navigator.audioSession as any)['type'] = 'auto'; // Hack for iOS Safari
+                (navigator.audioSession as any)['type'] = 'playback';
             }
             resetMediaSessionMetadata();
         }
@@ -315,7 +315,7 @@ export class AudioContextSource {
 
         // If context is already ready, attach the trait immediately
         const context = this._context;
-        if (context && context.state !== "closed") {
+        if (context && context.state !== 'closed') {
             void this.attachTrait(trait, context);
         }
     }
@@ -346,7 +346,7 @@ export class AudioContextSource {
         }
 
         // If context is ready, set the ref as ready
-        if (this._context && this._context.state !== "closed") {
+        if (this._context && this._context.state !== 'closed') {
             ref._setReady(this._context);
         }
 
@@ -389,7 +389,7 @@ export class AudioContextSource {
         const whenReady = this._whenReady;
         if (whenReady.isCompleted()) {
             const context = await whenReady;
-            if (!context || context.state === "closed" || context !== this._context)
+            if (!context || context.state === 'closed' || context !== this._context)
                 this.markNotReady(); // Reset ready state
             else return context;
         }
@@ -407,10 +407,10 @@ export class AudioContextSource {
         debugLog?.log(`initContextInteractively()`);
 
         const context = this._context;
-        if (context && context.state === "running") {
+        if (context && context.state === 'running') {
             debugLog?.log(`initContextInteractively: already running`);
             return; // Already ready
-        } else if (context && context.state === "suspended") {
+        } else if (context && context.state === 'suspended') {
             try {
                 await this.resume(context, true);
             } catch (e) {
@@ -438,7 +438,7 @@ export class AudioContextSource {
         if (state === this._appActivityState) return;
 
         this._appActivityState = state;
-        if (state === "BackgroundIdle") {
+        if (state === 'BackgroundIdle') {
             this._whileBackgroundIdleAppActivityState ??= new PromiseSource<void>();
             if (!this.isUsed) this._suspendContextDebounced();
             this._isMaintained = false;
@@ -479,7 +479,7 @@ export class AudioContextSource {
             // Resume can be called during user interaction only
             if (this.hasRefWithDemandInteractiveUITrait()) {
                 debugLog?.log(`interactiveResume: DemandInteractiveUI refs exist, demanding interaction`);
-                void InteractiveUI.demand("listening");
+                void InteractiveUI.demand('listening');
             }
         }
 
@@ -492,15 +492,15 @@ export class AudioContextSource {
             const currentContext = this._context;
             let contextToResume = context;
             if (currentContext && currentContext !== context) {
-                warnLog?.log("interactiveResume: context has already been changed, will try to use the new one");
+                warnLog?.log('interactiveResume: context has already been changed, will try to use the new one');
                 contextToResume = currentContext;
             }
-            if (contextToResume.state === "closed") {
-                warnLog?.log("interactiveResume: context is closed, will try to create a new one");
+            if (contextToResume.state === 'closed') {
+                warnLog?.log('interactiveResume: context is closed, will try to create a new one');
                 this.create(true).then(
                     () => resumeTask.resolve(true),
                     (reason) => {
-                        warnLog?.log(reason, "create(true) failed with an error");
+                        warnLog?.log(reason, 'create(true) failed with an error');
                         resumeTask.reject(reason);
                     },
                 );
@@ -509,7 +509,7 @@ export class AudioContextSource {
             this.resume(contextToResume, true).then(
                 () => resumeTask.resolve(true),
                 (reason) => {
-                    warnLog?.log(reason, "resume() failed with an error");
+                    warnLog?.log(reason, 'resume() failed with an error');
                     resumeTask.reject(reason);
                 },
             );
@@ -582,7 +582,7 @@ export class AudioContextSource {
             if (attached.onClosed) {
                 closePromises.push(
                     Promise.resolve(attached.onClosed()).catch((e) =>
-                        warnLog?.log("detachAllTraits: onClosed failed:", e),
+                        warnLog?.log('detachAllTraits: onClosed failed:', e),
                     ),
                 );
             }
@@ -593,7 +593,7 @@ export class AudioContextSource {
     }
 
     private async onFirstRefCreated(): Promise<void> {
-        debugLog?.log("onFirstRefCreated");
+        debugLog?.log('onFirstRefCreated');
         this._suspendContextDebounced.reset();
         this._closeContextDebounced.reset();
 
@@ -606,7 +606,7 @@ export class AudioContextSource {
             if (attached.onUsed) {
                 usedPromises.push(
                     Promise.resolve(attached.onUsed()).catch((e) =>
-                        warnLog?.log("onFirstRefCreated: onUsed failed:", e),
+                        warnLog?.log('onFirstRefCreated: onUsed failed:', e),
                     ),
                 );
             }
@@ -615,7 +615,7 @@ export class AudioContextSource {
     }
 
     private async onLastRefDisposed(): Promise<void> {
-        debugLog?.log("onLastRefDisposed");
+        debugLog?.log('onLastRefDisposed');
 
         // Call onUnused on all attached traits
         const traits = this._context?.traits;
@@ -625,7 +625,7 @@ export class AudioContextSource {
                 if (attached.onUnused) {
                     unusedPromises.push(
                         Promise.resolve(attached.onUnused()).catch((e) =>
-                            warnLog?.log("onLastRefDisposed: onUnused failed:", e),
+                            warnLog?.log('onLastRefDisposed: onUnused failed:', e),
                         ),
                     );
                 }
@@ -635,7 +635,7 @@ export class AudioContextSource {
 
         // Check if should suspend
         const backgroundState = AudioInitializer.appActivityState;
-        if (backgroundState === "BackgroundIdle") {
+        if (backgroundState === 'BackgroundIdle') {
             this._suspendContextDebounced();
         }
     }
@@ -656,16 +656,16 @@ export class AudioContextSource {
         }
     }
 
-    private async create(shouldResume: boolean = false): Promise<AudioContext> {
+    private async create(shouldResume = false): Promise<AudioContext> {
         debugLog?.log(`create`);
         this._suspendContextDebounced.reset();
         this._closeContextDebounced.reset();
         // Try to create audio context early w/o waiting for user interaction.
         // It might be in suspended state in this case.
         const context: AppAudioContext = new AudioContext({
-            latencyHint: "balanced",
+            latencyHint: 'balanced',
             sampleRate:
-                this.purpose === "playback" ? AP.SAMPLE_RATE : DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate for microphone stream, we will use default
+                this.purpose === 'playback' ? AP.SAMPLE_RATE : DeviceInfo.isFirefox ? undefined : AR.SAMPLE_RATE, // FF doesn't support sample rate for microphone stream, we will use default
         });
 
         if (shouldResume) await this.resume(context, true);
@@ -684,7 +684,7 @@ export class AudioContextSource {
 
             return context;
         } catch (e) {
-            warnLog?.log("create: failed to create", e);
+            warnLog?.log('create: failed to create', e);
             await this.closeSilently(context);
             throw e;
         }
@@ -716,12 +716,12 @@ export class AudioContextSource {
     private async loadContextWorklets(context: AudioContext): Promise<void> {
         try {
             debugLog?.log(`loadContextWorklets: loading modules`);
-            if (this.purpose === "playback") {
-                const feederWorkletPath = Versioning.mapPath("/dist/feederWorklet.js");
+            if (this.purpose === 'playback') {
+                const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
                 await context.audioWorklet.addModule(feederWorkletPath);
             } else {
-                const vadWorkletPath = Versioning.mapPath("/dist/vadWorklet.js");
-                const encoderWorkletPath = Versioning.mapPath("/dist/opusEncoderWorklet.js");
+                const vadWorkletPath = Versioning.mapPath('/dist/vadWorklet.js');
+                const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
                 const whenModule1 = context.audioWorklet.addModule(vadWorkletPath);
                 const whenModule2 = context.audioWorklet.addModule(encoderWorkletPath);
                 await Promise.all([whenModule1, whenModule2]);
@@ -739,9 +739,9 @@ export class AudioContextSource {
         //   calling constructor, and even without user interaction.
         // - Safari doesn't start incrementing 'currentTime' after 'resume' call,
         //   so we have to warm it up w/ silent audio
-        if (context.state !== "running") return false;
+        if (context.state !== 'running') return false;
 
-        const silenceBuffer = (context["silenceBuffer"] as AudioBuffer) ?? this.createSilenceBuffer(context);
+        const silenceBuffer = (context['silenceBuffer'] as AudioBuffer) ?? this.createSilenceBuffer(context);
         const source = context.createBufferSource();
         source.buffer = silenceBuffer;
         const destination = DestinationFallbackTrait.getDestination(context);
@@ -749,19 +749,19 @@ export class AudioContextSource {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         source.onended = () => source.disconnect();
-        context["silenceBuffer"] = silenceBuffer;
+        context['silenceBuffer'] = silenceBuffer;
         source.start(0);
         // Schedule to stop silence playback in the future
         source.stop(context.currentTime + SilencePlaybackDuration);
         // NOTE(AK): Somehow - sporadically - currentTime starts ticking only when you log the context!
         console.log(`AudioContext is:`, Log.ref(context), `, its currentTime:`, context.currentTime);
-        const isRunning = context.state === "running";
+        const isRunning = context.state === 'running';
         if (isRunning) context[Debug.brokenKey] = undefined;
         return isRunning;
     }
 
     private async test(context: AudioContext, isLongTest = false): Promise<void> {
-        if (context.state !== "running") throw new Error(`${logScope}.test: AudioContext isn't running.`);
+        if (context.state !== 'running') throw new Error(`${logScope}.test: AudioContext isn't running.`);
         if (context[Debug.brokenKey]) throw new Error(`${logScope}.test: AudioContext is broken via .break() call.`);
         if (this.breakProbability > 0 && Math.random() < this.breakProbability)
             throw new Error(
@@ -773,7 +773,7 @@ export class AudioContextSource {
         const testIntervalMs = isLongTest ? LongTestIntervalMs : ShortTestIntervalMs;
         for (let i = 0; i < testCycleCount; i++) {
             await delayAsync(testIntervalMs);
-            if (context.state !== "running") throw new Error(`${logScope}.test: AudioContext isn't running.`);
+            if (context.state !== 'running') throw new Error(`${logScope}.test: AudioContext isn't running.`);
             if (context.currentTime != lastTime) break;
             // play silent audio and check state
             else if (this.isRunning(context)) {
@@ -788,7 +788,7 @@ export class AudioContextSource {
     private async closeSilently(context: AppAudioContext | null): Promise<void> {
         debugLog?.log(`close:`, Log.ref(context));
         if (!context) return;
-        if (context.state === "closed") return;
+        if (context.state === 'closed') return;
 
         this.markNotReady();
 
@@ -805,11 +805,11 @@ export class AudioContextSource {
     }
 
     private async suspendContext(): Promise<void> {
-        infoLog?.log("suspendContext()");
+        infoLog?.log('suspendContext()');
         const context = this._context;
         if (!context) return;
 
-        if (context.state === "closed") {
+        if (context.state === 'closed') {
             await this.closeContext();
             return;
         }
@@ -823,7 +823,7 @@ export class AudioContextSource {
                 if (attached.onUnused) {
                     unusedPromises.push(
                         Promise.resolve(attached.onUnused()).catch((e) =>
-                            warnLog?.log("suspendContext: onUnused failed:", e),
+                            warnLog?.log('suspendContext: onUnused failed:', e),
                         ),
                     );
                 }
@@ -831,19 +831,19 @@ export class AudioContextSource {
             await Promise.all(unusedPromises);
         }
 
-        if (Interactive.isAlwaysInteractive && AudioInitializer.appActivityState === "BackgroundIdle")
+        if (Interactive.isAlwaysInteractive && AudioInitializer.appActivityState === 'BackgroundIdle')
             this._closeContextDebounced();
     }
 
     private async closeContext(): Promise<void> {
-        warnLog?.log("closeContext()");
+        warnLog?.log('closeContext()');
 
         const context = this._context;
         this._context = null;
         this.notifyRefsFailed();
         await this.closeSilently(context);
 
-        if (AudioInitializer.appActivityState !== "BackgroundIdle") {
+        if (AudioInitializer.appActivityState !== 'BackgroundIdle') {
             this._whileBackgroundIdleAppActivityState?.resolve(undefined);
             this._whileBackgroundIdleAppActivityState = null;
         }
@@ -893,7 +893,7 @@ export class AudioContextSource {
     }
 
     private async maintain(): Promise<void> {
-        debugLog?.log("maintain: starting");
+        debugLog?.log('maintain: starting');
         this._isMaintained = true;
 
         // noinspection InfiniteLoopJS
@@ -904,12 +904,12 @@ export class AudioContextSource {
                 let context = this._context;
                 // Try to maintain existing context and create a new one if it's broken or closed
                 // @ts-ignore
-                if (!context || context.state === "closed") {
+                if (!context || context.state === 'closed') {
                     context = await this.create();
                     this.setContextAndMarkReady(context);
                 }
 
-                if (context.state === "suspended") {
+                if (context.state === 'suspended') {
                     const whileIdle = this._whileBackgroundIdleAppActivityState;
                     if (whileIdle) await whileIdle;
                     if (context.wasInteractive) await this.resume(context, true);
@@ -919,7 +919,7 @@ export class AudioContextSource {
                         await Promise.race([this._whenNotReady, interactiveResume]);
                     }
                 }
-                debugLog?.log("maintain: context is running");
+                debugLog?.log('maintain: context is running');
                 let lastTestAt = Date.now();
 
                 // noinspection InfiniteLoopJS
@@ -959,7 +959,7 @@ export class AudioContextSource {
     }
 
     private createSilenceBuffer(context: AudioContext): AudioBuffer {
-        return context.createBuffer(1, 1, this.purpose === "playback" ? AP.SAMPLE_RATE : AR.SAMPLE_RATE);
+        return context.createBuffer(1, 1, this.purpose === 'playback' ? AP.SAMPLE_RATE : AR.SAMPLE_RATE);
     }
 }
 

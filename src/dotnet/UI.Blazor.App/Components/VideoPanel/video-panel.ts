@@ -76,7 +76,7 @@ export class VideoPanel {
         const content = this.videoPanel.querySelector('.c-content')!;
         const handler = () => {
             content.removeEventListener('animationend', handler);
-            this.blazorRef.invokeMethodAsync("CloseVideoPanel");
+            this.blazorRef.invokeMethodAsync('CloseVideoPanel');
         };
 
         content.addEventListener('animationend', handler);

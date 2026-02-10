@@ -1,5 +1,5 @@
-import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
+import {customElement, property} from 'lit/decorators.js';
+import {css, html, LitElement} from 'lit';
 
 @customElement('sub-header')
 class SubHeaderLit extends LitElement {
@@ -50,8 +50,7 @@ class SubHeaderLit extends LitElement {
         }
   `;
 
-    @property({ type: String })
-    class = "";
+    @property({ type: String }) class = '';
 
     render() {
         return html`

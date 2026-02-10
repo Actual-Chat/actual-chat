@@ -25,7 +25,7 @@ export class SearchPanel {
         this.blazorRef = blazorRef;
         this.side = side;
 
-        let sideCls = this.side == Side.Right ? "right" : "left";
+        const sideCls = this.side == Side.Right ? 'right' : 'left';
         this.panel.classList.add(sideCls);
     }
 
@@ -40,7 +40,7 @@ export class SearchPanel {
     private async smoothClosePanel() : Promise<void> {
         this.panel.classList.add('close');
         setTimeout(() => {
-            this.blazorRef.invokeMethodAsync("ClosePanel");
+            this.blazorRef.invokeMethodAsync('ClosePanel');
         }, 200);
     }
 }

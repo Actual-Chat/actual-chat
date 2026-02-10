@@ -39,6 +39,7 @@ export default tseslint.config(
             "@typescript-eslint/no-confusing-void-expression": ["error", {
                 "ignoreArrowShorthand": true,
             }],
+            '@typescript-eslint/dot-notation': 'off',
         },
         languageOptions: {
             parser: tsParser,

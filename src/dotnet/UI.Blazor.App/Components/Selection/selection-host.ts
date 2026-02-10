@@ -44,7 +44,7 @@ export class SelectionHost implements Disposable {
         if (!(event.target instanceof Element))
             return;
 
-        let [triggerElement, chatEntryId] = getOrInheritData(event.target, 'chatEntryId');
+        const [triggerElement, chatEntryId] = getOrInheritData(event.target, 'chatEntryId');
         if (!triggerElement || !chatEntryId)
             return;
 

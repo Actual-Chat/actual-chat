@@ -14,11 +14,11 @@ export class Landing {
     private readonly lastPage: HTMLElement | null;
     private readonly downloadLinksPage: HTMLElement | null;
     private readonly scrollContainer: HTMLElement | null;
-    private lastPosition: number = 0;
-    private vh: number = 0;
+    private lastPosition = 0;
+    private vh = 0;
     private isVideoPlayStarted = false;
     private observer: IntersectionObserver;
-    private canScroll: boolean = true;
+    private canScroll = true;
 
     static create(landing: HTMLElement): Landing {
         return new Landing(landing);
@@ -72,7 +72,7 @@ export class Landing {
         const cardVideos = [...this.landing.querySelectorAll<HTMLVideoElement>('.landing-card-video')];
         const options = {
             root: null,
-            rootMargin: "0px",
+            rootMargin: '0px',
             threshold: 1.0,
         };
         this.observer = new IntersectionObserver(this.cardVideoHandler, options);
@@ -125,7 +125,7 @@ export class Landing {
         const h = window.innerHeight;
         const w = window.innerWidth;
         const hwRatio = h / w;
-        let useFullScreenPages = ScreenSize.isNarrow() ? (hwRatio >= 1.8 && hwRatio <= 2.5) : (h >= 700);
+        const useFullScreenPages = ScreenSize.isNarrow() ? (hwRatio >= 1.8 && hwRatio <= 2.5) : (h >= 700);
         if (useFullScreenPages)
             this.landing.classList.remove('no-full-screen-pages');
         else
@@ -138,7 +138,7 @@ export class Landing {
         if (hasModifierKey(event))
             return;
         let canScroll = false;
-        if (event.key == "ArrowDown" || event.key == "PageDown" || event.key == "ArrowUp" || event.key == "PageUp")
+        if (event.key == 'ArrowDown' || event.key == 'PageDown' || event.key == 'ArrowUp' || event.key == 'PageUp')
             canScroll = true;
         if (!canScroll)
             return;
@@ -190,8 +190,8 @@ export class Landing {
         if (this.header == null)
             return;
 
-        let isNotFirstPage = this.firstPage && this.firstPage.getBoundingClientRect().bottom <= 0;
-        let isNotLastPage = this.lastPage && Math.trunc(this.lastPage.getBoundingClientRect().top) > 0;
+        const isNotFirstPage = this.firstPage && this.firstPage.getBoundingClientRect().bottom <= 0;
+        const isNotLastPage = this.lastPage && Math.trunc(this.lastPage.getBoundingClientRect().top) > 0;
 
         if ((isNotFirstPage && isNotLastPage && this.canScroll)) {
             this.header.classList.add('filled');
@@ -199,8 +199,8 @@ export class Landing {
             this.header.classList.remove('filled');
         }
 
-        let downloadBtn = this.header.querySelector('.download-app');
-        let mainPageBtn = this.header.querySelector('.btn-to-main-page');
+        const downloadBtn = this.header.querySelector('.download-app');
+        const mainPageBtn = this.header.querySelector('.btn-to-main-page');
         if (!this || !mainPageBtn || !downloadBtn)
             return;
         if (!this.canScroll) {
@@ -214,12 +214,12 @@ export class Landing {
 
     private scrollToPageLinks(): void {
         this.downloadLinksToggle();
-        let landingTop = this.landing.getBoundingClientRect().top;
+        const landingTop = this.landing.getBoundingClientRect().top;
         this.lastPosition = landingTop;
         if (!this.downloadLinksPage || !this.scrollContainer)
             return;
 
-        let top = this.downloadLinksPage.getBoundingClientRect().top;
+        const top = this.downloadLinksPage.getBoundingClientRect().top;
         const options = {
             behavior: 'auto',
             top: (top - landingTop),
@@ -232,7 +232,7 @@ export class Landing {
             return;
 
         this.downloadLinksToggle();
-        let top = -(this.lastPosition);
+        const top = -(this.lastPosition);
         const options = {
             behavior: 'auto',
             top: top,
@@ -245,9 +245,9 @@ export class Landing {
         if (!page4 || !this.scrollContainer)
             return;
 
-        let rect = page4.getBoundingClientRect();
-        let top = rect.top;
-        let landingTop = this.landing.getBoundingClientRect().top;
+        const rect = page4.getBoundingClientRect();
+        const top = rect.top;
+        const landingTop = this.landing.getBoundingClientRect().top;
         const options = {
             behavior: 'smooth',
             top: top - landingTop,
@@ -256,7 +256,7 @@ export class Landing {
     }
 
     private downloadLinksToggle(): void {
-        let page = this.downloadLinksPage;
+        const page = this.downloadLinksPage;
         if (!page)
             return;
 
@@ -278,8 +278,8 @@ export class Landing {
 
     private disableAutoDarkMode(): void {
         const meta = document.createElement('meta');
-        meta.name = "color-scheme";
-        meta.content = "only light";
+        meta.name = 'color-scheme';
+        meta.content = 'only light';
         document.getElementsByTagName('head')[0].appendChild(meta);
     }
 

@@ -26,7 +26,7 @@ export class WebFileProviders
         if (!fileResult)
             return null;
 
-        let previewUrl = "";
+        let previewUrl = '';
         try {
             const file = fileResult.file;
             const provider = new WebFileProvider('', fileResult.fileHandle, file, null);
@@ -405,15 +405,15 @@ class ChunkedFileUpload {
     }
 }
 
-type Stat = { multiplier: number; ms: number; };
+interface Stat { multiplier: number; ms: number; }
 
 class ChunkSizeSelector
 {
     private static minChunkSize : number = 256 * 1024; // 256 KB
-    private static defaultChunkSizeMultiplier: number = 8; // 4 Mb
-    private static maxChunkSizeMultiplier: number = 16; // 8 Mb
-    private static recommendedChunkSizeMultiplier: number = 8; // 4 Mb
-    private static maxChunkUploadDurationMs: number = 5000; // 5 seconds
+    private static defaultChunkSizeMultiplier = 8; // 4 Mb
+    private static maxChunkSizeMultiplier = 16; // 8 Mb
+    private static recommendedChunkSizeMultiplier = 8; // 4 Mb
+    private static maxChunkUploadDurationMs = 5000; // 5 seconds
 
     private currentMultiplier: number;
     private lastStats: Stat[] = [];

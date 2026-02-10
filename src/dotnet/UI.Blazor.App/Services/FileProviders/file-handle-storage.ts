@@ -1,5 +1,5 @@
-const DB_NAME = "file-handles-database";
-const STORE_NAME = "handles-storage";
+const DB_NAME = 'file-handles-database';
+const STORE_NAME = 'handles-storage';
 
 export async function saveFileHandle(key: string, handle: FileSystemFileHandle): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -14,7 +14,7 @@ export async function saveFileHandle(key: string, handle: FileSystemFileHandle):
 
         request.onsuccess = (event: Event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            const tx = db.transaction(STORE_NAME, "readwrite");
+            const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             store.put(handle, key);
 
@@ -32,7 +32,7 @@ export async function getFileHandle(key: string): Promise<FileSystemFileHandle |
 
         request.onsuccess = (event: Event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            const tx = db.transaction(STORE_NAME, "readonly");
+            const tx = db.transaction(STORE_NAME, 'readonly');
             const store = tx.objectStore(STORE_NAME);
             const getReq = store.get(key);
 
@@ -52,7 +52,7 @@ export async function deleteFileHandle(key: string): Promise<void> {
 
         request.onsuccess = (event: Event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            const tx = db.transaction(STORE_NAME, "readwrite");
+            const tx = db.transaction(STORE_NAME, 'readwrite');
             const store = tx.objectStore(STORE_NAME);
             store.delete(key);
 

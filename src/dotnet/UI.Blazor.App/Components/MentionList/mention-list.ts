@@ -19,7 +19,7 @@ export class MentionList {
         });
         fromEvent(this.mentionList, 'scroll')
             .pipe(takeUntil(this.disposed$),
-        ).subscribe(() => this.mentionList.classList.add('expanded'));
+            ).subscribe(() => this.mentionList.classList.add('expanded'));
     }
 
     private scrollToCurrentItem = (mutations, observer) => {

@@ -1,5 +1,5 @@
 import hljs from 'highlight.js/lib/core';
-import { LanguageFn } from "highlight.js";
+import { LanguageFn } from 'highlight.js';
 import bash from 'highlight.js/lib/languages/bash';
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';

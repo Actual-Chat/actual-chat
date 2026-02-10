@@ -1,5 +1,5 @@
-import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
+import {customElement, property} from 'lit/decorators.js';
+import {css, html, LitElement} from 'lit';
 
 @customElement('translation-svg')
 class TranslationSvg extends LitElement {
@@ -67,12 +67,9 @@ class TranslationSvg extends LitElement {
             }
         }
     `];
-    @property()
-    size = 4;
-    @property({ type: Boolean })
-    isActive = false;
-    @property()
-    textColor = "text-04";
+    @property() size = 4;
+    @property({ type: Boolean }) isActive = false;
+    @property() textColor = 'text-04';
 
     protected render(): unknown {
         if (this.isActive) {

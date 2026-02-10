@@ -18,7 +18,7 @@ export class SubHeader {
         fromEvent(this.subHeaderLit, 'animationend')
             .pipe(takeUntil(this.disposed$))
             .subscribe((e: AnimationEvent) => {
-                if (e.animationName === "showSubHeader") {
+                if (e.animationName === 'showSubHeader') {
                     this.setHeight();
                 }
                 this.blazorRef.invokeMethodAsync('OnAnimationEnd');

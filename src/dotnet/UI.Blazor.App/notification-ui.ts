@@ -40,8 +40,8 @@ export class NotificationUI {
 
         if (!('query' in navigator.permissions))
             return Notification.permission === 'denied'
-               ? 'denied'
-               : 'prompt';
+                ? 'denied'
+                : 'prompt';
 
         const status = await navigator.permissions.query({ name: 'notifications' });
         if (!status.onchange)
@@ -83,7 +83,7 @@ export class NotificationUI {
 
     /** Called by Blazor */
     public static async deleteDeviceToken(): Promise<void> {
-        let { firebaseApp } = BrowserInit;
+        const { firebaseApp } = BrowserInit;
         if (!firebaseApp)
             return;
 

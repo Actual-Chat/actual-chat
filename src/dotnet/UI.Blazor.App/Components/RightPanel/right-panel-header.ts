@@ -27,19 +27,19 @@ export class RightPanelHeader {
     constructor(header: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.header = header;
         this.blazorRef = blazorRef;
-        this.rightSideNav = document.querySelector('.side-nav-right') as HTMLElement;
+        this.rightSideNav = document.querySelector('.side-nav-right')!;
         if (!this.rightSideNav)
             return;
 
-        this.avatarDiv = this.header.querySelector('.chat-avatar') as HTMLElement;
+        this.avatarDiv = this.header.querySelector('.chat-avatar')!;
         if (!this.avatarDiv)
             return;
 
-        this.smallAvatar = this.avatarDiv.querySelector('.small-avatar') as HTMLElement;
+        this.smallAvatar = this.avatarDiv.querySelector('.small-avatar')!;
         if (!this.smallAvatar)
             return;
 
-        this.smallAvatarContent = this.smallAvatar.querySelector('.c-content') as HTMLElement;
+        this.smallAvatarContent = this.smallAvatar.querySelector('.c-content')!;
         if (!this.smallAvatarContent)
             return;
 
@@ -52,7 +52,7 @@ export class RightPanelHeader {
                 this.fullSizeAvatarOpacityHandler();
             });
 
-        this.centerDiv = this.header.querySelector('.c-center') as HTMLElement;
+        this.centerDiv = this.header.querySelector('.c-center')!;
 
         this.headerWidth = this.header.offsetWidth;
         this.header.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
@@ -88,12 +88,12 @@ export class RightPanelHeader {
     // Public methods
 
     private fullSizeAvatarOpacityHandler() {
-        const fullSizeAvatar = this.header.querySelector('.full-size-avatar') as HTMLElement;
+        const fullSizeAvatar = this.header.querySelector('.full-size-avatar')!;
         if (!fullSizeAvatar)
             return;
 
-        const opacity = parseFloat(getComputedStyle(fullSizeAvatar).opacity || "0");
-        fullSizeAvatar.style.opacity = opacity === 0 ? "1" : "0";
+        const opacity = parseFloat(getComputedStyle(fullSizeAvatar).opacity || '0');
+        fullSizeAvatar.style.opacity = opacity === 0 ? '1' : '0';
     }
 
     private resizeSideNavHandler: ResizeObserverCallback = (entries) => {
@@ -117,15 +117,15 @@ export class RightPanelHeader {
 
     private stateHandler: MutationCallback = (mutations) => {
         for (const mutation of mutations) {
-            if (mutation.type === "attributes" && mutation.attributeName === "class") {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                 const target = mutation.target as HTMLElement;
                 const oldClassList = mutation.oldValue?.split(/\s+/) ?? [];
                 const newClassList = target.classList;
 
-                const hadExpandedClass = oldClassList.includes("expanded-header");
-                const hasExpandedClass = newClassList.contains("expanded-header");
-                const hadCollapsedClass = oldClassList.includes("collapsed-header");
-                const hasCollapsedClass = newClassList.contains("collapsed-header");
+                const hadExpandedClass = oldClassList.includes('expanded-header');
+                const hasExpandedClass = newClassList.contains('expanded-header');
+                const hadCollapsedClass = oldClassList.includes('collapsed-header');
+                const hasCollapsedClass = newClassList.contains('collapsed-header');
 
                 if (!hadExpandedClass && hasExpandedClass) {
                     // expand
@@ -140,7 +140,7 @@ export class RightPanelHeader {
         }
     };
 
-    private changeHeader(openFullScreenAvatar: boolean = false) {
+    private changeHeader(openFullScreenAvatar = false) {
         if (openFullScreenAvatar) {
             this.headerWidth = this.header.offsetWidth;
             this.header.style.setProperty('--expanded-header-height', `${this.headerWidth}px`);
@@ -157,7 +157,7 @@ export class RightPanelHeader {
         if (!isExpanded) {
             // show avatar
             this.header.classList.add('expanded-header');
-            this.blazorRef.invokeMethodAsync("FullSizeAvatarHandler", true);
+            this.blazorRef.invokeMethodAsync('FullSizeAvatarHandler', true);
         } else {
             // hide avatar
             this.header.addEventListener('transitionend', this.onTransitionEndBound);
@@ -178,7 +178,7 @@ export class RightPanelHeader {
 
         if (this.header.classList.contains('collapsed-header')) {
             this.header.classList.remove('collapsed-header');
-            void this.blazorRef.invokeMethodAsync("FullSizeAvatarHandler", false);
+            void this.blazorRef.invokeMethodAsync('FullSizeAvatarHandler', false);
         }
     }
 
