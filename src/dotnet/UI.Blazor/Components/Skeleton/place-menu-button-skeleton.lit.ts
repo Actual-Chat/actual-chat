@@ -1,10 +1,10 @@
-import {customElement} from "lit/decorators.js";
-import {html, LitElement} from "lit";
-import {HTMLTemplateResult} from "lit-html/development/lit-html";
-import {MessageWidth, randomIntFromInterval} from "./helpers";
+import {customElement} from 'lit/decorators.js';
+import {html, LitElement} from 'lit';
+import {HTMLTemplateResult} from 'lit-html/development/lit-html';
+import {MessageWidth, randomIntFromInterval} from './helpers';
 
 @customElement('place-menu-button-skeleton')
-class PlaceMenuButtonSkeleton extends LitElement {
+export class PlaceMenuButtonSkeleton extends LitElement {
     protected createRenderRoot() {
         return this;
     }
@@ -24,7 +24,7 @@ class PlaceMenuButtonSkeleton extends LitElement {
     }
 
     private getMessageWidth(first: number, second: number): string {
-        let num = randomIntFromInterval(first, second);
+        const num = randomIntFromInterval(first, second);
         return MessageWidth[num];
     }
 }

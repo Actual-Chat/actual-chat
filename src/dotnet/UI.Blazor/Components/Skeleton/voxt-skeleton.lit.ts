@@ -1,15 +1,14 @@
-﻿import {customElement, property} from "lit/decorators.js";
-import {html, LitElement} from "lit";
+﻿import {customElement, property} from 'lit/decorators.js';
+import {html, LitElement} from 'lit';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 
 @customElement('voxt-skeleton')
-class VoxtSkeletonLit extends LitElement {
+export class VoxtSkeletonLit extends LitElement {
     protected createRenderRoot() {
         return this;
     }
 
-    @property()
-    size = 12;
+    @property() size = 12;
 
     render(): unknown {
         return html`
