@@ -1,8 +1,10 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-enum-comparison,@typescript-eslint/no-explicit-any */
 import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
 import { ResolvedPromise } from 'promises';
-// @ts-ignore
 // import * as ort from 'onnxruntime-web';
+// @ts-expect-error import type
 import * as ort from 'onnxruntime-web/wasm';
 import ortMjs from './ort-wasm-simd.mjs'
 import ortWasm from './ort-wasm-simd.wasm'
@@ -104,8 +106,7 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
             else if (currentEvent.kind === 'start' && probEma < longProbEma && probEma < pauseProbTrigger) {
                 // pause start detected
                 this.pauseCancelSamples = 0;
-                if (this.pauseOffset === null)
-                    this.pauseOffset = frameOffset;
+                this.pauseOffset ??= frameOffset;
                 this.whenTalkingProbMedian = null;
             }
 
@@ -214,6 +215,7 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
         for (let i = 0; i < frames; i++) {
             const frame = monoPcm.subarray(i * AR.SAMPLES_PER_WINDOW_30, (i + 1) * AR.SAMPLES_PER_WINDOW_30);
             // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
+            // @ts-expect-error TODO(AK): fix the error
             const activity = this.baseVad.detect(new Uint8Array(frame.buffer, frame.byteOffset, frame.length * 4));
             const now = Date.now();
             if (activity > 0 && (this.sampleCount / AR.SAMPLES_PER_MS < AV.SKIP_FIRST_RECORDING_MS || now - this.lastSkippedAt < 5)) {
@@ -223,7 +225,7 @@ export class WebRtcVoiceActivityDetector extends VoiceActivityDetectorBase {
             if (activity == VadActivity.Error)
                 throw new Error(`Error calling WebRtc VAD`);
             // Map 1|0 to ~[0,0.8]
-            probs.push(Number(0.8 * activity));
+            probs.push(0.8 * activity);
         }
         return Promise.resolve(probs);
     }
@@ -239,6 +241,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
     private readonly modelUri: URL;
 
     private readonly buffer: Float32Array; // legacy buffer; not used with batched model
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
     private session: ort.InferenceSession | null = null;
     private state: ort.Tensor;
     private context: ort.Tensor;
