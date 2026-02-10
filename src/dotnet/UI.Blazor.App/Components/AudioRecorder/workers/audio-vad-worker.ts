@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await,@typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition */
 import webRtcVadModule, { WebRtcVadModule } from '@actual-chat/webrtc-vad';
 import WebRtcVadWasm from '@actual-chat/webrtc-vad/webrtc-vad.wasm';
 
@@ -15,7 +16,7 @@ import { AudioVadWorklet } from '../worklets/audio-vad-worklet-contract';
 import { NeuralVoiceActivityDetector, WebRtcVoiceActivityDetector } from './audio-vad';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { RecorderStateServer } from '../opus-media-recorder-contracts';
-// @ts-ignore
+// @ts-expect-error intentional import of non-existent file
 import OnnxModel from './vad_batched.ort';
 import { Log } from 'logging';
 import { ResamplerLoader } from './resampler-loader';
@@ -108,7 +109,7 @@ class VadLoader {
     }
 }
 const vads = new VadLoader();
-delayAsync(2000).then(() => VadLoader.cancelNeuralVadLoadDelay());
+void delayAsync(2000).then(() => VadLoader.cancelNeuralVadLoadDelay());
 
 const resamplerLoader = new ResamplerLoader();
 // if (DeviceInfo.isFirefox)
@@ -134,6 +135,8 @@ const serverImpl: AudioVadWorker = {
         await vadWorklet.start(vads.windowSizeMs);
         if (vads.neuralVad === null) {
             // Change vadWorklet window size when neural VAD gets loaded
+            // TODO(AK): fix this error
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
             vads.whenNeuralVadReady.then(async () => {
                 // Load may fail
                 if (vads.neuralVad !== null) {
