@@ -1,10 +1,10 @@
 import { tryQueryPermissionState } from 'permissions';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { DeviceInfo } from '../../../../nodejs/src/device-info';
+import { DeviceInfo } from 'device-info';
 import { OpusMediaRecorder } from './opus-media-recorder';
-import { Log } from '../../../../nodejs/src/logging';
+import { Log } from 'logging';
 
-const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
+const { debugLog, errorLog } = Log.get('AudioRecorder');
 export class WebMicrophonePermissionHandler {
 
     /** Called from Blazor  */
@@ -46,7 +46,7 @@ export class WebMicrophonePermissionHandler {
                     else {
                         // Better integration with native mobile audio pipeline - we are resetting to defaults
                         if ('audioSession' in navigator) {
-                            // @ts-ignore
+                            // @ts-expect-error intentional
                             navigator.audioSession['type'] = 'auto';
                         }
                         stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -75,11 +75,12 @@ export class WebMicrophonePermissionHandler {
     public static async hasMicrophone(): Promise<boolean> {
         const isMaui = BrowserInfo.hostKind == 'MauiApp';
         let hasMicrophone = false;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (navigator.mediaDevices?.enumerateDevices) {
             const devices = await navigator.mediaDevices.enumerateDevices();
             const inputDevices = devices.filter(d => d.kind === 'audioinput');
             const inputDevice = inputDevices.pop();
-            hasMicrophone = (inputDevice && inputDevice.deviceId !== '') || isMaui;
+            hasMicrophone = (inputDevice && inputDevice.deviceId !== '') ?? isMaui;
         }
         return hasMicrophone;
     }
