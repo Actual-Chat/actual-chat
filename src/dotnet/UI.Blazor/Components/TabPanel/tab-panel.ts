@@ -99,7 +99,7 @@ export class TabPanel {
             return;
 
         const rect = this.activeTab.getBoundingClientRect();
-        const parentRect = (this.activeTab.parentElement as HTMLElement).getBoundingClientRect();
+        const parentRect = this.activeTab.parentElement!.getBoundingClientRect();
 
         const left = rect.left - parentRect.left;
         const width = rect.width;
