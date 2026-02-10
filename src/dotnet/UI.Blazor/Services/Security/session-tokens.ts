@@ -1,5 +1,5 @@
-import { EventHandlerSet } from "event-handling";
-import { opusMediaRecorder } from "../../../UI.Blazor.App/Components/AudioRecorder/opus-media-recorder";
+import { EventHandlerSet } from 'event-handling';
+import { opusMediaRecorder } from '../../../UI.Blazor.App/Components/AudioRecorder/opus-media-recorder';
 import { Log } from 'logging';
 
 const { debugLog } = Log.get('SessionTokens');
@@ -12,7 +12,7 @@ export class SessionTokens {
     public static setCurrent(value: string) {
         debugLog?.log(`setCurrent:`, value);
         this.current = value;
-        void opusMediaRecorder.setSessionToken(value);
+        opusMediaRecorder.setSessionToken(value);
         this.changedEvents.triggerSilently(value);
     };
 }
