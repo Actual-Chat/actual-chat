@@ -67,6 +67,13 @@
         <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
     }
     @if (m.IsStreaming) {
+        @if (sm.RetainedText.IsNullOrEmpty()
+             && sm.ChangedText.IsNullOrEmpty()
+             && sm.AnimatedText.IsNullOrEmpty()
+             && IsFirstAuthorMessage
+             && !IsChatLanguageSelected) {
+            <span class="language-detecting">Language detecting...</span>
+        }
         @if (!sm.RetainedText.IsNullOrEmpty()) {
             <span class="retained">@sm.RetainedText</span>
         }
@@ -140,6 +147,8 @@
     [Parameter, EditorRequired] public Markup Markup { get; set; } = null!;
     [Parameter] public bool IsUnreadByOthers { get; set; }
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
+    [Parameter] public bool IsFirstAuthorMessage { get; set; }
+    [Parameter] public bool IsChatLanguageSelected { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
