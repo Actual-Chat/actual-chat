@@ -120,6 +120,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
 
     protected async Task<bool> TryRenew(CancellationToken cancellationToken)
     {
+        var failureCount = 0;
         while (true) {
             var expiresIn = ExpiresAt - Options.ExpirationSafetyMargin - Clock.Now;
             if (expiresIn < TimeSpan.Zero) {
@@ -152,16 +153,22 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                     return false;
                 }
 
+                failureCount++;
                 Log.LogError(e, "[+*] {Key}: renewal failed, will retry", FullKey);
             }
             finally {
                 expiredCts.CancelAndDisposeSilently();
             }
+
+            // Backoff before retrying - the expiresIn check at the top of the loop
+            // will catch the case where we've run past the deadline
+            await Clock.Delay(Backend.RetryDelays[failureCount], cancellationToken).ConfigureAwait(false);
         }
     }
 
     protected async Task<MeshLockReleaseResult> TryRelease()
     {
+        var failureCount = 0;
         while (true) {
             var expiresIn = ExpiresAt - Clock.Now;
             if (expiresIn < TimeSpan.Zero) {
@@ -187,11 +194,16 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
                     return MeshLockReleaseResult.ExpiredOnRelease;
                 }
 
+                failureCount++;
                 Log.LogError(e, "[+-] {Key}: release failed, will retry", FullKey);
             }
             finally {
                 timeoutCts.CancelAndDisposeSilently();
             }
+
+            // Backoff before retrying - the expiresIn check at the top of the loop
+            // will catch the case where we've run past the deadline
+            await Task.Delay(Backend.RetryDelays[failureCount]).ConfigureAwait(false);
         }
     }
 }
