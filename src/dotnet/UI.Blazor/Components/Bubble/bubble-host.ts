@@ -25,7 +25,7 @@ export class BubbleHost {
 
     private _bubbles: BubbleModel[] = [];
     private _clearAutoUpdate?: () => void;
-    private _suppressAll: boolean = false;
+    private _suppressAll = false;
 
     public static create(blazorRef: DotNet.DotNetObject, readBubbles: string[]): BubbleHost {
         return new BubbleHost(blazorRef, readBubbles);
@@ -87,7 +87,7 @@ export class BubbleHost {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
@@ -96,7 +96,7 @@ export class BubbleHost {
         this.mutationObserver.disconnect();
     }
 
-    public async skipBubbles(): Promise<string[]> {
+    public skipBubbles(): string[] {
         debugLog?.log(`skipBubbles`);
 
         // Set suppress flag to prevent any future bubbles from showing
@@ -113,14 +113,15 @@ export class BubbleHost {
         }
 
         const bubblesToSkip = unreadBubbles
-            .filter(_ => true); // Skip all of them rather than just the current "batch"
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            .filter(() => true); // Skip all of them rather than just the current "batch"
             // .filter(x => x.isTopElement && x.isInViewport); // Skip just the current "batch"
         bubblesToSkip.forEach(x => x.isRead = true);
 
         return bubblesToSkip.map(x => x.bubbleRef);
     }
 
-    public async readBubble(bubbleRef: string): Promise<void> {
+    public readBubble(bubbleRef: string): void {
         debugLog?.log(`readBubble:`, bubbleRef);
 
         const bubble = this._bubbles.find(x => x.bubbleRef === bubbleRef);
@@ -130,7 +131,7 @@ export class BubbleHost {
         this.showNextBubble();
     }
 
-    public async resetBubbles(readBubbles: string[]): Promise<void> {
+    public resetBubbles(readBubbles: string[]): void {
         debugLog?.log(`resetBubbles`);
 
         // Clear suppress flag to allow bubbles to show again
@@ -146,7 +147,7 @@ export class BubbleHost {
         this.showNextBubble();
     }
 
-    public async showBubble(id: string, bubbleRef: string): Promise<void> {
+    public showBubble(id: string, bubbleRef: string): void {
         debugLog?.log(`showBubble:`, id, bubbleRef);
 
         const bubble = this._bubbles.find(x => x.bubbleRef === bubbleRef);
@@ -157,7 +158,7 @@ export class BubbleHost {
         bubble.isShown = true;
 
         const triggerElement = bubble.triggerElement;
-        const position = triggerElement.dataset['bubblePlacement'] as Placement;
+        const position = triggerElement.dataset.bubblePlacement as Placement;
         const bubbleElement = document.getElementById(id);
         if (!bubbleElement) {
             warnLog?.log(`Bubble element not found:`, id);
@@ -175,8 +176,8 @@ export class BubbleHost {
         this._clearAutoUpdate = autoUpdate(
             triggerElement,
             bubbleElement,
-            async () => {
-                await this.updatePosition(triggerElement, bubbleElement, arrowElement, position);
+            () => {
+                void this.updatePosition(triggerElement, bubbleElement, arrowElement, position);
             }, {
                 animationFrame: true,
             });
@@ -227,7 +228,7 @@ export class BubbleHost {
             top: arrowY != null ? `${arrowY}px` : '',
             right: '',
             bottom: '',
-            // @ts-ignore
+            // @ts-expect-error property name
             [staticSide]: '-4px',
         });
     }
@@ -237,7 +238,7 @@ export class BubbleHost {
 
         const elements = this.getBubbleElements();
         elements.forEach(el => {
-            const bubbleRef = el.dataset['bubble'];
+            const bubbleRef = el.dataset.bubble;
             if (!bubbleRef) {
                 warnLog?.log(`Bubble element without data-bubble:`, el);
                 return;
@@ -260,7 +261,7 @@ export class BubbleHost {
                 isTopElement: false,
                 isRead: false,
                 isShown: false,
-                priority: Number(el.dataset['bubblePriority']),
+                priority: Number(el.dataset.bubblePriority),
             };
             this._bubbles.push(newBubble);
         });
@@ -347,10 +348,7 @@ export class BubbleHost {
             return true;
 
         const trigger = topElement.closest('[data-bubble]');
-        if (element === trigger)
-            return true;
-
-        return false;
+        return element === trigger;
     }
 
     private topElementIsBubble(element: HTMLElement): boolean {
@@ -364,10 +362,7 @@ export class BubbleHost {
             return true;
 
         const bubble = topElement.closest('.ac-bubble');
-        if (bubble != undefined)
-            return true;
-
-        return false;
+        return bubble != undefined;
     }
 
     private getBubbleElements(): HTMLElement[] {
