@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await */
 import { Subject } from 'rxjs';
 import { debounce, ResettableFunc } from 'promises';
 import { fastRaf } from 'fast-raf';
@@ -66,7 +68,7 @@ export class ChatEntryMessageInternalView {
 
         if (isStreaming) {
             this.markupHeight = this.messageMarkup.offsetHeight;
-            this.messageMarkup.style.height = this.markupHeight + 'px';
+            this.messageMarkup.style.height = `${this.markupHeight}px`;
             this.observerHandler(true);
         }
         if (!this.playableText && isStreaming) {
@@ -79,7 +81,7 @@ export class ChatEntryMessageInternalView {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
@@ -254,7 +256,7 @@ export class ChatEntryMessageInternalView {
         this.messageMarkup.removeEventListener('transitionend', this.onTransitionEndBound);
         this.setHeightAutoAfterTransition = setHeightAuto;
         this.messageMarkup.addEventListener('transitionend', this.onTransitionEndBound, { once: true });
-        this.messageMarkup.style.height = height + 'px';
+        this.messageMarkup.style.height = `${height}px`;
         this.markupHeight = height;
     }
 

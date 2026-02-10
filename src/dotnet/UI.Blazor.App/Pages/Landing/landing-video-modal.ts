@@ -1,5 +1,5 @@
 // TODO: remove eslint-disables and fix errors
-/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-misused-promises,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition */
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 
 import { Log } from 'logging';
