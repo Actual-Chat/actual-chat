@@ -1,5 +1,5 @@
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
-using ActualChat.UI.Blazor;
+using ActualChat.UI;
 
 namespace ActualChat.App.Maui.IosShareExt.UI;
 
