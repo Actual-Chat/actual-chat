@@ -126,7 +126,7 @@ class AttachedFeederNode implements AttachedAudioContextTrait {
 export class AudioPlayer implements Resettable {
     private static readonly pool: ObjectPool<AudioPlayer> = new ObjectPool<AudioPlayer>(() => new AudioPlayer());
     private static whenInitialized = new PromiseSource<void>();
-    private static nextInternalId: number = 0;
+    private static nextInternalId = 0;
     private static initStarted = false;
 
     private readonly internalId: string;

@@ -11,7 +11,7 @@ import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { FeederAudioWorklet } from '../worklets/feeder-audio-worklet-contract';
 import { ObjectPool } from 'object-pool';
 import { Log } from 'logging';
-import { BufferHandler } from "./opus-decoder-worker-contract";
+import { BufferHandler } from './opus-decoder-worker-contract';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusDecoder');
 const enableFrequentDebugLog = false;

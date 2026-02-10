@@ -103,7 +103,7 @@ export class AudioStream implements Disposable {
         while (!this.isCompleted && this.frames.length <= AS.DELAY_FRAMES)
             await this.frameAdded.whenNext();
 
-        let subject: signalR.Subject<Array<Uint8Array>> | null = null;
+        let subject: signalR.Subject<Uint8Array[]> | null = null;
         const framesToSend = new Array<Uint8Array>();
         while (!this.isDisposed) {
             try {
@@ -114,7 +114,7 @@ export class AudioStream implements Disposable {
                     if (this.isCompleted && this.frames.length === 0)
                         return; // Same as disposed, we don't want to send an empty stream in this case
 
-                    subject = new signalR.Subject<Array<Uint8Array>>();
+                    subject = new signalR.Subject<Uint8Array[]>();
                     await AudioStreamer.connection.send(
                         'ProcessAudioChunks',
                         this.sessionToken, this.chatId, this.repliedChatEntryId,
@@ -286,7 +286,7 @@ export class AudioStreamer {
         while (!this.isConnected) {
             try {
                 // If the browser reports we're offline, wait for the 'online' event to avoid futile reconnect attempts
-                if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                if (typeof navigator !== 'undefined' && !navigator.onLine) {
                     warnLog?.log('ensureConnected: offline, waiting for window.online event...');
                     await new Promise<void>(resolve => {
                         const handler = () => {
@@ -366,7 +366,6 @@ function _launchStreams(streams: IStreamResult<any>[], promiseQueue: Promise<voi
         promiseQueue = Promise.resolve();
 
     // We want to iterate over the keys, since the keys are the stream ids
-    // eslint-disable-next-line guard-for-in
     for (const streamId in streams) {
         streams[streamId].subscribe({
             complete: () => {
@@ -376,10 +375,10 @@ function _launchStreams(streams: IStreamResult<any>[], promiseQueue: Promise<voi
                 let message: string;
                 if (err instanceof Error) {
                     message = err.message;
-                } else if (err && err.toString) {
+                } else if (err?.toString) {
                     message = err.toString();
                 } else {
-                    message = "Unknown error";
+                    message = 'Unknown error';
                 }
 
                 const protocolMessage = this._protocol.writeMessage(this._createCompletionMessage(streamId, message));
@@ -401,7 +400,7 @@ function debugBeginRandomDisconnects(periodMs: number) {
     const sockets: WebSocket[] = [];
 
     WebSocket.prototype.send = function(...args) {
-        if (sockets.indexOf(this) === -1)
+        if (!sockets.includes(this))
             sockets.push(this);
         return originalSend.call(this, ...args);
     };
