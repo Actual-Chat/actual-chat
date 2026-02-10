@@ -1,7 +1,7 @@
 import { Disposable } from 'disposable';
 import { filter, from, fromEvent, map, Subject, switchMap, takeUntil } from 'rxjs';
-import { BrowserInit } from "../../Services/BrowserInit/browser-init";
-import { SessionTokens } from "../../Services/Security/session-tokens";
+import { BrowserInit } from '../../Services/BrowserInit/browser-init';
+import { SessionTokens } from '../../Services/Security/session-tokens';
 import { Log } from 'logging';
 const { errorLog } = Log.get('FileUpload');
 
@@ -25,7 +25,7 @@ export class FileUpload implements Disposable {
         private readonly blazorRef: DotNet.DotNetObject,
         private readonly options: Options)
     {
-        let url = BrowserInit.getUrl(options.uploadUrl);
+        const url = BrowserInit.getUrl(options.uploadUrl);
 
         fromEvent(input, 'change')
             .pipe(
@@ -52,18 +52,20 @@ export class FileUpload implements Disposable {
                 })),
                 switchMap((promise: Promise<Response>) => from(promise)),
             )
-            .subscribe(async (response: Response) => {
-                if (!response.ok) {
-                    errorLog?.log(`failed to upload file: statusCode=${response.status}, '${response.statusText}'`);
-                    return;
-                }
-                const mediaContent = await response.json();
-                await blazorRef.invokeMethodAsync('OnUploaded', mediaContent);
+            .subscribe((response: Response) => {
+                void (async () => {
+                    if (!response.ok) {
+                        errorLog?.log(`failed to upload file: statusCode=${response.status}, '${response.statusText}'`);
+                        return;
+                    }
+                    const mediaContent: unknown = await response.json();
+                    await blazorRef.invokeMethodAsync('OnUploaded', mediaContent);
+                })();
             });
     }
 
     public dispose(): void {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
