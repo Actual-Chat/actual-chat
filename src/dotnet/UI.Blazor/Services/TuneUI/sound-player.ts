@@ -14,9 +14,6 @@ export class SoundPlayer {
     private readonly recentlyPlayedMap = new Map<string, number>;
     private static _instance?: SoundPlayer;
 
-    constructor() {
-    }
-
     public static get instance(): SoundPlayer {
         return this._instance ??= new SoundPlayer();
     }
@@ -49,19 +46,19 @@ export class SoundPlayer {
                     source.onended = () => playTask.resolve(true);
                     isEnded = await playTask;
                 } catch (e) {
-                    warnLog?.log('play: failed to play sound', url);
+                    warnLog?.log('play: failed to play sound', url, e);
                 } finally {
                     whilePlaying.resolve(undefined);
                     if (!isEnded) {
                         try {
                             source.stop();
-                        } catch (e) {
+                        } catch {
                             // Ignore stop errors on already stopped sources
                         }
                     }
                     try {
                         source.disconnect();
-                    } catch (e) {
+                    } catch {
                         // Ignore disconnect errors
                     }
                 }
