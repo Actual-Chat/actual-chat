@@ -1,5 +1,5 @@
-import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
+import {customElement, property} from 'lit/decorators.js';
+import {css, html, LitElement} from 'lit';
 
 @customElement('empty-search-chat-svg')
 class EmptySearchChatSvg extends LitElement {
