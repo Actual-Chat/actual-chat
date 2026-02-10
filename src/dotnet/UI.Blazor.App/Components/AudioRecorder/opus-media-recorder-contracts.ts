@@ -8,9 +8,7 @@ export interface RecorderStateServer {
     microphoneIsCaptured(noWait?: RpcNoWait): Promise<void>;
 }
 
-export interface RecorderStateChanged {
-    (isRecording: boolean, isSignalDetected: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void>;
-}
+export type RecorderStateChanged = (isRecording: boolean, isSignalDetected: boolean, isConnected: boolean, isVoiceActive: boolean) => Promise<void>;
 export interface RecorderState {
     isRecording: boolean;
     isSignalDetected: boolean;
