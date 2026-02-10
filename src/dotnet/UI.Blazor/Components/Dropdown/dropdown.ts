@@ -23,8 +23,6 @@
         let prevState = this._dropdownMenu.classList.contains('dropdown-menu-opened');
         this.menuObserver = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
-                const { target } = mutation;
-
                 if (mutation.attributeName === 'class') {
                     const elem = mutation.target as HTMLDivElement;
                     const currentState = elem.classList.contains('dropdown-menu-opened');
@@ -86,7 +84,7 @@
     });
 
     private onKeyDown = ((event: KeyboardEvent & { target: Element; }) => {
-        if (event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc') {
+        if (event.key === 'Escape' || event.key === 'Esc') {
             const content = this._dropdownMenu;
             if (content.classList.contains('dropdown-menu-opened')) {
                 void this.toggle(false);
