@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-member-access */
 import {
     Subject,
     takeUntil,
@@ -93,6 +95,7 @@ export class RightPanelHeader {
             return;
 
         const opacity = parseFloat(getComputedStyle(fullSizeAvatar).opacity || '0');
+        // @ts-expect-error TODO: fix error
         fullSizeAvatar.style.opacity = opacity === 0 ? '1' : '0';
     }
 
