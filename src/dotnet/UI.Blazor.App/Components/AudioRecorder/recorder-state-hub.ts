@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/require-await, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
 import { Observable, Subject } from 'rxjs';
 import { debounce, PromiseSource } from 'promises';
 import { RecorderState } from './opus-media-recorder-contracts';

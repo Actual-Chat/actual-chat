@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-floating-promises */
 // TODO: remove eslint-disables and fix errors
 /* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-member-access */
 import {

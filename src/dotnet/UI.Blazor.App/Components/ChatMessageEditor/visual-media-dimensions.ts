@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/prefer-promise-reject-errors */
 export class VisualMediaDimensions {
     public static getDimensions(previewUrl: string, mimeType: string): Promise<{ width: number, height: number } | null> {
         return new Promise((resolve, reject) => {

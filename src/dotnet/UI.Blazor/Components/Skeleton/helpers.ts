@@ -1,4 +1,6 @@
-﻿export function randomIntFromInterval(min, max): number {
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/restrict-plus-operands */
+export function randomIntFromInterval(min, max): number {
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 

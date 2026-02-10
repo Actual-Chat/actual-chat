@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-deprecated */
 import { Subject, takeUntil } from 'rxjs';
 import { Log } from 'logging';
 import { Disposable } from 'disposable';

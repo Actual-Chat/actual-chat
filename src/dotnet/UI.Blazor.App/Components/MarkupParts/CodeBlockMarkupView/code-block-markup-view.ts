@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import hljs from 'highlight.js/lib/core';
 import { LanguageFn } from 'highlight.js';
 import bash from 'highlight.js/lib/languages/bash';

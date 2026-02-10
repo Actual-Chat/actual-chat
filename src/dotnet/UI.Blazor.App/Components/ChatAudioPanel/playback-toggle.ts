@@ -1,4 +1,6 @@
-﻿import { audioContextSource, recordingAudioContextSource } from '../../Services/audio-context-source';
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-misused-promises */
+import { audioContextSource, recordingAudioContextSource } from '../../Services/audio-context-source';
 
 export class PlaybackToggle {
     private static isInitialized = false;

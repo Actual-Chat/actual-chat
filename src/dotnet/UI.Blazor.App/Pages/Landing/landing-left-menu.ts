@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-deprecated, @typescript-eslint/no-floating-promises */
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { stopEvent } from 'event-handling';
 

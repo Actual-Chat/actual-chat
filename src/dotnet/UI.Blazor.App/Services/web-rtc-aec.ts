@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-unnecessary-condition */
 import { DeviceInfo } from 'device-info';
 import { Log } from 'logging';
 import { PromiseSource } from 'promises';

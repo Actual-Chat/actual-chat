@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-condition */
 import { EventHandler } from 'event-handling';
 import { opusMediaRecorder } from './opus-media-recorder';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';

@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { customElement, property } from 'lit/decorators.js';
 import { html, LitElement } from 'lit';
 

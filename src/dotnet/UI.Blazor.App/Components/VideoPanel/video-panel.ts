@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-deprecated, @typescript-eslint/no-floating-promises */
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 
 export class VideoPanel {

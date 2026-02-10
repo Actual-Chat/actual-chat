@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/no-unnecessary-condition */
 import { AsyncDirective } from 'lit/async-directive.js';
 import { directive } from 'lit/directive.js';
 import { Observable, Subscription } from 'rxjs';

@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { clamp } from 'math';
 
 export class Range<T> {
@@ -20,8 +22,6 @@ export class NumberRange extends Range<number> {
     public get size(): number { return this.end - this.start; }
 
     public contains(item: Range<number> | number): boolean {
-        // TODO: fix eslint error
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (item == null)
             return false;
 

@@ -9,7 +9,7 @@ export async function requestFileHandlePermission(handle: FileSystemFileHandle, 
     if ((await handle.queryPermission(options)) === 'granted') {
         return {
             granted: Promise.resolve(true),
-            cancel: () => {}
+            cancel: () => { /* empty */ }
         };
     }
     let requestResult : PermissionState = 'denied';
@@ -20,7 +20,7 @@ export async function requestFileHandlePermission(handle: FileSystemFileHandle, 
     };
     const grantedPromise = (async () => {
         await grantFileUploadPermissionsInvoker.registerCallback(requestCallback);
-        // @ts-ignore
+        // @ts-expect-error TODO: fix this error
         return requestResult === 'granted';
     })();
     return {
