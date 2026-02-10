@@ -12,10 +12,10 @@ export class RecorderStateHub {
     private static readonly recorderStateChangedSubject: Subject<RecorderState> = new Subject<RecorderState>();
     private static readonly recordingHeartbeatSubject: Subject<void> = new Subject<void>();
 
-    private static isRecording: boolean = false;
-    private static isSignalDetected: boolean = false;
-    private static isConnected: boolean = false;
-    private static isVoiceActive: boolean = false;
+    private static isRecording = false;
+    private static isSignalDetected = false;
+    private static isConnected = false;
+    private static isVoiceActive = false;
     private static lastState: RecorderState = { isRecording: false, isSignalDetected: false, isConnected: false, isVoiceActive: false };
 
     public static get audioPowerChanged$(): Observable<number> {
