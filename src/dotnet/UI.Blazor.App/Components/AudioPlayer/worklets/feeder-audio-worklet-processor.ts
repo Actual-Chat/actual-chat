@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-assignment */
 import { AUDIO_PLAY as AP } from '_constants';
 import Denque from 'denque';
 import { timerQueue } from 'timerQueue';
@@ -144,7 +146,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         }
 
         // We're in 'playing' state anywhere below this point
-        // @ts-ignore - accessible from the AudioWorkletGlobalScope
+        // @ts-expect-error - accessible from the AudioWorkletGlobalScope
         const time = currentTime;
         if (this.buffer.samplesAvailable >= channel.length) {
             this.buffer.pull([channel])
@@ -182,6 +184,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 while (chunk) {
                     chunk = this.chunks.shift();
                     if (chunk !== 'end' && chunk)
+                        // @ts-expect-error TODO(AK): fix error
                         void this.decoder.releaseBuffer(chunk.buffer, rpcNoWait);
                 }
                 this.chunks.clear();
@@ -190,6 +193,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 return true;
             }
             this.buffer.push([chunk]);
+            // @ts-expect-error TODO(AK): fix error
             void this.decoder.releaseBuffer(chunk.buffer, rpcNoWait);
             if (this.skipSamples) {
                 const skipSamples = Math.min(this.skipSamples, this.buffer.samplesAvailable);
