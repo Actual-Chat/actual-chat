@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-misused-promises,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access */
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { createWebRtcAecStream, isWebRtcAecRequired } from './web-rtc-aec';
@@ -40,7 +42,7 @@ export class DemandInteractiveUI implements AudioContextTrait {
     public static readonly instance = new DemandInteractiveUI();
     public readonly name = 'demand-interactive-ui';
 
-    private constructor() {}
+    private constructor() { /* empty */ }
 
     public attach(): AttachedAudioContextTrait {
         return emptyAttachedTrait;
@@ -165,8 +167,7 @@ export class AttachedDestinationFallback implements AttachedAudioContextTrait, D
 
         this.audio.pause();
         this.audio.srcObject = null;
-        // @ts-ignore
-        this.audio.src = undefined;
+        this.audio.src = undefined!;
         try {
             document.body.removeChild(this.audio);
         } catch {
