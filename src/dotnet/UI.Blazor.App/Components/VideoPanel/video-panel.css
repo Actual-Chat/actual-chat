@@ -48,7 +48,7 @@ body.wide .video-panel.rp-visible {
     @apply relative;
     @apply flex items-center justify-center;
     @apply w-full h-full;
-    @apply rounded-lg;
+    @apply rounded-lg overflow-hidden;
     @apply bg-black;
 }
 .video-panel.first-time-open > .c-content {
@@ -95,7 +95,14 @@ body.hoverable .btn-h.settings-btn:hover {
     @apply text-xs;
 }
 .video-panel .remote-video-container {
-    @apply relative w-full h-full;
+    @apply absolute inset-0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.video-panel .remote-video-container.focused {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 /* Error display */
@@ -110,9 +117,7 @@ body.hoverable .btn-h.settings-btn:hover {
 /* Remote video streams */
 .video-panel .remote-streams {
     @apply absolute inset-0;
-    @apply grid gap-1;
-    @apply p-1;
-    pointer-events: none;
+    overflow: hidden;
 }
 .video-panel .remote-streams:empty {
     @apply hidden;
@@ -135,21 +140,6 @@ body.hoverable .btn-h.settings-btn:hover {
     pointer-events: auto;
 }
 
-/* Grid layouts for multiple remote streams */
-.video-panel[data-remote-stream-count="1"] .remote-streams {
-    @apply grid-cols-1 grid-rows-1;
-}
-.video-panel[data-remote-stream-count="2"] .remote-streams {
-    @apply grid-cols-2 grid-rows-1;
-}
-.video-panel[data-remote-stream-count="3"] .remote-streams,
-.video-panel[data-remote-stream-count="4"] .remote-streams {
-    @apply grid-cols-2 grid-rows-2;
-}
-.video-panel[data-remote-stream-count="5"] .remote-streams,
-.video-panel[data-remote-stream-count="6"] .remote-streams {
-    @apply grid-cols-3 grid-rows-2;
-}
 
 @keyframes smoothShowVideoPanel {
     0% {
