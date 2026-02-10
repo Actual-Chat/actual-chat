@@ -5,24 +5,24 @@ const { warnLog } = Log.get('WebAuth');
 const encode = encodeURIComponent;
 
 export class WebAuth {
-    public static windowTarget: string = "_blank";
-    public static windowFeatures: string = "width=600,height=600";
-    public static signInPath: string = "/signIn";
-    public static signOutPath: string = "/signOut";
-    public static closeFlowPath: string = "/fusion/close";
-    public static allowPopup: boolean = !(DeviceInfo.isMobile || DeviceInfo.isWebKit);
-    public static mustRedirectOnPopupBlock: boolean = true;
+    public static windowTarget = '_blank';
+    public static windowFeatures = 'width=600,height=600';
+    public static signInPath = '/signIn';
+    public static signOutPath = '/signOut';
+    public static closeFlowPath = '/fusion/close';
+    public static allowPopup = !(DeviceInfo.isMobile || DeviceInfo.isWebKit);
+    public static mustRedirectOnPopupBlock = true;
 
     public static signIn(schema: string) {
-        if (schema === undefined || schema === null || schema === "") {
-            this.showPopupOrRedirect(this.signInPath, "Sign-in");
+        if (!schema) {
+            this.showPopupOrRedirect(this.signInPath, 'Sign-in');
         } else {
-            this.showPopupOrRedirect(this.signInPath + "/" + schema, "Sign-in");
+            this.showPopupOrRedirect(this.signInPath + '/' + schema, 'Sign-in');
         }
     }
 
     public static signOut() {
-        this.showPopupOrRedirect(this.signOutPath, "Sign-out");
+        this.showPopupOrRedirect(this.signOutPath, 'Sign-out');
     }
 
     // Private methods
@@ -33,16 +33,16 @@ export class WebAuth {
             return;
         }
 
-        const returnUrl = new URL(this.closeFlowPath + "?flow=" + encode(flowName), document.baseURI).href;
-        const url = path + "?returnUrl=" + encode(returnUrl);
-        warnLog.log(`popup: -> ${url}`);
+        const returnUrl = new URL(this.closeFlowPath + '?flow=' + encode(flowName), document.baseURI).href;
+        const url = path + '?returnUrl=' + encode(returnUrl);
+        warnLog?.log(`popup: -> ${url}`);
         const popup = window.open(url, this.windowTarget, this.windowFeatures);
         if (!popup || popup.closed || typeof popup.closed == 'undefined') {
             if (this.mustRedirectOnPopupBlock) {
                 this.redirect(path, flowName);
             }
             else {
-                alert("Authentication popup is blocked by the browser. Please allow popups on this website and retry.")
+                alert('Authentication popup is blocked by the browser. Please allow popups on this website and retry.')
             }
         }
     }
@@ -50,14 +50,15 @@ export class WebAuth {
     private static redirect(path: string, flowName: string) {
         const redirectUrl = window.location.href;
         const returnUrl = new URL(this.closeFlowPath +
-            "?flow=" + encode(flowName) +
-            "&redirectUrl=" + encode(redirectUrl),
-            document.baseURI
+            '?flow=' + encode(flowName) +
+            '&redirectUrl=' + encode(redirectUrl),
+        document.baseURI
         ).href;
-        let url = new URL(path + "?returnUrl=" + encode(returnUrl), document.baseURI).href;
-        warnLog.log(`redirect: -> ${url}`);
+        const url = new URL(path + '?returnUrl=' + encode(returnUrl), document.baseURI).href;
+        warnLog?.log(`redirect: -> ${url}`);
         window.location.href = url;
     }
 }
 
+// eslint-disable-next-line
 window['FusionAuth'] = WebAuth; // Just in case (compatibility with the older code)
