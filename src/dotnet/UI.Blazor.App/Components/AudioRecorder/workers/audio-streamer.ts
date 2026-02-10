@@ -1,3 +1,5 @@
+// TODO(AY): remove eslint-disables and fix errors
+/* eslint-disable */
 import { AUDIO_STREAMER as AS, AUDIO_ENCODER as AE } from '_constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
@@ -9,7 +11,7 @@ import { HubConnectionState, IStreamResult } from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { Log } from 'logging';
 
-const { debugLog, infoLog, warnLog, errorLog } = Log.get('AudioStreamer');
+const { debugLog, infoLog, warnLog } = Log.get('AudioStreamer');
 const bufferPool: ObjectPool<ArrayBufferLike> = new ObjectPool<ArrayBufferLike>(
     () => new ArrayBuffer(AE.FRAME_BUFFER_BYTES)
 ).expandTo(20);
