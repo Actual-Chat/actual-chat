@@ -26,14 +26,14 @@ export class TotpInput implements Disposable {
         fromEvent(inputs, 'keyup')
             .pipe(
                 takeUntil(this.disposed$),
-            ).subscribe((e: KeyboardEvent) => this.onKeyUp(e));
+            ).subscribe((e: KeyboardEvent) => { void this.onKeyUp(e); });
 
         fromEvent(inputs, 'click')
             .pipe(
                 tap(stopEvent),
                 tap(preventDefaultForEvent),
                 takeUntil(this.disposed$),
-            ).subscribe((e: MouseEvent) => this.onClick(e));
+            ).subscribe(() => this.onClick());
 
         this.focus();
     }
@@ -80,14 +80,14 @@ export class TotpInput implements Disposable {
         }
 
         switch (e.key) {
-            case 'ArrowLeft':
-            case 'Backspace':
-            case 'Delete':
-                const text = this.getText();
-                await this.setFromText(text.substring(0, text.length - 1))
-                break;
-            default:
-                return;
+        case 'ArrowLeft':
+        case 'Backspace':
+        case 'Delete':
+            const text = this.getText();
+            await this.setFromText(text.substring(0, text.length - 1))
+            break;
+        default:
+            return;
         }
 
         e.preventDefault();
@@ -118,10 +118,10 @@ export class TotpInput implements Disposable {
         if (i < 0 || i >= this.length)
             return;
 
-        this.inputs[i].value = value?.toString() ?? "";
+        this.inputs[i].value = value?.toString() ?? '';
     }
 
-    private onClick(e: MouseEvent) {
+    private onClick() {
         this.focus();
     }
 
