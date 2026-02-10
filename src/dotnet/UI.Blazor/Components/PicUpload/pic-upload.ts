@@ -42,7 +42,7 @@ export class PicUpload implements Disposable {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
