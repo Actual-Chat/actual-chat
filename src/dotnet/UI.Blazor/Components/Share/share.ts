@@ -21,13 +21,13 @@ export class Share {
 
     /** Called from Blazor  */
     public static canShare(data?: ShareData): boolean {
-        return navigator.canShare && navigator.canShare(data);
+        return navigator.canShare(data);
     }
 
     /** Called from Blazor  */
     public static registerHandler(): void {
         const buttons = [...document.querySelectorAll<HTMLButtonElement>('div.share-externally-button > button')];
-        buttons.forEach(btn => btn.addEventListener('click', Share.onClick));
+        buttons.forEach(btn => btn.addEventListener('click', (event) => { void Share.onClick(event); }));
     }
 
     // Private methods
@@ -58,6 +58,8 @@ export class Share {
 
     private static onClick = async (event: Event): Promise<void> => {
         const target = event.currentTarget as HTMLElement;
+        // TODO: fix eslint error
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!target)
             return;
 
