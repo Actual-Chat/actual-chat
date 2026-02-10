@@ -1,14 +1,11 @@
-import {customElement, property} from "lit/decorators.js";
-import {css, html, LitElement} from "lit";
+import {customElement, property} from 'lit/decorators.js';
+import {css, html, LitElement} from 'lit';
 
 @customElement('timer-button-svg')
-class TimerButtonSvg extends LitElement {
-    @property({ type: String })
-    sizeClass = "";
-    @property({ type: String })
-    iconColor = "";
-    @property({ type: Number })
-    timing = 0;
+export class TimerButtonSvg extends LitElement {
+    @property({ type: String }) sizeClass = '';
+    @property({ type: String }) iconColor = '';
+    @property({ type: Number }) timing = 0;
 
     static styles = [css`
         :host {
@@ -50,7 +47,7 @@ class TimerButtonSvg extends LitElement {
     `];
 
     protected render(): unknown {
-        let animateFunc = `animation: dash ${this.timing}s linear forwards`;
+        const animateFunc = `animation: dash ${this.timing}s linear forwards`;
         return html`
             <div class="timer-content ${this.sizeClass}">
                 <div class="c-border">
