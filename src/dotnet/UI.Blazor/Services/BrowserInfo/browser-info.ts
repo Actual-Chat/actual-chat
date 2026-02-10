@@ -5,7 +5,7 @@ import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
 import { Log } from 'logging';
 import { DocumentEvents } from 'event-handling';
-import {Theme, ThemeInfo} from "theme";
+import {Theme, ThemeInfo} from 'theme';
 
 const { infoLog } = Log.get('BrowserInfo');
 
@@ -13,22 +13,23 @@ export type HostKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
 export type AppKind = 'Unknown' | 'Wasm' | 'Android' | 'Ios' | 'Windows' | 'MacOS';
 
 export class BrowserInfo {
-    private static backendRef: DotNet.DotNetObject = null;
+    private static backendRef: DotNet.DotNetObject = null!;
     private static isWebSplashRemoved: boolean;
 
     public static hostKind: HostKind = window.location.host === 'localhost' || window.location.host === '0.0.0.0' || window.location.host === '0.0.0.1'
         ? 'MauiApp'
         : ('MONO' in window)
             ? 'WasmApp'
-            : "WebServer";
+            : 'WebServer';
     public static appKind: AppKind = 'Unknown';
+    // eslint-disable-next-line
     public static renderMode = window?.['App']?.renderMode;
     public static utcOffset: number;
     public static timeZone: string;
-    public static windowId = "";
+    public static windowId = '';
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
-    public static async init(backendRef1: DotNet.DotNetObject, hostKind: HostKind, appKind: AppKind): Promise<void> {
+    public static init(backendRef1: DotNet.DotNetObject, hostKind: HostKind, appKind: AppKind): void {
         Theme.changed.add(theme => this.onThemeChanged(theme));
         infoLog?.log(`initializing`);
         this.backendRef = backendRef1;
@@ -40,7 +41,7 @@ export class BrowserInfo {
         if (this.hostKind == 'MauiApp')
             Interactive.isAlwaysInteractive = true;
         this.initBodyClasses();
-        globalThis["browserInfo"] = this;
+        globalThis.browserInfo = this;
 
         // Call OnInitialized
         const isWasmReady = this.isWasmReady();
@@ -48,7 +49,7 @@ export class BrowserInfo {
             screenSizeText: ScreenSize.size,
             isVisible: !document.hidden,
             isHoverable: ScreenSize.isHoverable,
-            themeInfo: Theme.info,
+            themeInfo: Theme.info!,
             utcOffset: this.utcOffset,
             timeZone: this.timeZone,
             isMobile: DeviceInfo.isMobile,
@@ -66,8 +67,8 @@ export class BrowserInfo {
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
         this.whenReady.resolve(undefined);
 
-        ScreenSize.change$.subscribe(_ => void this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable));
-        DocumentEvents.passive.visibilityChange$.subscribe(_ => void this.onVisibilityChanged());
+        ScreenSize.change$.subscribe(() => void this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable));
+        DocumentEvents.passive.visibilityChange$.subscribe(() => void this.onVisibilityChanged());
         if (isWasmReady === false)
             void this.startWasmReadyWatcher();
     }
@@ -139,6 +140,7 @@ export class BrowserInfo {
     }
 
     private static async startWasmReadyWatcher(): Promise<void> {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         while (true) {
             await delayAsync(1000);
             if (this.isWasmReady() === true) {
