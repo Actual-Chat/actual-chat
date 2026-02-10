@@ -1,5 +1,11 @@
 import { Log } from 'logging';
-import { type VideoDevice } from '../VideoPanel/video-panel';
+import { rpcClientServer, rpcNoWait } from 'rpc';
+import type { Disposable } from 'disposable';
+import type { VideoDevice } from '../VideoPanel/video-panel';
+import type { SegmentationWorker, SegmentationWorkerCallbacks } from '../../Services/Video/workers/segmentation-worker-contract';
+import { createAdaptiveSegmentationConfig } from '../../Services/Video/workers/segmentation-worker-contract';
+import { detectGPUBackends } from '../../Services/Video/gpu-support';
+import { Versioning } from 'versioning';
 
 const { infoLog, errorLog } = Log.get('VideoRecorder');
 
@@ -7,8 +13,18 @@ export class JoinVideoCallModal {
     private blazorRef: DotNet.DotNetObject;
     private readonly container: HTMLElement;
     private readonly videoEl: HTMLVideoElement;
+    private readonly canvasEl: HTMLCanvasElement;
+    private readonly canvasCtx: CanvasRenderingContext2D | null;
     private stream: MediaStream | null = null;
     private selectedDeviceId: string | null = null;
+
+    // Blur preview state
+    private segmentationWorkerInstance: Worker | null = null;
+    private segmentationWorker: (SegmentationWorker & Disposable) | null = null;
+    private isBlurActive = false;
+    private blurFrameTimer: number | null = null;
+    private captureCanvas: HTMLCanvasElement;
+    private captureCtx: CanvasRenderingContext2D;
 
     static create(container: HTMLElement, blazorRef: DotNet.DotNetObject): JoinVideoCallModal {
         return new JoinVideoCallModal(container, blazorRef);
@@ -39,6 +55,17 @@ export class JoinVideoCallModal {
         this.videoEl.muted = true;
         this.videoEl.playsInline = true;
         this.videoEl.autoplay = true;
+
+        // Create canvas element for blurred preview.
+        // Positioned absolutely on top of the video so the video keeps decoding frames.
+        this.canvasEl = document.createElement('canvas');
+        this.canvasEl.className = 'blur-canvas';
+        this.canvasEl.style.display = 'none';
+        this.canvasCtx = this.canvasEl.getContext('2d');
+
+        // Offscreen canvas for capturing frames from the video element
+        this.captureCanvas = document.createElement('canvas');
+        this.captureCtx = this.captureCanvas.getContext('2d')!;
     }
 
     public async enumerateVideoDevices(): Promise<VideoDevice[]> {
@@ -93,6 +120,9 @@ export class JoinVideoCallModal {
     }
 
     public async stopPreview(): Promise<void> {
+        // Stop blur preview first
+        await this.stopBlurPreview();
+
         if (this.stream) {
             this.stream.getTracks().forEach(t => t.stop());
             this.stream = null;
@@ -102,6 +132,10 @@ export class JoinVideoCallModal {
             this.videoEl.parentElement.removeChild(this.videoEl);
         }
         this.videoEl.srcObject = null;
+
+        if (this.canvasEl.parentElement) {
+            this.canvasEl.parentElement.removeChild(this.canvasEl);
+        }
 
         // Restore placeholder text
         const frame = this.container.querySelector('.video-frame');
@@ -116,13 +150,145 @@ export class JoinVideoCallModal {
     public async switchCamera(deviceId: string): Promise<boolean> {
         this.selectedDeviceId = deviceId;
         if (this.stream) {
-            // Restart preview with new device
-            return await this.startPreview(deviceId);
+            const wasBlurActive = this.isBlurActive;
+            // Restart preview with new device (stopPreview cleans up blur)
+            const success = await this.startPreview(deviceId);
+            // Restart blur if it was active
+            if (success && wasBlurActive) {
+                await this.startBlurPreview();
+            }
+            return success;
         }
         return true;
     }
 
+    /**
+     * Toggle blur preview on/off.
+     * When enabled, starts a segmentation worker to process camera frames
+     * and renders the blurred output to a canvas overlay.
+     */
+    public async toggleBlur(enabled: boolean): Promise<void> {
+        if (enabled && !this.isBlurActive) {
+            await this.startBlurPreview();
+        } else if (!enabled && this.isBlurActive) {
+            await this.stopBlurPreview();
+        }
+    }
+
+    private async startBlurPreview(): Promise<void> {
+        if (!this.stream || this.isBlurActive) return;
+
+        try {
+            infoLog?.log('Starting blur preview...');
+
+            // Detect GPU backend
+            const gpuSupport = await detectGPUBackends();
+            const segConfig = createAdaptiveSegmentationConfig(gpuSupport.recommended);
+
+            // Create segmentation worker
+            const workerPath = Versioning.mapPath('/dist/videoSegmentationWorker.js');
+            this.segmentationWorkerInstance = new Worker(workerPath, { type: 'module' });
+
+            this.segmentationWorker = rpcClientServer<SegmentationWorker>(
+                'PreviewBlur',
+                this.segmentationWorkerInstance,
+                {
+                    onFrameProcessed: (frame: VideoFrame, _seq: number, _time: number) => {
+                        // Draw blurred frame to canvas
+                        if (this.canvasCtx && this.isBlurActive) {
+                            if (this.canvasEl.width !== frame.displayWidth ||
+                                this.canvasEl.height !== frame.displayHeight) {
+                                this.canvasEl.width = frame.displayWidth;
+                                this.canvasEl.height = frame.displayHeight;
+                            }
+                            this.canvasCtx.drawImage(frame as any, 0, 0);
+                        }
+                        // Close frame since no encoder takes ownership
+                        frame.close();
+                    },
+                    onError: (error: Error) => {
+                        errorLog?.log('Blur preview error:', error);
+                    }
+                } as SegmentationWorkerCallbacks
+            );
+
+            // Initialize worker (loads ONNX model + WebGPU)
+            await this.segmentationWorker.initialize(segConfig, { timeoutMs: 15000 });
+
+            // Check if blur was cancelled during async initialization
+            if (!this.segmentationWorker) return;
+
+            this.isBlurActive = true;
+
+            // Show canvas on top of video (video stays visible underneath so it keeps decoding)
+            this.canvasEl.style.display = '';
+
+            // Ensure canvas is in DOM
+            const frameContainer = this.container.querySelector('.video-frame');
+            if (frameContainer && !this.canvasEl.parentElement) {
+                frameContainer.appendChild(this.canvasEl);
+            }
+
+            // Start frame pump
+            this.pumpBlurFrames();
+
+            infoLog?.log('Blur preview started');
+        } catch (error) {
+            errorLog?.log('Failed to start blur preview:', error);
+            await this.stopBlurPreview();
+        }
+    }
+
+    private pumpBlurFrames(): void {
+        if (!this.isBlurActive || !this.stream || !this.segmentationWorker) return;
+
+        if (this.videoEl.videoWidth > 0 && this.videoEl.videoHeight > 0) {
+            this.captureCanvas.width = this.videoEl.videoWidth;
+            this.captureCanvas.height = this.videoEl.videoHeight;
+            this.captureCtx.drawImage(this.videoEl, 0, 0);
+
+            const frame = new VideoFrame(this.captureCanvas, {
+                timestamp: performance.now() * 1000
+            });
+
+            void this.segmentationWorker.processFrame(frame, rpcNoWait);
+        }
+
+        // ~15fps for preview (sufficient for blur effect)
+        this.blurFrameTimer = window.setTimeout(() => this.pumpBlurFrames(), 66);
+    }
+
+    private async stopBlurPreview(): Promise<void> {
+        this.isBlurActive = false;
+
+        if (this.blurFrameTimer !== null) {
+            clearTimeout(this.blurFrameTimer);
+            this.blurFrameTimer = null;
+        }
+
+        if (this.segmentationWorker) {
+            try {
+                await this.segmentationWorker.stop();
+                this.segmentationWorker.dispose();
+            } catch {
+                // ignore cleanup errors
+            }
+            this.segmentationWorker = null;
+        }
+
+        if (this.segmentationWorkerInstance) {
+            this.segmentationWorkerInstance.terminate();
+            this.segmentationWorkerInstance = null;
+        }
+
+        // Hide canvas (video is always visible underneath)
+        this.canvasEl.style.display = 'none';
+
+        infoLog?.log('Blur preview stopped');
+    }
+
     public dispose(): void {
+        void this.stopBlurPreview();
         void this.stopPreview();
     }
 }

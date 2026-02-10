@@ -85,6 +85,7 @@ export interface IVideoPipeline {
   toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
   switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
   toggleAV1Decoder(useWasm: boolean): Promise<void>;
+  setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
   getEncoderStats(): EncoderStats;
   getTransferStats(): TransferStats;
   getDecoderStats(): DecoderStats;
@@ -115,6 +116,9 @@ export class VideoPipeline implements IVideoPipeline {
   // Canvas fallbacks (when MSTG not available)
   private outputCanvas: HTMLCanvasElement | null = null;
   private outputCanvasCtx: CanvasRenderingContext2D | null = null;
+
+  // Preview callback for rendering segmented frames before encoding
+  private previewCallback: ((frame: VideoFrame) => void) | null = null;
 
   // Common
   private outputStream: MediaStream | null = null;
@@ -301,6 +305,16 @@ export class VideoPipeline implements IVideoPipeline {
 
   private onSegmentationFrameProcessed = async (frame: VideoFrame, _sequenceNumber: number, _processingTime: number) => {
     console.log(`[Pipeline] Segmentation processed frame #${_sequenceNumber} in ${_processingTime.toFixed(2)}ms`);
+
+    // Render to preview canvas before transferring to encoder
+    // (drawImage reads the frame without consuming it; encodeFrame transfers it)
+    if (this.previewCallback) {
+      try {
+        this.previewCallback(frame);
+      } catch (error) {
+        console.error('[Pipeline] Preview callback error:', error);
+      }
+    }
 
     // Send processed frame to encoder
     if (this.encoder) {
@@ -779,6 +793,15 @@ export class VideoPipeline implements IVideoPipeline {
 
   getSegmentationStats(): SegmentationStats | null {
     return this.currentStats.segmentation ? { ...this.currentStats.segmentation } : null;
+  }
+
+  /**
+   * Set a callback to receive processed (blurred) frames for local preview.
+   * The callback is invoked before the frame is transferred to the encoder,
+   * so drawImage/canvas operations are safe.
+   */
+  setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void {
+    this.previewCallback = callback;
   }
 
   /**

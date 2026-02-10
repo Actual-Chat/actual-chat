@@ -441,6 +441,16 @@ export class RecordingService extends EventTarget {
     return this.outputStream;
   }
 
+  /**
+   * Set a callback to receive processed (blurred) frames for local preview.
+   * Must be called after start().
+   */
+  setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void {
+    if (this.pipeline) {
+      this.pipeline.setPreviewCallback(callback);
+    }
+  }
+
   getPipeline(): VideoPipeline /*| AV1VideoPipeline*/ | null {
     return this.pipeline;
   }

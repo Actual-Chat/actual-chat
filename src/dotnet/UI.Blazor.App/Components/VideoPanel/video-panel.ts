@@ -212,6 +212,19 @@ export class VideoPanel {
             await this.recordingService.start();
             console.warn('[VideoPanel] recordingService.start() completed successfully');
 
+            // Set preview callback so blurred frames render to the preview canvas
+            this.recordingService.setPreviewCallback((frame: VideoFrame) => {
+                if (this.isBlurEnabled && this.canvas && this.canvasCtx) {
+                    if (this.canvas.width !== frame.displayWidth || this.canvas.height !== frame.displayHeight) {
+                        if (frame.displayWidth > 0 && frame.displayHeight > 0) {
+                            this.canvas.width = frame.displayWidth;
+                            this.canvas.height = frame.displayHeight;
+                        }
+                    }
+                    this.canvasCtx.drawImage(frame as any, 0, 0);
+                }
+            });
+
             // Set isRecording BEFORE starting the render loop — the render loop
             // checks this flag and exits permanently if it's false on the first frame.
             this.isRecording = true;
@@ -284,18 +297,22 @@ export class VideoPanel {
             if (frameCount <= 3 || frameCount % 300 === 0)
                 console.warn('[VideoPanel] renderFrame #' + frameCount + ': videoWidth=' + video.videoWidth + ', videoHeight=' + video.videoHeight);
 
-            // Resize canvas if needed
-            if (this.canvas.width !== video.videoWidth || this.canvas.height !== video.videoHeight) {
-                if (video.videoWidth > 0 && video.videoHeight > 0) {
-                    this.canvas.width = video.videoWidth;
-                    this.canvas.height = video.videoHeight;
-                    debugLog?.log(`Canvas resized to ${video.videoWidth}x${video.videoHeight}`);
+            // When blur is enabled, the preview callback renders blurred frames directly.
+            // Only draw the raw camera feed when blur is off.
+            if (!this.isBlurEnabled) {
+                // Resize canvas if needed
+                if (this.canvas.width !== video.videoWidth || this.canvas.height !== video.videoHeight) {
+                    if (video.videoWidth > 0 && video.videoHeight > 0) {
+                        this.canvas.width = video.videoWidth;
+                        this.canvas.height = video.videoHeight;
+                        debugLog?.log(`Canvas resized to ${video.videoWidth}x${video.videoHeight}`);
+                    }
                 }
-            }
 
-            // Draw frame to canvas
-            if (video.videoWidth > 0 && video.videoHeight > 0) {
-                this.canvasCtx.drawImage(video, 0, 0);
+                // Draw frame to canvas
+                if (video.videoWidth > 0 && video.videoHeight > 0) {
+                    this.canvasCtx.drawImage(video, 0, 0);
+                }
             }
 
             this.animationFrameId = requestAnimationFrame(renderFrame);
