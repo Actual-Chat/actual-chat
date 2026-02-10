@@ -4,7 +4,7 @@ import { EventHandlerSet } from 'event-handling';
 const { debugLog, errorLog } = Log.get('DelayedInvoker');
 
 export class DelayedInvoker {
-    private callbacks: Array<() => void | Promise<void>> = [];
+    private callbacks: (() => void | Promise<void>)[] = [];
     private currentResolve: (() => void) | null = null;
     private currentPromise: Promise<void> = this.createNewPromise();
 
@@ -48,15 +48,15 @@ export class DelayedInvoker {
 
     public async invoke(): Promise<void> {
         try {
-            debugLog?.log("-> invoke, callbacks count: " + this.callbacks.length);
+            debugLog?.log(`-> invoke, callbacks count: ${this.callbacks.length}`);
             await Promise.all(this.callbacks.map(async (cb) => {
                 try {
                     await cb();
                 } catch (e) {
-                    errorLog?.log("An error occured during callback processing:", e);
+                    errorLog?.log('An error occured during callback processing:', e);
                 }
             }));
-            debugLog?.log("<- invoke");
+            debugLog?.log('<- invoke');
         } finally {
             this.callbacks = [];
 
