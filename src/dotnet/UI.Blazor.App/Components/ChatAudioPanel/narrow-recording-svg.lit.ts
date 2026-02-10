@@ -44,7 +44,7 @@ class NarrowRecordingSvg extends LitElement {
     private opacity: number | null = null;
 
     @state()
-    private isVoiceActive: boolean = false;
+    private isVoiceActive = false;
 
     private _isRecording: boolean;
     @property({type: Boolean})
