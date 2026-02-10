@@ -41,7 +41,7 @@ export class ChatMessageEditor {
     private chatId: string;
     private hasAttachments: boolean;
     private dragDropOverlay: HTMLDivElement | null = null;
-    private dragCounter: number = 0;
+    private dragCounter = 0;
     private chatPanel: HTMLElement | null = null;
 
     static create(editorDiv: HTMLDivElement, filePickerBlazorRef: DotNet.DotNetObject): ChatMessageEditor {
@@ -49,7 +49,7 @@ export class ChatMessageEditor {
     }
 
     constructor(editorDiv: HTMLDivElement, filePickerBlazorRef: DotNet.DotNetObject) {
-        let bodyClassList = document.body.classList;
+        const bodyClassList = document.body.classList;
         this.editorDiv = editorDiv;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel')!;
         this.input = this.postPanelDiv.querySelector(':scope .message-input')!;
@@ -104,7 +104,7 @@ export class ChatMessageEditor {
                 '</div>';
             const panelStyle = getComputedStyle(this.chatPanel);
             if (panelStyle.position === 'static')
-                (this.chatPanel as HTMLElement).style.position = 'relative';
+                (this.chatPanel).style.position = 'relative';
             this.chatPanel.appendChild(this.dragDropOverlay);
 
             fromEvent<DragEvent>(this.chatPanel, 'dragenter')
@@ -145,7 +145,7 @@ export class ChatMessageEditor {
     // Public methods
 
     private addAttachmentsObserver() {
-        let lastElement = this.attachmentListElement?.querySelector('.last-element');
+        const lastElement = this.attachmentListElement?.querySelector('.last-element');
         if (lastElement == null) {
             warnLog?.log('addAttachmentsObserver: last-element not found');
             return;
@@ -160,7 +160,7 @@ export class ChatMessageEditor {
                 })
             })
         };
-        let observer = new MutationObserver(callback);
+        const observer = new MutationObserver(callback);
         observer.observe(this.attachmentListElement!, {
             attributes: true,
             childList: true,
@@ -170,9 +170,9 @@ export class ChatMessageEditor {
     }
 
     private updatePostPanelBorderRadius: ResizeObserverCallback = (entries) => {
-        let clsLst = this.postPanelDiv.classList;
+        const clsLst = this.postPanelDiv.classList;
         entries.forEach(entry => {
-            let height = entry.contentRect.height;
+            const height = entry.contentRect.height;
             if (height > 90) {
                 if (!clsLst.contains('sharp-corners'))
                     clsLst.add('sharp-corners');
@@ -412,7 +412,7 @@ export class ChatMessageEditor {
     private updateEditorFocus = (mutationList, observer) => {
         mutationList.forEach(m => {
             if (m.type == 'attributes') {
-                let dataValue = m.target.dataset['sideNav'];
+                const dataValue = m.target.dataset['sideNav'];
                 if (dataValue == 'open' && this.markupEditor.hasFocus()) {
                     this.markupEditor.blur();
                     return;
@@ -441,6 +441,6 @@ export class ChatMessageEditor {
 
     private async restoreDraft(): Promise<void> {
         const [html] = this.chatId && await localSettings.getMany([`MessageDraft.${this.chatId}.Html`]);
-        this.markupEditor.setHtml(html ?? "", ScreenSize.isWide() && !DeviceInfo.isTouchCapable);
+        this.markupEditor.setHtml(html ?? '', ScreenSize.isWide() && !DeviceInfo.isTouchCapable);
     }
 }
