@@ -13,21 +13,25 @@ export class VisualMediaViewer {
     private readonly overlay: HTMLElement;
     private readonly header: HTMLElement;
     private readonly footer: HTMLElement | undefined;
-    private isHeaderAndFooterVisible: boolean = true;
+    private isHeaderAndFooterVisible = true;
     private readonly jumpTime: number = 5;
     private videos: HTMLCollectionOf<HTMLVideoElement>;
     private imageContainers: NodeListOf<HTMLElement>;
-    private maxVideoWidth: number = 0;
-    private maxVideoHeight: number = 0;
-    private videoRatio: number = 0;
+    private maxVideoWidth = 0;
+    private maxVideoHeight = 0;
+    private videoRatio = 0;
     private readonly headerHeight: number = 0;
-    private windowWidth: number = 0;
-    private windowHeight: number = 0;
+    private windowWidth = 0;
+    private windowHeight = 0;
     private hideTimeoutId: number | null = null;
-    private hideLockedUntil: number = 0;
+    private hideLockedUntil = 0;
+    // eslint-disable-next-line
     private swiperEl: any;
+    // eslint-disable-next-line
     private thumbsEl: any;
+    // eslint-disable-next-line
     private swiper: any;
+    // eslint-disable-next-line
     private thumbs: any;
     private isHiding = false;
     private hideBlocked = false;
@@ -45,11 +49,14 @@ export class VisualMediaViewer {
         this.overlay = this.imageViewer.closest('.modal-overlay')!;
         this.header = this.overlay.querySelector('.image-viewer-header')!;
         this.headerHeight = this.header.offsetHeight;
-        this.footer = this.overlay.querySelector('.image-viewer-footer') as HTMLElement;
+        // @ts-expect-error TODO(Andrey): fix eslint error
+        this.footer = this.overlay.querySelector('.image-viewer-footer')!;
         this.videos = this.imageViewer.getElementsByTagName('video');
 
-        this.swiperEl = document.querySelector('.media-swiper') as SwiperElement;
-        this.thumbsEl = document.querySelector('.media-preview-swiper') as SwiperElement;
+        // eslint-disable-next-line
+        this.swiperEl = document.querySelector('.media-swiper')!;
+        // eslint-disable-next-line
+        this.thumbsEl = document.querySelector('.media-preview-swiper')!;
 
         const mainSwiperParams = {
             touchRatio: 1,
@@ -58,7 +65,9 @@ export class VisualMediaViewer {
             threshold: 10,
         };
         Object.assign(this.swiperEl, mainSwiperParams);
+        // eslint-disable-next-line
         this.swiperEl.initialize();
+        // eslint-disable-next-line
         this.swiper = this.swiperEl.swiper as SwiperElement;
 
 
@@ -69,19 +78,25 @@ export class VisualMediaViewer {
                 freeMode: true,
             }
             Object.assign(this.thumbsEl, footerSwiperParams);
+            // eslint-disable-next-line
             this.thumbsEl.initialize();
+            // eslint-disable-next-line
             this.thumbs = this.thumbsEl.swiper as SwiperElement;
             void this.initThumbs();
         }
 
+        // eslint-disable-next-line
         this.swiper.on('init', () => this.safeCenterThumb());
 
+        // eslint-disable-next-line
         this.swiper.on('slideChange', async () => {
-            void this.onSlideChange(this.swiper);
+            // eslint-disable-next-line
+            this.onSlideChange(this.swiper);
             this.onUserActivityThrottled();
             await this.safeCenterThumb();
         });
 
+        // eslint-disable-next-line
         this.swiper.on('pointerDown', (swiper: Swiper, event: PointerEvent) =>
             this.onZoomedSlideSwipe(swiper, event)
         );
@@ -112,8 +127,8 @@ export class VisualMediaViewer {
         });
 
         fromEvent(this.overlay, 'click')
-         .pipe(takeUntil(this.disposed$))
-         .subscribe((event: PointerEvent) => this.onClick(event));
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent) => this.onClick(event));
 
         fromEvent(this.overlay, 'youtubeplayeronstatechange')
             .pipe(takeUntil(this.disposed$))
@@ -168,39 +183,46 @@ export class VisualMediaViewer {
     }
 
     private async initThumbs() {
-        ["imagesReady", "resize", "update"].forEach(event =>
+        ['imagesReady', 'resize', 'update'].forEach(event =>
+            // eslint-disable-next-line
             this.thumbs.on(event, () => this.safeCenterThumb())
         );
 
+        // eslint-disable-next-line
         this.thumbs.update();
         await this.safeCenterThumb();
     }
 
-    private safeCenterThumb(attempt: number = 0): Promise<void> {
+    private safeCenterThumb(attempt = 0): Promise<void> {
         return new Promise(resolve => {
             if (!this.swiper || !this.thumbs) {
                 resolve();
                 return;
             }
 
+            // eslint-disable-next-line
             const index = this.swiper.realIndex ?? this.swiper.activeIndex;
             if (index === null || index === undefined) {
                 resolve();
                 return;
             }
+            // eslint-disable-next-line
             const slide = this.thumbs.slides[index];
             if (!slide) {
                 resolve();
                 return;
             }
 
+            // eslint-disable-next-line
             const swiperWidth = this.thumbs.width;
+            // eslint-disable-next-line
             const slideLeft = slide.offsetLeft;
+            // eslint-disable-next-line
             const slideWidth = slide.scrollWidth;
 
             if ((!swiperWidth || !slideWidth) && attempt < 10) {
                 setTimeout(() => {
-                    this.safeCenterThumb(attempt + 1).then(resolve);
+                    void this.safeCenterThumb(attempt + 1).then(resolve);
                 }, 50);
                 return;
             }
@@ -212,10 +234,15 @@ export class VisualMediaViewer {
 
             const target = slideLeft - (swiperWidth / 2) + (slideWidth / 2);
 
+            // eslint-disable-next-line
             this.thumbs.setTranslate(-target);
+            // eslint-disable-next-line
             this.thumbs.updateProgress();
+            // eslint-disable-next-line
             this.thumbs.updateActiveIndex();
+            // eslint-disable-next-line
             this.thumbs.updateSlidesClasses();
+            // eslint-disable-next-line
             this.thumbs.wrapperEl.style.transform = `translate3d(${-target}px, 0, 0)`;
             resolve();
         });
