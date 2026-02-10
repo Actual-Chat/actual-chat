@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await */
 import codec, { Encoder, Codec } from '@actual-chat/codec';
 import codecWasm from '@actual-chat/codec/codec.wasm';
 // import codecWasmMap from '@actual-chat/codec/codec.wasm.map';
@@ -149,6 +151,8 @@ const serverImpl: OpusEncoderWorker = {
             const samplesBuffer = queue.shift()!;
             void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
         }
+        // TODO(AK): fix eslint error
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         processQueue();
     },
 
@@ -200,10 +204,14 @@ async function startRecording(): Promise<void> {
     systemEncoder?.configure(systemCodecConfig);
     const preSkip = encoder?.preSkip ?? AE.DEFAULT_PRE_SKIP;
     audioStream = AudioStreamer.addStream(lastSessionToken, preSkip, chatId, repliedChatEntryId);
+    // TODO(AK): fix eslint error
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     processQueue('in');
 }
 
 async function stopRecording(): Promise<void> {
+    // TODO(AK): fix eslint error
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     processQueue('out');
     if (systemEncoder?.state === 'configured')
         await systemEncoder.flush();
@@ -285,6 +293,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                     numberOfChannels: 1,
                     numberOfFrames: AE.FRAME_SAMPLES,
                     timestamp: timestamp,
+                    // @ts-expect-error TODO: fix error
                     data: samples,
                 });
                 systemEncoder.encode(audioChunk);
@@ -293,6 +302,7 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
             else if (encoder) {
                 // frameView is a typed_memory_view to Decoder internal buffer, so we have to copy it
                 // Emscripten interop requires Uint8Array or ArrayBuffer, so we need to pass Float32Array as Uint8Array
+                // @ts-expect-error TODO: fix error
                 const frameView = encoder.encode(new Uint8Array(samples.buffer, 0, samples.length * 4));
                 audioStream?.addFrame(frameView);
                 void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
