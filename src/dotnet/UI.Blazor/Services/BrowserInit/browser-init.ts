@@ -1,4 +1,5 @@
- 
+// TODO: fix eslint errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-argument */
 import { Connectivity } from 'connectivity';
 import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource } from 'promises';
@@ -254,7 +255,9 @@ export class BrowserInit {
         (() => {
             const windowIds = JSON
                 .parse(sessionStorage?.windowIds ?? '[]')
-                .filter((value, i, a) => value != null);
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                .filter((value) => value != null);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             this.windowId = windowIds.pop();
             if (this.windowId == null)
                 this.windowId = `${this.sessionHash}-${Math.random().toString(36).slice(2).substring(0, 6)}`;
@@ -263,7 +266,7 @@ export class BrowserInit {
         })();
 
         window.addEventListener('beforeunload', () => {
-            const windowIds = JSON.parse(sessionStorage?.windowIds ?? '[]');
+            const windowIds: string[] = JSON.parse(sessionStorage?.windowIds ?? '[]');
             windowIds.push(this.windowId);
             if (sessionStorage)
                 sessionStorage.windowIds = JSON.stringify(windowIds);
@@ -286,11 +289,12 @@ export class BrowserInit {
         navigator.clipboard.writeText = clipText => {
             return new Promise((resolve, reject) => {
                 try {
-                    // @ts-ignore
+                    // @ts-expect-error intentional: we know that `android` is an object with `writeTextToClipboard` method
                     android.writeTextToClipboard(clipText);
                     resolve();
                 }
                 catch (e) {
+                    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                     reject(e);
                 }
             });
@@ -298,11 +302,12 @@ export class BrowserInit {
         navigator.clipboard.readText = () => {
             return new Promise((resolve, reject) => {
                 try {
-                    // @ts-ignore
+                    // @ts-expect-error intentional: we know that `android` is an object with `readTextFromClipboard` method
                     const clipText = android.readTextFromClipboard();
                     resolve(clipText);
                 }
                 catch (e) {
+                    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                     reject(e);
                 }
             });
@@ -381,5 +386,5 @@ function readSettingToggle(settingKey: string): boolean | null {
     if (stringValue == null)
         return null
 
-    return JSON.parse(stringValue);
+    return JSON.parse(stringValue) as boolean | null;
 }
