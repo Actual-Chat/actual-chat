@@ -15,25 +15,25 @@ export class KeepAwakeUI {
     private static isSubscribedOnClick = false;
 
     /** Called by Blazor */
-    public static setKeepAwake(mustKeepAwake: boolean) {
+    public static async setKeepAwake(mustKeepAwake: boolean) {
         debugLog?.log(`setKeepAwake(${mustKeepAwake})`);
         this.mustKeepAwake = mustKeepAwake;
         if (mustKeepAwake) {
             return this.enableNoSleep();
         } else {
-            this.disableNoSleep();
+            await this.disableNoSleep();
         }
     };
 
     private static warmup() {
         debugLog?.log('-> warmup()');
-        return this.enableNoSleep().then(() => {
+        return this.enableNoSleep().then(async () => {
             if (!this.mustKeepAwake) {
                 debugLog?.log('warmup: disabling since mustKeepAwake=', this.mustKeepAwake)
-                this.disableNoSleep();
+                await this.disableNoSleep();
             }
         })
-            .catch(e => errorLog?.log('warmup: error:', e))
+            .catch((e: unknown) => errorLog?.log('warmup: error:', e))
             .finally(() => debugLog?.log('<- warmup()'));
     }
 
@@ -56,12 +56,13 @@ export class KeepAwakeUI {
             .pipe(
                 filter(ev => {
                     const [triggerElement, mustKeepAwake] = getOrInheritData(ev.target, 'mustKeepAwake');
-                    return triggerElement !== null && mustKeepAwake.toLowerCase() === 'true';
+                    return triggerElement !== null && mustKeepAwake?.toLowerCase() === 'true';
                 }),
                 tap(() => debugLog?.log(`subscribeOnKeepAwake: preventive enableNoSleep`)),
                 exhaustMap(() => this.enableNoSleep()),
             ).subscribe();
         this.isSubscribedOnClick = true;
+        // eslint-disable-next-line @typescript-eslint/await-thenable
         await subscription;
     }
 
@@ -77,10 +78,11 @@ export class KeepAwakeUI {
         if (!isSsbSafari)
             return;
 
+        // eslint-disable-next-line
         await DocumentEvents.active.visibilityChange$
             .pipe(concatMap(async () => {
                 if (document.visibilityState == 'hidden')
-                    this.disableNoSleep();
+                    await this.disableNoSleep();
                 else if (this.mustKeepAwake)
                     return this.enableNoSleep();
             })).subscribe();
@@ -93,7 +95,7 @@ export class KeepAwakeUI {
         // TODO: find out what's wrong with Interactive - why it breaks user gesture context in safari
         document.body.addEventListener(
             'click',
-            () => this.warmup(),
+            () => void this.warmup(),
             { capture: true, passive: true, once: true });
     }
 
@@ -106,11 +108,11 @@ export class KeepAwakeUI {
 
         return noSleep.enable()
             .then(() => debugLog?.log('enableNoSleep: success'))
-            .catch(e => errorLog?.log('enableNoSleep: error:', e))
+            .catch((e: unknown) => errorLog?.log('enableNoSleep: error:', e))
             .finally(() => debugLog?.log('<- enableNoSleep()'));
     }
 
-    private static disableNoSleep() {
+    private static async disableNoSleep() {
         debugLog?.log('-> disableNoSleep()');
         try {
             if (!noSleep.isEnabled) {
@@ -118,7 +120,7 @@ export class KeepAwakeUI {
                 return;
             }
 
-            noSleep.disable();
+            await noSleep.disable();
             debugLog?.log('disableNoSleep: success');
         } catch (e) {
             errorLog?.log('disableNoSleep: error:', e);
@@ -129,6 +131,6 @@ export class KeepAwakeUI {
     }
 }
 
-KeepAwakeUI.subscribeOnFirstInteraction().then();
-KeepAwakeUI.subscribeOnKeepAwakeTriggers().then();
-KeepAwakeUI.subscribeOnDocumentVisibility().then();
+void KeepAwakeUI.subscribeOnFirstInteraction().then();
+void KeepAwakeUI.subscribeOnKeepAwakeTriggers().then();
+void KeepAwakeUI.subscribeOnDocumentVisibility().then();

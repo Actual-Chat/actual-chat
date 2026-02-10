@@ -9,10 +9,9 @@ const isOldIOS = () =>
     typeof navigator !== 'undefined' &&
     parseFloat(
         (
-            '' +
             (/CPU.*OS ([0-9_]{3,4})[0-9_]{0,1}|(CPU like).*AppleWebKit.*Mobile/i.exec(
                 navigator.userAgent
-            ) || [0, ''])[1]
+            ) ?? [0, ''])[1]
         )
             .replace('undefined', '3_2')
             .replace('_', '.')
@@ -96,7 +95,7 @@ export class NoSleep {
                         debugLog?.log('Wake Lock released.');
                     });
                 })
-                .catch((err) => {
+                .catch(err => {
                     this.enabled = false;
                     errorLog?.log(`${err.name}, ${err.message}`);
                     throw err;
@@ -123,17 +122,17 @@ export class NoSleep {
                     this.enabled = true;
                     return res;
                 })
-                .catch((err) => {
+                .catch(err => {
                     this.enabled = false;
                     throw err;
                 });
         }
     }
 
-    public disable() {
+    public async disable() {
         if (this.isNativeWakeLockSupported) {
             if (this.wakeLock)
-                this.wakeLock.release();
+                await this.wakeLock.release();
             this.wakeLock = null;
         } else if (isOldIOS()) {
             if (this.noSleepTimer) {
