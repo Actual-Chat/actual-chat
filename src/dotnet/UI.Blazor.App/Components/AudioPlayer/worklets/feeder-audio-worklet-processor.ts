@@ -37,7 +37,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private lastReportedState: FeederState;
     private isEnding = false;
     private bufferSizeToStartPlayback = AP.BUFFER_TO_PLAY_DURATION;
-    private lastStarvingEventAt: number = 0;
+    private lastStarvingEventAt = 0;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -125,7 +125,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     public process(
         _inputs: Float32Array[][],
         outputs: Float32Array[][],
-        _parameters: { [name: string]: Float32Array; },
+        _parameters: Record<string, Float32Array>,
     ): boolean {
         timerQueue?.triggerExpired();
         if (outputs == null || outputs.length === 0 || outputs[0].length === 0)
