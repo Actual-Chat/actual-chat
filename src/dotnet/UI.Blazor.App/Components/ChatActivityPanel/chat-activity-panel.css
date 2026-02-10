@@ -41,8 +41,9 @@ body.wide .chat-activity-panel:before,
 body.wide .chat-activity-panel.listening:after {
     @apply opacity-0;
 }
-body.narrow .chat-activity-panel.listening:after {
-    background: linear-gradient(-10deg, var(--background-01), var(--background-01)) border-box;
+body.narrow .chat-activity-panel:before,
+body.narrow .chat-activity-panel:after {
+    @apply hidden;
 }
 .chat-activity-panel .silence-text {
     @apply flex-1 text-start;
@@ -215,18 +216,4 @@ body.narrow .chat-activity-panel.listening:after {
 }
 .layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel {
     @apply bottom-3;
-}
-.header-activity-panel-wrapper .bottom-sheet {
-    @apply absolute z-10;
-    @apply left-1/2 -translate-x-1/2;
-    @apply bottom-0.5;
-    @apply h-1.5 w-16;
-    @apply rounded-full;
-    @apply opacity-0 invisible;
-    background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
-    transition: opacity 0.15s ease-in-out 0.15s, visibility 0.15s ease-in-out 0.15s;
-}
-.layout-header.collapsed .header-activity-panel-wrapper .bottom-sheet {
-    @apply opacity-80 visible;
-    transition: opacity 0.2s ease-in-out 0.3s, visibility 0.2s ease-in-out 0.3s;
 }
