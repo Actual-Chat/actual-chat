@@ -21,7 +21,7 @@ import { Log } from 'logging';
 import { Tune, TuneUI } from '../../Services/TuneUI/tune-ui';
 
 const {  logScope, debugLog } = Log.get('MenuHost');
-
+// TODO: remove eslint ignores and fix errors
 enum MenuTrigger {
     None = 0,
     Primary = 1,
@@ -54,7 +54,7 @@ export class MenuHost implements Disposable {
         merge(
             DocumentEvents.active.click$,
             DocumentEvents.active.contextmenu$,
-            )
+        )
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: MouseEvent) => this.onClick(event));
 
@@ -70,19 +70,17 @@ export class MenuHost implements Disposable {
                     this.hide();
                 }
             });
-        window.screen.orientation.addEventListener('change', (event) => {
+        window.screen.orientation.addEventListener('change', () => {
             if (!this.menu)
                 return;
-            let menuRef = this.menu.menuRef;
-            let triggerElement = this.menu.triggerElement;
-            let isHover = this.menu.isHoverMenu;
-            const menu = this.create(menuRef, isHover, triggerElement, null, null);
+            const { menuRef, triggerElement, isHoverMenu } = this.menu;
+            const menu = this.create(menuRef, isHoverMenu, triggerElement, null, null);
             void this.position(this.menu, menu);
         });
     }
 
     public dispose(): void {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
@@ -100,7 +98,7 @@ export class MenuHost implements Disposable {
         placement: Placement | null,
         position: Vector2D | null,
     ): void {
-        let menu = this.create(menuRef, isHoverMenu, triggerElement, placement, position);
+        const menu = this.create(menuRef, isHoverMenu, triggerElement, placement, position);
         if (this.isShown(menu)) {
             debugLog?.log(`showOrPosition: already shown. Setting position.`);
             void this.position(this.menu!, menu);
@@ -111,7 +109,7 @@ export class MenuHost implements Disposable {
 
     public hideById(id: string): void {
         const menu = this.menu;
-        if (!menu || menu.id !== id) {
+        if (menu?.id !== id) {
             debugLog?.log('hideById: no menu with id:', id)
             return;
         }
@@ -121,7 +119,7 @@ export class MenuHost implements Disposable {
 
     public async positionById(id: string): Promise<void> {
         const menu = this.menu;
-        if (!menu || menu.id !== id) {
+        if (menu?.id !== id) {
             debugLog?.log('positionById: no menu with id:', id)
             return;
         }
@@ -171,11 +169,12 @@ export class MenuHost implements Disposable {
 
     private show(menu: Menu): void {
         debugLog?.log('show:', menu)
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!menu)
             throw new Error(`${logScope}.show: menu == null.`);
 
         this.menu = menu;
-        this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
+        void this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
         this.removeMessageMark(this.currentMenuRef);
         this.currentMenuRef = menu.menuRef;
         this.addMessageMark(this.currentMenuRef);
@@ -207,7 +206,7 @@ export class MenuHost implements Disposable {
 
         this.menu = null;
         // Hide (un-render) it
-        this.blazorRef.invokeMethodAsync('OnHideRequest', menu.id);
+        void this.blazorRef.invokeMethodAsync('OnHideRequest', menu.id);
         this.removeMessageMark(this.currentMenuRef);
     }
 
@@ -217,16 +216,18 @@ export class MenuHost implements Disposable {
     }
 
     private async position(menu: Menu, updatedMenu?: Menu): Promise<void> {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!menu)
             throw new Error(`${logScope}.position: menu == null.`);
 
         if (updatedMenu) {
             menu.menuElement = updatedMenu.menuElement ?? menu.menuElement;
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             menu.placement = updatedMenu.placement ?? menu.placement;
             menu.position = updatedMenu.position ?? menu.position;
         }
 
-        let menuElement = menu.menuElement;
+        const menuElement = menu.menuElement;
         if (!menuElement)
             return;
 
@@ -271,6 +272,7 @@ export class MenuHost implements Disposable {
             referenceElement,
             menuElement,
             {
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 placement: menu.placement ?? 'top',
                 middleware: middleware,
             });
@@ -279,6 +281,7 @@ export class MenuHost implements Disposable {
         if (!this.isDesktopMode) {
             const orientation = window.screen.orientation.type;
             if (orientation == 'landscape-primary' || orientation == 'landscape-secondary') {
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (menuElement) {
                     const menuElementBottom = menuElement.getBoundingClientRect().bottom;
                     const heightDelta = window.screen.availHeight - menuElementBottom;
@@ -305,7 +308,7 @@ export class MenuHost implements Disposable {
             trigger = MenuTrigger.Secondary;
         debugLog?.log('onClick, event:', event, ', trigger:', trigger);
 
-        let isDesktopMode = this.isDesktopMode;
+        const isDesktopMode = this.isDesktopMode;
 
         // Ignore clicks which definitely aren't "ours"
         if (trigger == MenuTrigger.None)
@@ -313,9 +316,11 @@ export class MenuHost implements Disposable {
         if (!(event.target instanceof Element))
             return;
 
-        let [triggerElement, menuRef] = getOrInheritData(event.target, 'menu');
+        const result = getOrInheritData(event.target, 'menu');
+        const triggerElement = result[0];
+        let menuRef = result[1];
         if (triggerElement && menuRef) {
-            const menuTrigger = MenuTrigger[triggerElement.dataset['menuTrigger'] ?? 'Secondary'];
+            const menuTrigger: unknown = MenuTrigger[triggerElement.dataset.menuTrigger ?? 'Secondary'];
             if (trigger !== menuTrigger) {
                 const altMenuTrigger = menuTrigger == MenuTrigger.Primary ? MenuTrigger.Secondary : MenuTrigger.None;
                 if (!isDesktopMode || trigger != altMenuTrigger)
@@ -339,7 +344,8 @@ export class MenuHost implements Disposable {
 
             // Non-hover menu is visible, so we need to hide it on this click
             this.hide();
-            return stopEvent(event);
+            stopEvent(event);
+            return;
         }
 
         if (!triggerElement)
@@ -363,7 +369,7 @@ export class MenuHost implements Disposable {
         stopEvent(event);
     }
 
-    private async onPointerOver(event: Event): Promise<void> {
+    private onPointerOver(event: Event): void {
         // Hover menus work only in desktop mode
         if (!this.isDesktopMode)
             return;
@@ -389,7 +395,7 @@ export class MenuHost implements Disposable {
         if (!triggerElement)
             return;
 
-        const menu = this.create(menuRef, true, triggerElement, "top-end", null);
+        const menu = this.create(menuRef, true, triggerElement, 'top-end', null);
         if (this.isShown(menu))
             return;
 
@@ -401,14 +407,11 @@ export class MenuHost implements Disposable {
 
 let _nextId = 1;
 // Menu Ids are used as HTML element Ids, so they need to have unique prefix
-let nextId = () => 'menu:' + (_nextId++).toString();
+const nextId = () => 'menu:' + (_nextId++).toString();
 
 function getPlacementFromAttributes(triggerElement: HTMLElement): Placement | null {
-    const placement = triggerElement.dataset['menuPlacement'];
-    if (!placement)
-        return null;
-
-    return placement?.length > 0 ? placement as Placement : null;
+    const placement = triggerElement.dataset.menuPlacement;
+    return placement && placement.length > 0 ? placement as Placement : null;
 }
 
 function isButtonTrigger(triggerElement: HTMLElement | null): boolean {
