@@ -57,6 +57,8 @@
         return;
     case ChatMessageKind.SendingNewMessage:
         break;
+    case ChatMessageKind.AudioRecordingMessage:
+        break;
     default:
         throw new ArgumentOutOfRangeException();
 }
@@ -84,9 +86,13 @@
     </div>
     return;
 }
+@{
+    var showMenu = message.Kind is not ChatMessageKind.AudioRecordingMessage;
+    var menuRef = showMenu ? MenuRef.New<MessageMenu>(entry.GetClientId(m.IsOwnMessage), bool.FalseString, "", "").ToString() : "";
+}
 <div class="@cls"
      data-chat-entry-id="@(entry.Id)"
-     data-menu="@(MenuRef.New<MessageMenu>(entry.GetClientId(m.IsOwnMessage), bool.FalseString, "", ""))"
+     data-menu="@menuRef"
      @onmouseenter="@ShowHoverMenu"
      @onmouseleave="@HideHoverMenu">
     <div class="chat-message group">
@@ -158,15 +164,18 @@
                 @if (isReply) {
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
-                <ChatEntryMessageInternalView
-                    Markup="@markup"
-                    Message="@message"
-                    ChatContext="@ChatContext"
-                    IsUnreadByOthers="@m.IsUnreadByOthers"
-                    IsUnreadByOthersBlockStart="@m.IsUnreadByOthersBlockStart"
-                    IsFirstAuthorMessage="@showAuthorBadge"
-                    IsChatLanguageSelected="@m.IsChatLanguageSelected"
-                />
+                @if (message.Kind is ChatMessageKind.AudioRecordingMessage) {
+                    <AudioRecordingChatEntryMessageView Message="@message" ChatContext="@ChatContext" />
+                } else {
+                    <ChatEntryMessageInternalView
+                        Markup="@markup"
+                        Message="@message"
+                        ChatContext="@ChatContext"
+                        IsUnreadByOthers="@m.IsUnreadByOthers"
+                        IsUnreadByOthersBlockStart="@m.IsUnreadByOthersBlockStart"
+                        IsFirstAuthorMessage="@showAuthorBadge"
+                        IsChatLanguageSelected="@m.IsChatLanguageSelected"/>
+                }
             </div>
             @if (entry.Attachments.Length > 0 || entry.HasUploadingAttachments) {
                 <ChatEntryAttachmentsView
