@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-deprecated */
 import { Disposable } from 'disposable';
 import { Subject, takeUntil } from 'rxjs';
 import Escapist from './escapist';

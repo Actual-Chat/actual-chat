@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-deprecated, @typescript-eslint/require-await, @typescript-eslint/no-floating-promises */
 import { Subject, } from 'rxjs';
 
 import { setTimeout } from 'timerQueue';

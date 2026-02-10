@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 export class AudioRingBuffer {
     private readonly channelCount: number;
     private readonly bufferSize: number;

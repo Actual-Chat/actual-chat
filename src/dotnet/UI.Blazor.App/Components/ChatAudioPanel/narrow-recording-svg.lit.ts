@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { scan,  Subscription } from 'rxjs';

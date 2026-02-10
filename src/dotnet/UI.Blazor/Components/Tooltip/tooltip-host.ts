@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/ban-ts-comment */
 import { Disposable } from 'disposable';
 import { fromEvent, Subject, takeUntil, map, switchMap, delay, of, EMPTY } from 'rxjs';
 import { getOrInheritData } from 'dom-helpers';

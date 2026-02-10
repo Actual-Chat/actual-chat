@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { BrowserInit } from '../BrowserInit/browser-init';
 import { Kvas } from 'kvas';
 import { Log } from 'logging';

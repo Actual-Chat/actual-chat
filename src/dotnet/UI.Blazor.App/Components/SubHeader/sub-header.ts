@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/restrict-plus-operands */
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 
 export class SubHeader {

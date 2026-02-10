@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-deprecated */
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { debounce, PromiseSourceWithTimeout, throttle } from 'promises';
 

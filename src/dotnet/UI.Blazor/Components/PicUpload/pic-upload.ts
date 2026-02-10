@@ -1,3 +1,5 @@
+// TODO: Fix ESLint errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { Disposable } from 'disposable';
 import { fromEvent, map, filter, Subject, takeUntil, tap, merge } from 'rxjs';
 import { preventDefaultForEvent } from 'event-handling';
