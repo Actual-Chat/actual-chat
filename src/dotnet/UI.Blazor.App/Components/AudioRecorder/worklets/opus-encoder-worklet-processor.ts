@@ -1,15 +1,14 @@
 import { AUDIO_REC as AR } from '_constants';
 import { Disposable } from 'disposable';
 import { ObjectPool } from 'object-pool';
-import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
+import { rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { timerQueue } from 'timerQueue';
 import { AudioRingBuffer } from '../audio-ring-buffer';
-import { AudioDiagnosticsState } from "../audio-recorder";
+import { AudioDiagnosticsState } from '../audio-recorder';
 import { OpusEncoderWorklet } from './opus-encoder-worklet-contract';
 import { OpusEncoderWorker } from '../workers/opus-encoder-worker-contract';
-import { RecorderStateServer } from "../opus-media-recorder-contracts";
+import { RecorderStateServer } from '../opus-media-recorder-contracts';
 import { Log } from 'logging';
-import { approximateGain } from 'math';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
 
@@ -28,8 +27,8 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private stateServer: RecorderStateServer & Disposable;
     private worker: OpusEncoderWorker & Disposable;
     private samplesSinceLastReport: number | null = null;
-    private frameCount: number = 0;
-    private lastFrameProcessedAt: number = 0;
+    private frameCount = 0;
+    private lastFrameProcessedAt = 0;
     private promiseQueue: Promise<void> = Promise.resolve();
 
     constructor(options: AudioWorkletNodeOptions) {

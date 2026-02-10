@@ -6,7 +6,7 @@ import { ObjectPool } from 'object-pool';
 import { AudioRingBuffer } from '../audio-ring-buffer';
 import { AudioVadWorker } from '../workers/audio-vad-worker-contract';
 import { AudioVadWorklet } from './audio-vad-worklet-contract';
-import { AudioDiagnosticsState } from "../audio-recorder";
+import { AudioDiagnosticsState } from '../audio-recorder';
 import { Log } from 'logging';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioVadWorkletProcessor');
@@ -24,8 +24,8 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     private bufferPool: ObjectPool<ArrayBuffer>;
     private server: Disposable;
     private worker: AudioVadWorker & Disposable;
-    private frameCount: number = 0;
-    private lastFrameProcessedAt: number = 0;
+    private frameCount = 0;
+    private lastFrameProcessedAt = 0;
     private promiseQueue: Promise<void> = Promise.resolve();
 
     constructor(options: AudioWorkletNodeOptions) {
@@ -45,8 +45,8 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
     public async start(windowSizeMs: 30 | 32): Promise<void> {
         this.samplesPerWindow = Math.ceil(windowSizeMs == 30
-           ? 30 * this.sampleRate / 1000
-           : 32 * this.sampleRate / 1000);
+            ? 30 * this.sampleRate / 1000
+            : 32 * this.sampleRate / 1000);
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(this.samplesPerWindow * 4)).expandTo(4);
         this.state = 'running';
         this.frameCount = 0;
