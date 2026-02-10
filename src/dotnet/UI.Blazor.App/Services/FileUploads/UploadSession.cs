@@ -27,4 +27,5 @@ public partial class UploadSession
 
     [IgnoreDataMember, MemoryPackIgnore] public string FileName => FileProvider.Metadata.FileName;
     [IgnoreDataMember, MemoryPackIgnore] public UploadProgressTracker ProgressTracker { get; set; } = new ();
+    [IgnoreDataMember, MemoryPackIgnore] public CancellationTokenSource? MonitoringCts { get; set; }
 }

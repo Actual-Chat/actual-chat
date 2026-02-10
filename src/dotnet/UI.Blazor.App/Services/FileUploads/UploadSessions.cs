@@ -106,6 +106,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session is null)
             return;
 
+        session.MonitoringCts?.Cancel();
+
         if (session.Status is not UploadStatus.Canceled) {
             if (force || session.Status is not (UploadStatus.Completed or UploadStatus.Failed)) {
                 session.LastUpdatedAt = Now;
@@ -125,11 +127,14 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session.Status is not UploadStatus.Canceled and not UploadStatus.Completed and not UploadStatus.Failed)
             throw new InvalidOperationException("Cannot delete a not canceled/completed/failed session");
 
+        session.MonitoringCts?.Cancel();
+
         if (session.UploadId is not null)
             await Commander.Call(new Uploads_Remove(Hub.Session, session.UploadId), CancellationToken.None).ConfigureAwait(false);
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         Hub.UploadSessionsState.Remove(sessionId);
+        _sessions.TryRemove(sessionId, out _);
         Log.LogInformation("Deleted session '{SessionId}'", sessionId);
     }
 
@@ -164,7 +169,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             case UploadStatus.Uploaded when session.ReservedMediaId is not null:
                 // Resume monitoring if session was restored in Uploaded state
                 session.ProgressTracker.ReportProgress(100);
-                _ = BackgroundTask.Run(() => MonitorProcessing(sessionId, session.ReservedMediaId));
+                var cts = new CancellationTokenSource(TimeSpan.FromMinutes(15));
+                session.MonitoringCts = cts;
+                _ = BackgroundTask.Run(() => MonitorProcessing(sessionId, session.ReservedMediaId, cts.Token));
                 break;
             case UploadStatus.Completed when session.MediaContent is not null:
                 session.ProgressTracker.ReportProgress(100);
@@ -226,7 +233,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await _repo.Save(session).ConfigureAwait(false);
 
         // Start monitoring processing status in background
-        _ = BackgroundTask.Run(() => MonitorProcessing(sessionId, mediaId));
+        var cts = new CancellationTokenSource(TimeSpan.FromMinutes(15));
+        session.MonitoringCts = cts;
+        _ = BackgroundTask.Run(() => MonitorProcessing(sessionId, mediaId, cts.Token));
     }
 
     private async Task OnProcessingCompleted(string sessionId, MediaContent mediaContent)
@@ -289,12 +298,8 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await OnFailed(sessionId, error).ConfigureAwait(false);
     }
 
-    private async Task MonitorProcessing(string sessionId, MediaId mediaId)
+    private async Task MonitorProcessing(string sessionId, MediaId mediaId, CancellationToken cancellationToken)
     {
-        var maxWaitTime = TimeSpan.FromMinutes(15);
-        using var cts = new CancellationTokenSource(maxWaitTime);
-        var cancellationToken = cts.Token;
-
         try {
             var cStatus = await Computed
                 .Capture(() => Hub.Medias.GetStatus(Session, mediaId, cancellationToken), cancellationToken)
@@ -330,8 +335,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
             await OnProcessingFailed(new TimeoutException("Media processing timed out")).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (cts.IsCancellationRequested) {
-            await OnProcessingFailed(new TimeoutException("Media processing timed out")).ConfigureAwait(false);
+        catch (OperationCanceledException) {
+            // Session was cancelled - exit without marking as failed
+            Log.LogInformation("Monitoring cancelled for session {SessionId}", sessionId);
         }
         catch (Exception e) {
             Log.LogError(e, "Error monitoring processing for session {SessionId}", sessionId);
