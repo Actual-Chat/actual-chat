@@ -1,5 +1,5 @@
 /// #if MEM_LEAK_DETECTION
-import codec, { Decoder, Codec } from '@actual-chat/codec/codec.debug';
+import codec, { Codec } from '@actual-chat/codec/codec.debug';
 import codecWasm from '@actual-chat/codec/codec.debug.wasm';
 import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #else
@@ -40,6 +40,7 @@ export class AudioPlayerTestPage {
     public static blockMainThread(milliseconds: number) {
         console.warn(`Blocking main thread for ${milliseconds}`);
         const start = new Date().getTime();
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         while (true) {
             if (new Date().getTime() - start > milliseconds) {
                 break;
@@ -58,8 +59,8 @@ export class AudioPlayerTestPage {
         return this.stats;
     }
 
-    public frame(byteArray: Uint8Array): Promise<void> {
-        return this.player.frame(byteArray);
+    public frame(byteArray: Uint8Array) {
+        this.player.frame(byteArray);
     }
 
     public end(): Promise<void> {
@@ -74,11 +75,11 @@ export class AudioPlayerTestPage {
         return this.player.pause();
     }
 
-    public resume(): Promise<void> {
-        return this.player.resume();
+    public resume(): void {
+        this.player.resume();
     }
 
-    public async testDecoder(): Promise<void> {
+    public testDecoder() {
         const decoder = new this.codecModule.Decoder(AP.SAMPLE_RATE);
 
         const buffer = new Uint8Array([150,1,128,192,179,74,83,46,82,101,99,101,105,118,101,66,121,116,101,65,114,114,97,121,146,2,196,125,248,127,170,45,133,199,226,240,252,202,237,186,114,234,199,198,191,64,0,244,89,219,79,39,238,236,39,238,43,136,241,177,18,144,215,230,28,17,107,239,210,50,161,182,56,125,156,43,70,10,54,60,7,183,196,0,123,237,133,169,38,242,254,167,250,205,83,153,190,172,179,164,213,182,74,70,148,46,102,63,178,102,144,255,65,115,197,38,201,92,149,109,89,24,179,68,205,86,214,24,168,93,197,33,67,74,156,242,38,203,176,67,130,6,198,12,91,213,76,248,43,76,149,22,247,144]).buffer;
