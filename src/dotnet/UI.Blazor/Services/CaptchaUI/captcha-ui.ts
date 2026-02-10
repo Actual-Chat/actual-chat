@@ -10,7 +10,7 @@ export class CaptchaUI {
         if (!recaptchaScript.src)
             return;
 
-        const match = recaptchaScript.src.match(/.+js\?render=(?<siteKey>[^&]+)/);
+        const match = /.+js\?render=(?<siteKey>[^&]+)/.exec(recaptchaScript.src);
         if (!match.groups?.siteKey)
             return;
         const siteKey = match.groups.siteKey;
