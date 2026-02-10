@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import {
     concat,
     debounceTime,
@@ -45,6 +47,7 @@ export class ScreenSize {
         this.measureAndUpdate();
 
         this.size$ = concat(of(this.size), this.change$);
+        // @ts-expect-error TODO: fix the error
         fromEvent(window.visualViewport, 'resize')
             .pipe(debounceTime(50))
             .subscribe((event: Event) => this.notifyChanged(event));
@@ -60,10 +63,12 @@ export class ScreenSize {
 
     public static notifyChanged(event?: Event): void {
         this.measureAndUpdate()
+        // @ts-expect-error TODO: fix the error
         this.event$.next(event);
     }
 
     private static measureAndUpdate(): Size {
+        // eslint-disable-next-line prefer-const
         let [size, isHoverable] = this.measure();
         if (size == 'Small') // We're always non-hoverable in narrow mode
             isHoverable = false;
@@ -84,9 +89,12 @@ export class ScreenSize {
     }
 
     private static measure(): [Size, boolean] {
+        // @ts-expect-error TODO: fix the error
         this.width = visualViewport.width;
+        // @ts-expect-error TODO: fix the error
         this.height = visualViewport.height;
         const isHoverable = window.getComputedStyle(this.innerHoverMeasureDiv).getPropertyValue('width') !== 'auto';
+        // @ts-expect-error TODO: fix the error
         let itemDiv: HTMLDivElement = null;
         for (const item of this.screenSizeMeasureDiv.children) {
             itemDiv = item as HTMLDivElement;

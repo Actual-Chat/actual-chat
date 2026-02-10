@@ -1,6 +1,6 @@
 import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
-import { filter, scan, Subscription } from 'rxjs';
+import { scan, Subscription } from 'rxjs';
 import { clamp, RunningMax, translate, RunningEMA} from 'math';
 import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
 
@@ -28,7 +28,7 @@ const DEFAULT_STATE: AudioPowerState = {
 };
 
 @customElement('active-recording-svg')
-class ActiveRecordingSvg extends LitElement {
+export class ActiveRecordingSvg extends LitElement {
     static styles = [css`
         :host {
             display: flex;
@@ -86,6 +86,7 @@ class ActiveRecordingSvg extends LitElement {
 
     @state({
         hasChanged: (value: AudioPowerState, oldValue: AudioPowerState | null): boolean =>
+            // eslint-disable-next-line
             value.height1 !== oldValue?.height1 || value.height2 !== oldValue?.height2 || value.height3 !== oldValue?.height3
     })
     private audioPowerState: AudioPowerState = DEFAULT_STATE;
@@ -172,7 +173,7 @@ class ActiveRecordingSvg extends LitElement {
     }
 
     protected render(): unknown {
-        const { size, audioPowerState, isVoiceActive, isRecording, isVisible } = this;
+        const { size, audioPowerState, isVoiceActive, isVisible } = this;
         const width = 10;
         if (!this._isRecording) {
             const offset = 50 - MIN_HEIGHT / 2;
@@ -205,6 +206,7 @@ class ActiveRecordingSvg extends LitElement {
                 </svg>
             `;
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-non-null-asserted-optional-chain
             const display = getComputedStyle(this.shadowRoot?.host!, null)?.display ?? 'none';
             if (display === 'none')
                 return html``;
