@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unnecessary-condition */
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
@@ -108,7 +110,7 @@ export class Landing {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         this.disposed$.next();
@@ -164,7 +166,7 @@ export class Landing {
         }
     }
 
-    private onTouchEnd(event: TouchEvent): void {
+    private onTouchEnd(): void {
         if (this.isVideoPlayStarted)
             return;
 
@@ -201,7 +203,7 @@ export class Landing {
 
         const downloadBtn = this.header.querySelector('.download-app');
         const mainPageBtn = this.header.querySelector('.btn-to-main-page');
-        if (!this || !mainPageBtn || !downloadBtn)
+        if (!mainPageBtn || !downloadBtn)
             return;
         if (!this.canScroll) {
             downloadBtn.classList.add('!hidden');
@@ -292,7 +294,7 @@ export class Landing {
 
         video.load();
         video.oncanplay = () => {
-            video.play().then(() => {
+            void video.play().then(() => {
                 plug.classList.remove('flex');
                 plug.hidden = true;
                 hoverPlug.remove();
@@ -301,7 +303,7 @@ export class Landing {
         };
     }
 
-    private cardVideoHandler = (entries, observer) => {
+    private cardVideoHandler = (entries) => {
         entries.forEach(entry => {
             const cardVideo = entry.target as HTMLVideoElement;
             if (!cardVideo || cardVideo.classList.contains('loaded'))
