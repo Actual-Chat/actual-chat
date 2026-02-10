@@ -1,4 +1,5 @@
-import { ResolvedPromise } from 'promises';
+// TODO: fix eslint errors
+/* eslint-disable @typescript-eslint/use-unknown-in-catch-callback-variable,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call */
 import { mp4, webm } from './media';
 import { Log } from 'logging';
 import { APP_NAME } from '_constants';
@@ -101,7 +102,7 @@ export class NoSleep {
                     throw err;
                 });
         } else if (isOldIOS()) {
-            this.disable();
+            const disableTask = this.disable();
             warnLog?.log(`
                 NoSleep enabled for older iOS devices. This can interrupt
                 active or long-running network requests from completing successfully.
@@ -114,7 +115,7 @@ export class NoSleep {
                 }
             }, 15000);
             this.enabled = true;
-            return ResolvedPromise.Void;
+            return disableTask;
         } else {
             const playPromise = this.noSleepVideo!.play();
             return playPromise
