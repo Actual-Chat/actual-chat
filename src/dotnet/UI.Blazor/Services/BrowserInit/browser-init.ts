@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/dot-notation */
+ 
 import { Connectivity } from 'connectivity';
 import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource } from 'promises';
