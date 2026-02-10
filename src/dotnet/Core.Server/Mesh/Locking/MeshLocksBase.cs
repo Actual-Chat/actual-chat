@@ -18,7 +18,7 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     protected ChaosMaker ChaosMaker => field ??= Services.GetRequiredService<ChaosMaker>();
 
     public MeshLockOptions LockOptions { get; init; } = MeshLockOptions.Default;
-    public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
+    public RetryDelaySeq RetryDelays => field ??= RetryDelaySeq.Exp(0.1, LockOptions.ExpirationPeriod.TotalSeconds / 2);
 
     public IServiceProvider Services { get; init; }
     public MomentClock Clock => field ??= Services.Clocks().SystemClock;

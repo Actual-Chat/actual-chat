@@ -1,8 +1,6 @@
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.Kubernetes;
-using Polly;
-using Polly.Extensions.Http;
 
 namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 
@@ -60,18 +58,8 @@ public class KubeMeshLocksTest(ITestOutputHelper @out) : TestBase(@out)
                 return handler;
 #pragma warning restore MA0039
             })
-            .SetHandlerLifetime(TimeSpan.FromMinutes(5))
-            .AddPolicyHandler(GetRetryPolicy());
+            .SetHandlerLifetime(TimeSpan.FromMinutes(5));
         Services = serviceCollection.BuildServiceProvider();
-        return;
-
-        static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-        {
-            var retryDelays = RetryDelaySeq.Exp(0.5, 10);
-            return HttpPolicyExtensions
-                .HandleTransientHttpError()
-                .WaitAndRetryAsync(5, retryAttempt => retryDelays[retryAttempt]);
-        }
     }
 
     protected override async Task DisposeAsync()

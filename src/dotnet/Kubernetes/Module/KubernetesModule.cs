@@ -2,8 +2,6 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Polly;
-using Polly.Extensions.Http;
 
 namespace ActualChat.Kubernetes.Module;
 
@@ -50,15 +48,6 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
                 return handler;
 #pragma warning restore MA0039
             })
-            .SetHandlerLifetime(TimeSpan.FromMinutes(5))
-            .AddPolicyHandler(GetRetryPolicy());
-
-        static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-        {
-            var retryDelays = RetryDelaySeq.Exp(0.5, 10);
-            return HttpPolicyExtensions
-                .HandleTransientHttpError()
-                .WaitAndRetryAsync(5, retryAttempt => retryDelays[retryAttempt]);
-        }
+            .SetHandlerLifetime(TimeSpan.FromMinutes(5));
     }
 }

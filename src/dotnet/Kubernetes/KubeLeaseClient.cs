@@ -99,11 +99,12 @@ public sealed class KubeLeaseClient(IServiceProvider services)
         string @namespace,
         string? labelSelector,
         Func<Api.Change<Api.Lease>, CancellationToken, Task> onChange,
+        RetryDelaySeq? retryDelays = null,
         CancellationToken cancellationToken = default)
     {
         var resourceVersion = "";
         var failureCount = 0;
-        var retryDelays = RetryDelaySeq.Exp(1, 30);
+        retryDelays ??= RetryDelaySeq.Exp(0.1, 5);
 
         while (!cancellationToken.IsCancellationRequested)
             try {
