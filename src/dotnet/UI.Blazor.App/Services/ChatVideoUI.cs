@@ -8,13 +8,18 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// Player lifecycle management is handled by VideoTrackPlayer components.
 /// State is in-memory only (not persisted) since video recording can't survive page refresh.
 /// </summary>
-public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
+public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
     // Centralized video state
     private readonly IMutableState<ChatId?> _recordingChatId;
     private readonly IMutableState<string?> _selectedCameraDeviceId;
     private readonly IMutableState<bool> _isBackgroundBlurEnabled;
     private readonly IMutableState<string?> _errorMessage;
+
+    // Active speaker focus state
+    private readonly IMutableState<AuthorId?> _focusedSpeakerId;
+    private CancellationTokenSource? _focusDebounceCts;
+    private AuthorId? _pendingFocusCandidate;
 
     private ILiveVideoStreams LiveVideoStreams => Hub.Services.GetRequiredService<ILiveVideoStreams>();
     private IAuthors Authors => Hub.Authors;
@@ -25,7 +30,11 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
         _selectedCameraDeviceId = StateFactory.NewMutable((string?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _errorMessage = StateFactory.NewMutable((string?)null);
+        _focusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
     }
+
+    void INotifyInitialized.Initialized()
+        => this.Start();
 
     // Core state accessors
 
@@ -99,6 +108,12 @@ public partial class ChatVideoUI : UIServiceBase<AppUIHub>, IComputeService
         _errorMessage.Value = error;
         _recordingChatId.Value = null;
     }
+
+    // Active speaker focus
+
+    [ComputeMethod]
+    public virtual async Task<AuthorId?> GetFocusedSpeakerId(CancellationToken cancellationToken = default)
+        => await _focusedSpeakerId.Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> GetActiveVideoStreams(ChatId? chatId, CancellationToken cancellationToken = default)

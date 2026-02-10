@@ -17,7 +17,7 @@
 }
 
 @if (_rendered) {
-    <div @ref="Ref" class="video-panel first-time-open @cls @recordingCls @remoteStreamsCls" data-remote-stream-count="@m.RemoteStreams.Length">
+    <div @ref="Ref" class="video-panel first-time-open @cls @recordingCls @remoteStreamsCls">
         <div class="c-content">
             <div class="video-frame @videoFrameCls">
                 <canvas class="call-video"></canvas>
@@ -34,7 +34,9 @@
             <div class="remote-streams">
                 @foreach (var streamInfo in m.RemoteStreams) {
                     var name = m.AuthorNames.GetValueOrDefault(streamInfo.AuthorId, "");
-                    <VideoTrackPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" AuthorName="@name" />
+                    var isFocused = streamInfo.AuthorId == m.FocusedAuthorId;
+                    var focusedCls = isFocused ? "focused" : "";
+                    <VideoTrackPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" AuthorName="@name" FocusedClass="@focusedCls" />
                 }
             </div>
             <HeaderButton Class="expand-btn show-with-delay">
@@ -54,9 +56,10 @@
         bool IsRightPanelVisible,
         VideoStreamInfo[] RemoteStreams,
         ChatVideoState VideoState,
-        IReadOnlyDictionary<AuthorId, string> AuthorNames
+        IReadOnlyDictionary<AuthorId, string> AuthorNames,
+        AuthorId? FocusedAuthorId
     ) {
-        public static readonly Model None = new(false, [], ChatVideoState.None, new Dictionary<AuthorId, string>());
+        public static readonly Model None = new(false, [], ChatVideoState.None, new Dictionary<AuthorId, string>(), null);
     }
 
     private bool _rendered;
@@ -190,7 +193,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options {
-                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], ChatVideoState.None, new Dictionary<AuthorId, string>()),
+                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], ChatVideoState.None, new Dictionary<AuthorId, string>(), null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -205,7 +208,7 @@
 
         var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
         if (chatId is null)
-            return new Model(isRightPanelVisible, [], ChatVideoState.None, emptyNames);
+            return new Model(isRightPanelVisible, [], ChatVideoState.None, emptyNames, null);
 
         // Get centralized video state
         var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
@@ -231,7 +234,7 @@
         // Get active video streams for this chat
         var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken);
         if (activeStreams.Count == 0)
-            return new Model(isRightPanelVisible, [], videoState, emptyNames);
+            return new Model(isRightPanelVisible, [], videoState, emptyNames, null);
 
         // Filter out own stream (shown in local preview)
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken);
@@ -246,6 +249,16 @@
             authorNames[stream.AuthorId] = author?.Avatar.Name ?? "";
         }
 
-        return new Model(isRightPanelVisible, remoteStreams, videoState, authorNames);
+        // Get focused speaker from ChatVideoUI (state sync maintains this)
+        var focusedAuthorId = await ChatVideoUI.GetFocusedSpeakerId(cancellationToken)
+            .ConfigureAwait(false);
+
+        // Validate focused author still has video; fall back to first remote stream
+        var videoAuthorIds = remoteStreams.Select(s => s.AuthorId).ToHashSet();
+        if (focusedAuthorId != null && !videoAuthorIds.Contains(focusedAuthorId))
+            focusedAuthorId = null;
+        focusedAuthorId ??= remoteStreams.Length > 0 ? remoteStreams[0].AuthorId : null;
+
+        return new Model(isRightPanelVisible, remoteStreams, videoState, authorNames, focusedAuthorId);
     }
 }

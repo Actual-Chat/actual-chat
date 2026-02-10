@@ -7,7 +7,7 @@
 @implements IVideoPlayerBackend
 @inject IServiceProvider Services
 
-<div class="remote-video-container">
+<div class="remote-video-container @FocusedClass">
     <canvas @ref="CanvasRef" class="remote-video" data-stream-id="@StreamInfo.StreamId.Value" data-author-id="@StreamInfo.AuthorId.Value"></canvas>
     @if (!string.IsNullOrEmpty(AuthorName)) {
         <div class="video-participant-label">
@@ -46,6 +46,9 @@
 
     [Parameter]
     public string AuthorName { get; set; } = "";
+
+    [Parameter]
+    public string FocusedClass { get; set; } = "";
 
     public Task WhenCompleted => _whenCompletedSource.Task;
 
