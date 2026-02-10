@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-misused-promises,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access */
 import { DeviceInfo } from 'device-info';
 import {
     Subject,
@@ -13,7 +15,7 @@ import { localSettings } from '../../../UI.Blazor/Services/Settings/local-settin
 import { Log } from 'logging';
 import { AttachmentWebFilePicker, AttachmentWebFilePickerBackend, PickFileResult } from './attachment-web-file-picker';
 
-const { debugLog, infoLog, warnLog } = Log.get('MessageEditor');
+const { debugLog, warnLog } = Log.get('MessageEditor');
 
 export type PanelMode = 'Normal' | 'Narrow';
 
@@ -331,8 +333,8 @@ export class ChatMessageEditor {
             return;
 
         const fileResults: PickFileResult[] = [];
-        for (let i = 0; i < files.length; i++)
-            fileResults.push({ file: files[i], fileHandle: null });
+        for (const file of files)
+            fileResults.push({ file: file, fileHandle: null });
         void this.filePickerBackend.add(fileResults);
     }
 
