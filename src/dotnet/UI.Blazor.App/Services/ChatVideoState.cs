@@ -4,6 +4,7 @@ public sealed record ChatVideoState(
     ChatId? ChatId,
     bool IsRecording = false,
     string? SelectedCameraDeviceId = null,
+    bool IsBackgroundBlurEnabled = false,
     bool HasError = false,
     string? ErrorMessage = null)
 {

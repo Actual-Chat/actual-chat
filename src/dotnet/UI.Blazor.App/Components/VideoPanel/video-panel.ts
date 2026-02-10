@@ -29,6 +29,7 @@ export class VideoPanel {
     private selectedCameraDeviceId: string | null = null;
     private sessionToken: string | null = null;
     private chatId: string | null = null;
+    private isBlurEnabled = false;
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
         return new VideoPanel(videoPanel, blazorRef);
@@ -120,6 +121,24 @@ export class VideoPanel {
     }
 
     /**
+     * Set whether background blur should be enabled when recording starts
+     */
+    public setBlurEnabled(enabled: boolean): void {
+        this.isBlurEnabled = enabled;
+        infoLog?.log('Background blur enabled:', enabled);
+    }
+
+    /**
+     * Toggle blur on an active recording
+     */
+    public async toggleBlur(enabled: boolean): Promise<void> {
+        this.isBlurEnabled = enabled;
+        if (this.recordingService) {
+            await this.recordingService.toggleBlur(enabled);
+        }
+    }
+
+    /**
      * Initialize and start video recording
      */
     public async startRecording(): Promise<void> {
@@ -150,6 +169,9 @@ export class VideoPanel {
                 jitter: 0,
                 packetLoss: 0,
                 cameraDeviceId: this.selectedCameraDeviceId || undefined,
+                backgroundBlur: {
+                    enabled: this.isBlurEnabled,
+                },
                 // Enable streaming to server for real-time viewing
                 streaming: {
                     enabled: true,
