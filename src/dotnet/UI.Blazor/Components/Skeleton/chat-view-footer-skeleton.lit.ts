@@ -1,8 +1,8 @@
-﻿import {customElement} from "lit/decorators.js";
-import {html, LitElement} from "lit";
+﻿import {customElement} from 'lit/decorators.js';
+import {html, LitElement} from 'lit';
 
 @customElement('chat-view-footer-skeleton')
-class ChatViewFooterSkeleton extends LitElement {
+export class ChatViewFooterSkeleton extends LitElement {
     protected createRenderRoot() {
         return this;
     }

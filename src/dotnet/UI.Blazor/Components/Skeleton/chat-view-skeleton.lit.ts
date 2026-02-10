@@ -7,17 +7,15 @@ import { MessageWidth, randomIntFromInterval } from './helpers';
 import { fastRaf } from 'fast-raf';
 
 @customElement('chat-view-skeleton')
-class ChatViewSkeleton extends LitElement {
+export class ChatViewSkeleton extends LitElement {
     protected createRenderRoot() {
         return this;
     }
 
     private observer: IntersectionObserver;
 
-    @property()
-    public count = 2;
-    @property()
-    class = '';
+    @property() public count = 2;
+    @property() class = '';
 
     connectedCallback() {
         super.connectedCallback();
@@ -63,7 +61,7 @@ class ChatViewSkeleton extends LitElement {
     }
 
     private getMessageWidth(first: number, second: number): string {
-        let num = randomIntFromInterval(first, second);
+        const num = randomIntFromInterval(first, second);
         return MessageWidth[num];
     }
 }

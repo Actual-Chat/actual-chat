@@ -1,4 +1,4 @@
-﻿import { customElement, property, state } from 'lit/decorators.js';
+﻿import { customElement, property } from 'lit/decorators.js';
 import { guard } from 'lit/directives/guard.js';
 import { range } from 'lit/directives/range.js';
 import { map } from 'lit/directives/map.js';
@@ -7,19 +7,16 @@ import { MessageWidth, randomIntFromInterval } from './helpers';
 import { fastRaf } from 'fast-raf';
 
 @customElement('chat-list-skeleton')
-class ChatListSkeleton extends LitElement {
+export class ChatListSkeleton extends LitElement {
     protected createRenderRoot() {
         return this;
     }
 
     private observer: IntersectionObserver;
 
-    @property()
-    class = '';
-    @property()
-    messageCls = '';
-    @property()
-    count = 1;
+    @property() class = '';
+    @property() messageCls = '';
+    @property() count = 1;
 
     render() {
         const { count } = this;
@@ -58,7 +55,7 @@ class ChatListSkeleton extends LitElement {
     }
 
     private getMessageWidth(first: number, second: number): string {
-        let num = randomIntFromInterval(first, second);
+        const num = randomIntFromInterval(first, second);
         return MessageWidth[num];
     }
 }

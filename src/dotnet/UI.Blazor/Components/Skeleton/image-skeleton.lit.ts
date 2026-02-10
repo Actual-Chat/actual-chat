@@ -5,7 +5,7 @@ import { delayAsync } from 'promises';
 import { PROD_HOST } from '_constants';
 
 @customElement('image-skeleton')
-class ImageSkeleton extends LitElement {
+export class ImageSkeleton extends LitElement {
     protected createRenderRoot() {
         return this;
     }
@@ -13,7 +13,7 @@ class ImageSkeleton extends LitElement {
     @property({ reflect: true }) class: string;
     @property() src: string;
     @property() thumbnailSrc: string;
-    @property() title: string = "";
+    @property() title = '';
 
     private _imageRef: Ref<HTMLImageElement> = createRef();
 
@@ -32,7 +32,7 @@ class ImageSkeleton extends LitElement {
 
     render() {
         const isSubDomain = this.isSubDomain(this.src);
-        if (this.thumbnailSrc && this.thumbnailSrc != "") {
+        if (this.thumbnailSrc && this.thumbnailSrc != '') {
             return html`
                 <img
                     part='image'
@@ -43,8 +43,8 @@ class ImageSkeleton extends LitElement {
                     alt=''
                     .src='${this.src}'
                     .title='${this.title}'
-                    @load='${this.imageLoaded}'
-                    @error='${this.reloadImage}'
+                    @load='${this.imageLoaded.bind(this)}'
+                    @error='${this.reloadImage.bind(this)}'
                 />
                 <img
                     part='image-thumbnail'
@@ -54,7 +54,7 @@ class ImageSkeleton extends LitElement {
                     alt=''
                     .src='${this.thumbnailSrc}'
                     .title='${this.title}'
-                    @load='${this.thumbnailLoaded}'
+                    @load='${this.thumbnailLoaded.bind(this)}'
                 />
             `;
         } else {
@@ -68,8 +68,8 @@ class ImageSkeleton extends LitElement {
                     alt=''
                     .src='${this.src}'
                     .title='${this.title}'
-                    @load='${this.imageLoaded}'
-                    @error='${this.reloadImage}'
+                    @load='${this.imageLoaded.bind(this)}'
+                    @error='${this.reloadImage.bind(this)}'
                 />
             `;
         }
@@ -97,20 +97,20 @@ class ImageSkeleton extends LitElement {
             this._imageRef.value.src = this.src;
     }
 
-    async imageLoaded(): Promise<void> {
+    imageLoaded(): void {
         this.classList.remove('show-image-skeleton');
         this.classList.remove('show-image-thumbnail');
         if (!this.classList.contains('show-image-original'))
             this.classList.add('show-image-original');
     }
 
-    async thumbnailLoaded(): Promise<void> {
+    thumbnailLoaded(): void {
         this.classList.remove('show-image-skeleton');
         if (!this.classList.contains('show-image-thumbnail') && (!this.classList.contains('show-image-original')))
             this.classList.add('show-image-thumbnail');
     }
 
     isSubDomain(url: string): boolean {
-        return url.indexOf(PROD_HOST) > -1;
+        return url.includes(PROD_HOST);
     }
 }

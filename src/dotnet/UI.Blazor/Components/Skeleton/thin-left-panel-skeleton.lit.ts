@@ -8,18 +8,17 @@ export class ThinLeftPanelSkeletonLit extends LitElement {
         return this;
     }
 
-    @property()
-    count = 2;
+    @property() count = 2;
 
     protected render(): unknown {
         this.setProperties();
         return html`
             <voxt-skeleton></voxt-skeleton>
-            ${[...new Array(Number(this.count))].map(() => html`
+            ${Array.from({length: this.count}, () => html`
                 <div class="button" />
             `)}
             <div class='c-delimiter'></div>
-            ${[...new Array(Number(this.count))].map(() => html`
+            ${Array.from({length: this.count}, () => html`
                 <div class="button" />
             `)}
             <div class="footer-button"></div>

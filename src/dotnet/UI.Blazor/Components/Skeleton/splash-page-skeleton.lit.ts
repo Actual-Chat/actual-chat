@@ -2,13 +2,13 @@
 import { html, LitElement } from 'lit';
 
 @customElement('splash-page-skeleton')
-class SplashPageSkeleton extends LitElement {
+export class SplashPageSkeleton extends LitElement {
     protected createRenderRoot() {
         return this;
     }
 
     @property({type: String})
-    isRightPanelVisible: 'true' | 'false' = 'false';
+        isRightPanelVisible: 'true' | 'false' = 'false';
 
     protected render(): unknown {
         const rightPanelDataAttr = this.isRightPanelVisible === 'true' ? 'open' : 'closed';
