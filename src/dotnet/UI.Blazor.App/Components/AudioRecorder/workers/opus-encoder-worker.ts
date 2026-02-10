@@ -45,15 +45,15 @@ const systemCodecConfig: AudioEncoderConfig = {
 };
 
 let state: 'initial' | 'created' | 'encoding' | 'ended' = 'initial';
-let isVoiceDetected: boolean = false;
-let isProcessing: boolean = false;
+let isVoiceDetected = false;
+let isProcessing = false;
 let encoderWorklet: OpusEncoderWorklet & Disposable;
 let vadWorker: AudioVadWorker & Disposable;
 let encoder: Encoder | null;
 let systemEncoder: AudioEncoder | null;
 let lastStartArguments: { chatId: string, repliedChatEntryId: string } | null = null;
 let lastSessionToken = '';
-let chunkTimeOffset: number = 0;
+let chunkTimeOffset = 0;
 let lastFrameProcessedAt = 0;
 let audioStream: AudioStream | null = null;
 
@@ -193,7 +193,7 @@ async function startRecording(): Promise<void> {
 
     infoLog?.log(`startRecording: `, lastStartArguments);
     const { chatId, repliedChatEntryId } = lastStartArguments;
-    lastStartArguments.repliedChatEntryId = ""; // We reset it for the next message here
+    lastStartArguments.repliedChatEntryId = ''; // We reset it for the next message here
     if (audioStream !== null)
         await stopRecording();
 
@@ -205,7 +205,7 @@ async function startRecording(): Promise<void> {
 
 async function stopRecording(): Promise<void> {
     processQueue('out');
-    if (systemEncoder && systemEncoder.state === 'configured')
+    if (systemEncoder?.state === 'configured')
         await systemEncoder.flush();
 
     audioStream?.complete();
@@ -329,16 +329,16 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
             const codecWasmPath = Versioning.mapPath(codecWasm);
-            if (filename.slice(-4) === 'wasm')
+            if (filename.endsWith('wasm'))
                 return codecWasmPath;
             /// #if MEM_LEAK_DETECTION
-            else if (filename.slice(-3) === 'map')
+            else if (filename.endsWith('map'))
                 // return codecWasmMap;
                 return codecWasmPath + '.map';
                 /// #endif
                 // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI
-            else if (filename.slice(0, 5) === 'data:')
+            else if (filename.startsWith('data:'))
                 return filename;
             else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
         },
