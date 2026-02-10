@@ -45,7 +45,7 @@ export class NotificationUI {
 
         const status = await navigator.permissions.query({ name: 'notifications' });
         if (!status.onchange)
-            status.onchange = _ => this.setPermissionState(status.state);
+            status.onchange = () => this.setPermissionState(status.state);
         return status.state;
     }
 

@@ -108,7 +108,7 @@ class VadLoader {
     }
 }
 const vads = new VadLoader();
-delayAsync(2000).then(_ => VadLoader.cancelNeuralVadLoadDelay());
+delayAsync(2000).then(() => VadLoader.cancelNeuralVadLoadDelay());
 
 const resamplerLoader = new ResamplerLoader();
 // if (DeviceInfo.isFirefox)

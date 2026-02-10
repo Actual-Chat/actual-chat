@@ -174,7 +174,7 @@ export class Landing {
             const isVideoPlaying = (cardVideo.currentTime > 0 && !cardVideo.paused && !cardVideo.ended && cardVideo.readyState > 2);
             if (!isVideoPlaying) {
                 this.isVideoPlayStarted = true;
-                void cardVideo.play().then(_ => {
+                void cardVideo.play().then(() => {
                     debugLog?.log('onTouchEnd: card video playback started.');
                 });
                 debugLog?.log('onTouchEnd: card video play...');
@@ -291,7 +291,7 @@ export class Landing {
             return;
 
         video.load();
-        video.oncanplay = _ => {
+        video.oncanplay = () => {
             video.play().then(() => {
                 plug.classList.remove('flex');
                 plug.hidden = true;
@@ -310,7 +310,7 @@ export class Landing {
                 if (cardVideo) {
                     cardVideo.load();
                     cardVideo.muted = true;
-                    cardVideo.oncanplay = _ => {
+                    cardVideo.oncanplay = () => {
                         void cardVideo.play();
                         cardVideo.classList.add('loaded');
                     }
