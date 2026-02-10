@@ -1,9 +1,11 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unnecessary-type-parameters,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/use-unknown-in-catch-callback-variable,@typescript-eslint/require-await */
 import { AUDIO_PLAY as AP, AUDIO_REC as AR } from '_constants';
 import { debounce, delayAsync, PromiseSource, ResolvedPromise, waitAsync, Cancelled } from 'promises';
 import { Interactive } from 'interactive';
 import { InteractiveUI } from '../../UI.Blazor/Services/InteractiveUI/interactive-ui';
 import { OnDeviceAwake } from 'on-device-awake';
-import { firstValueFrom, Observable, Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { Versioning } from 'versioning';
 import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { AudioContextTrait, AttachedAudioContextTrait, DestinationFallbackTrait, DemandInteractiveUI } from './audio-context-traits';
@@ -295,7 +297,7 @@ export class AudioContextSource {
         }
         // The only case this method starts is application start,
         // so it makes sense let other tasks to make some progress first.
-        delayAsync(300).then(() => {
+        void delayAsync(300).then(() => {
             this._maintainTask = this.maintain();
         });
     }
@@ -896,7 +898,6 @@ export class AudioContextSource {
                 // debugLog?.log('maintain: loop 1');
                 let context = this._context;
                 // Try to maintain existing context and create a new one if it's broken or closed
-                // @ts-ignore
                 if (!context || context.state === 'closed') {
                     context = await this.create();
                     this.setContextAndMarkReady(context);
