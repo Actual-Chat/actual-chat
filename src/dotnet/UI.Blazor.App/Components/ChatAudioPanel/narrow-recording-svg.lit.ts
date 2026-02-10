@@ -1,19 +1,19 @@
 import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
-import { scan,  Subscription, filter } from 'rxjs';
+import { scan,  Subscription } from 'rxjs';
 import { clamp, RunningMax, translate } from 'math';
 import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 100 * 96ms ~ 10s
 
-type Result = {
+interface Result {
     runningMax: RunningMax;
     p: number;
     i: number;
 }
 
 @customElement('narrow-recording-svg')
-class NarrowRecordingSvg extends LitElement {
+export class NarrowRecordingSvg extends LitElement {
     static styles = [css`
         :host {
             display: flex;
@@ -63,7 +63,8 @@ class NarrowRecordingSvg extends LitElement {
         const maxOpacity = 100;
         const signalPower$ = RecorderStateHub.audioPowerChanged$
             .pipe(scan<number, Result, RunningMax>((runningMaxOrResult, p, i) => {
-                const runningMax: RunningMax = runningMaxOrResult['runningMax'] || runningMaxOrResult;
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                const runningMax: RunningMax = runningMaxOrResult['runningMax'] ?? runningMaxOrResult;
                 // Fill the window first; once full, only advance it while voice is active
                 const isWindowNotFull = runningMax.sampleCount < SIGNAL_COUNT_TO_CALCULATE_MAX;
                 const shouldAppend = isWindowNotFull || this.isVoiceActive;
@@ -115,6 +116,7 @@ class NarrowRecordingSvg extends LitElement {
                 </svg>
             `;
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             const display = getComputedStyle(this.shadowRoot?.host!, null)?.display ?? 'none';
             if (display === 'none')
                 return html``;
