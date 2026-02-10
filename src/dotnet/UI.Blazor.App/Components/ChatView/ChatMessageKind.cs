@@ -12,4 +12,5 @@ public enum ChatMessageKind
     ConversationEnd,
     Thread,
     SendingNewMessage,
+    AudioRecordingMessage,
 }

@@ -18,6 +18,8 @@ public partial class ChatUI
     public static readonly TileStack<long> ServerIdTileStack = Constants.Chat.ServerIdTileStack;
     public static readonly int SecondTileSize = (int)IdTileStack.LastLayer.TileSize; // 20
 
+    private volatile ChatEntry? _audioRecordingEntry;
+
     private IImmutableSet<ConversationId> LastExpandedConversations { get; set; } =
         ImmutableHashSet<ConversationId>.Empty;
 
@@ -439,6 +441,10 @@ public partial class ChatUI
             chatSendingMessages.ProcessLoadedEntriesRange(rangeEnd.Value);
             var newMessages = await chatSendingMessages.GetNewMessages(currentAuthorId!, rangeEnd.Value).ConfigureAwait(false);
             entries.AddRange(newMessages);
+
+            var audioRecordingEntry = await GetAudioRecordingEntry(chatId, currentAuthorId!, cancellationToken).ConfigureAwait(false);
+            if (audioRecordingEntry is not null)
+                entries.Add(audioRecordingEntry);
         }
         if (entries.Count == 0 && conversations.Length == 0)
             return new VirtualListTile<ChatMessage>(idRange);
@@ -484,6 +490,7 @@ public partial class ChatUI
             }
             else if (entry != null) {
                 // Ignore matched conversation
+                var isClientMsg = entry.Version == 0;
                 var expandedConversation = conversations.FirstOrDefault(c => c.EntryRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
                 var isForward = entry.Forwarded is not null;
@@ -493,7 +500,7 @@ public partial class ChatUI
                 var isForwardBlockStart = (isBlockStart && isForward)
                     || (isForward && (!isPrevForward || isForwardFromOtherChat));
                 var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
-                var isEntryUnread = entry.LocalId > lastReadEntryId;
+                var isEntryUnread = entry.LocalId > lastReadEntryId && !isClientMsg;
                 var isAudio = entry.HasAudio;
                 var shouldAddToResult = idRange.Contains(entry.LocalId) || entry.IsSending; // add sending entries
                 var flags = default(ChatMessageFlags);
@@ -571,12 +578,18 @@ public partial class ChatUI
                     // This messages should have special visibility keys to
                     // 1) do not update read position
                     // 2) do not affect get tiles query
-                    var isSendingNewMsg = entry.Version == 0;
+                    var messageKind = ChatMessageKind.None;
+                    if (isClientMsg)
+                        messageKind = entry.SendingTag switch {
+                            SendingMessage => ChatMessageKind.SendingNewMessage,
+                            AudioRecordingMessageTag => ChatMessageKind.AudioRecordingMessage,
+                            _ => throw new ArgumentOutOfRangeException(nameof(ChatEntry.SendingTag)),
+                        };
                     var message = new ChatEntryMessage(entry) {
                         Date = date,
                         Flags = flags,
-                        ShouldSkipKey = isSendingNewMsg,
-                        Kind = isSendingNewMsg ? ChatMessageKind.SendingNewMessage : ChatMessageKind.None,
+                        ShouldSkipKey = isClientMsg,
+                        Kind = messageKind,
                         PreviousMessage = prevMessage,
                         ShowIndexDocId = showIndexDocId,
                         IndexDocId = indexDocId,
@@ -637,6 +650,35 @@ public partial class ChatUI
             .Reverse()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    [ComputeMethod]
+    protected virtual async Task<ChatEntry?> GetAudioRecordingEntry(ChatId chatId, AuthorId ownAuthorId, CancellationToken cancellationToken)
+    {
+        var state = await Hub.AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
+        var isRecordingInTheChat = state.ChatId == chatId && state.RecordingStartTime.EpochOffsetTicks > 0;
+        if (!isRecordingInTheChat)
+            return null;
+
+        var chatEntry = _audioRecordingEntry;
+        if (chatEntry?.ChatId == chatId)
+            return chatEntry; // Cache chat entry to enable reusing MessageView.
+
+        var entryId = ChatEntryId.New(chatId, long.MaxValue);
+        chatEntry = new ChatEntry(entryId, 0) {
+            AuthorId = ownAuthorId,
+            Content = "",
+            BeginsAt = state.RecordingStartTime,
+            // TODO: rename SendingTag to ClientTag.
+            // We need not null value because otherwise entry will not be included in the result view.
+            SendingTag = new AudioRecordingMessageTag(),
+            ClientUid = Guid.NewGuid().ToString(),
+        };
+        // Owner.RegisterEntryByClientId(chatEntry);
+        _audioRecordingEntry = chatEntry;
+        return chatEntry;
+    }
+
+    // Private methods
 
     private static List<ChatMessage> GroupAuthorMessages(IEnumerable<ChatMessage> messages)
     {
@@ -844,4 +886,7 @@ public partial class ChatUI
         int actualOffset = (int)(isForward ? travelled : -travelled);
         return (currentId, actualOffset);
     }
+
+    // Nested types
+    private record AudioRecordingMessageTag;
 }

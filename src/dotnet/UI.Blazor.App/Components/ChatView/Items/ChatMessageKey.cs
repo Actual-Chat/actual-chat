@@ -23,6 +23,7 @@ public partial class ChatMessageKey : StringIdentifier, IStringIdentifier<ChatMe
         [ChatMessageKind.ConversationEnd] = "-conversation-end",
         [ChatMessageKind.Thread] = "-thread",
         [ChatMessageKind.SendingNewMessage] = "-sending-new-msg",
+        [ChatMessageKind.AudioRecordingMessage] = "-audio-recording-msg",
         [ChatMessageKind.None] = "",
     };
 
