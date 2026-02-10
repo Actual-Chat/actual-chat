@@ -1,5 +1,5 @@
 // TODO: remove eslint-disables and fix errors
-/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-misused-promises,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-explicit-any,@typescript-eslint/no-redundant-type-constituents,@typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-explicit-any,@typescript-eslint/no-redundant-type-constituents,@typescript-eslint/no-unsafe-argument */
 import { AUDIO_REC as AR } from '_constants';
 import { Disposable } from 'disposable';
 import { Versioning } from 'versioning';
