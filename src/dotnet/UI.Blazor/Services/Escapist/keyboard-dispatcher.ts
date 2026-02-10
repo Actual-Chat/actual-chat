@@ -27,7 +27,7 @@ class KeyboardDispatcher {
 
     private onKeyDown = (event: KeyboardEvent) => {
         for (let i = this.subjects.length - 1; i > -1; i--) {
-            let subject = this.subjects[i];
+            const subject = this.subjects[i];
             if (subject.observed) {
                 subject.next(event);
                 break;

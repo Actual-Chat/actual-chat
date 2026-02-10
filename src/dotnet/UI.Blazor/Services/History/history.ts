@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { PromiseSource } from 'promises';
 import { Log } from 'logging';
 import { BrowserInfo } from '../BrowserInfo/browser-info';
@@ -5,7 +6,7 @@ import { BrowserInfo } from '../BrowserInfo/browser-info';
 const { infoLog } = Log.get('History');
 
 export class History {
-    private static backendRef: DotNet.DotNetObject = null;
+    private static backendRef: DotNet.DotNetObject = null!;
 
     public static navigationManager: any
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
