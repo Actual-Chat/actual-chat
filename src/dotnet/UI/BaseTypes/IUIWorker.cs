@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor;
+namespace ActualChat.UI;
 
 public interface IUIWorker
 {

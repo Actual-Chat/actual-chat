@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.Security;
+using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;

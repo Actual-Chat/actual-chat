@@ -5,7 +5,7 @@ using ActualChat.Contacts;
 using ActualChat.Maui;
 using ActualChat.Media;
 using ActualChat.Search;
-using ActualChat.UI.Blazor;
+using ActualChat.UI;
 using ActualChat.UI.Services;
 using ActualLab.Fusion.UI;
 using ActualLab.Generators;
