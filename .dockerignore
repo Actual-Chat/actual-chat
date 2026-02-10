@@ -14,7 +14,7 @@ docs
 deploy
 **/bin/
 **/obj/
-**/node_modules
+**/node_modules/
 **/bower_components/
 **/wwwroot/lib/*
 **/wwwroot/dist/*

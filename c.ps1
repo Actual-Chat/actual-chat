@@ -636,6 +636,18 @@ switch ($mode) {
             $artifactsContainerPath = "/proj/$proj/artifacts"
             $volumeMounts += "-v"
             $volumeMounts += "${artifactsHostPath}:${artifactsContainerPath}"
+
+            # Mount node_modules from artifacts/claude-docker for persistence across container restarts
+            $nodeModulesHostPath = Join-Path $env:AC_ProjectRoot $proj "artifacts" "claude-docker" "node_modules"
+            if (-not (Test-Path $nodeModulesHostPath)) {
+                New-Item -ItemType Directory -Path $nodeModulesHostPath -Force | Out-Null
+            }
+            if ($currentOS -eq "Windows") {
+                $nodeModulesHostPath = ConvertTo-DockerPath $nodeModulesHostPath
+            }
+            $nodeModulesContainerPath = "/proj/$proj/node_modules"
+            $volumeMounts += "-v"
+            $volumeMounts += "${nodeModulesHostPath}:${nodeModulesContainerPath}"
         }
 
         # Add worktree mount if in a worktree
