@@ -287,6 +287,7 @@ export class VisualMediaViewer {
         const headerHeight = this.isHeaderAndFooterVisible ? this.headerHeight : 0;
         const footerHeight = (this.isHeaderAndFooterVisible && this.footer) ? this.footer.offsetHeight : 0;
 
+        // eslint-disable-next-line
         const videoWrapper = activeSlide.querySelector('.video-wrapper') as HTMLElement;
         // eslint-disable-next-line
         if (!videoWrapper)
