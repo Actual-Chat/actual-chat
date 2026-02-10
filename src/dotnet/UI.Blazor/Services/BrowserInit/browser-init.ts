@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/dot-notation */
 import { Connectivity } from 'connectivity';
 import { EventHandlerSet } from 'event-handling';
 import { delayAsync, PromiseSource } from 'promises';
@@ -89,13 +90,12 @@ export class BrowserInit {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         this.reconnectingPromise ??= (async (): Promise<void> => {
             try {
-                // eslint-disable-next-line
                 while (window['Blazor']) {
                     await Connectivity.whenOnline();
                     if (this.whenReloading.isCompleted())
                         return; // Already reloading
 
-                    const blazor = window['Blazor'];
+                    const blazor = window['Blazor'] as { reconnect: (() => Promise<boolean>) | null };
                     warnLog?.log('startReconnecting: reconnecting...');
                     const reconnect = blazor.reconnect;
                     if (reconnect == null)
@@ -114,7 +114,7 @@ export class BrowserInit {
                 this.startReloading();
             }
             finally {
-                this.reconnectingPromise = null;
+                this.reconnectingPromise = null!;
             }
         })();
     }
@@ -133,7 +133,7 @@ export class BrowserInit {
 
     public static startReloadWatchers() {
         const attachWatchers = () => {
-            const errors = [];
+            const errors: string[] = [];
             const reconnectDiv = document.getElementById('components-reconnect-modal');
             if (reconnectDiv) {
                 const checkReconnectDiv = () => {
@@ -183,7 +183,7 @@ export class BrowserInit {
     }
 
     public static removeWebSplash(instantly = false) {
-        document.body.style.backgroundColor = null;
+        document.body.style.backgroundColor = '';
         const splash = document.getElementById('web-splash');
         if (!splash)
             return;
@@ -253,7 +253,7 @@ export class BrowserInit {
         // Set App.windowId
         (() => {
             const windowIds = JSON
-                .parse(sessionStorage?.windowIds ?? "[]")
+                .parse(sessionStorage?.windowIds ?? '[]')
                 .filter((value, i, a) => value != null);
             this.windowId = windowIds.pop();
             if (this.windowId == null)
@@ -262,8 +262,8 @@ export class BrowserInit {
                 sessionStorage.windowIds = JSON.stringify(windowIds);
         })();
 
-        window.addEventListener("beforeunload", () => {
-            const windowIds = JSON.parse(sessionStorage?.windowIds ?? "[]");
+        window.addEventListener('beforeunload', () => {
+            const windowIds = JSON.parse(sessionStorage?.windowIds ?? '[]');
             windowIds.push(this.windowId);
             if (sessionStorage)
                 sessionStorage.windowIds = JSON.stringify(windowIds);
@@ -334,7 +334,7 @@ export class BrowserInit {
         void keepWebLock();
     }
 
-    private static setAppConnectionState(state: string = ""): void {
+    private static setAppConnectionState(state = ''): void {
         if (this.connectionState === state)
             return;
 
