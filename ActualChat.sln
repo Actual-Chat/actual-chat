@@ -99,7 +99,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		r-windows.cmd = r-windows.cmd
 		npm-build-release.cmd = npm-build-release.cmd
 		.dockerignore = .dockerignore
+		build.mjs = build.mjs
 		eslint.config.mjs = eslint.config.mjs
+		package.json = package.json
+		postcss.config.mjs = postcss.config.mjs
+		postcss-watch-plugin.js = postcss-watch-plugin.js
+		tailwind.config.js = tailwind.config.js
+		tsconfig.json = tsconfig.json
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -124,12 +130,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.IntegrationTests", "t
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nodejs", "nodejs", "{609C47B5-30E6-4B2A-A8DB-1B1FD644948F}"
 	ProjectSection(SolutionItems) = preProject
-		src\nodejs\build.mjs = src\nodejs\build.mjs
 		src\nodejs\index.ts = src\nodejs\index.ts
-		src\nodejs\package.json = src\nodejs\package.json
-		src\nodejs\postcss.config.mjs = src\nodejs\postcss.config.mjs
-		src\nodejs\tailwind.config.js = src\nodejs\tailwind.config.js
-		src\nodejs\tsconfig.json = src\nodejs\tsconfig.json
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C53-98F6-45B2-8717-15B35A59AFDC}"
