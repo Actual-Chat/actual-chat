@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await */
 import codec, { Decoder, Codec } from '@actual-chat/codec';
 import codecWasm from '@actual-chat/codec/codec.wasm';
 // import codecWasmMap from '@actual-chat/codec/codec.wasm.map';

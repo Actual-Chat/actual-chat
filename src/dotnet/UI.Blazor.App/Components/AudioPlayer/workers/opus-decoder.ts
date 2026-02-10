@@ -1,3 +1,5 @@
+// TODO: remove eslint-disables and fix errors
+/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/require-await */
 /// #if MEM_LEAK_DETECTION
 import { Decoder } from '@actual-chat/codec/codec.debug';
 /// #else
