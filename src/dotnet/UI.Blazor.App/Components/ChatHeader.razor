@@ -85,6 +85,16 @@
 @if (ScreenSize.IsNarrow() && isPanelVisible) {
     <div class="header-activity-panel-wrapper">
         <ChatActivityPanel Chat="@chat" MaxCount="3" Click="@OnToggleRightPanelClick"/>
+        <div class="pin-badge">
+            <span class="c-badge-content">
+                <i class="icon-arrow-down"></i> Pin Panel
+            </span>
+        </div>
+        <div class="unpin-badge">
+            <span class="c-badge-content">
+                <i class="icon-arrow-down rotate-180"></i> Unpin Panel
+            </span>
+        </div>
     </div>
 }
 

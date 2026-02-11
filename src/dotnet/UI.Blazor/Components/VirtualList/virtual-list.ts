@@ -1209,40 +1209,14 @@ export class VirtualList {
                 if (!lastItemRef)
                     return false;
 
-                const isNewItem = old?.itemKey != null && old.itemKey !== stickyEdge.itemKey;
                 let hasAnchor = false;
-                let actualHeight = 0;
                 fastRaf({
                     read: () => {
                         hasAnchor = lastItemRef.classList.contains('anchor');
-                        if (isNewItem) {
-                            actualHeight = lastItemRef.offsetHeight;
-                        }
                     },
                     write: () => {
                         if (!hasAnchor)
                             lastItemRef.classList.add('anchor');
-                        if (isNewItem && actualHeight > 0) {
-                            lastItemRef.style.height = '0px';
-                            lastItemRef.style.overflow = 'clip';
-                            lastItemRef.classList.add('appearing');
-                            // Force reflow to ensure the browser registers the 0 height
-                            void lastItemRef.offsetHeight;
-                            lastItemRef.style.height = `${actualHeight}px`;
-                            const onTransitionEnd = (e: TransitionEvent) => {
-                                if (e.propertyName !== 'height')
-                                    return;
-                                lastItemRef.removeEventListener('transitionend', onTransitionEnd);
-                                fastRaf({
-                                    write: () => {
-                                        lastItemRef.classList.remove('appearing');
-                                        lastItemRef.style.height = '';
-                                        lastItemRef.style.overflow = '';
-                                    },
-                                });
-                            };
-                            lastItemRef.addEventListener('transitionend', onTransitionEnd);
-                        }
                     },
                 });
             }

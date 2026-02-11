@@ -217,3 +217,20 @@ body.narrow .chat-activity-panel.listening:after {
 .layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel {
     @apply bottom-3;
 }
+
+/* During unpin drag, disable transitions and animation for smooth finger following */
+.header-activity-panel-wrapper.dragging {
+    @apply z-button;
+    transition: none;
+    animation: none;
+}
+.header-activity-panel-wrapper.dragging .chat-activity-panel {
+    @apply z-button;
+    transition: none;
+}
+
+/* Visual feedback when unpin mode is active */
+.chat-activity-panel.unpin-active {
+    @apply scale-105;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
