@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Media.Db;
 
-[Table("MediaStatuses")]
+[Table("MediaProgresses")]
 public class DbMediaProgress : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public DbMediaProgress() { }
