@@ -76,7 +76,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Essentials" />
-    <PackageReference Include="Svg.Skia" />
   </ItemGroup>
 
   <!-- Workaround for excluding C# files from compilation for non-iOS targets -->

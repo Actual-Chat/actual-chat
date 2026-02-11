@@ -1,4 +1,4 @@
-namespace ActualChat.App.Maui.IosShareExt.Services;
+namespace ActualChat.Maui.Services;
 
 public static class AvatarUtils
 {

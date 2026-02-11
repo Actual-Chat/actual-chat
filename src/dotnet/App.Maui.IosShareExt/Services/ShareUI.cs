@@ -202,7 +202,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
             foreach (var chat in chats.SkipNullItems())
-                await IntentDonation.Donate(chat, cancellationToken).ConfigureAwait(false);
+                await IntentDonation.Donate(chat, null, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             if (!e.IsCancellationOf(StopToken))
