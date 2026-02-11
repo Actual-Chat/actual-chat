@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Media.Db;
 
 [Table("MediaStatuses")]
-public class DbMediaStatus : IHasId<string>, IRequirementTarget
+public class DbMediaStatus : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public DbMediaStatus() { }
     public DbMediaStatus(MediaStatusInfo model) => UpdateFrom(model);

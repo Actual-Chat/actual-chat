@@ -34,25 +34,33 @@ public class MediaStatusBackend(IServiceProvider services) : DbServiceBase<Media
 
         MediaStatusInfo? statusInfo;
         if (change.IsCreate(out var createStatus)) {
-            statusInfo = createStatus;
+            statusInfo = createStatus with {
+                Version = VersionGenerator.NextVersion()
+            };
             var dbMediaStatus = new DbMediaStatus(statusInfo);
             dbContext.MediaStatuses.Add(dbMediaStatus);
         }
         else if (change.IsUpdate(out var updateStatus)) {
-            statusInfo = updateStatus;
             var dbMediaStatus = await dbContext.MediaStatuses
                 .Get(mediaId.Value, cancellationToken)
+                .RequireVersion(expectedVersion)
                 .ConfigureAwait(false);
-            if (dbMediaStatus != null)
-                dbMediaStatus.UpdateFrom(statusInfo);
+            statusInfo = updateStatus with {
+                Version = VersionGenerator.NextVersion(dbMediaStatus.Version)
+            };
+            dbMediaStatus.UpdateFrom(statusInfo);
         }
         else if (change.IsRemove()) {
             var dbMediaStatus = await dbContext.MediaStatuses
                 .Get(mediaId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            statusInfo = dbMediaStatus?.ToModel();
-            if (dbMediaStatus != null)
+            if (dbMediaStatus is not null) {
+                dbMediaStatus.RequireVersion(expectedVersion);
+                statusInfo = dbMediaStatus.ToModel();
                 dbContext.Remove(dbMediaStatus);
+            }
+            else
+                statusInfo = null;
         }
         else
             throw new NotSupportedException("Invalid change.");

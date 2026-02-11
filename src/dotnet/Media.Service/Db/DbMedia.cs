@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -7,7 +8,7 @@ namespace ActualChat.Media.Db;
 
 [Table("Media")]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
-public class DbMedia : IHasId<string>, IRequirementTarget
+public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     public DbMedia() { }
     public DbMedia(MediaFull model) => UpdateFrom(model);

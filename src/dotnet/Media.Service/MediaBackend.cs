@@ -79,26 +79,31 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         await using var __ = dbContext.ConfigureAwait(false);
 
         if (change.IsCreate(out var media)) {
+            media = media with {
+                Version = VersionGenerator.NextVersion()
+            };
             var dbMedia = new DbMedia(media);
             dbContext.Media.Add(dbMedia);
         }
         else if (change.IsUpdate(out media)) {
             var dbMedia = await dbContext.Media
                 .Get(mediaId.Value, cancellationToken)
+                .RequireVersion(expectedVersion)
                 .ConfigureAwait(false);
-            if (dbMedia != null)
-                dbMedia.UpdateFrom(media);
+            media = media with {
+                Version = VersionGenerator.NextVersion(dbMedia.Version)
+            };
+            dbMedia.UpdateFrom(media);
         }
         else if (change.IsRemove()) {
             var dbMedia = await dbContext.Media
                 .Get(mediaId.Value, cancellationToken)
                 .ConfigureAwait(false);
-            media = dbMedia?.ToModel();
-            if (dbMedia != null) {
+            if (dbMedia is not null) {
+                dbMedia.RequireVersion(expectedVersion);
+                media = dbMedia.ToModel();
                 if (!dbMedia.ContentId.IsNullOrEmpty())
-                    await ContentSaver.Remove(dbMedia.ContentId, cancellationToken)
-                        .ConfigureAwait(false);
-
+                    await ContentSaver.Remove(dbMedia.ContentId, cancellationToken).ConfigureAwait(false);
                 dbContext.Remove(dbMedia);
             }
         }
