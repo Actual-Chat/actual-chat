@@ -1,7 +1,7 @@
-import {customElement} from 'lit/decorators.js';
-import {html, LitElement} from 'lit';
-import {HTMLTemplateResult} from 'lit-html/development/lit-html';
-import {MessageWidth, randomIntFromInterval} from './helpers';
+import { customElement } from 'lit/decorators.js';
+import { html, LitElement } from 'lit';
+import { HTMLTemplateResult } from 'lit-html/development/lit-html';
+import { MessageWidth, randomIntFromInterval } from './helpers';
 
 @customElement('place-menu-button-skeleton')
 export class PlaceMenuButtonSkeleton extends LitElement {

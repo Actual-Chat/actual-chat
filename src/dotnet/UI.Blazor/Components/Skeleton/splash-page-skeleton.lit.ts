@@ -7,7 +7,7 @@ export class SplashPageSkeleton extends LitElement {
         return this;
     }
 
-    @property({type: String})
+    @property({ type: String })
         isRightPanelVisible: 'true' | 'false' = 'false';
 
     protected render(): unknown {

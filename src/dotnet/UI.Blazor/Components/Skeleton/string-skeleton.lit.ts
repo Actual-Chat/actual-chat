@@ -1,5 +1,5 @@
-﻿import {customElement, property} from 'lit/decorators.js';
-import {html, LitElement} from 'lit';
+﻿import { customElement, property } from 'lit/decorators.js';
+import { html, LitElement } from 'lit';
 import { MessageWidth, randomIntFromInterval, StringHeight } from './helpers';
 
 @customElement('string-skeleton')
@@ -12,8 +12,8 @@ export class StringSkeletonLit extends LitElement {
     @property() secondWidth = 10;
     @property() height  = 3;
     @property() maxWidth = 0;
-    @property({type: Boolean}) system = false;
-    @property({type: Boolean}) rounded = false;
+    @property({ type: Boolean }) system = false;
+    @property({ type: Boolean }) rounded = false;
     @property() rootCls = 'layout-body';
 
     render(): unknown {

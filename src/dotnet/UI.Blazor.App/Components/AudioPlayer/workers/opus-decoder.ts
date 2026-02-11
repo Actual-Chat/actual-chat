@@ -165,7 +165,7 @@ export class OpusDecoder implements BufferHandler, AsyncDisposable {
             ? this.bufferPool.get()
             : this.largeBufferPool.get();
         const samples = new Float32Array(samplesBuffer, 0, output.numberOfFrames);
-        output.copyTo(samples, { planeIndex: 0, format: 'f32-planar'})
+        output.copyTo(samples, { planeIndex: 0, format: 'f32-planar' })
 
         void this.feederWorklet.frame(samples.buffer, samples.byteOffset, samples.length, rpcNoWait);
     }

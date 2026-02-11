@@ -35,9 +35,9 @@ export class MentionList {
                 const listTop = listRect.top;
                 const listBottom = listRect.bottom;
                 if (top < listTop) {
-                    item.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    item.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else if (bottom > listBottom) {
-                    item.scrollIntoView({behavior: 'smooth', block: 'end'});
+                    item.scrollIntoView({ behavior: 'smooth', block: 'end' });
                 }
             }
         }

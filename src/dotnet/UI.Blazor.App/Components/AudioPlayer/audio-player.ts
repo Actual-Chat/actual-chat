@@ -156,7 +156,7 @@ export class AudioPlayer implements Resettable {
         }
         decoderWorker ??= rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
 
-        await decoderWorker.create(Versioning.assetMap, {type: 'rpc-timeout', timeoutMs: 20_000});
+        await decoderWorker.create(Versioning.assetMap, { type: 'rpc-timeout', timeoutMs: 20_000 });
 
         this.whenInitialized.resolve(undefined);
     }

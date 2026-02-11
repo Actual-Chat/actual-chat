@@ -94,7 +94,7 @@ onBackgroundMessage(messaging, async payload => {
         },
     };
     // silly hack because notifications get lost or suppressed
-    const notificationsToClose = await sw.registration.getNotifications({tag: tag});
+    const notificationsToClose = await sw.registration.getNotifications({ tag: tag });
     for (const toClose of notificationsToClose) {
         toClose.close();
     }

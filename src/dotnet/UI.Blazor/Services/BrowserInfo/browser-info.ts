@@ -5,7 +5,7 @@ import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
 import { Log } from 'logging';
 import { DocumentEvents } from 'event-handling';
-import {Theme, ThemeInfo} from 'theme';
+import { Theme, ThemeInfo } from 'theme';
 
 const { infoLog } = Log.get('BrowserInfo');
 

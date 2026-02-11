@@ -1423,7 +1423,7 @@ export class VirtualList {
                                 //     'restoreScrollPosition: wrapper size increased with DELAY!',
                                 //     totalSize);
                             }
-                        }});
+                        } });
                     this.turnOffScrollingCallback = setWrapperHeight;
 
                 }
