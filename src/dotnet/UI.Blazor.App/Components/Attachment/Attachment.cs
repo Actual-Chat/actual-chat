@@ -16,6 +16,19 @@ public abstract record Attachment(string FileName, string FileType, long Length,
 
     public string DemandUploadSessionId()
         => !UploadSessionId.IsNullOrEmpty() ? UploadSessionId : throw new InvalidOperationException("Upload session not assigned");
+
+    public PropertyBag GetMetadataForUploadSession()
+    {
+        var metadata = new PropertyBag()
+            .Set(nameof(Media.Media.FileName), FileName)
+            .Set(nameof(Media.Media.ContentType), FileType)
+            .Set(nameof(Media.Media.Length), Length);
+        if (IsImage || IsVideo)
+            metadata = metadata
+                .Set(nameof(Media.Media.Width), Width)
+                .Set(nameof(Media.Media.Height), Height);
+        return metadata;
+    }
 }
 
 public record SourceAttachment(

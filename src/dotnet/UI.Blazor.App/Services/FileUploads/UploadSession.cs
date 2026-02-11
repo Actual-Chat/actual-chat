@@ -24,6 +24,7 @@ public partial class UploadSession
     [DataMember, MemoryPackOrder(6)] public UploadId? UploadId { get; set; }
     [DataMember, MemoryPackOrder(7)] public MediaContent? MediaContent { get; set; }
     [DataMember, MemoryPackOrder(8)] public MediaId? ReservedMediaId { get; set; }
+    [DataMember, MemoryPackOrder(9)] public PropertyBag Metadata { get; set; }
 
     [IgnoreDataMember, MemoryPackIgnore] public string FileName => FileProvider.Metadata.FileName;
     [IgnoreDataMember, MemoryPackIgnore] public UploadProgressTracker ProgressTracker { get; set; } = new ();

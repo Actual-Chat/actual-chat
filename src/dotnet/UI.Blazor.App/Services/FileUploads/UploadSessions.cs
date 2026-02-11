@@ -30,8 +30,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         _cleanupTask = BackgroundTask.Run(Cleanup);
     }
 
-    public async Task<UploadSession> CreateSession(
-        IFileProvider fileProvider)
+    public async Task<UploadSession> CreateSession(IFileProvider fileProvider, PropertyBag metadata)
     {
         if (fileProvider == null)
             throw new ArgumentNullException(nameof(fileProvider));
@@ -45,6 +44,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             Status = UploadStatus.Pending,
             CreatedAt = Now,
             LastUpdatedAt = Now,
+            Metadata = metadata,
         };
 
         await _repo.Save(session).ConfigureAwait(false);
@@ -250,7 +250,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             if (session.ReservedMediaId is not null)
                 return session.ReservedMediaId;
 
-            var metadata = await Hub.AttachmentsState.GetUploadSessionMetadata(sessionId, cancellationToken).ConfigureAwait(false);
+            var metadata = GetMetadata(session);
             // TODO(DF): review how we choose media scope and whether we need a new media id here or not.
             var mediaScope = MediaId.GenerateScope();     //session.ChatId.Value;
             var command = new Medias_ReserveMedia(Session, mediaScope) { Metadata = metadata };
@@ -264,6 +264,15 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         finally {
             sessionLock.Release();
         }
+    }
+
+    private PropertyBag GetMetadata(UploadSession session)
+    {
+        var metadata = session.Metadata
+            .Set(nameof(Media.Media.FileName), session.FileName)
+            .Set(nameof(Media.Media.ContentType), session.FileProvider.Metadata.FileType)
+            .Set(nameof(Media.Media.Length), session.FileProvider.Metadata.Length);
+        return metadata;
     }
 
     private bool CheckIfTouched(string sessionId)
@@ -347,7 +356,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             await _repo.Save(session).ConfigureAwait(false);
             LogStatusChange(session, session.Status);
             var errorMessage = error.Message.IsNullOrEmpty() ? "Upload failed" : error.Message;
-            var uploadProgress = await Hub.UploadSessionsState.GetProgress(sessionId, default);
+            var uploadProgress = await Hub.UploadSessionsState.GetProgress(sessionId, default).ConfigureAwait(false);
             uploadProgress = uploadProgress with {
                 IsFailed = true,
                 ErrorMessage = "Failed: " + errorMessage,

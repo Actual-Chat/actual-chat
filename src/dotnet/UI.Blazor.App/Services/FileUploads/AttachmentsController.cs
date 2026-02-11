@@ -17,13 +17,12 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
                 $"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
         try {
-            var uploadSession = await UploadSessions.CreateSession(fileProvider).ConfigureAwait(false);
-            //AttachmentRegistry.SetUploadSessionId(attachment.Id, uploadSession.SessionId);
+            var uploadSession = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession()).ConfigureAwait(false);
             attachment = attachment with {
                 UploadSessionId = uploadSession.SessionId,
             };
             // UploadSession cleanup will handle file cleanup. So just replace it.
-            await UploadSessions.AddReference(uploadSession.SessionId);
+            await UploadSessions.AddReference(uploadSession.SessionId).ConfigureAwait(false);
             attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSession.SessionId));
             return attachment;
