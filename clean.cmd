@@ -16,12 +16,12 @@ BATCH
 #!/bin/sh
 dotnet build-server shutdown
 ./run-build.cmd clean
-rmdir artifacts/bin
-rmdir artifacts/obj
-rmdir artifacts/out
-rmdir artifacts/repacked
-rmdir artifacts/publish
-rmdir artifacts/tests
-rmdir artifacts/claude-docker
+rm -rf artifacts/bin
+rm -rf artifacts/obj
+rm -rf artifacts/out
+rm -rf artifacts/repacked
+rm -rf artifacts/publish
+rm -rf artifacts/tests
+rm -rf artifacts/claude-docker
 dotnet restore
 echo "Clean completed."
