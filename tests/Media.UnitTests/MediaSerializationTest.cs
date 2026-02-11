@@ -1,5 +1,3 @@
-using ActualChat.Media;
-
 namespace ActualChat.Media.UnitTests;
 
 public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
@@ -11,7 +9,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Media_Basic()
     {
         var mediaId = MediaId.New(TestUserId.Value, "local1");
-        var media = new Media(mediaId, "content-1", new PropertyBag());
+        var media = new Media(mediaId, 0, "content-1", new PropertyBag());
 
         var s = media.PassThroughAllSerializers(Out);
         s.Id.Should().Be(media.Id);
