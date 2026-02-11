@@ -382,6 +382,7 @@ export class AudioContextSource {
         // Ensure the maintain loop is running so that `_whenReady` can eventually resolve.
         if (!this._isMaintained) {
             debugLog?.log(`whenReady: auto-start maintain (was inactive)`);
+            if (this._maintainTask) await this._maintainTask;
             this._maintainTask = this.maintain();
         }
 
@@ -447,6 +448,12 @@ export class AudioContextSource {
             this._closeContextDebounced.reset();
             this._whileBackgroundIdleAppActivityState?.resolve(undefined);
             this._whileBackgroundIdleAppActivityState = null;
+        }
+
+        // Restart the maintain loop if it was stopped (e.g., by BackgroundIdle)
+        if (!this._isMaintained) {
+            if (this._maintainTask) await this._maintainTask;
+            this._maintainTask = this.maintain();
         }
 
         const context = this._context;
