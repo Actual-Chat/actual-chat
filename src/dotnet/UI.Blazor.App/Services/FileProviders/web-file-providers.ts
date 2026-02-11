@@ -1,5 +1,3 @@
-// TODO: remove eslint-disables and fix errors
-/* eslint-disable @typescript-eslint/no-misused-promises,@typescript-eslint/use-unknown-in-catch-callback-variable */
 import { deleteFileHandle, getFileHandle, saveFileHandle } from './file-handle-storage';
 import { grantFileUploadPermissionsInvoker, requestFileHandlePermission, GetFilePermissionsRequest } from './file-handle-permissions';
 import { Log } from 'logging';
