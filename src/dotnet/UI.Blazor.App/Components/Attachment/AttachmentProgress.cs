@@ -1,0 +1,9 @@
+namespace ActualChat.UI.Blazor.App.Components;
+
+public sealed record AttachmentProgress(double Progress, string Details = "")
+{
+    public static readonly AttachmentProgress New = new(0);
+
+    public bool IsReady { get; init; }
+    public bool IsFailed { get; init; }
+}

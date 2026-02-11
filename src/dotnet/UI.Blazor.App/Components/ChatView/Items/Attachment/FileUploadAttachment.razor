@@ -6,23 +6,23 @@
     var attachment = Attachment;
     var state = State.Value;
     var previewState = state.Preview.State;
-    var uploadState = state.UploadState;
-    var progress = uploadState.Progress;
-    var stageDetails = uploadState.Details;
+    var progress = state.Progress;
+    var progressValue = progress.Progress;
+    var stageDetails = progress.Details;
     var uploadProgressClass = "attachment-upload-progress";
     MediaMimeTypes.TryGetExtension(attachment.FileType, out var extension);
     var fileExtension = extension != null ? extension.Replace(".", "") : "";
     var fileCls = FileTypeHelper.FileColors.GetValueOrDefault(fileExtension, "file-default");
     var iconOnlyCls = IconOnly ? "icon-only" : "";
     var tooltipTitle = IconOnly ? GetTooltipTitle() : "";
-    if (uploadState.IsFailed) {
-        progress = Math.Max(progress, 30);
+    if (progress.IsFailed) {
+        progressValue = Math.Max(progressValue, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (uploadState.IsReady) {
+    } else if (progress.IsReady) {
         uploadProgressClass += " attachment-upload-completed";
     }
-    var uploadStyle = $"width: {progress}%;";
-    var isUploading = state.UploadSessionId != "" && !(uploadState.IsReady || uploadState.IsFailed);
+    var uploadStyle = $"width: {progressValue}%;";
+    var isUploading = state.UploadSessionId != "" && !(progress.IsReady || progress.IsFailed);
 }
 
 <div class="file-attachment upload-file unfocusable @iconOnlyCls"
@@ -40,7 +40,7 @@
                 <i class="icon-file text-xl"></i>
             }
         }
-        @if (!uploadState.IsReady && previewState is PreviewAccessState.Ok) {
+        @if (!progress.IsReady && previewState is PreviewAccessState.Ok) {
             @if (isUploading) {
                 <span class="spinner-icon-wrapper">
                     <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
@@ -62,8 +62,8 @@
             </div>
         </div>
     }
-    @if (!uploadState.IsReady) {
-        @if (uploadState.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
+    @if (!progress.IsReady) {
+        @if (progress.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
             <span class="reload-icon-wrapper">
                 <ButtonRound Click="@RestartClick" Class="btn-sm">
                     <i class="icon-sync text-2xl"></i>

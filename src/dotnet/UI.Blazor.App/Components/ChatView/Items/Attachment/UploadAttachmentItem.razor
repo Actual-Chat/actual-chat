@@ -7,19 +7,19 @@
     var preview = state.Preview;
     var previewState = preview.State;
     var previewUrl = preview.PreviewUrl;
-    var uploadState = state.UploadState;
-    var progress = uploadState.Progress;
-    var stageDetails = uploadState.Details;
+    var progress = state.Progress;
+    var progressValue = progress.Progress;
+    var stageDetails = progress.Details;
     var uploadProgressClass = "attachment-upload-progress";
     var plugClass = "blurred-plug";
-    if (uploadState.IsFailed) {
-        progress = Math.Max(progress, 30);
+    if (progress.IsFailed) {
+        progressValue = Math.Max(progressValue, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (uploadState.IsReady) {
+    } else if (progress.IsReady) {
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
-    var isUploading = state.UploadSessionId != "" && !(uploadState.IsReady || uploadState.IsFailed);
+    var isUploading = state.UploadSessionId != "" && !(progress.IsReady || progress.IsFailed);
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -35,12 +35,12 @@
                         <source src="@previewUrl#t=0.5"/>
                     </video>
                 }
-                @if (!uploadState.IsReady) {
+                @if (!progress.IsReady) {
                     @if (isUploading) {
                         <span class="spinner-icon-wrapper">
                             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
                         </span>
-                    } else if (uploadState.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
+                    } else if (progress.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
                         <span class="reload-icon-wrapper">
                             <ButtonRound Click="@RestartClick" Class="btn-sm">
                                 <i class="icon-sync text-2xl"></i>
@@ -65,7 +65,7 @@
             }
         </div>
         <div class="@uploadProgressClass"
-             style="@($"width: {progress}%;")"
+             style="@($"width: {progressValue}%;")"
              title="@stageDetails">
         </div>
     </div>

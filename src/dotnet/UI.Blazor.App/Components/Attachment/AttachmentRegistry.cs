@@ -94,7 +94,7 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     [ComputeMethod]
     public virtual async Task<bool> IsReady(AttachmentId id, CancellationToken cancellationToken)
     {
-        var state = await GetAttachmentUploadState(id, cancellationToken).ConfigureAwait(false);
+        var state = await GetProgress(id, cancellationToken).ConfigureAwait(false);
         return state.IsReady;
     }
 
@@ -102,27 +102,29 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     public virtual async Task<AttachmentState> GetAttachmentState(AttachmentId id, CancellationToken cancellationToken)
     {
         var previewState = await GetPreview(id, cancellationToken).ConfigureAwait(false);
-        var uploadState = await GetAttachmentUploadState(id, cancellationToken).ConfigureAwait(false);
+        var uploadState = await GetProgress(id, cancellationToken).ConfigureAwait(false);
         return new AttachmentState(previewState, uploadState);
     }
 
-    public virtual async Task<AttachmentUploadState> GetAttachmentUploadState(
-        AttachmentId id,
-        CancellationToken cancellationToken)
+    public virtual async Task<AttachmentProgress> GetProgress(AttachmentId id, CancellationToken cancellationToken)
     {
         var mediaStatus = await GetMediaStatus(id, cancellationToken).ConfigureAwait(false);
         if (mediaStatus is null)
-            return AttachmentUploadState.Idle;
+            return AttachmentProgress.New;
 
         var stageInfo = GetStateInfo(mediaStatus.Stage);
         var overallProgress = stageInfo.BaseProgress
             + (int)(mediaStatus.StageProgress * stageInfo.StageWidth / 100);
 
-        var details = mediaStatus.HasFailed
-            ? "Failed: " + mediaStatus.ErrorMessage
-            : stageInfo.Details;
-
-        return new AttachmentUploadState(mediaStatus.Stage, overallProgress, details) {
+        var isReady = mediaStatus.Stage == MediaStage.Ready;
+        var isFailed = !isReady && mediaStatus.HasFailed;
+        var details = (isReady, isFailed) switch {
+            (true, _) => "",
+            (_, true) => "Failed: " + mediaStatus.ErrorMessage,
+            _ => stageInfo.Details,
+        };
+        return new AttachmentProgress(overallProgress, details) {
+            IsReady = isReady,
             IsFailed = mediaStatus.HasFailed,
         };
     }
@@ -213,17 +215,9 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
 
 public sealed record AttachmentInfo(string UploadSessionId);
 
-public sealed record AttachmentUploadState(MediaStage Stage, double Progress, string Details = "")
+public sealed record AttachmentState(AttachmentPreview Preview, AttachmentProgress Progress)
 {
-    public static readonly AttachmentUploadState Idle = new(MediaStage.Reserved, 0);
-
-    public bool IsReady => Stage == MediaStage.Ready;
-    public bool IsFailed { get; init; }
-}
-
-public sealed record AttachmentState(AttachmentPreview Preview, AttachmentUploadState UploadState)
-{
-    public static readonly AttachmentState None = new(AttachmentPreview.NoPreview, AttachmentUploadState.Idle);
+    public static readonly AttachmentState None = new(AttachmentPreview.NoPreview, AttachmentProgress.New);
 
     public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
 

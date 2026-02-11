@@ -4,23 +4,23 @@
 @{
     var attachment = Attachment;
     var state = State.Value;
-    var uploadState = state.UploadState;
-    var progress = uploadState.Progress;
-    var stageDetails = uploadState.Details;
+    var progress = state.Progress;
+    var progressValue = progress.Progress;
+    var stageDetails = progress.Details;
     // NOTE: For attachment item preview state should always be in OK state, so we can use previewUrl.
     var previewUrl = state.Preview.PreviewUrl;
     var uploadProgressClass = "attachment-upload-progress";
     var plugClass = "blurred-plug";
-    if (uploadState.IsFailed) {
-        progress = Math.Max(progress, 30);
+    if (progress.IsFailed) {
+        progressValue = Math.Max(progressValue, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (uploadState.IsReady) {
+    } else if (progress.IsReady) {
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
 
-    var uploadStyle = $"width: {progress}%;";
-    var isUploading = state.UploadSessionId != "" && !(uploadState.IsReady || uploadState.IsFailed);
+    var uploadStyle = $"width: {progressValue}%;";
+    var isUploading = state.UploadSessionId != "" && !(progress.IsReady || progress.IsFailed);
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -37,11 +37,11 @@
             } else {
                 <FileAttachmentView FileType="@attachment.FileType"/>
             }
-            @if (!uploadState.IsReady) {
+            @if (!progress.IsReady) {
                 <span class="spinner-icon-wrapper">
                     @if (isUploading) {
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                    } else if (uploadState.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
+                    } else if (progress.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
                         <ButtonRound Click="@RestartClick">
                             <i class="icon-sync text-2xl"></i>
                         </ButtonRound>
