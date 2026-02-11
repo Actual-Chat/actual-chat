@@ -246,13 +246,13 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             if (attachment.NoFileAccess)
                 continue;
             var mediaStatus = await attachmentRegistry.GetMediaStatus(attachment.Id, default).ConfigureAwait(false);
-            if (mediaStatus is null || mediaStatus.Status is not MediaStatus.Ready && mediaStatus.Status is not MediaStatus.Failed)
+            if (mediaStatus is null || (mediaStatus.Stage is not MediaStage.Ready && !mediaStatus.HasFailed))
                 await attachmentsController.ResumeUpload(attachment).ConfigureAwait(false);
         }
 
         foreach (var attachment in attachments) {
             var mediaStatus = await attachmentRegistry.GetMediaStatus(attachment.Id, default).ConfigureAwait(false);
-            if (mediaStatus is null || mediaStatus.Status is not MediaStatus.Ready)
+            if (mediaStatus is null || mediaStatus.Stage is not MediaStage.Ready)
                 SubscribeFilePermissionsGranted(attachment.Id, attachment.Extras);
             SubscribePreviewResolved(attachment.Id, attachment.Extras);
         }

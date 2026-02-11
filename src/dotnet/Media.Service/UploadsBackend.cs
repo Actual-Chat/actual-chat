@@ -251,15 +251,15 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     {
         var progress = new Progress<double>(p => {
             // Fire and forget - we don't want to block processing for status updates
-            _ = UpdateMediaStatus(mediaId, MediaPreparingStage.Converting, p, CancellationToken.None);
+            _ = UpdateMediaStatus(mediaId, MediaStage.ServerProcessing, p, CancellationToken.None);
         });
         return progress;
     }
 
-    private async Task UpdateMediaStatus(MediaId mediaId, MediaPreparingStage stage, double progress, CancellationToken cancellationToken)
+    private async Task UpdateMediaStatus(MediaId mediaId, MediaStage stage, double progress, CancellationToken cancellationToken)
     {
         try {
-            var statusInfo = new MediaStatusInfo(mediaId, MediaStatus.Preparing, stage, progress);
+            var statusInfo = new MediaStatusInfo(mediaId, stage, progress, "");
             var change = new Change<MediaStatusInfo> { Update = statusInfo };
             await Commander.Call(new MediaStatusBackend_Change(mediaId, change), true, cancellationToken).ConfigureAwait(false);
         }

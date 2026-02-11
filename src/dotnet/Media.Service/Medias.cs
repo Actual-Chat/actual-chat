@@ -16,7 +16,7 @@ public class Medias(IServiceProvider services) : IMedias
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
         if (!media.ContentId.IsNullOrEmpty())
-            return new MediaStatusInfo(mediaId, MediaStatus.Ready);
+            return new MediaStatusInfo(mediaId, MediaStage.Ready, 100, "");
 
         var mediaStatusInfo = await MediaStatusBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         return mediaStatusInfo;
@@ -60,7 +60,7 @@ public class Medias(IServiceProvider services) : IMedias
 
         await Commander.Call(new MediaBackend_Change(mediaId, mediaChange), cancellationToken).ConfigureAwait(false);
 
-        var statusInfo = new MediaStatusInfo(mediaId, MediaStatus.Reserved);
+        var statusInfo = new MediaStatusInfo(mediaId, MediaStage.Reserved, 0,"");
         var statusChange = new Change<MediaStatusInfo> { Create = statusInfo };
         await Commander.Call(new MediaStatusBackend_Change(mediaId, statusChange), cancellationToken).ConfigureAwait(false);
 
@@ -93,14 +93,14 @@ public class Medias(IServiceProvider services) : IMedias
         if (Invalidation.IsActive)
             return;
 
-        var (session, mediaId, status, preparingStage, stageProgress) = command;
+        var (session, mediaId, stage, stageProgress, errorMessage) = command;
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
         if (media == null)
             throw StandardError.NotFound<Media>();
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
 
-        var statusInfo = new MediaStatusInfo(mediaId, status, preparingStage, stageProgress);
+        var statusInfo = new MediaStatusInfo(mediaId, stage, stageProgress, errorMessage ?? "");
         var change = new Change<MediaStatusInfo> { Update = statusInfo };
         await Commander.Call(new MediaStatusBackend_Change(mediaId, change), cancellationToken).ConfigureAwait(false);
     }

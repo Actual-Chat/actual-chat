@@ -16,7 +16,6 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var account = await tester.SignInAsUniqueBob();
 
         var services = tester.AppServices;
-        var medias = services.GetRequiredService<IMedias>();
         var mediaBackend = services.GetRequiredService<IMediaBackend>();
         var mediaStatusBackend = services.GetRequiredService<IMediaStatusBackend>();
         var commander = tester.Commander;
@@ -37,7 +36,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         var status = await mediaStatusBackend.Get(mediaId, default);
         status.Should().NotBeNull();
-        status!.Status.Should().Be(MediaStatus.Reserved);
+        status!.Stage.Should().Be(MediaStage.Reserved);
 
         // Act 2: Create Upload
         var metadata = new PropertyBag()
@@ -54,12 +53,12 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         newOffset.Should().Be(testData.Length);
 
         // Act 4: Update status to Uploading
-        await commander.Call(new Medias_UpdateStatus(session, mediaId, MediaStatus.Preparing, MediaPreparingStage.Uploading, 100));
+        await commander.Call(new Medias_UpdateStatus(session, mediaId, MediaStage.Uploading, 100, ""));
 
         status = await mediaStatusBackend.Get(mediaId, default);
         status.Should().NotBeNull();
-        status.Status.Should().Be(MediaStatus.Preparing);
-        status.PreparingStage.Should().Be(MediaPreparingStage.Uploading);
+        status.Stage.Should().Be(MediaStage.Uploading);
+        status.StageProgress.Should().Be(100);
 
         // Act 5: Process upload - verifies upload is complete, runs processors, saves ContentId to Media, updates status to Ready, removes upload
         var mediaContent = await commander.Call(new Medias_ProcessUpload(session, mediaId, uploadId));
@@ -75,7 +74,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         // Verify status is Ready
         status = await mediaStatusBackend.Get(mediaId, default);
         status.Should().NotBeNull();
-        status.Status.Should().Be(MediaStatus.Ready);
+        status.Stage.Should().Be(MediaStage.Ready);
 
         // Verify upload is removed (should throw or return null)
         var uploads = services.GetRequiredService<IUploads>();
@@ -108,7 +107,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var otherCommander = otherTester.Commander;
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => {
-            await otherCommander.Call(new Medias_UpdateStatus(otherSession, mediaId, MediaStatus.Ready));
+            await otherCommander.Call(new Medias_UpdateStatus(otherSession, mediaId, MediaStage.Ready, 100, ""));
         });
     }
 

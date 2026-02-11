@@ -83,7 +83,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
 
     private async Task SetMediaStatusToReady(MediaId mediaId, CancellationToken cancellationToken)
     {
-        var changeStatus = Change.Update(new MediaStatusInfo(mediaId, MediaStatus.Ready));
+        var changeStatus = Change.Update(new MediaStatusInfo(mediaId, MediaStage.Ready, 100, ""));
         await Commander.Run(new MediaStatusBackend_Change(mediaId, changeStatus), cancellationToken).ConfigureAwait(false);
     }
 }

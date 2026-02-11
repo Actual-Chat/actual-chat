@@ -3,6 +3,8 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
+    <!-- Skip WASM build for tests to avoid requiring wasm-tools workload -->
+    <SkipWasm>true</SkipWasm>
     <!-- Output -->
     <UseArtifactsOutput>true</UseArtifactsOutput>
     <ArtifactsPath>$(RepoRoot)artifacts\tests</ArtifactsPath>

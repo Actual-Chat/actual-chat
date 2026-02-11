@@ -13,19 +13,19 @@ public class DbMediaStatus : IHasId<string>, IRequirementTarget
 
     [Key] public string Id { get; set; } = "";
 
-    public MediaStatus Status { get; set; }
-    public MediaPreparingStage PreparingStage { get; set; }
+    public MediaStage Stage { get; set; }
     public double StageProgress { get; set; }
+    public string ErrorMessage { get; set; } = "";
 
     public MediaStatusInfo ToModel()
-        => new (MediaId.Parse(Id), Status, PreparingStage, StageProgress);
+        => new (MediaId.Parse(Id), Stage, StageProgress, ErrorMessage);
 
     public void UpdateFrom(MediaStatusInfo model)
     {
         Id = model.Id.Value;
-        Status = model.Status;
-        PreparingStage = model.PreparingStage;
+        Stage = model.Stage;
         StageProgress = model.StageProgress;
+        ErrorMessage = model.ErrorMessage;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbMediaStatus>

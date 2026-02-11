@@ -7,11 +7,14 @@ namespace ActualChat.Media;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record MediaStatusInfo(
     [property: DataMember, MemoryPackOrder(0)] MediaId Id,
-    [property: DataMember, MemoryPackOrder(1)] MediaStatus Status,
-    [property: DataMember, MemoryPackOrder(2)] MediaPreparingStage PreparingStage = MediaPreparingStage.None,
-    [property: DataMember, MemoryPackOrder(3)] double StageProgress = 0
+    [property: DataMember, MemoryPackOrder(1)] MediaStage Stage,
+    [property: DataMember, MemoryPackOrder(2)] double StageProgress,
+    [property: DataMember, MemoryPackOrder(3)] string ErrorMessage
 ) : IHasId<MediaId>
 {
+    [IgnoreDataMember, MemoryPackIgnore]
+    public bool HasFailed = !ErrorMessage.IsNullOrEmpty();
+
     // This record relies on referential equality
     public bool Equals(MediaStatusInfo? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

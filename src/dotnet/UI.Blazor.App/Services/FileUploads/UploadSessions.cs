@@ -419,18 +419,18 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
                     return;
                 }
 
-                switch (status.Status) {
-                case MediaStatus.Ready:
+                if (status.HasFailed) {
+                    await OnProcessingFailed(new InvalidOperationException(status.ErrorMessage)).ConfigureAwait(false);
+                    return;
+                }
+
+                if (status.Stage is MediaStage.Ready) {
                     var content = await Hub.Medias.GetContent(Session, mediaId, CancellationToken.None).ConfigureAwait(false);
                     if (content == null) {
                         await OnProcessingFailed(new InvalidOperationException("Media content not found after Ready status")).ConfigureAwait(false);
                         return;
                     }
                     await OnProcessingCompleted(sessionId, content).ConfigureAwait(false);
-                    return;
-
-                case MediaStatus.Failed:
-                    await OnProcessingFailed(new InvalidOperationException("Media processing failed")).ConfigureAwait(false);
                     return;
                 }
             }
