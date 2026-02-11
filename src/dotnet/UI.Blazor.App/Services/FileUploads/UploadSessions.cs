@@ -426,7 +426,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     {
         try {
             var cStatus = await Computed
-                .Capture(() => Hub.Medias.GetStatus(Session, mediaId, cancellationToken), cancellationToken)
+                .Capture(() => Hub.Medias.GetProgress(Session, mediaId, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
 
             var changes = cStatus.Changes(FixedDelayer.NoneUnsafe, cancellationToken);

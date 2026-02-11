@@ -1,11 +1,9 @@
-using MemoryPack;
-
 namespace ActualChat.Media;
 
 public interface IMedias : IComputeService
 {
     [ComputeMethod]
-    Task<MediaStatusInfo?> GetStatus(Session session, MediaId mediaId, CancellationToken cancellationToken);
+    Task<MediaProgress?> GetProgress(Session session, MediaId mediaId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<MediaContent?> GetContent(Session session, MediaId mediaId, CancellationToken cancellationToken);
 
@@ -14,7 +12,7 @@ public interface IMedias : IComputeService
     [CommandHandler]
     Task OnRemoveMedia(Medias_RemoveMedia command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnUpdateStatus(Medias_UpdateStatus command, CancellationToken cancellationToken);
+    Task OnUpdateProgress(Medias_UpdateProgress command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<MediaContent> OnProcessUpload(Medias_ProcessUpload command, CancellationToken cancellationToken);
 }
@@ -38,7 +36,7 @@ public sealed partial record Medias_RemoveMedia(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Medias_UpdateStatus(
+public sealed partial record Medias_UpdateProgress(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] MediaId MediaId,
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,

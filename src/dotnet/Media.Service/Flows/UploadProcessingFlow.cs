@@ -38,9 +38,9 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
 
         try {
             // // Update status to ServerProcessing
-            // var statusInfo = new MediaStatusInfo(mediaId, MediaStatus.Preparing, MediaPreparingStage.ServerProcessing);
-            // var statusChange = new Change<MediaStatusInfo> { Update = statusInfo };
-            // await Commander.Call(new MediaStatusBackend_Change(mediaId, statusChange), cancellationToken).ConfigureAwait(false);
+            // var progress = new MediaProgress(mediaId, MediaStatus.Preparing, MediaPreparingStage.ServerProcessing);
+            // var progressChange = new Change<MediaProgress> { Update = progress };
+            // await Commander.Call(new MediaProgressBackend_Change(mediaId, progressChange), cancellationToken).ConfigureAwait(false);
 
             // Process upload and bind to media
             var mediaContent = await Commander.Call(new UploadsBackend_ProcessAndSaveContent(uploadId, mediaId), cancellationToken).ConfigureAwait(false);
@@ -55,9 +55,9 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
         catch (Exception e) {
             // Set status to Failed
             Console.Log($"Processing failed: {e.Message}");
-            var failedStatus = new MediaStatusInfo(mediaId, 0, MediaStage.ServerProcessing, 0, e.Message);
-            var failedChange = new Change<MediaStatusInfo> { Update = failedStatus };
-            await Commander.Call(new MediaStatusBackend_Change(mediaId, null, failedChange), cancellationToken).ConfigureAwait(false);
+            var failedProgress = new MediaProgress(mediaId, 0, MediaStage.ServerProcessing, 0, e.Message);
+            var failedChange = new Change<MediaProgress> { Update = failedProgress };
+            await Commander.Call(new MediaProgressBackend_Change(mediaId, null, failedChange), cancellationToken).ConfigureAwait(false);
             SetError(e);
         }
     }

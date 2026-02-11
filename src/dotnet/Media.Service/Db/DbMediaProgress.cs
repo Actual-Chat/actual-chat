@@ -7,10 +7,10 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace ActualChat.Media.Db;
 
 [Table("MediaStatuses")]
-public class DbMediaStatus : IHasId<string>, IHasVersion<long>, IRequirementTarget
+public class DbMediaProgress : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    public DbMediaStatus() { }
-    public DbMediaStatus(MediaStatusInfo model) => UpdateFrom(model);
+    public DbMediaProgress() { }
+    public DbMediaProgress(MediaProgress model) => UpdateFrom(model);
 
     [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
@@ -19,10 +19,10 @@ public class DbMediaStatus : IHasId<string>, IHasVersion<long>, IRequirementTarg
     public double StageProgress { get; set; }
     public string ErrorMessage { get; set; } = "";
 
-    public MediaStatusInfo ToModel()
+    public MediaProgress ToModel()
         => new (MediaId.Parse(Id), Version, Stage, StageProgress, ErrorMessage);
 
-    public void UpdateFrom(MediaStatusInfo model)
+    public void UpdateFrom(MediaProgress model)
     {
         Id = model.Id.Value;
         Version = model.Version;
@@ -31,9 +31,9 @@ public class DbMediaStatus : IHasId<string>, IHasVersion<long>, IRequirementTarg
         ErrorMessage = model.ErrorMessage;
     }
 
-    internal class EntityConfiguration : IEntityTypeConfiguration<DbMediaStatus>
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbMediaProgress>
     {
-        public void Configure(EntityTypeBuilder<DbMediaStatus> builder)
+        public void Configure(EntityTypeBuilder<DbMediaProgress> builder)
             => builder.Property(x => x.Id).UseCollation("C");
     }
 }
