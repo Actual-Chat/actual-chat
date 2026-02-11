@@ -147,6 +147,7 @@ internal static class Program
                 "artifacts/obj/",
                 "artifacts/out/",
                 "artifacts/tests/",
+                "src/nodejs/node_modules/", // 2026-02: keep it temporarily for old branches
                 "node_modules/",
                 "src/dotnet/**/obj/");
         });
