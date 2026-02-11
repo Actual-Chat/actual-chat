@@ -4,7 +4,6 @@ import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
 import { ResolvedPromise } from 'promises';
 // import * as ort from 'onnxruntime-web';
-// @ts-expect-error import type
 import * as ort from 'onnxruntime-web/wasm';
 import ortMjs from './ort-wasm-simd.mjs'
 import ortWasm from './ort-wasm-simd.wasm'
@@ -269,14 +268,12 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
 
     public async init(): Promise<void> {
         let session = this.session;
-        if (session === null) {
-            session = await ort.InferenceSession.create(this.modelUri.toString(), {
-                enableCpuMemArena: false,
-                // executionMode: 'parallel',
-                // graphOptimizationLevel: 'basic',
-                executionProviders: ['wasm']
-            });
-        }
+        session ??= await ort.InferenceSession.create(this.modelUri.toString(), {
+            enableCpuMemArena: false,
+            // executionMode: 'parallel',
+            // graphOptimizationLevel: 'basic',
+            executionProviders: ['wasm']
+        });
         this.session = session;
     }
 
