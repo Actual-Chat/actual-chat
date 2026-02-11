@@ -354,7 +354,6 @@ export class VirtualList {
         }
     }
 
-
     private onItemSetChange = (mutations: MutationRecord[], _observer: MutationObserver): void => {
         if (!this.isRendering) {
             if (mutations.length > 0)
@@ -807,7 +806,6 @@ export class VirtualList {
         UpdateViewportInterval,
         'default',
         'updateViewport');
-
 
     private async updateViewport(isThrottled = false): Promise<void> {
         const rs = this.renderState;
