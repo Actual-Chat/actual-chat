@@ -43,8 +43,8 @@ public class MauiModule(IServiceProvider moduleServices)
 
         // sharing
 #if IOS
-        services.AddScoped<IncomingShareSuggestions>(c => new IosIncomingShareSuggestions(c));
-        services.AddScoped<IntentDonation>();
+        services.AddScoped<IosIncomingShareSuggestions>();
+        services.AddScoped<IncomingShareSuggestions>(c => c.GetRequiredService<IosIncomingShareSuggestions>());
 #endif
     }
 }
