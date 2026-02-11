@@ -40,19 +40,22 @@ public sealed class AttachmentUploads : IDisposable
     private async Task WatchUploadsAsync(CancellationToken cancellationToken)
     {
         try {
-            var tasks = Attachments.Items.Select(x => WhenAttachmentUploaded(x.Id, cancellationToken));
+            var tasks = Attachments.Items.Select(x => WhenAttachmentReady(x.Id, cancellationToken));
             await Task.WhenAll(tasks).ConfigureAwait(false);
             _whenUploaded.TrySetResult();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            // Expected on dispose
+            // Expected on Dispose or ReviewState
+        }
+        catch {
+            // Intended
         }
     }
 
-    private async Task WhenAttachmentUploaded(AttachmentId attachmentId, CancellationToken cancellationToken)
+    private async Task WhenAttachmentReady(AttachmentId attachmentId, CancellationToken cancellationToken)
     {
         var computed = await Computed
-            .Capture(() => _attachmentRegistry.IsUploaded(attachmentId, cancellationToken), cancellationToken)
+            .Capture(() => _attachmentRegistry.IsReady(attachmentId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         await computed.When(x => x, cancellationToken).ConfigureAwait(false);
     }

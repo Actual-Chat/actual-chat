@@ -90,10 +90,10 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsUploaded(AttachmentId id, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsReady(AttachmentId id, CancellationToken cancellationToken)
     {
         var state = await GetAttachmentUploadState(id, cancellationToken).ConfigureAwait(false);
-        return state.IsUploaded;
+        return state.IsReady;
     }
 
     [ComputeMethod]
@@ -104,45 +104,45 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
         return new AttachmentState(previewState, uploadState);
     }
 
-    [ComputeMethod]
-    public virtual async Task<UploadState> GetAttachmentUploadState(AttachmentId id, CancellationToken cancellationToken)
+    public virtual async Task<AttachmentUploadState> GetAttachmentUploadState(
+        AttachmentId id,
+        CancellationToken cancellationToken)
     {
-        var mediaContent = await GetMediaContent(id, cancellationToken).ConfigureAwait(false);
-        if (mediaContent != null)
-            return UploadState.Uploaded(mediaContent);
-        var failureState = await GetFailureState(id, cancellationToken).ConfigureAwait(false);
-        if (failureState == FailureState.Failed)
-            return UploadState.Failed();
         var mediaStatus = await GetMediaStatus(id, cancellationToken).ConfigureAwait(false);
-        // TODO(DF): add proper progress calculation
-        var overallProgress = 0;
-        if (mediaStatus is not null) {
-            if (mediaStatus.Stage > MediaStage.Reserved) {
-                var stageWidth = 30;
-                if (mediaStatus.Stage >= MediaStage.ServerProcessing) {
-                    overallProgress = 70;
-                    stageWidth = 30;
-                }
-                else if (mediaStatus.Stage >= MediaStage.Uploading) {
-                    overallProgress = 30;
-                    stageWidth = 40;
-                }
-                overallProgress += (int)(mediaStatus.StageProgress * stageWidth / 100);
-            }
-        }
-        if (failureState == FailureState.Restarting)
-            return UploadState.InProgress(overallProgress);
-
         if (mediaStatus is null)
-            return UploadState.Idle;
+            return AttachmentUploadState.Idle;
 
-        if (mediaStatus.Stage is MediaStage.Ready)
-            return UploadState.InProgress(99);
-
+        var overallProgress = 0;
+        var details = "";
+        if (mediaStatus.Stage > MediaStage.Reserved) {
+            var stageWidth = 30;
+            if (mediaStatus.Stage >= MediaStage.Ready) {
+                overallProgress = 100;
+                stageWidth = 0;
+                details = "Ready";
+            }
+            else if (mediaStatus.Stage >= MediaStage.ServerProcessing) {
+                overallProgress = 70;
+                stageWidth = 30;
+                details = "Server processing";
+            }
+            else if (mediaStatus.Stage >= MediaStage.Uploading) {
+                overallProgress = 30;
+                stageWidth = 40;
+                details = "Uploading";
+            }
+            else if (mediaStatus.Stage >= MediaStage.ClientProcessing) {
+                overallProgress = 5;
+                stageWidth = 25;
+                details = "Client processing";
+            }
+            overallProgress += (int)(mediaStatus.StageProgress * stageWidth / 100);
+        }
         if (mediaStatus.HasFailed)
-            return UploadState.Failed();
-
-        return UploadState.InProgress(overallProgress);
+            details = "Failed: " + mediaStatus.ErrorMessage;
+        return new AttachmentUploadState(mediaStatus.Stage, overallProgress, details) {
+            IsFailed = mediaStatus.HasFailed
+        };
     }
 
     [ComputeMethod]
@@ -211,19 +211,17 @@ public sealed record AttachmentPreviewState(PreviewAccessState State, string Pre
     public static AttachmentPreviewState Preview(string previewUrl) => new(PreviewAccessState.Ok, previewUrl);
 }
 
-public sealed record UploadState(MediaContent? UploadResult, int Progress, bool IsFailed)
+public sealed record AttachmentUploadState(MediaStage Stage, double Progress, string Details = "")
 {
-    public static readonly UploadState Idle = new(null, 0, false);
-    public static UploadState Uploaded(MediaContent mediaContent) => new (mediaContent, 100, false);
-    public static UploadState Failed(int? progress = 0) => new (null, progress ?? 0, true);
-    public static UploadState InProgress(int progress) => new (null, progress, false);
+    public static readonly AttachmentUploadState Idle = new(MediaStage.Reserved, 0);
 
-    public bool IsUploaded => UploadResult != null;
+    public bool IsReady => Stage == MediaStage.Ready;
+    public bool IsFailed { get; init; }
 }
 
-public sealed record AttachmentState(AttachmentPreviewState Preview, UploadState UploadState)
+public sealed record AttachmentState(AttachmentPreviewState Preview, AttachmentUploadState UploadState)
 {
-    public static readonly AttachmentState None = new(AttachmentPreviewState.NoPreview, UploadState.Idle);
+    public static readonly AttachmentState None = new(AttachmentPreviewState.NoPreview, AttachmentUploadState.Idle);
 
     public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
 

@@ -6,6 +6,7 @@
     var state = State.Value;
     var uploadState = state.UploadState;
     var progress = uploadState.Progress;
+    var stageDetails = uploadState.Details;
     // NOTE: For attachment item preview state should always be in OK state, so we can use previewUrl.
     var previewUrl = state.Preview.PreviewUrl;
     var uploadProgressClass = "attachment-upload-progress";
@@ -13,13 +14,13 @@
     if (uploadState.IsFailed) {
         progress = Math.Max(progress, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (uploadState.IsUploaded) {
+    } else if (uploadState.IsReady) {
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
 
     var uploadStyle = $"width: {progress}%;";
-    var isUploading = state.UploadSessionId != "" && !(uploadState.IsUploaded || uploadState.IsFailed);
+    var isUploading = state.UploadSessionId != "" && !(uploadState.IsReady || uploadState.IsFailed);
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -36,7 +37,7 @@
             } else {
                 <FileAttachmentView FileType="@attachment.FileType"/>
             }
-            @if (!uploadState.IsUploaded) {
+            @if (!uploadState.IsReady) {
                 <span class="spinner-icon-wrapper">
                     @if (isUploading) {
                         <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
@@ -55,7 +56,10 @@
                 <span>&nbsp;</span>
             }
         </div>
-        <div class="@uploadProgressClass" style="@uploadStyle"></div>
+        <div class="@uploadProgressClass"
+             style="@uploadStyle"
+             title="@stageDetails">
+        </div>
     </div>
 </li>
 

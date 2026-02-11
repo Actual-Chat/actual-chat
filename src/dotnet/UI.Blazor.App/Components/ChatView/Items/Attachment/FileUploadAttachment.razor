@@ -8,6 +8,7 @@
     var previewState = state.Preview.State;
     var uploadState = state.UploadState;
     var progress = uploadState.Progress;
+    var stageDetails = uploadState.Details;
     var uploadProgressClass = "attachment-upload-progress";
     MediaMimeTypes.TryGetExtension(attachment.FileType, out var extension);
     var fileExtension = extension != null ? extension.Replace(".", "") : "";
@@ -17,11 +18,11 @@
     if (uploadState.IsFailed) {
         progress = Math.Max(progress, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (uploadState.IsUploaded) {
+    } else if (uploadState.IsReady) {
         uploadProgressClass += " attachment-upload-completed";
     }
     var uploadStyle = $"width: {progress}%;";
-    var isUploading = state.UploadSessionId != "" && !(uploadState.IsUploaded || uploadState.IsFailed);
+    var isUploading = state.UploadSessionId != "" && !(uploadState.IsReady || uploadState.IsFailed);
 }
 
 <div class="file-attachment upload-file unfocusable @iconOnlyCls"
@@ -39,7 +40,7 @@
                 <i class="icon-file text-xl"></i>
             }
         }
-        @if (!uploadState.IsUploaded && previewState is PreviewAccessState.Ok) {
+        @if (!uploadState.IsReady && previewState is PreviewAccessState.Ok) {
             @if (isUploading) {
                 <span class="spinner-icon-wrapper">
                     <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
@@ -54,11 +55,14 @@
                 <div class="c-size">
                     <span>@FileSizeFormatter.Format(Attachment.Length)</span>
                 </div>
-                <div class="@uploadProgressClass" style="@uploadStyle"></div>
+                <div class="@uploadProgressClass"
+                     style="@uploadStyle"
+                     title="@stageDetails">
+                </div>
             </div>
         </div>
     }
-    @if (!uploadState.IsUploaded) {
+    @if (!uploadState.IsReady) {
         @if (uploadState.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
             <span class="reload-icon-wrapper">
                 <ButtonRound Click="@RestartClick" Class="btn-sm">

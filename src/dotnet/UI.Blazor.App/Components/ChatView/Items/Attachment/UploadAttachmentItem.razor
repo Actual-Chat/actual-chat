@@ -9,16 +9,17 @@
     var previewUrl = preview.PreviewUrl;
     var uploadState = state.UploadState;
     var progress = uploadState.Progress;
+    var stageDetails = uploadState.Details;
     var uploadProgressClass = "attachment-upload-progress";
     var plugClass = "blurred-plug";
     if (uploadState.IsFailed) {
         progress = Math.Max(progress, 30);
         uploadProgressClass += " attachment-upload-failed";
-    } else if (uploadState.IsUploaded) {
+    } else if (uploadState.IsReady) {
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
-    var isUploading = state.UploadSessionId != "" && !(uploadState.IsUploaded || uploadState.IsFailed);
+    var isUploading = state.UploadSessionId != "" && !(uploadState.IsReady || uploadState.IsFailed);
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -34,7 +35,7 @@
                         <source src="@previewUrl#t=0.5"/>
                     </video>
                 }
-                @if (!uploadState.IsUploaded) {
+                @if (!uploadState.IsReady) {
                     @if (isUploading) {
                         <span class="spinner-icon-wrapper">
                             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
@@ -63,7 +64,10 @@
                 <span>&nbsp;</span>
             }
         </div>
-        <div class="@uploadProgressClass" style="@($"width: {progress}%;")"></div>
+        <div class="@uploadProgressClass"
+             style="@($"width: {progress}%;")"
+             title="@stageDetails">
+        </div>
     </div>
 </li>
 
