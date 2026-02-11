@@ -1,5 +1,5 @@
-import {customElement} from 'lit/decorators.js';
-import {css, html, LitElement} from 'lit';
+import { customElement } from 'lit/decorators.js';
+import { css, html, LitElement } from 'lit';
 
 @customElement('loading-cat-svg')
 export class LoadingCatSvg extends LitElement {

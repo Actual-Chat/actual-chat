@@ -1,5 +1,5 @@
-﻿import {customElement, property} from 'lit/decorators.js';
-import {html, LitElement} from 'lit';
+﻿import { customElement, property } from 'lit/decorators.js';
+import { html, LitElement } from 'lit';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 
 @customElement('voxt-skeleton')

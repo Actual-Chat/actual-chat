@@ -54,7 +54,7 @@ export class NotificationUI {
     // @ts-expect-error TODO: fix errors
     public static async getDeviceToken(): Promise<string | null>
     {
-        let { firebaseApp, firebasePublicKey} = BrowserInit;
+        let { firebaseApp, firebasePublicKey } = BrowserInit;
         try {
             if (!firebaseApp) {
                 // @ts-expect-error TODO: fix errors

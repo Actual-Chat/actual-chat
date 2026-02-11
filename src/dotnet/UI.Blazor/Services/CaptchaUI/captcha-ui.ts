@@ -27,7 +27,7 @@ export class CaptchaUI {
         grecaptcha.enterprise.ready(async () => {
             // @ts-expect-error intentional
             // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-            const token = await grecaptcha.enterprise.execute(siteKey, {action: action}) as string;
+            const token = await grecaptcha.enterprise.execute(siteKey, { action: action }) as string;
             resultPromise.resolve(token);
         });
         return resultPromise;

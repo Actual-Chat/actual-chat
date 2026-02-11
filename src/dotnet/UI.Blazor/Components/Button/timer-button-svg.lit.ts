@@ -1,5 +1,5 @@
-import {customElement, property} from 'lit/decorators.js';
-import {css, html, LitElement} from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import { css, html, LitElement } from 'lit';
 
 @customElement('timer-button-svg')
 export class TimerButtonSvg extends LitElement {

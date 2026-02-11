@@ -27,6 +27,7 @@ export default tseslint.config(
                 allowTemplateLiterals: true,
                 avoidEscape: true,
             }],
+            'object-curly-spacing': ['error', 'always'],
             "@typescript-eslint/no-extraneous-class": ['error', {
                 allowStaticOnly: true,
             }],

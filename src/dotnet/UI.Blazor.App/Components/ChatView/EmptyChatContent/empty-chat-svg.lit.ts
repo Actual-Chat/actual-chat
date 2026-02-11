@@ -1,7 +1,7 @@
 // TODO: Fix ESLint errors
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import {customElement, property} from 'lit/decorators.js';
-import {css, html, LitElement} from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import { css, html, LitElement } from 'lit';
 
 @customElement('empty-chat-svg')
 class EmptyChatSvg extends LitElement {

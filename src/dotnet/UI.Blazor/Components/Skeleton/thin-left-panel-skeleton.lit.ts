@@ -1,5 +1,5 @@
-﻿import {html, LitElement} from 'lit';
-import {customElement, property} from 'lit/decorators.js';
+﻿import { html, LitElement } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 
 @customElement('thin-left-panel-skeleton')
@@ -14,11 +14,11 @@ export class ThinLeftPanelSkeletonLit extends LitElement {
         this.setProperties();
         return html`
             <voxt-skeleton></voxt-skeleton>
-            ${Array.from({length: this.count}, () => html`
+            ${Array.from({ length: this.count }, () => html`
                 <div class="button" />
             `)}
             <div class='c-delimiter'></div>
-            ${Array.from({length: this.count}, () => html`
+            ${Array.from({ length: this.count }, () => html`
                 <div class="button" />
             `)}
             <div class="footer-button"></div>

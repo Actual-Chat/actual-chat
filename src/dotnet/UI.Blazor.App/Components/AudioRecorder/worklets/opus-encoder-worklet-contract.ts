@@ -1,5 +1,5 @@
 import { RpcNoWait } from 'rpc';
-import {AudioDiagnosticsState} from '../audio-recorder';
+import { AudioDiagnosticsState } from '../audio-recorder';
 
 export interface OpusEncoderWorklet {
     init(workerPort: MessagePort): Promise<void>;

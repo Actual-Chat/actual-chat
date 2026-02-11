@@ -1,7 +1,7 @@
 import { customElement, property, state } from 'lit/decorators.js';
 import { css, html, LitElement } from 'lit';
 import { scan, Subscription } from 'rxjs';
-import { clamp, RunningMax, translate, RunningEMA} from 'math';
+import { clamp, RunningMax, translate, RunningEMA } from 'math';
 import { RecorderStateHub } from '../AudioRecorder/recorder-state-hub';
 
 const SIGNAL_COUNT_TO_CALCULATE_MAX = 100; // 100 * 96ms ~ 10s
@@ -95,9 +95,9 @@ export class ActiveRecordingSvg extends LitElement {
     @state()
     private isVisible = false;
 
-    @property({type: Number}) size = 10;
+    @property({ type: Number }) size = 10;
 
-    @property({type: Boolean})
+    @property({ type: Boolean })
     set isRecording(val: boolean) {
         if (val)
             this.audioPowerState = DEFAULT_STATE;
