@@ -156,7 +156,7 @@ namespace ActualChat.Media.Migrations
                     b.ToTable("media");
                 });
 
-            modelBuilder.Entity("ActualChat.Media.Db.DbMediaStatus", b =>
+            modelBuilder.Entity("ActualChat.Media.Db.DbMediaProgress", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")

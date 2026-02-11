@@ -17,11 +17,11 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         var mediaContent = GetContentId(mediaId, processedFile);
         await SaveFileContent(processedFile.File, mediaContent.ContentId, cancellationToken).ConfigureAwait(false);
         await SaveMediaMetadata(mediaId, mediaContent.ContentId, processedFile.File, processedFile.Size, isUpdate, cancellationToken).ConfigureAwait(false);
-        await SetMediaStatusToReady(mediaId, cancellationToken).ConfigureAwait(false);
+        await SetMediaProgressToReady(mediaId, cancellationToken).ConfigureAwait(false);
         if (processedFile.Thumbnail != null) {
             await SaveFileContent(processedFile.Thumbnail, mediaContent.ThumbnailContentId!, cancellationToken).ConfigureAwait(false);
             await SaveMediaMetadata(mediaContent.ThumbnailMediaId!, mediaContent.ThumbnailContentId!, processedFile.Thumbnail, processedFile.Size, false, cancellationToken).ConfigureAwait(false);
-            await SetMediaStatusToReady(mediaContent.ThumbnailMediaId!, cancellationToken).ConfigureAwait(false);
+            await SetMediaProgressToReady(mediaContent.ThumbnailMediaId!, cancellationToken).ConfigureAwait(false);
         }
         return mediaContent;
     }
@@ -84,9 +84,9 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task SetMediaStatusToReady(MediaId mediaId, CancellationToken cancellationToken)
+    private async Task SetMediaProgressToReady(MediaId mediaId, CancellationToken cancellationToken)
     {
-        var changeStatus = Change.Update(new MediaStatusInfo(mediaId, 0, MediaStage.Ready, 0, ""));
-        await Commander.Run(new MediaStatusBackend_Change(mediaId, null, changeStatus), cancellationToken).ConfigureAwait(false);
+        var changeProgress = Change.Update(new MediaProgress(mediaId, 0, MediaStage.Ready, 0, ""));
+        await Commander.Run(new MediaProgressBackend_Change(mediaId, null, changeProgress), cancellationToken).ConfigureAwait(false);
     }
 }
