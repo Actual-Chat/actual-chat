@@ -1,7 +1,6 @@
-using ActualChat.Maui;
-using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.App.Services;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.Maui;
 
 public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingShareSuggestions(services)
 {
