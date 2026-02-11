@@ -283,7 +283,7 @@ body.hoverable .btn.btn-square.btn-transparent:hover::after,
 body.hoverable .btn.btn-round.btn-transparent:hover::after,
 .touch-capable .btn.btn-round.btn-transparent:active::after {
     @apply hover-after;
-    @apply bg-hover-after-primary
+    @apply bg-hover-after-primary;
 }
 
 /* Button Square and Round Primary */
