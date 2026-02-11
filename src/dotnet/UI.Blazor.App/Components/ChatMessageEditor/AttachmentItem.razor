@@ -64,7 +64,7 @@
 </li>
 
 @code {
-    private AttachmentRegistry AttachmentRegistry => Hub.AttachmentRegistry;
+    private AttachmentsState AttachmentsState => Hub.AttachmentsState;
 
     [Parameter] public Attachment Attachment { get; set; } = null!;
     [Parameter] public EventCallback RemoveClick { get; set; }
@@ -74,5 +74,5 @@
         => new() { InitialValue = AttachmentState.None };
 
     protected override Task<AttachmentState> ComputeState(CancellationToken cancellationToken)
-        => AttachmentRegistry.GetAttachmentState(Attachment.Id, cancellationToken);
+        => AttachmentsState.GetAttachmentState(Attachment.Id, cancellationToken);
 }

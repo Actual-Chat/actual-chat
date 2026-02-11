@@ -142,7 +142,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             throw StandardError.Internal("Source attachments count is not equal to attach file requests count.");
 
         var attachments = new List<UploadAttachment>();
-        var attachmentRegistry = Hub.AttachmentRegistry;
+        var attachmentsState = Hub.AttachmentsState;
         for (var i = 0; i < attachEntries.Length; i++) {
             var attachEntry = attachEntries[i];
             var sourceAttachment = sourceAttachments?[i];
@@ -227,12 +227,12 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             await UploadSessions.AddReference(uploadSessionId).ConfigureAwait(false);
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
             if (sourceAttachmentId is not null)
-                attachmentRegistry.Unregister(sourceAttachmentId.Value);
-            attachmentRegistry.Register(attachment);
+                attachmentsState.Unregister(sourceAttachmentId.Value);
+            attachmentsState.Register(attachment);
             if (!attachmentIsOk)
-                attachmentRegistry.SetPreview(attachment.Id, AttachmentPreview.NoFileAccess);
+                attachmentsState.SetPreview(attachment.Id, AttachmentPreview.NoFileAccess);
             else if (mediaContent is not null)
-                attachmentRegistry.SetMediaContent(attachment.Id, mediaContent);
+                attachmentsState.SetMediaContent(attachment.Id, mediaContent);
             attachments.Add(attachment);
         }
         if (attachments.Count == 0)
@@ -245,20 +245,20 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             attachmentList.Add(attachment);
             if (attachment.NoFileAccess)
                 continue;
-            var attachmentProgress = await attachmentRegistry.GetProgress(attachment.Id, default).ConfigureAwait(false);
+            var attachmentProgress = await attachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
             if (attachmentProgress.IsReady || attachmentProgress.IsFailed)
                 continue;
             await attachmentsController.ResumeUpload(attachment).ConfigureAwait(false);
         }
 
         foreach (var attachment in attachments) {
-            var attachmentProgress = await attachmentRegistry.GetProgress(attachment.Id, default).ConfigureAwait(false);
+            var attachmentProgress = await attachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
             if (!attachmentProgress.IsReady)
                 SubscribeFilePermissionsGranted(attachment.Id, attachment.Extras);
             SubscribePreviewResolved(attachment.Id, attachment.Extras);
         }
 
-        return new AttachmentUploads(attachmentList, Hub.AttachmentRegistry);
+        return new AttachmentUploads(attachmentList, attachmentsState);
     }
 
     private void SubscribePreviewResolved(AttachmentId attachmentId, AttachExtra extras)
@@ -269,7 +269,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         _ =  extras.GetPreviewUrl.ContinueWith(t => {
             // Preview resolved.
 #pragma warning disable VSTHRD002
-            Hub.AttachmentRegistry.SetPreview(attachmentId, AttachmentPreview.Preview(t.Result));
+            Hub.AttachmentsState.SetPreview(attachmentId, AttachmentPreview.Preview(t.Result));
  #pragma warning restore VSTHRD002
         }, TaskScheduler.Default);
     }
@@ -280,8 +280,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 return;
 
             // File permission was denied.
-            Hub.AttachmentRegistry.SetPreview(attachmentId, AttachmentPreview.NoFileAccess);
-            // Hub.AttachmentRegistry.Update(attachmentId,
+            Hub.AttachmentsState.SetPreview(attachmentId, AttachmentPreview.NoFileAccess);
+            // Hub.AttachmentsState.Update(attachmentId,
             //     a => a with {
             //         Failed = true,
             //     });
@@ -504,7 +504,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     // private TextEntryAttachment[] CreateTextEntryAttachments(AttachmentUploads attachmentUploads)
     // {
-    //     var registry = Hub.AttachmentRegistry;
+    //     var registry = Hub.AttachmentsState;
     //     var entryAttachments = attachmentUploads.Attachments.Items
     //         .Select(x => registry.GetState(x.Id))
     //         .Where(x => x.Uploaded)

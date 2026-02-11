@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IAttachmentListEventsListener
 {
     private UploadSessions UploadSessions => Hub.UploadSessions;
-    private AttachmentRegistry AttachmentRegistry => Hub.AttachmentRegistry;
+    private AttachmentsState AttachmentsState => Hub.AttachmentsState;
 
     public async Task<Attachment> InitUploadSession(Attachment attachment)
     {
@@ -43,7 +43,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
         }
         catch (Exception ex) {
             Log.LogWarning(ex, "Failed to resume upload session '{SessionId}'", uploadSessionId);
-            AttachmentRegistry.SetFailureState(attachment.Id, FailureState.Failed);
+            AttachmentsState.SetFailureState(attachment.Id, FailureState.Failed);
         }
         // AttachmentExt.ObserveUploadProgress(
         //     uploadSession.ProgressTracker,
@@ -63,10 +63,10 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
 
     public async Task RestartUpload(Attachment attachment)
     {
-        var failureState = await AttachmentRegistry.GetFailureState(attachment.Id, default).ConfigureAwait(false);
+        var failureState = await AttachmentsState.GetFailureState(attachment.Id, default).ConfigureAwait(false);
         if (failureState is not FailureState.Failed)
             throw new InvalidOperationException("Can't restart. Upload is not failed");
-        var previewState = await AttachmentRegistry.GetPreview(attachment.Id, default).ConfigureAwait(false);
+        var previewState = await AttachmentsState.GetPreview(attachment.Id, default).ConfigureAwait(false);
         if (previewState.State is PreviewAccessState.NoFileAccess)
             throw new InvalidOperationException("Can't restart. No access to file");
 
@@ -78,13 +78,13 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
     {
         var uploadSessionId = attachment.DemandUploadSessionId();
         await UploadSessions.ResetSession(uploadSessionId).ConfigureAwait(false);
-        AttachmentRegistry.SetFailureState(attachment.Id, FailureState.Restarting);
+        AttachmentsState.SetFailureState(attachment.Id, FailureState.Restarting);
     }
 
     Task IAttachmentListEventsListener.AttachmentsRemoved(AttachmentList list, Attachment[] attachments)
     {
         foreach (var a in attachments)
-            AttachmentRegistry.Unregister(a.Id);
+            AttachmentsState.Unregister(a.Id);
         _ = TuneUI.Play(Tune.ChangeAttachments);
         return BackgroundTask.Run(async () => {
                     foreach (var a in attachments)

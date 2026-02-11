@@ -250,7 +250,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             if (session.ReservedMediaId is not null)
                 return session.ReservedMediaId;
 
-            var metadata = await Hub.AttachmentRegistry.GetUploadSessionMetadata(sessionId, cancellationToken).ConfigureAwait(false);
+            var metadata = await Hub.AttachmentsState.GetUploadSessionMetadata(sessionId, cancellationToken).ConfigureAwait(false);
             // TODO(DF): review how we choose media scope and whether we need a new media id here or not.
             var mediaScope = MediaId.GenerateScope();     //session.ChatId.Value;
             var command = new Medias_ReserveMedia(Session, mediaScope) { Metadata = metadata };

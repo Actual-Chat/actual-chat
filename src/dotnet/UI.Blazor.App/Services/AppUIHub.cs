@@ -31,7 +31,7 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IMedias Medias => field ??= Services.GetRequiredService<IMedias>();
 
     public ChatUI ChatUI => field ??= Services.GetRequiredService<ChatUI>();
-    public AttachmentRegistry AttachmentRegistry => field ??= Services.GetRequiredService<AttachmentRegistry>();
+    public AttachmentsState AttachmentsState => field ??= Services.GetRequiredService<AttachmentsState>();
     public SendingMessages SendingMessages => field ??= Services.GetRequiredService<SendingMessages>();
     public UploadSessions UploadSessions => field ??= Services.GetRequiredService<UploadSessions>();
     public UploadSessionsState UploadSessionsState => field ??= Services.GetRequiredService<UploadSessionsState>();

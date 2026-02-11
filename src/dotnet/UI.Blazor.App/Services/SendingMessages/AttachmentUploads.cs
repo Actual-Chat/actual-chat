@@ -2,19 +2,19 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public sealed class AttachmentUploads : IDisposable
 {
-    private readonly AttachmentRegistry _attachmentRegistry;
+    private readonly AttachmentsState _attachmentsState;
     private readonly TaskCompletionSource _whenUploaded = TaskCompletionSourceExt.New();
     private CancellationTokenSource? _cts;
 
     public IAttachmentList Attachments { get; }
     public Task WhenUploaded => _whenUploaded.Task;
 
-    public AttachmentUploads(IAttachmentList attachments, AttachmentRegistry attachmentRegistry)
+    public AttachmentUploads(IAttachmentList attachments, AttachmentsState attachmentsState)
     {
         if (attachments.Count is 0)
             throw new ArgumentException("Attachments must not be empty.", nameof(attachments));
 
-        _attachmentRegistry = attachmentRegistry;
+        _attachmentsState = attachmentsState;
         Attachments = attachments;
         attachments.Changed += OnAttachmentsChanged;
         ReviewState();
@@ -55,7 +55,7 @@ public sealed class AttachmentUploads : IDisposable
     private async Task WhenAttachmentReady(AttachmentId attachmentId, CancellationToken cancellationToken)
     {
         var computed = await Computed
-            .Capture(() => _attachmentRegistry.IsReady(attachmentId, cancellationToken), cancellationToken)
+            .Capture(() => _attachmentsState.IsReady(attachmentId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         await computed.When(x => x, cancellationToken).ConfigureAwait(false);
     }

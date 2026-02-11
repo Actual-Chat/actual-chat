@@ -4,7 +4,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
+public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     private static readonly FrozenDictionary<MediaStage, StageProgressInfo> StageProgressMap = BuildStageProgressMap();
     private static readonly MediaId FakeMediaId = MediaId.New("client-id:upload-ready");

@@ -10,14 +10,14 @@ public class FileAttachments : UIServiceBase<AppUIHub>
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.WebFileProviders.createFromFileId";
 
     private AttachmentsController AttachmentsController { get; }
-    private AttachmentRegistry AttachmentRegistry { get; }
+    private AttachmentsState AttachmentsState { get; }
     private VisualMediaDimensions VisualMediaDimensions { get; }
     public ChatId ChatId { get; }
 
     public FileAttachments(AppUIHub hub, ChatId chatId) : base(hub)
     {
         AttachmentsController = Hub.Services.GetRequiredService<AttachmentsController>();
-        AttachmentRegistry = Hub.AttachmentRegistry;
+        AttachmentsState = Hub.AttachmentsState;
         VisualMediaDimensions = new VisualMediaDimensions(Hub.JS, Hub.LogFor<VisualMediaDimensions>());
         ChatId = chatId;
     }
@@ -133,7 +133,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
         }
         // NOTE: Start upload immediately after adding attachments.
         attachment = await AttachmentsController.InitUploadSession(attachment);
-        AttachmentRegistry.Register(attachment);
+        AttachmentsState.Register(attachment);
         await AttachmentsController.ResumeUpload(attachment);
         list.Add(attachment);
         return true;
