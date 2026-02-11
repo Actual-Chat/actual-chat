@@ -1,6 +1,6 @@
 @using ActualChat.Media
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, AttachmentState>
+@inherits AttachmentItemBase
 
 @{
     var attachment = Attachment;
@@ -22,7 +22,7 @@
         uploadProgressClass += " attachment-upload-completed";
     }
     var uploadStyle = $"width: {progressValue}%;";
-    var isUploading = state.UploadSessionId != "" && !(progress.IsReady || progress.IsFailed);
+    var isUploading = state.IsUploading;
 }
 
 <div class="file-attachment upload-file unfocusable @iconOnlyCls"
@@ -77,18 +77,7 @@
 </div>
 
 @code {
-    private AttachmentsState AttachmentsState => Hub.AttachmentsState;
-
-    [Parameter, EditorRequired] public Attachment Attachment { get; set; } = null!;
     [Parameter] public bool IconOnly { get; set; }
-    [Parameter] public EventCallback RemoveClick { get; set; }
-    [Parameter] public EventCallback RestartClick { get; set; }
-
-    protected override ComputedState<AttachmentState>.Options GetStateOptions()
-        => new() { InitialValue = AttachmentState.None };
-
-    protected override Task<AttachmentState> ComputeState(CancellationToken cancellationToken)
-        => AttachmentsState.GetAttachmentState(Attachment.Id, cancellationToken);
 
     private string GetTooltipTitle() {
         var name = Attachment.FileName;

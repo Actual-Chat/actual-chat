@@ -99,14 +99,6 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         return state.IsReady;
     }
 
-    [ComputeMethod]
-    public virtual async Task<AttachmentState> GetAttachmentState(AttachmentId id, CancellationToken cancellationToken)
-    {
-        var previewState = await GetPreview(id, cancellationToken).ConfigureAwait(false);
-        var uploadState = await GetProgress(id, cancellationToken).ConfigureAwait(false);
-        return new AttachmentState(previewState, uploadState);
-    }
-
     public virtual async Task<AttachmentProgress> GetProgress(AttachmentId id, CancellationToken cancellationToken)
     {
         var sessionId = await GetUploadSessionId(id, cancellationToken);
@@ -232,15 +224,6 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
 }
 
 public sealed record AttachmentInfo(string UploadSessionId);
-
-public sealed record AttachmentState(AttachmentPreview Preview, AttachmentProgress Progress)
-{
-    public static readonly AttachmentState None = new(AttachmentPreview.NoPreview, AttachmentProgress.New);
-
-    public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
-
-    public string UploadSessionId { get; init; } = "";
-}
 
 public enum FailureState
 {

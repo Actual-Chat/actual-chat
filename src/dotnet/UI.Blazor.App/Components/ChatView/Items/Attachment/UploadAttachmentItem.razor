@@ -1,13 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, AttachmentState>
+@inherits AttachmentItemBase
 
 @{
     var attachment = Attachment;
-    var state = State.Value;
-    var preview = state.Preview;
+    var m = State.Value;
+    var preview = m.Preview;
     var previewState = preview.State;
     var previewUrl = preview.PreviewUrl;
-    var progress = state.Progress;
+    var progress = m.Progress;
     var progressValue = progress.Progress;
     var stageDetails = progress.Details;
     var uploadProgressClass = "attachment-upload-progress";
@@ -19,7 +19,7 @@
         uploadProgressClass += " attachment-upload-completed";
         plugClass = "";
     }
-    var isUploading = state.UploadSessionId != "" && !(progress.IsReady || progress.IsFailed);
+    var isUploading = m.IsUploading;
 }
 <li class="attachment-wrapper">
     <div class="c-content">
@@ -40,7 +40,7 @@
                         <span class="spinner-icon-wrapper">
                             <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
                         </span>
-                    } else if (progress.IsFailed && !state.NoAccess && RestartClick.HasDelegate) {
+                    } else if (progress.IsFailed && !m.NoAccess && RestartClick.HasDelegate) {
                         <span class="reload-icon-wrapper">
                             <ButtonRound Click="@RestartClick" Class="btn-sm">
                                 <i class="icon-sync text-2xl"></i>
@@ -70,17 +70,3 @@
         </div>
     </div>
 </li>
-
-@code {
-    private AttachmentsState AttachmentsState => Hub.AttachmentsState;
-
-    [Parameter] public Attachment Attachment { get; set; } = null!;
-    [Parameter] public EventCallback RemoveClick { get; set; }
-    [Parameter] public EventCallback RestartClick { get; set; }
-
-    protected override ComputedState<AttachmentState>.Options GetStateOptions()
-        => new() { InitialValue = AttachmentState.None };
-
-    protected override Task<AttachmentState> ComputeState(CancellationToken cancellationToken)
-        => AttachmentsState.GetAttachmentState(Attachment.Id, cancellationToken);
-}
