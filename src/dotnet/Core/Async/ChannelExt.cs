@@ -14,6 +14,11 @@ public static partial class ChannelExt
         SingleWriter = true,
         AllowSynchronousContinuations = false,
     };
+    public static readonly UnboundedChannelOptions UnboundedFanInOptions = new() {
+        SingleReader = true,
+        SingleWriter = false,
+        AllowSynchronousContinuations = false,
+    };
     public static readonly UnboundedChannelOptions UnboundedFanOutOptions = new() {
         SingleReader = false,
         SingleWriter = true,

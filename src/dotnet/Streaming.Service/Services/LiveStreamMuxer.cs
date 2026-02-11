@@ -37,7 +37,7 @@ public sealed class LiveStreamMuxer : WorkerBase
         Session = session;
         ChatId = chatId;
         _settings = settings;
-        _output = ChannelExt.Create<LiveStreamItem>(ChannelExt.UnboundedPipeOptions);
+        _output = ChannelExt.Create<LiveStreamItem>(ChannelExt.UnboundedFanInOptions);
         _ = Run(); // Start immediately
     }
 
@@ -78,11 +78,11 @@ public sealed class LiveStreamMuxer : WorkerBase
                     await foreach (var streamInfo in streams.ConfigureAwait(false)) {
                         Log.LogDebug("OnRun: Got stream {StreamId}", streamInfo.StreamId);
 
+                        // Clean up completed (including failed) streams first - allows retry
+                        CleanupCompletedStreams(streamTasks);
+
                         if (streamTasks.ContainsKey(streamInfo.StreamId))
                             continue; // Already processing this stream
-
-                        // Clean up completed streams
-                        CleanupCompletedStreams(streamTasks);
 
                         // Start streaming
                         var streamIndex = Interlocked.Increment(ref _nextStreamIndex);

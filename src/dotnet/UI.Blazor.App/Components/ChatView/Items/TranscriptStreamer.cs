@@ -7,6 +7,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
 {
     private static readonly TimeSpan TranscriptThrottleInterval = TimeSpan.FromMilliseconds(320); // LLM usually responds within this threshold
+    private static readonly RetryDelaySeq StreamRetryDelays = RetryDelaySeq.Exp(0.1, 2);
     private readonly IMutableState<TranscriptStreamerState> _state = hub.StateFactory.NewMutable(TranscriptStreamerState.None);
     private TranscriptUI TranscriptUI => hub.TranscriptUI;
     private IStreamClient StreamClient => hub.StreamClient;
@@ -31,8 +32,7 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
         try {
             while (!cancellationToken.IsCancellationRequested) {
                 var last1 = last;
-                var ct = cancellationToken;
-                var cState = await cGetState.When(s => s != last1, ct).ConfigureAwait(false);
+                var cState = await cGetState.When(s => s != last1, cancellationToken).ConfigureAwait(false);
                 if (cState.ValueOrDefault == last1)
                     continue; // Double-check
 
@@ -41,7 +41,6 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
                 if (cState.Value != null) {
                     var (_, content, isTranslation) = cState.Value;
                     // Log.LogWarning("Reset state for {MessageId}, State = {State}, OldState = {OldState}, {Hash}, {OldHash}", id, cState.Value, last1, cState.Value.GetHashCode(), last1?.GetHashCode() ?? 0);
-                    // Initial state
                     _state.Value = new (
                         RetainedText: "",
                         ChangedText: "",
@@ -50,7 +49,7 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
                         true,
                         isTranslation);
                     _ = BackgroundTask.Run(
-                        () => StreamTranscript(cState.Value, streamCts.Token),
+                        () => StreamTranscriptWithRetry(cState.Value, streamCts.Token),
                         Log,
                         $"{nameof(StreamTranscript)} failed",
                         streamCts.Token);
@@ -65,6 +64,21 @@ public class TranscriptStreamer(TextEntryId id, AppUIHub hub) : WorkerBase
         finally {
             lastCts?.CancelAndDisposeSilently();
         }
+    }
+
+    private async Task StreamTranscriptWithRetry(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken)
+    {
+        var retryIndex = 0;
+        while (!cancellationToken.IsCancellationRequested)
+            try {
+                await StreamTranscript(streamingState, cancellationToken).ConfigureAwait(false);
+                return; // Completed normally
+            }
+            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                var delay = StreamRetryDelays[retryIndex++];
+                Log.LogWarning(e, "StreamTranscript failed for {Id}, retrying in {Delay}s", id, delay);
+                await Clocks.SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
     }
 
     private async Task StreamTranscript(TranscriptUI.StreamingState streamingState, CancellationToken cancellationToken) {
