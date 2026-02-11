@@ -44,20 +44,6 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
             Log.LogWarning(ex, "Failed to resume upload session '{SessionId}'", uploadSessionId);
             AttachmentsState.SetFailureState(attachment.Id, FailureState.Failed);
         }
-        // AttachmentExt.ObserveUploadProgress(
-        //     uploadSession.ProgressTracker,
-        //     updater => {
-        //         _ = Dispatcher.InvokeAsync(() => {
-        //             list.UpdateAttachment(attachment.Id, updater);
-        //         });
-        //     });
-        // AttachmentExt.ObserveUploadProgress(
-        //     uploadSession.ProgressTracker,
-        //     updater => {
-        //         _ = Dispatcher.InvokeAsync(() => {
-        //             AttachmentRegistry.Update(attachment.Id, updater);
-        //         });
-        //     });
     }
 
     public async Task RestartUpload(Attachment attachment)
@@ -107,7 +93,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
             .SuppressExceptions();
     }
 
-    private async Task CleanupAttachmentResources(Attachment a)
+    private static async Task CleanupAttachmentResources(Attachment a)
     {
         foreach (var cleanup in a.Cleanups.Items)
             await cleanup.Cleanup().ConfigureAwait(false);

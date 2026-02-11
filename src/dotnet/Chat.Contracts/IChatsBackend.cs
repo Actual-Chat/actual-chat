@@ -163,11 +163,11 @@ public sealed partial record ChatsBackend_RemoveAttachments(
     ChatEntryId EntryId
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey<ChatId>
 {
-    [IgnoreDataMember, MemoryPackIgnore]
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => EntryId.ChatId;
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] ChatId? ChatId,

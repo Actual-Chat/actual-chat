@@ -103,7 +103,7 @@ public class Uploads(IServiceProvider services) : IUploads
             throw StandardError.Upload.NotFound();
     }
 
-    private void EnsureCanCreate(AccountFull user, long length, string tag, PropertyBag metadata)
+    private static void EnsureCanCreate(AccountFull user, long length, string tag, PropertyBag metadata)
     {
         // Add validation by tag and user permissions
     }

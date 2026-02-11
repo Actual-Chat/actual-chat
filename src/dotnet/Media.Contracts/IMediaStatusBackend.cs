@@ -1,5 +1,4 @@
 using ActualLab.Rpc;
-using MemoryPack;
 
 namespace ActualChat.Media;
 
@@ -12,7 +11,7 @@ public interface IMediaStatusBackend : IComputeService, IBackendService
     Task<MediaStatusInfo?> OnChange(MediaStatusBackend_Change command, CancellationToken cancellationToken);
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaStatusBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] MediaId Id,
@@ -20,6 +19,6 @@ public sealed partial record MediaStatusBackend_Change(
     [property: DataMember, MemoryPackOrder(2)] Change<MediaStatusInfo> Change
 ) : ICommand<MediaStatusInfo?>, IBackendCommand, IHasShardKey<MediaId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public MediaId ShardKey => Id;
 }

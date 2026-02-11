@@ -93,6 +93,7 @@ export class ChunkedFileUpload {
         const maxRetries = 3;
         let run = true;
         const chunkSizeSelector = new ChunkSizeSelector();
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         while (run) {
             run = false;
             try {
@@ -320,19 +321,10 @@ class ChunkSizeSelector
 }
 
 class UploadNotFoundError extends Error {
-    constructor(message: string) {
-        super(message);
-    }
 }
 
 class UploadTransientFailure extends Error {
-    constructor(message: string) {
-        super(message);
-    }
 }
 
 class OffsetConflictError extends Error {
-    constructor(message?: string) {
-        super(message);
-    }
 }

@@ -43,18 +43,3 @@ public record SourceAttachment(
         Length,
         Width,
         Height);
-
-// public record AttachExtra(string PreviewUrl);
-//
-// public record AttachmentWithExtras<TExtra>(
-//     string FileName,
-//     string FileType,
-//     long Length,
-//     int Width,
-//     int Height,
-//     TExtra Extras)
-//     : Attachment(FileName,
-//         FileType,
-//         Length,
-//         Width,
-//         Height);
