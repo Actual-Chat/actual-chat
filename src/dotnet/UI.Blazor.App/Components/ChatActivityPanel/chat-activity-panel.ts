@@ -205,9 +205,9 @@ class BottomSheetPinGesture extends Gesture {
             return;
         }
 
-        const bottomSheet = document.querySelector('.bottom-sheet') as HTMLElement;
-        const header = panel['header'] as HTMLElement;
-        const pinBadge = panel['pinBadge'] as HTMLElement | null;
+        const bottomSheet = document.querySelector<HTMLElement>('.bottom-sheet')!;
+        const header = panel['header'];
+        const pinBadge = panel['pinBadge'];
         if (!bottomSheet || !header) {
             this.dispose();
             return;
@@ -344,8 +344,8 @@ class ActivityPanelUnpinGesture extends Gesture {
         }
 
         const activityPanel = panel['activityPanel'];
-        const header = panel['header'] as HTMLElement;
-        const panelWrapper = panel['panelWrapper'] as HTMLElement | null;
+        const header = panel['header'];
+        const panelWrapper = panel['panelWrapper'];
         const unpinBadge = panel['unpinBadge'];
 
         // Calculate pixel values based on current font size
