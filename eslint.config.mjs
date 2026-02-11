@@ -14,7 +14,7 @@ function tsOnly(cfg) {
 
 export default tseslint.config(
     {
-        ignores: ['**/dist/', '**/node_modules/', '**/obj/', '**/bin/', '**/wwwroot/'],
+        ignores: ['**/dist/', '**/node_modules/', '**/obj/', '**/bin/', '**/wwwroot/', 'docs/.vitepress/cache/'],
     },
     ...tsOnly(tseslint.configs.recommendedTypeChecked),
     ...tsOnly(tseslint.configs.strictTypeChecked),
