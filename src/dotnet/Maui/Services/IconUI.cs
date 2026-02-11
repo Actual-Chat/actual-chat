@@ -1,22 +1,19 @@
-using ActualChat.App.Maui.IosShareExt.UI;
-using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Hashing;
-using ActualChat.Maui;
-using ActualChat.Maui.Services;
 using ActualChat.UI;
 using ActualLab.IO;
 using Microsoft.Maui.Storage;
 using SkiaSharp;
 using Svg.Skia;
 
-namespace ActualChat.App.Maui.IosShareExt.Services;
+namespace ActualChat.Maui.Services;
 
-public class IconUI(IosHub hub) : UIServiceBase(hub), IComputeService
+public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
 {
     private static readonly FilePath IconCacheDir = Path.Combine(FileSystem.CacheDirectory, "icons");
 
-    private UrlMapper UrlMapper => Hub.UrlMapper;
-    private HttpClient HttpClient => field ??= Hub.HttpClientFactory.CreateClient("Avatars");
+    protected ILogger Log => field ??= services.LogFor(GetType());
+    private UrlMapper UrlMapper => field ??= services.UrlMapper();
+    private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient("Avatars");
 
     public async Task<LoadedImage?> Get(IconQuery iconQuery, CancellationToken cancellationToken = default)
     {
