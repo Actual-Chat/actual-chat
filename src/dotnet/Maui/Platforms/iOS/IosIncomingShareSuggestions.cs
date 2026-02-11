@@ -1,3 +1,4 @@
+using ActualChat.Maui.Services;
 using ActualChat.UI.App.Services;
 using ActualLab.Diagnostics;
 using Intents;
@@ -7,10 +8,17 @@ namespace ActualChat.Maui;
 public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingShareSuggestions(services)
 {
     private MomentClockSet Clocks => field ??= Services.Clocks();
+    private IconUI IconUI => field ??= Services.GetRequiredService<IconUI>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.ShareSuggestions);
 
-    protected override Task SuggestInternal(Chat.Chat chat, CancellationToken cancellationToken)
-        => DonateIntent(chat, null, cancellationToken);
+    protected override async Task SuggestInternal(ContactId contactId, CancellationToken cancellationToken)
+    {
+        var contact = await Contacts.Get(Session, contactId, cancellationToken).Require().ConfigureAwait(false);
+        var loadedImage = await IconUI.Get(contact.GetIconQuery(), cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("!!! Loaded image: {FilePath}", loadedImage?.FilePath);
+        var inImage = loadedImage is not null ? INImage.FromUrl(NSUrl.FromFilename(loadedImage.FilePath)) : null;
+        await DonateIntent(contact.Chat, inImage, cancellationToken).ConfigureAwait(false);
+    }
 
     private async Task DonateIntent(Chat.Chat chat, INImage? image, CancellationToken cancellationToken = default)
     {
