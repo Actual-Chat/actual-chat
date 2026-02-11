@@ -8,5 +8,5 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
     private IntentDonation IntentDonation => field ??= Services.GetRequiredService<IntentDonation>();
 
     protected override Task SuggestInternal(Chat.Chat chat, CancellationToken cancellationToken)
-        => IntentDonation.Donate(chat, cancellationToken);
+        => IntentDonation.Donate(chat, null, cancellationToken);
 }

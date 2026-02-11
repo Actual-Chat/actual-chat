@@ -1,6 +1,6 @@
 using ActualChat.UI;
 
-namespace ActualChat.App.Maui.IosShareExt.Components;
+namespace ActualChat.Maui;
 
 public record IconQuery(Picture? Picture, AvatarKind AvatarKind, string DefaultAvatarKey)
 {

@@ -1,7 +1,8 @@
-using ActualChat.App.Maui.IosShareExt.Components;
 using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Hashing;
+using ActualChat.Maui;
+using ActualChat.Maui.Services;
 using ActualChat.UI;
 using ActualLab.IO;
 using Microsoft.Maui.Storage;
@@ -73,7 +74,7 @@ public class IconUI(IosHub hub) : UIServiceBase(hub), IComputeService
         return Task.FromResult<LoadedImage?>(new LoadedImage(filePath, kind));
     }
 
-    private void SaveSvgAsPng(Stream svgStream, FilePath filePath)
+    private static void SaveSvgAsPng(Stream svgStream, FilePath filePath)
     {
         EnsureIconCacheDir();
         using var svg = SKSvg.CreateFromStream(svgStream);

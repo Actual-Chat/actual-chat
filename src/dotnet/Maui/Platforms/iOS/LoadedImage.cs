@@ -1,6 +1,6 @@
 using ActualChat.UI;
 using ActualLab.IO;
 
-namespace ActualChat.App.Maui.IosShareExt.Services;
+namespace ActualChat.Maui;
 
 public record LoadedImage(FilePath FilePath, AvatarKind? AvatarKind);
