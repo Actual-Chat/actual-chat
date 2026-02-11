@@ -67,7 +67,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     // [CommandHandler]
     public virtual async Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken)
     {
-        var (mediaId, change) = command;
+        var (mediaId, expectedVersion, change) = command;
         if (Invalidation.IsActive) {
             _ = Get(mediaId, default);
             _ = GetFull(mediaId, default);

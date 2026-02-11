@@ -9,12 +9,12 @@ namespace ActualChat.Media;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record MediaFull : Media
 {
-    [DataMember, MemoryPackOrder(2)] public UserId? UserId { get; init; }
+    [DataMember, MemoryPackOrder(3)] public UserId? UserId { get; init; }
 
     public MediaFull(MediaId id) : base(id) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
-    public MediaFull(MediaId id, string contentId, UserId? userId, PropertyBag metadata) : base(id, contentId, metadata)
+    public MediaFull(MediaId id, long version, string contentId, UserId? userId, PropertyBag metadata) : base(id, version, contentId, metadata)
         => UserId = userId;
 
     // This record relies on referential equality

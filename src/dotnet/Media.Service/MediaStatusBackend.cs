@@ -22,7 +22,7 @@ public class MediaStatusBackend(IServiceProvider services) : DbServiceBase<Media
     // [CommandHandler]
     public virtual async Task<MediaStatusInfo?> OnChange(MediaStatusBackend_Change command, CancellationToken cancellationToken)
     {
-        var (mediaId, change) = command;
+        var (mediaId, expectedVersion, change) = command;
         if (Invalidation.IsActive) {
             _ = Get(mediaId, default);
             return default!;

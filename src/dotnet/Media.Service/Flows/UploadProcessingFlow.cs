@@ -56,9 +56,9 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
         catch (Exception e) {
             // Set status to Failed
             Console.Log($"Processing failed: {e.Message}");
-            var failedStatus = new MediaStatusInfo(mediaId, MediaStage.ServerProcessing, 0, e.Message);
+            var failedStatus = new MediaStatusInfo(mediaId, 0, MediaStage.ServerProcessing, 0, e.Message);
             var failedChange = new Change<MediaStatusInfo> { Update = failedStatus };
-            await Commander.Call(new MediaStatusBackend_Change(mediaId, failedChange), cancellationToken).ConfigureAwait(false);
+            await Commander.Call(new MediaStatusBackend_Change(mediaId, null, failedChange), cancellationToken).ConfigureAwait(false);
             SetError(e);
         }
     }

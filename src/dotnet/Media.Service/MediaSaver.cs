@@ -77,13 +77,13 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         var change = isUpdate
             ? new Change<MediaFull> { Update = media }
             : new Change<MediaFull> { Create = media };
-        var changeCommand = new MediaBackend_Change(mediaId, change);
+        var changeCommand = new MediaBackend_Change(mediaId, null, change);
         await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task SetMediaStatusToReady(MediaId mediaId, CancellationToken cancellationToken)
     {
-        var changeStatus = Change.Update(new MediaStatusInfo(mediaId, MediaStage.Ready, 100, ""));
-        await Commander.Run(new MediaStatusBackend_Change(mediaId, changeStatus), cancellationToken).ConfigureAwait(false);
+        var changeStatus = Change.Update(new MediaStatusInfo(mediaId, 0, MediaStage.Ready, 0, ""));
+        await Commander.Run(new MediaStatusBackend_Change(mediaId, null, changeStatus), cancellationToken).ConfigureAwait(false);
     }
 }

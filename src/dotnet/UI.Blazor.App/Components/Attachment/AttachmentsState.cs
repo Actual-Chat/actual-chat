@@ -79,10 +79,10 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         var uploadProgress = await Hub.UploadSessionsState.GetProgress(sessionId, cancellationToken).ConfigureAwait(false);
         MediaStatusInfo mediaStatus;
         if (uploadProgress.Stage == UploadStage.Completed)
-            mediaStatus = new(FakeMediaId, MediaStage.Ready, 0, "");
+            mediaStatus = new(FakeMediaId, 0, MediaStage.Ready, 0, "");
         else if (uploadProgress.Stage >= UploadStage.Uploaded) {
             var mediaStatus1 = await GetMediaStatus(sessionId, cancellationToken).ConfigureAwait(false);
-            mediaStatus = mediaStatus1 ?? new(FakeMediaId, MediaStage.Uploaded, 0, "");
+            mediaStatus = mediaStatus1 ?? new(FakeMediaId, 0, MediaStage.Uploaded, 0, "");
         }
         else {
             MediaStage stage = uploadProgress.Stage switch {
@@ -91,7 +91,7 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
                 UploadStage.New => MediaStage.Reserved,
                 _ => throw new InvalidOperationException($"Unexpected upload stage: {uploadProgress.Stage}"),
             };
-            mediaStatus = new MediaStatusInfo(FakeMediaId, stage, uploadProgress.Progress, uploadProgress.ErrorMessage);
+            mediaStatus = new MediaStatusInfo(FakeMediaId, 0, stage, uploadProgress.Progress, uploadProgress.ErrorMessage);
         }
 
         var stageInfo = GetStateInfo(mediaStatus.Stage);

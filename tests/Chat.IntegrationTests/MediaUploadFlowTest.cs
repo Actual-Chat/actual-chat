@@ -53,7 +53,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         newOffset.Should().Be(testData.Length);
 
         // Act 4: Update status to Uploading
-        await commander.Call(new Medias_UpdateStatus(session, mediaId, MediaStage.Uploading, 100, ""));
+        await commander.Call(new Medias_UpdateStatus(session, mediaId, null, MediaStage.Uploading, 100, ""));
 
         status = await mediaStatusBackend.Get(mediaId, default);
         status.Should().NotBeNull();
@@ -107,7 +107,7 @@ public class MediaUploadFlowTest(ChatCollection.AppHostFixture fixture, ITestOut
         var otherCommander = otherTester.Commander;
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => {
-            await otherCommander.Call(new Medias_UpdateStatus(otherSession, mediaId, MediaStage.Ready, 100, ""));
+            await otherCommander.Call(new Medias_UpdateStatus(otherSession, mediaId, null, MediaStage.Ready, 100, ""));
         });
     }
 

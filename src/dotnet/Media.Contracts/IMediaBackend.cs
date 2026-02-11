@@ -24,7 +24,8 @@ public interface IMediaBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record MediaBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] MediaId Id,
-    [property: DataMember, MemoryPackOrder(1)] Change<MediaFull> Change
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<MediaFull> Change
 ) : ICommand<MediaFull?>, IBackendCommand, IHasShardKey<MediaId>
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

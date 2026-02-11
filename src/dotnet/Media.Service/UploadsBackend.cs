@@ -259,9 +259,9 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     private async Task UpdateMediaStatus(MediaId mediaId, MediaStage stage, double progress, CancellationToken cancellationToken)
     {
         try {
-            var statusInfo = new MediaStatusInfo(mediaId, stage, progress, "");
+            var statusInfo = new MediaStatusInfo(mediaId, 0, stage, progress, "");
             var change = new Change<MediaStatusInfo> { Update = statusInfo };
-            await Commander.Call(new MediaStatusBackend_Change(mediaId, change), true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(new MediaStatusBackend_Change(mediaId, null, change), true, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to update media status for '{MediaId}'", mediaId);

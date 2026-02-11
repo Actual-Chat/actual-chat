@@ -171,6 +171,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             if (!mediaSid.IsNullOrEmpty()) {
                 var removeMediaCommand = new MediaBackend_Change(
                     MediaId.Parse(mediaSid),
+                    null,
                     new Change<MediaFull> { Remove = true });
                 await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }

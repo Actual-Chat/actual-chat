@@ -41,9 +41,10 @@ public sealed partial record Medias_RemoveMedia(
 public sealed partial record Medias_UpdateStatus(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] MediaId MediaId,
-    [property: DataMember, MemoryPackOrder(2)] MediaStage Stage,
-    [property: DataMember, MemoryPackOrder(3)] double StageProgress,
-    [property: DataMember, MemoryPackOrder(4)] string ErrorMessage
+    [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(3)] MediaStage Stage,
+    [property: DataMember, MemoryPackOrder(4)] double StageProgress,
+    [property: DataMember, MemoryPackOrder(5)] string ErrorMessage
 ) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

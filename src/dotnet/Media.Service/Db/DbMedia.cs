@@ -13,6 +13,7 @@ public class DbMedia : IHasId<string>, IRequirementTarget
     public DbMedia(MediaFull model) => UpdateFrom(model);
 
     [Key] public string Id { get; set; } = "";
+    [ConcurrencyCheck] public long Version { get; set; }
 
     public string Scope { get; set; } = "";
     public string LocalId { get; set; } = "";
@@ -22,6 +23,7 @@ public class DbMedia : IHasId<string>, IRequirementTarget
 
     public MediaFull ToModel()
         => new (MediaId.Parse(Id)) {
+            Version = Version,
             ContentId = ContentId,
             UserId = ActualChat.UserId.ParseNullable(UserId),
             Metadata = MetadataSerializer.Read(MetadataJson),
@@ -38,6 +40,7 @@ public class DbMedia : IHasId<string>, IRequirementTarget
             LocalId = model.Id.LocalId;
             UserId = model.UserId?.Value ?? "";
         }
+        Version = model.Version;
         ContentId = model.ContentId;
         MetadataJson = MetadataSerializer.Write(model.Metadata);
     }

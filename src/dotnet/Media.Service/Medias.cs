@@ -16,7 +16,7 @@ public class Medias(IServiceProvider services) : IMedias
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
         if (!media.ContentId.IsNullOrEmpty())
-            return new MediaStatusInfo(mediaId, MediaStage.Ready, 100, "");
+            return new MediaStatusInfo(mediaId, 0, MediaStage.Ready, 100, "");
 
         var mediaStatusInfo = await MediaStatusBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         return mediaStatusInfo;
@@ -58,11 +58,11 @@ public class Medias(IServiceProvider services) : IMedias
         var media = new MediaFull(mediaId) { UserId = account.Id, Metadata = command.Metadata };
         var mediaChange = new Change<MediaFull> { Create = media };
 
-        await Commander.Call(new MediaBackend_Change(mediaId, mediaChange), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaBackend_Change(mediaId, null, mediaChange), cancellationToken).ConfigureAwait(false);
 
-        var statusInfo = new MediaStatusInfo(mediaId, MediaStage.Reserved, 0,"");
+        var statusInfo = new MediaStatusInfo(mediaId, 0, MediaStage.Reserved, 0, "");
         var statusChange = new Change<MediaStatusInfo> { Create = statusInfo };
-        await Commander.Call(new MediaStatusBackend_Change(mediaId, statusChange), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaStatusBackend_Change(mediaId, null, statusChange), cancellationToken).ConfigureAwait(false);
 
         return mediaId;
     }
@@ -81,10 +81,10 @@ public class Medias(IServiceProvider services) : IMedias
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
 
         var mediaChange = new Change<MediaFull> { Remove = true };
-        await Commander.Call(new MediaBackend_Change(mediaId, mediaChange), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaBackend_Change(mediaId, null, mediaChange), cancellationToken).ConfigureAwait(false);
 
         var statusChange = new Change<MediaStatusInfo> { Remove = true };
-        await Commander.Call(new MediaStatusBackend_Change(mediaId, statusChange), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaStatusBackend_Change(mediaId, null, statusChange), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -93,16 +93,16 @@ public class Medias(IServiceProvider services) : IMedias
         if (Invalidation.IsActive)
             return;
 
-        var (session, mediaId, stage, stageProgress, errorMessage) = command;
+        var (session, mediaId, expectedVersion, stage, stageProgress, errorMessage) = command;
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
         if (media == null)
             throw StandardError.NotFound<Media>();
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
 
-        var statusInfo = new MediaStatusInfo(mediaId, stage, stageProgress, errorMessage ?? "");
+        var statusInfo = new MediaStatusInfo(mediaId, 0, stage, stageProgress, errorMessage ?? "");
         var change = new Change<MediaStatusInfo> { Update = statusInfo };
-        await Commander.Call(new MediaStatusBackend_Change(mediaId, change), cancellationToken).ConfigureAwait(false);
+        await Commander.Call(new MediaStatusBackend_Change(mediaId, expectedVersion, change), cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

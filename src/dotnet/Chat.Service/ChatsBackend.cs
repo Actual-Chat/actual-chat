@@ -2509,6 +2509,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     {
         var removeCommand = new MediaBackend_Change(
             mediaId,
+            null,
             new Change<MediaFull> { Remove = true });
         await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
     }

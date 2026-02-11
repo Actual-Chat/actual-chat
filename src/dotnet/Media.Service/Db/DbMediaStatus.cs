@@ -12,17 +12,19 @@ public class DbMediaStatus : IHasId<string>, IRequirementTarget
     public DbMediaStatus(MediaStatusInfo model) => UpdateFrom(model);
 
     [Key] public string Id { get; set; } = "";
+    [ConcurrencyCheck] public long Version { get; set; }
 
     public MediaStage Stage { get; set; }
     public double StageProgress { get; set; }
     public string ErrorMessage { get; set; } = "";
 
     public MediaStatusInfo ToModel()
-        => new (MediaId.Parse(Id), Stage, StageProgress, ErrorMessage);
+        => new (MediaId.Parse(Id), Version, Stage, StageProgress, ErrorMessage);
 
     public void UpdateFrom(MediaStatusInfo model)
     {
         Id = model.Id.Value;
+        Version = model.Version;
         Stage = model.Stage;
         StageProgress = model.StageProgress;
         ErrorMessage = model.ErrorMessage;
