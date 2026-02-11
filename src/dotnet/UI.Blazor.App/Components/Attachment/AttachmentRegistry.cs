@@ -52,13 +52,6 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
             _ = GetMediaContent(id, default);
     }
 
-    // public void SetUploadSessionId(AttachmentId id, string uploadSessionId)
-    // {
-    //     _infos[id] = new AttachmentInfo(uploadSessionId);
-    //     using (Invalidation.Begin())
-    //         _ = GetAttachmentInfo(id, default);
-    // }
-
     public void SetFailureState(AttachmentId id, FailureState failureState)
     {
         if (failureState == FailureState.None)
@@ -202,21 +195,6 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
         var state = _infos.GetValueOrDefault(id);
         return Task.FromResult(state);
     }
-
-    // public async Task<string> DemandUploadSessionId(AttachmentId id, CancellationToken cancellationToken = default)
-    // {
-    //     var uploadSessionId = await GetUploadSessionId(id, cancellationToken);
-    //     if (uploadSessionId.IsNullOrEmpty())
-    //         throw new InvalidOperationException("Upload session not assigned");
-    //
-    //     return uploadSessionId;
-    // }
-    //
-    // public async Task<string?> GetUploadSessionId(AttachmentId id, CancellationToken cancellationToken)
-    // {
-    //     var attachmentInfo = await GetAttachmentInfo(id, cancellationToken).ConfigureAwait(false);
-    //     return attachmentInfo?.UploadSessionId;
-    // }
 }
 
 public sealed record AttachmentInfo(string UploadSessionId);
