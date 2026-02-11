@@ -22,7 +22,7 @@
         uploadProgressClass += " attachment-upload-completed";
     }
     var uploadStyle = $"width: {progressValue}%;";
-    var isUploading = state.IsUploading;
+    var isUploading = progress.IsInProgress;
 }
 
 <div class="file-attachment upload-file unfocusable @iconOnlyCls"

@@ -135,8 +135,9 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
             _ => stageInfo.Details,
         };
         return new AttachmentProgress(overallProgress, details) {
+            IsInProgress = !isReady && !isFailed,
             IsReady = isReady,
-            IsFailed = mediaStatus.HasFailed,
+            IsFailed = isFailed,
         };
     }
 

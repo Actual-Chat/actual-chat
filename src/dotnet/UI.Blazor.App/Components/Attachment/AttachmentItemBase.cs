@@ -27,6 +27,5 @@ public abstract class AttachmentItemBase : ComputedStateComponent<AppUIHub, Atta
         public static readonly Model None = new(AttachmentPreview.NoPreview, AttachmentProgress.New);
 
         public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
-        public bool IsUploading { get; init; } //   state.UploadSessionId != "" && !(progress.IsReady || progress.IsFailed);
     }
 }
