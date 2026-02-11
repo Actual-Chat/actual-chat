@@ -7,6 +7,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
     private static readonly FrozenDictionary<MediaStage, StageProgressInfo> StageProgressMap = BuildStageProgressMap();
+    private static readonly MediaId FakeMediaId = MediaId.New("client-id:upload-ready");
     private readonly ConcurrentDictionary<AttachmentId, AttachmentInfo> _infos = new();
     private readonly ConcurrentDictionary<AttachmentId, AttachmentPreview> _previews = new();
     private readonly ConcurrentDictionary<AttachmentId, MediaContent> _mediaContents = new();
@@ -108,9 +109,27 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
 
     public virtual async Task<AttachmentProgress> GetProgress(AttachmentId id, CancellationToken cancellationToken)
     {
-        var mediaStatus = await GetMediaStatus(id, cancellationToken).ConfigureAwait(false);
-        if (mediaStatus is null)
+        var sessionId = await GetUploadSessionId(id, cancellationToken);
+        if (sessionId.IsNullOrEmpty())
             return AttachmentProgress.New;
+
+        var uploadProgress = await Hub.UploadSessionsState.GetProgress(sessionId, cancellationToken).ConfigureAwait(false);
+        MediaStatusInfo mediaStatus;
+        if (uploadProgress.Stage == UploadStage.Completed)
+            mediaStatus = new(FakeMediaId, MediaStage.Ready, 0, "");
+        else if (uploadProgress.Stage >= UploadStage.Uploaded) {
+            var mediaStatus1 = await GetMediaStatus(sessionId, cancellationToken).ConfigureAwait(false);
+            mediaStatus = mediaStatus1 ?? new(FakeMediaId, MediaStage.Uploaded, 0, "");
+        }
+        else {
+            MediaStage stage = uploadProgress.Stage switch {
+                UploadStage.Uploading => MediaStage.Uploading,
+                UploadStage.ClientProcessing => MediaStage.ClientProcessing,
+                UploadStage.New => MediaStage.Reserved,
+                _ => throw new InvalidOperationException($"Unexpected upload stage: {uploadProgress.Stage}"),
+            };
+            mediaStatus = new MediaStatusInfo(FakeMediaId, stage, uploadProgress.Progress, uploadProgress.ErrorMessage);
+        }
 
         var stageInfo = GetStateInfo(mediaStatus.Stage);
         var overallProgress = stageInfo.BaseProgress
@@ -158,26 +177,25 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     }
 
     [ComputeMethod]
-    public virtual async Task<MediaStatusInfo?> GetMediaStatus(AttachmentId id, CancellationToken cancellationToken)
-    {
-        var info = await GetAttachmentInfo(id, cancellationToken).ConfigureAwait(false);
-        var uploadSessionId = info?.UploadSessionId;
-        if (uploadSessionId.IsNullOrEmpty())
-            return null;
-
-        var mediaId = await Hub.UploadSessionsState.GetReservedMediaId(uploadSessionId, cancellationToken);
-        if (mediaId is null)
-            return null;
-
-        var status = await Hub.Medias.GetStatus(Session, mediaId, cancellationToken).ConfigureAwait(false);
-        return status;
-    }
-
-    [ComputeMethod]
     public virtual Task<AttachmentInfo?> GetAttachmentInfo(AttachmentId id, CancellationToken cancellationToken)
     {
         var state = _infos.GetValueOrDefault(id);
         return Task.FromResult(state);
+    }
+
+    private async Task<MediaStatusInfo?> GetMediaStatus(string sessionId, CancellationToken cancellationToken)
+    {
+        var mediaId = await Hub.UploadSessionsState.GetReservedMediaId(sessionId, cancellationToken);
+        if (mediaId is null)
+            return null;
+
+        return await Hub.Medias.GetStatus(Session, mediaId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<string?> GetUploadSessionId(AttachmentId id, CancellationToken cancellationToken)
+    {
+        var info = await GetAttachmentInfo(id, cancellationToken).ConfigureAwait(false);
+        return info?.UploadSessionId;
     }
 
     private StageProgressInfo GetStateInfo(MediaStage stage)

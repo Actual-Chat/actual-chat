@@ -245,14 +245,15 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             attachmentList.Add(attachment);
             if (attachment.NoFileAccess)
                 continue;
-            var mediaStatus = await attachmentRegistry.GetMediaStatus(attachment.Id, default).ConfigureAwait(false);
-            if (mediaStatus is null || (mediaStatus.Stage is not MediaStage.Ready && !mediaStatus.HasFailed))
-                await attachmentsController.ResumeUpload(attachment).ConfigureAwait(false);
+            var attachmentProgress = await attachmentRegistry.GetProgress(attachment.Id, default).ConfigureAwait(false);
+            if (attachmentProgress.IsReady || attachmentProgress.IsFailed)
+                continue;
+            await attachmentsController.ResumeUpload(attachment).ConfigureAwait(false);
         }
 
         foreach (var attachment in attachments) {
-            var mediaStatus = await attachmentRegistry.GetMediaStatus(attachment.Id, default).ConfigureAwait(false);
-            if (mediaStatus is null || mediaStatus.Stage is not MediaStage.Ready)
+            var attachmentProgress = await attachmentRegistry.GetProgress(attachment.Id, default).ConfigureAwait(false);
+            if (!attachmentProgress.IsReady)
                 SubscribeFilePermissionsGranted(attachment.Id, attachment.Extras);
             SubscribePreviewResolved(attachment.Id, attachment.Extras);
         }

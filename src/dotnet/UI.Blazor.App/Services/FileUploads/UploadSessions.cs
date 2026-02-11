@@ -219,6 +219,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             case UploadStatus.Uploaded when session.ReservedMediaId is not null:
                 // Resume monitoring if session was restored in Uploaded state
                 session.ProgressTracker.ReportProgress(100);
+                SetProgress(session.SessionId, new UploadSessionProgress(UploadStage.Uploaded));
                 var cts = new CancellationTokenSource(TimeSpan.FromMinutes(15));
                 session.MonitoringCts = cts;
                 _ = BackgroundTask.Run(() => MonitorProcessing(sessionId, session.ReservedMediaId, cts.Token));
@@ -226,12 +227,14 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             case UploadStatus.Completed when session.MediaContent is not null:
                 session.ProgressTracker.ReportProgress(100);
                 session.ProgressTracker.SetResult(session.MediaContent);
+                SetProgress(session.SessionId, new UploadSessionProgress(UploadStage.Completed));
                 break;
             case UploadStatus.Canceled:
                 session.ProgressTracker.SetCanceled();
                 break;
             case UploadStatus.Failed:
                 session.ProgressTracker.SetException(new Exception("Upload failed"));
+                SetProgress(session.SessionId, new UploadSessionProgress(UploadStage.New) { IsFailed = true, ErrorMessage ="Upload failed" });
                 break;
         }
         _sessions[sessionId] = session;
@@ -287,6 +290,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     {
         var session = await GetSession(sessionId).ConfigureAwait(false);
         session.ProgressTracker.ReportProgress(progress);
+        SetProgress(sessionId, new UploadSessionProgress(UploadStage.Uploading, progress));
     }
 
     private async Task OnUploaded(string sessionId, UploadId uploadId, MediaId mediaId)
@@ -300,6 +304,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             session.LastUpdatedAt = Now;
             await _repo.Save(session).ConfigureAwait(false);
             LogStatusChange(session, session.Status);
+            SetProgress(sessionId, new UploadSessionProgress(UploadStage.Uploaded));
 
             // Start monitoring processing status in background
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(15));
@@ -323,6 +328,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             session.MediaContent = mediaContent;
             await _repo.Save(session).ConfigureAwait(false);
             LogStatusChange(session, session.Status);
+            SetProgress(sessionId, new UploadSessionProgress(UploadStage.Completed));
         }
         finally {
             sessionLock.Release();
@@ -340,6 +346,13 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             session.LastUpdatedAt = Now;
             await _repo.Save(session).ConfigureAwait(false);
             LogStatusChange(session, session.Status);
+            var errorMessage = error.Message.IsNullOrEmpty() ? "Upload failed" : error.Message;
+            var uploadProgress = await Hub.UploadSessionsState.GetProgress(sessionId, default);
+            uploadProgress = uploadProgress with {
+                IsFailed = true,
+                ErrorMessage = "Failed: " + errorMessage,
+            };
+            SetProgress(sessionId, uploadProgress);
         }
         finally {
             sessionLock.Release();
@@ -452,4 +465,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             await OnFailed(sessionId, error).ConfigureAwait(false);
         }
     }
+
+    private void SetProgress(string sessionId, UploadSessionProgress progress)
+        => Hub.UploadSessionsState.SetProgress(sessionId, progress);
 }
