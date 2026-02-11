@@ -1,6 +1,7 @@
 using ActualChat.App.Maui.IosShareExt.Services;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Maui;
+using ActualChat.Maui.Services;
 using ActualChat.UI;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
