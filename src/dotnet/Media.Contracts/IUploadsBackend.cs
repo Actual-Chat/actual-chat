@@ -82,11 +82,11 @@ public sealed partial record UploadsBackend_ProcessAndSaveContent(
     [property: DataMember, MemoryPackOrder(1)] MediaId MediaId
 ) : ICommand<MediaContent>, IBackendCommand, IHasShardKey<UploadId>
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public UploadId ShardKey => UploadId;
 }
 
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record UploadsBackend_ConvertToMediaContent(
     [property: DataMember, MemoryPackOrder(0)] UploadId UploadId
