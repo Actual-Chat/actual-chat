@@ -141,3 +141,9 @@ public sealed partial class PeerChatId : ChatId, IStringIdentifier<PeerChatId>
         return result is not null;
     }
 }
+
+public static class PeerChatIdExt
+{
+    public static ContactId ToContactId(this PeerChatId chatId, UserId ownerId)
+        => ContactId.NewUser(ownerId, chatId.AnotherUserId(ownerId));
+}

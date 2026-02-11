@@ -124,7 +124,7 @@
   </ItemGroup>
 
   <!-- Generators -->
-  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' AND '$(MSBuildProjectName)' != 'App.Maui' AND '$(MSBuildProjectName)' != 'Maui'">
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' AND '$(MSBuildProjectName)' != 'App.Maui'">
     <PackageReference Include="ActualLab.Generators" PrivateAssets="all" />
     <PackageReference Include="MemoryPack.Generator" PrivateAssets="all" Condition="$(UseMemoryPack)" />
   </ItemGroup>

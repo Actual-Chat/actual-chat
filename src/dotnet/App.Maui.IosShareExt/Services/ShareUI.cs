@@ -2,10 +2,10 @@ using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Chat;
 using ActualChat.Contacts;
-using ActualChat.Maui;
 using ActualChat.Media;
 using ActualChat.Search;
 using ActualChat.UI;
+using ActualChat.UI.App.Services;
 using ActualChat.UI.Services;
 using ActualLab.Fusion.UI;
 using ActualLab.Generators;
@@ -38,13 +38,12 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
 
     private IAccounts Accounts => Hub.Accounts;
     private IContacts Contacts => Hub.Contacts;
-    private IChats Chats => Hub.Chats;
     private ShareInputs SharedInputs => Hub.SharedData;
     private ChunkedFileUploader FileUploader => Hub.FileUploader;
     private Session Session => Hub.Session;
     private UICommander UICommander => Hub.UICommander;
     private ICommander Commander => Hub.Commander;
-    private IosIncomingShareSuggestions ShareSuggestions => field ??= Hub.Services.GetRequiredService<IosIncomingShareSuggestions>();
+    private IncomingShareSuggestions ShareSuggestions => field ??= Hub.Services.GetRequiredService<IncomingShareSuggestions>();
 
     public ShareUI(IosHub hub) : base(hub)
     {
@@ -150,7 +149,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
         try
         {
             var chatIds = _selectedIds.Select(x => x.ChatId).Distinct().ToList();
-            _ = SuggestShareContacts(chatIds);
+            _ = SuggestShareContacts([.._selectedIds]);
             var text = await SharedInputs.GetText(cancellationToken).ConfigureAwait(false);
             var fileInputs = await SharedInputs.ListFiles(cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Text: {Text}, Files: {Files}", text, fileInputs.Count);
@@ -193,16 +192,11 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
         }
     }
 
-    // TODO: move out of this class
-    private async Task SuggestShareContacts(List<ChatId> chatIds)
+    private async Task SuggestShareContacts(IReadOnlyList<ContactId> contactIds)
     {
         try {
             var cancellationToken = StopToken;
-            var chats = await chatIds.Select(x => Chats.Get(Session, x, cancellationToken))
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
-            foreach (var chat in chats.SkipNullItems())
-                await ShareSuggestions.DonateSuggestion(chat, null, cancellationToken).ConfigureAwait(false);
+            await contactIds.Select(x => ShareSuggestions.Suggest(x, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             if (!e.IsCancellationOf(StopToken))

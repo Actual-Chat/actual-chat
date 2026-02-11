@@ -43,8 +43,9 @@ public class MauiModule(IServiceProvider moduleServices)
 
         // sharing
 #if IOS
-        services.AddScoped<IosIncomingShareSuggestions>();
-        services.AddScoped<IncomingShareSuggestions>(c => c.GetRequiredService<IosIncomingShareSuggestions>());
+        var fusion = services.AddFusion();
+        fusion.AddService<IconUI>(ServiceLifetime.Scoped);
+        services.AddScoped<IncomingShareSuggestions>(c => new IosIncomingShareSuggestions(c));
 #endif
     }
 }

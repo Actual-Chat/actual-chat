@@ -15,15 +15,15 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
     private UrlMapper UrlMapper => field ??= services.UrlMapper();
     private HttpClient HttpClient => field ??= services.HttpClientFactory().CreateClient("Avatars");
 
-    public async Task<LoadedImage?> Get(IconQuery iconQuery, CancellationToken cancellationToken = default)
+    public async Task<LoadedImage?> Get(IconQuery query, CancellationToken cancellationToken = default)
     {
-        var url = UrlMapper.PicturePreview128Url(iconQuery.Picture);
-        if (!url.IsNullOrEmpty()) {
-            var filePath = await GetExternalImage(url, cancellationToken).ConfigureAwait(false);
-            return filePath.IsEmpty ? null : new LoadedImage(filePath, null);
-        }
+        var url = UrlMapper.PicturePreview128Url(query.Picture);
+        if (url.IsNullOrEmpty())
+            return await GenerateAvatar(query.AvatarKey, query.AvatarKind, cancellationToken).ConfigureAwait(false);
 
-        return await GenerateAvatar(iconQuery.AvatarKey, iconQuery.AvatarKind, cancellationToken).ConfigureAwait(false);
+        var filePath = await GetExternalImage(url, cancellationToken).ConfigureAwait(false);
+        return filePath.IsEmpty ? null : new LoadedImage(filePath, null);
+
     }
 
     [ComputeMethod]
