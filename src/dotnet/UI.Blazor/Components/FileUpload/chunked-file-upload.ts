@@ -58,10 +58,10 @@ export class ChunkedFileUpload {
         onCompleted?: () => void,
     ): ChunkedFileUpload {
         const reporter = new FileUploadProgressReporter(blazorRef);
-        const upload = new ChunkedFileUpload(uploadId, blob, pct => reporter.reportProgress(pct));
+        const upload = new ChunkedFileUpload(uploadId, blob, pct => void reporter.reportProgress(pct));
         upload.whenCompleted.then(() => {
             void reporter.reportUploadSucceed();
-        }).catch(e => {
+        }).catch((e: unknown) => {
             if (e instanceof OperationCancelledError) {
                 debugLog?.log(`File upload '${uploadId}' cancelled`);
                 void reporter.reportUploadCancelled();
@@ -221,15 +221,15 @@ export class ChunkedFileUpload {
     }
 }
 
-type Stat = { multiplier: number; ms: number; };
+interface Stat { multiplier: number; ms: number; }
 
 class ChunkSizeSelector
 {
-    private static minChunkSize : number = 256 * 1024; // 256 KB
-    private static defaultChunkSizeMultiplier: number = 8; // 4 Mb
-    private static maxChunkSizeMultiplier: number = 16; // 8 Mb
-    private static recommendedChunkSizeMultiplier: number = 8; // 4 Mb
-    private static maxChunkUploadDurationMs: number = 5000; // 5 seconds
+    private static minChunkSize = 256 * 1024; // 256 KB
+    private static defaultChunkSizeMultiplier = 8; // 4 Mb
+    private static maxChunkSizeMultiplier = 16; // 8 Mb
+    private static recommendedChunkSizeMultiplier = 8; // 4 Mb
+    private static maxChunkUploadDurationMs = 5000; // 5 seconds
 
     private currentMultiplier: number;
     private lastStats: Stat[] = [];

@@ -3,7 +3,7 @@ import { filter, fromEvent, Subject, takeUntil } from 'rxjs';
 import { Log } from 'logging';
 import { ChunkedFileUpload } from './chunked-file-upload';
 
-const { debugLog, errorLog } = Log.get('FileUpload');
+const { errorLog } = Log.get('FileUpload');
 
 export interface Options {
     maxSize?: number;
