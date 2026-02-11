@@ -88,6 +88,10 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 
                 state.LastStreamBeginsAt = streamInfo.BeginsAt;
 
+                // Report end-to-end audio latency
+                var latency = serverClock.Now - streamInfo.BeginsAt;
+                _ = Hub.StreamClient.ReportAudioLatency(latency, cancellationToken).ConfigureAwait(false);
+
                 // Create AudioSource from the stream frames
                 var skipTo = (playAt - streamInfo.BeginsAt).Positive();
                 var audioSource = CreateAudioSource(streamInfo, audioFrames, skipTo, cancellationToken);
