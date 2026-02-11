@@ -66,7 +66,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
         var failureState = await AttachmentRegistry.GetFailureState(attachment.Id, default).ConfigureAwait(false);
         if (failureState is not FailureState.Failed)
             throw new InvalidOperationException("Can't restart. Upload is not failed");
-        var previewState = await AttachmentRegistry.GetPreviewState(attachment.Id, default).ConfigureAwait(false);
+        var previewState = await AttachmentRegistry.GetPreview(attachment.Id, default).ConfigureAwait(false);
         if (previewState.State is PreviewAccessState.NoFileAccess)
             throw new InvalidOperationException("Can't restart. No access to file");
 

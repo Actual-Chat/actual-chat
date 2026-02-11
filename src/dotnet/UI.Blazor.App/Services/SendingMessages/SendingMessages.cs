@@ -230,7 +230,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 attachmentRegistry.Unregister(sourceAttachmentId.Value);
             attachmentRegistry.Register(attachment);
             if (!attachmentIsOk)
-                attachmentRegistry.SetPreviewState(attachment.Id, AttachmentPreviewState.NoFileAccess);
+                attachmentRegistry.SetPreview(attachment.Id, AttachmentPreview.NoFileAccess);
             else if (mediaContent is not null)
                 attachmentRegistry.SetMediaContent(attachment.Id, mediaContent);
             attachments.Add(attachment);
@@ -268,7 +268,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         _ =  extras.GetPreviewUrl.ContinueWith(t => {
             // Preview resolved.
 #pragma warning disable VSTHRD002
-            Hub.AttachmentRegistry.SetPreviewState(attachmentId, AttachmentPreviewState.Preview(t.Result));
+            Hub.AttachmentRegistry.SetPreview(attachmentId, AttachmentPreview.Preview(t.Result));
  #pragma warning restore VSTHRD002
         }, TaskScheduler.Default);
     }
@@ -279,7 +279,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 return;
 
             // File permission was denied.
-            Hub.AttachmentRegistry.SetPreviewState(attachmentId, AttachmentPreviewState.NoFileAccess);
+            Hub.AttachmentRegistry.SetPreview(attachmentId, AttachmentPreview.NoFileAccess);
             // Hub.AttachmentRegistry.Update(attachmentId,
             //     a => a with {
             //         Failed = true,

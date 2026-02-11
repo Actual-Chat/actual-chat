@@ -8,7 +8,7 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
 {
     private static readonly FrozenDictionary<MediaStage, StageProgressInfo> StageProgressMap = BuildStageProgressMap();
     private readonly ConcurrentDictionary<AttachmentId, AttachmentInfo> _infos = new();
-    private readonly ConcurrentDictionary<AttachmentId, AttachmentPreviewState> _previews = new();
+    private readonly ConcurrentDictionary<AttachmentId, AttachmentPreview> _previews = new();
     private readonly ConcurrentDictionary<AttachmentId, MediaContent> _mediaContents = new();
     private readonly ConcurrentDictionary<AttachmentId, FailureState> _failureStates = new();
     private readonly ConcurrentDictionary<string, PropertyBag> _uploadSessionMetadata = new(StringComparer.Ordinal);
@@ -22,7 +22,7 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
         using (Invalidation.Begin())
             _ = GetAttachmentInfo(attachment.Id, default);
         if (attachment is SourceAttachment source)
-            SetPreviewState(attachment.Id, AttachmentPreviewState.Preview(source.PreviewUrl));
+            SetPreview(attachment.Id, AttachmentPreview.Preview(source.PreviewUrl));
         SetUploadSessionMetadata(attachment.UploadSessionId, attachment);
     }
 
@@ -34,17 +34,17 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
         _failureStates.TryRemove(id, out _);
         using (Invalidation.Begin()) {
             _ = GetAttachmentInfo(id, default);
-            _ = GetPreviewState(id, default);
+            _ = GetPreview(id, default);
             _ = GetMediaContent(id, default);
             _ = GetFailureState(id, default);
         }
     }
 
-    public void SetPreviewState(AttachmentId id, AttachmentPreviewState previewState)
+    public void SetPreview(AttachmentId id, AttachmentPreview preview)
     {
-        _previews[id] = previewState;
+        _previews[id] = preview;
         using (Invalidation.Begin())
-            _ = GetPreviewState(id, default);
+            _ = GetPreview(id, default);
     }
 
     public void SetMediaContent(AttachmentId id, MediaContent mediaContent)
@@ -101,7 +101,7 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     [ComputeMethod]
     public virtual async Task<AttachmentState> GetAttachmentState(AttachmentId id, CancellationToken cancellationToken)
     {
-        var previewState = await GetPreviewState(id, cancellationToken).ConfigureAwait(false);
+        var previewState = await GetPreview(id, cancellationToken).ConfigureAwait(false);
         var uploadState = await GetAttachmentUploadState(id, cancellationToken).ConfigureAwait(false);
         return new AttachmentState(previewState, uploadState);
     }
@@ -128,9 +128,9 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
     }
 
     [ComputeMethod]
-    public virtual Task<AttachmentPreviewState> GetPreviewState(AttachmentId id, CancellationToken cancellationToken)
+    public virtual Task<AttachmentPreview> GetPreview(AttachmentId id, CancellationToken cancellationToken)
     {
-        var preview = _previews.GetValueOrDefault(id) ?? AttachmentPreviewState.PendingGetAccessRequest;
+        var preview = _previews.GetValueOrDefault(id) ?? AttachmentPreview.PendingGetAccessRequest;
         return Task.FromResult(preview);
     }
 
@@ -213,18 +213,6 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
 
 public sealed record AttachmentInfo(string UploadSessionId);
 
-public enum PreviewAccessState {
-    Ok, NoFileAccess, PendingGetAccessRequest
-}
-
-public sealed record AttachmentPreviewState(PreviewAccessState State, string PreviewUrl)
-{
-    public static readonly AttachmentPreviewState NoFileAccess = new(PreviewAccessState.NoFileAccess, "");
-    public static readonly AttachmentPreviewState PendingGetAccessRequest = new(PreviewAccessState.PendingGetAccessRequest, "");
-    public static readonly AttachmentPreviewState NoPreview = new(PreviewAccessState.Ok, "");
-    public static AttachmentPreviewState Preview(string previewUrl) => new(PreviewAccessState.Ok, previewUrl);
-}
-
 public sealed record AttachmentUploadState(MediaStage Stage, double Progress, string Details = "")
 {
     public static readonly AttachmentUploadState Idle = new(MediaStage.Reserved, 0);
@@ -233,9 +221,9 @@ public sealed record AttachmentUploadState(MediaStage Stage, double Progress, st
     public bool IsFailed { get; init; }
 }
 
-public sealed record AttachmentState(AttachmentPreviewState Preview, AttachmentUploadState UploadState)
+public sealed record AttachmentState(AttachmentPreview Preview, AttachmentUploadState UploadState)
 {
-    public static readonly AttachmentState None = new(AttachmentPreviewState.NoPreview, AttachmentUploadState.Idle);
+    public static readonly AttachmentState None = new(AttachmentPreview.NoPreview, AttachmentUploadState.Idle);
 
     public bool NoAccess => Preview.State == PreviewAccessState.NoFileAccess;
 
