@@ -15,7 +15,6 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
     {
         var contact = await Contacts.Get(Session, contactId, cancellationToken).Require().ConfigureAwait(false);
         var loadedImage = await IconUI.Get(contact.GetIconQuery(), cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("!!! Loaded image: {FilePath}", loadedImage?.FilePath);
         var inImage = loadedImage is not null ? INImage.FromUrl(NSUrl.FromFilename(loadedImage.FilePath)) : null;
         await DonateIntent(contact.Chat, inImage, cancellationToken).ConfigureAwait(false);
     }

@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
@@ -25,6 +26,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private InteractiveUI InteractiveUI => Hub.InteractiveUI;
     private DeviceAwakeUI DeviceAwakeUI => Hub.DeviceAwakeUI;
+    private IncomingShareSuggestions IncomingShareSuggestions => field ??= Services.GetRequiredService<IncomingShareSuggestions>();
     private Moment CpuNow => Clocks.CpuClock.Now;
     private Moment ServerNow => Clocks.ServerClock.Now;
 
