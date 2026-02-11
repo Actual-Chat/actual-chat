@@ -44,7 +44,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
     private Session Session => Hub.Session;
     private UICommander UICommander => Hub.UICommander;
     private ICommander Commander => Hub.Commander;
-    private IntentDonation IntentDonation => field ??= Hub.Services.GetRequiredService<IntentDonation>();
+    private IosIncomingShareSuggestions ShareSuggestions => field ??= Hub.Services.GetRequiredService<IosIncomingShareSuggestions>();
 
     public ShareUI(IosHub hub) : base(hub)
     {
@@ -202,7 +202,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
             foreach (var chat in chats.SkipNullItems())
-                await IntentDonation.Donate(chat, null, cancellationToken).ConfigureAwait(false);
+                await ShareSuggestions.DonateSuggestion(chat, null, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             if (!e.IsCancellationOf(StopToken))

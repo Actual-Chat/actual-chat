@@ -18,6 +18,6 @@ public sealed class IosShareExtensionModule(IServiceProvider moduleServices)
         fusion.AddService<IconUI>(ServiceLifetime.Scoped);
         services.AddScoped<ShareInputs>();
         services.AddScoped<SessionInitializer>();
-        services.AddScoped<IntentDonation>();
+        services.AddScoped<IosIncomingShareSuggestions>();
     }
 }
