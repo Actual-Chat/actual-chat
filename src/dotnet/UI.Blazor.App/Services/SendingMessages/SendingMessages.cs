@@ -442,12 +442,39 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 .MarkMessageHasCreated(request.Uuid, chatEntry.LocalId, cancellationToken)
                 .ConfigureAwait(false);
 
-        ChatEntry? chatEntry1 = chatEntry;
+        ChatEntry? chatEntry1;
         await request.AttachmentUploads.WhenUploaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         if (request.AttachmentUploads.Attachments.Count == 0 && chatEntry.Content.IsNullOrEmpty()) {
             // Remove the message if it has no attachments and no content.
             await RemoveChatEntry((TextEntryId)chatEntry.Id, cancellationToken).ConfigureAwait(false);
             chatEntry1 = null;
+        }
+        else {
+            var mediaContents = (await request.AttachmentUploads.Attachments.Items
+                    .Select(c => Hub.UploadSessions.TryGetSession(c.UploadSessionId))
+                    .Collect(cancellationToken)
+                    .ConfigureAwait(false))
+                .Select(c => c?.MediaContent)
+                .SkipNullItems()
+                .ToDictionary(c => c.MediaId, c => c);
+            var attachments = chatEntry.AttachmentUploads;
+            if (attachments.Length == 0)
+                attachments = chatEntry.Attachments;
+            var entryAttachments = attachments
+                .Select(c => new { Attachment = c, MediaContent = mediaContents.GetValueOrDefault(c.MediaId) })
+                .Where(c => c.MediaContent is not null)
+                .Select(c => new TextEntryAttachment {
+                    Id = c.Attachment.Id,
+                    MediaId = c.MediaContent!.MediaId,
+                    ThumbnailMediaId = c.MediaContent.ThumbnailMediaId,
+                }).ToArray();
+
+            // Finalize the message with attachments.
+            var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId, chatEntry.Content) {
+                EntryAttachments = entryAttachments,
+                HasAttachmentUploads = false,
+            };
+            chatEntry1 = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
         }
 
         chatSendingMessages.ConfirmMessageAttachmentsHaveSent(sendingMessage, chatEntry1, Now);
@@ -473,48 +500,11 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         handler.Invoke(afterSendMessageHandler.Args, result);
     }
 
-    // private async Task<ChatEntry?> CreateAttachments(ChatEntry chatEntry, AttachmentUploads attachmentUploads, CancellationToken cancellationToken = default)
-    // {
-    //     // An attachment should have several states: loading, loading error, canceled (removed), loaded.
-    //     // When an attachment has entered the `loading error` state, you can repeat the loading or cancel it entirely.
-    //     await attachmentUploads.WhenUploaded.WaitAsync(cancellationToken).ConfigureAwait(false);
-    //     // When all attachments are loaded, we can continue execution.
-    //     var entryAttachments = CreateTextEntryAttachments(attachmentUploads);
-    //     if (entryAttachments.Length == 0 && chatEntry.Content.IsNullOrEmpty()) {
-    //         // If there are no loaded attachments and the ChatEntry Content is empty,
-    //         // then we delete this ChatEntry altogether.
-    //         await RemoveChatEntry((TextEntryId)chatEntry.Id, cancellationToken).ConfigureAwait(false);
-    //         return null;
-    //     }
-    //     // If there are loaded attachments,
-    //     // then we add them to the ChatEntry and mark that there are no more loadings.
-    //     // NOTE(DF): may be better to introduce a new command for this.
-    //     var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId, chatEntry.Content) {
-    //         HasAttachmentUploads = false,
-    //         EntryAttachments = entryAttachments,
-    //     };
-    //     return await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
-    // }
-
     private async Task RemoveChatEntry(TextEntryId chatEntryId, CancellationToken cancellationToken)
     {
         var cmd1 = new Chats_RemoveTextEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
         await Commander.Run(cmd1, cancellationToken).ConfigureAwait(false);
     }
-
-    // private TextEntryAttachment[] CreateTextEntryAttachments(AttachmentUploads attachmentUploads)
-    // {
-    //     var registry = Hub.AttachmentsState;
-    //     var entryAttachments = attachmentUploads.Attachments.Items
-    //         .Select(x => registry.GetState(x.Id))
-    //         .Where(x => x.Uploaded)
-    //         .Select(x => new TextEntryAttachment {
-    //             MediaId = x.MediaId!,
-    //             ThumbnailMediaId = x.ThumbnailMediaId,
-    //         }).ToArray();
-    //     return entryAttachments;
-    // }
-
     // Nested types
 
     public record PostMessageRequestInternal(string Uuid,

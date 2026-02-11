@@ -4,8 +4,8 @@ namespace ActualChat.Testing.Host;
 
 public static class MediaOperations
 {
-    public static async Task<MediaId> Attach(
-        this IWebClientTester tester,
+    public static async Task<MediaId> SaveMedia(
+        this IWebTester tester,
         ChatId chatId,
         UploadedFile file,
         CancellationToken cancellationToken = default)
@@ -14,5 +14,17 @@ public static class MediaOperations
         var mediaId = MediaId.New(chatId.Value);
         await mediaSaver.Save(mediaId, file, null, cancellationToken);
         return mediaId;
+    }
+
+    public static async Task<MediaId> SaveTextFile(this IWebTester tester, ChatId chatId, string fileName, string content)
+    {
+        var testData = System.Text.Encoding.UTF8.GetBytes(content);
+        var file = new UploadedStreamFile(
+            fileName,
+            "text/plain",
+            testData.Length,
+            () => Task.FromResult<Stream>(new MemoryStream(testData)));
+
+        return await tester.SaveMedia(chatId, file);
     }
 }

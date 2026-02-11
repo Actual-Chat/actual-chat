@@ -57,7 +57,7 @@ public class NotificationContentTest(AppHostFixture fixture, ITestOutputHelper @
         // act
         await Tester.SignIn(bob);
 
-        var mediaId = await Tester.Attach(chatId, TestImages.GetUploadedImage(TestImages.DefaultJpg));
+        var mediaId = await Tester.SaveMedia(chatId, TestImages.GetUploadedImage(TestImages.DefaultJpg));
         var entry = await Tester.CreateTextEntry(chatId, "", mediaId);
         await Tester.SignIn(alice);
         await Tester.React(entry.Id.ToTextEntryId(), Emojis.RedHeart);
