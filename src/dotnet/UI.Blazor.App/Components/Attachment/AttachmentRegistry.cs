@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Services;
 
@@ -5,6 +6,7 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
+    private static readonly FrozenDictionary<MediaStage, StageProgressInfo> StageProgressMap = BuildStageProgressMap();
     private readonly ConcurrentDictionary<AttachmentId, AttachmentInfo> _infos = new();
     private readonly ConcurrentDictionary<AttachmentId, AttachmentPreviewState> _previews = new();
     private readonly ConcurrentDictionary<AttachmentId, MediaContent> _mediaContents = new();
@@ -112,36 +114,16 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
         if (mediaStatus is null)
             return AttachmentUploadState.Idle;
 
-        var overallProgress = 0;
-        var details = "";
-        if (mediaStatus.Stage > MediaStage.Reserved) {
-            var stageWidth = 30;
-            if (mediaStatus.Stage >= MediaStage.Ready) {
-                overallProgress = 100;
-                stageWidth = 0;
-                details = "Ready";
-            }
-            else if (mediaStatus.Stage >= MediaStage.ServerProcessing) {
-                overallProgress = 70;
-                stageWidth = 30;
-                details = "Server processing";
-            }
-            else if (mediaStatus.Stage >= MediaStage.Uploading) {
-                overallProgress = 30;
-                stageWidth = 40;
-                details = "Uploading";
-            }
-            else if (mediaStatus.Stage >= MediaStage.ClientProcessing) {
-                overallProgress = 5;
-                stageWidth = 25;
-                details = "Client processing";
-            }
-            overallProgress += (int)(mediaStatus.StageProgress * stageWidth / 100);
-        }
-        if (mediaStatus.HasFailed)
-            details = "Failed: " + mediaStatus.ErrorMessage;
+        var stageInfo = GetStateInfo(mediaStatus.Stage);
+        var overallProgress = stageInfo.BaseProgress
+            + (int)(mediaStatus.StageProgress * stageInfo.StageWidth / 100);
+
+        var details = mediaStatus.HasFailed
+            ? "Failed: " + mediaStatus.ErrorMessage
+            : stageInfo.Details;
+
         return new AttachmentUploadState(mediaStatus.Stage, overallProgress, details) {
-            IsFailed = mediaStatus.HasFailed
+            IsFailed = mediaStatus.HasFailed,
         };
     }
 
@@ -195,6 +177,38 @@ public class AttachmentRegistry(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IC
         var state = _infos.GetValueOrDefault(id);
         return Task.FromResult(state);
     }
+
+    private StageProgressInfo GetStateInfo(MediaStage stage)
+    {
+        var info = StageProgressMap.GetValueOrDefault(stage);
+        return info ?? new StageProgressInfo(30, 0, "Unknown stage");
+    }
+
+    private static FrozenDictionary<MediaStage, StageProgressInfo> BuildStageProgressMap()
+    {
+        // Only BaseProgress and Details are specified — StageWidth is computed automatically
+        var stages = new (MediaStage Stage, int BaseProgress, string Details)[] {
+            (MediaStage.Reserved, 0, ""),
+            (MediaStage.ClientProcessing, 2, "Client processing"),
+            (MediaStage.Uploading, 25, "Uploading"),
+            (MediaStage.Uploaded, 70, "Uploaded"),
+            (MediaStage.ServerProcessing, 70, "Server processing"),
+            (MediaStage.Saving, 97, "Saving"),
+            (MediaStage.Ready, 100, "Ready"),
+        };
+
+        var result = new Dictionary<MediaStage, StageProgressInfo>();
+        for (var i = 0; i < stages.Length; i++) {
+            var (stage, baseProgress, details) = stages[i];
+            var nextBaseProgress = i + 1 < stages.Length ? stages[i + 1].BaseProgress : 100;
+            var stageWidth = nextBaseProgress - baseProgress;
+            result[stage] = new StageProgressInfo(baseProgress, stageWidth, details);
+        }
+        return result.ToFrozenDictionary();
+    }
+
+    // Nested types
+    private sealed record StageProgressInfo(int BaseProgress, int StageWidth, string Details);
 }
 
 public sealed record AttachmentInfo(string UploadSessionId);
