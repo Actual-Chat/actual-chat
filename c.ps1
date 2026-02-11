@@ -644,7 +644,12 @@ switch ($mode) {
             $volumeMounts += New-VolumeMount $artifactsHostPath "/proj/$proj/artifacts" -EnsureExists
 
             # node_modules from artifacts/claude-docker for persistence across container restarts
+            # Also ensure the mount point exists in the host project (Docker requires it to exist in the parent mount)
             $nodeModulesHostPath = Join-Path $env:AC_ProjectRoot $proj "artifacts" "claude-docker" "node_modules"
+            $nodeModulesMountPoint = Join-Path $env:AC_ProjectRoot $proj "node_modules"
+            if (-not (Test-Path $nodeModulesMountPoint)) {
+                New-Item -ItemType Directory -Path $nodeModulesMountPoint -Force | Out-Null
+            }
             $volumeMounts += New-VolumeMount $nodeModulesHostPath "/proj/$proj/node_modules" -EnsureExists
         }
 
@@ -758,6 +763,7 @@ switch ($mode) {
             "-e", "ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY"
             "-e", "Claude_GeminiAPIKey=$env:Claude_GeminiAPIKey"
             "-e", "DISABLE_AUTOUPDATER=1"
+            "-e", "DOTNET_SYSTEM_NET_DISABLEIPV6=1"
             "-e", "AC_ProjectRoot=/proj"
         ) + $projectEnvVars + $propagatedEnvVars
 
