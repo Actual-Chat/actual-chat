@@ -1,4 +1,6 @@
-namespace ActualChat.UI.Blazor.App.Services;
+using ActualChat.Chat;
+
+namespace ActualChat.UI.App.Services;
 
 public class IncomingShareSuggestions(IServiceProvider services)
 {

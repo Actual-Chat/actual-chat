@@ -2,6 +2,7 @@ using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Recording;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Maui;
+using ActualChat.UI.App.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
@@ -43,9 +44,6 @@ public static partial class MauiProgram
         services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
         services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.AppUIHub()));
         services.AddScoped<AudioFocusService>(c => new IosAudioFocusService(c.AppUIHub()));
-
-        // share suggestions
-        services.AddScoped<IncomingShareSuggestions>(c => new IosIncomingShareSuggestions(c));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

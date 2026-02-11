@@ -1,10 +1,10 @@
+using System;
 using ActualChat.Chat;
 using ActualChat.Contacts;
-using ActualChat.Maui;
 using ActualChat.Media;
 using ActualChat.UI;
 
-namespace ActualChat.App.Maui.IosShareExt.Components;
+namespace ActualChat.Maui.Services;
 
 public static class IconQueryExt
 {

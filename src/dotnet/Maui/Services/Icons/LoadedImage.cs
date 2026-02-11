@@ -1,6 +1,6 @@
 using ActualChat.UI;
 using ActualLab.IO;
 
-namespace ActualChat.Maui;
+namespace ActualChat.Maui.Services;
 
 public record LoadedImage(FilePath FilePath, AvatarKind? AvatarKind);

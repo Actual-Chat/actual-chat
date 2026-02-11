@@ -1,6 +1,7 @@
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Maui.Services;
+using ActualChat.UI.App.Services;
 using ActualLab.Fusion.Client.Caching;
 using ActualLab.IO;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -42,6 +43,7 @@ public class MauiModule(IServiceProvider moduleServices)
 
         // sharing
 #if IOS
+        services.AddScoped<IncomingShareSuggestions>(c => new IosIncomingShareSuggestions(c));
         services.AddScoped<IntentDonation>();
 #endif
     }

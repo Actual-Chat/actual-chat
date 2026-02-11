@@ -3,6 +3,7 @@ using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Maui;
+using ActualChat.Maui.Services;
 
 namespace ActualChat.App.Maui.IosShareExt.Components;
 

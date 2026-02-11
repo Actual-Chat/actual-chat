@@ -1,6 +1,6 @@
 using ActualChat.UI;
 
-namespace ActualChat.Maui;
+namespace ActualChat.Maui.Services;
 
 public record IconQuery(Picture? Picture, AvatarKind AvatarKind, string DefaultAvatarKey)
 {
