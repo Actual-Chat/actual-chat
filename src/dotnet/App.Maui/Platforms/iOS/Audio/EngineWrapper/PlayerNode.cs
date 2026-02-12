@@ -21,8 +21,8 @@ public class PlayerNode : AudioNode, IDisposable
 
     protected override void DisposeCore()
     {
-        _isPlaying.DisposeSilently();
         Stop();
+        _isPlaying.DisposeSilently();
     }
 
     public void Play()
@@ -47,15 +47,12 @@ public class PlayerNode : AudioNode, IDisposable
             Node.ScheduleBuffer(pcm, AVAudioPlayerNodeCompletionCallbackType.PlayedBack, callback);
     }
 
-    public Task ScheduleFileAndWait(AVAudioFile audioFile, CancellationToken cancellationToken = default)
+    public async Task ScheduleFileAndWait(AVAudioFile audioFile, CancellationToken cancellationToken = default)
     {
-        var whenPlayed = AsyncTaskMethodBuilderExt.New();
-        lock (_lock)
-            Node.ScheduleFile(audioFile,
-                null,
-                AVAudioPlayerNodeCompletionCallbackType.PlayedBack,
-                _ => whenPlayed.TrySetResult());
-        return whenPlayed.Task.WaitAsync(cancellationToken);
+        using var _ = Disposable.New(Node.Stop);
+        await Node.ScheduleFileAsync(audioFile, null, AVAudioPlayerNodeCompletionCallbackType.PlayedBack)
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public void Stop()
