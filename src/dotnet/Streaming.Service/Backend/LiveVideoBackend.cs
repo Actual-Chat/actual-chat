@@ -227,7 +227,10 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend, 
                 Log.LogInformation("PushVideoInternal: stream completed with {Count} frames", frameCount);
             }
 
-            await _videoStreams.Publish(record.StreamId, LogFrames(videoFrames)).ConfigureAwait(false);
+            var memoizer = LogFrames(videoFrames).SlidingMemoize(
+                Constants.Video.RetentionBufferSize,
+                cancellationToken);
+            await _videoStreams.Publish(record.StreamId, memoizer).ConfigureAwait(false);
         }
         finally {
             // Unregister stream when it ends

@@ -13,7 +13,9 @@ public class VideoSource(
         createdAt,
         format,
         frameStream
-            .SkipWhile(vf => vf.Offset < skipTo)
+            // Skip frames until we find a keyframe at or after the requested position.
+            // For video, we must start from a keyframe to decode correctly.
+            .SkipWhile(vf => vf.Offset < skipTo || !vf.IsKeyFrame)
             .Select(vf => new VideoFrame(vf.IsKeyFrame) {
                 Data = vf.Data,
                 Offset = vf.Offset - skipTo,
