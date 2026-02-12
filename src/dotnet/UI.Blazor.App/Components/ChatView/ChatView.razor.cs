@@ -450,13 +450,26 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     TextEntryId.New(chatId, navChatMessage.Id),
                     false);
         }
+        // Determine scroll target
+        string? scrollToKey = navKey != null && mustScrollToEntry ? navKey : null;
+        var scrollToKeyInTheMiddle = nav is { ShowInTheMiddle: true };
+
+        // On tab resume (itemVisibility cleared), scroll to NewMessagesLine if present
+        if (scrollToKey == null && itemVisibility.IsEmpty) {
+            var newMessagesLine = items.FirstOrDefault(i => i.Kind == ChatMessageKind.NewMessagesLine);
+            if (newMessagesLine != null) {
+                scrollToKey = newMessagesLine.Key.Value;
+                scrollToKeyInTheMiddle = true;
+            }
+        }
+
         var result = new VirtualListData<ChatMessage>(items) {
             Index = renderedData.Index + 1,
             EstimatedCount = (int?)(chatIdRange.End - chatIdRange.Start),
             HasVeryFirstItem = !hasBefore,
             HasVeryLastItem = !hasAfter,
-            ScrollToKey = navKey != null && mustScrollToEntry ? navKey : null,
-            ScrollToKeyInTheMiddle = nav is { ShowInTheMiddle: true },
+            ScrollToKey = scrollToKey,
+            ScrollToKeyInTheMiddle = scrollToKeyInTheMiddle,
             NavigationState = nav ?? renderedData.NavigationState,
             ItemVisibilityState = ItemVisibility.Value,
             Metadata = new ChatViewMetadata(chat.IsSummarized ?? false),
