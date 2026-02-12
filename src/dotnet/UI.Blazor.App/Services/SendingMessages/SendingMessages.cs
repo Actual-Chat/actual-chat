@@ -78,12 +78,25 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var attachEntry = new UploadFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Length, attachment.Width, attachment.Height, attachment.Id);
             uploadEntries.Add(attachEntry);
         }
-        var upload = new FilesUpload(attachments, uploadEntries.ToArray());
-        return _filesUploadRegistry.Register(upload);
+
+        var uploadSessionIds = uploadEntries.Select(c => c.UploadSessionId).ToImmutableArray();
+        foreach (var uploadSessionId in uploadSessionIds)
+            await UploadSessions.AddReference(uploadSessionId).ConfigureAwait(false);
+        Func<Task> releaseUpload = () => uploadSessionIds.Select(UploadSessions.ReleaseReference).Collect();
+
+        var upload = new FilesUpload(attachments, uploadEntries.ToArray(), releaseUpload);
+        return _filesUploadRegistry.Register(upload, releaseUpload);
+    }
+
+    private static async Task<ChatEntry?> FakeSend()
+    {
+        await Task.Delay(5000).ConfigureAwait(false);
+        return null;
     }
 
     public async Task<Task<ChatEntry?>> Send(SendMessageRequest cmd, CancellationToken cancellationToken)
     {
+        return FakeSend();
         DebugLog?.LogDebug("Post '{Text}'", cmd.Text);
         var now = Clocks.SystemClock.Now;
         var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
@@ -94,9 +107,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         DebugLog?.LogDebug("About to store post request '{Text}'", cmd.Text);
         await _requestsRepo.Add(entry, cancellationToken).ConfigureAwait(false);
 
-        if (filesUpload is not null)
-            filesUpload.AddReference();
-        var uploads = await CreateAttachmentUploads(entry, filesUpload?.GetAttachments()).ConfigureAwait(false);
+        var uploads = await CreateAttachmentUploads(entry, filesUpload?.Attachments).ConfigureAwait(false);
         var requestInternal = CreatePostMessageRequestInternal(entry, uploads, false);
         _ = BackgroundTask.Run(async () => {
             DebugLog?.LogDebug("About to post internal '{Text}'", cmd.Text);
