@@ -2,14 +2,18 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class FilesUploadRegistry
 {
+    private static readonly ILogger Log = StaticLog.For<FilesUploadRegistry>();
     private readonly Dictionary<FilesUploadHandle, FilesUpload> _uploads = new();
 
-    public FilesUploadHandle Register(FilesUpload upload)
+    public FilesUploadHandle Register(FilesUpload upload, Func<Task> release)
     {
         lock (_uploads) {
             var handle = new FilesUploadHandle(h => {
                 Unregister(h);
-                upload.ReviewUsages();
+                _ = BackgroundTask.Run(
+                    release,
+                    Log,
+                    "Failed to release upload");
             });
             _uploads.Add(handle, upload);
             return handle;

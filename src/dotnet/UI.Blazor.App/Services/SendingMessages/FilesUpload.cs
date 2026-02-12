@@ -1,30 +1,9 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class FilesUpload(ImmutableArray<Attachment> attachments, UploadFileRequestEntry[] uploadEntries)
+public class FilesUpload(ImmutableArray<Attachment> attachments, UploadFileRequestEntry[] uploadEntries, Func<Task> onRelease)
 {
     public int Count => uploadEntries.Length;
-    public int ReferenceCount { get; private set; }
-
-    public ImmutableArray<Attachment> GetAttachments()
-        => attachments;
-
-    public void ReviewUsages()
-    {
-        if (ReferenceCount > 0)
-            return;
-
-        // TODO: cleanup upload sessions
-    }
-
-    public void AddReference()
-        => ReferenceCount++;
-
-    public void Release()
-    {
-        ReferenceCount--;
-        ReviewUsages();
-    }
-
+    public ImmutableArray<Attachment> Attachments { get; } = attachments;
     public AttachFileRequestEntry[] CreateAttachFileRequests()
         => uploadEntries
             .Select(c => new AttachFileRequestEntry(
