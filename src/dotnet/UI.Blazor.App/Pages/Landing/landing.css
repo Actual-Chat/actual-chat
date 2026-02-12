@@ -1684,6 +1684,13 @@ body.narrow .btn.cookie-btn {
 .landing-page-noise img {
     @apply w-full;
 }
-.landing-card-video {
+.landing-card-video-container {
     @apply relative z-20;
+    @apply rounded-b-xl;
+    @apply overflow-hidden;
+}
+.landing-card-video {
+    @apply absolute inset-0;
+}
+.landing-card-video-plug {
 }
