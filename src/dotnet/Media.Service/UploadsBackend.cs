@@ -166,7 +166,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
         MediaId mediaId;
         if (upload.Tag.IsNullOrEmpty())
-            mediaId = MediaId.New(MediaId.GenerateScope());
+            mediaId = MediaId.New(MediaId.NewScope());
         else {
             var chatId = upload.ExtractChatIdFromTag();
             mediaId = MediaId.New(chatId.Value);

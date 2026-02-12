@@ -252,7 +252,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
             var metadata = GetMetadata(session);
             // TODO(DF): review how we choose media scope and whether we need a new media id here or not.
-            var mediaScope = MediaId.GenerateScope();     //session.ChatId.Value;
+            var mediaScope = MediaId.NewScope();     //session.ChatId.Value;
             var command = new Medias_ReserveMedia(Session, mediaScope) { Metadata = metadata };
             var mediaId = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
             session.ReservedMediaId = mediaId;
