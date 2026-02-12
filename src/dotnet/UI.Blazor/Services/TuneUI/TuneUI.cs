@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.Module;
+using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -52,6 +53,7 @@ public abstract class TuneUI : IDisposable
     protected UIHub Hub { get; }
 
     protected ILogger Log => field ??= Hub.LogFor(GetType());
+    protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.Tunes);
 
     private async ValueTask Initialize()
     {

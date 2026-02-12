@@ -11,6 +11,7 @@ public sealed class IosTuneUI(UIHub hub) : MauiTuneUI(hub)
 
     public override Task Play(Tune tune)
         => ForegroundTask.Run(() => {
+                DebugLog?.LogInformation("Play: '{Tune}'", tune);
             var (_, sound) = Tunes[tune];
             _ = Vibrate(tune);
             return PlaySound(sound);
@@ -32,6 +33,7 @@ public sealed class IosTuneUI(UIHub hub) : MauiTuneUI(hub)
 
     private async Task PlaySound(string soundName)
     {
+        DebugLog?.LogInformation("PlaySound: '{SoundName}'", soundName);
         if (soundName.IsNullOrEmpty())
             return;
 
