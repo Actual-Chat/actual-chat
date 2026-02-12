@@ -35,6 +35,7 @@ public static partial class Constants
         public static readonly bool AudioTrackPlayer = false;
         public static readonly bool NativeAudioPlayer = false;
         public static readonly bool LiveStreaming = false;
+        public const bool Tunes = false;
 
         public static readonly bool ChatAudioUI = false;
         public static readonly bool AudioRecording = true;
