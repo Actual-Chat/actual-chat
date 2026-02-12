@@ -196,6 +196,7 @@ function Show-Help {
     Write-Host "  AC_Project0       Override name for project 0 (default: $($DefaultProjects[0]))"
     Write-Host "  AC_Project1       Override name for project 1 (default: $($DefaultProjects[1]))"
     Write-Host "  AC_Project2       Override name for project 2 (default: $($DefaultProjects[2]))"
+    Write-Host "  AC_CLAUDE_ISOLATE Set to 'true' or '1' to isolate .claude.json per container instance"
     Write-Host ""
     Write-Host "Environment variables set for Claude:"
     Write-Host "  AC_ProjectRoot    Project root path (adjusted for environment)"
@@ -670,7 +671,21 @@ switch ($mode) {
 
         # Claude config mounts
         $volumeMounts += New-VolumeMount "$homeDir/.claude" "/home/claude/.claude"
-        $volumeMounts += New-VolumeMount "$homeDir/.claude.json" "/home/claude/.claude.json"
+
+        # Handle .claude.json - either isolated per instance or shared
+        $claudeJsonSource = "$homeDir/.claude.json"
+        if ($env:AC_CLAUDE_ISOLATE -iin "true", "1") {
+            $instanceId = Get-Date -Format "yyyyMMdd-HHmmss-fff"
+            $isolateDir = Join-Path $projectRoot "artifacts" "claude-docker"
+            if (-not (Test-Path $isolateDir)) {
+                New-Item -ItemType Directory -Path $isolateDir -Force | Out-Null
+            }
+            $isolatedPath = Join-Path $isolateDir ".claude-$instanceId.json"
+            Copy-Item $claudeJsonSource $isolatedPath
+            $claudeJsonSource = $isolatedPath
+            Write-Host "Claude isolation: enabled (instance: $instanceId)" -ForegroundColor Cyan
+        }
+        $volumeMounts += New-VolumeMount $claudeJsonSource "/home/claude/.claude.json"
 
         # Git config mount
         $gitConfigPath = "$homeDir/.gitconfig"
