@@ -4,10 +4,9 @@
     @apply h-10;
     @apply border-none;
     @apply animate-opacity-from-0;
-    background: linear-gradient(
-        to left,
-        var(--indigo-70-10),
-        var(--magenta-70-10));
+    background:
+        linear-gradient(to left, var(--indigo-70-10), var(--magenta-70-20)),
+        var(--background-01);
 }
 .banner.reconnect-banner::after {
     @apply content-empty;
@@ -32,7 +31,7 @@
     @apply p-0.5;
     @apply rounded-lg;
     @apply pointer-events-none;
-    background: linear-gradient(to right, var(--indigo-70-10), var(--magenta-70-10));
+    background: linear-gradient(to right, var(--indigo-70-10), var(--magenta-70-20));
     -webkit-mask:
         linear-gradient(#fff 0 0) content-box,
         linear-gradient(#fff 0 0);
