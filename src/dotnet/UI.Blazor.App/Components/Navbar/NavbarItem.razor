@@ -19,7 +19,7 @@
             @ChildContent
         </div>
     } else {
-        <div class="navbar-item-content" @attributes="@dataAttributes" @onclick=@(_isCurrent ? OnCurrentClick : null! )>
+        <div class="navbar-item-content" @attributes="@dataAttributes" @onclick=@(_isCurrent ? EventCallback.Factory.Create(this, OnCurrentClick) : EventCallback.Empty )>
             @ChildContent
         </div>
     }
