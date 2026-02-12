@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 /// <summary>
 /// Plays haptic feedback and sound effects for UI interactions.
 /// </summary>
-public abstract class TuneUI : IDisposable
+public abstract class TuneUI : ProcessorBase
 {
     protected static readonly Dictionary<Tune, TuneInfo> Tunes = new () {
         // General actions
@@ -66,8 +66,11 @@ public abstract class TuneUI : IDisposable
         }
     }
 
-    public virtual void Dispose()
-        => _backendRef.DisposeSilently();
+    protected override Task DisposeAsyncCore()
+    {
+        _backendRef.DisposeSilently();
+        return Task.CompletedTask;
+    }
 
     public abstract Task Play(Tune tune);
 

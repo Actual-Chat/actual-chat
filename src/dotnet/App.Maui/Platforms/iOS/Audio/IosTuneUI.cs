@@ -12,11 +12,13 @@ public sealed class IosTuneUI(UIHub hub) : MauiTuneUI(hub)
     public override Task Play(Tune tune)
         => ForegroundTask.Run(() => {
                 DebugLog?.LogInformation("Play: '{Tune}'", tune);
-            var (_, sound) = Tunes[tune];
-            _ = Vibrate(tune);
-            return PlaySound(sound);
-        },
-        CancellationToken.None);
+                var (_, sound) = Tunes[tune];
+                _ = Vibrate(tune);
+                return PlaySound(sound);
+            },
+            Log,
+            $"Failed to play '{tune}'",
+            StopToken);
 
     public override Task PlayAndWait(Tune tune)
     {

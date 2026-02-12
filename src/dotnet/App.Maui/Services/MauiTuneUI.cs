@@ -16,15 +16,16 @@ public class MauiTuneUI : TuneUI
     public MauiTuneUI(UIHub hub) : base(hub)
         => _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Tune, OnLostAudioFocus);
 
-    public override void Dispose()
+    protected override async Task DisposeAsyncCore()
     {
-        base.Dispose();
+        await base.DisposeAsyncCore().ConfigureAwait(false);
         foreach (var playerTask in _players.Values) {
             if (!playerTask.IsCompletedSuccessfully)
                 continue;
 
             try {
-                playerTask.GetAwaiter().GetResult().Dispose();
+                var player = await playerTask.ConfigureAwait(false);
+                player.DisposeSilently();
             }
             catch {
                 /* ignore dispose errors */
