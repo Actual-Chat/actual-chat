@@ -23,6 +23,8 @@ const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
 const SuspendDebounceTimeMs = 2000;
 const CloseUnusedContextDebounce = 60000; // 60 seconds usually enough on iOS Safari to make audio context broken while backgrounded
+const MaxCreateRetries = 3;
+const CreateRetryBaseDelayMs = 500; // 0.5s, 1s, 2s
 
 const Debug = {
     brokenKey: 'debugging_isBroken',
@@ -897,6 +899,7 @@ export class AudioContextSource {
     private async maintain(): Promise<void> {
         debugLog?.log('maintain: starting');
         this._isMaintained = true;
+        let consecutiveCreateFailures = 0;
 
         // noinspection InfiniteLoopJS
         while (this._isMaintained) {
@@ -907,6 +910,7 @@ export class AudioContextSource {
                 // Try to maintain existing context and create a new one if it's broken or closed
                 if (!context || context.state === 'closed') {
                     context = await this.create();
+                    consecutiveCreateFailures = 0;
                     this.setContextAndMarkReady(context);
                 }
 
@@ -954,9 +958,45 @@ export class AudioContextSource {
             } catch (e) {
                 warnLog?.log(`maintain: error:`, e);
                 this.markNotReady();
+
+                consecutiveCreateFailures++;
+                if (this._isMaintained) {
+                    if (consecutiveCreateFailures < MaxCreateRetries) {
+                        const delayMs = CreateRetryBaseDelayMs * Math.pow(2, consecutiveCreateFailures - 1);
+                        warnLog?.log(`maintain: retry ${consecutiveCreateFailures}/${MaxCreateRetries} in ${delayMs}ms`);
+                        await delayAsync(delayMs);
+                    } else {
+                        warnLog?.log(`maintain: ${consecutiveCreateFailures} consecutive failures, waiting for user interaction or visibility change`);
+                        await this.waitForRecoverySignal();
+                    }
+                }
             }
             await this.closeContext();
         }
+    }
+
+    private waitForRecoverySignal(): Promise<void> {
+        return new Promise<void>((resolve) => {
+            const cleanup = () => {
+                interactionHandler.dispose();
+                document.removeEventListener('visibilitychange', onVisibilityChange);
+            };
+
+            // Wait for user interaction
+            const interactionHandler = Interactive.interactionEvents.add(() => {
+                cleanup();
+                resolve();
+            });
+
+            // Wait for document visibility change (hidden → visible)
+            const onVisibilityChange = () => {
+                if (!document.hidden) {
+                    cleanup();
+                    resolve();
+                }
+            };
+            document.addEventListener('visibilitychange', onVisibilityChange);
+        });
     }
 
     private createSilenceBuffer(context: AudioContext): AudioBuffer {
