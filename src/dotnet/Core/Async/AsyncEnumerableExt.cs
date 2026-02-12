@@ -114,6 +114,21 @@ public static partial class AsyncEnumerableExt
         CancellationToken cancellationToken = default)
         => new(source, cancellationToken);
 
+    // SlidingMemoize
+
+    public static SlidingMemoizer<T> SlidingMemoize<T>(
+        this IAsyncEnumerable<T> source,
+        int capacity,
+        CancellationToken cancellationToken = default)
+        => new(source, capacity, cancellationToken);
+
+    public static SlidingMemoizer<T> SlidingMemoize<T>(
+        this IAsyncEnumerable<T> source,
+        int capacity,
+        int consumerCapacity,
+        CancellationToken cancellationToken = default)
+        => new(source, capacity, consumerCapacity, cancellationToken);
+
     public static async ValueTask<Option<T>> TryReadAsync<T>(
         this IAsyncEnumerable<T> source,
         CancellationToken cancellationToken = default)

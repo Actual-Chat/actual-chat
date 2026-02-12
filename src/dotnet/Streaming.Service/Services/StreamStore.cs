@@ -7,7 +7,7 @@ namespace ActualChat.Streaming.Services;
 /// </summary>
 public class StreamStore<TItem> : ProcessorBase
 {
-    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>>> _streams = new();
+    private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, AsyncTaskMethodBuilder<IAsyncMemoizer<TItem>?>>> _streams = new();
 
     public TimeSpan ExpirationDelay { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan ShareWaitDelay { get; init; } = TimeSpan.FromSeconds(2);
@@ -82,7 +82,7 @@ public class StreamStore<TItem> : ProcessorBase
 
     public Task Publish(StreamId streamId, IAsyncEnumerable<TItem> stream)
         => Publish(streamId, stream.Memoize());
-    public Task Publish(StreamId streamId, AsyncMemoizer<TItem> memoizer)
+    public Task Publish(StreamId streamId, IAsyncMemoizer<TItem> memoizer)
     {
         StreamIdValidator.Invoke(streamId);
         StopToken.ThrowIfCancellationRequested();
@@ -116,11 +116,11 @@ public class StreamStore<TItem> : ProcessorBase
 
     // Protected methods
 
-    protected ExpiringEntry<Symbol, AsyncTaskMethodBuilder<AsyncMemoizer<TItem>?>> GetOrAddStream(StreamId streamId)
+    protected ExpiringEntry<Symbol, AsyncTaskMethodBuilder<IAsyncMemoizer<TItem>?>> GetOrAddStream(StreamId streamId)
     {
         var entry = _streams.GetOrAdd(streamId.Value,
             static (key, self) => {
-                var memoizerSource = AsyncTaskMethodBuilderExt.New<AsyncMemoizer<TItem>?>();
+                var memoizerSource = AsyncTaskMethodBuilderExt.New<IAsyncMemoizer<TItem>?>();
                 var disposeTokenSource = self.StopToken.CreateLinkedTokenSource();
                 var entry = ExpiringEntry
                     .New(self._streams, key, memoizerSource, disposeTokenSource)

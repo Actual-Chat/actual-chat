@@ -146,7 +146,7 @@
         try {
             // Calculate skip offset to catch up to real-time
             var clocks = Services.Clocks();
-            var skipTo = clocks.SystemClock.Now - StreamInfo.StartedAt;
+            var skipTo = clocks.ServerClock.Now - StreamInfo.StartedAt;
             if (skipTo < TimeSpan.Zero)
                 skipTo = TimeSpan.Zero;
 

@@ -6,7 +6,7 @@ namespace ActualChat;
 /// <summary>
 /// Memoizes an async sequence and allows multiple consumers to replay from the beginning.
 /// </summary>
-public sealed class AsyncMemoizer<T>
+public sealed class AsyncMemoizer<T> : IAsyncMemoizer<T>
 {
     private readonly IAsyncEnumerator<T> _source;
     private readonly HashSet<ChannelWriter<T>> _targets = new();
