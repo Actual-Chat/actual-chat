@@ -15,13 +15,15 @@
     @apply rounded-full;
 }
 .pic-blurred {
-    @apply blur-lg;
     @apply opacity-70;
     @apply absolute right-0 top-0 left-0 bottom-0;
-    @apply scale-[2];
+    @apply overflow-hidden;
 }
-.pic-blurred.pic-svg {
-    @apply scale-[5];
+.pic-blurred::after {
+    content: '';
+    @apply absolute inset-0;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
 }
 .pic-blurred .pic-image {
     @apply rounded-none;
