@@ -282,6 +282,7 @@
     /*Primary colors for buttons, icons, etc */
     --primary: var(--blue-50);
     --danger: var(--magenta-50);
+    --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
 
@@ -605,6 +606,7 @@
     /*Primary colors for buttons, icons, etc */
     --primary: var(--blue-60);
     --danger: var(--magenta-50);
+    --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
     --fatal: var(--red-40);
@@ -928,6 +930,7 @@
     /*Primary colors for buttons, icons, etc */
     --primary: var(--blue-50);
     --danger: var(--magenta-50);
+    --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
 
