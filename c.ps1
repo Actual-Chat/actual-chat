@@ -672,20 +672,30 @@ switch ($mode) {
         # Claude config mounts
         $volumeMounts += New-VolumeMount "$homeDir/.claude" "/home/claude/.claude"
 
-        # Handle .claude.json - either isolated per instance or shared
+        # Handle .claude.json and credentials - either isolated per instance or shared
         $claudeJsonSource = "$homeDir/.claude.json"
+        $credentialsSource = "$homeDir/.claude/credentials.json"
         if ($env:AC_CLAUDE_ISOLATE -iin "true", "1") {
             $instanceId = Get-Date -Format "yyyyMMdd-HHmmss-fff"
             $isolateDir = Join-Path $projectRoot "artifacts" "claude-docker"
             if (-not (Test-Path $isolateDir)) {
                 New-Item -ItemType Directory -Path $isolateDir -Force | Out-Null
             }
-            $isolatedPath = Join-Path $isolateDir ".claude-$instanceId.json"
-            Copy-Item $claudeJsonSource $isolatedPath
-            $claudeJsonSource = $isolatedPath
+            if (Test-Path $claudeJsonSource) {
+                $isolatedClaudeJson = Join-Path $isolateDir ".claude-$instanceId.json"
+                Copy-Item $claudeJsonSource $isolatedClaudeJson
+                $claudeJsonSource = $isolatedClaudeJson
+                $volumeMounts += New-VolumeMount $claudeJsonSource "/home/claude/.claude.json"
+            }
+
+            if (Test-Path $credentialsSource) {
+                $isolatedCredentials = Join-Path $isolateDir "credentials-$instanceId.json"
+                Copy-Item $credentialsSource $isolatedCredentials
+                $credentialsSource = $isolatedCredentials
+                $volumeMounts += New-VolumeMount $credentialsSource "/home/claude/.claude/credentials.json"
+            }
             Write-Host "Claude isolation: enabled (instance: $instanceId)" -ForegroundColor Cyan
         }
-        $volumeMounts += New-VolumeMount $claudeJsonSource "/home/claude/.claude.json"
 
         # Git config mount
         $gitConfigPath = "$homeDir/.gitconfig"
