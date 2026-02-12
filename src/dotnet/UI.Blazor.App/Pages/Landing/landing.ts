@@ -71,14 +71,14 @@ export class Landing {
                 .subscribe(() => this.onHoverPlugClick());
         }
 
-        const cardVideos = [...this.landing.querySelectorAll<HTMLVideoElement>('.landing-card-video')];
+        const cardVideoPlugs = [...this.landing.querySelectorAll<HTMLImageElement>('.landing-card-video-plug')];
         const options = {
             root: null,
             rootMargin: '0px',
             threshold: 1.0,
         };
         this.observer = new IntersectionObserver(this.cardVideoHandler, options);
-        cardVideos.forEach(item => {
+        cardVideoPlugs.forEach(item => {
             this.observer.observe(item);
         });
 
@@ -176,9 +176,14 @@ export class Landing {
             const isVideoPlaying = (cardVideo.currentTime > 0 && !cardVideo.paused && !cardVideo.ended && cardVideo.readyState > 2);
             if (!isVideoPlaying) {
                 this.isVideoPlayStarted = true;
-                void cardVideo.play().then(() => {
-                    debugLog?.log('onTouchEnd: card video playback started.');
-                });
+                addVideoSources(cardVideo);
+                cardVideo.load();
+                cardVideo.oncanplay = () => {
+                    void cardVideo.play().then(() => {
+                        debugLog?.log('onTouchEnd: card video playback started.');
+                        cardVideo.hidden = false;
+                    });
+                };
                 debugLog?.log('onTouchEnd: card video play...');
             }
         }
@@ -292,6 +297,7 @@ export class Landing {
         if (!video || !plug || !hoverPlug)
             return;
 
+        addVideoSources(video);
         video.load();
         video.oncanplay = () => {
             void video.play().then(() => {
@@ -305,20 +311,45 @@ export class Landing {
 
     private cardVideoHandler = (entries) => {
         entries.forEach(entry => {
-            const cardVideo = entry.target as HTMLVideoElement;
+            const plug = entry.target as HTMLImageElement;
+            if (!plug || plug.hidden)
+                return;
+            const cardVideo = plug.parentElement?.querySelector<HTMLVideoElement>('.landing-card-video');
             if (!cardVideo || cardVideo.classList.contains('loaded'))
                 return;
             if (entry.isIntersecting) {
-                if (cardVideo) {
-                    cardVideo.load();
-                    cardVideo.muted = true;
-                    cardVideo.oncanplay = () => {
-                        void cardVideo.play();
-                        cardVideo.classList.add('loaded');
-                    }
+                addVideoSources(cardVideo);
+                cardVideo.load();
+                cardVideo.muted = true;
+                cardVideo.oncanplay = () => {
+                    void cardVideo.play();
+                    cardVideo.classList.add('loaded');
+                    cardVideo.hidden = false;
                 }
             }
         })
+    }
+}
+
+function addVideoSources(video: HTMLVideoElement): void {
+    // Skip if sources already added
+    if (video.querySelector('source'))
+        return;
+
+    const webmSrc = video.dataset.srcWebm;
+    const mp4Src = video.dataset.srcMp4;
+
+    if (webmSrc) {
+        const source = document.createElement('source');
+        source.src = webmSrc;
+        source.type = 'video/webm';
+        video.appendChild(source);
+    }
+    if (mp4Src) {
+        const source = document.createElement('source');
+        source.src = mp4Src;
+        source.type = 'video/mp4';
+        video.appendChild(source);
     }
 }
 

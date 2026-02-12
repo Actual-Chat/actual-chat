@@ -22,8 +22,8 @@
 .pic-blurred::after {
     content: '';
     @apply absolute inset-0;
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(40px);
+    backdrop-filter: blur(40px);
 }
 .pic-blurred .pic-image {
     @apply rounded-none;
