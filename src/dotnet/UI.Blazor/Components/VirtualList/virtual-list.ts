@@ -88,6 +88,7 @@ export class VirtualList {
     private scrollTime: number | null = null;
     private scrollDirection: 'up' | 'down' | 'none' = 'none';
     private turnOffScrollingCallback?: () => void;
+    private isPointerDown = false;
 
     private query: VirtualListDataQuery = VirtualListDataQuery.None;
     private lastQuery: VirtualListDataQuery = VirtualListDataQuery.None;
@@ -166,6 +167,10 @@ export class VirtualList {
         const listenerOptions = { signal: this.abortController.signal, passive: true, };
         this.ref.addEventListener('scroll', this.onScroll, listenerOptions);
         this.ref.addEventListener('scrollend', this.onScrollEnd, listenerOptions);
+        this.ref.addEventListener('pointerdown', this.onPointerDown, listenerOptions);
+        this.ref.addEventListener('pointerup', this.onPointerUp, listenerOptions);
+        this.ref.addEventListener('pointercancel', this.onPointerUp, listenerOptions);
+        this.ref.addEventListener('wheel', this.onWheel, listenerOptions);
         this.itemSetChangeObserver = new MutationObserver(this.onItemSetChange);
         this.itemSetChangeObserver.observe(this.containerRef, { childList: true });
         this.itemSetChangeObserver.observe(this.renderIndexRef, { attributes: true });
@@ -275,6 +280,10 @@ export class VirtualList {
         this.whenRequestDataCompleted = null;
         this.ref.removeEventListener('scroll', this.onScroll);
         this.ref.removeEventListener('scrollend', this.onScrollEnd);
+        this.ref.removeEventListener('pointerdown', this.onPointerDown);
+        this.ref.removeEventListener('pointerup', this.onPointerUp);
+        this.ref.removeEventListener('pointercancel', this.onPointerUp);
+        this.ref.removeEventListener('wheel', this.onWheel);
     }
 
     /** Called by blazor */
@@ -284,6 +293,7 @@ export class VirtualList {
         this.viewport = null;
         this.lastQueryTime = null;
         this.stickyEdge = null;
+        this.isPointerDown = false;
         this.query = VirtualListDataQuery.None;
         this.lastQuery = VirtualListDataQuery.None;
         this.items.clear();
@@ -925,6 +935,11 @@ export class VirtualList {
         if (!ev.isTrusted)
             return; // Ignore non-user initiated scrolls
 
+        // Clear sticky edge when user is scrolling via touch/pointer drag
+        if (this.isPointerDown && this.stickyEdge != null && !this.isEndAnchorVisible) {
+            this.setStickyEdge(null);
+        }
+
         // Reset pivots on scroll
         this.pivots = [];
         this.updateViewportThrottled();
@@ -933,6 +948,20 @@ export class VirtualList {
     private onScrollEnd = (): void => {
         this.turnOffIsScrolling();
     }
+
+    private onPointerDown = (): void => {
+        this.isPointerDown = true;
+    };
+
+    private onPointerUp = (): void => {
+        this.isPointerDown = false;
+    };
+
+    private onWheel = (): void => {
+        if (this.stickyEdge != null && !this.isEndAnchorVisible) {
+            this.setStickyEdge(null);
+        }
+    };
 
     private onDocumentVisibilityChange(): void {
         if (document.hidden) {
