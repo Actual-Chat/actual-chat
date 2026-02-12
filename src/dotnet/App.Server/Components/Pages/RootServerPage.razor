@@ -22,7 +22,7 @@
     var importMapNonce = nonceGenerator.Next(12);
     // unsafe-eval is required for 'eval-source-map' to debug during local development
     var unsafeEval = isLocal ? "'unsafe-eval'" : "'wasm-unsafe-eval'";
-    var extraConnectSrc = Env.IsDevelopment() ? "ws://localhost:* wss://localhost:*" : "";
+    var extraConnectSrc = isLocal ? "ws://localhost:* wss://localhost:* https://raw.githubusercontent.com" : "";
 
     // Re-captcha setup
     var hasRecaptchaConfigured = !UserSettings.GoogleRecaptchaSiteKey.IsNullOrEmpty();
