@@ -15,14 +15,29 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
     public async Task<MediaContent> Save(MediaId mediaId, ProcessedFile processedFile, bool isUpdate, CancellationToken cancellationToken)
     {
         var mediaContent = GetContentId(mediaId, processedFile);
-        await SaveFileContent(processedFile.File, mediaContent.ContentId, cancellationToken).ConfigureAwait(false);
-        await SaveMediaMetadata(mediaId, mediaContent.ContentId, processedFile.File, processedFile.Size, isUpdate, cancellationToken).ConfigureAwait(false);
-        await SetMediaProgressToReady(mediaId, cancellationToken).ConfigureAwait(false);
         if (processedFile.Thumbnail != null) {
             await SaveFileContent(processedFile.Thumbnail, mediaContent.ThumbnailContentId!, cancellationToken).ConfigureAwait(false);
-            await SaveMediaMetadata(mediaContent.ThumbnailMediaId!, mediaContent.ThumbnailContentId!, processedFile.Thumbnail, processedFile.Size, false, cancellationToken).ConfigureAwait(false);
+            await SaveMediaMetadata(
+                mediaContent.ThumbnailMediaId!,
+                mediaContent.ThumbnailContentId!,
+                processedFile.Thumbnail,
+                processedFile.Size,
+                null,
+                false,
+                cancellationToken)
+                .ConfigureAwait(false);
             await SetMediaProgressToReady(mediaContent.ThumbnailMediaId!, cancellationToken).ConfigureAwait(false);
         }
+        await SaveFileContent(processedFile.File, mediaContent.ContentId, cancellationToken).ConfigureAwait(false);
+        await SaveMediaMetadata(
+            mediaId,
+            mediaContent.ContentId,
+            processedFile.File,
+            processedFile.Size,
+            mediaContent.ThumbnailMediaId,
+            isUpdate,
+            cancellationToken).ConfigureAwait(false);
+        await SetMediaProgressToReady(mediaId, cancellationToken).ConfigureAwait(false);
         return mediaContent;
     }
 
@@ -33,10 +48,10 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         CancellationToken cancellationToken)
         => Save(mediaId, new ProcessedFile(file, size, null), false, cancellationToken);
 
-    private string GetContentId(MediaId mediaId, UploadedFile file)
+    private static string GetContentId(MediaId mediaId, UploadedFile file)
         => mediaId.GetContentId(Path.GetExtension(file.FileName));
 
-    private MediaContent GetContentId(MediaId mediaId, ProcessedFile file)
+    private static MediaContent GetContentId(MediaId mediaId, ProcessedFile file)
     {
         var contentId = GetContentId(mediaId, file.File);
         if (file.Thumbnail == null)
@@ -61,6 +76,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         string contentId,
         UploadedFile file,
         Size? size,
+        MediaId? thumbnailMediaId,
         bool isUpdate,
         CancellationToken cancellationToken)
     {
@@ -76,6 +92,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
             ContentType = file.ContentType,
             Width = size?.Width ?? 0,
             Height = size?.Height ?? 0,
+            ThumbnailId = thumbnailMediaId,
         };
         var change = isUpdate
             ? new Change<MediaFull> { Update = media }
