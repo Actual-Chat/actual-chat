@@ -4,11 +4,12 @@ using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Media.Resources;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Versioning;
 using Microsoft.AspNetCore.StaticFiles;
 
 namespace ActualChat.Media.Module;
 
-public sealed class MediaUploader(Type ownerType)
+public sealed class MediaUploader(Type ownerType, VersionGenerator<long> versionGenerator)
 {
     public async Task Upload(Func<UploadBuilderContext, Task> uploadBuilder, CancellationToken cancellationToken)
     {
@@ -54,11 +55,17 @@ public sealed class MediaUploader(Type ownerType)
             var existingMedia = await dbContext.Media
                 .FindAsync(DbKey.Compose(mediaId.Value), cancellationToken)
                 .ConfigureAwait(false);
-            if (existingMedia != null)
+            if (existingMedia != null) {
+                media = media with {
+                    Version = versionGenerator.NextVersion(existingMedia.Version),
+                };
                 existingMedia.UpdateFrom(media);
-            else
+            }
+            else {
+                media = media with { Version = versionGenerator.NextVersion() };
                 // ReSharper disable once AccessToDisposedClosure
                 dbContext.Media.Add(new DbMedia(media));
+            }
 
             var mediaExists = await blobStorage.Exists(media.ContentId, cancellationToken).ConfigureAwait(false);
             if (mediaExists)
