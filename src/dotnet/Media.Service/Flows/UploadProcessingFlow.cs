@@ -9,6 +9,7 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
     private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
     private IUploadsBackend UploadsBackend => field ??= Services.GetRequiredService<IUploadsBackend>();
     private ICommander Commander => field ??= Services.Commander();
+    private IMediaProgressBackend MediaProgressBackend => field ??= Services.GetRequiredService<IMediaProgressBackend>();
 
     public static string GetArguments(UploadId uploadId, MediaId mediaId)
         => FlowId.CombineArguments(uploadId.Value, mediaId.Value);
@@ -16,49 +17,47 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
         var (uploadId, mediaId) = ParseArgs();
-
-        // Verify media exists and has no content yet
-        var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
-        if (media == null) {
-            SetError(StandardError.NotFound<Media>());
-            return;
-        }
-        if (!media.ContentId.IsNullOrEmpty()) {
-            Console.Log("Media already has content");
-            SetResult(new MediaContent(mediaId, media.ContentId));
-            return;
-        }
-
-        // Verify upload exists
-        var upload = await UploadsBackend.Get(uploadId, cancellationToken).ConfigureAwait(false);
-        if (upload == null) {
-            SetError(new InvalidOperationException("Upload not found"));
-            return;
-        }
-
         try {
-            // // Update status to ServerProcessing
-            // var progress = new MediaProgress(mediaId, MediaStatus.Preparing, MediaPreparingStage.ServerProcessing);
-            // var progressChange = new Change<MediaProgress> { Update = progress };
-            // await Commander.Call(new MediaProgressBackend_Change(mediaId, progressChange), cancellationToken).ConfigureAwait(false);
+            // Verify media exists and has no content yet
+            var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
+            if (media == null) {
+                SetError(StandardError.NotFound<Media>());
+                return;
+            }
+            if (!media.ContentId.IsNullOrEmpty()) {
+                Console.Log("Media already has content");
+                SetResult(new MediaContent(mediaId, media.ContentId));
+                return;
+            }
 
-            // Process upload and bind to media
-            var mediaContent = await Commander.Call(new UploadsBackend_ProcessAndSaveContent(uploadId, mediaId), cancellationToken).ConfigureAwait(false);
-            Console.Log("Upload processed and saved");
+            // Verify upload exists
+            var upload = await UploadsBackend.Get(uploadId, cancellationToken).ConfigureAwait(false);
+            if (upload == null) {
+                SetError(new InvalidOperationException("Upload not found"));
+                return;
+            }
 
-            // // Remove the upload
-            // await Commander.Call(new UploadsBackend_Remove(uploadId), cancellationToken).ConfigureAwait(false);
-            // Console.Log("Upload removed");
-
-            SetResult(mediaContent);
+            try {
+                // Process upload and bind to media
+                var mediaContent = await Commander
+                    .Call(new UploadsBackend_ProcessAndSaveContent(uploadId, mediaId), cancellationToken)
+                    .ConfigureAwait(false);
+                Console.Log("Upload processed and saved");
+                SetResult(mediaContent);
+            }
+            catch (Exception e) {
+                // Set status to Failed
+                Console.Log($"Processing failed: {e.Message}");
+                SetError(e);
+            }
         }
-        catch (Exception e) {
-            // Set status to Failed
-            Console.Log($"Processing failed: {e.Message}");
-            var failedProgress = new MediaProgress(mediaId, 0, MediaStage.ServerProcessing, 0, e.Message);
-            var failedChange = new Change<MediaProgress> { Update = failedProgress };
-            await Commander.Call(new MediaProgressBackend_Change(mediaId, null, failedChange), cancellationToken).ConfigureAwait(false);
-            SetError(e);
+        finally {
+            if (Result is { HasError: true })
+                await ActualChat.Media.UploadsBackend.ReportMediaServerProcessingError(
+                    MediaProgressBackend,
+                    Commander,
+                    mediaId,
+                    cancellationToken).ConfigureAwait(false);
         }
     }
 

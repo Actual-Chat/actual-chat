@@ -2,6 +2,7 @@ using ActualChat.Blobs.Internal;
 using ActualChat.Media.Db;
 using ActualChat.Uploads;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Versioning;
 using Google.Cloud.Storage.V1;
 
 namespace ActualChat.Media;
@@ -18,6 +19,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     private GoogleResumableUploads GoogleResumableUploads => field ??= new GoogleResumableUploads(StorageClient.Create(), Services.LogFor<GoogleResumableUploads>());
     private IMediaProcessor MediaProcessor { get; } = services.GetRequiredService<IMediaProcessor>();
     private IMediaSaver MediaSaver { get; } = services.GetRequiredService<IMediaSaver>();
+    private IMediaProgressBackend MediaProgressBackend => field ??= Services.GetRequiredService<IMediaProgressBackend>();
 
     private bool IsGoogleStorage => Blobs is GoogleCloudBlobStorages;
 
@@ -179,6 +181,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             return default!;
 
         var (uploadId, mediaId) = command;
+        ThrottledProgress<double>? progress = null;
         try {
             var upload = await Get(uploadId, cancellationToken).ConfigureAwait(false);
             if (upload == null)
@@ -187,14 +190,28 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             await EnsureUploadHasBeenCompleted(upload, cancellationToken).ConfigureAwait(false);
 
             var uploadedFile = GetUploadedStreamFileFrom(upload, cancellationToken);
-            var progress = CreateMediaConvertingProgressTracker(mediaId);
-            using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, progress, cancellationToken).ConfigureAwait(false);
-            var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, cancellationToken).ConfigureAwait(false);
+
+            progress = CreateMediaConvertingProgressTracker(mediaId);
+            using var processedFile = await MediaProcessor.ProcessUpload(uploadedFile, progress, cancellationToken)
+                .ConfigureAwait(false);
+            var mediaContent = await MediaSaver.Save(mediaId, processedFile, isUpdate: true, cancellationToken)
+                .ConfigureAwait(false);
             return mediaContent;
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to process and save content for upload '{UploadId}' and media '{MediaId}'", uploadId, mediaId);
+            Log.LogError(e,
+                "Failed to process and save content for upload '{UploadId}' and media '{MediaId}'",
+                uploadId,
+                mediaId);
+            await ReportMediaServerProcessingError(
+                MediaProgressBackend,
+                Commander,
+                mediaId,
+                cancellationToken).ConfigureAwait(false);
             throw;
+        }
+        finally {
+            progress?.Dispose();
         }
     }
 
@@ -203,6 +220,29 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
     {
         var result = _offsets.TryGetValue(uploadId, out var offset) ? offset : (long?)null;
         return Task.FromResult(result);
+    }
+
+    internal static async ValueTask ReportMediaServerProcessingError(
+        IMediaProgressBackend mediaProgressBackend,
+        ICommander commander,
+        MediaId mediaId,
+        CancellationToken cancellationToken)
+    {
+        var mediaProgress = await mediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        if (mediaProgress is null
+            || mediaProgress.Stage == MediaStage.Ready
+            || mediaProgress.Stage == MediaStage.ServerProcessing && !mediaProgress.ErrorMessage.IsNullOrEmpty())
+            return;
+
+        var progress = mediaProgress.Stage is MediaStage.ServerProcessing ? mediaProgress.StageProgress : 0;
+        var failedProgress = new MediaProgress(mediaId,
+            0,
+            MediaStage.ServerProcessing,
+            progress,
+            "Failed to process upload");
+        var failedChange = new Change<MediaProgress> { Update = failedProgress };
+        await commander.Call(new MediaProgressBackend_Change(mediaId, null, failedChange), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<Uri> InitiateUploadSession(Upload upload, CancellationToken cancellationToken)
@@ -250,24 +290,30 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         return uploadedFile;
     }
 
-    private Progress<double> CreateMediaConvertingProgressTracker(MediaId mediaId)
+    private ThrottledProgress<double> CreateMediaConvertingProgressTracker(MediaId mediaId)
     {
-        var progress = new Progress<double>(p => {
+        var progress = new ThrottledProgress<double>(p => {
             // Fire and forget - we don't want to block processing for status updates
-            _ = UpdateMediaProgress(mediaId, MediaStage.ServerProcessing, p, CancellationToken.None);
-        });
+            _ = UpdateMediaProgress(MediaStage.ServerProcessing, p, CancellationToken.None);
+        }, TimeSpan.FromSeconds(1));
         return progress;
-    }
 
-    private async Task UpdateMediaProgress(MediaId mediaId, MediaStage stage, double progress, CancellationToken cancellationToken)
-    {
-        try {
-            var mediaProgress = new MediaProgress(mediaId, 0, stage, progress, "");
-            var change = new Change<MediaProgress> { Update = mediaProgress };
-            await Commander.Call(new MediaProgressBackend_Change(mediaId, null, change), true, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "Failed to update media progress for '{MediaId}'", mediaId);
+        async Task UpdateMediaProgress(MediaStage stage, double p, CancellationToken cancellationToken)
+        {
+            try {
+                var mediaProgress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+                if (mediaProgress is null || mediaProgress.Stage == MediaStage.Ready || !mediaProgress.ErrorMessage.IsNullOrEmpty())
+                    return;
+
+                mediaProgress = new MediaProgress(mediaId, mediaProgress.Version, stage, p, "");
+                var change = new Change<MediaProgress> { Update = mediaProgress };
+                await Commander.Call(new MediaProgressBackend_Change(mediaId, mediaProgress.Version, change), true, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when(cancellationToken.IsCancellationRequested) { }
+            catch(VersionMismatchException) {}
+            catch (Exception e) {
+                Log.LogWarning(e, "Failed to update media progress for '{MediaId}'", mediaId);
+            }
         }
     }
 

@@ -24,7 +24,11 @@ public class DbMediaProgress : IHasId<string>, IHasVersion<long>, IRequirementTa
 
     public void UpdateFrom(MediaProgress model)
     {
-        Id = model.Id.Value;
+        var id = model.Id;
+        this.RequireSameOrEmptyId(id.Value);
+        model.RequireSomeVersion();
+
+        Id = id.Value;
         Version = model.Version;
         Stage = model.Stage;
         StageProgress = model.StageProgress;
