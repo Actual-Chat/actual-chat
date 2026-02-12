@@ -83,7 +83,7 @@ public sealed class ContactSelectionView(IosHub hub) : ComputedStateView<Contact
         AddSubview(contactListView);
 
         NSLayoutConstraint.ActivateConstraints([
-            closeButton.TopAnchor.ConstraintEqualTo(SafeAreaLayoutGuide.TopAnchor, 8),
+            closeButton.TopAnchor.ConstraintEqualTo(SafeAreaLayoutGuide.TopAnchor, 12),
             closeButton.LeadingAnchor.ConstraintEqualTo(LeadingAnchor, 8),
             closeButton.WidthAnchor.ConstraintEqualTo(44),
             closeButton.HeightAnchor.ConstraintEqualTo(44),
