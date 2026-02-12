@@ -273,7 +273,6 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             options.AddPolicy("CDN", builder => {
                 builder
                     .WithOrigins(origins.ToArray())
-                    .AllowAnyOrigin()
                     .WithMethods("GET")
                     .AllowAnyHeader()
                     .WithExposedHeaders("Content-Encoding","Content-Length","Content-Range", "Content-Type");
