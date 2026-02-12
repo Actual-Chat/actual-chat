@@ -1,4 +1,5 @@
 using ActualLab.Fusion.Blazor;
+using ActualLab.Versioning;
 
 namespace ActualChat.Media;
 
@@ -9,7 +10,7 @@ namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public partial record Media : IHasId<MediaId>, IHasMetadata, IRequirementTarget
+public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
     [DataMember, MemoryPackOrder(1)] public string ContentId { get; init; } = "";

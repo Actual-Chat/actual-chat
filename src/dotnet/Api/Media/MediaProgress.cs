@@ -1,4 +1,5 @@
 using ActualLab.Fusion.Blazor;
+using ActualLab.Versioning;
 
 namespace ActualChat.Media;
 
@@ -10,7 +11,7 @@ public sealed partial record MediaProgress(
     [property: DataMember, MemoryPackOrder(2)] MediaStage Stage,
     [property: DataMember, MemoryPackOrder(3)] double StageProgress,
     [property: DataMember, MemoryPackOrder(4)] string ErrorMessage
-) : IHasId<MediaId>
+) : IHasId<MediaId>, IHasVersion<long>
 {
     [IgnoreDataMember, MemoryPackIgnore]
     public bool HasFailed = !ErrorMessage.IsNullOrEmpty();

@@ -98,7 +98,7 @@ public class Medias(IServiceProvider services) : IMedias
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
 
-        var progress = new MediaProgress(mediaId, 0, stage, stageProgress, errorMessage ?? "");
+        var progress = new MediaProgress(mediaId, 0, stage, stageProgress, errorMessage);
         var change = new Change<MediaProgress> { Update = progress };
         await Commander.Call(new MediaProgressBackend_Change(mediaId, expectedVersion, change), cancellationToken).ConfigureAwait(false);
     }

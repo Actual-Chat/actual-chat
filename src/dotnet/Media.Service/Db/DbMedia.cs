@@ -36,7 +36,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
     {
         var isNew = Id.IsNullOrEmpty();
         this.RequireSameOrEmptyId(model.Id.Value);
-
+        model.RequireSomeVersion();
         if (isNew) {
             Id = model.Id.Value;
             Scope = model.Id.Scope;
