@@ -48,7 +48,7 @@ public sealed partial class MediaId : StringIdentifier, IStringIdentifier<MediaI
     public static MediaId New(string scope, string localId)
         => new (Format(scope, localId), scope, localId);
 
-    public static string GenerateScope()
+    public static string NewScope()
         => ScopeGenerator.Next();
 
     private MediaId(string value, string scope, string localId) : base(value)
