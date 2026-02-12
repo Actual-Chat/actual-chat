@@ -159,11 +159,11 @@ body.narrow .chat-activity-panel.listening:after {
 }
 .equalizer.active .bar.bar-1,
 .equalizer.active .bar.bar-3 {
-    @apply bg-[var(--indigo-70)];
+    background: linear-gradient(to bottom, var(--violet-70), var(--indigo-70));
     animation: equalize-active-1 0.6s infinite ease-in-out;
 }
 .equalizer.active .bar.bar-2 {
-    @apply bg-[var(--indigo-70)];
+    background: linear-gradient(to bottom, var(--violet-70), var(--indigo-70));
     animation: equalize-active-2 0.6s infinite ease-in-out;
 }
 .equalizer.active .bar.bar-1 {
