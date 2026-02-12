@@ -16,6 +16,8 @@ import { fastRaf, fastReadRaf } from 'fast-raf';
 import { DeviceInfo } from 'device-info';
 import { clamp } from 'math';
 import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
+import { DocumentEvents } from 'event-handling';
+import { type Subscription } from 'rxjs';
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
@@ -63,6 +65,7 @@ export class VirtualList {
     private readonly sizeCache: Map<string, number>;
     private readonly statistics: VirtualListStatistics = new VirtualListStatistics();
     private readonly keySortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    private readonly visibilityChangeSubscription: Subscription;
     private readonly rowGap: number = 2;
 
     private isDisposed = false;
@@ -206,6 +209,10 @@ export class VirtualList {
         this.skeletonObserver1.observe(this.spacerRef);
         this.skeletonObserver1.observe(this.endSpacerRef);
 
+        this.visibilityChangeSubscription = DocumentEvents.passive.visibilityChange$.subscribe(
+            () => this.onDocumentVisibilityChange()
+        );
+
         this.renderState = {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
@@ -263,6 +270,7 @@ export class VirtualList {
         this.skeletonObserver1.disconnect();
         this.visibilityObserver.disconnect();
         this.sizeObserver.disconnect();
+        this.visibilityChangeSubscription.unsubscribe();
         this.whenRequestDataCompleted?.resolve(undefined);
         this.whenRequestDataCompleted = null;
         this.ref.removeEventListener('scroll', this.onScroll);
@@ -924,6 +932,16 @@ export class VirtualList {
 
     private onScrollEnd = (): void => {
         this.turnOffIsScrolling();
+    }
+
+    private onDocumentVisibilityChange(): void {
+        if (document.hidden) {
+            debugLog?.log(`onDocumentVisibilityChange: hidden, clearing stickyEdge`);
+            this.stickyEdge = null;
+            this.isEndAnchorVisible = false;
+            this.turnOnIsEndAnchorVisibleDebounced.reset();
+            this.turnOffIsEndAnchorVisibleDebounced.reset();
+        }
     }
 
     private scheduleUpdateCurrentPivots(interactiveKey?: string): void {

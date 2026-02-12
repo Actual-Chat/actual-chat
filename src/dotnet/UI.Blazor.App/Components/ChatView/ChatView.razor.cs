@@ -14,6 +14,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public static readonly TimeSpan FastUpdateRecency = TimeSpan.FromMilliseconds(100);
     public static readonly TimeSpan FastUpdateDelay = TimeSpan.FromMilliseconds(20);
     public static readonly TimeSpan SlowUpdateDelay = TimeSpan.FromMilliseconds(100);
+    public static readonly TimeSpan NewMessagesLineDebounceTimeout = TimeSpan.FromSeconds(3);
 
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly AsyncTaskMethodBuilder _whenInitializedSource = AsyncTaskMethodBuilderExt.New();
@@ -26,6 +27,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private MutableState<long> _shownReadEntryLid = null!;
     private MutableState<ChatViewNavigation?> _nextNavigation = null!;
     private ChatContext _chatContext = null!;
+    private CpuTimestamp _lastEndAnchorVisibleAt;
+    private CpuTimestamp _newMessagesLineShownAt;
+    private long _debouncedReadEntryLid;
 
     private AppUIHub Hub { get; }
     private Session Session => Hub.Session;
@@ -40,6 +44,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
+    private bool IsNewMessagesLineDebounceActive
+        => _newMessagesLineShownAt != default
+            && _newMessagesLineShownAt.Elapsed < NewMessagesLineDebounceTimeout;
 
     public IState<ReadPosition> ReadPosition {
         get {
@@ -211,9 +218,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (itemVisibility.IsEmpty || !WhenInitialized.IsCompletedSuccessfully)
             return;
 
-        if (itemVisibility.IsEndAnchorVisible)
+        if (itemVisibility.IsEndAnchorVisible) {
+            _lastEndAnchorVisibleAt = CpuTimestamp.Now;
             _ = UpdateReadPositionToTheLastId(ChatId);
-        else
+        } else
             UpdateReadPosition(itemVisibility.MaxMessageLid);
         if (_viewPositionLease is not null) {
             var entryId = itemVisibility.MaxMessageLid;
@@ -281,6 +289,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             lastEntryLid = entry.LocalId;
             if (lastEntryWasShownAsRead) {
                 _shownReadEntryLid.Value = lastEntryLid;
+                ResetNewMessagesLineState();
                 UpdateReadPosition(lastEntryLid);
             }
             if (entry.IsStreaming || entry.AudioEntryLid.HasValue)
@@ -314,6 +323,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             using (Computed.BeginIsolation())
                 await isChatViewVisible.Computed.When(x => x, cancellationToken);
             _shownReadEntryLid.Value = ReadPosition.Value.EntryLid;
+            ResetNewMessagesLineState();
+            _itemVisibility.Value = ChatViewItemVisibility.Empty;
         }
 
         // Update delay: we want to collect as many dependencies as possible here,
@@ -337,11 +348,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Handling NavigateTo + default navigation
         var itemVisibility = ItemVisibility.Value;
         var isFirstRender = renderedData.IsNone && query.IsNone;
-        var readEntryLid = itemVisibility.IsEndAnchorVisible
-            ? long.MaxValue // We are at the end of the chat so avoid displaying new messages line
-            : ReadPosition.Value.EntryLid;
-        var viewEntryLid = itemVisibility.IsEndAnchorVisible
-            ? long.MaxValue // We are at the end of the chat so avoid displaying new messages line
+        var readEntryLid = GetReadEntryLid();
+        var viewEntryLid = readEntryLid == long.MaxValue
+            ? long.MaxValue
             : ViewPosition.Value.EntryLid;
         var hasViewEntry = viewEntryLid != 0 && viewEntryLid != long.MaxValue;
         var nav = await _nextNavigation.Use(cancellationToken)
@@ -389,6 +398,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     ItemVisibilityState = ItemVisibility.Value,
                 };
         }
+
+        UpdateNewMessagesLineDebounce(items, readEntryLid);
 
         if (tryUpdateShownReadEntryLid && TryUpdateShownReadEntryLid(items, ref readEntryLid)) {
             tryUpdateShownReadEntryLid = false;
@@ -519,6 +530,37 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     // Helpers
 
+    private long GetReadEntryLid()
+    {
+        if (IsNewMessagesLineDebounceActive)
+            return _debouncedReadEntryLid;
+
+        // Sticky end: treat "recently at end" same as "currently at end"
+        var wasRecentlyAtEnd = _lastEndAnchorVisibleAt != default
+            && _lastEndAnchorVisibleAt.Elapsed < NewMessagesLineDebounceTimeout;
+        if (wasRecentlyAtEnd) {
+            _newMessagesLineShownAt = default;
+            return long.MaxValue;
+        }
+        return ReadPosition.Value.EntryLid;
+    }
+
+    private void UpdateNewMessagesLineDebounce(IReadOnlyList<ChatMessage> items, long readEntryLid)
+    {
+        var hasNewMessagesLine = items.Any(i => i.Kind == ChatMessageKind.NewMessagesLine);
+        if (hasNewMessagesLine && _newMessagesLineShownAt == default) {
+            _newMessagesLineShownAt = CpuTimestamp.Now;
+            _debouncedReadEntryLid = readEntryLid;
+        } else if (!hasNewMessagesLine)
+            _newMessagesLineShownAt = default;
+    }
+
+    private void ResetNewMessagesLineState()
+    {
+        _newMessagesLineShownAt = default;
+        _lastEndAnchorVisibleAt = default;
+    }
+
     private long UpdateReadPosition(long readEntryLid)
     {
         var readPosition = ReadPosition;
@@ -553,6 +595,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             DebugLog?.LogDebug("TryUpdateShownReadEntryLid: no new messages line");
             return false; // No new messages line
         }
+
+        if (IsNewMessagesLineDebounceActive)
+            return false; // Don't remove NewMessagesLine during debounce period
 
         // We see end anchor, when the new message appears so we can update shownReadEntryLid
         var lastEntryLid = items[^1].Id;
