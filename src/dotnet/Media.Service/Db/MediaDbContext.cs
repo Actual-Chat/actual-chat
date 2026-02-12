@@ -32,6 +32,7 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
         media.Property(e => e.LocalId).UseCollation("C");
         media.Property(e => e.ContentId).UseCollation("C");
         media.Property(e => e.UserId).UseCollation("C");
+        media.Property(e => e.ThumbnailId).UseCollation("C");
 
         var mediaProgress = model.Entity<DbMediaProgress>();
         mediaProgress.Property(e => e.Id).UseCollation("C");

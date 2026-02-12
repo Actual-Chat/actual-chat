@@ -30,19 +30,17 @@ public class Medias(IServiceProvider services) : IMedias
             return null;
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
-        if (media.ContentId.IsNullOrEmpty())
+        var contentId = media.ContentId;
+        if (contentId.IsNullOrEmpty())
             return null;
 
-        return new MediaContent(mediaId, media.ContentId);
-        // // Get thumbnail media if available
-        // var thumbnailMediaId = media.Metadata.Get<MediaId?>(Constants.Media.ThumbnailMediaIdKey);
-        // string? thumbnailContentId = null;
-        // if (thumbnailMediaId is { } thumbId) {
-        //     var thumbMedia = await MediaBackend.Get(thumbId, cancellationToken).ConfigureAwait(false);
-        //     thumbnailContentId = thumbMedia?.ContentId;
-        // }
-        //
-        // return new MediaContent(mediaId, media.ContentId, thumbnailMediaId, thumbnailContentId);
+        var thumbnailId = media.ThumbnailId;
+        var thumbnailMedia = thumbnailId != null
+            ? await MediaBackend.Get(thumbnailId, cancellationToken).ConfigureAwait(false)
+            : null;
+
+        var thumbnailContentId = thumbnailMedia?.ContentId;
+        return new MediaContent(mediaId, contentId, thumbnailId, thumbnailContentId);
     }
 
     // [CommandHandler]
