@@ -31,7 +31,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private UploadSessions UploadSessions => Hub.UploadSessions;
     private IChats Chats => Hub.Chats;
-    private IncomingShareSuggestions IncomingShareSuggestions => field ??= Services.GetRequiredService<IncomingShareSuggestions>();
+    private IncomingShareSuggestions? IncomingShareSuggestions => field ??= Services.GetService<IncomingShareSuggestions>();
     private Moment Now => Clocks.SystemClock.Now;
 
     public Task WhenStoredRequestsProcessed => _whenStoredRequestsProcessed;
@@ -341,7 +341,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             : Result.NewError<ChatEntry?>(task.Exception!);
 
         if (result2.IsValue(out var entry))
-            await IncomingShareSuggestions.Push(entry!.ChatId).ConfigureAwait(false);
+            _ = IncomingShareSuggestions?.Push(entry!.ChatId);
 
         InvokeAfterSendMessageHandler(
             request.AfterSendMessageHandlerKey,
