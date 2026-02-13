@@ -8,7 +8,7 @@ namespace ActualChat.Chat;
 /// </summary>
 [Obsolete("Chat Roulette feature has been removed.")]
 #pragma warning disable CS0618 // Obsolete
-public class LegacyRoulette : IRoulette
+public class LegacyRoulette : ILegacyRoulette
 {
     public virtual Task<bool> EnableChatRouletteUI(
         Session session,

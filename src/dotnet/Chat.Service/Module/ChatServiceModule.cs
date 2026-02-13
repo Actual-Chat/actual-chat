@@ -87,8 +87,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Legacy APIs
 #pragma warning disable CS0618 // Obsolete
-        rpcHost.AddLocalApi<IRoulette, LegacyRoulette>();
-        rpcHost.AddLocalApi<IRouletteProfiles, LegacyRouletteProfiles>();
+        rpcHost.AddLocalApi<ILegacyRoulette, LegacyRoulette>("IRoulette");
+        rpcHost.AddLocalApi<ILegacyRouletteProfiles, LegacyRouletteProfiles>("IRouletteProfiles");
 #pragma warning restore CS0618
 
         if (isBackendClient)
@@ -318,13 +318,15 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             (c, _) => c.GetRequiredKeyedService<IChatCompletionService>(rateLimitedKey));
     }
 
-    private async ValueTask<string> GetBearerToken(CancellationToken cancellationToken)
+    private static async ValueTask<string> GetBearerToken(CancellationToken cancellationToken)
     {
         var credential = await GoogleCredential.GetApplicationDefaultAsync(cancellationToken).ConfigureAwait(false);
         // Specify the scope for Vertex AI
         credential = credential.CreateScoped("https://www.googleapis.com/auth/cloud-platform");
         // Get the access token
-        var token = await credential.UnderlyingCredential.GetAccessTokenForRequestAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        var token = await credential.UnderlyingCredential
+            .GetAccessTokenForRequestAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
         return token;
     }
 }
