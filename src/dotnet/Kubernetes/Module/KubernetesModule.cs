@@ -18,16 +18,23 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
         services.AddSingleton<KubeMeshLocks>();
         services.AddHttpClient(Kube.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(c => {
-                var handler = new HttpClientHandler();
+                var handler = new SocketsHttpHandler {
+                    ConnectTimeout = TimeSpan.FromSeconds(3),
+                    KeepAlivePingDelay = TimeSpan.FromSeconds(15),
+                    KeepAlivePingTimeout = TimeSpan.FromSeconds(5),
+                    KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+                };
                 var kubeInfo = c.GetRequiredService<KubeInfo>();
                 var log = c.LogFor<KubeServices>();
                 var caCertString = File.ReadAllText(kubeInfo.CACertPath);
                 var caCert = X509Certificate2.CreateFromPem(caCertString);
 #pragma warning disable MA0039
-                handler.ServerCertificateCustomValidationCallback =
+                handler.SslOptions.RemoteCertificateValidationCallback =
                         (_, cert, _, policyErrors) =>
                         {
-                            if (cert == null)
+                            if (cert is not X509Certificate2 x509Cert)
                                 return false;
                             if (policyErrors != SslPolicyErrors.RemoteCertificateChainErrors)
                                 return false;
@@ -37,7 +44,7 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
                                 x509Chain.ChainPolicy.ExtraStore.Add(caCert);
                                 x509Chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
                                 x509Chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-                                return x509Chain.Build(cert);
+                                return x509Chain.Build(x509Cert);
                             }
                             catch (Exception ex)
                             {
