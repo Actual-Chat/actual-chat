@@ -1,6 +1,6 @@
-namespace ActualChat.UI;
+namespace ActualChat.UI.Blazor;
 
-public static class UIWorkerExt
+public static class ScopedWorkerExt
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TScopedWorker Start<TScopedWorker>(this TScopedWorker worker)
