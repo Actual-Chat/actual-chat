@@ -4,8 +4,10 @@ src/dotnet/App.Maui/wwwroot/dist/
 build/Build.sln
 ActualChat.CI.slnf
 Nerdbank.GitVersioning.*
-*.snk
 services/opensearch/snapshots
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+*.snk
 
 # IDE folders & files
 .vs/
