@@ -247,10 +247,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatEntryKind entryKind,
         Range<long> idTileRange,
         bool includeRemoved,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
-        using var cts = ct.CreateLinkedTokenSource(TimeSpan.FromSeconds(60));
-        var cancellationToken = cts.Token;
         var idTile = IdTileStack.GetTile(idTileRange);
         var smallerIdTiles = idTile.Smaller();
         if (smallerIdTiles.Length != 0) {
@@ -296,7 +294,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var allAttachmentsTask = GetAttachments(dbEntries, cancellationToken);
         var allLinkPreviewsTask = GetLinkPreviews();
 
-        await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).WaitAsync(cancellationToken).ConfigureAwait(false);
+        await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).ConfigureAwait(false);
 
         var allAttachments = await allAttachmentsTask.ConfigureAwait(false);
         var allLinkPreviews = await allLinkPreviewsTask.ConfigureAwait(false);

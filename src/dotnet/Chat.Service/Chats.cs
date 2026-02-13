@@ -82,18 +82,14 @@ public partial class Chats(IServiceProvider services) : IChats
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
-        var spanId = Activity.Current?.Id ?? "";
         var relatedId = RpcInboundContext.Current?.Message.RelatedId.ToInvariantString() ?? "";
-        Log.LogInformation("Received get tile for #{RelatedId} {Session}, {ChatId}, {EntryKind} and {Range}. SpanId: {SpanId}",
-            relatedId, session, chatId, entryKind, idTileRange, spanId);
         try {
-            var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
-            chat = chat.Require(); // Make sure we can read the chat
-            Log.LogInformation("Got chat for get tile for #{RelatedId} {Session}, {ChatId}, {EntryKind} and {Range}. SpanId: {SpanId}",
-                relatedId, session, chatId, entryKind, idTileRange, spanId);
+            await Get(session, chatId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false); // Make sure we can read the chat
             var chatTile = await Backend.GetTile(chatId, entryKind, idTileRange, false, cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("Got tile for #{RelatedId} {Session}, {ChatId}, {EntryKind} and {Range}: {ChatTileEntries} entries. SpanId: {SpanId}",
-                relatedId, session, chatId, entryKind, idTileRange, chatTile.Entries.Length, spanId);
+            Log.LogInformation("Got tile for #{RelatedId} {Session}, {ChatId}, {EntryKind} and {Range}: {ChatTileEntries} entries",
+                relatedId, session, chatId, entryKind, idTileRange, chatTile.Entries.Length);
             return chatTile;
         }
         catch (Exception e) {
