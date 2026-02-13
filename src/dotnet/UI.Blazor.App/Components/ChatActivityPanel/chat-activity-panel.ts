@@ -117,11 +117,11 @@ export class ChatActivityPanel {
             });
         }
 
-        // Activity panel long press for unpinning
+        // Activity panel or bottom sheet long press for unpinning
         DocumentEvents.capturedPassive.touchStart$.pipe(
             filter(() => !ScreenSize.isWide()),
             filter(() => this.isPinned),
-            filter(e => this.activityPanel.contains(e.target as Node)),
+            filter(e => this.activityPanel.contains(e.target as Node) || (this.bottomSheet?.contains(e.target as Node) ?? false)),
             takeUntil(this.disposed$)
         ).subscribe(e => {
             Gestures.addActive(new ActivityPanelUnpinGesture(this, e));

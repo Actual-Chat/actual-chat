@@ -35,6 +35,9 @@ body.narrow .stepper.onboarding-stepper {
 .onboarding-modal .stepper-footer {
     @apply sticky bottom-0;
 }
+.onboarding-stepper:not(:has(.onboarding-tutorial)) .stepper-footer {
+    background: linear-gradient(89deg, #FFEFFF 5.09%, #DAD2FF 94.69%);
+}
 .onboarding-modal .stepper-footer .btn-group {
     @apply justify-center;
     @apply max-w-none md:max-w-none;
@@ -184,12 +187,12 @@ body.narrow .stepper-image-filler {
 .onboarding-tutorial .c-title > p {
     @apply text-3.5xl font-semibold leading-8;
     font-size: clamp(1.5rem, 2.5vw, 1.75rem);
-    line-height: clamp(1.5rem, 2.5vw, 1.75rem);
+    line-height: clamp(2rem, 3vw, 2rem);
 }
 .onboarding-tutorial .c-description {
     @apply text-headline-7 font-light leading-5;
     font-size: clamp(1rem, 1.75vw, 1.375rem);
-    line-height: clamp(1rem, 1.75vw, 1.375rem);
+    line-height: clamp(1.25rem, 2.25vw, 1.75rem);
 }
 .tutorial-btn-wrapper {
     @apply relative;
@@ -266,6 +269,9 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 }
 .onboarding-stepper:has(.onboarding-tutorial) .stepper-footer {
     @apply p-4;
+}
+.onboarding-stepper:has(.onboarding-tutorial) .stepper-footer-noise {
+    @apply hidden;
 }
 
 /* Phone verification */

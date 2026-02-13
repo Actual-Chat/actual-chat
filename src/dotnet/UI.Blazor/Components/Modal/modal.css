@@ -10,9 +10,6 @@
     background-color: rgba(0,0,0,0.5);
     animation: modal-blur-on 250ms ease-in-out;
 }
-body.device-ios .modal-overlay {
-    @apply ios-height;
-}
 .modal-overlay.hide {
     @apply flex;
     background-color: rgba(0,0,0,0);
@@ -48,7 +45,8 @@ body.device-ios .modal-overlay {
     }
 }
 
-body.device-ios .modal-overlay {
+body.device-ios .modal-overlay,
+body.device-android .modal-overlay {
     @apply ios-height;
 }
 
@@ -121,7 +119,8 @@ body.narrow .modal-frame.modal-sm {
     @apply text-03;
     @apply md:shadow-modal-wide;
 }
-body.device-ios .modal-chrome {
+body.device-ios .modal-chrome,
+body.device-android .modal-chrome {
     @apply ios-height;
 }
 .modal-frame {
@@ -142,7 +141,8 @@ body.device-ios .modal-chrome {
 .modal-frame.fixed-height {
     @apply md:h-192;
 }
-body.device-ios .modal-frame {
+body.device-ios .modal-frame,
+body.device-android .modal-frame {
     @apply ios-height;
 }
 @supports (transition-behavior: allow-discrete) {

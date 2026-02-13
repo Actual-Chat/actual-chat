@@ -715,7 +715,7 @@ body.touch-capable .notify-call-btn:active .bell-svg.active {
 
 /* Drag-and-drop overlay */
 .drag-drop-overlay {
-    @apply absolute inset-0 z-50;
+    @apply absolute inset-0 z-tooltip;
     @apply hidden items-center justify-center;
 }
 .drag-drop-overlay.active {

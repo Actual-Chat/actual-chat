@@ -36,9 +36,9 @@ export class TotpInput implements Disposable {
                 takeUntil(this.disposed$),
             ).subscribe(() => this.onClick());
 
-        // iOS Safari doesn't automatically scroll to show input above keyboard
+        // Mobile browsers don't always scroll to show input above keyboard
         // Keep input visible on any viewport change (keyboard, screen recording, orientation)
-        if (DeviceInfo.isIos && window.visualViewport) {
+        if (DeviceInfo.isMobile && window.visualViewport) {
             let settled: ReturnType<typeof setTimeout>;
             const keepVisible = () => {
                 const activeInput = inputs.find(i => document.activeElement === i);
