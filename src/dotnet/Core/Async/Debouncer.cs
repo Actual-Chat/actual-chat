@@ -96,6 +96,12 @@ public static class Debouncer
     public static Debouncer<T> New<T>(TimeSpan interval, Func<T, Task> action)
         => new (MomentClockSet.Default.CpuClock, interval, action);
 
+    public static Debouncer<T> New<T, TArg>(MomentClock clock, TimeSpan interval, TArg arg, Func<T, TArg, Task> action)
+        => new (clock, interval, item => action(item, arg));
+
+    public static Debouncer<T> New<T, TArg>(TimeSpan interval, TArg arg, Func<T, TArg, Task> action)
+        => new (MomentClockSet.Default.CpuClock, interval, item => action(item, arg));
+
     public static CancellingDebouncer<T> New<T>(MomentClock clock, TimeSpan interval, Func<T, CancellationToken, Task> taskFactory)
         => new (clock, interval, taskFactory);
 
