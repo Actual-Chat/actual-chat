@@ -568,7 +568,17 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfoo
     @apply h-1.5 w-16;
     @apply rounded-full;
     background: linear-gradient(to left, var(--bottom-sheet-1), var(--bottom-sheet-2));
-    transition: width 0.15s ease-out;
+    transition: width 0.15s ease-out, height 0.15s ease-out;
+}
+/* Touch target for easier grabbing on touch devices */
+.touch-capable .bottom-sheet::after {
+    @apply content-empty;
+    @apply absolute left-1/2;
+    @apply -translate-x-1/2;
+    @apply pointer-events-auto;
+    width: 5rem;
+    height: 2.5rem;
+    top: -1rem;
 }
 .bottom-sheet:active {
     @apply cursor-grabbing;

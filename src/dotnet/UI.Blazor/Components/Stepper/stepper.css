@@ -16,8 +16,20 @@
     @apply flex-y grow shrink justify-center;
 }
 .stepper-footer {
+    @apply relative;
     @apply z-20;
     @apply pt-8 py-4;
+}
+.stepper-footer-noise {
+    @apply absolute inset-0;
+    @apply pointer-events-none;
+    @apply overflow-hidden;
+    mix-blend-mode: overlay;
+}
+.stepper-footer-noise img {
+    @apply block;
+    @apply w-full h-full;
+    @apply object-cover;
 }
 .stepper-filler {
     @apply grow;
