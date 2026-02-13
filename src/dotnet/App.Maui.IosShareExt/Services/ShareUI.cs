@@ -1,10 +1,8 @@
-using ActualChat.App.Maui.IosShareExt.UI;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Chat;
 using ActualChat.Contacts;
 using ActualChat.Media;
 using ActualChat.Search;
-using ActualChat.UI;
 using ActualChat.UI.App.Services;
 using ActualChat.UI.Services;
 using ActualLab.Fusion.UI;
@@ -13,16 +11,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
-public enum ShareStep
-{
-    None,
-    ContactSelection,
-    Uploading,
-    Failed,
-    Completed,
-}
-
-public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
+public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly HashSet<ContactId> _selectedIds = new();
     private readonly MutableState<bool> _canSend;
@@ -36,6 +25,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
     public IState<double> UploadPct => _uploadPct;
     public IState<bool> CanSend => _canSend;
 
+    private IosHub Hub { get; }
     private IAccounts Accounts => Hub.Accounts;
     private IContacts Contacts => Hub.Contacts;
     private ShareInputs SharedInputs => Hub.SharedData;
@@ -44,9 +34,11 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
     private UICommander UICommander => Hub.UICommander;
     private ICommander Commander => Hub.Commander;
     private IncomingShareSuggestions ShareSuggestions => field ??= Hub.Services.GetRequiredService<IncomingShareSuggestions>();
+    private ILogger Log => field ??= Hub.LogFor(GetType());
 
-    public ShareUI(IosHub hub) : base(hub)
+    public ShareUI(IosHub hub)
     {
+        Hub = hub;
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
         Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
         _step = Hub.StateFactory.NewMutable<ShareStep>();

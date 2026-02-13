@@ -1,17 +1,24 @@
 using ActualChat.Contacts;
+using ActualLab.Interception;
 
 namespace ActualChat.UI.App.Services;
 
-public class IncomingShareSuggestions(IServiceProvider services) : ProcessorBase
+public class IncomingShareSuggestions(IServiceProvider services) : WorkerBase, INotifyInitialized
 {
-    private static readonly TimeSpan ThrottleInterval = TimeSpan.FromMinutes(1);
-    private readonly ConcurrentDictionary<ContactId, Debouncer<ContactId>> _debouncers = new();
+    private static readonly TimeSpan ContactSuggestionThrottlingInterval = TimeSpan.FromMinutes(1);
+    private readonly Channel<ContactId> _channel = Channel.CreateBounded<ContactId>(
+        new BoundedChannelOptions(100) { SingleReader = true, FullMode = BoundedChannelFullMode.DropOldest });
+    private readonly Dictionary<ContactId, Moment> _lastSuggestedAt = new();
 
     protected IServiceProvider Services { get; } = services;
     protected IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     protected Session Session => field ??= Services.GetRequiredService<Session>();
     protected ILogger Log => field ??= Services.LogFor(GetType());
     protected IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();
+    private MomentClockSet Clocks => field ??= Services.Clocks();
+
+    void INotifyInitialized.Initialized()
+        => this.Start();
 
     public async Task Push(ChatId chatId)
     {
@@ -30,14 +37,30 @@ public class IncomingShareSuggestions(IServiceProvider services) : ProcessorBase
     }
 
     public void Push(ContactId contactId)
-    {
-        var debouncer = _debouncers.GetOrAdd(contactId, CreateDebouncer);
-        debouncer.Throttle(contactId);
-    }
+        => _channel.Writer.TryWrite(contactId);
 
-    private Debouncer<ContactId> CreateDebouncer(ContactId _)
-        => Debouncer.New<ContactId, IncomingShareSuggestions>(ThrottleInterval, this,
-            static (id, self) => self.SuggestInternal(id, self.StopToken));
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(ProcessQueue)
+            .LogError(Log)
+            .RetryForever(RetryDelaySeq.Exp(0.1, 5), Log)
+            .RunIsolated(cancellationToken);
+
+    private async Task ProcessQueue(CancellationToken cancellationToken)
+    {
+        await foreach (var contactId in _channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            try {
+                var now = Clocks.SystemClock.Now;
+                if (_lastSuggestedAt.TryGetValue(contactId, out var lastAt)
+                    && now - lastAt < ContactSuggestionThrottlingInterval)
+                    continue;
+
+                _lastSuggestedAt[contactId] = now;
+                await SuggestInternal(contactId, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to suggest incoming share to contact #{ContactId}", contactId);
+            }
+    }
 
     protected virtual Task SuggestInternal(ContactId contactId, CancellationToken cancellationToken)
         => Task.CompletedTask;
