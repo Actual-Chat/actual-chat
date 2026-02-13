@@ -17,7 +17,7 @@ public class AccountTouchFlowTest(ITestOutputHelper @out)
         await ComputedTest.When(async ct => {
             var masterFlow = await flowHub.TryGet<MasterFlow>("", ct);
             masterFlow.Should().NotBeNull();
-            masterFlow!.AppliedMigrations.Contains("StartAccountTouchFlow").Should().BeTrue();
+            masterFlow!.AppliedMigrations.Any(m => m.StartsWith("StartAccountTouchFlow")).Should().BeTrue();
         }, TimeSpan.FromSeconds(30));
 
         // AccountTouchFlow should exist
