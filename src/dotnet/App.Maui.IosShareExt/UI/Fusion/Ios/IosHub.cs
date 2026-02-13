@@ -30,6 +30,7 @@ public class IosHub(IServiceProvider services) : ProcessorBase, IHasServices
     public ShareInputs SharedData => field ??= Services.GetRequiredService<ShareInputs>();
     public ChunkedFileUploader FileUploader => field ??= Services.GetRequiredService<ChunkedFileUploader>();
 }
+
 public static class IosHubExt
 {
     extension(IosHub hub)

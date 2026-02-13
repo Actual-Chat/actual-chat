@@ -3,7 +3,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.App.Services;
 
-public class IncomingShareSuggestions(IServiceProvider services) : WorkerBase, INotifyInitialized
+public abstract class IncomingShareSuggestions(IServiceProvider services) : WorkerBase, INotifyInitialized
 {
     private static readonly TimeSpan ContactSuggestionThrottlingInterval = TimeSpan.FromMinutes(1);
     private readonly Channel<ContactId> _channel = Channel.CreateBounded<ContactId>(
