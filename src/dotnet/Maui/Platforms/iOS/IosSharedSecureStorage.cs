@@ -6,7 +6,10 @@ namespace ActualChat.Maui;
 public class IosSharedSecureStorage : ISecureStorage
 {
     private const string ServiceName = "Voxt";
-    private static string AccessGroup => field ??= "M287G8G83F.chat.actual.dev.app.shared";
+    private static string AccessGroup => field ??= MauiSettings.IsDevApp
+        ? "M287G8G83F.chat.actual.dev.app.shared"
+        // ReSharper disable once HeuristicUnreachableCode
+        : "M287G8G83F.chat.actual.app.shared";
 
     public static IosSharedSecureStorage Default { get; } = new ();
 
