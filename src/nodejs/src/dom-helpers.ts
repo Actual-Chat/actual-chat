@@ -1,4 +1,6 @@
 import { throttle } from 'promises';
+import { fromEvent, Subject, takeUntil } from 'rxjs';
+import { DeviceInfo } from 'device-info';
 
 export function getOrInheritData(target: unknown, dataName: string): [HTMLElement | SVGElement | null, string | null] {
     if (!(target instanceof HTMLElement) && !(target instanceof SVGElement))
@@ -64,4 +66,33 @@ export function exposeInputState(
     */
 
     update();
+}
+
+/**
+ * Sets up mobile keyboard visibility handling for input elements.
+ * On mobile, keeps the focused input visible when the keyboard appears/resizes.
+ */
+export function setupMobileKeyboardHandler(
+    inputs: HTMLInputElement | HTMLInputElement[],
+    disposed$: Subject<void>
+): void {
+    if (!DeviceInfo.isMobile || !window.visualViewport)
+        return;
+
+    const inputArray = Array.isArray(inputs) ? inputs : [inputs];
+    let settled: ReturnType<typeof setTimeout>;
+
+    const keepVisible = () => {
+        const activeInput = inputArray.find(i => document.activeElement === i);
+        if (activeInput) {
+            activeInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
+
+    fromEvent(window.visualViewport, 'resize')
+        .pipe(takeUntil(disposed$))
+        .subscribe(() => {
+            clearTimeout(settled);
+            settled = setTimeout(keepVisible, 150);
+        });
 }
