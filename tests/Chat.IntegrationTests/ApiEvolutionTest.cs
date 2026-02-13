@@ -1,5 +1,6 @@
 using ActualChat.Contacts;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.Users;
 using ActualLab.Mathematics;
 using ChatModel = ActualChat.Chat.Chat;
 
@@ -155,7 +156,7 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
     // RPC API return types - factory methods
 
     private AccountFull CreateAccountFull()
-        => new(TestUserId, 1) {
+        => new(new User(TestUserId.Value, "Test User"), 1) {
             IsAdmin = false,
             Email = "test@example.com",
             Name = "Test User",
