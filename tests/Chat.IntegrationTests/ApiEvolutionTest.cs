@@ -26,6 +26,48 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
         Deserialize();
     }
 
+    [Fact]
+    public void SessionInfoFormatTest()
+    {
+        var s = Serializer.ToTyped<SessionInfo>();
+
+        var si = CreateSessionInfo();
+        using var buffer = s.Write(si);
+        var bytes = buffer.WrittenMemory.ToArray();
+        WriteLine($"SessionInfo bytes: {bytes.Length}");
+        WriteLine($"Header hex (first 20 bytes): {Convert.ToHexString(bytes.AsSpan(0, Math.Min(20, bytes.Length)))}");
+
+        // Header byte = member count
+        var memberCount = bytes[0];
+        WriteLine($"Member count: {memberCount}");
+
+        // Read VarInt deltas
+        var offset = 1;
+        var deltas = new int[memberCount];
+        for (int i = 0; i < memberCount; i++) {
+            int value = 0, shift = 0;
+            byte b;
+            do {
+                b = bytes[offset++];
+                value |= (b & 0x7F) << shift;
+                shift += 7;
+            } while ((b & 0x80) != 0);
+            deltas[i] = value;
+        }
+        for (int i = 0; i < memberCount; i++)
+            WriteLine($"  delta[{i}] = {deltas[i]}");
+
+        var dataStart = offset;
+        WriteLine($"Data starts at byte {dataStart}");
+        WriteLine($"Sum of deltas: {deltas.Sum()}");
+        WriteLine($"Expected data size: {bytes.Length - dataStart}");
+
+        // Verify round-trip
+        var result = s.Read(bytes, out _);
+        result.Should().NotBeNull();
+        result.IPAddress.Should().Be("127.0.0.1");
+    }
+
     // Private methods
 
     private void Serialize([CallerFilePath] string? callerFilePath = null)
@@ -57,77 +99,85 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
     private void Deserialize([CallerFilePath] string? callerFilePath = null)
     {
         var dir = Path.Combine(Path.GetDirectoryName(callerFilePath)!, "data", "api-evolution");
+        var errors = new List<string>();
 
-        DeserializeOne<AccountFull>(dir, v => {
+        DeserializeOne<AccountFull>(dir, errors, v => {
             v.Name.Should().Be("Test User");
             v.Email.Should().Be("test@example.com");
         });
-        DeserializeOne<SessionInfo>(dir, v => {
+        DeserializeOne<SessionInfo>(dir, errors, v => {
             v.IPAddress.Should().Be("127.0.0.1");
         });
-        DeserializeOne<ChatModel>(dir, v => {
+        DeserializeOne<ChatModel>(dir, errors, v => {
             v.Title.Should().Be("Test Chat");
             v.IsPublic.Should().BeTrue();
         });
-        DeserializeOne<AuthorRules>(dir, v => {
+        DeserializeOne<AuthorRules>(dir, errors, v => {
             v.CanRead().Should().BeTrue();
             v.CanWrite().Should().BeTrue();
         });
-        DeserializeOne<ChatNews>(dir, v => {
+        DeserializeOne<ChatNews>(dir, errors, v => {
             v.TextEntryIdRange.Should().Be(new Range<long>(1, 100));
             v.LastTextEntry.Should().NotBeNull();
         });
-        DeserializeOne<ChatEntry>(dir, v => {
+        DeserializeOne<ChatEntry>(dir, errors, v => {
             v.Content.Should().Be("Hello, world!");
             v.AuthorId.Should().Be(TestAuthorId);
         });
-        DeserializeOne<ChatTile>(dir, v => {
+        DeserializeOne<ChatTile>(dir, errors, v => {
             v.Entries.Length.Should().Be(1);
             v.IdTileRange.Should().Be(new Range<long>(0, 100));
         });
-        DeserializeOne<AuthorFull>(dir, v => {
+        DeserializeOne<AuthorFull>(dir, errors, v => {
             v.UserId.Should().Be(TestUserId);
             v.RoleIds.Should().HaveCount(1);
         });
-        DeserializeOne<Contact>(dir, v => {
+        DeserializeOne<Contact>(dir, errors, v => {
             v.IsPinned.Should().BeTrue();
             v.PeerContactName.Should().Be("Test Contact");
         });
-        DeserializeOne<Place>(dir, v => {
+        DeserializeOne<Place>(dir, errors, v => {
             v.Title.Should().Be("Test Place");
             v.IsPublic.Should().BeTrue();
         });
-        DeserializeOne<PlaceRules>(dir, v => {
+        DeserializeOne<PlaceRules>(dir, errors, v => {
             v.CanRead().Should().BeTrue();
             v.CanWrite().Should().BeTrue();
         });
-        DeserializeOne<ChatPosition>(dir, v => {
+        DeserializeOne<ChatPosition>(dir, errors, v => {
             v.EntryLid.Should().Be(42);
             v.Origin.Should().Be("test-origin");
         });
-        DeserializeOne<Mention>(dir, v => {
+        DeserializeOne<Mention>(dir, errors, v => {
             v.Id.Should().Be((Symbol)"mention-1");
             v.EntryId.Should().Be(TestEntryId);
         });
-        DeserializeOne<UserLanguageSettings>(dir, v => {
+        DeserializeOne<UserLanguageSettings>(dir, errors, v => {
             v.Primary.Should().Be(Languages.French);
         });
-        DeserializeOne<UserOnboardingSettings>(dir, v => {
+        DeserializeOne<UserOnboardingSettings>(dir, errors, v => {
             v.IsAvatarStepCompleted.Should().BeTrue();
             v.IsCreateChatsStepCompleted.Should().BeTrue();
         });
-        DeserializeOne<UserBubbleSettings>(dir, v => {
+        DeserializeOne<UserBubbleSettings>(dir, errors, v => {
             v.ReadBubbles.Should().HaveCount(2);
         });
-        DeserializeOne<ChatListSettings>(dir, v => {
+        DeserializeOne<ChatListSettings>(dir, errors, v => {
             v.Order.Should().Be(ChatListOrder.ByAlphabet);
         });
-        DeserializeOne<ActiveChat>(dir, v => {
+        DeserializeOne<ActiveChat>(dir, errors, v => {
             v.ChatId.Should().Be(TestChatId);
         });
-        DeserializeOne<UserPresences_CheckIn>(dir, v => {
+        DeserializeOne<UserPresences_CheckIn>(dir, errors, v => {
             v.IsActive.Should().BeTrue();
         });
+
+        if (errors.Count > 0) {
+            WriteLine($"\n{errors.Count} deserialization error(s):");
+            foreach (var error in errors)
+                WriteLine(error);
+            Assert.Fail($"{errors.Count} type(s) failed deserialization:\n" + string.Join("\n", errors));
+        }
     }
 
     // Serialize/DeserializeOne
@@ -141,15 +191,23 @@ public class ApiEvolutionTest(ITestOutputHelper @out) : TestBase(@out)
         WriteLine($"Serialized {typeof(T).Name} -> {path} ({buffer.WrittenMemory.Length} bytes)");
     }
 
-    private void DeserializeOne<T>(string dir, Action<T> assert)
+    private void DeserializeOne<T>(string dir, List<string> errors, Action<T> assert)
     {
-        var path = Path.Combine(dir, typeof(T).Name + ".bin");
-        var data = File.ReadAllBytes(path);
-        var s = Serializer.ToTyped<T>();
-        var result = s.Read(data, out _);
-        result.Should().NotBeNull();
-        assert(result);
-        WriteLine($"Deserialized {typeof(T).Name} <- {path} ({data.Length} bytes)");
+        var typeName = typeof(T).Name;
+        var path = Path.Combine(dir, typeName + ".bin");
+        try {
+            var data = File.ReadAllBytes(path);
+            var s = Serializer.ToTyped<T>();
+            var result = s.Read(data, out _);
+            result.Should().NotBeNull();
+            assert(result);
+            WriteLine($"Deserialized {typeName} <- {path} ({data.Length} bytes)");
+        }
+        catch (Exception ex) {
+            var error = $"  {typeName}: {ex.Message}";
+            errors.Add(error);
+            WriteLine($"FAILED {typeName}: {ex.Message}");
+        }
     }
 
     // RPC API return types - factory methods

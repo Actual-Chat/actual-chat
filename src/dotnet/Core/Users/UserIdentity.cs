@@ -11,7 +11,7 @@ public readonly partial record struct UserIdentity : IComparable<UserIdentity>
     public static readonly string DefaultSchema = "Default";
     public static readonly string InternalSchema = "internal";
 
-    [DataMember(Order = 0), MemoryPackOrder(0)]
+    [DataMember(Order = 0), MemoryPackOrder(0), StringAsSymbolMemoryPackFormatter]
     public string Id { get => field ?? ""; init; }
 
     // Computed properties
