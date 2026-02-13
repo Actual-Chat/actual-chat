@@ -17,7 +17,7 @@ public partial record SessionInfo() : IRequirementTarget, IHasVersion<long>
     // From SessionAuthInfo
     [DataMember(Order = 0), MemoryPackOrder(0)] public string SessionHash { get => field ?? ""; init; } = "";
     [DataMember(Order = 1), MemoryPackOrder(1)] public UserIdentity AuthenticatedIdentity { get; init; }
-    [DataMember(Order = 2), MemoryPackOrder(2)] public string UserId { get; init; } = "";
+    [DataMember(Order = 2), MemoryPackOrder(2), StringAsSymbolMemoryPackFormatter] public string UserId { get; init; } = "";
     [DataMember(Order = 3), MemoryPackOrder(3)] public bool IsSignOutForced { get; init; }
 
     // SessionInfo-specific properties
