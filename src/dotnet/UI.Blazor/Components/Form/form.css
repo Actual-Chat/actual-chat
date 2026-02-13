@@ -71,6 +71,7 @@ form .form-section {
 
 /* FormSection with textarea */
 .form.form-y section .form-section-content.label-inside-input:has(textarea) {
+    @apply h-auto;
     @apply px-0;
 }
 .form.form-y section .form-section-content.label-inside-input:has(textarea) .form-section-label,

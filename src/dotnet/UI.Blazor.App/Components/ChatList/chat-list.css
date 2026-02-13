@@ -258,7 +258,7 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
 .navbar-item .navbar-item-ending .slot.c-hoverable {
     @apply hidden;
 }
-.navbar-item:hover .navbar-item-ending .slot.c-hoverable {
+body.hoverable .navbar-item:hover .navbar-item-ending .slot.c-hoverable {
     @apply flex;
 }
 .navbar-item.visible-ending .navbar-item-ending .slot.c-hoverable {
