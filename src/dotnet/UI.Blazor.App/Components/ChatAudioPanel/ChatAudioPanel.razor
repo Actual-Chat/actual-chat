@@ -1,12 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, ChatAudioState?>
+@inherits ComputedStateComponent<AppUIHub, ChatAudioPanel.Model>
 @{
-    var m = State.Value;
-    var isHeaderVisible = m != null && IsNarrow && m is { IsListening: true, IsRecording: true };
+    var (audioState, enableIncompleteUI) = State.Value;
+    var isHeaderVisible = audioState != null && IsNarrow && audioState is { IsListening: true, IsRecording: true };
 }
 
 <div class="chat-audio-panel">
-    @if (isHeaderVisible) {
+    @if (enableIncompleteUI && isHeaderVisible) {
         <div class="audio-panel-header">
             <div class="c-left">
                 <div class="w-12"></div>
@@ -56,12 +56,15 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsNarrow { get; set; }
 
-    protected override async Task<ChatAudioState?> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
+        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
         if (chat?.Id is null)
-            return null;
+            return new(null, enableIncompleteUI);
 
         var audioState = await ChatAudioUI.GetState(chat.Id).ConfigureAwait(false);
-        return audioState;
+        return new (audioState, enableIncompleteUI);
     }
+
+    public sealed record Model(ChatAudioState? State, bool EnableIncompleteUI);
 }
