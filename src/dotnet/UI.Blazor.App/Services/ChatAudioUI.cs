@@ -26,7 +26,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private InteractiveUI InteractiveUI => Hub.InteractiveUI;
     private DeviceAwakeUI DeviceAwakeUI => Hub.DeviceAwakeUI;
-    private IncomingShareSuggestions? IncomingShareSuggestions => field ??= Services.GetService<IncomingShareSuggestions>();
+    private IncomingShareSuggestions? IncomingShareSuggestions { get; }
     private Moment CpuNow => Clocks.CpuClock.Now;
     private Moment ServerNow => Clocks.ServerClock.Now;
 
@@ -36,6 +36,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public ChatAudioUI(AppUIHub hub) : base(hub)
     {
+        IncomingShareSuggestions = hub.Services.GetService<IncomingShareSuggestions>();
         // Read entry states from other windows / devices are delayed by 1s
         var type = GetType();
         var stateFactory = StateFactory;
