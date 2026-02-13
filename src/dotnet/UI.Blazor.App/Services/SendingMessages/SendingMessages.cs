@@ -31,13 +31,14 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private UploadSessions UploadSessions => Hub.UploadSessions;
     private IChats Chats => Hub.Chats;
-    private IncomingShareSuggestions? IncomingShareSuggestions => field ??= Services.GetService<IncomingShareSuggestions>();
+    private IncomingShareSuggestions? IncomingShareSuggestions { get; }
     private Moment Now => Clocks.SystemClock.Now;
 
     public Task WhenStoredRequestsProcessed => _whenStoredRequestsProcessed;
 
     public SendingMessages(AppUIHub hub) : base(hub)
     {
+        IncomingShareSuggestions = Services.GetService<IncomingShareSuggestions>();
         DebugLog?.LogDebug("SendingMessages constructor");
         _requestsRepo = new SendMessageRequestsRepo(hub);
         _triggers = Services.GetRequiredService<ChatSendingMessagesTriggers>();
