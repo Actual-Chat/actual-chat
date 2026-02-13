@@ -10,6 +10,9 @@
     background-color: rgba(0,0,0,0.5);
     animation: modal-blur-on 250ms ease-in-out;
 }
+body.device-ios .modal-overlay {
+    @apply ios-height;
+}
 .modal-overlay.hide {
     @apply flex;
     background-color: rgba(0,0,0,0);
