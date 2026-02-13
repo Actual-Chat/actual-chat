@@ -50,7 +50,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         var placesQuery = lastId is null
             ? dbContext.Places.Where(x => x.Version >= minVersion && x.Version <= maxVersion)
             : dbContext.Places.Where(x => (x.Version > minVersion && x.Version <= maxVersion)
-                || (x.Version==minVersion && string.Compare(x.Id, lastId.Value) > 0));
+                || (x.Version == minVersion && string.Compare(x.Id, lastId.Value) > 0));
 
         return await placesQuery
             .OrderBy(x => x.Version)

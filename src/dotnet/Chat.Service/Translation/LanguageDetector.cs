@@ -11,23 +11,18 @@ public class LanguageDetector(IServiceProvider services)
 {
     public const string PromptHash = "6nqQiUyS73BP81GU40bAR2sLS5OG6P0Hbf5Q2Lo8IKo";
 
-    private IServiceProvider Services { get; } = services;
-
-    private string ServiceKey => Constants.LanguageDetection.ServiceKey;
-
-    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
-
-    private CoreServerSettings CoreServerSettings => field ??= Services.GetRequiredService<CoreServerSettings>();
+    private static string ServiceKey => Constants.LanguageDetection.ServiceKey;
 
     private string Prompt => field ??= File
         .ReadAllText(CoreServerSettings.PromptsDir | Settings.LanguageDetection.PromptFile)
         .RequireNonEmpty();
 
+    // Services
+    private IServiceProvider Services { get; } = services;
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    private CoreServerSettings CoreServerSettings => field ??= Services.GetRequiredService<CoreServerSettings>();
     private Kernel Kernel => field ??= Services.GetRequiredService<Kernel>();
-
-    private IChatCompletionService Completion
-        => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
-
+    private IChatCompletionService Completion => field ??= Kernel.GetRequiredService<IChatCompletionService>(ServiceKey);
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<IReadOnlyList<Language>> DetectLanguages(string content, CancellationToken cancellationToken)

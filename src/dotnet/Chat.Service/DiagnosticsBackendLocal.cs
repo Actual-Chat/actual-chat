@@ -96,7 +96,9 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
             "");
     }
 
-    private string GetConnectionInfo(RpcPeerConnectionState state) {
+    // Private methods
+
+    private static string GetConnectionInfo(RpcPeerConnectionState state) {
         var rpcConnection = state.Connection;
         var info = new ConnectionStateDiagInfo(
             state.Handshake,
@@ -115,7 +117,7 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
         return JsonSerializer.Serialize(info, JsonSerializerOptions);
     }
 
-    private WebSocketDiagInfo GetWebSocketInfo(WebSocket websocket)
+    private static WebSocketDiagInfo GetWebSocketInfo(WebSocket websocket)
         => new(
             websocket.ToString() ?? "",
             websocket.State.ToString(),

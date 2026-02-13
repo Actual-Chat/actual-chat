@@ -32,7 +32,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
         if (i < 0)
             return null;
 
-        TextEntryId.TryParse(id.Value[..i], out var textEntryId);
+        _ = TextEntryId.TryParse(id.Value[..i], out var textEntryId);
         return textEntryId;
     }
 

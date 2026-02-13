@@ -29,7 +29,9 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
         };
     }
 
-    private IEnumerable<MeshDiagInfo> Flatten(MeshDiagInfo[] infos, HashSet<string> nodeIds)
+    // Private methods
+
+    private static IEnumerable<MeshDiagInfo> Flatten(MeshDiagInfo[] infos, HashSet<string> nodeIds)
     {
         foreach (var info in infos) {
             if (!nodeIds.Add(info.ThisNodeId))

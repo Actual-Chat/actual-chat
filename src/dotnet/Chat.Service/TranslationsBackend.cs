@@ -412,7 +412,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         if (translation.Version != newTranslationVersion)
             return translatedStreamId; // Already being translated
 
+ #pragma warning disable CA2016 // Pass cancellationToken
         var stopTokenSource = HostLifetime.CreateStopTokenSource();
+ #pragma warning restore CA2016
         var stopToken = stopTokenSource.Token;
         var transcriptStream = transcript
             .SuppressException<TranscriptDiff, RpcReconnectFailedException>(stopToken)
@@ -513,8 +515,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                                         context.ToArray(),
                                         cancellationToken)
                                     .ConfigureAwait(false);
-                                if (OrdinalIgnoreCaseEquals(translatedText,
-                                        Constants.Translation.NoTranslationNeededText))
+                                if (OrdinalIgnoreCaseEquals(translatedText, Constants.Translation.NoTranslationNeededText))
                                     translatedText = text; // No translation needed, use original content
                                 if (!translatedText.StartsWith(" ", StringComparison.OrdinalIgnoreCase)
                                     && stableTranslatedTranscript.Text.Length > 0)

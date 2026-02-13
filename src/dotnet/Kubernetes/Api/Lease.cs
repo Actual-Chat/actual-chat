@@ -1,13 +1,13 @@
-using System.Text.Json.Serialization;
 using ActualChat.Kubernetes.Api.Internal;
 
 namespace ActualChat.Kubernetes.Api;
 
+#pragma warning disable CA1822
+
 public record Lease(
     Metadata Metadata,
     LeaseSpec Spec
-)
-{
+) {
     public string ApiVersion => "coordination.k8s.io/v1";
     public string Kind => "Lease";
 }
@@ -25,8 +25,7 @@ public record LeaseSpec(
 public record LeaseList(
     Metadata Metadata,
     IReadOnlyList<Lease> Items
-)
-{
+) {
     public string ApiVersion => "coordination.k8s.io/v1";
     public string Kind => "LeaseList";
 }

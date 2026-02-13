@@ -1,5 +1,7 @@
 namespace ActualChat.Kubernetes.Api;
 
+#pragma warning disable CA1822
+
 public record EndpointSlice(
     Metadata Metadata,
     string AddressType,
