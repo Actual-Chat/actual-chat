@@ -26,7 +26,7 @@ public partial record LegacyUser : IHasId<string>, IHasVersion<long>, IRequireme
 
     private Lazy<ClaimsPrincipal>? _claimsPrincipalLazy;
 
-    [DataMember, MemoryPackOrder(0)]
+    [DataMember, MemoryPackOrder(0), StringAsSymbolMemoryPackFormatter]
     public string Id { get; init; }
     [DataMember, MemoryPackOrder(1)]
     public string Name { get; init; }
