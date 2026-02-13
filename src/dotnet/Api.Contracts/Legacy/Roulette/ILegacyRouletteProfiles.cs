@@ -10,5 +10,5 @@ namespace ActualChat.Roulette;
 public interface ILegacyRouletteProfiles : IComputeService
 {
     [ComputeMethod]
-    Task<LegacyRouletteUserSettings?> GetOwnUserSettings(Session session, CancellationToken cancellationToken);
+    Task<RouletteUserSettings?> GetOwnUserSettings(Session session, CancellationToken cancellationToken);
 }

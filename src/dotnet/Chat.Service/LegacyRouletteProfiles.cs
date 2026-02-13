@@ -11,8 +11,8 @@ namespace ActualChat.Chat;
 [Obsolete("Chat Roulette feature has been removed.")]
 public class LegacyRouletteProfiles : ILegacyRouletteProfiles
 {
-    public virtual Task<LegacyRouletteUserSettings?> GetOwnUserSettings(
+    public virtual Task<RouletteUserSettings?> GetOwnUserSettings(
         Session session,
         CancellationToken cancellationToken)
-        => Task.FromResult<LegacyRouletteUserSettings?>(null);
+        => Task.FromResult<RouletteUserSettings?>(null);
 }
