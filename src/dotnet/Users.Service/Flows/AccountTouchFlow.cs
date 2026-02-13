@@ -10,7 +10,7 @@ namespace ActualChat.Users.Flows;
 /// A flow that iterates through all accounts and triggers a fake update on each one.
 /// Processes 600 accounts per batch, then sleeps for 1 minute (10 accounts/second average).
 /// </summary>
-[Flow(DataVersion = 2, ResumeTimeout = 600)]
+[Flow(DataVersion = 3, ResumeTimeout = 600)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class AccountTouchFlow : Flow<Unit>
 {
