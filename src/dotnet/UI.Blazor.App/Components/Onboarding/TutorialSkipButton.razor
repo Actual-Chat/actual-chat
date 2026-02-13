@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@inherits ActualChat.UI.Blazor.ComponentBase<AppUIHub>
 @{
     var cls = Stepper.CurrentStep switch {
         TranscriptPlaybackStep => "step-2",
@@ -9,7 +10,7 @@
 }
 
 <div class="tutorial-btn-wrapper @cls">
-    <button type="button" class="tutorial-btn" @onclick="@Click">
+    <button type="button" class="tutorial-btn" @onclick="@OnClick">
         <i class="icon-arrow-right text-2xl"></i>
     </button>
 </div>
@@ -17,4 +18,9 @@
 @code {
     [Parameter] public Stepper Stepper { get; set; } = null!;
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+
+    private async Task OnClick(MouseEventArgs e) {
+        _ = TuneUI.Play(Tune.ClickButton);
+        await Click.InvokeAsync(e);
+    }
 }

@@ -2,6 +2,7 @@ import { Disposable } from 'disposable';
 import { fromEvent, Subject, takeUntil, switchMap, tap, merge } from 'rxjs';
 import { preventDefaultForEvent, stopEvent } from 'event-handling';
 import { hasModifierKey } from 'keyboard';
+import { DeviceInfo } from 'device-info';
 
 export class TotpInput implements Disposable {
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -34,6 +35,24 @@ export class TotpInput implements Disposable {
                 tap(preventDefaultForEvent),
                 takeUntil(this.disposed$),
             ).subscribe(() => this.onClick());
+
+        // iOS Safari doesn't automatically scroll to show input above keyboard
+        // Keep input visible on any viewport change (keyboard, screen recording, orientation)
+        if (DeviceInfo.isIos && window.visualViewport) {
+            let settled: ReturnType<typeof setTimeout>;
+            const keepVisible = () => {
+                const activeInput = inputs.find(i => document.activeElement === i);
+                if (activeInput) {
+                    activeInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            };
+            fromEvent(window.visualViewport, 'resize')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe(() => {
+                    clearTimeout(settled);
+                    settled = setTimeout(keepVisible, 150);
+                });
+        }
 
         this.focus();
     }
