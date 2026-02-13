@@ -88,15 +88,9 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         return _filesUploadRegistry.Register(upload, releaseUpload);
     }
 
-    private static async Task<ChatEntry?> FakeSend()
-    {
-        await Task.Delay(5000).ConfigureAwait(false);
-        return null;
-    }
-
     public async Task<Task<ChatEntry?>> Send(SendMessageRequest cmd, CancellationToken cancellationToken)
     {
-        return FakeSend();
+        // return FakeSend();
         DebugLog?.LogDebug("Post '{Text}'", cmd.Text);
         var now = Clocks.SystemClock.Now;
         var resultSource = TaskCompletionSourceExt.New<ChatEntry?>();
@@ -525,6 +519,14 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         var cmd1 = new Chats_RemoveTextEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
         await Commander.Run(cmd1, cancellationToken).ConfigureAwait(false);
     }
+
+
+    private static async Task<ChatEntry?> FakeSend()
+    {
+        await Task.Delay(5000).ConfigureAwait(false);
+        return null;
+    }
+
     // Nested types
 
     public record PostMessageRequestInternal(string Uuid,
