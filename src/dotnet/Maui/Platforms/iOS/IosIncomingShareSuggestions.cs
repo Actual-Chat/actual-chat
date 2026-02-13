@@ -65,7 +65,8 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
             content: null,
             speakableGroupName: speakableGroupName,
             conversationIdentifier: chat.Id.Value,
-            serviceName: "Voxt",
+            // ReSharper disable once HeuristicUnreachableCode
+            serviceName: MauiSettings.IsDevApp ? "Voxt (Dev)" : "Voxt",
             sender: null,
             attachments: null);
 
