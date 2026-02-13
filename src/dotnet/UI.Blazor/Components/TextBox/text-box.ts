@@ -25,9 +25,9 @@ export class TextBox implements Disposable {
                 input.dispatchEvent(new Event('change'));
             });
 
-        // iOS Safari doesn't automatically scroll to show input above keyboard
+        // Mobile browsers don't always scroll to show input above keyboard
         // Keep input visible on any viewport change (keyboard, screen recording, orientation)
-        if (DeviceInfo.isIos && window.visualViewport) {
+        if (DeviceInfo.isMobile && window.visualViewport) {
             let settled: ReturnType<typeof setTimeout>;
             const keepVisible = () => {
                 if (document.activeElement === input) {
