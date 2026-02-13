@@ -59,21 +59,27 @@ public sealed partial record AccountFull : Account
     public AliasInfo<UserId> AliasInfo => field ??= new(Id, AliasId);
 
     // Implements JSON serialization for Identities (converts UserIdentity keys to strings)
-    [DataMember(Name = nameof(Identities)), MemoryPackOrder(4)]
+    [DataMember(Name = nameof(Identities)), MemoryPackOrder(20)]
     [JsonPropertyName(nameof(Identities)), Newtonsoft.Json.JsonProperty(nameof(Identities))]
     public ApiMap<string, string> JsonCompatibleIdentities {
         get => Identities.UnorderedItems.ToApiMap(p => p.Key.Id, p => p.Value, StringComparer.Ordinal);
         init => Identities = value.ToApiMap(p => new UserIdentity(p.Key), p => p.Value);
     }
 
-    [Obsolete("This property is for backward compatibility. Use Identities, Claims, Name properties directly.")]
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    // MemoryPack slot 4: LegacyUser for backward compatibility with release's User type
 #pragma warning disable CS0618 // Type or member is obsolete
-    public LegacyUser User => new(Id?.Value ?? "", Name) {
-        Version = Version,
-        Claims = Claims,
-        Identities = Identities,
-    };
+    [Obsolete("This property is for backward compatibility. Use Identities, Claims, Name properties directly.")]
+    [MemoryPackOrder(4)]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public LegacyUser? User {
+        get => new(Id?.Value ?? "", Name) {
+            Version = Version,
+            Claims = Claims,
+            Identities = Identities,
+        };
+        // ReSharper disable once ValueParameterNotUsed
+        init { } // Ignored on deserialization; serialized only for legacy clients
+    }
 #pragma warning restore CS0618
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
