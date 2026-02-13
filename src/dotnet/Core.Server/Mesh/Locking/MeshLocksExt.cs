@@ -20,6 +20,13 @@ public static partial class MeshLocksExt
     public static IMeshLocks WithLockOptions(this IMeshLocks meshLocks, Func<MeshLockOptions, MeshLockOptions> lockOptionsBuilder)
         => meshLocks.With("", lockOptionsBuilder.Invoke(meshLocks.LockOptions));
 
+    // TryForceReacquire
+
+    public static Task<MeshLockHolder?> TryForceReacquire(this IMeshLocks meshLocks,
+        string key, string expectedHolderId,
+        CancellationToken cancellationToken = default)
+        => meshLocks.TryForceReacquire(key, expectedHolderId, null, cancellationToken);
+
     // TryLock
 
     public static Task<MeshLockHolder?> TryLock(this IMeshLocks meshLocks,

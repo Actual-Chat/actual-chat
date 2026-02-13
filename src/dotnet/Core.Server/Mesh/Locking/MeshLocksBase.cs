@@ -61,6 +61,23 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         return holder;
     }
 
+    public virtual async Task<MeshLockHolder?> TryForceReacquire(
+        string key,
+        string expectedHolderId,
+        MeshLockOptions? lockOptions,
+        CancellationToken cancellationToken = default)
+    {
+        lockOptions ??= LockOptions;
+        var holder = CreateHolder(key, lockOptions, cancellationToken);
+        DebugLog?.LogDebug("TryForceReacquire: {Key} = {Id}, expected = {ExpectedId}", key, holder.Id, expectedHolderId);
+        var isAcquired = await ForceReacquire(key, expectedHolderId, holder.Id, lockOptions.ExpirationPeriod, cancellationToken)
+            .ConfigureAwait(false);
+        if (!isAcquired)
+            return null;
+        holder.Start();
+        return holder;
+    }
+
     public virtual async Task<MeshLockHolder> Lock(
         string key,
         MeshLockOptions? lockOptions,
@@ -144,6 +161,8 @@ public abstract class MeshLocksBase : IMeshLocksBackend
         => TryRelease(key, value, cancellationToken);
     Task<bool> IMeshLocksBackend.ForceRelease(string key, bool mustNotify, CancellationToken cancellationToken)
         => ForceRelease(key, mustNotify, cancellationToken);
+    Task<bool> IMeshLocksBackend.ForceReacquire(string key, string expectedHolderId, string newHolderId, TimeSpan expiresIn, CancellationToken cancellationToken)
+        => ForceReacquire(key, expectedHolderId, newHolderId, expiresIn, cancellationToken);
 
     // Protected methods
 
@@ -163,4 +182,5 @@ public abstract class MeshLocksBase : IMeshLocksBackend
     protected abstract Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
     protected abstract Task<MeshLockReleaseResult> TryRelease(string key, string value, CancellationToken cancellationToken);
     protected abstract Task<bool> ForceRelease(string key, bool mustNotify, CancellationToken cancellationToken);
+    protected abstract Task<bool> ForceReacquire(string key, string expectedHolderId, string newHolderId, TimeSpan expiresIn, CancellationToken cancellationToken);
 }

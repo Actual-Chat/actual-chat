@@ -218,7 +218,8 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         var mutableState = _states[shardIndex];
         DebugLog?.LogDebug("Shard #{ShardIndex}: ?++ {ThisNodeId}", shardIndex, ThisNode.Ref);
 
-        var lockHolder = await OwnershipLocks.Lock(shardIndex.Format(), cancellationToken).ConfigureAwait(false);
+        var lockHolder = await TryForceReacquireShardLock(shardIndex, cancellationToken).ConfigureAwait(false);
+        lockHolder ??= await OwnershipLocks.Lock(shardIndex.Format(), cancellationToken).ConfigureAwait(false);
         var lockToken = lockHolder.StopToken;
         DebugLog?.LogDebug("Shard #{ShardIndex}: ++ {ThisNodeId}", shardIndex, ThisNode.Ref);
 
@@ -253,6 +254,31 @@ public sealed class ShardOwner : WorkerBase, IHasServices
         else
             DebugLog?.LogDebug("Shard #{ShardIndex}: -- {ThisNodeId}", shardIndex, ThisNode.Ref);
         await lockHolder.DisposeAsync().SilentAwait(false);
+    }
+
+    private async Task<MeshLockHolder?> TryForceReacquireShardLock(int shardIndex, CancellationToken cancellationToken)
+    {
+        try {
+            var meshState = MeshWatcher.State.LastNonErrorValue;
+            if (!meshState.AllNodes.Values.Any(n => n.State is MeshNodeState.Dead))
+                return null;
+
+            var shardKey = shardIndex.Format();
+            var info = await OwnershipLocks.GetInfo(shardKey, cancellationToken).ConfigureAwait(false);
+            if (info == null)
+                return null;
+
+            Log.LogInformation("Shard #{ShardIndex}: force-reacquiring from '{HolderId}'", shardIndex, info.HolderId);
+            var holder = await OwnershipLocks.TryForceReacquire(shardKey, info.HolderId, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            if (holder != null)
+                Log.LogInformation("Shard #{ShardIndex}: force-reacquired -> '{NewHolderId}'", shardIndex, holder.Id);
+            return holder;
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            Log.LogWarning(e, "Shard #{ShardIndex}: TryForceReacquireShardLock failed (best-effort)", shardIndex);
+            return null;
+        }
     }
 
     // Nested types

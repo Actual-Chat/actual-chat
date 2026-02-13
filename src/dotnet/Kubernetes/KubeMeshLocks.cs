@@ -25,7 +25,7 @@ public class KubeMeshLocks : MeshLocksBase
         LeaseClient = services.GetRequiredService<KubeLeaseClient>();
         // We use the namespace where the pod is running
         Namespace = @namespace.IsNullOrEmpty()
-            ? Environment.GetEnvironmentVariable("POD_NAMESPACE").NullIfEmpty() ?? "default"
+            ? KubeEnvironmentVars.PodNamespace
             : @namespace;
         _labelSelector = $"{KeyPrefix}={_keyPrefix}";
     }
@@ -246,6 +246,36 @@ public class KubeMeshLocks : MeshLocksBase
         var result = await LeaseClient.Delete(Namespace, name, cancellationToken, requestTimeout).ConfigureAwait(false);
         _cachedLeases.TryRemove(key, out _);
         return result;
+    }
+
+    protected override async Task<bool> ForceReacquire(string key, string expectedHolderId, string newHolderId, TimeSpan expiresIn, CancellationToken cancellationToken)
+    {
+        var requestTimeout = KubeLeaseClient.DefaultRequestTimeout;
+        var (_, name) = GetName(key);
+        var existingLease = await LeaseClient.Get(Namespace, name, cancellationToken, requestTimeout).ConfigureAwait(false);
+        if (existingLease == null)
+            return false;
+        if (!OrdinalEquals(existingLease.Spec.HolderIdentity, expectedHolderId))
+            return false;
+
+        var now = Clock.Now.ToDateTime();
+        var updatedLease = existingLease with {
+            Spec = existingLease.Spec with {
+                HolderIdentity = newHolderId,
+                LeaseDurationSeconds = (int)expiresIn.TotalSeconds,
+                AcquireTime = now,
+                RenewTime = now,
+            }
+        };
+        try {
+            var replaced = await LeaseClient.Replace(Namespace, updatedLease, cancellationToken, requestTimeout).ConfigureAwait(false);
+            _cachedLeases[key] = replaced;
+            return true;
+        }
+        catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.Conflict) {
+            _cachedLeases.TryRemove(key, out _);
+            return false;
+        }
     }
 
     private (string FullName, string LeaseName) GetName(string key)
