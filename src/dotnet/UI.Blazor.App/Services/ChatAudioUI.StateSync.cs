@@ -183,7 +183,7 @@ public partial class ChatAudioUI
 
             await AudioRecorder.StartRecording(chatId, repliedEntryId, abortToken).ConfigureAwait(false);
             _ = TuneUI.Play(Tune.BeginRecording);
-            IncomingShareSuggestions.Push(chatId);
+            await IncomingShareSuggestions.Push(chatId).ConfigureAwait(false);
             var whenStopped = ForegroundTask.Run(
                 async () => await cRecordingState
                     .When(x => x.ChatId != chatId || x.Language != language, abortToken)
