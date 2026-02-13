@@ -13,7 +13,7 @@ public partial class MasterFlow : Flow<Unit>, IMasterFlow
 
     protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
-        await ApplyMigration(StartAccountTouchFlow).ConfigureAwait(false);
+        await ApplyMigration(StartAccountTouchFlow, "StartAccountTouchFlow.3").ConfigureAwait(false);
         await ApplyMigration(StartDigestFlows).ConfigureAwait(false);
     }
 
