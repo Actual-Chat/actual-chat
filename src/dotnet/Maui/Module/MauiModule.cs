@@ -45,7 +45,7 @@ public class MauiModule(IServiceProvider moduleServices)
 #if IOS
         var fusion = services.AddFusion();
         fusion.AddService<IconUI>(ServiceLifetime.Scoped);
-        services.AddScoped<IncomingShareSuggestions>(c => new IosIncomingShareSuggestions(c));
+        fusion.AddService<IncomingShareSuggestions, IosIncomingShareSuggestions>(ServiceLifetime.Scoped);
 #endif
     }
 }
