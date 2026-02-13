@@ -26,8 +26,4 @@
     <PackageReference Include="Google.Cloud.RecaptchaEnterprise.V1" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Services\" />
-  </ItemGroup>
-
 </Project>
