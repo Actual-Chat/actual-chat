@@ -7,7 +7,7 @@ namespace ActualChat.Roulette;
 /// on release clients when the user is an admin.
 /// </summary>
 [Obsolete("Chat Roulette feature has been removed.")]
-public interface ILegacyRouletteProfiles : IComputeService
+public interface IRouletteProfiles : IComputeService
 {
     [ComputeMethod]
     Task<RouletteUserSettings?> GetOwnUserSettings(Session session, CancellationToken cancellationToken);

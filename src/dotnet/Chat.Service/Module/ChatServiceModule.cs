@@ -87,8 +87,8 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
 
         // Legacy APIs
 #pragma warning disable CS0618 // Obsolete
-        rpcHost.AddLocalApi<ILegacyRoulette, LegacyRoulette>("IRoulette");
-        rpcHost.AddLocalApi<ILegacyRouletteProfiles, LegacyRouletteProfiles>("IRouletteProfiles");
+        rpcHost.AddLocalApi<IRoulette, LegacyRoulette>();
+        rpcHost.AddLocalApi<IRouletteProfiles, LegacyRouletteProfiles>();
 #pragma warning restore CS0618
 
         if (isBackendClient)

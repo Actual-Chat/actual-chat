@@ -9,7 +9,6 @@ using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Notification;
 using ActualChat.Live;
-using ActualChat.Roulette;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
@@ -98,7 +97,6 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         // Legacy APIs
 #pragma warning disable CS0618 // Obsolete
         fusion.AddClient<ILegacyAuth>("IAuth");
-        fusion.AddClient<ILegacyRoulette>("IRoulette");
 #pragma warning restore CS0618
     }
 

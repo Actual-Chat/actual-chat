@@ -7,7 +7,7 @@ namespace ActualChat.Roulette;
 /// regardless of whether the feature gate is enabled.
 /// </summary>
 [Obsolete("Chat Roulette feature has been removed.")]
-public interface ILegacyRoulette : IComputeService
+public interface IRoulette : IComputeService
 {
     [ComputeMethod]
     Task<bool> EnableChatRouletteUI(Session session, CancellationToken cancellationToken);

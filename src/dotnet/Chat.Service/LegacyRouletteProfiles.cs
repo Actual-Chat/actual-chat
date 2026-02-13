@@ -9,7 +9,7 @@ namespace ActualChat.Chat;
 /// Chat Roulette feature has been removed. Returns null for GetOwnUserSettings.
 /// </summary>
 [Obsolete("Chat Roulette feature has been removed.")]
-public class LegacyRouletteProfiles : ILegacyRouletteProfiles
+public class LegacyRouletteProfiles : IRouletteProfiles
 {
     public virtual Task<RouletteUserSettings?> GetOwnUserSettings(
         Session session,
