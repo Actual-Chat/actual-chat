@@ -115,6 +115,7 @@
         -webkit-tap-highlight-color: transparent;
     }
     .ios-height {
+        height: 100dvh;
         max-height: calc(var(--vh, 1vh) * 100);
     }
 

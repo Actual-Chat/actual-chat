@@ -4,6 +4,7 @@
     @apply px-4;
     @apply overflow-x-hidden overflow-y-auto;
     @apply custom-scrollbar;
+    overscroll-behavior: contain;
 }
 .stepper-header {
     @apply z-20;
