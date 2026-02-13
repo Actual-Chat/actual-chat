@@ -149,7 +149,7 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
         try
         {
             var chatIds = _selectedIds.Select(x => x.ChatId).Distinct().ToList();
-            _ = SuggestShareContacts([.._selectedIds]);
+            SuggestShareContacts([.._selectedIds]);
             var text = await SharedInputs.GetText(cancellationToken).ConfigureAwait(false);
             var fileInputs = await SharedInputs.ListFiles(cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Text: {Text}, Files: {Files}", text, fileInputs.Count);
@@ -192,16 +192,10 @@ public class ShareUI : UIWorkerBase, IComputeService, INotifyInitialized
         }
     }
 
-    private async Task SuggestShareContacts(IReadOnlyList<ContactId> contactIds)
+    private void SuggestShareContacts(IReadOnlyList<ContactId> contactIds)
     {
-        try {
-            var cancellationToken = StopToken;
-            await contactIds.Select(x => ShareSuggestions.Suggest(x, cancellationToken)).Collect(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            if (!e.IsCancellationOf(StopToken))
-                Log.LogError(e, "Failed to donate intents for chats");
-        }
+        foreach (var contactId in contactIds)
+            ShareSuggestions.Push(contactId);
     }
 
     private async Task CreateChatEntry(ChatId chatId, string entryText, TextEntryAttachment[] attachmentList, CancellationToken cancellationToken)

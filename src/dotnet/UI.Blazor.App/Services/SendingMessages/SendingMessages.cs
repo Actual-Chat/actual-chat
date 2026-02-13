@@ -341,7 +341,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             : Result.NewError<ChatEntry?>(task.Exception!);
 
         if (result2.IsValue(out var entry))
-            IncomingShareSuggestions.Push(entry!.ChatId);
+            await IncomingShareSuggestions.Push(entry!.ChatId).ConfigureAwait(false);
 
         InvokeAfterSendMessageHandler(
             request.AfterSendMessageHandlerKey,
