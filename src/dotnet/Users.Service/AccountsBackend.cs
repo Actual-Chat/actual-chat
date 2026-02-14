@@ -256,6 +256,12 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                     ?? ""
                 : originalAccount.Email;
 
+            // For external providers (Google, Apple), treat the email from claims as verified
+            if (!email.IsNullOrEmpty()
+                && AuthSchema.IsExternal(authenticatedIdentity.Schema)
+                && ActualChat.Email.TryParse(email, out var parsedEmail))
+                mergedIdentities = mergedIdentities.WithEmailIdentity(parsedEmail);
+
             // Set Phone from identities if not already set
             var phone = originalAccount.Phone ?? mergedIdentities.GetPhones().FirstOrDefault();
 
