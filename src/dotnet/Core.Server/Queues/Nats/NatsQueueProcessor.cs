@@ -178,9 +178,10 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
 
                         await buffer.Writer.WriteAsync((message, queuedCommand), gracefulStopToken).ConfigureAwait(false);
                     }
-                    DebugLog?.LogDebug(
-                        "[{ShardScheme}-S{ShardIndex}] Pulled {Count} messages",
-                        ShardScheme.Name, shardIndex, count);
+                    if (count > 0)
+                        DebugLog?.LogDebug(
+                            "[{ShardScheme}-S{ShardIndex}] Pulled {Count} messages",
+                            ShardScheme.Name, shardIndex, count);
                 }
             }
             catch (Exception e) {
