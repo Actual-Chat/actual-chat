@@ -31,8 +31,7 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
         => Parse(value);
 
     private Email(string value) : base(value)
-    {
-    }
+    { }
 
     // Normalization
 
