@@ -1,5 +1,6 @@
 ﻿using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.Services;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
@@ -27,6 +28,10 @@ public class AddPhotoPermissionHandler(UIHub hub, bool mustStart = true)
         return status is PermissionStatus.Granted or PermissionStatus.Limited;
     }
 
-    protected override Task Troubleshoot(CancellationToken cancellationToken)
-        => Task.CompletedTask;
+    protected override async Task Troubleshoot(CancellationToken cancellationToken)
+    {
+        var model = new PhotoTroubleshooterModal.Model();
+        var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
+        await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
 }

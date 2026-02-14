@@ -1,0 +1,18 @@
+@page "/test/photo-permission"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Photo Permission Test Page</MainHeader>
+
+<div class="test-page-btn-group">
+    <Button Class="btn-danger" Click="OnShowModal">
+        Show Photo Troubleshooter Modal
+    </Button>
+</div>
+
+@code {
+    [Inject] protected AppUIHub Hub { get; init; } = null!;
+    private ModalUI ModalUI => Hub.ModalUI;
+
+    private void OnShowModal()
+        => ModalUI.Show(new PhotoTroubleshooterModal.Model());
+}

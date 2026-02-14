@@ -1,0 +1,27 @@
+.photo-troubleshooter-modal .modal-header-interactive {
+    @apply bg-bubble;
+    @apply text-06;
+}
+.photo-troubleshooter-modal .modal-header-interactive * {
+    @apply text-06;
+}
+.photo-troubleshooter-modal .modal-header-interactive .modal-title {
+    @apply text-06;
+    @apply text-headline-1;
+}
+
+.photo-troubleshooter-modal .modal-header-interactive .btn .btn-content {
+    @apply text-06;
+}
+
+.photo-troubleshooter-modal .dialog-body {
+    @apply gap-y-4;
+}
+
+.photo-troubleshooter-modal .c-text {
+    @apply text-02;
+}
+
+.photo-troubleshooter-modal .settings-link {
+    @apply text-primary hover:text-primary-hover cursor-pointer hover:underline;
+}
