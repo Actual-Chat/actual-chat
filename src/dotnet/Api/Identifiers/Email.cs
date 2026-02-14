@@ -20,7 +20,6 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<Email>();
-    private static readonly ILruCache<string, Email> Cache = CreateCache<Email>(256);
 
     [IgnoreDataMember]
     public string Hash => field ??= ContactIdExt.Hash(Value);
@@ -31,8 +30,7 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
         => Parse(value);
 
     private Email(string value) : base(value)
-    {
-    }
+    { }
 
     // Normalization
 
@@ -94,13 +92,7 @@ public sealed partial class Email : StringIdentifier, IStringIdentifier<Email>
         // Normalize email to lowercase before caching and storing
         var normalizedEmail = s.ToLowerInvariant();
 
-        if (Cache.TryGetValue(normalizedEmail, out var cached)) {
-            result = cached;
-            return true;
-        }
-
         result = new Email(normalizedEmail);
-        result = Cache.AddOrGet(normalizedEmail, result);
         return true;
     }
 
