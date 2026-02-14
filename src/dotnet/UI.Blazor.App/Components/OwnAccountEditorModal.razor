@@ -5,11 +5,11 @@
     if (_account == null! || _form == null!)
         return;
 
-    // TODO(FC): show verify by sms on phone change
+    var email = _form.Email ?? "";
+    var isEmailEmpty = email.IsNullOrEmpty();
+    var isEmailVerified = !isEmailEmpty && _account.Identities.HasEmail(email);
     var phone = _form.ParsedPhone;
-    var isPhoneVerified = _account.IsPhoneVerified();
-    var isEmailVerified = _account.IsEmailVerified();
-    var isEmailEmpty = _form.Email.IsNullOrEmpty();
+    var isPhoneVerified = phone != null && phone.IsNormalized() && _account.Identities.HasPhone(phone);
 }
 
 <Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
@@ -79,8 +79,7 @@
                         ValueChanged="@OnPhoneChanged"
                         Autocomplete="tel"
                         type="tel"
-                        inputmode="tel"
-                        disabled="@isPhoneVerified"/>
+                        inputmode="tel"/>
                 </ChildContent>
                 <Right>
                     @if (phone != null) {
@@ -97,7 +96,7 @@
             }
 
             <FormSection
-                For="() => _form.Email"
+                For="() => email"
                 InputId="@_form.EmailFieldId"
                 Label="Email"
                 IsLabelInsideInput="true">
@@ -105,8 +104,7 @@
                     <TextBox
                         @bind-Value="@_form.Email"
                         Id="@_form.EmailFieldId"
-                        Autofocus="true"
-                        disabled="@isEmailVerified"/>
+                        Autofocus="true"/>
                 </ChildContent>
                 <Right>
                     <VerificationStatus IsVerified="isEmailVerified"/>
@@ -115,7 +113,7 @@
 
             @if (_formRef.IsValid && !isEmailVerified && !isEmailEmpty) {
                 <EmailVerifier
-                    Email="@_form.Email"
+                    Email="@email"
                     Class="my-3"
                     Verified="@OnEmailVerified"/>
             }
