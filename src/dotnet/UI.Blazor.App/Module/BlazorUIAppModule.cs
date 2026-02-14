@@ -198,6 +198,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
             .Add<RecordingTroubleshooterModal.Model, RecordingTroubleshooterModal>()
+            .Add<PhotoTroubleshooterModal.Model, PhotoTroubleshooterModal>()
         );
 
         // Sending messages & File uploads
