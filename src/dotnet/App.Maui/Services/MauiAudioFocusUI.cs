@@ -63,7 +63,11 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
         await RenewAudioFocus(null).ConfigureAwait(false);
     }
 
+    // Protected methods
+
     protected abstract Task<AudioFocusHandle?> RequestAudioFocus(AudioMode mode);
+
+    // Private methods
 
     private async Task<AudioFocusHolder?> RenewAudioFocus(AudioFocusConsumer? consumer)
     {
@@ -149,6 +153,7 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
     }
 
     // Nested types
+
     private class AudioFocusHolder(AudioMode mode, AudioFocusHandle handle)
     {
         public AudioMode Mode => mode;

@@ -14,15 +14,12 @@ public enum ChatPlayerKind { Realtime, Historical }
 /// </summary>
 public abstract class ChatPlayer : ProcessorBase
 {
-    /// <summary>
-    /// Once enqueued, playback loop continues, so the larger is this duration,
-    /// the higher is the chance to enqueue the next entry on time.
-    /// </summary>
+    // Once enqueued, the playback loop continues, so the larger is this duration,
+    // the higher is the chance to enqueue the next entry on time.
     protected static readonly TimeSpan EnqueueAheadDuration = TimeSpan.FromSeconds(2);
-    protected static readonly TimeSpan MaxEntryDuration = Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5);
 
     private volatile CancellationTokenSource? _playTokenSource;
-    private volatile Task? _whenPlaying = null;
+    private volatile Task? _whenPlaying;
 
     protected ILogger Log { get; }
     protected ILogger? DebugLog => DebugMode ? Log : null;
@@ -34,7 +31,6 @@ public abstract class ChatPlayer : ProcessorBase
     protected IAuthors Authors => Hub.Authors;
     protected InteractiveUI InteractiveUI => Hub.InteractiveUI;
     protected MomentClockSet Clocks => Hub.Clocks;
-    protected HostInfo HostInfo => Hub.HostInfo;
 
     protected IState<TimeSpan> SleepDuration { get; }
     protected IState<TimeSpan> PauseDuration { get; }
@@ -44,7 +40,6 @@ public abstract class ChatPlayer : ProcessorBase
     public ChatId ChatId { get; }
     public ChatPlayerKind PlayerKind { get; protected init; }
     public Playback Playback { get; }
-    public IState<bool> IsPaused => Playback.IsPaused;
     public string Operation { get; protected set; } = "";
     public Task? WhenPlaying => _whenPlaying;
 
@@ -150,7 +145,7 @@ public abstract class ChatPlayer : ProcessorBase
 
     public void Pause()
     {
-        _ = Playback.Pause(default);
+        _ = Playback.Pause(CancellationToken.None);
         ChatPlayers!.ReleaseAudioFocusDueToPause(this);
         ChatPlayers!.UpdateMediaSessionState();
     }

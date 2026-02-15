@@ -72,7 +72,7 @@
             // will soon recompute anyway.
             return lastState; // Keep the last state to avoid blinking
         }
-        var isPaused = await player.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+        var isPaused = await player.Playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
         var playingTracks = await player.Playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
         var canPlay = true;

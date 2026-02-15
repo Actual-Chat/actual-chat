@@ -102,7 +102,7 @@
             // will soon recompute anyway.
             return lastState; // Keep the last state to avoid blinking
         }
-        var isPaused = await player.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+        var isPaused = await player.Playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
         var playback = player.Playback;
         var playingTracks = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         var authorIds = new HashSet<AuthorId>();
