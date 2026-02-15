@@ -14,6 +14,9 @@ public record MentionExtractor : MarkupVisitorWithState<HashSet<MentionId>>
     protected override void VisitListItem(ListItemMarkup markup, ref HashSet<MentionId> state)
         => Visit(markup.Content, ref state);
 
+    protected override void VisitParagraph(ParagraphMarkup markup, ref HashSet<MentionId> state)
+        => Visit(markup.Content, ref state);
+
     protected override void VisitMention(MentionMarkup markup, ref HashSet<MentionId> state)
         => state.Add(markup.Id);
 

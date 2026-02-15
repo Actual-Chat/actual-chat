@@ -37,10 +37,12 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
     protected override void VisitSeq(MarkupSeq markup, ref StringBuilder state)
     {
         Markup? prevItem = null;
+
         foreach (var item in markup.Items) {
-            // NOTE: Add new line separator between block markups and between block and inline markups.
-            if (prevItem is not null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup()))
+            // Auto-newline between blocks
+            if (prevItem != null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup()))
                 state.Append(NewLineMarkup.Instance.Format());
+
             Visit(item, ref state);
             prevItem = item;
         }
@@ -51,6 +53,9 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
         state.Append(ListItemMarkup.Prefix);
         Visit(markup.Content, ref state);
     }
+
+    protected override void VisitParagraph(ParagraphMarkup markup, ref StringBuilder state)
+        => Visit(markup.Content, ref state);
 
     protected override void VisitStylized(StylizedMarkup markup, ref StringBuilder state)
     {

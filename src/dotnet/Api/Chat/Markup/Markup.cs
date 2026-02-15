@@ -33,8 +33,11 @@ public abstract class Markup : ISanitized
     {
         var items = new List<Markup>();
         foreach (var markup in parts) {
-            if (markup is MarkupSeq seq)
-                items.AddRange(seq.Items);
+            if (markup is MarkupSeq seq) {
+                foreach (var item in seq.Items)
+                    if (item != Empty)
+                        items.Add(item);
+            }
             else if (markup != Empty)
                 items.Add(markup);
         }

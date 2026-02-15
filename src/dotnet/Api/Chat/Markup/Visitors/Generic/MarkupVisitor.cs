@@ -5,6 +5,7 @@ public abstract record MarkupVisitor<TResult>
     protected virtual TResult Visit(Markup markup)
         => markup switch {
             MarkupSeq markupSeq => VisitSeq(markupSeq),
+            ParagraphMarkup paragraphMarkup => VisitParagraph(paragraphMarkup),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup),
             MentionMarkup mention => VisitMention(mention),
             UrlMarkup urlMarkup => VisitUrl(urlMarkup),
@@ -27,6 +28,7 @@ public abstract record MarkupVisitor<TResult>
 
     protected abstract TResult VisitList(ListMarkup markup);
     protected abstract TResult VisitListItem(ListItemMarkup markup);
+    protected abstract TResult VisitParagraph(ParagraphMarkup markup);
 
     protected abstract TResult VisitSeq(MarkupSeq markup);
     protected abstract TResult VisitStylized(StylizedMarkup markup);

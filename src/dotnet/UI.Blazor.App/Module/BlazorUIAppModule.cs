@@ -97,6 +97,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<MarkupSeq, MarkupSeqView>()
             .Add<Markup, MarkupView>()
             .Add<ListMarkup, ListMarkupView>()
+            .Add<ParagraphMarkup, ParagraphMarkupView>()
         );
         // IModalViews
         services.AddTypeMap<IModalView>(map => map

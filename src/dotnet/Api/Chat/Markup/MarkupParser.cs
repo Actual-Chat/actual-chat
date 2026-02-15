@@ -27,28 +27,21 @@ public partial class MarkupParser : IMarkupParser
     public static Markup ParseRaw(string text, bool useUnparsedTextMarkup = false)
     {
         if (text.IsNullOrEmpty())
-            return Markup.Empty;
+            return ParagraphMarkup.Empty;
 
         var parser = useUnparsedTextMarkup ? FullWithUnparsedMarkup : FullMarkup;
         var result = parser.Parse(text);
-        return result.Success ? result.Value : Markup.Empty;
+        return result.Success ? result.Value : ParagraphMarkup.Empty;
     }
 
     // Character classes
 
-
     private static readonly Parser<char, char> WhitespaceChar =
         Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c)).Labelled("whitespace");
-    private static readonly Parser<char, char> EndOfLineChar =
-        Token(c => c is '\r' or '\n' or '\u2028').Labelled("line separator");
     private static readonly Parser<char, char> NotEndOfLineChar =
         Token(c => c is not ('\r' or '\n' or '\u2028')).Labelled("not line separator");
     private static readonly Parser<char, char> IdChar =
         Token(c => char.IsLetterOrDigit(c) || c is '_' or '-' or ':').Labelled("letter, digit, '_', '-', or ':'");
-    private static readonly Parser<char, char> WordChar =
-        Token(c => char.IsLetterOrDigit(c) || c is '_').Labelled("letter, digit, or '_'");
-    private static readonly Parser<char, char> NotWordChar =
-        Token(c => !(char.IsLetterOrDigit(c) || c is '_')).Labelled("not letter, digit, or '_'");
     private static readonly Parser<char, char> SpecialChar =
         Token(c => c is '*' or '`' or '@').Labelled("'*', '`', or '@'");
     private static readonly Parser<char, char> NotSpecialOrWhitespaceChar =
@@ -113,8 +106,6 @@ public partial class MarkupParser : IMarkupParser
         NotSpecialOrWhitespaceChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
     internal static readonly Parser<char, Markup> WhitespaceText =
         WhitespaceChar.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, false);
-    private static readonly Parser<char, Markup> WhitespaceOrEndOfLineText =
-        Whitespace.AtLeastOnceString().ToTextMarkup(TextMarkupKind.Plain, true);
 
     // Mentions
     private static Parser<char, Markup> MentionParserFactory(string name = "") =>
@@ -223,40 +214,23 @@ public partial class MarkupParser : IMarkupParser
         select (Markup)new CodeBlockMarkup(code.GetValueOrDefault(""), language.TrimEnd())
         ).Debug("<Code>");
 
-    // Whitespace block
-    private static readonly Parser<char, Markup> WhitespaceBlock =
-        WhitespaceOrEndOfLineText.Debug("<Whitespace>");
-
-    // List
+    // List block
     private static readonly Parser<char, Markup> UnorderedListItem =
         from _ in OneOf(Char('-'), Char('*')).Before(WhitespaceChar)
         from content in TextBlock.ManyMarkup()
-        from _1 in EndOfLine.Optional()
         select (Markup)new ListItemMarkup(content);
+    private static readonly Parser<char, Markup> ListBlock = (
+        from first in UnorderedListItem
+        from rest in Try(EndOfLine.Then(UnorderedListItem)).Many()
+        select (Markup)new ListMarkup(
+            new[] { first }.Concat(rest).Select(c => (ListItemMarkup)c).ToArray())
+        ).Debug("<List>");
 
-    private static readonly Parser<char, Markup> ListBlock =
-        Try(UnorderedListItem)
-            .AtLeastOnce()
-            .Select(items => (Markup)new ListMarkup(items.Select(c => (ListItemMarkup)c).ToArray()))
-            .Debug("<List>");
-
-    // Unparsed block
-    private static readonly Parser<char, Markup> UnparsedTextBlock = (
-        from whitespace in WhitespaceString
-        from special in SpecialChar.AtLeastOnceString()
-        select TextMarkup.New(TextMarkupKind.Unparsed, whitespace + special, true)
-        ).Debug("<Unparsed>");
-    private static readonly Parser<char, Markup> UnparsedTextAsPlainTextBlock = (
-        from whitespace in WhitespaceString
-        from special in SpecialChar.AtLeastOnceString()
-        select TextMarkup.New(TextMarkupKind.Plain, whitespace + special, true) // Plain text instead of UnparsedMarkup
-        ).Debug("<Unparsed>");
-
-    // Full markup
     private static readonly Parser<char, Markup> FullWithUnparsedMarkup =
-        SafeTryOneOf(CodeBlock, ListBlock, WhitespaceBlock, TextBlock, UnparsedTextBlock).ManyMarkup();
+        new InternalParsers(true).Parser;
+
     private static readonly Parser<char, Markup> FullMarkup =
-        SafeTryOneOf(CodeBlock, ListBlock, WhitespaceBlock, TextBlock, UnparsedTextAsPlainTextBlock).ManyMarkup();
+        new InternalParsers(false).Parser;
 
     // Type initializer
     static MarkupParser()
@@ -269,6 +243,43 @@ public partial class MarkupParser : IMarkupParser
                 or 'w' // for www.
                )
                 FirstUrlCharBits.SetBit(c);
+        }
+    }
+
+    // Nested types
+    private class InternalParsers
+    {
+        public readonly Parser<char, Markup> Parser;
+
+        public InternalParsers(bool useUnparsedTextMarkup)
+        {
+            var textMarkupKind = useUnparsedTextMarkup ? TextMarkupKind.Unparsed : TextMarkupKind.Plain;
+            Parser<char, Markup> unparsedTextBlock = (
+                from whitespace in WhitespaceString
+                from special in SpecialChar.AtLeastOnceString()
+                select TextMarkup.New(textMarkupKind, whitespace + special, true)
+                ).Debug("<Unparsed>");
+
+            Parser<char, Markup> inlineParser =
+                SafeTryOneOf(WhitespaceText, TextBlock, unparsedTextBlock).Debug("<InlineElement>")
+                    .ManyMarkup().Debug("<Inline>");
+
+            Parser<char, Markup> paragraph =
+                NotEndOfLineChar.ManyString()
+                    .Select(c => ParseParagraph(c) as Markup)
+                    .Debug("<Paragraph>");
+
+            Parser<char, Markup> block =
+                SafeTryOneOf(CodeBlock, ListBlock, paragraph);
+
+            Parser =
+                from first in block
+                from rest in Try(EndOfLine.Then(block)).Many()
+                select Markup.Join(new[] { first }.Concat(rest));
+            return;
+
+            ParagraphMarkup ParseParagraph(string content)
+                => new (inlineParser.ParseOrThrow(content));
         }
     }
 }
