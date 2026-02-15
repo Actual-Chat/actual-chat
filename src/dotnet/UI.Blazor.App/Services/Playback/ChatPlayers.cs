@@ -64,17 +64,16 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             return _players.GetValueOrDefault((chatId, ChatPlayerKind.Realtime)) as RealtimeChatPlayerController;
     }
 
-    public void StartHistoricalPlayback(ChatId chatId, Moment startAt)
+    public async Task StartHistoricalPlayback(ChatId chatId, Moment startAt)
     {
-        var currentState = PlaybackState.Value;
-        DebugLog?.LogInformation("StartHistoricalPlayback: chatId={ChatId}, startAt={StartAt}, currentState={CurrentState}",
-            chatId, startAt, currentState?.GetType().Name ?? "null");
+        DebugLog?.LogInformation("StartHistoricalPlayback: chatId={ChatId}, startAt={StartAt}", chatId, startAt);
 
+        var prevState = PlaybackState.Value;
         var newState = new HistoricalPlaybackState(chatId, startAt);
-        if (currentState == newState) {
-            // Same state - force restart by stopping first
-            DebugLog?.LogInformation("StartHistoricalPlayback: same state, forcing restart");
+        if (prevState == newState) {
+            DebugLog?.LogInformation("StartHistoricalPlayback: stopping active historical playback");
             StopPlayback();
+            await StopPlayers([chatId], ChatPlayerKind.Historical).ConfigureAwait(true);
         }
         StartPlayback(newState);
     }
