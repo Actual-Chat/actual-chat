@@ -33,7 +33,7 @@ public class AudioWidget
     }
 
     // This method is called to trigger widget reset on UI restart in MAUI
-    public void Reset()
+    public void ResetState()
     {
         lock (_lock) {
             _replayState = null;

@@ -52,7 +52,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             (ReplayState?)null,
             StateCategories.Get(type, nameof(ReplayState)));
         _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Playback, OnAudioFocusLost);
-        Hub.AudioWidget.Reset();
+        Hub.AudioWidget.ResetState();
     }
 
     void INotifyInitialized.Initialized()
