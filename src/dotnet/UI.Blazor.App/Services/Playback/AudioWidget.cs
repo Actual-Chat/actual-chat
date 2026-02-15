@@ -43,17 +43,17 @@ public class AudioWidget
         }
     }
 
-    public void UpdateState()
-        => MutateState(null);
-
-    public void OnReplayStateChanged(ReplayState? state)
+    public void SetReplayState(ReplayState? state)
         => MutateState(() => _replayState = state);
 
-    public void OnListeningStateChanged(ImmutableHashSet<ChatId>? listeningChatIds)
+    public void SetListeningState(ImmutableHashSet<ChatId>? listeningChatIds)
         => MutateState(() => _listeningChatIds = listeningChatIds);
 
-    public void OnRecodingStateChanged(ChatId? recordingChatId)
+    public void SetRecodingState(ChatId? recordingChatId)
         => MutateState(() => _recordingChatId = recordingChatId);
+
+    public void RecomputeState()
+        => MutateState(null);
 
     // Protected methods
 

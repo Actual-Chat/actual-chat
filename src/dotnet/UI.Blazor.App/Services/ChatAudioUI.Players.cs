@@ -55,7 +55,7 @@ public partial class ChatAudioUI
     public void StopReplay()
         => _replayState.Value = null;
 
-    public async Task<bool> TryGainAudioFocusForResume(ChatPlayer player)
+    public async Task<bool> TryAcquireAudioFocusForResume(ChatPlayer player)
     {
         Log.LogInformation("Trying to gain audio focus for chat player '{ChatId}'", player.ChatId);
         var scope = await TryAcquireAudioFocus($"Resuming chat player '{player.ChatId}'").ConfigureAwait(false);
@@ -70,6 +70,7 @@ public partial class ChatAudioUI
             Log.LogInformation("Already have audio focus {Scope}. Request reason: '{Reason}'", _audioFocusScope, reason);
             return _audioFocusScope;
         }
+
         _audioFocusScope = await AudioFocusUI.TryAcquire(_audioFocusRequester).ConfigureAwait(false);
         return _audioFocusScope;
     }
@@ -166,10 +167,10 @@ public partial class ChatAudioUI
     }
 
     private void OnIsPausedUpdated(State state, StateEventKind kind)
-        => AudioWidget.UpdateState();
+        => AudioWidget.RecomputeState();
 
     private void OnIsPlayingUpdated(State state, StateEventKind kind)
-        => AudioWidget.UpdateState();
+        => AudioWidget.RecomputeState();
 
     private AudioFocusRestoreHandler? OnAudioFocusLost(bool mayRecover, bool canDuck)
     {

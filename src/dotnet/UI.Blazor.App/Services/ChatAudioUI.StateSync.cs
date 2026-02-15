@@ -264,8 +264,7 @@ public partial class ChatAudioUI
                         TryReleaseAudioFocus();
                 }
 
-                AudioWidget.OnListeningStateChanged(newChatIds.IsEmpty ? null : newChatIds);
-                AudioWidget.UpdateState();
+                AudioWidget.SetListeningState(newChatIds.IsEmpty ? null : newChatIds);
                 lastChatIds = newChatIds;
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -291,8 +290,7 @@ public partial class ChatAudioUI
                     if (lastState is not null) {
                         _ = TuneUI.Play(Tune.StopReplay);
                         await StopPlayer(lastState.ChatId, ChatPlayerKind.Replaying).ConfigureAwait(false);
-                        AudioWidget.OnReplayStateChanged(null);
-                        AudioWidget.UpdateState();
+                        AudioWidget.SetReplayState(null);
                         // Release audio focus if no listening either
                         var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
                         if (listeningChatIds.IsEmpty)
@@ -327,8 +325,7 @@ public partial class ChatAudioUI
                 }, cancellationToken);
                 await startTask.ConfigureAwait(false);
 
-                AudioWidget.OnReplayStateChanged(newState);
-                AudioWidget.UpdateState();
+                AudioWidget.SetReplayState(newState);
                 lastState = newState;
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {

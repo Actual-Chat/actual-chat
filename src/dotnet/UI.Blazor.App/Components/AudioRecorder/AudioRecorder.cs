@@ -249,7 +249,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
         DebugLog?.LogDebug("Chat #{ChatId}: recording is starting, {State}", chatId, State.Value);
-        AudioWidget.OnRecodingStateChanged(chatId);
+        AudioWidget.SetRecodingState(chatId);
     }
 
     private void MarkStopped()
@@ -274,7 +274,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         _recordingActivity?.Dispose();
         ReleaseAudioFocus();
         DebugLog?.LogDebug("Recording is stopped, {State}", State.Value);
-        AudioWidget.OnRecodingStateChanged(null);
+        AudioWidget.SetRecodingState(null);
     }
 
     private void ReleaseAudioFocus()
