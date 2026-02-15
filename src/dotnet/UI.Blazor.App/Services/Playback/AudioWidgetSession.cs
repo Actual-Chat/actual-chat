@@ -97,7 +97,7 @@ public sealed class AudioWidgetSession(
             if (player?.Playback.IsPlaying.Value ?? false) {
                 mode = AudioWidgetSessionStateMode.RealtimePlayback;
                 extraChatCount = realtimePlaybackState.ChatIds.Count - 1;
-                isPaused = ((IState<bool>)player.Playback.IsPaused).Value;
+                isPaused = player.Playback.IsPaused.Value;
             }
         }
         else if (playbackState is HistoricalPlaybackState historicalPlaybackState) {
@@ -105,7 +105,7 @@ public sealed class AudioWidgetSession(
             var player = ChatPlayers?.GetHistoricalChatPlayerNonComputed(chatId);
             if (player?.Playback.IsPlaying.Value ?? false) {
                 mode = AudioWidgetSessionStateMode.HistoricalPlayback;
-                isPaused = ((IState<bool>)player.Playback.IsPaused).Value;
+                isPaused = player.Playback.IsPaused.Value;
             }
         }
         if (mode is null)

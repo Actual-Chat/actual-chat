@@ -17,10 +17,15 @@ public sealed class Playback : ProcessorBase
     private readonly Lock _stateUpdateLock = new();
     private (CpuTimestamp CpuTimestamp, TimeSpan TotalSleepDuration) _pausedAt = default;
 
-    public MutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracks { get; }
-    public MutableState<bool> IsPlaying { get; }
-    public MutableState<bool> IsPaused { get; }
-    public MutableState<TimeSpan> TotalPauseDuration { get; }
+    private readonly MutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> _playingTracks;
+    private readonly MutableState<bool> _isPlaying;
+    private readonly MutableState<bool> _isPaused;
+    private readonly MutableState<TimeSpan> _totalPauseDuration;
+
+    public IState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracks => _playingTracks;
+    public IState<bool> IsPlaying => _isPlaying;
+    public IState<bool> IsPaused => _isPaused;
+    public IState<TimeSpan> TotalPauseDuration => _totalPauseDuration;
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
 
@@ -37,16 +42,16 @@ public sealed class Playback : ProcessorBase
             QueueFullMode = BoundedChannelFullMode.DropOldest,
         };
         var type = GetType();
-        PlayingTracks = stateFactory.NewMutable(
+        _playingTracks = stateFactory.NewMutable(
             ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty,
             StateCategories.Get(type, nameof(PlayingTracks)));
-        IsPlaying = stateFactory.NewMutable(
+        _isPlaying = stateFactory.NewMutable(
             false,
             StateCategories.Get(type, nameof(IsPlaying)));
-        IsPaused = stateFactory.NewMutable(
+        _isPaused = stateFactory.NewMutable(
             false,
             StateCategories.Get(type, nameof(IsPaused)));
-        TotalPauseDuration = stateFactory.NewMutable(
+        _totalPauseDuration = stateFactory.NewMutable(
             TimeSpan.Zero,
             StateCategories.Get(type, nameof(TotalPauseDuration)));
     }
@@ -67,7 +72,7 @@ public sealed class Playback : ProcessorBase
         CancellationToken cancellationToken)
     {
         lock (_stateUpdateLock)
-            IsPlaying.Value = true;
+            _isPlaying.Value = true;
         var command = new PlayTrackCommand(trackInfo, source) { PlayAt = playAt };
         return _messageProcessor.Enqueue(command, cancellationToken);
     }
@@ -167,18 +172,18 @@ public sealed class Playback : ProcessorBase
         }
         if (!prev.IsEnded && state.IsEnded)
             lock (_stateUpdateLock) {
-                PlayingTracks.Value = PlayingTracks.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
-                if (PlayingTracks.Value.Count == 0) {
-                    IsPlaying.Value = false;
-                    IsPaused.Value = false;
+                _playingTracks.Value = _playingTracks.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
+                if (_playingTracks.Value.Count == 0) {
+                    _isPlaying.Value = false;
+                    _isPaused.Value = false;
                 }
                 return; // Nothing else to do here
             }
 
         if (!prev.IsStarted && state.IsStarted)
             lock (_stateUpdateLock) {
-                PlayingTracks.Value = PlayingTracks.Value.Insert(0, (trackInfo, state));
-                IsPlaying.Value = true;
+                _playingTracks.Value = _playingTracks.Value.Insert(0, (trackInfo, state));
+                _isPlaying.Value = true;
             }
 
         var isPaused = state.IsPaused;
@@ -190,9 +195,9 @@ public sealed class Playback : ProcessorBase
                     var elapsed = _pausedAt.CpuTimestamp.Elapsed
                         - _sleepDurationProvider.TotalSleepDuration.Value
                         + _pausedAt.TotalSleepDuration;
-                    TotalPauseDuration.Set(elapsed, static (elapsed, r) => r.Value + elapsed);
+                    _totalPauseDuration.Set(elapsed, static (elapsed, r) => r.Value + elapsed);
                 }
-                IsPaused.Value = isPaused;
+                _isPaused.Value = isPaused;
             }
     }
 }
