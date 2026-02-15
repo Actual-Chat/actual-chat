@@ -253,7 +253,7 @@ module.exports = {
         'banner-error': 'var(--text-banner-error)',
         'banner-info': 'var(--text-banner-info)',
         'banner-success': 'var(--text-banner-success)',
-        'historical-playback': 'var(--text-historical-playback)',
+        'replay': 'var(--text-replay)',
         'post-panel-text': 'var(--post-panel-text)',
       },
       borderColor: {
@@ -277,7 +277,7 @@ module.exports = {
         'banner-info': 'var(--border-banner-info)',
         'banner-warning': 'var(--border-banner-warning)',
         'banner-error': 'var(--border-banner-error)',
-        'historical-playback': 'var(--border-historical-playback)',
+        'replay': 'var(--border-replay)',
       },
       backgroundColor: {
         '01': 'var(--background-01)',
@@ -293,7 +293,7 @@ module.exports = {
         'banner-error': 'var(--background-banner-error)',
         'banner-info': 'var(--background-banner-info)',
         'banner-success': 'var(--background-banner-success)',
-        'historical-playback': 'var(--background-historical-playback)',
+        'replay': 'var(--background-replay)',
         'recording-countdown': 'var(--background-recording-countdown)',
         'modal': 'var(--modal-background)',
       },

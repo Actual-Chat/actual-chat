@@ -7,13 +7,13 @@ namespace ActualChat.App.Maui.Audio;
 
 public class AndroidAudioFocusUI : MauiAudioFocusUI
 {
-    private readonly AudioFocusHelper _focusHelper;
+    private readonly AndroidAudioFocusHelper _focusHelper;
     private MauiAudioFocusHandle? _handle;
 
     public AndroidAudioFocusUI(AppUIHub hub)
         : base(hub)
     {
-        _focusHelper = new AudioFocusHelper(Platform.AppContext, hub.LogFor<AudioFocusHelper>());
+        _focusHelper = new AndroidAudioFocusHelper(Platform.AppContext, hub.LogFor<AndroidAudioFocusHelper>());
         _focusHelper.OnFocusChanged += OnFocusChanged;
         _focusHelper.OnOutputDevicesChanged += OnOutputDevicesChanged;
     }

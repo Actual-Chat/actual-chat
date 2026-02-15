@@ -1,0 +1,215 @@
+using ActualChat.UI.Blazor.Services;
+
+namespace ActualChat.UI.Blazor.App.Services;
+
+public partial class ChatAudioUI
+{
+    private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
+
+    private volatile ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
+        ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
+    private readonly MutableState<ReplayState?> _replayState;
+    private readonly AudioFocusRequester _audioFocusRequester;
+    private AudioFocusScope? _audioFocusScope;
+
+    // Compute methods
+
+    [ComputeMethod]
+    public virtual Task<ChatReplayer?> GetReplayer(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var player = GetReplayerNonComputed(chatId);
+        return Task.FromResult(player);
+    }
+
+    [ComputeMethod]
+    public virtual Task<ChatListener?> GetListener(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var player = GetListenerNonComputed(chatId);
+        return Task.FromResult(player);
+    }
+
+    // GetXxxNonComputed
+
+    public ChatReplayer? GetReplayerNonComputed(ChatId chatId)
+    {
+        lock (Lock)
+            return _players.GetValueOrDefault((chatId, ChatPlayerKind.Replaying)) as ChatReplayer;
+    }
+
+    public ChatListener? GetListenerNonComputed(ChatId chatId)
+    {
+        lock (Lock)
+            return _players.GetValueOrDefault((chatId, ChatPlayerKind.Listening)) as ChatListener;
+    }
+
+    // Actions
+
+    public void StartReplay(ChatId chatId, Moment startAt)
+    {
+        DebugLog?.LogInformation("StartReplay: chatId={ChatId}, startAt={StartAt}", chatId, startAt);
+
+        StopReplay();
+        _replayState.Value = new ReplayState(chatId, startAt);
+    }
+
+    public void StopReplay()
+        => _replayState.Value = null;
+
+    public async Task<bool> TryGainAudioFocusForResume(ChatPlayer player)
+    {
+        Log.LogInformation("Trying to gain audio focus for chat player '{ChatId}'", player.ChatId);
+        var scope = await TryAcquireAudioFocus($"Resuming chat player '{player.ChatId}'").ConfigureAwait(false);
+        return scope is not null;
+    }
+
+    // Audio focus management
+
+    public async Task<AudioFocusScope?> TryAcquireAudioFocus(string? reason = "")
+    {
+        if (_audioFocusScope is not null && !_audioFocusScope.IsSuspended) {
+            Log.LogInformation("Already have audio focus {Scope}. Request reason: '{Reason}'", _audioFocusScope, reason);
+            return _audioFocusScope;
+        }
+        _audioFocusScope = await AudioFocusUI.TryAcquire(_audioFocusRequester).ConfigureAwait(false);
+        return _audioFocusScope;
+    }
+
+    public void TryReleaseAudioFocus()
+    {
+        _audioFocusScope?.Dispose();
+        _audioFocusScope = null;
+    }
+
+    // Private player lifecycle methods
+
+    private ChatPlayer GetOrCreatePlayer(ChatId chatId, ChatPlayerKind playerKind)
+    {
+        StopToken.ThrowIfCancellationRequested();
+        ChatPlayer newPlayer;
+        lock (Lock) {
+            var player = _players.GetValueOrDefault((chatId, playerKind));
+            if (player != null) {
+                DebugLog?.LogInformation("GetOrCreatePlayer: returning existing {PlayerKind} player for {ChatId}", playerKind, chatId);
+                return player;
+            }
+            DebugLog?.LogInformation("GetOrCreatePlayer: creating new {PlayerKind} player for {ChatId}", playerKind, chatId);
+            newPlayer = playerKind switch {
+                ChatPlayerKind.Listening => new ChatListener(Hub, chatId),
+                ChatPlayerKind.Replaying => new ChatReplayer(Hub, chatId),
+                _ => throw new ArgumentOutOfRangeException(nameof(playerKind), playerKind, null),
+            };
+            newPlayer.ChatAudioUI = this;
+            _players = _players.Add((chatId, playerKind), newPlayer);
+        }
+        if (playerKind is ChatPlayerKind.Replaying)
+            using (Invalidation.Begin())
+                _ = GetReplayer(chatId, default);
+        if (playerKind is ChatPlayerKind.Listening)
+            using (Invalidation.Begin())
+                _ = GetListener(chatId, default);
+        return newPlayer;
+    }
+
+    private Task StopPlayer(ChatId chatId, ChatPlayerKind playerKind)
+    {
+        ChatPlayer? player;
+        lock (Lock)
+            player = _players.GetValueOrDefault((chatId, playerKind));
+        if (player is null)
+            return Task.CompletedTask;
+
+        player.Playback.IsPaused.Updated -= OnIsPausedUpdated;
+        player.Playback.IsPlaying.Updated -= OnIsPlayingUpdated;
+        return player.Stop();
+    }
+
+    private Task StopPlayers(IEnumerable<ChatId> chatIds, ChatPlayerKind playerKind)
+        => chatIds
+            .Select(chatId => StopPlayer(chatId, playerKind))
+            .Collect(ApiConstants.Concurrency.Unlimited);
+
+    private Task StopAllPlayers()
+        // ReSharper disable once InconsistentlySynchronizedField
+        => _players
+            .Select(kv => StopPlayer(kv.Key.ChatId, kv.Key.PlayerKind))
+            .Collect(ApiConstants.Concurrency.Unlimited);
+
+    private Task<Task> StartListeningPlayer(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var player = GetOrCreatePlayer(chatId, ChatPlayerKind.Listening);
+        player.Playback.IsPaused.Updated += OnIsPausedUpdated;
+        player.Playback.IsPlaying.Updated += OnIsPlayingUpdated;
+        var whenPlaying = player.WhenPlaying;
+        return whenPlaying is { IsCompleted: false }
+            ? Task.FromResult(whenPlaying)
+            : player.Start(Clocks.SystemClock.Now, cancellationToken);
+    }
+
+    private async Task<Task> StartListeningPlayers(IEnumerable<ChatId> chatIds, CancellationToken cancellationToken)
+    {
+        var resultPlayingTasks = await chatIds
+            .Select(chatId => StartListeningPlayer(chatId, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
+        return Task.WhenAll(resultPlayingTasks);
+    }
+
+    private Task<Task> StartReplayPlayer(ChatId chatId, Moment startAt, CancellationToken cancellationToken)
+    {
+        DebugLog?.LogInformation("StartReplayPlayer: getting or creating player for {ChatId}", chatId);
+        var player = GetOrCreatePlayer(chatId, ChatPlayerKind.Replaying);
+        DebugLog?.LogInformation("StartReplayPlayer: calling player.Start for {ChatId}", chatId);
+        var startTask = player.Start(startAt, cancellationToken);
+        player.Playback.IsPaused.Updated += OnIsPausedUpdated;
+        player.Playback.IsPlaying.Updated += OnIsPlayingUpdated;
+        return startTask;
+    }
+
+    private void OnIsPausedUpdated(State state, StateEventKind kind)
+        => AudioWidget.UpdateState();
+
+    private void OnIsPlayingUpdated(State state, StateEventKind kind)
+        => AudioWidget.UpdateState();
+
+    private AudioFocusRestoreHandler? OnAudioFocusLost(bool mayRecover, bool canDuck)
+    {
+        Log.LogInformation("OnAudioFocusLost: mayRecover={MayRecover}, canDuck={CanDuck}", mayRecover, canDuck);
+        if (canDuck)
+            return null; // Do not stop players. We don't support ducking so far, so just let it play, do nothing.
+
+        if (!mayRecover)
+            _audioFocusScope = null;
+
+        _ = ClearListeningChats();
+        if (_replayState.Value?.ChatId is not { } replayChatId)
+            return null;
+
+        // Pause replay
+        lock (Lock) {
+            var chatReplayer = _players.Values
+                .OfType<ChatReplayer>()
+                .FirstOrDefault(c => c.ChatId == replayChatId && !c.Playback.IsPaused.Value);
+            if (chatReplayer is null)
+                return null; // Nothing to pause -> nothing to restore
+
+            chatReplayer.Playback.Pause(CancellationToken.None);
+            Log.LogInformation("OnAudioFocusRestore: paused replayer for #{ChatId}", replayChatId);
+        }
+        if (!mayRecover)
+            return null;
+
+        // Return the handler that restores replay on audio focus restore
+        return () => {
+            Log.LogInformation("OnAudioFocusRestore: restored audio focus");
+            lock (Lock) {
+                var chatReplayer = _players.Values
+                    .OfType<ChatReplayer>()
+                    .FirstOrDefault(c => c.ChatId == replayChatId && c.Playback.IsPaused.Value);
+                if (chatReplayer is not null) {
+                    chatReplayer.Playback.Resume(CancellationToken.None);
+                    Log.LogInformation("OnAudioFocusRestore: resumed replayer for #{ChatId}", replayChatId);
+                }
+            }
+        };
+    }
+}

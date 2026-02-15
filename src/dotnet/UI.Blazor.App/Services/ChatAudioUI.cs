@@ -5,11 +5,15 @@ using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
+public sealed record ReplayState(ChatId ChatId, Moment StartAt);
+
 /// <summary>
 /// Manages audio listening and recording state for chats in the UI.
 /// </summary>
 public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
+    private static bool DebugMode => Constants.DebugMode.ChatAudioUI;
+
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
@@ -18,18 +22,21 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private IAudioInitializer AudioInitializer => Hub.AudioInitializer;
-    private AudioSettings AudioSettings => Hub.AudioSettings;
-    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
-    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private InteractiveUI InteractiveUI => Hub.InteractiveUI;
     private DeviceAwakeUI DeviceAwakeUI => Hub.DeviceAwakeUI;
     private IncomingShareSuggestions? IncomingShareSuggestions { get; }
+    private AudioSettings AudioSettings => Hub.AudioSettings;
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
+    private AudioWidget AudioWidget => Hub.AudioWidget;
     private Moment CpuNow => Clocks.CpuClock.Now;
     private Moment ServerNow => Clocks.ServerClock.Now;
+    private new ILogger? DebugLog => DebugMode ? Log : null;
 
+    public IState<ReplayState?> ReplayState => _replayState;
     public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
@@ -37,11 +44,15 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public ChatAudioUI(AppUIHub hub) : base(hub)
     {
         IncomingShareSuggestions = hub.Services.GetService<IncomingShareSuggestions>();
-        // Read entry states from other windows / devices are delayed by 1s
         var type = GetType();
         var stateFactory = StateFactory;
         _stopRecordingAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(StopRecordingAt)));
         _nextBeep = stateFactory.NewMutable((NextBeepState?)null, StateCategories.Get(type, nameof(NextBeep)));
+        _replayState = stateFactory.NewMutable(
+            (ReplayState?)null,
+            StateCategories.Get(type, nameof(ReplayState)));
+        _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Playback, OnAudioFocusLost);
+        Hub.AudioWidget.Reset();
     }
 
     void INotifyInitialized.Initialized()
@@ -61,8 +72,8 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             isListening = activeChat.IsListening;
             isRecording = activeChat.IsRecording;
         }
-        var isPlayingHistorical = ChatPlayers.PlaybackState.Value is HistoricalPlaybackState hps && hps.ChatId == chatId;
-        var result = new ChatAudioState(chatId, isListening, isPlayingHistorical, isRecording);
+        var isReplaying = _replayState.Value is { } hps && hps.ChatId == chatId;
+        var result = new ChatAudioState(chatId, isListening, isReplaying, isRecording);
         return Task.FromResult(result);
     }
 
@@ -190,10 +201,4 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             },
             StopToken);
 
-    [ComputeMethod]
-    public virtual async Task<RealtimePlaybackState?> GetExpectedRealtimePlaybackState()
-    {
-        var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
-        return listeningChatIds.Count == 0 ? null : new RealtimePlaybackState(listeningChatIds);
-    }
 }

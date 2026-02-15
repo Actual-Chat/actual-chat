@@ -1,13 +1,13 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.MediaPlayback
 @using Timer = System.Timers.Timer;
-@inherits ComputedStateComponent<AppUIHub, HistoricalPlaybackSubHeader.Model?>
+@inherits ComputedStateComponent<AppUIHub, ReplaySubHeader.Model?>
 @{
     var m = State.Value;
     var size = ScreenSize.IsNarrow() ? SquareSize.Size8 : SquareSize.Size6;
 }
 
-<SubHeader Class="historical-playback-subheader" IsVisible="@(m is not null)">
+<SubHeader Class="replay-subheader" IsVisible="@(m is not null)">
     <div class="c-content">
         <div class="c-buttons">
             @if (ScreenSize.IsWide()) {
@@ -74,7 +74,7 @@
 
     private IChats Chats => Hub.Chats;
     private ChatUI ChatUI => Hub.ChatUI;
-    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
     private LiveTime LiveTime => Hub.LiveTime;
 
@@ -90,13 +90,13 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var lastState = State.Value;
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
+        var replayState = await ChatAudioUI.ReplayState.Use(cancellationToken).ConfigureAwait(false);
+        if (replayState is not { ChatId: var chatId })
             return null;
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatTitle = chat?.Title ?? "";
-        var player = await ChatPlayers.GetHistoricalChatPlayer(chatId, cancellationToken).ConfigureAwait(false);
+        var player = await ChatAudioUI.GetReplayer(chatId, cancellationToken).ConfigureAwait(false);
         if (player is null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
@@ -138,7 +138,7 @@
     }
 
     private void OnStop()
-        => ChatPlayers.StopHistoricalPlayback();
+        => ChatAudioUI.StopReplay();
 
     private void OnResume() {
         var m = State.Value;
@@ -179,13 +179,13 @@
         });
     }
 
-    private async Task PlayAt(HistoricalChatPlayer chatPlayer, Moment origin, TimeSpan offset, CancellationToken cancellationToken = default)
+    private async Task PlayAt(ChatReplayer chatPlayer, Moment origin, TimeSpan offset, CancellationToken cancellationToken = default)
     {
         var newMoment = await chatPlayer.GetRewindMoment(origin, offset, cancellationToken);
         if (!newMoment.HasValue)
             return;
 
-        await ChatPlayers.StartHistoricalPlayback(chatPlayer.ChatId, newMoment.Value);
+        ChatAudioUI.StartReplay(chatPlayer.ChatId, newMoment.Value);
     }
 
     // Nested types
@@ -194,7 +194,7 @@
     {
         public Moment? PlayingAt { get; init; }
         public bool IsPaused { get; init; }
-        public HistoricalChatPlayer? Player { get; init; }
+        public ChatReplayer? Player { get; init; }
         public string ChatTitle { get; init; } = "";
         public required ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }

@@ -5,31 +5,32 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class RealtimeChatPlayer : ChatPlayer
+public sealed class ChatListener : ChatPlayer
 {
-    private ChatAudioUI ChatAudioUI { get; }
-
-    public RealtimeChatPlayer(AppUIHub hub, ChatId chatId)
+    public ChatListener(AppUIHub hub, ChatId chatId)
         : base(hub, chatId)
+        => PlayerKind = ChatPlayerKind.Listening;
+
+    public override void Pause()
     {
-        ChatAudioUI = Hub.ChatAudioUI;
-        PlayerKind = ChatPlayerKind.Realtime;
+        _ = Playback.Pause(CancellationToken.None);
+        ChatAudioUI!.TryReleaseAudioFocus();
+        Hub.AudioWidget.UpdateState();
     }
 
     public override async Task Resume()
     {
-        var playbackState = ChatPlayers!.PlaybackState.Value;
-        if (playbackState is not RealtimePlaybackState realtimePlaybackState
-            || !realtimePlaybackState.ChatIds.Contains(ChatId)) {
-            Log.LogInformation("Can't resume realtime playback. State: '{State}', ChatId: '{ChatId}'", playbackState, ChatId);
+        var listeningChatIds = await ChatAudioUI!.GetListeningChatIds().ConfigureAwait(false);
+        if (!listeningChatIds.Contains(ChatId)) {
+            Log.LogInformation("Can't resume listening playback. ChatId '{ChatId}' not in listening set", ChatId);
             return;
         }
 
-        if (!await ChatPlayers!.TryGainAudioFocusForResume(this).ConfigureAwait(false))
+        if (!await ChatAudioUI!.TryGainAudioFocusForResume(this).ConfigureAwait(false))
             return;
 
         _ = Playback.Resume(default);
-        ChatPlayers!.UpdateMediaSessionState();
+        Hub.AudioWidget.UpdateState();
     }
 
     protected override async Task Play(
@@ -73,7 +74,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             var serverClock = Clocks.ServerClock;
             try {
                 // Skip own audio unless in debug mode
-                if (!Constants.DebugMode.ChatPlayersPlayMyOwnAudio) {
+                if (!Constants.DebugMode.ListenOwnAudio) {
                     var author = await Authors.GetOwn(Session, ChatId, cancellationToken)
                         .ConfigureAwait(false);
                     if (author != null && streamInfo.AuthorId == author.Id)
@@ -81,7 +82,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
                 }
 
                 if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false)) {
-                    await ChatAudioUI.SetListeningState(ChatId, false).ConfigureAwait(false);
+                    await ChatAudioUI!.SetListeningState(ChatId, false).ConfigureAwait(false);
                     return;
                 }
 

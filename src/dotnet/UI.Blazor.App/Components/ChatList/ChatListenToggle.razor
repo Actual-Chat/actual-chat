@@ -2,8 +2,8 @@
 @inherits ComputedStateComponent<AppUIHub, ChatAudioState>
 @{
     var m = State.Value;
-    var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
-    var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass}";
+    var replayingClass = m.IsReplaying ? "opacity-60" : "";
+    var cls = $"play {(m.IsListening ? "on" : "off")} {replayingClass}";
 }
 
 <ButtonRound Class="@cls" Click="@OnListenClick" MustKeepAwake="@(!m.IsListening)">

@@ -1,0 +1,39 @@
+.replay-subheader {
+    @apply relative z-10;
+    @apply w-full;
+    @apply pl-1 pr-2;
+    @apply bg-replay;
+    @apply text-replay;
+    @apply rounded-lg border-2 border-replay;
+}
+.replay-subheader > .c-content {
+    @apply flex-1 flex-x justify-between items-center gap-x-2;
+}
+.replay-subheader > .c-content > .c-buttons {
+    @apply flex-none flex-x gap-x-0.5;
+}
+.replay-subheader > .c-content > .c-info {
+    @apply flex-auto flex-y;
+}
+.replay-subheader > .c-content > .c-info > .c-title {
+    @apply truncate;
+    @apply font-semibold;
+}
+.replay-subheader > .c-content > .c-info > .c-title a {
+    @apply cursor-pointer hover:underline;
+}
+.replay-subheader > .c-content > .c-info > .c-text {
+    @apply overflow-hidden;
+    @apply text-wrap-pretty;
+    @apply text-text-1;
+}
+.replay-subheader > .c-content > .c-info > .c-text > .c-moment {
+    @apply font-normal;
+}
+
+.replay-subheader .author-circle-group {
+    @apply flex-none;
+}
+.replay-subheader .author-circle-group > .c-container {
+    @apply left-auto;
+}

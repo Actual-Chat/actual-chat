@@ -1,4 +1,5 @@
 using _Microsoft.Android.Resource.Designer;
+using ActualChat.UI.Blazor.App.Services;
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
@@ -7,16 +8,15 @@ using Android.OS;
 using Android.Support.V4.Media;
 using Android.Support.V4.Media.Session;
 using AndroidX.Core.App;
-using Mode = ActualChat.UI.Blazor.App.Services.AudioWidgetSessionStateMode;
 
 namespace ActualChat.App.Maui.Audio;
 
 [Service(ForegroundServiceType = ForegroundService.TypeMediaPlayback | ForegroundService.TypeMicrophone)]
-public class AudioWidgetForegroundService : Service
+public class AndroidAudioWidgetForegroundService : Service
 {
     public static class IntentExtras
     {
-        public const string Mode = nameof(Mode);
+        public const string Mode = nameof(AudioWidgetMode);
         public const string ChatId = nameof(ChatId);
         public const string ChatTitle = nameof(ChatTitle);
         public const string ChatPicUri = nameof(ChatPicUri);
@@ -29,7 +29,7 @@ public class AudioWidgetForegroundService : Service
     private const int NotificationId = 3001;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
-    private ILogger Log { get; } = StaticLog.For<AudioWidgetForegroundService>();
+    private ILogger Log { get; } = StaticLog.For<AndroidAudioWidgetForegroundService>();
 
     public override void OnCreate()
     {
@@ -59,7 +59,7 @@ public class AudioWidgetForegroundService : Service
         if (!OrdinalEquals(intent?.Action ?? "", ActionShow))
             return StartCommandResult.Sticky;
 
-        var mode = (Mode)intent!.Extras!.GetInt(IntentExtras.Mode);
+        var mode = (AudioWidgetMode)intent!.Extras!.GetInt(IntentExtras.Mode);
         var chatTitle = intent.Extras!.GetString(IntentExtras.ChatTitle) ?? "Unknown chat";
         var chatSid = intent.Extras!.GetString(IntentExtras.ChatId);
         var chatPicUrl = intent.Extras!.GetString(IntentExtras.ChatPicUri) ?? "";
@@ -67,9 +67,7 @@ public class AudioWidgetForegroundService : Service
         var isPaused = intent.Extras!.GetBoolean(IntentExtras.IsPaused);
 
         if (_mediaSession is null) {
-            _mediaSession = new MediaSessionCompat(this, "AudioWidgetSession") {
-                Active = true,
-            };
+            _mediaSession = new MediaSessionCompat(this, "AudioWidgetSession") { Active = true };
 #pragma warning disable CS0618
             // Type or member is obsolete
             _mediaSession.SetFlags(
@@ -81,9 +79,9 @@ public class AudioWidgetForegroundService : Service
         }
 
         var text = mode switch {
-            Mode.Recording => "Recording",
-            Mode.RealtimePlayback => "Listening",
-            Mode.HistoricalPlayback => "Historical listening",
+            AudioWidgetMode.Recording => "Recording",
+            AudioWidgetMode.Listening => "Listening",
+            AudioWidgetMode.Replaying => "Replaying",
             _ => throw new ArgumentOutOfRangeException(nameof(mode)),
         };
         var title = chatTitle;
@@ -93,13 +91,13 @@ public class AudioWidgetForegroundService : Service
         var link = Links.Chat(chatId);
 
         long capabilities = 0;
-        if (mode is Mode.HistoricalPlayback or Mode.RealtimePlayback) {
+        if (mode is AudioWidgetMode.Replaying or AudioWidgetMode.Listening) {
             capabilities |= isPaused ? PlaybackStateCompat.ActionPlay : PlaybackStateCompat.ActionPause;
             capabilities |= PlaybackStateCompat.ActionStop;
         }
         var playbackStateCompat = new PlaybackStateCompat.Builder()
             .SetState(
-                mode is (Mode.HistoricalPlayback or Mode.RealtimePlayback) && isPaused
+                mode is (AudioWidgetMode.Replaying or AudioWidgetMode.Listening) && isPaused
                     ? PlaybackStateCompat.StatePaused
                     : PlaybackStateCompat.StatePlaying,
                 PlaybackStateCompat.PlaybackPositionUnknown,
@@ -133,7 +131,7 @@ public class AudioWidgetForegroundService : Service
         void StartForeground1(Android.App.Notification notification)
         {
             if (Build.VERSION.SdkInt >= BuildVersionCodes.Q) {
-                var serviceType = mode is Mode.Recording
+                var serviceType = mode is AudioWidgetMode.Recording
                     ? ForegroundService.TypeMicrophone | ForegroundService.TypeMediaPlayback
                     : ForegroundService.TypeMediaPlayback;
                 StartForeground(NotificationId, notification, serviceType);
@@ -206,12 +204,12 @@ public class AudioWidgetForegroundService : Service
     private class Callback : MediaSessionCompat.Callback
     {
         public override void OnPlay()
-            => AudioWidgetController.Resume();
+            => AndroidAudioWidget.Resume();
 
         public override void OnPause()
-            => AudioWidgetController.Pause();
+            => AndroidAudioWidget.Pause();
 
         public override void OnStop()
-            => AudioWidgetController.Stop();
+            => AndroidAudioWidget.Stop();
     }
 }

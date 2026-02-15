@@ -14,7 +14,7 @@ public sealed record ChatState(ChatInfo Info, ChatAudioState AudioState) : IHasI
     public Chat.Chat Chat => Info.Chat;
     public Contact Contact => Info.Contact;
     public bool IsListening => AudioState.IsListening;
-    public bool IsPlayingHistorical => AudioState.IsPlayingHistorical;
+    public bool IsReplaying => AudioState.IsReplaying;
     public bool IsRecording => AudioState.IsRecording;
 
     // This record relies on referential equality

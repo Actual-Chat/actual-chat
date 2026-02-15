@@ -11,8 +11,8 @@ public class PlaybackAndRecordingAppActivity(AppUIHub hub) : AppActivity(hub)
     {
         // ReSharper disable once LocalVariableHidesPrimaryConstructorParameter
         var hub = (AppUIHub)Hub;
-        var playbackState = await hub.ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        if (!ReferenceEquals(playbackState, null))
+        var replayState = await hub.ChatAudioUI.ReplayState.Use(cancellationToken).ConfigureAwait(false);
+        if (replayState is not null)
             return true;
 
         var activeChats = await hub.ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);

@@ -36,11 +36,10 @@ public static partial class Constants
         public static readonly bool NativeAudioPlayer = false;
         public static readonly bool LiveStreaming = false;
 
-        public static readonly bool ChatPlayers = false;
-        public static bool ChatPlayersPlayMyOwnAudio
-            => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
+        public static readonly bool ChatAudioUI = false;
         public static readonly bool AudioRecording = true;
         public static readonly bool AudioRecordingStream = false;
+        public static bool ListenOwnAudio => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
 
         // Transcription
         public static readonly bool TranscriberAny = false;

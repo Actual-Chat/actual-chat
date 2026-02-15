@@ -55,15 +55,16 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public LinkPreviewUI LinkPreviewUI => field ??= Services.GetRequiredService<LinkPreviewUI>();
 
     public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
-    public ChatPlayers ChatPlayers => field ??= Services.GetRequiredService<ChatPlayers>();
-    public AudioWidgetSession AudioWidgetSession => field ??= Services.GetRequiredService<AudioWidgetSession>();
     public AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
     public AudioRecorder AudioRecorder => field ??= Services.GetRequiredService<AudioRecorder>();
     public AudioDownloader AudioDownloader => field ??= Services.GetRequiredService<AudioDownloader>();
     public IAudioInitializer AudioInitializer => field ??= Services.GetRequiredService<IAudioInitializer>();
     public IPlaybackFactory PlaybackFactory => field ??= Services.GetRequiredService<IPlaybackFactory>();
     public ActivePlaybackInfo ActivePlaybackInfo => field ??= Services.GetRequiredService<ActivePlaybackInfo>();
-    public PlayableTextPaletteProvider PlayableTextPaletteProvider => field ??= Services.GetRequiredService<PlayableTextPaletteProvider>();
+    public AudioWidget AudioWidget => field ??= Services.GetRequiredService<AudioWidget>();
+
+    public PlayableTextPaletteProvider PlayableTextPaletteProvider
+        => field ??= Services.GetRequiredService<PlayableTextPaletteProvider>();
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => field ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public MarkupHelpers MarkupHelpers => field ??= new MarkupHelpers(this);

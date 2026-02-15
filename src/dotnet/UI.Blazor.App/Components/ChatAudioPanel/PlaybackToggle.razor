@@ -9,8 +9,8 @@
         rendered = m;
     var audioState = m.AudioState;
 
-    var playingHistoricalClass = audioState.IsPlayingHistorical ? "opacity-60" : "";
-    var cls = $"{(audioState.IsListening ? "on" : "off")} {playingHistoricalClass}";
+    var replayingClass = audioState.IsReplaying ? "opacity-60" : "";
+    var cls = $"{(audioState.IsListening ? "on" : "off")} {replayingClass}";
     var wrapperCls = (rendered.AudioState.IsListening, audioState.IsListening) switch {
         (false, true) => "listen-off-to-on",
         (true, false) => "listen-on-to-off",

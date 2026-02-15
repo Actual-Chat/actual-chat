@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.Services;
 
@@ -7,7 +6,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <summary>
 /// Distinguishes between real-time and historical audio playback modes.
 /// </summary>
-public enum ChatPlayerKind { Realtime, Historical }
+public enum ChatPlayerKind { Listening, Replaying }
 
 /// <summary>
 /// Base class for playing audio entries from a chat with pause/resume support.
@@ -30,13 +29,14 @@ public abstract class ChatPlayer : ProcessorBase
     protected IChats Chats => Hub.Chats;
     protected IAuthors Authors => Hub.Authors;
     protected InteractiveUI InteractiveUI => Hub.InteractiveUI;
+    protected AudioWidget AudioWidget => Hub.AudioWidget;
     protected MomentClockSet Clocks => Hub.Clocks;
 
     protected IState<TimeSpan> SleepDuration { get; }
     protected IState<TimeSpan> PauseDuration { get; }
     protected TimeSpan SleepAndPauseDuration => SleepDuration.Value + Playback.TotalPauseDuration.Value;
 
-    public ChatPlayers? ChatPlayers { get; set; }
+    public ChatAudioUI? ChatAudioUI { get; set; }
     public ChatId ChatId { get; }
     public ChatPlayerKind PlayerKind { get; protected init; }
     public Playback Playback { get; }
@@ -132,7 +132,7 @@ public abstract class ChatPlayer : ProcessorBase
 
     protected async ValueTask<bool> CanContinuePlayback(CancellationToken cancellationToken)
     {
-        if (this is HistoricalChatPlayer)
+        if (this is ChatReplayer)
             await Playback.IsPaused.Computed
                 .When(x => !x, cancellationToken)
                 .ConfigureAwait(false);
@@ -143,13 +143,7 @@ public abstract class ChatPlayer : ProcessorBase
         return await InteractiveUI.Demand(Operation, cancellationToken).ConfigureAwait(false);
     }
 
-    public void Pause()
-    {
-        _ = Playback.Pause(CancellationToken.None);
-        ChatPlayers!.ReleaseAudioFocusDueToPause(this);
-        ChatPlayers!.UpdateMediaSessionState();
-    }
-
+    public abstract void Pause();
     public abstract Task Resume();
 
     // Protected methods

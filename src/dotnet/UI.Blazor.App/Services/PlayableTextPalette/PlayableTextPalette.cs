@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class PlayableTextPalette
+public sealed class PlayableTextPalette
 {
     private const int HistoryLength = 10;
     private static readonly PlayableTextColor[] Colors = [

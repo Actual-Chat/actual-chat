@@ -37,6 +37,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IClientAuth>(c => new MauiAuth(c.UIHub()));
 
         // UI
+        services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null); // Scoped in WASM/SSB, singleton in MAUI
         services.Replace(ServiceDescriptor.Singleton<ReloadUI>(c => new MauiReloadUI(c))); // Replaces scoped ReloadUI
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c.UIHub()));
@@ -77,17 +78,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 #elif ANDROID
         services.AddScoped<AudioFocusUI>(c => new AndroidAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new MauiTuneUI(c.UIHub()));
+        services.AddSingleton<AudioWidget>(c => new AndroidAudioWidget(c)); // Scoped in WASM/SSB, singleton in MAUI
         services.AddSingleton<VoiceActivityDetector>(c => new TfLiteVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
-        services.AddSingleton<AudioWidgetSession>(c => {
-            var chatResolver = new AudioWidgetSessionChatResolver(c);
-            var audioSession = new AudioWidgetSession(chatResolver, ChatPlayersAccessor);
-            audioSession.StateChanged += (_, _) => AudioWidgetController.OnAudioSessionStateChanged(audioSession);
-            return audioSession;
-
-            ChatPlayers? ChatPlayersAccessor()
-                => !TryGetScopedServices(out var services1) ? null : services1.GetRequiredService<ChatPlayers>();
-        });
 #elif IOS || MACCATALYST
         services.AddScoped<AudioFocusUI>(c => new IosAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c.UIHub()));

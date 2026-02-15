@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(ChatUICollection))]
-public class HistoricalChatPlayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
+public class ChatReplayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ChatAppHostFixture>(fixture, @out)
 {
     [Fact(Timeout = 60_000)]
@@ -36,7 +36,7 @@ public class HistoricalChatPlayerTest(ChatAppHostFixture fixture, ITestOutputHel
             await dbContext.SaveChangesAsync();
         }
 
-        var player = services.CreateInstance<HistoricalChatPlayer>(chatId);
+        var player = services.CreateInstance<ChatReplayer>(chatId);
         // Rewind back along the same audio entry
         var newMoment = await player.GetRewindMoment(entry2BeginsAt.AddSeconds(30), TimeSpan.FromSeconds(-15), default);
         newMoment.Should().Be(entry2BeginsAt.AddSeconds(15).ToMoment());

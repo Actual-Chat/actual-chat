@@ -32,7 +32,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     protected AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
-    protected AudioWidgetSession AudioWidgetSession => Hub.AudioWidgetSession;
+    protected AudioWidget AudioWidget => Hub.AudioWidget;
 
     public MicrophonePermissionHandler MicrophonePermission
         => field ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
@@ -249,7 +249,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
         DebugLog?.LogDebug("Chat #{ChatId}: recording is starting, {State}", chatId, State.Value);
-        AudioWidgetSession.OnRecodingStateChanged(chatId);
+        AudioWidget.OnRecodingStateChanged(chatId);
     }
 
     private void MarkStopped()
@@ -274,7 +274,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         _recordingActivity?.Dispose();
         ReleaseAudioFocus();
         DebugLog?.LogDebug("Recording is stopped, {State}", State.Value);
-        AudioWidgetSession.OnRecodingStateChanged(null);
+        AudioWidget.OnRecodingStateChanged(null);
     }
 
     private void ReleaseAudioFocus()

@@ -1,9 +1,9 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
 @{
-    var playingHistoricalClass = ChatState.IsPlayingHistorical ? "opacity-60" : "";
+    var replayingClass = ChatState.IsReplaying ? "opacity-60" : "";
     var listeningClass = ChatState.IsListening ? "on" : "off";
-    var cls = $"play {listeningClass} {playingHistoricalClass}";
+    var cls = $"play {listeningClass} {replayingClass}";
 }
 
 @if (!ChatState.IsListening) {

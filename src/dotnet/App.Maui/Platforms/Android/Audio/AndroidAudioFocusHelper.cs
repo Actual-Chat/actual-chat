@@ -4,7 +4,7 @@ using OperationCanceledException = System.OperationCanceledException;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AudioFocusHelper : IDisposable
+public class AndroidAudioFocusHelper : IDisposable
 {
     private readonly AudioManager _audioManager;
     private readonly AudioFocusChangeListener _audioFocusChangeListener;
@@ -16,14 +16,14 @@ public class AudioFocusHelper : IDisposable
     public event Action<AudioFocus>? OnFocusChanged;
     public event Action? OnOutputDevicesChanged;
 
-    public AudioFocusHelper(Context context, ILogger log)
+    public AndroidAudioFocusHelper(Context context, ILogger log)
     {
         _audioManager = (AudioManager)context.GetSystemService(Context.AudioService)!;
         _audioFocusChangeListener = new AudioFocusChangeListener(OnAudioFocusChange);
         _audioManager.RegisterAudioDeviceCallback(new DeviceCallback(OnAudioDevicesChanged), null);
         _log = log;
 
-        // Choose implementation based on API level
+        // Chooses the implementation based on API level
         // API 31 (Android 12) introduced SetCommunicationDevice
         _deviceRouter = OperatingSystem.IsAndroidVersionAtLeast(12)
            ? new ModernAudioDeviceRouter(_audioManager, log)

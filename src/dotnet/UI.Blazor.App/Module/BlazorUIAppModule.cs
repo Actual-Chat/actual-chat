@@ -32,6 +32,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
+        services.AddScoped<ScopedServicesAccessor>(c => () => c); // Scoped in WASM/SSB, singleton in MAUI
         services.AddScoped(c => new AppUIHub(c));
         services.AddAlias<UIHub, AppUIHub>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new AnalyticEvents());
@@ -50,7 +51,6 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<HighlightUI>(ServiceLifetime.Scoped);
         fusion.AddService<LinkPreviewUI>(ServiceLifetime.Scoped);
-        fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddService<AppActivity, PlaybackAndRecordingAppActivity>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
@@ -192,7 +192,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }
-        services.AddScoped(c => new AudioWidgetSession(new AudioWidgetSessionChatResolver(c), c.GetRequiredService<ChatPlayers>));
+        services.AddScoped(c => new AudioWidget(c)); // Scoped in WASM/SSB, singleton in MAUI
 
         // IModalViews
         services.AddTypeMap<IModalView>(map => map

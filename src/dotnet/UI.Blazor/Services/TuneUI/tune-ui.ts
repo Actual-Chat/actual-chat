@@ -8,8 +8,7 @@ import { BrowserInfo } from '../BrowserInfo/browser-info';
 const { logScope, debugLog, warnLog, errorLog } = Log.get('TuneUI');
 
 // !!! keep in sync with TuneUI.cs
-export enum Tune
-{
+export enum Tune {
     None = 0,
     CancelReply,
     OpenModal,
@@ -20,10 +19,10 @@ export enum Tune
     ConfirmRecording,
     EndRecording,
     RemindOfRecording,
-    StartRealtimePlayback,
-    StartHistoricalPlayback,
-    StopHistoricalPlayback,
-    StopRealtimePlayback,
+    StartListening,
+    StopListening,
+    StartReplay,
+    StopReplay,
     PinUnpinChat,
     NotifyOnNewMessageInApp,
     NotifyOnNewAudioMessageAfterDelay,
@@ -53,10 +52,10 @@ const cooldownMap = new Map<Tune, number>([
     [Tune.ConfirmRecording, 1],
     [Tune.EndRecording, 1],
     [Tune.RemindOfRecording, 1],
-    [Tune.StartRealtimePlayback, 1],
-    [Tune.StartHistoricalPlayback, 1],
-    [Tune.StopHistoricalPlayback, 1],
-    [Tune.StopRealtimePlayback, 1],
+    [Tune.StartListening, 1],
+    [Tune.StopListening, 1],
+    [Tune.StartReplay, 1],
+    [Tune.StopReplay, 1],
     [Tune.NotifyOnNewMessageInApp, 5],
     [Tune.NotifyOnNewAudioMessageAfterDelay, 5],
     [Tune.SendMessage, 1],

@@ -57,7 +57,7 @@
 
     private ILogger Log => field ??= Services.LogFor(GetType());
 
-    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ActivePlaybackInfo ActivePlaybackInfo => Hub.ActivePlaybackInfo;
     private PlayableTextPaletteProvider PaletteProvider => Hub.PlayableTextPaletteProvider;
 
@@ -118,8 +118,8 @@
             if (markup.TimeRange.IsEmptyOrNegative)
                 return Model.None;
 
-            var chatPlayersPlaybackState = await ChatPlayers.PlaybackState.Use(cancellationToken1).ConfigureAwait(false);
-            if (chatPlayersPlaybackState is not HistoricalPlaybackState historicalPlaybackState || historicalPlaybackState.ChatId != chatId)
+            var replayState = await ChatAudioUI.ReplayState.Use(cancellationToken1).ConfigureAwait(false);
+            if (replayState is null || replayState.ChatId != chatId)
                 return Model.None;
 
             var trackId = ChatAudioTrackInfo.ComposeTrackId(chatId, audioEntryId.GetValueOrDefault());
@@ -185,8 +185,8 @@
         }
 
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
-        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
-        await chatPlayers.StartHistoricalPlayback(chatId, startAt);
+        var chatAudioUI = Services.GetRequiredService<ChatAudioUI>();
+        chatAudioUI.StartReplay(chatId, startAt);
     }
 
     private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)

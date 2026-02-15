@@ -2,8 +2,8 @@
 @inherits FusionComponentBase<AppUIHub>
 @{
     var m = AudioState ?? ChatAudioState.None;
-    var playingHistoricalClass = m.IsPlayingHistorical ? "opacity-60" : "";
-    var cls = $"play {(m.IsListening ? "on" : "off")} {playingHistoricalClass} {Class}";
+    var replayingClass = m.IsReplaying ? "opacity-60" : "";
+    var cls = $"play {(m.IsListening ? "on" : "off")} {replayingClass} {Class}";
 }
 
 <HeaderButton

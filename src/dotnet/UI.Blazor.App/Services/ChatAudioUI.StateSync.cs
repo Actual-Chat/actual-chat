@@ -18,10 +18,11 @@ public partial class ChatAudioUI
         var baseChains = new[] {
             AsyncChain.From(InitializeListening),
             AsyncChain.From(InvalidateActiveChatDependencies),
-            AsyncChain.From(InvalidateHistoricalPlaybackDependencies),
+            AsyncChain.From(InvalidateReplayDependencies),
             AsyncChain.From(PushRecordingState),
-            AsyncChain.From(PushRealtimePlaybackState),
-            AsyncChain.From(StopHistoricalPlaybackWhenRecordingStarts),
+            AsyncChain.From(ManageListeningPlayers),
+            AsyncChain.From(ManageReplay),
+            AsyncChain.From(StopReplayWhenRecordingStarts),
             AsyncChain.From(StopListeningWhenIdle),
             AsyncChain.From(ResetMicrophonePermissionAndStopRecordingOnDeviceAwake),
             AsyncChain.From(ReconnectOnRpcReconnect),
@@ -85,16 +86,16 @@ public partial class ChatAudioUI
         }
     }
 
-    private async Task InvalidateHistoricalPlaybackDependencies(CancellationToken cancellationToken)
+    private async Task InvalidateReplayDependencies(CancellationToken cancellationToken)
     {
         var oldChatId = (ChatId?)null;
-        var changes = ChatPlayers.PlaybackState.Computed.Changes(cancellationToken);
+        var changes = _replayState.Computed.Changes(cancellationToken);
         await foreach (var cPlaybackState in changes.ConfigureAwait(false)) {
-            var newChatId = (cPlaybackState.Value as HistoricalPlaybackState)?.ChatId;
+            var newChatId = cPlaybackState.Value?.ChatId;
             if (newChatId == oldChatId)
                 continue;
 
-            DebugLog?.LogDebug("InvalidateHistoricalPlaybackDependencies: *");
+            DebugLog?.LogDebug("InvalidateReplayDependencies: *");
             using (Invalidation.Begin()) {
                 if (oldChatId is not null)
                     _ = GetState(oldChatId);
@@ -126,8 +127,7 @@ public partial class ChatAudioUI
         }
     }
 
-    // TODO: get rid of this workaround when playback state is refactored and put this logic to PushPlaybackState
-    private async Task StopHistoricalPlaybackWhenRecordingStarts(CancellationToken cancellationToken)
+    private async Task StopReplayWhenRecordingStarts(CancellationToken cancellationToken)
     {
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -140,8 +140,8 @@ public partial class ChatAudioUI
                 .When(x => x.ChatId is not null, FixedDelayer.MinDelay, cancellationToken)
                 .ConfigureAwait(false);
             var chatId = cRecordingState.Value.ChatId;
-            if (ChatPlayers.PlaybackState.Value is HistoricalPlaybackState historicalPlaybackState && historicalPlaybackState.ChatId != chatId)
-                ChatPlayers.StopHistoricalPlayback();
+            if (_replayState.Value is { } replayState && replayState.ChatId != chatId)
+                StopReplay();
             cRecordingState = await cRecordingState.When(x => x.ChatId is null || x.ChatId != chatId, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -223,59 +223,120 @@ public partial class ChatAudioUI
         }
     }
 
-    private async Task PushRealtimePlaybackState(CancellationToken cancellationToken)
+    private async Task ManageListeningPlayers(CancellationToken cancellationToken)
     {
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        using var cancellationTaskScope = cancellationToken.ToTask();
-        var cancellationTask = cancellationTaskScope.Resource;
-
-        var playbackState = ChatPlayers.PlaybackState;
-        var cExpectedPlaybackState = await Computed
-            .Capture(GetExpectedRealtimePlaybackState, cancellationToken)
+        var cListeningChatIds = await Computed
+            .Capture(GetListeningChatIds, cancellationToken)
             .ConfigureAwait(false);
-        var cActualPlaybackState = playbackState.Computed;
+        var lastChatIds = ImmutableHashSet<ChatId>.Empty;
 
-        var syncedPlaybackState = (RealtimePlaybackState?)null;
-        while (!cancellationToken.IsCancellationRequested) {
-            var expectedPlaybackState = cExpectedPlaybackState.Value;
-            var actualPlaybackState = cActualPlaybackState.Value;
-            if (actualPlaybackState is HistoricalPlaybackState) {
-                // Historical playback "overrides" realtime playback
-                syncedPlaybackState = null; // But we must re-sync once it completes
-                goto skip;
-            }
+        await foreach (var change in cListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
+            var newChatIds = change.Value;
+            try {
+                var removedChatIds = lastChatIds.Except(newChatIds);
+                var addedChatIds = newChatIds.Except(lastChatIds);
 
-            if (ReferenceEquals(expectedPlaybackState, syncedPlaybackState))
-                goto skip; // Already in sync
-            if (ReferenceEquals(expectedPlaybackState, actualPlaybackState)) {
-                // It's _somehow_ in sync - normally we shouldn't land here
-                syncedPlaybackState = expectedPlaybackState;
-                goto skip;
-            }
+                if (!removedChatIds.IsEmpty) {
+                    await StopPlayers(removedChatIds, ChatPlayerKind.Listening).ConfigureAwait(false);
+                }
 
-            syncedPlaybackState = expectedPlaybackState;
-            if (expectedPlaybackState != null) {
-                DebugLog?.LogDebug(nameof(PushRealtimePlaybackState) + ": starting playback");
-                ChatPlayers.StartRealtimePlayback(expectedPlaybackState);
-            }
-            else {
-                DebugLog?.LogDebug(nameof(PushRealtimePlaybackState) + ": stopping playback");
-                ChatPlayers.StopRealtimePlayback();
-            }
+                if (!addedChatIds.IsEmpty) {
+                    var audioFocusScope = await TryAcquireAudioFocus("Listening players").ConfigureAwait(false);
+                    if (audioFocusScope is null) {
+                        Log.LogWarning("ManageListeningPlayers: failed to gain audio focus");
+                        // Can't acquire focus; stop the newly requested chats
+                        foreach (var chatId in addedChatIds)
+                            await SetListeningState(chatId, false).ConfigureAwait(false);
+                        continue;
+                    }
+                    if (lastChatIds.IsEmpty)
+                        _ = TuneUI.Play(Tune.StartListening);
+                    await StartListeningPlayers(addedChatIds, cancellationToken).ConfigureAwait(false);
+                }
 
-            skip:
-            DebugLog?.LogDebug("PushRealtimePlaybackState: waiting for changes");
-            await Task.WhenAny(
-                cActualPlaybackState.WhenInvalidated(cancellationToken),
-                cExpectedPlaybackState.WhenInvalidated(cancellationToken),
-                cancellationTask
-            ).ConfigureAwait(false);
-            cExpectedPlaybackState = await cExpectedPlaybackState.Update(cancellationToken).ConfigureAwait(false);
-            cActualPlaybackState = playbackState.Computed; // It's backed by MutableState, so no need for update
+                if (newChatIds.IsEmpty && !lastChatIds.IsEmpty) {
+                    _ = TuneUI.Play(Tune.StopListening);
+                    // Release audio focus only if replay is also not active
+                    if (_replayState.Value is null)
+                        TryReleaseAudioFocus();
+                }
+
+                AudioWidget.OnListeningStateChanged(newChatIds.IsEmpty ? null : newChatIds);
+                AudioWidget.UpdateState();
+                lastChatIds = newChatIds;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                Log.LogError(ex, "ManageListeningPlayers failed");
+                _ = StopAllPlayers();
+                lastChatIds = ImmutableHashSet<ChatId>.Empty;
+            }
         }
-        // ReSharper disable once FunctionNeverReturns
+    }
+
+    private async Task ManageReplay(CancellationToken cancellationToken)
+    {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        ReplayState? lastState = null;
+        var changes = _replayState.Computed.Changes(cancellationToken);
+        await foreach (var cState in changes.ConfigureAwait(false)) {
+            var newState = cState.Value;
+            try {
+                if (newState == null) {
+                    // Stop replay
+                    if (lastState is not null) {
+                        _ = TuneUI.Play(Tune.StopReplay);
+                        await StopPlayer(lastState.ChatId, ChatPlayerKind.Replaying).ConfigureAwait(false);
+                        AudioWidget.OnReplayStateChanged(null);
+                        AudioWidget.UpdateState();
+                        // Release audio focus if no listening either
+                        var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
+                        if (listeningChatIds.IsEmpty)
+                            TryReleaseAudioFocus();
+                    }
+                    lastState = null;
+                    continue;
+                }
+
+                // Start or switch replay
+                var audioFocusScope = await TryAcquireAudioFocus("Replay").ConfigureAwait(false);
+                if (audioFocusScope is null) {
+                    Log.LogWarning("ManageReplay: failed to gain audio focus, stopping");
+                    _replayState.Value = null;
+                    continue;
+                }
+
+                if (lastState is not null) {
+                    // Stop previous replay player
+                    await StopPlayer(lastState.ChatId, ChatPlayerKind.Replaying).ConfigureAwait(false);
+                }
+
+                _ = TuneUI.Play(Tune.StartReplay);
+                var startTask = StartReplayPlayer(newState.ChatId, newState.StartAt, cancellationToken);
+                // Set up "resume listening after done" background task
+                _ = BackgroundTask.Run(async () => {
+                    var endPlaybackTask = await startTask.ConfigureAwait(false);
+                    await endPlaybackTask.ConfigureAwait(false);
+                    await Clocks.CpuClock.Delay(RestorePreviousPlaybackStateDelay, cancellationToken).ConfigureAwait(false);
+                    if (_replayState.Value == newState)
+                        _replayState.Value = null;
+                }, cancellationToken);
+                await startTask.ConfigureAwait(false);
+
+                AudioWidget.OnReplayStateChanged(newState);
+                AudioWidget.UpdateState();
+                lastState = newState;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                Log.LogError(ex, "ManageReplay failed");
+                _replayState.Value = null;
+                lastState = null;
+            }
+        }
     }
 
     private async Task StopListeningWhenIdle(CancellationToken cancellationToken)
@@ -657,8 +718,8 @@ public partial class ChatAudioUI
             TimeSpan preCountdownTimeout,
             TimeSpan checkPeriod)
         {
-            ArgumentOutOfRangeException.ThrowIfLessThan(idleTimeout, TimeSpan.Zero, nameof(idleTimeout));
-            ArgumentOutOfRangeException.ThrowIfLessThan(checkPeriod, TimeSpan.Zero, nameof(checkPeriod));
+            ArgumentOutOfRangeException.ThrowIfLessThan(idleTimeout, TimeSpan.Zero);
+            ArgumentOutOfRangeException.ThrowIfLessThan(checkPeriod, TimeSpan.Zero);
             if (preCountdownTimeout > idleTimeout)
                 throw new ArgumentOutOfRangeException(
                     nameof(preCountdownTimeout), preCountdownTimeout,

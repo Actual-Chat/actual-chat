@@ -1,25 +1,32 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed class HistoricalChatPlayer : ChatPlayer
+public sealed class ChatReplayer : ChatPlayer
 {
-    public HistoricalChatPlayer(AppUIHub hub, ChatId chatId)
+    public ChatReplayer(AppUIHub hub, ChatId chatId)
         : base(hub, chatId)
-        => PlayerKind = ChatPlayerKind.Historical;
+        => PlayerKind = ChatPlayerKind.Replaying;
+
+    public override void Pause()
+    {
+        _ = Playback.Pause(CancellationToken.None);
+        if (ChatAudioUI!.ReplayState.Value is { } rs && rs.ChatId == ChatId)
+            ChatAudioUI!.TryReleaseAudioFocus();
+        Hub.AudioWidget.UpdateState();
+    }
 
     public override async Task Resume()
     {
-        var playbackState = ChatPlayers!.PlaybackState.Value;
-        if (playbackState is not HistoricalPlaybackState historicalPlaybackState
-            || historicalPlaybackState.ChatId != ChatId) {
-            Log.LogInformation("Can't resume historical playback. State: '{State}', ChatId: '{ChatId}'", playbackState, ChatId);
+        var replayState = ChatAudioUI!.ReplayState.Value;
+        if (replayState is null || replayState.ChatId != ChatId) {
+            Log.LogInformation("Can't resume replay. State: '{State}', ChatId: '{ChatId}'", replayState, ChatId);
             return;
         }
 
-        if (!await ChatPlayers!.TryGainAudioFocusForResume(this).ConfigureAwait(false))
+        if (!await ChatAudioUI!.TryGainAudioFocusForResume(this).ConfigureAwait(false))
             return;
 
         _ = Playback.Resume(default);
-        ChatPlayers!.UpdateMediaSessionState();
+        Hub.AudioWidget.UpdateState();
     }
 
     protected override async Task Play(
@@ -32,7 +39,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return;
         }
 
-        Operation = $"historical playback in \"{chat.Title}\"";
+        Operation = $"replaying in \"{chat.Title}\"";
         var clock = Clocks.CpuClock;
         var initialSleepAndPauseDuration = SleepAndPauseDuration;
         var realStartAt = RealNow();

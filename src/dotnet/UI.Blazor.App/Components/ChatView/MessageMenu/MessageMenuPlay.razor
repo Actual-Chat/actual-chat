@@ -45,7 +45,7 @@
 
 @code {
     private IChats Chats => Hub.Chats;
-    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     [Parameter] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool IsMenu { get; set; }
@@ -61,11 +61,11 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
+        var replayState = await ChatAudioUI.ReplayState.Use(cancellationToken).ConfigureAwait(false);
+        if (replayState is not { ChatId: var chatId })
             return Model.NotPlaying;
 
-        var player = await ChatPlayers.GetHistoricalChatPlayer(chatId, cancellationToken).ConfigureAwait(false);
+        var player = await ChatAudioUI.GetReplayer(chatId, cancellationToken).ConfigureAwait(false);
         var lastState = State.Value;
         if (player is null) {
             // This happens when player is being disposed, which means this method
@@ -99,7 +99,7 @@
     }
 
     private Task OnStop() {
-        ChatPlayers.StopHistoricalPlayback();
+        ChatAudioUI.StopReplay();
         return Task.CompletedTask;
     }
 
@@ -114,8 +114,8 @@
         }
 
         var startAt = audioEntry.BeginsAt;
-        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
-        await chatPlayers.StartHistoricalPlayback(chatId, startAt);
+        var chatAudioUI = Services.GetRequiredService<ChatAudioUI>();
+        chatAudioUI.StartReplay(chatId, startAt);
     }
 
     // Nested types
