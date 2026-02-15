@@ -35,13 +35,15 @@ public static partial class MarkupExt
         => MarkupFormatter.Readable.Format(markup);
 
     public static bool IsBlockMarkup(this Markup markup)
-        => markup is CodeBlockMarkup or ListMarkup;
+        => markup is CodeBlockMarkup or ListMarkup or ParagraphMarkup
+            || (markup is MarkupSeq seq && seq.Items.Any(IsBlockMarkup));
 
     public static bool IsPlainText(this Markup markup)
         => markup switch {
             PlainTextMarkup => true,
             NewLineMarkup => true,
-            MarkupSeq seq => seq.Items.All(item => item is PlainTextMarkup or NewLineMarkup),
+            ParagraphMarkup para => para.Content.IsPlainText(),
+            MarkupSeq seq => seq.Items.All(item => item.IsPlainText()),
             _ => markup == Markup.Empty,
         };
 }

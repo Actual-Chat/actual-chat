@@ -3,49 +3,72 @@
 public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
-    public void BasicTest()
+    public void EmptyTextTest()
     {
-        var m = Parse<PlainTextMarkup>("123 456", out var text);
-        m.Text.Should().Be(text);
-
-        m = Parse<PlainTextMarkup>("123 _ 456", out text);
-        m.Text.Should().Be(text);
-
-        m = Parse<PlainTextMarkup>(" ", out text);
-        m.Text.Should().Be(text);
-
-        m = Parse<PlainTextMarkup>("", out text);
-        m.Text.Should().Be(text);
+        var m = Parse<ParagraphMarkup>("", out var text);
+        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
     }
 
     [Fact]
     public void NewLineTest()
     {
+        var m = Parse<MarkupSeq>(Environment.NewLine, out var text);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+    }
+
+    [Fact]
+    public void BasicTest()
+    {
+        var m = Parse<ParagraphMarkup>("123 456", out var text);
+        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+
+        m = Parse<ParagraphMarkup>("123 _ 456", out text);
+        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+
+        m = Parse<ParagraphMarkup>(" ", out text);
+        m.Content.Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(text);
+    }
+
+    [Fact]
+    public void TwoLinesParagraphTest()
+    {
         var m = Parse<MarkupSeq>("Мороз и солнце; день\r\n чудесный!");
-        m.Items.Count(m => m is PlainTextMarkup).Should().Be(2);
-        m.Items.Count(m => m is NewLineMarkup).Should().Be(1);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("Мороз и солнце; день");
+        m.Items[1].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be(" чудесный!");
     }
 
     [Fact]
     public void UrlTest()
     {
-        var m = Parse<UrlMarkup>("https://habr.com/ru/all/", out var text);
+        var p = Parse<ParagraphMarkup>("https://habr.com/ru/all/", out var text);
+        var m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
 
-        m = Parse<UrlMarkup>("https://console.cloud.google.com/logs/query;query=resource.labels.container_name%3D%22actual-chat-app%22;timeRange=PT1H;summaryFields=:false:32:beginning:false;cursorTimestamp=2022-05-23T10:19:37.057723681Z?referrer=search&project=actual-chat-app-prod", out text);
+        p = Parse<ParagraphMarkup>("https://console.cloud.google.com/logs/query;query=resource.labels.container_name%3D%22actual-chat-app%22;timeRange=PT1H;summaryFields=:false:32:beginning:false;cursorTimestamp=2022-05-23T10:19:37.057723681Z?referrer=search&project=actual-chat-app-prod", out text);
+        m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
 
-        m = Parse<UrlMarkup>("https://www.booking.com/hotel/gr/peninsula-agia-pelagia.html?label=gr-9DH6*qo6Fm", out text);
+        p = Parse<ParagraphMarkup>("https://www.booking.com/hotel/gr/peninsula-agia-pelagia.html?label=gr-9DH6*qo6Fm", out text);
+        m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
 
-        m = Parse<UrlMarkup>("https://www.roveconcepts.com/round-chair?aid[12]=173&aid[79]=724&weird=|this|", out text);
+        p = Parse<ParagraphMarkup>("https://www.roveconcepts.com/round-chair?aid[12]=173&aid[79]=724&weird=|this|", out text);
+        m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
 
-        m = Parse<UrlMarkup>($"https://{Constants.Hosts.Voxt}/?ws=!1m4!1m3", out text);
+        p = Parse<ParagraphMarkup>($"https://{Constants.Hosts.Voxt}/?ws=!1m4!1m3", out text);
+        m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
     }
@@ -57,7 +80,8 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     public void UrlWithQueryTest(string input, string? expected = null)
     {
         expected ??= input;
-        var m = Parse<UrlMarkup>(input, out var text);
+        var p = Parse<ParagraphMarkup>(input, out var text);
+        var m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text).And.Be(expected);
         m.Kind.Should().Be(UrlMarkupKind.Www);
     }
@@ -65,7 +89,8 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void UrlWithQueryAndHashTest()
     {
-        var m = Parse<MarkupSeq>("https://docs.google.com/spreadsheets/d/nj/edit#gid=1534300344 x");
+        var p = Parse<ParagraphMarkup>("https://docs.google.com/spreadsheets/d/nj/edit#gid=1534300344 x");
+        var m = p.Content.Should().BeOfType<MarkupSeq>().Subject;
         m.Items.Length.Should().Be(2);
         var url = (UrlMarkup)m.Items[0];
         url.Url.Should().EndWith("344");
@@ -76,7 +101,8 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void UrlWithCommaInHashTest()
     {
-        var m = Parse<MarkupSeq>("https://github.com/Actual-Chat/actual-chat/blob/710d73de02f1241e1f4b2e8c13e6f8978c3896c9/src/nodejs/styles/tailwind.css#L18,L23 x");
+        var p = Parse<ParagraphMarkup>("https://github.com/Actual-Chat/actual-chat/blob/710d73de02f1241e1f4b2e8c13e6f8978c3896c9/src/nodejs/styles/tailwind.css#L18,L23 x");
+        var m = p.Content.Should().BeOfType<MarkupSeq>().Subject;
         m.Items.Length.Should().Be(2);
         var url = (UrlMarkup)m.Items[0];
         url.Url.Should().EndWith("L18,L23");
@@ -88,7 +114,8 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     public void UrlWithQuoteInQuery()
     {
         var url = $"https://{Constants.Hosts.Voxt}?k='v'";
-        var m = Parse<MarkupSeq>($"{url} x");
+        var p = Parse<ParagraphMarkup>($"{url} x");
+        var m = p.Content.Should().BeOfType<MarkupSeq>().Subject;
         m.Items.Length.Should().Be(2);
         var urlMarkup = (UrlMarkup)m.Items[0];
         urlMarkup.Url.Should().Be($"https://{Constants.Hosts.Voxt}?k='v'");
@@ -99,40 +126,46 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void MentionTest()
     {
-        var m = Parse<MentionMarkup>("@a:abcdef:1", out var text);
+        var p = Parse<ParagraphMarkup>("@a:abcdef:1", out var text);
+        var m = p.Content.Should().BeOfType<MentionMarkup>().Subject;
         m.Id.Value.Should().Be(text[1..]);
 
-        m = Parse<MentionMarkup>("@u:userId", out text);
+        p = Parse<ParagraphMarkup>("@u:userId", out text);
+        m = p.Content.Should().BeOfType<MentionMarkup>().Subject;
         m.Id.Value.Should().Be(text[1..]);
 
-        Parse<MarkupSeq>("@alex", out text);
-        Parse<MarkupSeq>("@ something", out text);
+        Parse<ParagraphMarkup>("@alex", out text);
+        Parse<ParagraphMarkup>("@ something", out text);
     }
 
     [Fact]
     public void NamedMentionTest()
     {
-        var m = Parse<MentionMarkup>("@`a`a:chatid:1");
+        var p = Parse<ParagraphMarkup>("@`a`a:chatid:1");
+        var m = p.Content.Should().BeOfType<MentionMarkup>().Subject;
         m.Name.Should().Be("a");
         m.Id.Value.Should().Be("a:chatid:1");
 
-        m = Parse<MentionMarkup>("@`a x`a:chatid:1");
+        p = Parse<ParagraphMarkup>("@`a x`a:chatid:1");
+        m = p.Content.Should().BeOfType<MentionMarkup>().Subject;
         m.Name.Should().Be("a x");
         m.Id.Value.Should().Be("a:chatid:1");
 
         // Empty id case
-        Parse<MarkupSeq>("@`Alex Yakunin`");
-        Parse<MarkupSeq>("@`a`b");
+        Parse<ParagraphMarkup>("@`Alex Yakunin`");
+        Parse<ParagraphMarkup>("@`a`b");
     }
 
     [Fact]
     public void ImageTest()
     {
-        var m = Parse<UrlMarkup>("https://pravlife.org/sites/field/image/13_48.jpg", out var text);
+        var p = Parse<ParagraphMarkup>("https://pravlife.org/sites/field/image/13_48.jpg", out var text);
+        var m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
 
-        m = Parse<UrlMarkup>("www.pravlife.org/sites/field/image/13_48.jpg", out text);
+        p = Parse<ParagraphMarkup>("www.pravlife.org/sites/field/image/13_48.jpg", out text);
+        m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Www);
     }
@@ -140,11 +173,13 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void EmailTest()
     {
-        var m = Parse<UrlMarkup>("whatever@gmail.com", out var text);
+        var p = Parse<ParagraphMarkup>("whatever@gmail.com", out var text);
+        var m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Email);
 
-        m = Parse<UrlMarkup>("mailto:whatever@gmail.com", out text);
+        p = Parse<ParagraphMarkup>("mailto:whatever@gmail.com", out text);
+        m = p.Content.Should().BeOfType<UrlMarkup>().Subject;
         m.Url.Should().Be(text);
         m.Kind.Should().Be(UrlMarkupKind.Email);
     }
@@ -152,7 +187,8 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void ItalicTest()
     {
-        var m = Parse<StylizedMarkup>("*italic text*", out var text);
+        var p = Parse<ParagraphMarkup>("*italic text*", out var text);
+        var m = p.Content.Should().BeOfType<StylizedMarkup>().Subject;
         m.Style.Should().Be(TextStyle.Italic);
         var m1 = m.Content.Should().BeOfType<PlainTextMarkup>().Subject;
         m1.Text.Should().Be(text[1..^1]);
@@ -161,7 +197,8 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void BoldTest()
     {
-        var m = Parse<StylizedMarkup>("**bold text**", out var text);
+        var p = Parse<ParagraphMarkup>("**bold text**", out var text);
+        var m = p.Content.Should().BeOfType<StylizedMarkup>().Subject;
         m.Style.Should().Be(TextStyle.Bold);
         var m1 = m.Content.Should().BeOfType<PlainTextMarkup>().Subject;
         m1.Text.Should().Be(text[2..^2]);
@@ -170,7 +207,8 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void PreformattedTest()
     {
-        var m = Parse<PreformattedTextMarkup>("`a``b`");
+        var p = Parse<ParagraphMarkup>("`a``b`");
+        var m = p.Content.Should().BeOfType<PreformattedTextMarkup>().Subject;
         m.Text.Should().Be("a`b");
     }
 
@@ -231,6 +269,10 @@ code
 ```
 2");
         m.Items.Length.Should().Be(4);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[1].Should().BeOfType<ParagraphMarkup>();
+        m.Items[2].Should().BeOfType<CodeBlockMarkup>();
+        m.Items[3].Should().BeOfType<ParagraphMarkup>();
     }
 
     [Fact]
@@ -242,20 +284,26 @@ code
 code
 ```
 2 ```cs");
-        m.Items.Length.Should().Be(8);
+        m.Items.Length.Should().Be(4);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[1].Should().BeOfType<ParagraphMarkup>();
+        m.Items[2].Should().BeOfType<CodeBlockMarkup>();
+        m.Items[3].Should().BeOfType<ParagraphMarkup>();
     }
 
     [Fact]
     public void UnparsedTest()
     {
-        var m = Parse<UnparsedTextMarkup>("**", out var text);
+        var p = Parse<ParagraphMarkup>("**", out var text);
+        var m = p.Content.Should().BeOfType<UnparsedTextMarkup>().Subject;
         m.Text.Should().Be(text);
     }
 
     [Fact]
     public void MixedTest()
     {
-        var m = Parse<MarkupSeq>("***bi*** @alex `a``b` *i* **b** *");
+        var p = Parse<ParagraphMarkup>("***bi*** @alex `a``b` *i* **b** *");
+        var m = p.Content.Should().BeOfType<MarkupSeq>().Subject;
         m.Items.Length.Should().Be(11);
         var um = (UnparsedTextMarkup)m.Items.Last();
         um.Text.Should().Be("*");
@@ -264,14 +312,16 @@ code
     [Fact]
     public void SpecialTest_CssRuleCase()
     {
-        var m = Parse<PlainTextMarkup>("--background-message-hover: #f3f4f6;", out var text);
+        var p = Parse<ParagraphMarkup>("--background-message-hover: #f3f4f6;", out var text);
+        var m = p.Content.Should().BeOfType<PlainTextMarkup>().Subject;
         m.Text.Should().Be(text);
     }
 
     [Fact]
     public void SpecialTest_SmileCase()
     {
-        var m = Parse<PlainTextMarkup>(":)", out var text);
+        var p = Parse<ParagraphMarkup>(":)", out var text);
+        var m = p.Content.Should().BeOfType<PlainTextMarkup>().Subject;
         m.Text.Should().Be(text);
     }
 
@@ -279,18 +329,22 @@ code
     [Fact]
     public void SpecialTest_DoubleSmileCase()
     {
-        var m = Parse<PlainTextMarkup>(":) :)", out var text);
+        var p = Parse<ParagraphMarkup>(":) :)", out var text);
+        var m = p.Content.Should().BeOfType<PlainTextMarkup>().Subject;
         m.Text.Should().Be(text);
     }
 
     [Fact]
     public void SpecialTest_MultilineCase()
     {
-        var m = Parse<MarkupSeq>("line1 \nline2", out var text);
-        m.Items.Length.Should().Be(3);
-        m.Items[0].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line1 ");
-        m.Items[1].Should().Be(NewLineMarkup.Instance);
-        m.Items[2].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("line2");
+        var m = Parse<MarkupSeq>("line1 \nline2", out _);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("line1 ");
+        m.Items[1].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("line2");
     }
 
     [Fact]
@@ -344,9 +398,11 @@ code
             """;
         var m = Parse<MarkupSeq>(text);
         m.Items.Length.Should().Be(3);
-        m.Items[0].Should().BeOfType<PlainTextMarkup>()
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("Text before the code block.");
-        m.Items[2].Should().BeOfType<PlainTextMarkup>()
+        m.Items[2].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("Text after the code block.");
         m.Items[1].Should().BeOfType<CodeBlockMarkup>()
             .Which.Code.Should().Be("Code block\r\nis here\r\n");
@@ -365,9 +421,11 @@ code
             """;
         var m = Parse<MarkupSeq>(text);
         m.Items.Length.Should().Be(3);
-        m.Items[0].Should().BeOfType<PlainTextMarkup>()
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("Text before the list.");
-        m.Items[2].Should().BeOfType<PlainTextMarkup>()
+        m.Items[2].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("Text after the list.");
 
         var item1 = m.Items[1].Should().BeOfType<ListMarkup>().Subject;
@@ -398,9 +456,11 @@ code
             """;
         var m = Parse<MarkupSeq>(text);
         m.Items.Length.Should().Be(4);
-        m.Items[0].Should().BeOfType<PlainTextMarkup>()
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("Text before the list.");
-        m.Items[3].Should().BeOfType<PlainTextMarkup>()
+        m.Items[3].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("Text after the list.");
 
         var item1 = m.Items[1].Should().BeOfType<ListMarkup>().Subject;
@@ -414,6 +474,123 @@ code
 
         m.Items[2].Should().BeOfType<CodeBlockMarkup>()
             .Which.Code.Should().Be("some code\r\n");
+    }
+
+    [Fact]
+    public void KeepNewLineAfterListBlock()
+    {
+        var text =
+            """
+            - List item 1 is here.
+            - List item 2 is here.
+
+            """;
+
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<ListMarkup>()
+            .Which.Items.Should().HaveCount(2);
+        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+    }
+
+    [Fact]
+    public void KeepNewLineAfterCodeBlock()
+    {
+        var text =
+            """
+            ```
+            some code block
+            ```
+
+            """;
+
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<CodeBlockMarkup>();
+        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+    }
+
+    [Fact]
+    public void ListBlockWithNewLineSeparator()
+    {
+        var text =
+            """
+            **Text before the list.**
+            - List item 1 is here.
+            - List item 2 is here.
+
+            **Text after the list.**
+            - List item 3 is here.
+            - List item 4 is here.
+            """;
+        var m = Parse<MarkupSeq>(text);
+        m.Items.Length.Should().Be(5);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<StylizedMarkup>()
+            .Which.Style.Should().Be(TextStyle.Bold);
+        m.Items[1].Should().BeOfType<ListMarkup>()
+            .Which.Items.Should().HaveCount(2);
+        m.Items[2].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[3].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<StylizedMarkup>()
+            .Which.Style.Should().Be(TextStyle.Bold);
+        m.Items[4].Should().BeOfType<ListMarkup>()
+            .Which.Items.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void TwoListsAndCodeBlock()
+    {
+        var text =
+            """
+            **header 1**
+            - line 1
+            - line 2
+
+            *header 2**
+            - line 3
+            - line 4
+
+            ```
+            some code block
+            ```
+            """;
+        var m = Parse<MarkupSeq>(text);
+    }
+
+    [Fact]
+    public void TwoListsAndCodeBlock2()
+    {
+        var text =
+            """
+            **header 1**
+            - line 1
+            - line 2
+
+
+            *header 2**
+            - line 3
+            - line 4
+
+
+            ```
+            some code block
+            ```
+            """;
+        var m = Parse<MarkupSeq>(text);
+    }
+
+    [Fact]
+    public void BlockCodeWithNewLineAfter()
+    {
+        var text =
+            """
+            ```
+            some code block
+            ```
+
+            """;
+        var m = Parse<MarkupSeq>(text);
     }
 
     [Theory]
@@ -457,9 +634,12 @@ code
     {
         WriteLine($"Input:");
         WriteLine($"  \"{text}\"");
+        WriteLine("");
+        WriteLine("Parsing:");
         ParserExt.DebugOutput = line => WriteLine(line);
         var parsed = MarkupParser.ParseRaw(text, true);
         var simplified = parsed.Simplify();
+        WriteLine("");
         WriteLine("Output:");
         WriteLine($"  {simplified}");
         WriteLine($"  Raw: {parsed}");

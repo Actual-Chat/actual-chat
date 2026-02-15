@@ -71,6 +71,14 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
             : new MarkupSeq(newItems.ToArray());
     }
 
+    protected override Markup VisitParagraph(ParagraphMarkup markup, ref State state)
+    {
+        if (!state.CanAppend())
+            return Markup.Empty;
+        var newContent = Visit(markup.Content, ref state);
+        return newContent == markup.Content ? markup : new ParagraphMarkup(newContent);
+    }
+
     // We assume any mention is of length 8
     protected override Markup VisitMention(MentionMarkup markup, ref State state)
     {

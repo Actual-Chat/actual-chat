@@ -5,6 +5,7 @@ public abstract record MarkupVisitorWithState<TState, TResult>
     protected virtual TResult Visit(Markup markup, ref TState state)
         => markup switch {
             MarkupSeq markupSeq => VisitSeq(markupSeq, ref state),
+            ParagraphMarkup paragraphMarkup => VisitParagraph(paragraphMarkup, ref state),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup, ref state),
             MentionMarkup mention => VisitMention(mention, ref state),
             UrlMarkup urlMarkup => VisitUrl(urlMarkup, ref state),
@@ -27,6 +28,7 @@ public abstract record MarkupVisitorWithState<TState, TResult>
 
     protected abstract TResult VisitList(ListMarkup markup, ref TState state);
     protected abstract TResult VisitListItem(ListItemMarkup markup, ref TState state);
+    protected abstract TResult VisitParagraph(ParagraphMarkup markup, ref TState state);
 
     protected abstract TResult VisitSeq(MarkupSeq markup, ref TState state);
     protected abstract TResult VisitStylized(StylizedMarkup markup, ref TState state);
@@ -52,6 +54,9 @@ public abstract record MarkupVisitorWithState<TState>
         switch (markup) {
         case MarkupSeq markupSeq:
             VisitSeq(markupSeq, ref state);
+            break;
+        case ParagraphMarkup paragraphMarkup:
+            VisitParagraph(paragraphMarkup, ref state);
             break;
         case CodeBlockMarkup codeBlockMarkup:
             VisitCodeBlock(codeBlockMarkup, ref state);
@@ -117,6 +122,7 @@ public abstract record MarkupVisitorWithState<TState>
     }
 
     protected abstract void VisitListItem(ListItemMarkup markup, ref TState state);
+    protected abstract void VisitParagraph(ParagraphMarkup markup, ref TState state);
     protected abstract void VisitStylized(StylizedMarkup markup, ref TState state);
 
     protected abstract void VisitUrl(UrlMarkup markup, ref TState state);
