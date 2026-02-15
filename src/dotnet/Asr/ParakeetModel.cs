@@ -6,7 +6,7 @@ namespace ActualChat.Asr;
 /// <summary>
 /// Parakeet TDT v3 ASR model using 3 ONNX sessions: preprocessor, encoder, decoder_joint.
 /// </summary>
-public sealed class ParakeetModel : IDisposable
+public sealed class ParakeetModel(ILogger? log = null) : IDisposable
 {
     private const int SubsamplingFactor = 8;
     private const float WindowStep = 0.01f; // 10ms per frame
@@ -16,17 +16,12 @@ public sealed class ParakeetModel : IDisposable
     private InferenceSession? _decoderJoint;
     private TdtDecoder? _decoder;
     private Vocabulary? _vocab;
-    private readonly ILogger _log;
+    private readonly ILogger _log = log ?? NullLogger.Instance;
     private bool _disposed;
 
     private static readonly int[] Shape1 = [1];
 
     public bool IsInitialized => _preprocessor != null;
-
-    public ParakeetModel(ILogger? log = null)
-    {
-        _log = log ?? NullLogger.Instance;
-    }
 
     /// <summary>Loads the model from file paths.</summary>
     public void Load(ParakeetModelDownloader.ModelFiles modelFiles)

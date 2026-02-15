@@ -151,7 +151,8 @@ async Task TranscribeMicrophone()
                 var newPart = partial.FixedText.Length > lastFixedText.Length
                     ? partial.FixedText[lastFixedText.Length..].TrimStart()
                     : partial.FixedText;
-                Console.Write($"\r\x1b[2K{newPart}\n");
+
+                Write($"\r\x1b[2K{newPart}\n");
                 lastFixedText = partial.FixedText;
                 lastActiveText = ""; // force active redraw
             }
@@ -162,7 +163,7 @@ async Task TranscribeMicrophone()
                 var tail = lastActiveText.Length > 60
                     ? "..." + lastActiveText[^57..]
                     : lastActiveText;
-                Console.Write($"\r\x1b[2K\x1b[36m{tail}\x1b[0m \x1b[90m[x{speed}/{latencyMs}ms]\x1b[0m");
+                Write($"\r\x1b[2K\x1b[36m{tail}\x1b[0m \x1b[90m[x{speed}/{latencyMs}ms]\x1b[0m");
             }
         }
     }
