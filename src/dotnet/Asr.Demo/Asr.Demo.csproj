@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>ActualChat.Asr.Demo</RootNamespace>
+    <IsStandaloneProject>true</IsStandaloneProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Asr\Asr.csproj" />
+    <PackageReference Include="NAudio" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+  </ItemGroup>
+
+</Project>
