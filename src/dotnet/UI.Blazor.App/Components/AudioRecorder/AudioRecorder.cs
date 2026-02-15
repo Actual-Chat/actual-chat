@@ -19,8 +19,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private SessionTokens? _sessionTokens;
 
     private Activity? _recordingActivity;
-    private readonly AudioFocusConsumer _audioFocusConsumer;
-    private IAudioFocusActivation? _audioFocusActivation;
+    private readonly AudioFocusRequester _audioFocusRequester;
+    private AudioFocusScope? _audioFocusScope;
 
     private AppUIHub Hub { get; }
     private HostInfo HostInfo => Hub.HostInfo;
@@ -47,7 +47,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));
         _engine = Hub.Services.GetRequiredService<IAudioRecorderEngine>();
-        _audioFocusConsumer = new AudioFocusConsumer(AudioMode.Recording, LostFocusCallback);
+        _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Recording, OnAudioFocusLost);
     }
 
     protected override async Task DisposeAsyncCore()
@@ -84,8 +84,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         MarkStarting(chatId);
         try {
-            _audioFocusActivation = await AudioFocusUI.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
-            if (_audioFocusActivation is null)
+            _audioFocusScope = await AudioFocusUI.TryAcquire(_audioFocusRequester).ConfigureAwait(false);
+            if (_audioFocusScope is null)
                 Log.LogWarning("Failed to gain audio focus for recording. Continue without it");
 
             var isStarted = await _engine.Start(chatId, repliedChatEntryId, sessionToken, cancellationToken).WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
@@ -279,11 +279,11 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     private void ReleaseAudioFocus()
     {
-        _audioFocusActivation?.Release();
-        _audioFocusActivation = null;
+        _audioFocusScope?.Dispose();
+        _audioFocusScope = null;
     }
 
-    private RestoreFocusHandler? LostFocusCallback(bool mayRecover, bool canDuck)
+    private AudioFocusRestoreHandler? OnAudioFocusLost(bool mayRecover, bool canDuck)
         // Do nothing even app lost the audio focus.
         => null;
 

@@ -18,13 +18,13 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
                 "Failed to dispose AudioSession")
             .ToValueTask();
 
-    public Task Reconfigure(AudioMode mode)
+    public Task Reconfigure(AudioFocusMode mode)
         => MainThread.InvokeOnMainThreadAsync(() => ReconfigureUnsafe(mode));
 
-    public Task Reactivate(AudioMode mode)
+    public Task Reactivate(AudioFocusMode mode)
         => MainThread.InvokeOnMainThreadAsync(() => ReactivateUnsafe(mode));
 
-    private void ReactivateUnsafe(AudioMode mode)
+    private void ReactivateUnsafe(AudioFocusMode mode)
     {
         var session = AVAudioSession.SharedInstance();
         ConfigureUnsafe(session, mode);
@@ -38,7 +38,7 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         }
     }
 
-    private void ReconfigureUnsafe(AudioMode minMode)
+    private void ReconfigureUnsafe(AudioFocusMode minMode)
     {
         var session = AVAudioSession.SharedInstance();
         session.SetActive(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation).Assert("Failed to deactivate session");
@@ -46,16 +46,16 @@ public class AudioSession(AppUIHub hub) : IAsyncDisposable
         session.SetActive(true).Assert("Failed to activate session");
     }
 
-    private void ConfigureUnsafe(AVAudioSession session, AudioMode mode)
+    private void ConfigureUnsafe(AVAudioSession session, AudioFocusMode mode)
     {
-        if (mode is AudioMode.Recording) {
+        if (mode is AudioFocusMode.Recording) {
             session.SetCategory(AVAudioSessionCategory.PlayAndRecord,
                     AVAudioSessionCategoryOptions.DefaultToSpeaker | AVAudioSessionCategoryOptions.AllowBluetooth)
                 .Assert($"{mode}: failed to set category");
             session.SetPreferredIOBufferDuration(Constants.Audio.OpusFrameDuration.TotalSeconds, out var error);
             error.Assert("Failed to set preferred IO buffer duration");
         }
-        else if (mode is AudioMode.Playback)
+        else if (mode is AudioFocusMode.Playback)
             session.SetCategory(AVAudioSessionCategory.Playback).Assert($"{mode}: failed to set category");
         else
             session.SetCategory(AVAudioSessionCategory.Ambient).Assert($"{mode}: failed to set category");

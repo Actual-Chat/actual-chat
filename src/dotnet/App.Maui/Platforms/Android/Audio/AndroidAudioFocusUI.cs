@@ -8,8 +8,7 @@ namespace ActualChat.App.Maui.Audio;
 public class AndroidAudioFocusUI : MauiAudioFocusUI
 {
     private readonly AudioFocusHelper _focusHelper;
-    private long _idSeed;
-    private AudioFocusHandle? _handle;
+    private MauiAudioFocusHandle? _handle;
 
     public AndroidAudioFocusUI(AppUIHub hub)
         : base(hub)
@@ -19,20 +18,20 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
         _focusHelper.OnOutputDevicesChanged += OnOutputDevicesChanged;
     }
 
-    public override Task Recover(CancellationToken cancellationToken = default)
+    public override Task TryRecover(CancellationToken cancellationToken = default)
     {
-        Log.LogInformation("Recover: attempting to recover audio focus");
-        _handle?.RaiseRecoverFocus();
+        Log.LogInformation("TryRecover: attempting to recover audio focus");
+        _handle?.RaiseFocusRecover();
         return Task.CompletedTask;
     }
 
-    protected override async Task<AudioFocusHandle?> RequestAudioFocus(AudioMode mode)
+    protected override async Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode)
     {
-        Log.LogInformation("-> RequestAudioFocus, requested mode: '{Mode}', active focus handle id: '{Id}'", mode, _handle?.Id);
+        Log.LogInformation("-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}'", mode, _handle);
 
         var success = mode switch {
-            AudioMode.Recording => await _focusHelper.RequestFocusForCallAsync().ConfigureAwait(false),
-            AudioMode.Tunes => _focusHelper.RequestFocusForNotification(),
+            AudioFocusMode.Recording => await _focusHelper.RequestFocusForCallAsync().ConfigureAwait(false),
+            AudioFocusMode.Tune => _focusHelper.RequestFocusForNotification(),
             _ => await _focusHelper.RequestFocusForPlaybackAsync().ConfigureAwait(false)
         };
         if (!success) {
@@ -41,15 +40,13 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
             return null;
         }
 
-        var id = Interlocked.Increment(ref _idSeed);
-        var handle = new AudioFocusHandle(id, OnRelease);
+        var handle = new MauiAudioFocusHandle(OnRelease);
         _handle = handle;
-        Log.LogInformation("-- RequestAudioFocus: Success. Active focus handle id: {Id}, mode: {Mode}", handle.Id, mode);
+        Log.LogInformation("-- RequestAudioFocus: Success. Active handle: {Handle}, mode: {Mode}", handle, mode);
         return handle;
 
-        void OnRelease(AudioFocusHandle self)
-        {
-            Log.LogInformation("AudioFocusHandle '{Id}' releasing", self.Id);
+        void OnRelease(MauiAudioFocusHandle self) {
+            Log.LogInformation("AudioFocusHandle {Handle} releasing", self);
             // ReSharper disable once AccessToModifiedClosure
             if (_handle == self) {
                 _focusHelper.AbandonFocus();
@@ -60,22 +57,22 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
 
     private void OnFocusChanged(AudioFocus af)
     {
-        Log.LogInformation("-> OnFocusChanged: {AudioFocus}. Active focus handle id: {Id}", af, _handle?.Id);
+        Log.LogInformation("-> OnFocusChanged: {AudioFocus}. Active handle: {Handle}", af, _handle);
         if (_handle == null)
             return;
 
         if (af is AudioFocus.LossTransient or AudioFocus.LossTransientCanDuck)
-            _handle.RaiseLostFocus(true, af is AudioFocus.LossTransientCanDuck);
+            _handle.RaiseFocusLost(true, af is AudioFocus.LossTransientCanDuck);
         else if (af is AudioFocus.Loss)
-            _handle.RaiseLostFocus(false, false);
+            _handle.RaiseFocusLost(false, false);
         if (af is AudioFocus.Gain or AudioFocus.GainTransient or AudioFocus.GainTransientExclusive)
-            _handle.RaiseRecoverFocus();
+            _handle.RaiseFocusRecover();
     }
 
     private void OnOutputDevicesChanged()
     {
         // Note: Audio routing is now handled internally by AudioFocusHelper's device router
         // when devices change during active focus. This callback is kept for logging/monitoring.
-        Log.LogInformation("-> OnOutputDevicesChanged. Active focus handle id: {Id}", _handle?.Id);
+        Log.LogInformation("-> OnOutputDevicesChanged. Active handle: {Handle}", _handle);
     }
 }

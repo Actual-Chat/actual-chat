@@ -173,7 +173,7 @@
 
     [JSInvokable]
     public Task OnVideoPlaybackStopped()
-        => AudioFocusUI.Recover();
+        => AudioFocusUI.TryRecover();
 
     private string GetPreviewUrl(TextEntryAttachment attachment) {
         var url = UrlMapper.ContentUrl(attachment.Media.ContentId);

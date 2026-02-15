@@ -19,9 +19,9 @@ public class AudioEngines : ProcessorBase
     public AudioEngines(AppUIHub hub)
     {
         Hub = hub;
-        Tunes = new AudioEngine(AudioMode.Tunes, hub);
-        Playback = new AudioEngine(AudioMode.Playback, hub);
-        Recording = new AudioEngine(AudioMode.Recording, hub);
+        Tunes = new AudioEngine(AudioFocusMode.Tune, hub);
+        Playback = new AudioEngine(AudioFocusMode.Playback, hub);
+        Recording = new AudioEngine(AudioFocusMode.Recording, hub);
         _configurationChangeSubscription =
             Disposable.New(AVAudioEngine.Notifications.ObserveConfigurationChange(OnConfigurationChange),
                 NSNotificationCenter.DefaultCenter.RemoveObserver);
@@ -43,13 +43,13 @@ public class AudioEngines : ProcessorBase
         Recording.Pause();
     }
 
-    public void Resume(AudioMode mode)
+    public void Resume(AudioFocusMode mode)
     {
-        if (mode >= AudioMode.Tunes)
+        if (mode >= AudioFocusMode.Tune)
             Tunes.Resume();
-        if (mode >= AudioMode.Playback)
+        if (mode >= AudioFocusMode.Playback)
             Playback.Resume();
-        if (mode >= AudioMode.Recording)
+        if (mode >= AudioFocusMode.Recording)
             Recording.Resume();
     }
 

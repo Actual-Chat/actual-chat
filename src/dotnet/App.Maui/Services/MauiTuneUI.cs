@@ -8,13 +8,13 @@ namespace ActualChat.App.Maui.Services;
 public class MauiTuneUI : TuneUI
 {
     private readonly ConcurrentDictionary<string, Task<AsyncAudioPlayer>> _players = new(StringComparer.Ordinal);
-    private readonly AudioFocusConsumer _audioFocusConsumer;
-    private IAudioFocusActivation? _audioFocusActivation;
+    private readonly AudioFocusRequester _audioFocusRequester;
+    private AudioFocusScope? _audioFocusScope;
 
     private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
 
     public MauiTuneUI(UIHub hub) : base(hub)
-        => _audioFocusConsumer = new AudioFocusConsumer(AudioMode.Tunes, OnLostFocus);
+        => _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Tune, OnLostAudioFocus);
 
     public override void Dispose()
     {
@@ -74,8 +74,8 @@ public class MauiTuneUI : TuneUI
 
         async Task PlayInternal(AsyncAudioPlayer player)
         {
-            var audioFocusActivation = await TryGainAudioFocus().ConfigureAwait(false);
-            if (audioFocusActivation is null)
+            var scope = await TryAcquireAudioFocus().ConfigureAwait(false);
+            if (scope is null)
                 return;
 
             await player.PlayAsync(CancellationToken.None).ConfigureAwait(false);
@@ -109,26 +109,26 @@ public class MauiTuneUI : TuneUI
 
     // Private methods
 
-    private async Task<IAudioFocusActivation?> TryGainAudioFocus()
+    private async Task<AudioFocusScope?> TryAcquireAudioFocus()
     {
-        if (_audioFocusActivation is not null && !_audioFocusActivation.IsSuspended) {
-            Log.LogInformation("Already have audio focus Id={Id}", _audioFocusActivation.Id);
-            return _audioFocusActivation;
+        if (_audioFocusScope is not null && !_audioFocusScope.IsSuspended) {
+            Log.LogInformation("Already have audio focus {Scope}", _audioFocusScope);
+            return _audioFocusScope;
         }
-        _audioFocusActivation = await AudioFocusUI.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
-        return _audioFocusActivation;
+        _audioFocusScope = await AudioFocusUI.TryAcquire(_audioFocusRequester).ConfigureAwait(false);
+        return _audioFocusScope;
     }
 
     private void ReleaseAudioFocus()
     {
-        _audioFocusActivation?.Release();
-        _audioFocusActivation = null;
+        _audioFocusScope?.Dispose();
+        _audioFocusScope = null;
     }
 
-    private RestoreFocusHandler? OnLostFocus(bool mayRecover, bool canDuck)
+    private AudioFocusRestoreHandler? OnLostAudioFocus(bool mayRecover, bool canDuck)
     {
         if (!mayRecover)
-            _audioFocusActivation = null;
+            _audioFocusScope = null;
         return null;
     }
 }

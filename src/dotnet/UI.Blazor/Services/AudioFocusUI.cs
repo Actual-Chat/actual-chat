@@ -3,25 +3,35 @@ namespace ActualChat.UI.Blazor.Services;
 /// <summary>
 /// Defines the type of audio activity for focus management.
 /// </summary>
-public enum AudioMode { Tunes, Playback, Recording }
+public enum AudioFocusMode { Tune, Playback, Recording }
 
-public delegate void RestoreFocusHandler();
+public delegate void AudioFocusRestoreHandler();
 
-public delegate RestoreFocusHandler? LostFocusCallback(bool mayRecover, bool canDuck);
+public delegate AudioFocusRestoreHandler? AudioFocusLostHandler(bool mayRecover, bool canDuck);
 
 /// <summary>
 /// Represents an audio consumer requesting focus with a callback for focus loss events.
 /// </summary>
-public record AudioFocusConsumer(AudioMode Kind, LostFocusCallback LostFocusCallback);
+public record struct AudioFocusRequester(AudioFocusMode Kind, AudioFocusLostHandler AudioFocusLostHandler);
 
 /// <summary>
 /// Represents an active audio focus grant that can be released or suspended.
 /// </summary>
-public interface IAudioFocusActivation
+public abstract class AudioFocusScope : IDisposable
 {
-    string Id { get; }
-    bool IsSuspended { get; }
-    void Release();
+    private static long _lastIndex;
+
+    private long Index { get; } = Interlocked.Increment(ref _lastIndex);
+
+    public bool IsSuspended { get; private set; }
+
+    public abstract void Dispose();
+
+    public void Suspend(bool isSuspended)
+        => IsSuspended = isSuspended;
+
+    public override string ToString()
+        => $"{GetType().GetName()}(#{Index})";
 }
 
 /// <summary>
@@ -29,21 +39,19 @@ public interface IAudioFocusActivation
 /// </summary>
 public class AudioFocusUI : ProcessorBase
 {
-    public virtual Task<IAudioFocusActivation?> TryGainAudioFocus(AudioFocusConsumer consumer)
-        => Task.FromResult<IAudioFocusActivation?>(FakeAudioFocusActivation.Instance);
+    public virtual Task<AudioFocusScope?> TryAcquire(AudioFocusRequester requester)
+        => Task.FromResult<AudioFocusScope?>(FakeScope.Instance);
 
-    public virtual Task Recover(CancellationToken cancellationToken = default)
+    public virtual Task TryRecover(CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 
     // Nested types
-    private class FakeAudioFocusActivation : IAudioFocusActivation
+
+    private class FakeScope : AudioFocusScope
     {
-        public static readonly FakeAudioFocusActivation Instance = new ();
+        public static readonly FakeScope Instance = new();
 
-        public string Id => "FAKE";
-        public bool IsSuspended => false;
-
-        public void Release()
+        public override void Dispose()
         { }
     }
 }

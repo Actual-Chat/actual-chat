@@ -15,8 +15,8 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
     private readonly MutableState<PlaybackState?> _playbackState;
-    private readonly AudioFocusConsumer _audioFocusConsumer;
-    private IAudioFocusActivation? _audioFocusActivation;
+    private readonly AudioFocusRequester _audioFocusRequester;
+    private AudioFocusScope? _audioFocusScope;
 
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private new ILogger? DebugLog => DebugMode ? Log : null;
@@ -31,7 +31,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
         _playbackState = hub.StateFactory.NewMutable(
             (PlaybackState?)null,
             StateCategories.Get(GetType(), nameof(PlaybackState)));
-        _audioFocusConsumer = new AudioFocusConsumer(AudioMode.Playback, OnLostFocus);
+        _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Playback, OnAudioFocusLost);
         AudioWidgetSession.Reset();
     }
 
@@ -111,8 +111,8 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
     public async Task<bool> TryGainAudioFocusForResume(ChatPlayer player)
     {
         Log.LogInformation("Trying to gain audio focus for chat player '{ChatId}'", player.ChatId);
-        var audioFocusHandle = await TryGainAudioFocus($"Resuming chat player '{player.ChatId}'").ConfigureAwait(false);
-        return audioFocusHandle is not null;
+        var scope = await TryAcquireAudioFocus($"Resuming chat player '{player.ChatId}'").ConfigureAwait(false);
+        return scope is not null;
     }
 
     public void UpdateMediaSessionState()
@@ -187,8 +187,8 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             return;
         }
 
-        var audioFocusActivation = await TryGainAudioFocus("Playback state change").ConfigureAwait(false);
-        if (audioFocusActivation is null) {
+        var audioFocusScope = await TryAcquireAudioFocus("Playback state change").ConfigureAwait(false);
+        if (audioFocusScope is null) {
             // Failed to get audio focus, stop playback. Show toast?
             Log.LogWarning("ProcessPlaybackStateChange: failed to gain audio focus, stopping playback");
             StopPlayback();
@@ -371,35 +371,35 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             .Select(kv => StopPlayer(kv.Key.ChatId, kv.Key.PlayerKind))
             .Collect(ApiConstants.Concurrency.Unlimited);
 
-    private async Task<IAudioFocusActivation?> TryGainAudioFocus(string? reason = "")
+    private async Task<AudioFocusScope?> TryAcquireAudioFocus(string? reason = "")
     {
-        if (_audioFocusActivation is not null && !_audioFocusActivation.IsSuspended) {
-            Log.LogInformation("Already have audio focus Id={Id}. Request reason: '{Reason}'", _audioFocusActivation.Id, reason);
-            return _audioFocusActivation;
+        if (_audioFocusScope is not null && !_audioFocusScope.IsSuspended) {
+            Log.LogInformation("Already have audio focus {Scope}. Request reason: '{Reason}'", _audioFocusScope, reason);
+            return _audioFocusScope;
         }
-        _audioFocusActivation = await AudioFocusUI.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
-        return _audioFocusActivation;
+        _audioFocusScope = await AudioFocusUI.TryAcquire(_audioFocusRequester).ConfigureAwait(false);
+        return _audioFocusScope;
     }
 
     private void ReleaseAudioFocus()
     {
-        _audioFocusActivation?.Release();
-        _audioFocusActivation = null;
+        _audioFocusScope?.Dispose();
+        _audioFocusScope = null;
     }
 
-    private RestoreFocusHandler? OnLostFocus(bool mayRecover, bool canDuck)
+    private AudioFocusRestoreHandler? OnAudioFocusLost(bool mayRecover, bool canDuck)
     {
         Log.LogInformation("Audio focus lost event. May recover: {MayRecover}, Can duck: {CanDuck}", mayRecover, canDuck);
         if (canDuck)
             return null; // Do not stop players. We don't support ducking so far, so just let it play, do nothing.
 
         if (!mayRecover)
-            _audioFocusActivation = null;
+            _audioFocusScope = null;
         var restoreFocusHandler = HandleLostAudioFocus(PlaybackState.Value, mayRecover);
         return restoreFocusHandler;
     }
 
-    private RestoreFocusHandler? HandleLostAudioFocus(PlaybackState? state, bool mayRecover)
+    private AudioFocusRestoreHandler? HandleLostAudioFocus(PlaybackState? state, bool mayRecover)
     {
         Log.LogInformation("Lost audio focus. State: '{State}'", state);
         if (state is null)

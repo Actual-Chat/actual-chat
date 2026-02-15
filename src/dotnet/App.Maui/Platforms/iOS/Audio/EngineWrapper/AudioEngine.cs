@@ -13,7 +13,7 @@ public class AudioEngine : IDisposable
     private readonly AVAudioEngine _engine = new ();
     private bool _wasStarted;
     private readonly ComputedState<bool> _isRunning;
-    private AudioMode Mode { get; }
+    private AudioFocusMode Mode { get; }
     private AppUIHub Hub { get;  }
     private ILogger Log => field ??= Hub.LogFor(GetType());
     public IState<bool> IsRunning => _isRunning;
@@ -25,7 +25,7 @@ public class AudioEngine : IDisposable
         }
     }
 
-    public AudioEngine(AudioMode mode, AppUIHub hub)
+    public AudioEngine(AudioFocusMode mode, AppUIHub hub)
     {
         Mode = mode;
         Hub = hub;
