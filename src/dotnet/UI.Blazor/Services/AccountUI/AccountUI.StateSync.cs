@@ -41,7 +41,7 @@ public partial class AccountUI
             await SaveSignedInState(newAccount).ConfigureAwait(false);
             await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
             await Hub.Dispatcher
-                .InvokeSafeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount), Log)
+                .InvokeSafeAsync(() => ProcessLoginLogout(newAccount, oldAccount), Log)
                 .ConfigureAwait(false);
         }
     }
@@ -65,9 +65,9 @@ public partial class AccountUI
         return true;
     }
 
-    private void ProcessOwnAccountChange(AccountFull? account, AccountFull? oldAccount)
+    private void ProcessLoginLogout(AccountFull? account, AccountFull? oldAccount)
     {
-        Changed?.Invoke(account);
+        LoginLogout?.Invoke(account);
         if (account.IsGuestOrNull()) {
             // We're signed out now
             if (!oldAccount.IsGuestOrNull())
