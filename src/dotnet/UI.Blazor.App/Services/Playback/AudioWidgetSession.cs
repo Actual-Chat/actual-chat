@@ -1,5 +1,4 @@
 using ActualLab.Locking;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -8,7 +7,9 @@ public enum AudioWidgetSessionStateMode { HistoricalPlayback, RealtimePlayback, 
 public record AudioWidgetSessionChatInfo(ChatId Id, string Title, string PicUri, int ExtraChatCount);
 public record AudioWidgetSessionState(AudioWidgetSessionStateMode Mode, AudioWidgetSessionChatInfo Chat, bool IsPaused);
 
-public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Func<ChatPlayers?> chatPlayersAccessor)
+public sealed class AudioWidgetSession(
+    AudioWidgetSessionChatResolver chatResolver,
+    Func<ChatPlayers?> chatPlayersAccessor)
 {
     public static class Actions
     {
@@ -37,7 +38,7 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
             State = null;
         }
         if (changed)
-            RaiseStateChanged();
+            StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void OnPlaybackStateChanged(PlaybackState? playbackState)
@@ -65,19 +66,19 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
             recordingChatId = _recordingChatId;
             playbackState = _playbackState;
         }
-        _ = UpdateState2(recordingChatId, playbackState).SilentAwait();
-    }
+        _ = CompleteAsync();
+        return;
 
-    private async Task UpdateState2(ChatId? recordingChatId, PlaybackState? playbackState)
-    {
-        using var releaser = await _asyncLock.Lock(CancellationToken.None).ConfigureAwait(false);
-        releaser.MarkLockedLocally();
-        var state = await CalculateState(recordingChatId, playbackState).ConfigureAwait(false);
-        if (Equals(State, state))
-            return;
+        async Task CompleteAsync() {
+            using var releaser = await _asyncLock.Lock(CancellationToken.None).ConfigureAwait(false);
+            releaser.MarkLockedLocally();
+            var state = await CalculateState(recordingChatId, playbackState).ConfigureAwait(false);
+            if (Equals(State, state))
+                return;
 
-        State = state;
-        RaiseStateChanged();
+            State = state;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private async Task<AudioWidgetSessionState?> CalculateState(ChatId? recordingChatId, PlaybackState? playbackState)
@@ -92,19 +93,19 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
         }
         else if (playbackState is RealtimePlaybackState realtimePlaybackState) {
             chatId = realtimePlaybackState.ChatIds.First();
-            var controller = ChatPlayers?.GetRealtimeChatPlayerControllerNonComputed(chatId);
-            if (controller?.ChatPlayer.Playback.IsPlaying.Value ?? false) {
+            var player = ChatPlayers?.GetRealtimeChatPlayerNonComputed(chatId);
+            if (player?.Playback.IsPlaying.Value ?? false) {
                 mode = AudioWidgetSessionStateMode.RealtimePlayback;
                 extraChatCount = realtimePlaybackState.ChatIds.Count - 1;
-                isPaused = controller.IsPaused.Value;
+                isPaused = player.IsPaused.Value;
             }
         }
         else if (playbackState is HistoricalPlaybackState historicalPlaybackState) {
             chatId = historicalPlaybackState.ChatId;
-            var controller = ChatPlayers?.GetHistoricalChatPlayerControllerNonComputed(chatId);
-            if (controller?.ChatPlayer.Playback.IsPlaying.Value ?? false) {
+            var player = ChatPlayers?.GetHistoricalChatPlayerNonComputed(chatId);
+            if (player?.Playback.IsPlaying.Value ?? false) {
                 mode = AudioWidgetSessionStateMode.HistoricalPlayback;
-                isPaused = controller.IsPaused.Value;
+                isPaused = player.IsPaused.Value;
             }
         }
         if (mode is null)
@@ -117,9 +118,6 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
             };
         return new AudioWidgetSessionState(mode.Value, chatInfo, isPaused);
     }
-
-    protected virtual void RaiseStateChanged()
-        => StateChanged?.Invoke(this, EventArgs.Empty);
 
     public void InvokeAction(string actionName)
     {
@@ -146,13 +144,13 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
         }
         case Actions.Pause: {
             chatPlayers
-                .GetHistoricalChatPlayerControllerNonComputed(state.ChatId)
+                .GetHistoricalChatPlayerNonComputed(state.ChatId)
                 ?.Pause();
             break;
         }
         case Actions.Resume: {
             _ = chatPlayers
-                .GetHistoricalChatPlayerControllerNonComputed(state.ChatId)
+                .GetHistoricalChatPlayerNonComputed(state.ChatId)
                 ?.Resume();
             break;
         }
@@ -173,13 +171,13 @@ public class AudioWidgetSession(AudioWidgetSessionChatResolver chatResolver, Fun
         }
         case Actions.Pause: {
             chatPlayers
-                .GetRealtimeChatPlayerControllerNonComputed(chatId)
+                .GetRealtimeChatPlayerNonComputed(chatId)
                 ?.Pause();
             break;
         }
         case Actions.Resume: {
             _ = chatPlayers
-                .GetRealtimeChatPlayerControllerNonComputed(chatId)
+                .GetRealtimeChatPlayerNonComputed(chatId)
                 ?.Resume();
             break;
         }

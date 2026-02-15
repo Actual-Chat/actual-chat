@@ -65,21 +65,20 @@
         if (playbackState is not HistoricalPlaybackState { ChatId: var chatId })
             return Model.NotPlaying;
 
-        var controller = await ChatPlayers.GetHistoricalChatPlayerController(chatId, cancellationToken).ConfigureAwait(false);
+        var player = await ChatPlayers.GetHistoricalChatPlayer(chatId, cancellationToken).ConfigureAwait(false);
         var lastState = State.Value;
-        if (controller == null) {
+        if (player is null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
             return lastState; // Keep the last state to avoid blinking
         }
-        var isPaused = await controller.IsPaused.Use(cancellationToken).ConfigureAwait(false);
-        var playingTracks = await controller.ChatPlayer.Playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
+        var isPaused = await player.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+        var playingTracks = await player.Playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
         var canPlay = true;
         foreach (var playingTrack in playingTracks) {
             var trackInfo = playingTrack.TrackInfo;
-            if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
-                var audioEntry = chatAudioTrackInfo.AudioEntry;
+            if (trackInfo is ChatAudioTrackInfo { AudioEntry: { } audioEntry }) {
                 if (audioEntry.ChatId != Entry.ChatId)
                     continue;
                 if (audioEntry.LocalId == Entry.AudioEntryLid) {

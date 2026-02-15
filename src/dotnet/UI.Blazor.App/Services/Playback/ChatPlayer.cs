@@ -40,9 +40,11 @@ public abstract class ChatPlayer : ProcessorBase
     protected IState<TimeSpan> PauseDuration { get; }
     protected TimeSpan SleepAndPauseDuration => SleepDuration.Value + Playback.TotalPauseDuration.Value;
 
+    public ChatPlayers? ChatPlayers { get; set; }
     public ChatId ChatId { get; }
     public ChatPlayerKind PlayerKind { get; protected init; }
     public Playback Playback { get; }
+    public IState<bool> IsPaused => Playback.IsPaused;
     public string Operation { get; protected set; } = "";
     public Task? WhenPlaying => _whenPlaying;
 
@@ -145,6 +147,15 @@ public abstract class ChatPlayer : ProcessorBase
 
         return await InteractiveUI.Demand(Operation, cancellationToken).ConfigureAwait(false);
     }
+
+    public void Pause()
+    {
+        _ = Playback.Pause(default);
+        ChatPlayers!.ReleaseAudioFocusDueToPause(this);
+        ChatPlayers!.UpdateMediaSessionState();
+    }
+
+    public abstract Task Resume();
 
     // Protected methods
 

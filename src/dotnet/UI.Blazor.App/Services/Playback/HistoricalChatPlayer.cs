@@ -6,6 +6,22 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         : base(hub, chatId)
         => PlayerKind = ChatPlayerKind.Historical;
 
+    public override async Task Resume()
+    {
+        var playbackState = ChatPlayers!.PlaybackState.Value;
+        if (playbackState is not HistoricalPlaybackState historicalPlaybackState
+            || historicalPlaybackState.ChatId != ChatId) {
+            Log.LogInformation("Can't resume historical playback. State: '{State}', ChatId: '{ChatId}'", playbackState, ChatId);
+            return;
+        }
+
+        if (!await ChatPlayers!.TryGainAudioFocusForResume(this).ConfigureAwait(false))
+            return;
+
+        _ = Playback.Resume(default);
+        ChatPlayers!.UpdateMediaSessionState();
+    }
+
     protected override async Task Play(
         ChatEntryPlayer entryPlayer, Moment minPlayAt, CancellationToken cancellationToken)
     {

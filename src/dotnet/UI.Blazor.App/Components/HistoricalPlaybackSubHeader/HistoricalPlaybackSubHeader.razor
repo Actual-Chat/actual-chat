@@ -96,21 +96,21 @@
 
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
         var chatTitle = chat?.Title ?? "";
-        var controller = await ChatPlayers.GetHistoricalChatPlayerController(chatId, cancellationToken).ConfigureAwait(false);
-        if (controller == null) {
+        var player = await ChatPlayers.GetHistoricalChatPlayer(chatId, cancellationToken).ConfigureAwait(false);
+        if (player is null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
             return lastState; // Keep the last state to avoid blinking
         }
-        var isPaused = await controller.IsPaused.Use(cancellationToken).ConfigureAwait(false);
-        var playback = controller.ChatPlayer.Playback;
+        var isPaused = await player.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+        var playback = player.Playback;
         var playingTracks = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         var authorIds = new HashSet<AuthorId>();
         Moment? playingAt = null;
         foreach (var playingTrack in playingTracks) {
             var trackInfo = playingTrack.TrackInfo;
-            if (trackInfo is ChatAudioTrackInfo chatAudioTrackInfo) {
-                var authorId = chatAudioTrackInfo.AudioEntry.AuthorId;
+            if (trackInfo is ChatAudioTrackInfo { AudioEntry: { } audioEntry }) {
+                var authorId = audioEntry.AuthorId;
                 authorIds.Add(authorId);
             }
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackInfo.TrackId, cancellationToken).ConfigureAwait(false);
@@ -123,7 +123,7 @@
             return new() {
                 ChatId = chatId,
                 PlayingAt = playingAt,
-                Controller = controller,
+                Player = player,
                 IsPaused = isPaused,
                 ChatTitle = chatTitle,
                 ShowChatTitle = chatId != selectedChatId,
@@ -132,7 +132,7 @@
 
         var canUseLastState = lastState is not null
             && lastState.ChatId == chatId
-            && lastState.Controller == controller
+            && lastState.Player == player
             && lastState.IsPaused == isPaused;
         return canUseLastState ? lastState : null;
     }
@@ -142,18 +142,18 @@
 
     private void OnResume() {
         var m = State.Value;
-        if (m?.Controller == null)
+        if (m?.Player == null)
             return;
 
-        _ = m.Controller.Resume();
+        _ = m.Player.Resume();
     }
 
     private void OnPause() {
         var m = State.Value;
-        if (m?.Controller == null)
+        if (m?.Player == null)
             return;
 
-        m.Controller.Pause();
+        m.Player.Pause();
     }
 
     private void OnForward()
@@ -164,7 +164,7 @@
 
     private void Rewind(TimeSpan offset) {
         var m = State.Value;
-        if (m?.Controller is null || m.PlayingAt is not { } playingAt)
+        if (m?.Player is null || m.PlayingAt is not { } playingAt)
             return;
 
         _rewindController ??= new RewindDelayer(OnRewindRequested);
@@ -174,8 +174,8 @@
     private void OnRewindRequested(ChatId chatId, Moment origin, TimeSpan offset) {
         _ = InvokeAsync(() => {
             var m = State.Value;
-            if (m?.Controller != null && m.Controller.ChatId == chatId)
-                _ = PlayAt(m.Controller.ChatPlayer, origin, offset);
+            if (m?.Player != null && m.Player.ChatId == chatId)
+                _ = PlayAt(m.Player, origin, offset);
         });
     }
 
@@ -194,7 +194,7 @@
     {
         public Moment? PlayingAt { get; init; }
         public bool IsPaused { get; init; }
-        public HistoricalChatPlayerController? Controller { get; init; }
+        public HistoricalChatPlayer? Player { get; init; }
         public string ChatTitle { get; init; } = "";
         public required ChatId ChatId { get; init; }
         public bool ShowChatTitle { get; init; }
