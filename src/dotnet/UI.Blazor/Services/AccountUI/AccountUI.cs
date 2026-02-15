@@ -31,7 +31,7 @@ public partial class AccountUI : UIWorkerBase<UIHub>, IComputeService, INotifyIn
     public IState<Moment> LastChangedAt => _lastChangedAt;
     public IState<SignInRequest?> ActiveSignInRequest => _activeSignInRequest;
     public Moment StartedAt { get; }
-    public event Action<AccountFull?>? Changed;
+    public event Action<AccountFull?>? LoginLogout;
 
     public AccountUI(UIHub hub) : base(hub)
     {

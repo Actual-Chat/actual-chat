@@ -41,11 +41,11 @@
 
     protected override void OnInitialized() {
         BubbleUI.HostAcceptor.TrySetResult(this);
-        AccountUI.Changed += OnOwnAccountChanged;
+        AccountUI.LoginLogout += OnLoginLogout;
     }
 
     public async ValueTask DisposeAsync() {
-        AccountUI.Changed -= OnOwnAccountChanged;
+        AccountUI.LoginLogout -= OnLoginLogout;
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
         _blazorRef.DisposeSilently();
@@ -115,7 +115,7 @@
         }
     }
 
-    private async void OnOwnAccountChanged(AccountFull? account) {
+    private async void OnLoginLogout(AccountFull? account) {
         try {
             _bubble = null;
             await BubbleUI.WhenReadyToShowBubbles();

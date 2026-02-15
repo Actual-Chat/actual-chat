@@ -27,7 +27,7 @@ public interface IAudioFocusActivation
 /// <summary>
 /// Manages audio focus for playback and recording, handling focus conflicts between consumers.
 /// </summary>
-public class AudioFocusService : ProcessorBase
+public class AudioFocusUI : ProcessorBase
 {
     public virtual Task<IAudioFocusActivation?> TryGainAudioFocus(AudioFocusConsumer consumer)
         => Task.FromResult<IAudioFocusActivation?>(FakeAudioFocusActivation.Instance);
@@ -44,7 +44,6 @@ public class AudioFocusService : ProcessorBase
         public bool IsSuspended => false;
 
         public void Release()
-        {
-        }
+        { }
     }
 }

@@ -4,13 +4,13 @@ using ActualLab.Locking;
 
 namespace ActualChat.App.Maui.Services;
 
-public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
+public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 {
     private readonly List<RestoreFocusHandler> _restoreFocusHandlers = new ();
     private readonly AsyncLock _asyncLock = new();
     private AudioFocusHolder? _lastAudioFocusHolder;
 
-    protected AppUIHub Hub => hub;
+    protected AppUIHub Hub { get; } = hub;
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     public override async Task<IAudioFocusActivation?> TryGainAudioFocus(AudioFocusConsumer consumer)
@@ -164,7 +164,7 @@ public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
     {
         private static long _nextId;
 
-        private readonly MauiAudioFocusService _owner;
+        private readonly MauiAudioFocusUI _owner;
         private readonly AudioFocusConsumer _consumer;
 
         public string Id { get; }
@@ -173,7 +173,7 @@ public abstract class MauiAudioFocusService(AppUIHub hub) : AudioFocusService
         public void Suspend(bool isSuspended)
             => IsSuspended = isSuspended;
 
-        public AudioFocusActivation(MauiAudioFocusService owner, AudioFocusConsumer consumer)
+        public AudioFocusActivation(MauiAudioFocusUI owner, AudioFocusConsumer consumer)
         {
             _owner = owner;
             _consumer = consumer;

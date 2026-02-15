@@ -23,7 +23,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
-    protected AudioFocusService AudioFocusService => Hub.AudioFocusService;
+    protected AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     protected AudioWidgetSession AudioWidgetSession => Hub.AudioWidgetSession;
 
     public ChatPlayers(AppUIHub hub) : base(hub)
@@ -379,7 +379,7 @@ public class ChatPlayers : UIWorkerBase<AppUIHub>, IComputeService, INotifyIniti
             Log.LogInformation("Already have audio focus Id={Id}. Request reason: '{Reason}'", _audioFocusActivation.Id, reason);
             return _audioFocusActivation;
         }
-        _audioFocusActivation = await AudioFocusService.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
+        _audioFocusActivation = await AudioFocusUI.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
         return _audioFocusActivation;
     }
 

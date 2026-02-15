@@ -1,9 +1,10 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class IosTuneUI(UIHub hub) : MauiTunes(hub)
+public sealed class IosTuneUI(UIHub hub) : MauiTuneUI(hub)
 {
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
     private Haptics Haptics => field ??= Hub.Services.GetRequiredService<Haptics>();

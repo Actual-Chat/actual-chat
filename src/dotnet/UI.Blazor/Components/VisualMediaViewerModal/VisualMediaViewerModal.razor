@@ -133,7 +133,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private AudioFocusService AudioFocusService => Hub.AudioFocusService;
+    private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
 
     public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -173,7 +173,7 @@
 
     [JSInvokable]
     public Task OnVideoPlaybackStopped()
-        => AudioFocusService.Recover();
+        => AudioFocusUI.Recover();
 
     private string GetPreviewUrl(TextEntryAttachment attachment) {
         var url = UrlMapper.ContentUrl(attachment.Media.ContentId);

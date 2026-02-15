@@ -5,13 +5,13 @@ using Android.Media;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AndroidAudioFocusService : MauiAudioFocusService
+public class AndroidAudioFocusUI : MauiAudioFocusUI
 {
     private readonly AudioFocusHelper _focusHelper;
     private long _idSeed;
     private AudioFocusHandle? _handle;
 
-    public AndroidAudioFocusService(AppUIHub hub)
+    public AndroidAudioFocusUI(AppUIHub hub)
         : base(hub)
     {
         _focusHelper = new AudioFocusHelper(Platform.AppContext, hub.LogFor<AudioFocusHelper>());
