@@ -86,7 +86,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             : attachments.OrderBy(x => x.Index).ToArray();
         var chatId = ActualChat.ChatId.Parse(ChatId);
         var id = ChatEntryId.New(chatId, Kind, LocalId);
-        var linkPreviewIds = GetLinkPreviewIds();
+        var linkPreviewIds = DeserializeLinkPreviewIds();
         linkPreviews ??= [];
         return new (id, Version) {
             IsRemoved = IsRemoved,
@@ -124,7 +124,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         };
     }
 
-    public Symbol[] GetLinkPreviewIds()
+    public Symbol[] DeserializeLinkPreviewIds()
         => LinkPreviewIds.IsNullOrEmpty()
             ? []
             : JsonSerializer.Deserialize<Symbol[]>(LinkPreviewIds) ?? [];

@@ -130,7 +130,7 @@
             if (playbackState == null || playbackState.IsEnded)
                 return Model.None;
 
-            var playingAt = (float) (trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt)
+            var playingAt = (float) (trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry!.BeginsAt)
                 .TotalSeconds;
             var playingAtNearbyRange = new Range<float>(playingAt - 2f, playingAt + 2f);
             if (!playingAtNearbyRange.Overlaps(markup.TimeRange))

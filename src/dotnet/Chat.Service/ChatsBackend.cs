@@ -301,7 +301,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var entries = dbEntries.Select(e => {
             var entryId = TextEntryId.Parse(e.Id);
             var entryAttachments = allAttachments[entryId];
-            var linkPreviews = e.GetLinkPreviewIds()
+            var linkPreviews = e.DeserializeLinkPreviewIds()
                 .Select(previewId => allLinkPreviews.GetValueOrDefault(previewId))
                 .SkipNullItems()
                 .ToArray();
@@ -312,7 +312,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         Task<IReadOnlyDictionary<Symbol, LinkPreview>> GetLinkPreviews()
         {
             var linkPreviewIds  = dbEntries.Where(x => !x.LinkPreviewIds.IsNullOrEmpty())
-                .SelectMany(x => x.GetLinkPreviewIds())
+                .SelectMany(x => x.DeserializeLinkPreviewIds())
                 .Distinct()
                 .ToList();
             return linkPreviewIds.Count > 0

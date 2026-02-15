@@ -286,7 +286,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             options.ForwardedHeaders = ForwardedHeaders.All;
             if (Settings.AssumeHttps)
                 options.ForwardedHeaders &= ~ForwardedHeaders.XForwardedProto;
-            options.KnownNetworks.Clear();
+            options.KnownIPNetworks.Clear();
             options.KnownProxies.Clear();
         });
 
