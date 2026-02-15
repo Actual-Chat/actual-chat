@@ -1,6 +1,7 @@
 @using System.ComponentModel.DataAnnotations
 @inherits ComponentBase<AppUIHub>
 @implements IModalView<OwnAccountEditorModal.Model>
+@implements IDisposable
 @{
     if (_account == null! || _form == null!)
         return;
@@ -89,10 +90,7 @@
             </FormSection>
 
             @if (phone != null && !isPhoneVerified) {
-                <PhoneVerifier
-                    Phone="@phone"
-                    Class="my-3"
-                    Verified="OnPhoneVerified"/>
+                <PhoneVerifier Phone="@phone" Class="my-3" />
             }
 
             <FormSection
@@ -112,10 +110,7 @@
             </FormSection>
 
             @if (_formRef.IsValid && !isEmailVerified && !isEmailEmpty) {
-                <EmailVerifier
-                    Email="@email"
-                    Class="my-3"
-                    Verified="@OnEmailVerified"/>
+                <EmailVerifier Email="@email" Class="my-3" />
             }
         </FormBlock>
         <FormBlock>
@@ -173,6 +168,7 @@
         _copyAliasFormatString = UrlMapper.ToAbsolute(Links.UserAliasPrefix) + "{0}";
 
         _account = AccountUI.OwnAccount.Value;
+        AccountUI.OwnAccount.Updated += OnOwnAccountChanged;
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         _form.Name = _account.Name;
         _form.Email = _account.Email.NullIfEmpty();
@@ -182,6 +178,9 @@
         _form.CopyToBase();
         return Task.CompletedTask;
     }
+
+    public void Dispose()
+        => AccountUI.OwnAccount.Updated -= OnOwnAccountChanged;
 
     private async Task OnSave() {
         if (!await _validator.Validate())
@@ -213,21 +212,21 @@
     private void OnCancel()
         => Modal.Close();
 
-    private void OnPhoneChanged(string? value) {
+    private async Task OnPhoneChanged(string? value) {
         var newValue = value ?? "";
         if (newValue == _defaultPhoneValue)
             newValue = "";
         _form.Phone = newValue;
+        _form.ParsedPhone = await Phones.Parse(newValue, default);
     }
-
-    private async Task OnPhoneVerified()
-        => _account = await Hub.Accounts.GetOwn(Session, default);
-
-    private async Task OnEmailVerified()
-        => _account = await Hub.Accounts.GetOwn(Session, default);
 
     private Task OnDeleteAccountClick()
         => Hub.ModalUI.Show(new DeleteAccountModal.Model());
+
+    private void OnOwnAccountChanged(State state, StateEventKind eventKind) {
+        _account = AccountUI.OwnAccount.Value;
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     // Nested types
 

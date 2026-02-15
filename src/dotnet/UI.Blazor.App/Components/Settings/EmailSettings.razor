@@ -39,10 +39,7 @@
                 </Right>
             </FormSection>
             @if (isEmailValid && !isEmailVerified && !isEmailEmpty) {
-                <EmailVerifier
-                    Email="@email"
-                    Class="my-3"
-                    Verified="@OnEmailVerified"/>
+                <EmailVerifier Email="@email" Class="my-3" />
             }
         </FormBlock>
     </Form>
@@ -92,6 +89,7 @@
     protected override async Task OnInitializedAsync() {
         _timeZones = await TimeZones.List("en-US", CancellationToken.None);
         _account = Hub.AccountUI.OwnAccount.Value;
+        Hub.AccountUI.OwnAccount.Updated += OnOwnAccountChanged;
         _emailForm = new EmailFormModel(ComponentIdGenerator) {
             Email = _account.Email,
         };
@@ -112,6 +110,7 @@
     }
 
     public void Dispose() {
+        Hub.AccountUI.OwnAccount.Updated -= OnOwnAccountChanged;
         if (_emailFormEditContext != null!)
             _emailFormEditContext.OnFieldChanged -= EmailFormEditContextOnOnFieldChanged;
     }
@@ -135,9 +134,9 @@
         await UpdateTimezone();
     }
 
-    private async Task OnEmailVerified() {
-        _account = await Hub.Accounts.GetOwn(Session, default);
-        _emailForm.Email = _account.Email;
+    private void OnOwnAccountChanged(State state, StateEventKind eventKind) {
+        _account = Hub.AccountUI.OwnAccount.Value;
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private async Task UpdateTimezone() {
