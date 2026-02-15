@@ -85,6 +85,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public VisualMediaViewerUI VisualMediaViewerUI => field ??= Services.GetRequiredService<VisualMediaViewerUI>();
     public TotpUI TotpUI => field ??= Services.GetRequiredService<TotpUI>();
     public CaptchaUI CaptchaUI => field ??= Services.GetRequiredService<CaptchaUI>();
+    public AudioFocusUI AudioFocusUI => field ??= Services.GetRequiredService<AudioFocusUI>();
     public IDataCollectionSettingsUI DataCollectionSettingsUI => field ??= Services.GetRequiredService<IDataCollectionSettingsUI>();
     public LogUI LogUI => field ??= Services.GetRequiredService<LogUI>();
 
@@ -95,7 +96,6 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public DateTimeConverter DateTimeConverter => field ??= Services.GetRequiredService<DateTimeConverter>();
     public ComponentIdGenerator ComponentIdGenerator => field ??= Services.GetRequiredService<ComponentIdGenerator>();
     public History History => field ??= Services.GetRequiredService<History>();
-    public AudioFocusService AudioFocusService => field ??= Services.GetRequiredService<AudioFocusService>();
 
     public Tracer TracerFor(string name) => Tracer[name];
     public Tracer TracerFor(Type type) => Tracer[type];

@@ -31,7 +31,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
 
-    protected AudioFocusService AudioFocusService => Hub.AudioFocusService;
+    protected AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
     protected AudioWidgetSession AudioWidgetSession => Hub.AudioWidgetSession;
 
     public MicrophonePermissionHandler MicrophonePermission
@@ -84,7 +84,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         MarkStarting(chatId);
         try {
-            _audioFocusActivation = await AudioFocusService.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
+            _audioFocusActivation = await AudioFocusUI.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
             if (_audioFocusActivation is null)
                 Log.LogWarning("Failed to gain audio focus for recording. Continue without it");
 

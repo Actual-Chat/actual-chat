@@ -7,7 +7,7 @@ using Foundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class IosAudioFocusService : MauiAudioFocusService
+public sealed class IosAudioFocusUI : MauiAudioFocusUI
 {
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.2, 3);
 
@@ -23,7 +23,7 @@ public class IosAudioFocusService : MauiAudioFocusService
     private AudioSession AudioSession => field ??= Hub.Services.GetRequiredService<AudioSession>();
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
 
-    public IosAudioFocusService(AppUIHub hub) : base(hub)
+    public IosAudioFocusUI(AppUIHub hub) : base(hub)
     {
         _interruptionSubscription = Disposable.New(AVAudioSession.Notifications.ObserveInterruption(OnInterruption),
             NSNotificationCenter.DefaultCenter.RemoveObserver);
@@ -56,6 +56,8 @@ public class IosAudioFocusService : MauiAudioFocusService
         _handle = new AudioFocusHandle(Interlocked.Increment(ref _id), x => _ = Release(mode, x));
         return _handle;
     }
+
+    // Private methods
 
     private async Task Release(AudioMode mode, AudioFocusHandle handle)
     {

@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneUI))]
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneInfo))]
-public class WebTunes(UIHub hub) : TuneUI(hub)
+public class WebTuneUI(UIHub hub) : TuneUI(hub)
 {
     private static readonly string JSPlayMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.play";
     private static readonly string JSPlayAndWaitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.playAndWait";

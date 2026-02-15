@@ -55,8 +55,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Audio
         services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
 #if WINDOWS
-        services.AddScoped<IAudioCodec, OpusAudioCodec>();
-        services.AddScoped<TuneUI>(c => new MauiTunes(c.UIHub()));
+        services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
+        services.AddScoped<TuneUI>(c => new MauiTuneUI(c.UIHub()));
         // services.AddSingleton<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
         services.AddSingleton<VoiceActivityDetector>(c => {
             return new OnnxVoiceActivityDetector(c, ModelLoader);
@@ -73,12 +73,31 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
                 return ms.ToArray();
             }
         });
+        services.AddSingleton<IAudioCodec, OpusAudioCodec>();
 #elif ANDROID
-        services.AddScoped<IAudioCodec, OpusAudioCodec>();
-        services.AddScoped<TuneUI>(c => new MauiTunes(c.UIHub()));
+        services.AddScoped<AudioFocusUI>(c => new AndroidAudioFocusUI(c.AppUIHub()));
+        services.AddScoped<TuneUI>(c => new MauiTuneUI(c.UIHub()));
         services.AddSingleton<VoiceActivityDetector>(c => new TfLiteVoiceActivityDetector(c));
+        services.AddSingleton<IAudioCodec, OpusAudioCodec>();
+        services.AddSingleton<AudioWidgetSession>(c => {
+            var chatResolver = new AudioWidgetSessionChatResolver(c);
+            var audioSession = new AudioWidgetSession(chatResolver, ChatPlayersAccessor);
+            audioSession.StateChanged += (_, _) => AudioWidgetController.OnAudioSessionStateChanged(audioSession);
+            return audioSession;
+
+            ChatPlayers? ChatPlayersAccessor()
+                => !TryGetScopedServices(out var services1) ? null : services1.GetRequiredService<ChatPlayers>();
+        });
 #elif IOS || MACCATALYST
+        services.AddScoped<AudioFocusUI>(c => new IosAudioFocusUI(c.AppUIHub()));
+        services.AddScoped<TuneUI>(c => new IosTuneUI(c.UIHub()));
         services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));
+        services.AddScoped<IAudioCodec, IosAudioCodec>();
+        services.AddScoped<ResamplerFactory>(c => new ResamplerFactory(c.AppUIHub()));
+        services.AddScoped<AudioEngines>(c => new AudioEngines(c.AppUIHub()));
+        services.AddScoped<Haptics>(c => new Haptics(c.AppUIHub()));
+        services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
+        services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.AppUIHub()));
 #endif
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
         services.AddScoped<IAudioPlaybackEngineFactory>(c => new MauiAudioPlaybackEngineFactory(c.AppUIHub()));
@@ -90,10 +109,6 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));
 
-        // Audio Focus
-#if ANDROID
-        services.AddScoped<AudioFocusService>(c => new AndroidAudioFocusService(c.AppUIHub()));
-#endif
         // File attachments
 #if ANDROID
         services.AddScoped<IAttachmentFilePicker>(c => new AndroidAttachmentFilePicker(c));

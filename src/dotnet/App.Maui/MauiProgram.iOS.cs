@@ -32,16 +32,6 @@ public static partial class MauiProgram
         services.AddScoped<IMediaSaver>(c => new IosMediaSaver(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
         services.AddTransient<IAppIconBadge>(_ => new IosAppIconBadge());
-
-        // audio
-        services.AddScoped<IAudioCodec, IosAudioCodec>();
-        services.AddScoped<ResamplerFactory>(c => new ResamplerFactory(c.AppUIHub()));
-        services.AddScoped<TuneUI>(c => new IosTuneUI(c.UIHub()));
-        services.AddScoped<AudioEngines>(c => new AudioEngines(c.AppUIHub()));
-        services.AddScoped<Haptics>(c => new Haptics(c.AppUIHub()));
-        services.AddScoped<AudioSession>(c => new AudioSession(c.AppUIHub()));
-        services.AddScoped<IAudioCapture>(c => new IosAudioCapture(c.AppUIHub()));
-        services.AddScoped<AudioFocusService>(c => new IosAudioFocusService(c.AppUIHub()));
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

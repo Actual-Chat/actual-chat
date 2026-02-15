@@ -1,20 +1,19 @@
 using ActualChat.UI.Blazor;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using Plugin.Maui.Audio;
 using AudioManager = Plugin.Maui.Audio.AudioManager;
 
-namespace ActualChat.App.Maui;
+namespace ActualChat.App.Maui.Services;
 
-public class MauiTunes : TuneUI
+public class MauiTuneUI : TuneUI
 {
     private readonly ConcurrentDictionary<string, Task<AsyncAudioPlayer>> _players = new(StringComparer.Ordinal);
     private readonly AudioFocusConsumer _audioFocusConsumer;
     private IAudioFocusActivation? _audioFocusActivation;
 
-    private AudioFocusService AudioFocusService => ((AppUIHub)Hub).AudioFocusService;
+    private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
 
-    public MauiTunes(UIHub hub) : base(hub)
+    public MauiTuneUI(UIHub hub) : base(hub)
         => _audioFocusConsumer = new AudioFocusConsumer(AudioMode.Tunes, OnLostFocus);
 
     public override void Dispose()
@@ -84,6 +83,8 @@ public class MauiTunes : TuneUI
         }
     }
 
+    // Protected methods
+
     protected virtual async Task Vibrate(Tune tune)
     {
         if (!Tunes.TryGetValue(tune, out var info))
@@ -106,13 +107,15 @@ public class MauiTunes : TuneUI
         }
     }
 
+    // Private methods
+
     private async Task<IAudioFocusActivation?> TryGainAudioFocus()
     {
         if (_audioFocusActivation is not null && !_audioFocusActivation.IsSuspended) {
             Log.LogInformation("Already have audio focus Id={Id}", _audioFocusActivation.Id);
             return _audioFocusActivation;
         }
-        _audioFocusActivation = await AudioFocusService.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
+        _audioFocusActivation = await AudioFocusUI.TryGainAudioFocus(_audioFocusConsumer).ConfigureAwait(false);
         return _audioFocusActivation;
     }
 
