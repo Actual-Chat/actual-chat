@@ -273,7 +273,7 @@ public partial class ChatAudioUI
                 cancellationTask
             ).ConfigureAwait(false);
             cExpectedPlaybackState = await cExpectedPlaybackState.Update(cancellationToken).ConfigureAwait(false);
-            cActualPlaybackState = playbackState.Computed;
+            cActualPlaybackState = playbackState.Computed; // It's backed by MutableState, so no need for update
         }
         // ReSharper disable once FunctionNeverReturns
     }

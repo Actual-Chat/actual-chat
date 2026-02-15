@@ -8,12 +8,13 @@
     if (!_readyToRender)
         return;
 
-    var timeZoneChanged = !OrdinalEquals(_timeZoneFormModel.BrowserTimeZoneName, _timeZoneFormModel.SelectedTimeZoneName);
-    var browserTimeZoneNameFound = _timeZoneFormModel.BrowserTimeZoneName != "";
+    var timeZoneChanged = !OrdinalEquals(_timeZoneForm.BrowserTimeZoneName, _timeZoneForm.SelectedTimeZoneName);
+    var browserTimeZoneNameFound = _timeZoneForm.BrowserTimeZoneName != "";
     var updateTimeZoneVisible = timeZoneChanged && browserTimeZoneNameFound;
-    var isEmailVerified = _account.IsEmailVerified();
-    var isEmailEmpty = _emailFormModel.Email.IsNullOrEmpty();
-    var isEmailValid = _emailFormEditContext.IsValid(() => _emailFormModel.Email!);
+    var email = _emailForm.Email ?? "";
+    var isEmailEmpty = email.IsNullOrEmpty();
+    var isEmailValid = _emailFormEditContext.IsValid(() => email);
+    var isEmailVerified = !isEmailEmpty && _account.Identities.HasEmail(email);
 }
 
 <TileTopic Topic="Email"/>
@@ -23,26 +24,22 @@
 
         <FormBlock Class="email-form">
             <FormSection
-                For="() => _emailFormModel.Email"
-                InputId="@_emailFormModel.EmailFieldId"
+                For="() => email"
+                InputId="@_emailForm.EmailFieldId"
                 Label="Email"
                 IsLabelInsideInput="true">
                 <ChildContent>
                     <TextBox
-                        @bind-Value="@_emailFormModel.Email"
-                        Id="@_emailFormModel.EmailFieldId"
-                        Autofocus="true"
-                        disabled="@isEmailVerified"/>
+                        @bind-Value="@_emailForm.Email"
+                        Id="@_emailForm.EmailFieldId"
+                        Autofocus="true"/>
                 </ChildContent>
                 <Right>
                     <VerificationStatus IsVerified="isEmailVerified"/>
                 </Right>
             </FormSection>
             @if (isEmailValid && !isEmailVerified && !isEmailEmpty) {
-                <EmailVerifier
-                    Email="@_emailFormModel.Email"
-                    Class="my-3"
-                    Verified="@OnEmailVerified"/>
+                <EmailVerifier Email="@email" Class="my-3" />
             }
         </FormBlock>
     </Form>
@@ -50,20 +47,20 @@
 
 <TileTopic Topic="Time Zone"/>
 <Tile>
-    <Form Model="@_timeZoneFormModel">
+    <Form Model="@_timeZoneForm">
         <DataAnnotationsValidator/>
 
         <FormBlock Class="time-zone-form">
             <FormSection
-                For="() => _timeZoneFormModel.SelectedTimeZoneName"
-                InputId="@_timeZoneFormModel.SelectedTimeZoneFormId"
+                For="() => _timeZoneForm.SelectedTimeZoneName"
+                InputId="@_timeZoneForm.SelectedTimeZoneFormId"
                 IsLabelInsideInput="true"
                 Label="Time zone">
                 <InputSelect
-                    Value="_timeZoneFormModel.SelectedTimeZoneName"
-                    ValueExpression="@(() => _timeZoneFormModel.SelectedTimeZoneName)"
+                    Value="_timeZoneForm.SelectedTimeZoneName"
+                    ValueExpression="@(() => _timeZoneForm.SelectedTimeZoneName)"
                     ValueChanged="@(async (string timeZoneName) => await OnTimeZoneSelected(timeZoneName))">
-                    @if (_timeZoneFormModel.SelectedTimeZoneName == "") {
+                    @if (_timeZoneForm.SelectedTimeZoneName == "") {
                         <option value="">None</option>
                     }
                     @foreach (var timeZone in _timeZones) {
@@ -72,7 +69,7 @@
                 </InputSelect>
             </FormSection>
             @if (updateTimeZoneVisible) {
-                <span>'@(_timeZoneFormModel.BrowserTimeZoneName)' is detected.</span>
+                <span>'@(_timeZoneForm.BrowserTimeZoneName)' is detected.</span>
                 <Button Class="btn-outline" ContentClass="text-sm" Click="@OnSetDetectedTimeZone">Update</Button>
             }
         </FormBlock>
@@ -81,8 +78,8 @@
 
 @code {
     private EditContext _emailFormEditContext = null!;
-    private TimeZoneFormModel _timeZoneFormModel = null!;
-    private EmailFormModel _emailFormModel = null!;
+    private EmailFormModel _emailForm = null!;
+    private TimeZoneFormModel _timeZoneForm = null!;
     private IReadOnlyCollection<TimeZone> _timeZones = [];
     private AccountFull _account = null!;
     private bool _readyToRender;
@@ -91,18 +88,19 @@
 
     protected override async Task OnInitializedAsync() {
         _timeZones = await TimeZones.List("en-US", CancellationToken.None);
-        _account = await Hub.AccountUI.OwnAccount.Use();
-        _emailFormModel = new EmailFormModel(ComponentIdGenerator) {
+        _account = Hub.AccountUI.OwnAccount.Value;
+        Hub.AccountUI.OwnAccount.Updated += OnOwnAccountChanged;
+        _emailForm = new EmailFormModel(ComponentIdGenerator) {
             Email = _account.Email,
         };
-        _emailFormEditContext = new EditContext(_emailFormModel);
+        _emailFormEditContext = new EditContext(_emailForm);
         _emailFormEditContext.OnFieldChanged += EmailFormEditContextOnOnFieldChanged;
 
         var selectedTimeZoneId = _account.TimeZone;
         var selectedTimeZoneName = await TimeZones.FindDisplayName("en-US", selectedTimeZoneId, default);
         var browserTimeZoneId = Hub.BrowserInfo.TimeZone;
         var browserTimeZoneName = await TimeZones.FindDisplayName("en-US", browserTimeZoneId, default);
-        _timeZoneFormModel = new TimeZoneFormModel(ComponentIdGenerator) {
+        _timeZoneForm = new TimeZoneFormModel(ComponentIdGenerator) {
             SelectedTimeZoneId = selectedTimeZoneId,
             SelectedTimeZoneName = selectedTimeZoneName,
             BrowserTimeZoneId = browserTimeZoneId,
@@ -112,6 +110,7 @@
     }
 
     public void Dispose() {
+        Hub.AccountUI.OwnAccount.Updated -= OnOwnAccountChanged;
         if (_emailFormEditContext != null!)
             _emailFormEditContext.OnFieldChanged -= EmailFormEditContextOnOnFieldChanged;
     }
@@ -122,29 +121,29 @@
 
     private async Task OnTimeZoneSelected(string timeZoneName) {
         var timeZone = _timeZones.First(x => OrdinalEquals(x.IanaName, timeZoneName));
-        _timeZoneFormModel.SelectedTimeZoneId = timeZone.Id;
-        _timeZoneFormModel.SelectedTimeZoneName = timeZone.IanaName;
+        _timeZoneForm.SelectedTimeZoneId = timeZone.Id;
+        _timeZoneForm.SelectedTimeZoneName = timeZone.IanaName;
 
         await UpdateTimezone();
     }
 
     private async Task OnSetDetectedTimeZone() {
-        _timeZoneFormModel.SelectedTimeZoneId = _timeZoneFormModel.BrowserTimeZoneId;
-        _timeZoneFormModel.SelectedTimeZoneName = _timeZoneFormModel.BrowserTimeZoneName;
+        _timeZoneForm.SelectedTimeZoneId = _timeZoneForm.BrowserTimeZoneId;
+        _timeZoneForm.SelectedTimeZoneName = _timeZoneForm.BrowserTimeZoneName;
 
         await UpdateTimezone();
     }
 
-    private async Task OnEmailVerified() {
-        _account = await Hub.Accounts.GetOwn(Session, default);
-        _emailFormModel.Email = _account.Email;
+    private void OnOwnAccountChanged(State state, StateEventKind eventKind) {
+        _account = Hub.AccountUI.OwnAccount.Value;
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private async Task UpdateTimezone() {
         var account = await Hub.Accounts.GetOwn(Session, default);
         var updateAccountCommand = new Accounts_Update(
             Session,
-            account with { TimeZone = _timeZoneFormModel.SelectedTimeZoneId },
+            account with { TimeZone = _timeZoneForm.SelectedTimeZoneId },
             account.Version);
         var (_, error) = await Hub.UICommander.Run(updateAccountCommand);
         if (error != null)

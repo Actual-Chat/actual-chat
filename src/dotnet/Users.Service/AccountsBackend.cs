@@ -246,19 +246,16 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         AccountFull UpdateExistingAccount(AccountFull? originalAccount, UserId? newUserId)
         {
             originalAccount ??= new AccountFull("");
-            var mergedIdentities = originalAccount.Identities.WithMany(identities);
             var mergedClaims = originalAccount.Claims.WithMany(claims);
+            var mergedIdentities = originalAccount.Identities.WithMany(identities);
 
-            // Set Email from claims or identities if not already set
-            var email = originalAccount.Email.IsNullOrEmpty()
-                ? mergedClaims.GetValueOrDefault(ClaimTypes.Email, "").NullIfEmpty()
-                    ?? mergedIdentities.GetEmails().FirstOrDefault()
-                    ?? ""
-                : originalAccount.Email;
+            // Add email identity for Google / Apple accounts based on email claim
+            _ = ActualChat.Email.TryParse(claims.GetValueOrDefault(ClaimTypes.Email, ""), out var claimEmail);
+            if (AuthSchema.IsExternal(authenticatedIdentity.Schema) && claimEmail is not null)
+                mergedIdentities = mergedIdentities.WithEmailIdentity(claimEmail);
 
-            // Set Phone from identities if not already set
+            var email = originalAccount.Email.NullIfEmpty() ?? mergedIdentities.GetEmails().FirstOrDefault() ?? "";
             var phone = originalAccount.Phone ?? mergedIdentities.GetPhones().FirstOrDefault();
-
             return originalAccount with {
                 Id = newUserId ?? originalAccount.Id,
                 Name = GetNewAccountName(originalAccount.Name),

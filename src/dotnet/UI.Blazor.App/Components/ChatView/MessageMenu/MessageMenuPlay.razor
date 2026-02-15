@@ -116,7 +116,7 @@
 
         var startAt = audioEntry.BeginsAt;
         var chatPlayers = Services.GetRequiredService<ChatPlayers>();
-        chatPlayers.StartHistoricalPlayback(chatId, startAt);
+        await chatPlayers.StartHistoricalPlayback(chatId, startAt);
     }
 
     // Nested types

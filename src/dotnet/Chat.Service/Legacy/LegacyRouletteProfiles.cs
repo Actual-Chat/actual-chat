@@ -32,4 +32,9 @@ public class LegacyRouletteProfiles : ILegacyRouletteProfiles
         Session session,
         CancellationToken cancellationToken)
         => Task.FromResult<LegacyRouletteUserSettings?>(null);
+
+    public virtual Task<LegacyRouletteUserSettings?> OnChangeOwnUserSettings(
+        RouletteProfiles_ChangeOwnUserSettings command,
+        CancellationToken cancellationToken)
+        => Task.FromResult<LegacyRouletteUserSettings?>(null);
 }

@@ -93,6 +93,7 @@ export default withMermaid(defineConfig({
               { text: "Overview", link: "/architecture/overview" },
               { text: "Service Design", link: "/architecture/service-design" },
               { text: "Project Structure", link: "/architecture/project-structure" },
+              { text: "RPC Method Hashes", link: "/architecture/rpc-method-hashes" },
             ],
           },
           {

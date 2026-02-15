@@ -185,7 +185,7 @@
         if (!newMoment.HasValue)
             return;
 
-        ChatPlayers.StartHistoricalPlayback(chatPlayer.ChatId, newMoment.Value);
+        await ChatPlayers.StartHistoricalPlayback(chatPlayer.ChatId, newMoment.Value);
     }
 
     // Nested types
