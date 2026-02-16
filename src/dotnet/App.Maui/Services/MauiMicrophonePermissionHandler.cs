@@ -24,7 +24,16 @@ public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
 
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {
-        var status = await MauiPermissions.CheckStatusAsync<MauiPermissions.Microphone>().ConfigureAwait(true);
+        PermissionStatus status;
+        try {
+            status = await MauiPermissions.CheckStatusAsync<MauiPermissions.Microphone>().ConfigureAwait(true);
+        }
+        catch (FileNotFoundException) {
+            // AppxManifest.xml is missing when running outside of MSIX package (e.g. published exe);
+            // unpackaged Windows apps don't require capability declarations.
+            Log.LogWarning("Get: AppxManifest.xml not found, assuming microphone permission is granted (unpackaged mode)");
+            return true;
+        }
         Log.LogInformation("Get: CheckStatusAsync<MauiPermissions.Microphone>() response: {Status}", status);
         // Android returns Denied when permission is not set, also you can request permissions again
         return status switch {
