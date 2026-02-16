@@ -56,7 +56,7 @@ public static class TestSearchDataGenerator
             => $"{GetPlaceTitle(contactOwner, key.PlaceKey)} - {GetTitleChatPart(key)}";
 
         string GetTitleChatPart(TestGroupKey key)
-            => $"{GetVisibilityString(key.IsPublic)} chat {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)} {uniquePart}".Trim();
+            => $"{GetVisibilityString(key.IsPublic)} GroupChat {GetIndexString(key.Index)} {GetMembershipSuffix(contactOwner, key.MustJoin)} {uniquePart}".Trim();
 
         async Task GenerateChats(TestPlaceKey? placeKey, int chatCount, Place? place)
         {

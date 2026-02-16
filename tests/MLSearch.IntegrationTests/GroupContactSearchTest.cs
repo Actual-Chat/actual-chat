@@ -29,17 +29,17 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
 
         // act, assert
         var expected = bob.BuildSearchResults(chats.JoinedGroups2());
-        var searchResults = await Find("chat", true, null, expected.Count);
+        var searchResults = await Find("GroupChat", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicChat1(), UniquePart, [(19, 23)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(51, 55)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicChat1(), UniquePart, [(19, 28)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(51, 60)]), o => o.ExcludingRank());
 
         expected = bob.BuildSearchResults(chats.OtherPublicGroups2());
-        searchResults = await Find("chat", false, null, expected.Count);
+        searchResults = await Find("GroupChat", false, null, expected.Count);
         searchResults.Should()
             .BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicChat1(), UniquePart, [(19, 23)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicPlace1OtherPublicChat1(), UniquePart, [(54, 58)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicChat1(), UniquePart, [(19, 28)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.OtherPublicPlace1OtherPublicChat1(), UniquePart, [(54, 63)]), o => o.ExcludingRank());
 
         expected = bob.BuildSearchResults(
             chats.JoinedPublicPlace1JoinedPrivateChat1(),
@@ -73,22 +73,22 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
 
         // act, assert
         var expected = bob.BuildSearchResults(chats.JoinedPrivatePlace1JoinedChats());
-        var searchResults = await Find("ch", true, places.JoinedPrivatePlace1().Id, expected.Count);
+        var searchResults = await Find("groupch", true, places.JoinedPrivatePlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPrivateChat2(), UniquePart, [(53, 57)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPublicChat1(), UniquePart, [(52, 56)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPrivateChat2(), UniquePart, [(53, 62)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPrivatePlace1JoinedPublicChat1(), UniquePart, [(52, 61)]), o => o.ExcludingRank());
 
-        searchResults = await Find("ch", false, places.JoinedPrivatePlace1().Id, 0);
+        searchResults = await Find("groupch", false, places.JoinedPrivatePlace1().Id, 0);
         searchResults.Should().BeEmpty("private groups are not visible while public groups are 'joined' automatically");
 
         // assert
         expected = bob.BuildSearchResults(chats.JoinedPublicPlace1JoinedChats());
-        searchResults = await Find("ch", true, places.JoinedPublicPlace1().Id, expected.Count);
+        searchResults = await Find("groupch", true, places.JoinedPublicPlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPrivateChat2(), UniquePart, [(52, 56)]), o => o.ExcludingRank());
-        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(51, 55)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPrivateChat2(), UniquePart, [(52, 61)]), o => o.ExcludingRank());
+        searchResults.Should().ContainEquivalentOf(bob.BuildSearchResult(chats.JoinedPublicPlace1JoinedPublicChat1(), UniquePart, [(51, 60)]), o => o.ExcludingRank());
 
-        searchResults = await Find("ch", false, places.JoinedPublicPlace1().Id, 0);
+        searchResults = await Find("groupch", false, places.JoinedPublicPlace1().Id, 0);
         searchResults.Should().BeEmpty("private groups are not visible while public groups are 'joined' automatically");
     }
 
@@ -104,7 +104,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
 
         // act, assert
         var expected = bob.BuildSearchResults(chats.JoinedGroups2());
-        var searchResults = await Find("chat", true, null, expected.Count);
+        var searchResults = await Find("GroupChat", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act
@@ -114,7 +114,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
 
         // assert
         expected = bob.BuildSearchResults(chats.JoinedGroups2().Except([chats.JoinedPrivatePlace1JoinedPrivateChat1()]));
-        searchResults = await Find("chat", true, null, expected.Count);
+        searchResults = await Find("GroupChat", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // assert
@@ -122,7 +122,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults.Should().BeEquivalentTo(bob.BuildSearchResults([updatedChat]), o => o.ExcludingSearchMatch());
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task ShouldNotFindDeletedGroups()
     {
         // arrange
@@ -134,7 +134,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
 
         // act, assert
         var expected = bob.BuildSearchResults(chats.JoinedGroups2());
-        var searchResults = await Find("chat", true, null, expected.Count);
+        var searchResults = await Find("GroupChat", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act
@@ -144,7 +144,7 @@ public class GroupContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
 
         // assert
         expected = bob.BuildSearchResults(chats.JoinedGroups2().Except([chats.JoinedPrivatePlace1JoinedPrivateChat1()]));
-        searchResults = await Find("chat", true, null, expected.Count);
+        searchResults = await Find("GroupChat", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
