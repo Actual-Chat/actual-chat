@@ -35,11 +35,11 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var searchResults = await Find("let");
         searchResults.Should().BeEquivalentTo([entry1.BuildSearchResult(["let's"], UniquePart)], o => o.ExcludingSearchMatch());
         searchResults = await Find("something saying");
-        searchResults.Should().BeEquivalentTo([entry2.BuildSearchResult(["something", "saying", UniquePart])], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry2.BuildSearchResult(["something", "saying"], UniquePart)], o => o.ExcludingSearchMatch());
         searchResults = await Find("river ba");
-        searchResults.Should().BeEquivalentTo([entry3.BuildSearchResult(["river", "bank", UniquePart])], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry3.BuildSearchResult(["river", "bank"], UniquePart)], o => o.ExcludingSearchMatch());
         searchResults = await Find("wak");
-        searchResults.Should().BeEquivalentTo([entry4.BuildSearchResult(["wake", UniquePart])], o => o.ExcludingSearchMatch());
+        searchResults.Should().BeEquivalentTo([entry4.BuildSearchResult(["wake"], UniquePart)], o => o.ExcludingSearchMatch());
     }
 
     [Fact]
