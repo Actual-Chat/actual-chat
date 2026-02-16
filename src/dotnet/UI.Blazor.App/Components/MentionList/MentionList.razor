@@ -9,7 +9,7 @@
     var selection = Selection;
 }
 
-<div @ref="Ref" class="@Class @listCls mention-list custom-scrollbar">
+<div @ref="Ref" class="@Class @listCls mention-list custom-scrollbar" @onmousedown:preventDefault>
     @foreach (var mention in mentions) {
         var cls = mention == selection ? "selected" : "";
         <div class="@cls mention-list-item"
