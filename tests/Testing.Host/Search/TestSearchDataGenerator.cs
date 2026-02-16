@@ -1,5 +1,4 @@
 using ActualChat.Chat;
-using ActualChat.Users;
 using ITestGroupChatMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestGroupKey, ActualChat.Chat.Chat>;
 using ITestPlaceMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestPlaceKey, ActualChat.Chat.Place>;
 using ITestUserMap = System.Collections.Generic.IReadOnlyDictionary<ActualChat.Testing.Host.TestChatKey, ActualChat.Users.AccountFull>;
@@ -9,6 +8,10 @@ namespace ActualChat.Testing.Host;
 
 public static class TestSearchDataGenerator
 {
+    // Underscores prevent matches in random alphanumeric strings (ChatId, UniquePart).
+    public const string OneTerm = "o_n_e";
+    public const string TwoTerm = "t_w_o";
+
     public static Task<ITestPlaceMap> CreatePlaceContacts(
         this IWebTester tester,
         AccountFull contactOwner,
@@ -135,7 +138,7 @@ public static class TestSearchDataGenerator
         var map = new Dictionary<TestEntryKey, ChatEntry>();
         for (int i = 0; i < entryIndexCount; i++)
             foreach (var group in groups)
-                map[new TestEntryKey(group.Key, i)] = await tester.CreateTextEntry(group.Value.Id, $"Message {GetIndexString(i)} {uniquePart}".Trim());
+                map[new TestEntryKey(group.Key, i)] = await tester.CreateTextEntry(group.Value.Id, $"Message {GetIndexString(i)} in chat #{group.Value.Id} {uniquePart}".Trim());
         var userToRestore = await tester.GetOwnAccount();
         await tester.SignIn(contactOwner);
         for (int i = 0; i < entryIndexCount; i++)
@@ -160,5 +163,5 @@ public static class TestSearchDataGenerator
         => (mustJoin ? "with" : "without") + $" {member.Name.NullIfEmpty() ?? "Bob"} as member";
 
     private static string GetIndexString(int index)
-        => (index + 1).ToInvariantString() + " " + index switch { 0 => "one", 1 => "two", _ => "" };
+        => (index + 1).ToInvariantString() + " " + index switch { 0 => OneTerm, 1 => TwoTerm, _ => "" };
 }

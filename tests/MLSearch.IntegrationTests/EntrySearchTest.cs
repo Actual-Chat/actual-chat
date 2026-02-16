@@ -97,8 +97,8 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Tester.SignIn(bob);
 
         // act
-        var expected = entries.Accessible1().BuildSearchResults(["one"], UniquePart);
-        var searchResults = await Find("one", expected: expected.Count);
+        var expected = entries.Accessible1().BuildSearchResults([TestSearchDataGenerator.OneTerm], UniquePart);
+        var searchResults = await Find(TestSearchDataGenerator.OneTerm, expected: expected.Count);
 
         // assert
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());

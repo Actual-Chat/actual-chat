@@ -36,23 +36,23 @@ public class PlaceContactSearchTest(AppHostFixture fixture, ITestOutputHelper @o
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         expected = bob.BuildSearchResults(places.Joined1());
-        searchResults = await Find("one", true, expected.Count);
+        searchResults = await Find(TestSearchDataGenerator.OneTerm, true, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         expected = bob.BuildSearchResults(places.OtherPublicPlace1());
-        searchResults = await Find("one", false, expected.Count);
+        searchResults = await Find(TestSearchDataGenerator.OneTerm, false, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         expected = [
-            bob.BuildSearchResult(places.JoinedPublicPlace1(), UniquePart, [new (7, 12), new (15, 18)]),
-            bob.BuildSearchResult(places.JoinedPrivatePlace1(), UniquePart, [new (8, 13), new (16, 19)]),
+            bob.BuildSearchResult(places.JoinedPublicPlace1(), UniquePart, [new (7, 12), new (15, 20)]),
+            bob.BuildSearchResult(places.JoinedPrivatePlace1(), UniquePart, [new (8, 13), new (16, 21)]),
         ];
-        searchResults = await Find("place one", true, expected.Count);
+        searchResults = await Find($"place {TestSearchDataGenerator.OneTerm}", true, expected.Count);
         searchResults.Should()
             .BeEquivalentTo(expected, o => o.ExcludingRank());
 
-        expected = [bob.BuildSearchResult(places.OtherPublicPlace1(), UniquePart, [new (7, 12), new (15, 18)])];
-        searchResults = await Find("place one", false, expected.Count);
+        expected = [bob.BuildSearchResult(places.OtherPublicPlace1(), UniquePart, [new (7, 12), new (15, 20)])];
+        searchResults = await Find($"place {TestSearchDataGenerator.OneTerm}", false, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingRank());
     }
 

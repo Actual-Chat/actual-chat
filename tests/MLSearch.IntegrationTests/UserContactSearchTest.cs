@@ -233,7 +233,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 people.Friend2FromPublicPlace2(),
                 people.Friend2FromPrivatePlace1(),
                 people.Friend2FromPrivatePlace2());
-        var searchResults = await Find("user tw", true, null, expected.Count);
+        var searchResults = await Find("user T_W", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
@@ -333,12 +333,12 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         var expected = bob.BuildSearchResults(people.Friend1FromPrivatePlace1(), people.Friend2FromPrivatePlace1());
-        var searchResults = await Find("one", true, places.JoinedPrivatePlace1().Id, expected.Count);
+        var searchResults = await Find(TestSearchDataGenerator.OneTerm, true, places.JoinedPrivatePlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // assert
         expected = bob.BuildSearchResults(people.Stranger1FromPrivatePlace1(), people.Stranger2FromPrivatePlace1());
-        searchResults = await Find("one", false, places.JoinedPrivatePlace1().Id, expected.Count);
+        searchResults = await Find(TestSearchDataGenerator.OneTerm, false, places.JoinedPrivatePlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
