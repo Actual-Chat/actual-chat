@@ -214,6 +214,17 @@ public partial class ChatUI
         }
 
         var items = tiles.SelectMany(t => t.Items).ToList();
+
+        // Remove NewMessagesLine if there are own messages after it -
+        // own messages are never "new" to the sender
+        var newMessagesLineIndex = items.FindIndex(i => i.Kind == ChatMessageKind.NewMessagesLine);
+        if (newMessagesLineIndex >= 0)
+            for (var i = newMessagesLineIndex + 1; i < items.Count; i++)
+                if (items[i].Flags.HasFlag(ChatMessageFlags.IsOwnMessage)) {
+                    items.RemoveAt(newMessagesLineIndex);
+                    break;
+                }
+
         var direction = dataQuery.StartOffset != 0
             ? dataQuery.StartOffset < 0 ? -1 : 1
             : dataQuery.EndOffset != 0
@@ -508,7 +519,7 @@ public partial class ChatUI
                         isWelcomeBlockAdded = true;
                     }
 
-                    if (isEntryUnread && !isPrevUnread) {
+                    if (isEntryUnread && !isPrevUnread && !flags.HasFlag(ChatMessageFlags.IsOwnMessage)) {
                         var newLineMessage = new ChatEntryMessage(entry) {
                             Kind = ChatMessageKind.NewMessagesLine,
                             ShouldSkipKey = true,
