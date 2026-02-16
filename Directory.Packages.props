@@ -126,7 +126,7 @@
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
     <PackageVersion Include="Blake3" Version="2.0.0" />
     <PackageVersion Include="CommunityToolkit.HighPerformance" Version="8.4.0" />
-    <PackageVersion Include="CommunityToolkit.Maui.Core" Version="14.0.0" />
+    <PackageVersion Include="CommunityToolkit.Maui.Core" Version="12.3.0" />
     <PackageVersion Include="Deepgram" Version="6.6.0" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
     <PackageVersion Include="FFMpegCore" Version="5.2.0" />
