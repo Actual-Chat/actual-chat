@@ -15,9 +15,9 @@ partial class UploadSessions
 
             var items = await _repo.GetAll().ConfigureAwait(false);
             var corruptedItemIds = new List<string>();
-            var staleItems = new List<KeyValuePair<string, UploadSession>>();
+            var staleItems = new List<KeyValuePair<string, UploadSessionSnapshot>>();
             foreach (var item in items) {
-                var uploadSession = (UploadSession?)item.Value;
+                var uploadSession = (UploadSessionSnapshot?)item.Value;
                 if (uploadSession is null) {
                     corruptedItemIds.Add(item.Key);
                     continue;

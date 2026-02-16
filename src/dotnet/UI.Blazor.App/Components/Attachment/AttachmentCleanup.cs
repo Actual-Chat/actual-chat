@@ -26,5 +26,8 @@ public static class AttachmentCleanupFactory
 
     public static AttachmentCleanup ForUploadSession(UploadSessions uploadSessions, string uploadSessionId)
         => new (AttachmentCleanupKind.UploadSession,
-            () => uploadSessions.ReleaseReference(uploadSessionId));
+            () => {
+                uploadSessions.ReleaseReference(uploadSessionId);
+                return Task.CompletedTask;
+            });
 }

@@ -17,14 +17,14 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
                 $"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
         try {
-            var uploadSession = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession()).ConfigureAwait(false);
+            var uploadSessionId = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession()).ConfigureAwait(false);
             attachment = attachment with {
-                UploadSessionId = uploadSession.SessionId,
+                UploadSessionId = uploadSessionId,
             };
             // UploadSession cleanup will handle file cleanup. So just replace it.
-            await UploadSessions.AddReference(uploadSession.SessionId).ConfigureAwait(false);
+            UploadSessions.AddReference(uploadSessionId);
             attachment.Cleanups.RemoveByKind(AttachmentCleanupKind.File);
-            attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSession.SessionId));
+            attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
             return attachment;
         }
         catch (Exception ex) {
@@ -33,17 +33,17 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
         }
     }
 
-    public async Task ResumeUpload(Attachment attachment)
+    public Task ResumeUpload(Attachment attachment)
     {
         var uploadSessionId = attachment.DemandUploadSessionId();
-        UploadSession uploadSession;
         try {
-            uploadSession = await UploadSessions.ResumeSession(uploadSessionId).ConfigureAwait(false);
+            UploadSessions.Start(uploadSessionId);
         }
         catch (Exception ex) {
             Log.LogWarning(ex, "Failed to resume upload session '{SessionId}'", uploadSessionId);
             AttachmentsState.SetFailureState(attachment.Id, FailureState.Failed);
         }
+        return Task.CompletedTask;
     }
 
     public async Task RestartUpload(Attachment attachment)
@@ -55,15 +55,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
         if (previewState.State is PreviewAccessState.NoFileAccess)
             throw new InvalidOperationException("Can't restart. No access to file");
 
-        await ResetUpload(attachment).ConfigureAwait(false);
         await ResumeUpload(attachment).ConfigureAwait(false);
-    }
-
-    private async Task ResetUpload(Attachment attachment)
-    {
-        var uploadSessionId = attachment.DemandUploadSessionId();
-        await UploadSessions.ResetSession(uploadSessionId).ConfigureAwait(false);
-        AttachmentsState.SetFailureState(attachment.Id, FailureState.Restarting);
     }
 
     Task IAttachmentListEventsListener.AttachmentsRemoved(AttachmentList list, Attachment[] attachments)

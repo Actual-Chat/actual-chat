@@ -19,19 +19,19 @@ public class UploadSessionRepo
         _internal = new UploadSessionRepositoryInternal(options, services);
     }
 
-    public async Task Save(UploadSession session, bool flush = true)
+    public async Task Save(UploadSessionSnapshot session, bool flush = true)
     {
         await _internal.Set(Key(session.SessionId), session).ConfigureAwait(false);
         if (flush)
             await _internal.Flush().ConfigureAwait(false);
     }
 
-    public Task<UploadSession?> Get(string sessionId)
-        => _internal.Get<UploadSession>(Key(sessionId)).AsTask();
+    public Task<UploadSessionSnapshot?> Get(string sessionId)
+        => _internal.Get<UploadSessionSnapshot>(Key(sessionId)).AsTask();
 
-    public async Task<IEnumerable<KeyValuePair<string, UploadSession>>> GetAll()
-        => (await _internal.ListAllEntries<UploadSession>().ConfigureAwait(false))
-            .Select(c => new KeyValuePair<string, UploadSession>(c.Item1, c.Item2))
+    public async Task<IEnumerable<KeyValuePair<string, UploadSessionSnapshot>>> GetAll()
+        => (await _internal.ListAllEntries<UploadSessionSnapshot>().ConfigureAwait(false))
+            .Select(c => new KeyValuePair<string, UploadSessionSnapshot>(c.Item1, c.Item2))
             .ToArray();
 
     public Task Delete(string sessionId)

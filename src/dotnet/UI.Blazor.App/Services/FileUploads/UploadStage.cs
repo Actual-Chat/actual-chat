@@ -6,6 +6,6 @@ public enum UploadStage
     ClientProcessing,
     Uploading,
     Uploaded,
-    Processing,
+    ServerProcessing,
     Completed,
 }

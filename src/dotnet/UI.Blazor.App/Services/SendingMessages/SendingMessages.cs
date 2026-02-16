@@ -72,8 +72,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 if (attachment.FileProvider is not { } fileProvider)
                     throw new InvalidOperationException($"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
-                var uploadSession = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession()).ConfigureAwait(false);
-                uploadSessionId = uploadSession.SessionId;
+                uploadSessionId = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession()).ConfigureAwait(false);
             }
             var attachEntry = new UploadFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Length, attachment.Width, attachment.Height, attachment.Id);
             uploadEntries.Add(attachEntry);
@@ -81,8 +80,12 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
         var uploadSessionIds = uploadEntries.Select(c => c.UploadSessionId).ToImmutableArray();
         foreach (var uploadSessionId in uploadSessionIds)
-            await UploadSessions.AddReference(uploadSessionId).ConfigureAwait(false);
-        Func<Task> releaseUpload = () => uploadSessionIds.Select(UploadSessions.ReleaseReference).Collect();
+            UploadSessions.AddReference(uploadSessionId);
+        Func<Task> releaseUpload = () => {
+            foreach (var uploadSessionId in uploadSessionIds)
+                UploadSessions.ReleaseReference(uploadSessionId);
+            return Task.CompletedTask;
+        };
 
         var upload = new FilesUpload(attachments, uploadEntries.ToArray(), releaseUpload);
         return _filesUploadRegistry.Register(upload, releaseUpload);
@@ -173,7 +176,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             try {
                 var session = await UploadSessions.TryGetSession(uploadSessionId).ConfigureAwait(false);
                 if (session is not null) {
-                    if (session.Status is UploadStatus.Completed && session.MediaContent is not null) {
+                    if (session.IsCompleted) {
                         // If media was already uploaded, use it directly to display a preview.
                         // Do not try to access the file.
                         mediaContent = session.MediaContent;
@@ -235,7 +238,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 NoFileAccess = !attachmentIsOk
             };
             attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
-            await UploadSessions.AddReference(uploadSessionId).ConfigureAwait(false);
+            UploadSessions.AddReference(uploadSessionId);
             attachment.Cleanups.Add(AttachmentCleanupFactory.ForUploadSession(UploadSessions, uploadSessionId));
             if (sourceAttachmentId is not null)
                 attachmentsState.Unregister(sourceAttachmentId.Value);
