@@ -424,7 +424,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishReadyToRun>true</PublishReadyToRun>
     <!-- <PublishSingleFile>true</PublishSingleFile>-->
-    <!-- <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
     <PublishAot>false</PublishAot>
     <PublishTrimmed>false</PublishTrimmed>
