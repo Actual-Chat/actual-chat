@@ -41,6 +41,7 @@
 @code {
     private readonly List<IStep> _steps = new();
     private IStep? _currentStep;
+    private bool _initialSkipDone;
 
     [Parameter] public RenderFragment<Stepper>? Header { get; set; }
     [Parameter] public RenderFragment<Stepper>? Footer { get; set; }
@@ -49,17 +50,27 @@
     [Parameter] public EventCallback<bool> CurrentStepChanged { get; set; }
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowNoise { get; set; }
+    [Parameter] public bool SkipCompletedSteps { get; set; }
 
     public int StepCount => _steps.Count;
     public int LastStepIndex => Math.Max(0, _steps.Count - 1);
     public int CurrentStepIndex => _currentStep is { } currentStep ? _steps.IndexOf(currentStep) : -1;
     public bool IsLastStep => CurrentStepIndex == LastStepIndex;
     public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
-    public bool CanMoveBack => CurrentStepIndex > 0;
+    public bool CanMoveBack => SkipCompletedSteps
+        ? CurrentStepIndex > 0 && _steps.Take(CurrentStepIndex).Any(s => !s.IsCompleted)
+        : CurrentStepIndex > 0;
     public bool CanSkip => _currentStep is { CanSkip: true };
     public string SkipTitle => _currentStep?.SkipTitle ?? "Skip";
     public string NextTitle => _currentStep?.NextTitle ?? "Next";
     public IStep? CurrentStep => _currentStep;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (SkipCompletedSteps && !_initialSkipDone && _currentStep?.IsCompleted == true) {
+            _initialSkipDone = true;
+            await Move(1);
+        }
+    }
 
     public void AddStep(IStep step) {
         _steps.Add(step);
@@ -91,6 +102,14 @@
             return false;
 
         var newStepIndex = CurrentStepIndex + offset;
+
+        // Skip completed steps when SkipCompletedSteps is enabled
+        if (SkipCompletedSteps) {
+            var direction = Math.Sign(offset);
+            while (newStepIndex >= 0 && newStepIndex < StepCount && _steps[newStepIndex].IsCompleted)
+                newStepIndex += direction;
+        }
+
         if (newStepIndex < 0)
             return false;
 
