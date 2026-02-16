@@ -487,11 +487,6 @@
     <None Remove="android.nettrace" />
     <None Remove="android.etlx" />
     <None Remove="android.etlx" />
-    <None Remove="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.ps1" />
-    <None Remove="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\tr-TR\Add-AppDevPackage.psd1" />
-    <None Remove="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\es-ES\Add-AppDevPackage.psd1" />
-    <None Remove="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\Add-AppDevPackage.psd1" />
-    <None Remove="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.ps1" />
   </ItemGroup>
   <!-- Android -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
@@ -599,19 +594,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\cs-CZ\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\de-DE\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\en-US\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\es-ES\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\fr-FR\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\it-IT\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\ja-JP\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\ko-KR\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\pl-PL\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\pt-BR\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\ru-RU\" />
-    <Folder Include="AppPackages\App.Maui_2.4.482.0_Test\Add-AppDevPackage.resources\tr-TR\" />
-    <Folder Include="Platforms\Android\Resources\Raw\" />
+      <Folder Include="Platforms\Android\Resources\Raw\" />
   </ItemGroup>
 
   <!-- Targets & overrides.
