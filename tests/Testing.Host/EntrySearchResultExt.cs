@@ -20,6 +20,8 @@ public static class EntrySearchResultExt
 
     public static EntrySearchResult BuildSearchResult(this ChatEntryId entryId, string highlight, IReadOnlyList<string> highlightedWords, string uniquePart, params Range<int>[] searchMatchRanges)
         => new (entryId.ToTextEntryId(), searchMatchRanges.BuildSearchMatch(highlight, uniquePart)) {
-            HighlightedWords = highlightedWords.Append(uniquePart).Where(x => !x.IsNullOrEmpty()).ToApiSet(),
+            HighlightedWords = highlightedWords.Append(uniquePart)
+                .Where(x => !x.IsNullOrEmpty())
+                .ToApiSet(StringComparer.OrdinalIgnoreCase),
         };
 }
