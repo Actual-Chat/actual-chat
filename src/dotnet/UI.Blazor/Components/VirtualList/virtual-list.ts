@@ -76,7 +76,7 @@ interface VirtualListStateSnapshot {
     readonly reason: string;
     readonly time: number;
     readonly state: Readonly<VirtualListState>;
-    readonly changedFields: ReadonlyArray<keyof VirtualListState>;
+    readonly changedFields: readonly (keyof VirtualListState)[];
 }
 
 const StateHistoryCapacity = 50;
@@ -86,7 +86,7 @@ export class VirtualList {
     private static readonly _instances = new Set<VirtualList>();
     public static enableWatchdogFixes = false;
 
-    public static dumpStateChangeLogs(lastN?: number, endStateEvery: number = 10): void {
+    public static dumpStateChangeLogs(lastN?: number, endStateEvery = 10): void {
         for (const instance of VirtualList._instances) {
             console.warn(
                 `[VirtualList:${instance.identity}] State history:`,
@@ -130,12 +130,12 @@ export class VirtualList {
     private turnOffScrollingCallback?: () => void;
     private isPointerDown = false;
     private skeletonWatchdogTimer: ReturnType<typeof setInterval> | null = null;
-    private skeletonWatchdogLastVersion: number = -1;
+    private skeletonWatchdogLastVersion = -1;
     private userScrollDirection: 'up' | 'down' | 'none' = 'none';
 
     private _state: VirtualListState;
     private readonly _stateHistory: VirtualListStateSnapshot[] = [];
-    private _stateVersion: number = 0;
+    private _stateVersion = 0;
 
     private get state(): VirtualListState { return this._state; }
 
@@ -396,7 +396,7 @@ export class VirtualList {
         };
     }
 
-    public getStateChangeLog(lastN?: number, endStateEvery: number = 10): Record<string, unknown>[] {
+    public getStateChangeLog(lastN?: number, endStateEvery = 10): Record<string, unknown>[] {
         const history = lastN
             ? this._stateHistory.slice(-lastN)
             : this._stateHistory;
@@ -422,7 +422,7 @@ export class VirtualList {
         reason: string,
         prev: VirtualListState,
         next: VirtualListState,
-        changedFields: ReadonlyArray<keyof VirtualListState>,
+        changedFields: readonly (keyof VirtualListState)[],
     ): void {
         const warnings: string[] = [];
 
@@ -1163,7 +1163,7 @@ export class VirtualList {
             return; // Ignore non-user initiated scrolls
 
         // Clear sticky edge when user is scrolling via touch/pointer drag
-        if (this.isPointerDown && this.stickyEdge != null && !this.isEndAnchorVisible) {
+        if (this.isPointerDown && this.state.stickyEdge != null && !this.state.isEndAnchorVisible) {
             this.setStickyEdge(null);
         }
 
@@ -1200,7 +1200,8 @@ export class VirtualList {
     };
 
     private onWheel = (): void => {
-        if (this.stickyEdge != null && !this.isEndAnchorVisible) {
+        const { stickyEdge, isEndAnchorVisible } = this.state;
+        if (stickyEdge != null && !isEndAnchorVisible) {
             this.setStickyEdge(null);
         }
     };
@@ -1208,8 +1209,7 @@ export class VirtualList {
     private onDocumentVisibilityChange(): void {
         if (document.hidden) {
             debugLog?.log(`onDocumentVisibilityChange: hidden, clearing stickyEdge`);
-            this.stickyEdge = null;
-            this.isEndAnchorVisible = false;
+            this.turnOffIsEndAnchorVisible()
             this.turnOnIsEndAnchorVisibleDebounced.reset();
             this.turnOffIsEndAnchorVisibleDebounced.reset();
         }
@@ -1692,7 +1692,7 @@ export class VirtualList {
                                 //     'restoreScrollPosition: wrapper size increased with DELAY!',
                                 //     totalSize);
                             }
-                        }});
+                        } });
                     this.turnOffScrollingCallback = setWrapperHeight;
 
                 }
