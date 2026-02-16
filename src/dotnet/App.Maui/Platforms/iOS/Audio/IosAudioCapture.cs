@@ -1,10 +1,9 @@
 using System.Buffers;
-using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor.App.Services;
 using AVFoundation;
 
-namespace ActualChat.App.Maui.Recording;
+namespace ActualChat.App.Maui.Audio;
 
 public class IosAudioCapture(AppUIHub hub) : IAudioCapture
 {
