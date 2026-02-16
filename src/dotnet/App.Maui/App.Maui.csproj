@@ -182,6 +182,8 @@
 <!--      <ExcludeAssets>runtime</ExcludeAssets>-->
 <!--    </PackageReference>-->
     <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" />
+    <!-- Exclude native DirectML.dll - it's already bundled by WindowsAppSDKSelfContained -->
+    <PackageReference Include="Microsoft.AI.DirectML" ExcludeAssets="native" />
     <PackageReference Include="NAudio" />
     <PackageReference Include="OpusSharp.Core" />
   </ItemGroup>
