@@ -102,7 +102,7 @@ public static class TestSearchDataGenerator
                     var key = new TestChatKey(placeKey, i, isExistingContact);
                     var name = string.Join(" ",
                         isExistingContact ? "Friend" : "Stranger",
-                        "User",
+                        "TestUser",
                         GetIndexString(i));
                     var lastName = "from " + GetPlaceTitle(contactOwner, placeKey, uniquePart);
                     var account = await tester.CreateAccount(name, lastName);

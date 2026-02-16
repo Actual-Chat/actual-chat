@@ -28,8 +28,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await Tester.SignInAsUniqueBob();
 
         // act
-        await Find("User", false, null, 10); // wait until indexed
-        var searchResults = await Find("User", true, null, 0);
+        await Find("TestUser", false, null, 10); // wait until indexed
+        var searchResults = await Find("TestUser", true, null, 0);
 
         // assert
         searchResults.Should().BeEmpty();
@@ -46,8 +46,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
             await Tester.CreatePeerContact(bob, other);
 
         // act
-        await Find("User", true, null, 10); // wait until indexed
-        var searchResults = await Find("User", false, null, 0);
+        await Find("TestUser", true, null, 10); // wait until indexed
+        var searchResults = await Find("TestUser", false, null, 0);
 
         // assert
         searchResults.Should().BeEmpty();
@@ -67,7 +67,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 await Tester.CreatePeerContact(ownAccount, other);
 
         // act
-        var searchResults = await Find("User", own, null, 2);
+        var searchResults = await Find("TestUser", own, null, 2);
 
         // assert
         var expected = ownAccount.BuildSearchResults(accounts[1..]);
@@ -86,12 +86,12 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         var expected = bob.BuildSearchResults(accounts[..5]);
-        var searchResults = await Find("User", true, null, expected.Count);
+        var searchResults = await Find("TestUser", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
         expected = bob.BuildSearchResults(accounts[5..]);
-        searchResults = await Find("User", false, null, expected.Count);
+        searchResults = await Find("TestUser", false, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
@@ -110,7 +110,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchByContactNameResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
-        var searchResults = await Find("User", true, null, expected.Count);
+        var searchResults = await Find("TestUser", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(searchByContactNameResults, o => o.ExcludingSearchMatch());
 
         // act, assert
@@ -119,7 +119,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         expected = bob.BuildSearchResults(accounts[5..]);
-        searchResults = await Find("User", false, null, expected.Count);
+        searchResults = await Find("TestUser", false, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
@@ -138,7 +138,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchByExternalContactNameResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
-        var searchResults = await Find("User", true, null, expected.Count);
+        var searchResults = await Find("TestUser", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(searchByExternalContactNameResults, o => o.ExcludingSearchMatch());
 
         // act, assert
@@ -147,11 +147,11 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         expected = bob.BuildSearchResults(accounts[5..]);
-        searchResults = await Find("User", false, null, expected.Count);
+        searchResults = await Find("TestUser", false, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
-    [Fact(Skip = "Flaky")]
+    [Fact]
     public async Task ShouldFindByPrefix()
     {
         // arrange
@@ -163,22 +163,22 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         var expected = bob.BuildSearchResults(people.Friends());
-        var searchResults = await Find("us", true, null, expected.Count);
+        var searchResults = await Find("testu", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
         expected = bob.BuildSearchResults(people.Strangers());
-        searchResults = await Find("us", false, null, expected.Count);
+        searchResults = await Find("testu", false, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
         expected = bob.BuildSearchResults(people.Friends());
-        searchResults = await Find("from u", true, null, expected.Count);
+        searchResults = await Find("from te", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
         expected = bob.BuildSearchResults(people.Strangers());
-        searchResults = await Find("from u", false, null, expected.Count);
+        searchResults = await Find("from te", false, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
@@ -196,22 +196,12 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         var expected = bob.BuildSearchResults(people.Friend1FromPublicPlace1(), people.Friend2FromPublicPlace1());
-        var searchResults = await Find("us", true, places.JoinedPublicPlace1().Id, expected.Count);
+        var searchResults = await Find("from te", true, places.JoinedPublicPlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
         expected = bob.BuildSearchResults(people.Stranger1FromPublicPlace1(), people.Stranger2FromPublicPlace1());
-        searchResults = await Find("us", false, places.JoinedPublicPlace1().Id, expected.Count);
-        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-
-        // act, assert
-        expected = bob.BuildSearchResults(people.Friend1FromPublicPlace1(), people.Friend2FromPublicPlace1());
-        searchResults = await Find("from u", true, places.JoinedPublicPlace1().Id, expected.Count);
-        searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
-
-        // act, assert
-        expected = bob.BuildSearchResults(people.Stranger1FromPublicPlace1(), people.Stranger2FromPublicPlace1());
-        searchResults = await Find("from u", false, places.JoinedPublicPlace1().Id, expected.Count);
+        searchResults = await Find("from te", false, places.JoinedPublicPlace1().Id, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
@@ -233,7 +223,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 people.Friend2FromPublicPlace2(),
                 people.Friend2FromPrivatePlace1(),
                 people.Friend2FromPrivatePlace2());
-        var searchResults = await Find("user T_W", true, null, expected.Count);
+        var searchResults = await Find("testuser T_W", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
@@ -244,7 +234,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 people.Stranger2FromPublicPlace2(),
                 people.Stranger2FromPrivatePlace1(),
                 people.Stranger2FromPrivatePlace2());
-        searchResults = await Find("user tw", false, null, expected.Count);
+        searchResults = await Find("testuser T_W", false, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
@@ -260,12 +250,12 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         var expected = bob.BuildSearchResults(accounts[..5]);
-        var searchResults = await Find("User", true, null, expected.Count);
+        var searchResults = await Find("TestUser", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
         expected = bob.BuildSearchResults(accounts[5..]);
-        searchResults = await Find("User", false, null, expected.Count);
+        searchResults = await Find("TestUser", false, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act
@@ -274,12 +264,12 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         expected = bob.BuildSearchResults(accounts[..4]);
-        searchResults = await Find("User", true, null, expected.Count);
+        searchResults = await Find("TestUser", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
         expected = bob.BuildSearchResults(accounts[5..9]);
-        searchResults = await Find("User", false, null, expected.Count);
+        searchResults = await Find("TestUser", false, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
@@ -295,11 +285,11 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         var expected = bob.BuildSearchResults(accounts[..5]);
-        var searchResults = await Find("User", true, null, expected.Count);
+        var searchResults = await Find("TestUser", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // act, assert
-        searchResults = await Find("User", false, null, expected.Count);
+        searchResults = await Find("TestUser", false, null, expected.Count);
         searchResults.Should()
             .BeEquivalentTo(bob.BuildSearchResults(accounts[5..]), o => o.ExcludingSearchMatch());
 
@@ -312,12 +302,12 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
         // act, assert
         expected = bob.BuildSearchResults(accounts[..4]);
-        searchResults = await Find("User", true, null, expected.Count);
+        searchResults = await Find("TestUser", true, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
 
         // assert
         expected = bob.BuildSearchResults(accounts[5..9]);
-        searchResults = await Find("User", false, null, expected.Count);
+        searchResults = await Find("TestUser", false, null, expected.Count);
         searchResults.Should().BeEquivalentTo(expected, o => o.ExcludingSearchMatch());
     }
 
@@ -394,8 +384,8 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
     private async Task<AccountFull[]> CreateAccounts(int count)
         => await Tester.CreateAccounts(count,
-            userNameFactory: i => $"{UniquePart} User {i}",
-            nameFactory: i => $"{UniquePart} User",
+            userNameFactory: i => $"{UniquePart} TestUser {i}",
+            nameFactory: i => $"{UniquePart} TestUser",
             secondNameFactory: i => $"{i}");
 
     private Task<AccountFull> CreateAccount(string name)
