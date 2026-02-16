@@ -63,6 +63,10 @@
     <None Remove="android.etlx" />
   </ItemGroup>
 
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Essentials" />
     <PackageReference Include="OpenTelemetry" />
