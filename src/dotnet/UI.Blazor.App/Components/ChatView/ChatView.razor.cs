@@ -548,10 +548,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (IsNewMessagesLineDebounceActive)
             return _debouncedReadEntryLid;
 
-        // Sticky end: treat "recently at end" same as "currently at end"
+        // Sticky end: treat "recently at end" or "currently at end" the same way
+        var isAtEnd = ItemVisibility.Value.IsEndAnchorVisible;
         var wasRecentlyAtEnd = _lastEndAnchorVisibleAt != default
             && _lastEndAnchorVisibleAt.Elapsed < NewMessagesLineDebounceTimeout;
-        if (wasRecentlyAtEnd) {
+        if (isAtEnd || wasRecentlyAtEnd) {
             _newMessagesLineShownAt = default;
             return long.MaxValue;
         }
