@@ -1,17 +1,16 @@
 using System.Collections.Frozen;
-using ActualChat.Media;
 using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
 public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
-    private static readonly FrozenDictionary<MediaStage, StageProgressInfo> StageProgressMap = BuildStageProgressMap();
-    private static readonly MediaId FakeMediaId = MediaId.New("client-id:upload-ready");
+    private static readonly FrozenDictionary<UploadStage, StageProgressInfo> StageProgressMap = BuildStageProgressMap();
     private readonly ConcurrentDictionary<AttachmentId, AttachmentInfo> _infos = new();
     private readonly ConcurrentDictionary<AttachmentId, AttachmentPreview> _previews = new();
     private readonly ConcurrentDictionary<AttachmentId, MediaContent> _mediaContents = new();
     private readonly ConcurrentDictionary<AttachmentId, FailureState> _failureStates = new();
+    private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;
 
     public void Register(Attachment attachment)
     {
@@ -76,33 +75,16 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         if (sessionId.IsNullOrEmpty())
             return AttachmentProgress.New;
 
-        var uploadProgress = await Hub.UploadSessionsState.GetProgress(sessionId, cancellationToken).ConfigureAwait(false);
-        MediaProgress mediaProgress;
-        if (uploadProgress.Stage == UploadStage.Completed)
-            mediaProgress = new(FakeMediaId, 0, MediaStage.Ready, 0, "");
-        else if (uploadProgress.Stage >= UploadStage.Uploaded) {
-            var mediaProgress1 = await GetMediaProgress(sessionId, cancellationToken).ConfigureAwait(false);
-            mediaProgress = mediaProgress1 ?? new(FakeMediaId, 0, MediaStage.Uploaded, 0, "");
-        }
-        else {
-            MediaStage stage = uploadProgress.Stage switch {
-                UploadStage.Uploading => MediaStage.Uploading,
-                UploadStage.ClientProcessing => MediaStage.ClientProcessing,
-                UploadStage.New => MediaStage.Reserved,
-                _ => throw new InvalidOperationException($"Unexpected upload stage: {uploadProgress.Stage}"),
-            };
-            mediaProgress = new MediaProgress(FakeMediaId, 0, stage, uploadProgress.Progress, uploadProgress.ErrorMessage);
-        }
-
-        var stageInfo = GetStateInfo(mediaProgress.Stage);
+        var uploadProgress = await UploadSessionsState.GetProgress(sessionId, cancellationToken).ConfigureAwait(false);
+        var stageInfo = GetStateInfo(uploadProgress.Stage);
         var overallProgress = stageInfo.BaseProgress
-            + (int)(mediaProgress.StageProgress * stageInfo.StageWidth / 100);
+            + (int)(uploadProgress.StageProgress * stageInfo.StageWidth / 100);
 
-        var isReady = mediaProgress.Stage == MediaStage.Ready;
-        var isFailed = !isReady && mediaProgress.HasFailed;
+        var isReady = uploadProgress.IsReady;
+        var isFailed = uploadProgress.IsFailed;
         var details = (isReady, isFailed) switch {
             (true, _) => "",
-            (_, true) => "Failed: " + mediaProgress.ErrorMessage,
+            (_, true) => "Failed: " + uploadProgress.ErrorMessage,
             _ => stageInfo.Details,
         };
         return new AttachmentProgress(overallProgress, details) {
@@ -140,41 +122,31 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         return Task.FromResult(state);
     }
 
-    private async Task<MediaProgress?> GetMediaProgress(string sessionId, CancellationToken cancellationToken)
-    {
-        var mediaId = await Hub.UploadSessionsState.GetReservedMediaId(sessionId, cancellationToken);
-        if (mediaId is null)
-            return null;
-
-        return await Hub.Medias.GetProgress(Session, mediaId, cancellationToken).ConfigureAwait(false);
-    }
-
     private async Task<string?> GetUploadSessionId(AttachmentId id, CancellationToken cancellationToken)
     {
         var info = await GetAttachmentInfo(id, cancellationToken).ConfigureAwait(false);
         return info?.UploadSessionId;
     }
 
-    private static StageProgressInfo GetStateInfo(MediaStage stage)
+    private static StageProgressInfo GetStateInfo(UploadStage stage)
     {
         var info = StageProgressMap.GetValueOrDefault(stage);
         return info ?? new StageProgressInfo(30, 0, "Unknown stage");
     }
 
-    private static FrozenDictionary<MediaStage, StageProgressInfo> BuildStageProgressMap()
+    private static FrozenDictionary<UploadStage, StageProgressInfo> BuildStageProgressMap()
     {
         // Only BaseProgress and Details are specified — StageWidth is computed automatically
-        var stages = new (MediaStage Stage, int BaseProgress, string Details)[] {
-            (MediaStage.Reserved, 0, ""),
-            (MediaStage.ClientProcessing, 2, "Client processing"),
-            (MediaStage.Uploading, 25, "Uploading"),
-            (MediaStage.Uploaded, 70, "Uploaded"),
-            (MediaStage.ServerProcessing, 70, "Server processing"),
-            (MediaStage.Saving, 97, "Saving"),
-            (MediaStage.Ready, 100, "Ready"),
+        var stages = new (UploadStage Stage, int BaseProgress, string Details)[] {
+            (UploadStage.New, 0, ""),
+            (UploadStage.ClientProcessing, 2, "Client processing"),
+            (UploadStage.Uploading, 25, "Uploading"),
+            (UploadStage.Uploaded, 70, "Uploaded"),
+            (UploadStage.ServerProcessing, 70, "Server processing"),
+            (UploadStage.Completed, 100, "Ready"),
         };
 
-        var result = new Dictionary<MediaStage, StageProgressInfo>();
+        var result = new Dictionary<UploadStage, StageProgressInfo>();
         for (var i = 0; i < stages.Length; i++) {
             var (stage, baseProgress, details) = stages[i];
             var nextBaseProgress = i + 1 < stages.Length ? stages[i + 1].BaseProgress : 100;
