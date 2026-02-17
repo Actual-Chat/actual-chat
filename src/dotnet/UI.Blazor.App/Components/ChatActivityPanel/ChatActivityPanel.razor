@@ -23,7 +23,7 @@
      @onclick:preventDefault="true"
      @onclick:stopPropagation="true"
      @onclick="@Click">
-    <div class="c-icon">
+    <div class="c-icon hideable">
         <chat-activity-panel-icon-svg size="@iconSize" isActive="@isActive"/>
     </div>
     @if (m.IsAnyoneTalking && chatId is not null) {
@@ -33,7 +33,14 @@
             MaxCount="@MaxCount"
             IsListening="@IsListening"/>
     } else {
-        <div class="w-full"></div>
+        <div class="activity-placeholder">
+            <div class="placeholder-circle"></div>
+            <div class="placeholder-circle"></div>
+            <div class="placeholder-circle"></div>
+            @if (!ScreenSize.IsNarrow()) {
+                <div class="placeholder-circle"></div>
+            }
+        </div>
     }
     <div class="c-buttons">
         @if (!IsListening && !IsRecordingHere) {

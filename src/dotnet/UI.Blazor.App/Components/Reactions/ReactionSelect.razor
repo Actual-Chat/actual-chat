@@ -2,7 +2,7 @@
 @inherits ComponentBase<AppUIHub>
 
 <ul class="reaction-select">
-    @foreach (var emoji in _emojis) {
+    @foreach (var emoji in _visibleEmojis) {
         <MenuEntry
             Class="reaction-select-reaction"
             Click="@(_ => React(emoji))">
@@ -11,21 +11,41 @@
             </IconContent>
         </MenuEntry>
     }
+    @if (_hasMore) {
+        <li class="reaction-select-toggle" data-menu-keep-open @onclick="@OnExpandClick" @onclick:stopPropagation>
+            <i class="icon-chevron-right text-3.5xl"></i>
+        </li>
+    }
 </ul>
 
 @code {
     private const int MaxReactionCount = 6;
-    private Emoji[] _emojis = null!;
+    private Emoji[] _allEmojis = [];
+    private Emoji[] _visibleEmojis = [];
+    private bool _hasMore;
+    private UserReactionSettings? _reactionSettings;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool ShowDefaultReaction { get; set; } = true;
+    [Parameter] public EventCallback OnExpandClick { get; set; }
 
-    protected override void OnParametersSet() {
-        var skipCount = ShowDefaultReaction ? 0 : 1;
-        _emojis = Emojis.All.Skip(skipCount).Take(MaxReactionCount).ToArray();
+    protected override async Task OnInitializedAsync() {
+        _reactionSettings = await Hub.AccountSettings.UserReactionSettings().Get();
+        UpdateEmojis();
     }
 
-    private Task React(Emoji emoji) {
+    protected override void OnParametersSet()
+        => UpdateEmojis();
+
+    private void UpdateEmojis() {
+        var skipCount = ShowDefaultReaction ? 0 : 1;
+        var allEmojis = _reactionSettings?.GetSortedEmojis() ?? Emojis.All;
+        _allEmojis = allEmojis.Skip(skipCount).ToArray();
+        _hasMore = _allEmojis.Length > MaxReactionCount;
+        _visibleEmojis = _hasMore ? _allEmojis.Take(MaxReactionCount).ToArray() : _allEmojis;
+    }
+
+    private async Task React(Emoji emoji) {
         _ = TuneUI.Play(Tune.React);
         var reaction = new Reaction {
             Id = Symbol.Empty,
@@ -33,6 +53,8 @@
             EntryId = Entry.Id.ToTextEntryId(),
             Emoji = emoji,
         };
-        return UICommander.Run(new Reactions_React(Session, reaction));
+
+        _ = Hub.AccountSettings.UserReactionSettings().Update(s => s.IncrementUsage(emoji.Id.Value));
+        await UICommander.Run(new Reactions_React(Session, reaction));
     }
 }

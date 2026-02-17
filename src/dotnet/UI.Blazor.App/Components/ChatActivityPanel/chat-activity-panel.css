@@ -53,12 +53,51 @@ body.narrow .chat-activity-panel:after {
     @apply justify-start gap-x-1;
 }
 .chat-activity-panel > .author-circle-group .author-circle {
-    box-shadow:
-        -1px 0 0 0 var(--recorder-off-middle),
-        0 -1px 0 0 var(--recorder-off-bottom),
-        1px 0 0 0 var(--recorder-off-middle),
-        0 1px 0 0 var(--recorder-off-top)
+    animation: rotate-box-shadow 2s linear infinite;
 }
+
+/* Activity placeholder when no one is talking */
+.activity-placeholder {
+    @apply flex-1 flex items-center;
+}
+.placeholder-circle {
+    @apply w-9 h-9 -ml-4 first:ml-0;
+    @apply rounded-full;
+    @apply opacity-0;
+    @apply bg-[var(--indigo-70)];
+    animation: placeholder-wave 2s infinite ease-in-out;
+}
+.layout-header.collapsed .placeholder-circle:not(:first-child) {
+    @apply -ml-5;
+}
+.placeholder-circle:nth-child(1) {
+    animation-delay: 0s;
+    --placeholder-opacity: 0.35;
+}
+.placeholder-circle:nth-child(2) {
+    animation-delay: 0.15s;
+    --placeholder-opacity: 0.25;
+}
+.placeholder-circle:nth-child(3) {
+    animation-delay: 0.3s;
+    --placeholder-opacity: 0.15;
+}
+.placeholder-circle:nth-child(4) {
+    animation-delay: 0.45s;
+    --placeholder-opacity: 0.05;
+}
+
+@keyframes placeholder-wave {
+    0%, 100% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    50% {
+        opacity: var(--placeholder-opacity);
+        transform: scale(1);
+    }
+}
+
 .chat-activity-panel > .c-buttons {
     @apply flex-none flex-x items-center gap-x-4 md:gap-x-2;
     @apply pl-1 pr-2;
@@ -179,6 +218,44 @@ body.narrow .chat-activity-panel.listening:after {
     animation-delay: 0.2s;
 }
 
+@keyframes rotate-box-shadow {
+    0% {
+        box-shadow:
+            -1px 0 0 0 var(--recorder-off-middle),
+            0 -1px 0 0 var(--recorder-off-bottom),
+            1px 0 0 0 var(--recorder-off-middle),
+            0 1px 0 0 var(--recorder-off-top);
+    }
+    25% {
+        box-shadow:
+            -1px 0 0 0 var(--recorder-off-top),
+            0 -1px 0 0 var(--recorder-off-middle),
+            1px 0 0 0 var(--recorder-off-bottom),
+            0 1px 0 0 var(--recorder-off-middle);
+    }
+    50% {
+        box-shadow:
+            -1px 0 0 0 var(--recorder-off-middle),
+            0 -1px 0 0 var(--recorder-off-top),
+            1px 0 0 0 var(--recorder-off-middle),
+            0 1px 0 0 var(--recorder-off-bottom);
+    }
+    75% {
+        box-shadow:
+            -1px 0 0 0 var(--recorder-off-bottom),
+            0 -1px 0 0 var(--recorder-off-middle),
+            1px 0 0 0 var(--recorder-off-top),
+            0 1px 0 0 var(--recorder-off-middle);
+    }
+    100% {
+        box-shadow:
+            -1px 0 0 0 var(--recorder-off-middle),
+            0 -1px 0 0 var(--recorder-off-bottom),
+            1px 0 0 0 var(--recorder-off-middle),
+            0 1px 0 0 var(--recorder-off-top);
+    }
+}
+
 @keyframes equalize-active-1 {
     0%, 100% {
         height: 6px;
@@ -238,6 +315,10 @@ body.narrow .chat-activity-panel.listening:after {
 }
 .layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel {
     @apply bottom-3;
+    @apply pointer-events-none;
+}
+.layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel > * {
+    @apply pointer-events-auto;
 }
 
 /* During unpin drag, disable transitions and animation for smooth finger following */

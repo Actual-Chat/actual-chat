@@ -33,4 +33,7 @@ public static class KvasExt
 
     public static KvasAccessor<UserChatRecordingDetectedLanguage> UserChatRecordingDetectedLanguage(this IKvas<Account> kvas)
         => kvas.For<UserChatRecordingDetectedLanguage>();
+
+    public static KvasAccessor<UserReactionSettings> UserReactionSettings(this IKvas<Account> kvas)
+        => kvas.For<UserReactionSettings>();
 }

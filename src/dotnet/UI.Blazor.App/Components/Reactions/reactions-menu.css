@@ -1,0 +1,26 @@
+.reactions-menu {
+    @apply grid gap-1;
+    @apply w-full md:max-w-80 h-full max-h-30;
+    @apply p-2;
+    @apply overflow-y-auto;
+    grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr));
+    scrollbar-width: none;
+}
+.reactions-menu-item {
+    @apply flex-none flex items-center justify-center;
+    @apply w-8 h-8 min-w-0;
+    @apply p-0;
+    @apply rounded-md;
+    @apply cursor-pointer;
+}
+.reactions-menu-item:hover {
+    @apply bg-hover;
+}
+.reactions-menu-item .ac-menu-content,
+.reactions-menu-item .ac-menu-icon {
+    @apply flex-none flex items-center justify-center;
+    @apply w-full h-full;
+}
+.reactions-menu-emoji {
+    @apply w-6 h-6;
+}
