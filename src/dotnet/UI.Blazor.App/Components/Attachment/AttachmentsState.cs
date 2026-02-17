@@ -9,7 +9,6 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     private readonly ConcurrentDictionary<AttachmentId, AttachmentInfo> _infos = new();
     private readonly ConcurrentDictionary<AttachmentId, AttachmentPreview> _previews = new();
     private readonly ConcurrentDictionary<AttachmentId, MediaContent> _mediaContents = new();
-    private readonly ConcurrentDictionary<AttachmentId, FailureState> _failureStates = new();
     private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;
 
     public void Register(Attachment attachment)
@@ -29,12 +28,10 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         _infos.TryRemove(id, out _);
         _previews.TryRemove(id, out _);
         _mediaContents.TryRemove(id, out _);
-        _failureStates.TryRemove(id, out _);
         using (Invalidation.Begin()) {
             _ = GetAttachmentInfo(id, default);
             _ = GetPreview(id, default);
             _ = GetMediaContent(id, default);
-            _ = GetFailureState(id, default);
         }
     }
 
@@ -50,16 +47,6 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         _mediaContents[id] = mediaContent;
         using (Invalidation.Begin())
             _ = GetMediaContent(id, default);
-    }
-
-    public void SetFailureState(AttachmentId id, FailureState failureState)
-    {
-        if (failureState == FailureState.None)
-            _failureStates.TryRemove(id, out _);
-        else
-            _failureStates[id] = failureState;
-        using (Invalidation.Begin())
-            _ = GetFailureState(id, default);
     }
 
     [ComputeMethod]
@@ -109,13 +96,6 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     }
 
     [ComputeMethod]
-    public virtual Task<FailureState> GetFailureState(AttachmentId id, CancellationToken cancellationToken)
-    {
-        var failureState = _failureStates.GetValueOrDefault(id);
-        return Task.FromResult(failureState);
-    }
-
-    [ComputeMethod]
     public virtual Task<AttachmentInfo?> GetAttachmentInfo(AttachmentId id, CancellationToken cancellationToken)
     {
         var state = _infos.GetValueOrDefault(id);
@@ -161,10 +141,3 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
 }
 
 public sealed record AttachmentInfo(string UploadSessionId);
-
-public enum FailureState
-{
-    None,
-    Failed,
-    Restarting,
-}
