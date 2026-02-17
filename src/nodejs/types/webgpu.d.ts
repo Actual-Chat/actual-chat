@@ -1,1 +1,2 @@
-/// <reference path="../node_modules/@webgpu/types/dist/index.d.ts" />
+// WebGPU types are included via tsconfig.json include of @webgpu/types
+export {};

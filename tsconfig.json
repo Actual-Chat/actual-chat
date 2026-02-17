@@ -1,5 +1,6 @@
 {
   "include": [
+    "node_modules/@webgpu/types/dist/index.d.ts",
     "src/nodejs/index.ts",
     "src/nodejs/types/",
     "src/nodejs/src/",
