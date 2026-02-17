@@ -29,18 +29,18 @@
             }
         </Filler>
         <Steps>
-            <SpeechTranscriptionStep/>
-            <TranscriptPlaybackStep/>
-            <PlacesFeatureStep/>
-            <SummarizationStep/>
+            <TranscriptionTutorialStep/>
+            @* <TranscriptReplayTutorialStep/> *@ @* Disabled *@
+            <PlacesTutorialStep/>
+            <SummarizationTutorialStep/>
             <PhoneStep Account="m.AccountFull"/>
             <EmailStep Account="m.AccountFull"/>
-            <TimeZoneStep Account="m.AccountFull"/>
+            @* <TimeZoneStep Account="m.AccountFull"/> *@ @* Disabled *@
             <AvatarStep/>
             <PermissionsStep NextButtonRef="@_nextButtonRef"/>
             <LanguagesStep/>
             <DataCollectionStep IsConfigured="m.IsDataCollectionConfigured"/>
-            <CreateChatsStep/>
+            @* <CreateChatsStep/> *@ @* Disabled *@
         </Steps>
         <Header>
             @if (stepper.CanMoveBack) {
@@ -58,7 +58,11 @@
         </Header>
         <Footer>
             @{
-                var isTutorial = stepper.CurrentStep is SpeechTranscriptionStep or TranscriptPlaybackStep or PlacesFeatureStep or SummarizationStep;
+                var isTutorial = stepper.CurrentStep
+                    is TranscriptionTutorialStep
+                    // or TranscriptReplayTutorialStep // Disabled
+                    or PlacesTutorialStep
+                    or SummarizationTutorialStep;
             }
             <div class="onboarding-footer">
                 @if (!isTutorial) {

@@ -24,10 +24,10 @@
 
     public override bool CanSkip => true;
 
-    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsPlacesFeatureStepCompleted;
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsPlacesTutorialStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsPlacesFeatureStepCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsPlacesTutorialStepCompleted = true });
 
     protected override Task<bool> Validate()
         => Task.FromResult(true);

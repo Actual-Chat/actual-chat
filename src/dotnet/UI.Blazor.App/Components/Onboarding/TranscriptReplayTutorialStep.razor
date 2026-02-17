@@ -4,15 +4,15 @@
     return;
 }
 
-<div class="onboarding-tutorial tutorial-4">
-    <img draggable="false" src="/dist/images/onboarding/tutorial-4.png" alt="Tutorial slide #4">
+<div class="onboarding-tutorial tutorial-2">
+    <img draggable="false" src="/dist/images/onboarding/tutorial-2.png" alt="Tutorial slide #2">
     <div class="c-title">
         <p>
-            Conversation summaries
+            Read or listen anything
         </p>
     </div>
     <p class="c-description">
-        Catch up in seconds with AI-powered chat highlights.
+        Effortlessly catch up on missed moments - every conversation is captured in text and audio for later playback or reading.
     </p>
 </div>
 
@@ -21,10 +21,10 @@
 
     public override bool CanSkip => true;
 
-    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsSummarizationStepCompleted;
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsTranscriptReplayTutorialStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsSummarizationStepCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsTranscriptReplayTutorialStepCompleted = true });
 
     protected override Task<bool> Validate()
         => Task.FromResult(true);
