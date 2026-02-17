@@ -105,7 +105,7 @@ export class JoinVideoCallModal {
             const frame = this.container.querySelector('.video-frame');
             if (frame) {
                 // Hide placeholder text
-                const plug = frame.querySelector('.plug-text') as HTMLElement | null;
+                const plug = frame.querySelector('.plug-text');
                 if (plug) plug.style.display = 'none';
 
                 frame.appendChild(this.videoEl);
@@ -140,7 +140,7 @@ export class JoinVideoCallModal {
         // Restore placeholder text
         const frame = this.container.querySelector('.video-frame');
         if (frame) {
-            const plug = frame.querySelector('.plug-text') as HTMLElement | null;
+            const plug = frame.querySelector('.plug-text');
             if (plug) plug.style.display = '';
         }
 

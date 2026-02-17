@@ -113,28 +113,28 @@ export interface ModelConfig {
  * Used by getModelConfig() for filename-based matching.
  */
 export const MODEL_CONFIGS: Record<string, ModelConfig> = {
-  // Selfie segmentation model (Olive-optimized for WebGPU)
-  // Single channel output NCHW [1,1,256,256]
-  'selfie_segmentation_olive_webgpu.onnx': {
-    tensorFormat: 'nchw_float32',
-    outputFormat: 'single_channel',
-    outputLayout: 'nchw',
-    outputDataType: 'float32',
-    outputChannels: 1,
-    backgroundChannelIndex: 0
-  },
+    // Selfie segmentation model (Olive-optimized for WebGPU)
+    // Single channel output NCHW [1,1,256,256]
+    'selfie_segmentation_olive_webgpu.onnx': {
+        tensorFormat: 'nchw_float32',
+        outputFormat: 'single_channel',
+        outputLayout: 'nchw',
+        outputDataType: 'float32',
+        outputChannels: 1,
+        backgroundChannelIndex: 0
+    },
 };
 
 /**
  * Default model configuration matching the bundled selfie segmentation model.
  */
 export const DEFAULT_MODEL_CONFIG: ModelConfig = {
-  tensorFormat: 'nchw_float32',
-  outputFormat: 'single_channel',
-  outputLayout: 'nchw',
-  outputDataType: 'float32',
-  outputChannels: 1,
-  backgroundChannelIndex: 0
+    tensorFormat: 'nchw_float32',
+    outputFormat: 'single_channel',
+    outputLayout: 'nchw',
+    outputDataType: 'float32',
+    outputChannels: 1,
+    backgroundChannelIndex: 0
 };
 
 export interface SegmentationConfig {
@@ -204,27 +204,27 @@ export interface SegmentationWorkerCallbacks {
 
 // Default segmentation configuration values
 export const DEFAULT_SEGMENTATION_CONFIG = {
-  /** Default blur radius for background blur effect (pixels) */
-  blurRadius: 15,
+    /** Default blur radius for background blur effect (pixels) */
+    blurRadius: 15,
 
-  /** Default input dimensions for the model */
-  inputWidth: 256,
-  inputHeight: 256,
+    /** Default input dimensions for the model */
+    inputWidth: 256,
+    inputHeight: 256,
 
-  /** Default threshold for person mask (0-1) */
-  maskThreshold: 0.5,
+    /** Default threshold for person mask (0-1) */
+    maskThreshold: 0.5,
 
-  /** Default inference skip frames (0 = no skip) */
-  inferenceSkipFrames: 0,
+    /** Default inference skip frames (0 = no skip) */
+    inferenceSkipFrames: 0,
 
-  /** Default maximum frames to skip */
-  maxSkipFrames: 5,
+    /** Default maximum frames to skip */
+    maxSkipFrames: 5,
 
-  /** Default maximum queue size */
-  maxQueueSize: 5,
+    /** Default maximum queue size */
+    maxQueueSize: 5,
 
-  /** Default frame skip interval to reduce GPU contention */
-  frameSkipInterval: 2,
+    /** Default frame skip interval to reduce GPU contention */
+    frameSkipInterval: 2,
 } as const;
 
 /**
@@ -238,12 +238,12 @@ export const DEFAULT_SEGMENTATION_CONFIG = {
  * @returns The filename without path, query string, or esbuild hash
  */
 function extractFilename(url: string): string {
-  // Remove query string and hash
-  const cleanUrl = url.split('?')[0].split('#')[0];
-  // Extract filename from path
-  const filename = cleanUrl.split('/').pop() ?? '';
-  // Strip esbuild content hash (e.g., "model-ABCDEF12.onnx" -> "model.onnx")
-  return filename.replace(/-[A-Z0-9]{8}\./i, '.');
+    // Remove query string and hash
+    const cleanUrl = url.split('?')[0].split('#')[0];
+    // Extract filename from path
+    const filename = cleanUrl.split('/').pop() ?? '';
+    // Strip esbuild content hash (e.g., "model-ABCDEF12.onnx" -> "model.onnx")
+    return filename.replace(/-[A-Z0-9]{8}\./i, '.');
 }
 
 /**
@@ -255,25 +255,25 @@ function extractFilename(url: string): string {
  * @returns The ModelConfig for the specified model
  */
 export function getModelConfig(modelUrl: string): ModelConfig {
-  const filename = extractFilename(modelUrl);
+    const filename = extractFilename(modelUrl);
 
-  // Try exact key match first (keys are now filenames)
-  if (MODEL_CONFIGS[filename]) {
-    console.log(`[getModelConfig] Match for filename: ${filename}`);
-    return MODEL_CONFIGS[filename];
-  }
-
-  // Try matching by extracted filename from keys
-  for (const [key, config] of Object.entries(MODEL_CONFIGS)) {
-    if (extractFilename(key) === filename) {
-      console.log(`[getModelConfig] Filename match: "${filename}" (URL: ${modelUrl} -> Key: ${key})`);
-      return config;
+    // Try exact key match first (keys are now filenames)
+    if (MODEL_CONFIGS[filename]) {
+        console.log(`[getModelConfig] Match for filename: ${filename}`);
+        return MODEL_CONFIGS[filename];
     }
-  }
 
-  // No match found, use default
-  console.warn(`[getModelConfig] No config found for URL: ${modelUrl}, filename: ${filename}. Using default config.`);
-  return DEFAULT_MODEL_CONFIG;
+    // Try matching by extracted filename from keys
+    for (const [key, config] of Object.entries(MODEL_CONFIGS)) {
+        if (extractFilename(key) === filename) {
+            console.log(`[getModelConfig] Filename match: "${filename}" (URL: ${modelUrl} -> Key: ${key})`);
+            return config;
+        }
+    }
+
+    // No match found, use default
+    console.warn(`[getModelConfig] No config found for URL: ${modelUrl}, filename: ${filename}. Using default config.`);
+    return DEFAULT_MODEL_CONFIG;
 }
 
 /**
@@ -282,11 +282,11 @@ export function getModelConfig(modelUrl: string): ModelConfig {
  * @returns Complete SegmentationConfig with default values
  */
 export function createDefaultSegmentationConfig(backend: SegmentationConfig['backend']): SegmentationConfig {
-  return {
-    backend,
-    blurEnabled: true, // Default to enabled for backward compatibility
-    ...DEFAULT_SEGMENTATION_CONFIG
-  };
+    return {
+        backend,
+        blurEnabled: true, // Default to enabled for backward compatibility
+        ...DEFAULT_SEGMENTATION_CONFIG
+    };
 }
 
 /**
@@ -295,28 +295,28 @@ export function createDefaultSegmentationConfig(backend: SegmentationConfig['bac
  * @returns Complete SegmentationConfig with device-adaptive values
  */
 export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['backend']): SegmentationConfig {
-  // TEMPORARILY: Use same config for mobile and desktop to test pipeline
-  // TODO: Re-enable mobile optimizations after pipeline is working
-  const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+    // TEMPORARILY: Use same config for mobile and desktop to test pipeline
+    // TODO: Re-enable mobile optimizations after pipeline is working
+    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
 
-  if (!isMobile) {
+    if (!isMobile) {
     // Desktop: no skipping, full quality
-    return {
-      backend,
-      blurEnabled: true,
-      ...DEFAULT_SEGMENTATION_CONFIG,
-      inferenceSkipFrames: 0
-    };
-  }
+        return {
+            backend,
+            blurEnabled: true,
+            ...DEFAULT_SEGMENTATION_CONFIG,
+            inferenceSkipFrames: 0
+        };
+    }
 
-  // TEMP: Use desktop-like config for mobile to test pipeline
-  console.log('[AdaptiveConfig] Using desktop-like config for mobile testing');
-  return {
-    backend,
-    blurEnabled: true,
-    ...DEFAULT_SEGMENTATION_CONFIG,
-    inferenceSkipFrames: 0   // No skipping for testing
-  };
+    // TEMP: Use desktop-like config for mobile to test pipeline
+    console.log('[AdaptiveConfig] Using desktop-like config for mobile testing');
+    return {
+        backend,
+        blurEnabled: true,
+        ...DEFAULT_SEGMENTATION_CONFIG,
+        inferenceSkipFrames: 0   // No skipping for testing
+    };
 }
 
 export interface SegmentationWorkerCallbacks {

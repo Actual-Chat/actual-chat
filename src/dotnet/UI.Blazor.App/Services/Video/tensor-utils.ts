@@ -14,8 +14,8 @@ let rgbaToRgbUint8Pipeline: GPUComputePipeline | null = null;
 let rgbaToFloat32Pipeline: GPUComputePipeline | null = null;
 
 // Buffer pools for tensor conversion
-const tensorTexturePool: Map<string, GPUTexture[]> = new Map();
-const tensorBufferPool: Map<number, GPUBuffer[]> = new Map();
+const tensorTexturePool = new Map<string, GPUTexture[]>();
+const tensorBufferPool = new Map<number, GPUBuffer[]>();
 
 // Uniform buffer pool for 8-byte buffers (reduces per-frame allocation overhead)
 const uniformBuffer8Pool: GPUBuffer[] = [];
@@ -30,75 +30,75 @@ const tempFloat32Array4 = new Float32Array(4);
 // IEEE 754 half-precision conversion utilities
 // Based on: https://gist.github.com/rygorous/4732155
 function floatToHalf(float: number): number {
-  // Convert float32 to IEEE 754 half-precision (16-bit)
-  const floatView = new Float32Array(1);
-  const int32View = new Uint32Array(floatView.buffer);
+    // Convert float32 to IEEE 754 half-precision (16-bit)
+    const floatView = new Float32Array(1);
+    const int32View = new Uint32Array(floatView.buffer);
 
-  floatView[0] = float;
+    floatView[0] = float;
 
-  const f = int32View[0];
-  const sign = (f >>> 31) & 0x00000001;
-  const exp = (f >>> 23) & 0x000000FF;
-  const mantissa = f & 0x007FFFFF;
+    const f = int32View[0];
+    const sign = (f >>> 31) & 0x00000001;
+    const exp = (f >>> 23) & 0x000000FF;
+    const mantissa = f & 0x007FFFFF;
 
-  // Handle special cases
-  if (exp === 0) {
+    // Handle special cases
+    if (exp === 0) {
     // Zero or subnormal
-    return sign << 15;
-  } else if (exp === 255) {
+        return sign << 15;
+    } else if (exp === 255) {
     // Infinity or NaN
-    return (sign << 15) | 0x7C00;
-  }
+        return (sign << 15) | 0x7C00;
+    }
 
-  // Normalized number
-  const newExp = exp - 127 + 15;
-  if (newExp >= 31) {
+    // Normalized number
+    const newExp = exp - 127 + 15;
+    if (newExp >= 31) {
     // Overflow, return infinity
-    return (sign << 15) | 0x7C00;
-  } else if (newExp <= 0) {
+        return (sign << 15) | 0x7C00;
+    } else if (newExp <= 0) {
     // Underflow, return zero
-    return sign << 15;
-  }
+        return sign << 15;
+    }
 
-  // Round to nearest, ties to even
-  const halfMantissa = mantissa >>> 13;
-  const remainder = mantissa & 0x1FFF;
-  const half = (sign << 15) | (newExp << 10) | halfMantissa;
+    // Round to nearest, ties to even
+    const halfMantissa = mantissa >>> 13;
+    const remainder = mantissa & 0x1FFF;
+    const half = (sign << 15) | (newExp << 10) | halfMantissa;
 
-  if (remainder > 0x1000 || (remainder === 0x1000 && (halfMantissa & 1) !== 0)) {
-    return half + 1;
-  }
+    if (remainder > 0x1000 || (remainder === 0x1000 && (halfMantissa & 1) !== 0)) {
+        return half + 1;
+    }
 
-  return half;
+    return half;
 }
 
 function halfToFloat(half: number): number {
-  // Convert IEEE 754 half-precision (16-bit) to float32
-  const sign = (half >>> 15) & 0x00000001;
-  const exp = (half >>> 10) & 0x0000001F;
-  const mantissa = half & 0x000003FF;
+    // Convert IEEE 754 half-precision (16-bit) to float32
+    const sign = (half >>> 15) & 0x00000001;
+    const exp = (half >>> 10) & 0x0000001F;
+    const mantissa = half & 0x000003FF;
 
-  if (exp === 0) {
+    if (exp === 0) {
     // Zero or subnormal
-    if (mantissa === 0) {
-      return sign ? -0.0 : 0.0;
-    }
-    // Subnormal
-    const subnormalExp = -14;
-    const subnormalMantissa = mantissa;
-    const subnormalValue = Math.pow(2, subnormalExp) * (subnormalMantissa / 1024.0);
-    return sign ? -subnormalValue : subnormalValue;
-  } else if (exp === 31) {
+        if (mantissa === 0) {
+            return sign ? -0.0 : 0.0;
+        }
+        // Subnormal
+        const subnormalExp = -14;
+        const subnormalMantissa = mantissa;
+        const subnormalValue = Math.pow(2, subnormalExp) * (subnormalMantissa / 1024.0);
+        return sign ? -subnormalValue : subnormalValue;
+    } else if (exp === 31) {
     // Infinity or NaN
-    return mantissa === 0 ? (sign ? -Infinity : Infinity) : NaN;
-  }
+        return mantissa === 0 ? (sign ? -Infinity : Infinity) : NaN;
+    }
 
-  // Normalized number
-  const floatExp = exp - 15 + 127;
-  const floatMantissa = mantissa << 13;
-  const floatValue = Math.pow(2, floatExp - 23) * (1024 + floatMantissa);
+    // Normalized number
+    const floatExp = exp - 15 + 127;
+    const floatMantissa = mantissa << 13;
+    const floatValue = Math.pow(2, floatExp - 23) * (1024 + floatMantissa);
 
-  return sign ? -floatValue : floatValue;
+    return sign ? -floatValue : floatValue;
 }
 
 // Deferred cleanup system to eliminate sync points
@@ -112,40 +112,40 @@ const CLEANUP_DELAY_FRAMES = 3;
  * Get a pooled 8-byte uniform buffer
  */
 function getUniformBuffer8(): GPUBuffer {
-  if (uniformBuffer8Pool.length > 0) {
-    return uniformBuffer8Pool.pop()!;
-  }
-  return device!.createBuffer({
-    size: 8,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-  });
+    if (uniformBuffer8Pool.length > 0) {
+        return uniformBuffer8Pool.pop()!;
+    }
+    return device!.createBuffer({
+        size: 8,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
 }
 
 /**
  * Return an 8-byte uniform buffer to the pool
  */
 function returnUniformBuffer8(buffer: GPUBuffer): void {
-  uniformBuffer8Pool.push(buffer);
+    uniformBuffer8Pool.push(buffer);
 }
 
 /**
  * Get a pooled 16-byte uniform buffer
  */
 function getUniformBuffer16(): GPUBuffer {
-  if (uniformBuffer16Pool.length > 0) {
-    return uniformBuffer16Pool.pop()!;
-  }
-  return device!.createBuffer({
-    size: 16,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-  });
+    if (uniformBuffer16Pool.length > 0) {
+        return uniformBuffer16Pool.pop()!;
+    }
+    return device!.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
 }
 
 /**
  * Return a 16-byte uniform buffer to the pool
  */
 function returnUniformBuffer16(buffer: GPUBuffer): void {
-  uniformBuffer16Pool.push(buffer);
+    uniformBuffer16Pool.push(buffer);
 }
 
 // Debug flag to allow slow GPU→CPU tensor downloads in development builds only
@@ -166,16 +166,16 @@ const FULLSCREEN_VS = /* wgsl */`
  * Initialize WebGPU for tensor operations
  */
 export async function initTensorWebGPU(gpuDevice?: GPUDevice): Promise<GPUDevice> {
-  if (device) return device;
+    if (device) return device;
 
-  device = await WebGPUManager.init(gpuDevice);
-  sampler = WebGPUManager.getSampler();
+    device = await WebGPUManager.init(gpuDevice);
+    sampler = WebGPUManager.getSampler();
 
 
-  // Shader to copy and resize VideoFrame to RGBA texture
-  // Note: pos.xy already contains pixel-center coordinates (0.5, 0.5 for first pixel)
-  // so we divide directly by targetSize to get correct UV coordinates
-  const tensorCopyShader = /* wgsl */`
+    // Shader to copy and resize VideoFrame to RGBA texture
+    // Note: pos.xy already contains pixel-center coordinates (0.5, 0.5 for first pixel)
+    // so we divide directly by targetSize to get correct UV coordinates
+    const tensorCopyShader = /* wgsl */`
     @group(0) @binding(0) var src: texture_external;
     @group(0) @binding(1) var s: sampler;
     @group(0) @binding(2) var<uniform> targetSize: vec2f;
@@ -188,18 +188,18 @@ export async function initTensorWebGPU(gpuDevice?: GPUDevice): Promise<GPUDevice
     }
   `;
 
-  const tensorCopyModule = device.createShaderModule({ code: tensorCopyShader });
-  tensorCopyPipeline = device.createRenderPipeline({
-    layout: 'auto',
-    vertex: { module: device.createShaderModule({ code: FULLSCREEN_VS }), entryPoint: 'vs' },
-    fragment: { module: tensorCopyModule, entryPoint: 'fs', targets: [{ format: 'rgba8unorm' }] },
-    primitive: { topology: 'triangle-strip' }
-  });
+    const tensorCopyModule = device.createShaderModule({ code: tensorCopyShader });
+    tensorCopyPipeline = device.createRenderPipeline({
+        layout: 'auto',
+        vertex: { module: device.createShaderModule({ code: FULLSCREEN_VS }), entryPoint: 'vs' },
+        fragment: { module: tensorCopyModule, entryPoint: 'fs', targets: [{ format: 'rgba8unorm' }] },
+        primitive: { topology: 'triangle-strip' }
+    });
 
-  // Compute shader to convert RGBA texture to RGB buffer (uint8)
-  // Output is [1, height, width, 3] packed as uint8 bytes (single frame)
-  // Each u32 in the output buffer contains 4 packed bytes
-  const rgbaToRgbUint8Shader = /* wgsl */`
+    // Compute shader to convert RGBA texture to RGB buffer (uint8)
+    // Output is [1, height, width, 3] packed as uint8 bytes (single frame)
+    // Each u32 in the output buffer contains 4 packed bytes
+    const rgbaToRgbUint8Shader = /* wgsl */`
     @group(0) @binding(0) var src: texture_2d<f32>;
     @group(0) @binding(1) var<storage, read_write> dst: array<u32>;
     @group(0) @binding(2) var<uniform> params: vec2u; // width, height
@@ -250,16 +250,16 @@ export async function initTensorWebGPU(gpuDevice?: GPUDevice): Promise<GPUDevice
     }
   `;
 
-  const rgbaToRgbModule = device.createShaderModule({ code: rgbaToRgbUint8Shader });
-  rgbaToRgbUint8Pipeline = device.createComputePipeline({
-    layout: 'auto',
-    compute: { module: rgbaToRgbModule, entryPoint: 'main' }
-  });
+    const rgbaToRgbModule = device.createShaderModule({ code: rgbaToRgbUint8Shader });
+    rgbaToRgbUint8Pipeline = device.createComputePipeline({
+        layout: 'auto',
+        compute: { module: rgbaToRgbModule, entryPoint: 'main' }
+    });
 
-  // Compute shader to convert RGBA texture to NCHW float32 buffer
-  // Output is [1, 3, height, width] planar layout (channels-first)
-  // Each plane contains height*width float32 values
-  const rgbaToRgbFloat32Shader = /* wgsl */`
+    // Compute shader to convert RGBA texture to NCHW float32 buffer
+    // Output is [1, 3, height, width] planar layout (channels-first)
+    // Each plane contains height*width float32 values
+    const rgbaToRgbFloat32Shader = /* wgsl */`
     @group(0) @binding(0) var src: texture_2d<f32>;
     @group(0) @binding(1) var<storage, read_write> dst: array<f32>;
     @group(0) @binding(2) var<uniform> params: vec4<f32>;  // width, height (pixels); remaining components unused
@@ -282,78 +282,78 @@ export async function initTensorWebGPU(gpuDevice?: GPUDevice): Promise<GPUDevice
     }
   `;
 
-  const rgbaToNchwModule = device.createShaderModule({ code: rgbaToRgbFloat32Shader });
-  rgbaToFloat32Pipeline = device.createComputePipeline({
-    layout: 'auto',
-    compute: { module: rgbaToNchwModule, entryPoint: 'main' }
-  });
+    const rgbaToNchwModule = device.createShaderModule({ code: rgbaToRgbFloat32Shader });
+    rgbaToFloat32Pipeline = device.createComputePipeline({
+        layout: 'auto',
+        compute: { module: rgbaToNchwModule, entryPoint: 'main' }
+    });
 
 
-  return device;
+    return device;
 }
 
 /**
  * Get or create a pooled texture
  */
 function getPooledTexture(width: number, height: number): GPUTexture {
-  const key = `${width}x${height}`;
-  const pool = tensorTexturePool.get(key) || [];
+    const key = `${width}x${height}`;
+    const pool = tensorTexturePool.get(key) || [];
   
-  if (pool.length > 0) {
-    return pool.pop()!;
-  }
+    if (pool.length > 0) {
+        return pool.pop()!;
+    }
 
-  return device!.createTexture({
-    size: { width, height },
-    format: 'rgba8unorm',
-    usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING
-  });
+    return device!.createTexture({
+        size: { width, height },
+        format: 'rgba8unorm',
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING
+    });
 }
 
 /**
  * Return a texture to the pool
  */
 function returnPooledTexture(texture: GPUTexture): void {
-  const key = `${texture.width}x${texture.height}`;
-  const pool = tensorTexturePool.get(key) || [];
-  pool.push(texture);
-  tensorTexturePool.set(key, pool);
+    const key = `${texture.width}x${texture.height}`;
+    const pool = tensorTexturePool.get(key) || [];
+    pool.push(texture);
+    tensorTexturePool.set(key, pool);
 }
 
 /**
  * Get or create a pooled buffer
  */
 function getPooledBuffer(size: number, usage: GPUBufferUsageFlags): GPUBuffer {
-  const key = size;
-  const pool = tensorBufferPool.get(key) || [];
+    const key = size;
+    const pool = tensorBufferPool.get(key) || [];
   
-  // Find a buffer with matching or greater usage
-  for (let i = 0; i < pool.length; i++) {
+    // Find a buffer with matching or greater usage
+    for (let i = 0; i < pool.length; i++) {
     // We can't check usage flags, so we just use size as key
-    return pool.splice(i, 1)[0];
-  }
+        return pool.splice(i, 1)[0];
+    }
 
-  return device!.createBuffer({ size, usage });
+    return device!.createBuffer({ size, usage });
 }
 
 /**
  * Return a buffer to the pool
  */
 export function returnPooledBuffer(buffer: GPUBuffer): void {
-  const key = buffer.size;
-  const pool = tensorBufferPool.get(key) || [];
-  pool.push(buffer);
-  tensorBufferPool.set(key, pool);
+    const key = buffer.size;
+    const pool = tensorBufferPool.get(key) || [];
+    pool.push(buffer);
+    tensorBufferPool.set(key, pool);
 }
 
 /**
  * Create a uniform buffer with the given data
  */
 function createUniformBuffer(data: Uint32Array | Float32Array): GPUBuffer {
-  const buffer = device!.createBuffer({
-    size: data.byteLength,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-  });
+    const buffer = device!.createBuffer({
+        size: data.byteLength,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
   device!.queue.writeBuffer(buffer, 0, data.buffer, data.byteOffset, data.byteLength);
   return buffer;
 }
@@ -363,10 +363,10 @@ function createUniformBuffer(data: Uint32Array | Float32Array): GPUBuffer {
  * Eliminates the need for onSubmittedWorkDone() sync points
  */
 function registerDeferredCleanup(cleanupFn: () => void): void {
-  const cleanupFrame = frameCounter + CLEANUP_DELAY_FRAMES;
-  const cleanups = cleanupQueue.get(cleanupFrame) || [];
-  cleanups.push(cleanupFn);
-  cleanupQueue.set(cleanupFrame, cleanups);
+    const cleanupFrame = frameCounter + CLEANUP_DELAY_FRAMES;
+    const cleanups = cleanupQueue.get(cleanupFrame) || [];
+    cleanups.push(cleanupFn);
+    cleanupQueue.set(cleanupFrame, cleanups);
 }
 
 /**
@@ -374,20 +374,20 @@ function registerDeferredCleanup(cleanupFn: () => void): void {
  * Call this periodically to clean up resources without blocking
  */
 export function processDeferredCleanups(currentFrame: number = ++frameCounter): void {
-  // Clean up frames that are sufficiently old
-  const minCleanupFrame = currentFrame - CLEANUP_DELAY_FRAMES;
-  for (const [frameNum, cleanups] of cleanupQueue) {
-    if (frameNum <= minCleanupFrame) {
-      for (const cleanup of cleanups) {
-        try {
-          cleanup();
-        } catch (error) {
-          console.warn('[TensorUtils] Error during deferred cleanup:', error);
+    // Clean up frames that are sufficiently old
+    const minCleanupFrame = currentFrame - CLEANUP_DELAY_FRAMES;
+    for (const [frameNum, cleanups] of cleanupQueue) {
+        if (frameNum <= minCleanupFrame) {
+            for (const cleanup of cleanups) {
+                try {
+                    cleanup();
+                } catch (error) {
+                    console.warn('[TensorUtils] Error during deferred cleanup:', error);
+                }
+            }
+            cleanupQueue.delete(frameNum);
         }
-      }
-      cleanupQueue.delete(frameNum);
     }
-  }
 }
 
 /**
@@ -400,123 +400,123 @@ export function processDeferredCleanups(currentFrame: number = ++frameCounter): 
  * @returns WebGPU buffer-backed ONNX tensor with shape [1, height, width, 3] and uint8 values
  */
 export async function videoFrameToTensorUint8(
-  frame: VideoFrame,
-  targetWidth: number,
-  targetHeight: number
+    frame: VideoFrame,
+    targetWidth: number,
+    targetHeight: number
 ): Promise<ort.Tensor> {
-  if (!device) {
+    if (!device) {
     // CPU fallback path for non-WebGPU backends (e.g., WASM)
-    const canvas = new OffscreenCanvas(targetWidth, targetHeight);
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-    ctx.drawImage(frame, 0, 0, targetWidth, targetHeight);
-    const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
-    const data = imageData.data;
-    const pixelCount = targetWidth * targetHeight;
-    const rgbData = new Uint8Array(pixelCount * 3);
-    let j = 0;
-    for (let i = 0; i < data.length; i += 4, j += 3) {
-      rgbData[j] = data[i];     // R
-      rgbData[j + 1] = data[i + 1]; // G
-      rgbData[j + 2] = data[i + 2]; // B
+        const canvas = new OffscreenCanvas(targetWidth, targetHeight);
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+        ctx.drawImage(frame, 0, 0, targetWidth, targetHeight);
+        const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+        const data = imageData.data;
+        const pixelCount = targetWidth * targetHeight;
+        const rgbData = new Uint8Array(pixelCount * 3);
+        let j = 0;
+        for (let i = 0; i < data.length; i += 4, j += 3) {
+            rgbData[j] = data[i];     // R
+            rgbData[j + 1] = data[i + 1]; // G
+            rgbData[j + 2] = data[i + 2]; // B
+        }
+        return new ort.Tensor('uint8', rgbData, [1, targetHeight, targetWidth, 3]);
     }
-    return new ort.Tensor('uint8', rgbData, [1, targetHeight, targetWidth, 3]);
-  }
 
-  const pixelCount = targetWidth * targetHeight;
-  const totalBytes = pixelCount * 3; // RGB
+    const pixelCount = targetWidth * targetHeight;
+    const totalBytes = pixelCount * 3; // RGB
   
-  // Round up to 4-byte alignment for WebGPU
-  const alignedTotalBytes = Math.ceil(totalBytes / 4) * 4;
+    // Round up to 4-byte alignment for WebGPU
+    const alignedTotalBytes = Math.ceil(totalBytes / 4) * 4;
 
-  // Create or reuse output GPU buffer for the tensor
-  // Use STORAGE for compute shader write, COPY_SRC for potential readback
-  const tensorBuffer = getPooledBuffer(
-    alignedTotalBytes,
-    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-  );
+    // Create or reuse output GPU buffer for the tensor
+    // Use STORAGE for compute shader write, COPY_SRC for potential readback
+    const tensorBuffer = getPooledBuffer(
+        alignedTotalBytes,
+        GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    );
 
-  // Get intermediate texture
-  const intermediateTexture = getPooledTexture(targetWidth, targetHeight);
+    // Get intermediate texture
+    const intermediateTexture = getPooledTexture(targetWidth, targetHeight);
   
-  // Import VideoFrame as external texture
-  const externalTex = device!.importExternalTexture({ source: frame });
+    // Import VideoFrame as external texture
+    const externalTex = device.importExternalTexture({ source: frame });
   
-  // Get pooled uniform buffer for target size (reduces allocation overhead)
-  const sizeBuffer = getUniformBuffer8();
-  tempFloat32Array2[0] = targetWidth;
-  tempFloat32Array2[1] = targetHeight;
-  device!.queue.writeBuffer(sizeBuffer, 0, tempFloat32Array2);
+    // Get pooled uniform buffer for target size (reduces allocation overhead)
+    const sizeBuffer = getUniformBuffer8();
+    tempFloat32Array2[0] = targetWidth;
+    tempFloat32Array2[1] = targetHeight;
+    device.queue.writeBuffer(sizeBuffer, 0, tempFloat32Array2);
   
-  // Render pass to copy/resize VideoFrame to intermediate texture
-  const encoder = device!.createCommandEncoder();
+    // Render pass to copy/resize VideoFrame to intermediate texture
+    const encoder = device.createCommandEncoder();
   
-  const renderPass = encoder.beginRenderPass({
-    colorAttachments: [{
-      view: intermediateTexture.createView(),
-      loadOp: 'clear',
-      storeOp: 'store'
-    }]
-  });
-  renderPass.setPipeline(tensorCopyPipeline!);
-  renderPass.setBindGroup(0, device!.createBindGroup({
-    layout: tensorCopyPipeline!.getBindGroupLayout(0),
-    entries: [
-      { binding: 0, resource: externalTex },
-      { binding: 1, resource: sampler! },
-      { binding: 2, resource: { buffer: sizeBuffer } }
-    ]
-  }));
-  renderPass.draw(4);
-  renderPass.end();
+    const renderPass = encoder.beginRenderPass({
+        colorAttachments: [{
+            view: intermediateTexture.createView(),
+            loadOp: 'clear',
+            storeOp: 'store'
+        }]
+    });
+    renderPass.setPipeline(tensorCopyPipeline!);
+    renderPass.setBindGroup(0, device.createBindGroup({
+        layout: tensorCopyPipeline!.getBindGroupLayout(0),
+        entries: [
+            { binding: 0, resource: externalTex },
+            { binding: 1, resource: sampler! },
+            { binding: 2, resource: { buffer: sizeBuffer } }
+        ]
+    }));
+    renderPass.draw(4);
+    renderPass.end();
 
-  // Get pooled uniform buffer for compute shader params (width, height)
-  const paramsBuffer = getUniformBuffer8();
-  tempUint32Array2[0] = targetWidth;
-  tempUint32Array2[1] = targetHeight;
-  device!.queue.writeBuffer(paramsBuffer, 0, tempUint32Array2);
+    // Get pooled uniform buffer for compute shader params (width, height)
+    const paramsBuffer = getUniformBuffer8();
+    tempUint32Array2[0] = targetWidth;
+    tempUint32Array2[1] = targetHeight;
+    device.queue.writeBuffer(paramsBuffer, 0, tempUint32Array2);
 
-  // Compute pass to convert RGBA to RGB and write to tensor buffer
-  const computePass = encoder.beginComputePass();
-  computePass.setPipeline(rgbaToRgbUint8Pipeline!);
-  computePass.setBindGroup(0, device!.createBindGroup({
-    layout: rgbaToRgbUint8Pipeline!.getBindGroupLayout(0),
-    entries: [
-      { binding: 0, resource: intermediateTexture.createView() },
-      { binding: 1, resource: { buffer: tensorBuffer } },
-      { binding: 2, resource: { buffer: paramsBuffer } }
-    ]
-  }));
+    // Compute pass to convert RGBA to RGB and write to tensor buffer
+    const computePass = encoder.beginComputePass();
+    computePass.setPipeline(rgbaToRgbUint8Pipeline!);
+    computePass.setBindGroup(0, device.createBindGroup({
+        layout: rgbaToRgbUint8Pipeline!.getBindGroupLayout(0),
+        entries: [
+            { binding: 0, resource: intermediateTexture.createView() },
+            { binding: 1, resource: { buffer: tensorBuffer } },
+            { binding: 2, resource: { buffer: paramsBuffer } }
+        ]
+    }));
   
-  // Each thread processes 4 bytes (1 u32), workgroup size is 256
-  const u32sTotal = Math.ceil(totalBytes / 4);
-  const workgroups = Math.ceil(u32sTotal / 256);
-  computePass.dispatchWorkgroups(workgroups);
-  computePass.end();
+    // Each thread processes 4 bytes (1 u32), workgroup size is 256
+    const u32sTotal = Math.ceil(totalBytes / 4);
+    const workgroups = Math.ceil(u32sTotal / 256);
+    computePass.dispatchWorkgroups(workgroups);
+    computePass.end();
 
-  device!.queue.submit([encoder.finish()]);
+    device.queue.submit([encoder.finish()]);
 
-  // Schedule deferred cleanup (no sync point)
-  registerDeferredCleanup(() => {
-    returnUniformBuffer8(sizeBuffer);
-    returnUniformBuffer8(paramsBuffer);
-    returnPooledTexture(intermediateTexture);
-  });
+    // Schedule deferred cleanup (no sync point)
+    registerDeferredCleanup(() => {
+        returnUniformBuffer8(sizeBuffer);
+        returnUniformBuffer8(paramsBuffer);
+        returnPooledTexture(intermediateTexture);
+    });
 
-  // NOTE: We intentionally don't await onSubmittedWorkDone() here.
-  // ONNX Runtime WebGPU backend shares the same device and handles
-  // GPU command dependencies internally via WebGPU's implicit synchronization.
-  // Removing this sync saves 1-5ms per frame.
+    // NOTE: We intentionally don't await onSubmittedWorkDone() here.
+    // ONNX Runtime WebGPU backend shares the same device and handles
+    // GPU command dependencies internally via WebGPU's implicit synchronization.
+    // Removing this sync saves 1-5ms per frame.
 
-  // Optional debug hook for forcing GPU→CPU readback
-  const downloadCallback = ENABLE_DEBUG_TENSOR_DOWNLOAD
-    ? async () => {
-        const readBuffer = device!.createBuffer({
-          size: alignedTotalBytes,
-          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
-        });
+    // Optional debug hook for forcing GPU→CPU readback
+    const downloadCallback = ENABLE_DEBUG_TENSOR_DOWNLOAD
+        ? async () => {
+            const readBuffer = device!.createBuffer({
+                size: alignedTotalBytes,
+                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+            });
         
-        const encoder = device!.createCommandEncoder();
-        encoder.copyBufferToBuffer(tensorBuffer, 0, readBuffer, 0, alignedTotalBytes);
+            const encoder = device!.createCommandEncoder();
+            encoder.copyBufferToBuffer(tensorBuffer, 0, readBuffer, 0, alignedTotalBytes);
         device!.queue.submit([encoder.finish()]);
         
         await readBuffer.mapAsync(GPUMapMode.READ);
@@ -525,20 +525,20 @@ export async function videoFrameToTensorUint8(
         readBuffer.destroy();
         
         return data;
-      }
-    : undefined;
+        }
+        : undefined;
 
-  // NHWC layout assumption: compute shader writes [1, H, W, 3] so the model must consume NHWC input
-  const tensor = ort.Tensor.fromGpuBuffer(tensorBuffer, {
-    dataType: 'uint8',
-    dims: [1, targetHeight, targetWidth, 3],
-    ...(downloadCallback ? { download: downloadCallback } : {}),
-    dispose: () => {
-      returnPooledBuffer(tensorBuffer);
-    }
-  });
+    // NHWC layout assumption: compute shader writes [1, H, W, 3] so the model must consume NHWC input
+    const tensor = ort.Tensor.fromGpuBuffer(tensorBuffer, {
+        dataType: 'uint8',
+        dims: [1, targetHeight, targetWidth, 3],
+        ...(downloadCallback ? { download: downloadCallback } : {}),
+        dispose: () => {
+            returnPooledBuffer(tensorBuffer);
+        }
+    });
 
-  return tensor;
+    return tensor;
 }
 
 /**
@@ -553,124 +553,124 @@ export async function videoFrameToTensorUint8(
  * @returns WebGPU buffer-backed ONNX tensor with shape [1, 3, height, width] and float32 values
  */
 export async function videoFrameToTensorFloat32(
-  frame: VideoFrame,
-  targetWidth: number,
-  targetHeight: number
+    frame: VideoFrame,
+    targetWidth: number,
+    targetHeight: number
 ): Promise<ort.Tensor> {
-  if (!device) {
+    if (!device) {
     // CPU fallback path for non-WebGPU backends (e.g., WASM)
-    const canvas = new OffscreenCanvas(targetWidth, targetHeight);
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-    ctx.drawImage(frame, 0, 0, targetWidth, targetHeight);
-    const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
-    const data = imageData.data;
-    const pixelCount = targetWidth * targetHeight;
-    const planeSize = pixelCount;
-    const floatData = new Float32Array(3 * planeSize);
-    let k = 0;
-    for (let i = 0; i < data.length; i += 4, k++) {
-      floatData[k] = data[i] / 255.0;           // R plane
-      floatData[k + planeSize] = data[i + 1] / 255.0; // G plane
-      floatData[k + 2 * planeSize] = data[i + 2] / 255.0; // B plane
+        const canvas = new OffscreenCanvas(targetWidth, targetHeight);
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+        ctx.drawImage(frame, 0, 0, targetWidth, targetHeight);
+        const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+        const data = imageData.data;
+        const pixelCount = targetWidth * targetHeight;
+        const planeSize = pixelCount;
+        const floatData = new Float32Array(3 * planeSize);
+        let k = 0;
+        for (let i = 0; i < data.length; i += 4, k++) {
+            floatData[k] = data[i] / 255.0;           // R plane
+            floatData[k + planeSize] = data[i + 1] / 255.0; // G plane
+            floatData[k + 2 * planeSize] = data[i + 2] / 255.0; // B plane
+        }
+        return new ort.Tensor('float32', floatData, [1, 3, targetHeight, targetWidth]);
     }
-    return new ort.Tensor('float32', floatData, [1, 3, targetHeight, targetWidth]);
-  }
 
-  const pixelCount = targetWidth * targetHeight;
-  // NCHW float32: 3 channels * height * width * 4 bytes per float
-  const totalBytes = 3 * pixelCount * 4;
+    const pixelCount = targetWidth * targetHeight;
+    // NCHW float32: 3 channels * height * width * 4 bytes per float
+    const totalBytes = 3 * pixelCount * 4;
 
-  // Create or reuse output GPU buffer for the tensor
-  // Use STORAGE for compute shader write, COPY_SRC for potential readback
-  const tensorBuffer = getPooledBuffer(
-    totalBytes,
-    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
-  );
+    // Create or reuse output GPU buffer for the tensor
+    // Use STORAGE for compute shader write, COPY_SRC for potential readback
+    const tensorBuffer = getPooledBuffer(
+        totalBytes,
+        GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+    );
 
-  // Get intermediate texture
-  const intermediateTexture = getPooledTexture(targetWidth, targetHeight);
+    // Get intermediate texture
+    const intermediateTexture = getPooledTexture(targetWidth, targetHeight);
   
-  // Import VideoFrame as external texture
-  const externalTex = device!.importExternalTexture({ source: frame });
+    // Import VideoFrame as external texture
+    const externalTex = device.importExternalTexture({ source: frame });
   
-  // Get pooled uniform buffer for target size (reduces allocation overhead)
-  const sizeBuffer = getUniformBuffer8();
-  tempFloat32Array2[0] = targetWidth;
-  tempFloat32Array2[1] = targetHeight;
-  device!.queue.writeBuffer(sizeBuffer, 0, tempFloat32Array2);
+    // Get pooled uniform buffer for target size (reduces allocation overhead)
+    const sizeBuffer = getUniformBuffer8();
+    tempFloat32Array2[0] = targetWidth;
+    tempFloat32Array2[1] = targetHeight;
+    device.queue.writeBuffer(sizeBuffer, 0, tempFloat32Array2);
 
-  // Render pass to copy/resize VideoFrame to intermediate texture
-  const encoder = device!.createCommandEncoder();
+    // Render pass to copy/resize VideoFrame to intermediate texture
+    const encoder = device.createCommandEncoder();
 
-  const renderPass = encoder.beginRenderPass({
-    colorAttachments: [{
-      view: intermediateTexture.createView(),
-      loadOp: 'clear',
-      storeOp: 'store'
-    }]
-  });
-  renderPass.setPipeline(tensorCopyPipeline!);
-  renderPass.setBindGroup(0, device!.createBindGroup({
-    layout: tensorCopyPipeline!.getBindGroupLayout(0),
-    entries: [
-      { binding: 0, resource: externalTex },
-      { binding: 1, resource: sampler! },
-      { binding: 2, resource: { buffer: sizeBuffer } }
-    ]
-  }));
-  renderPass.draw(4);
-  renderPass.end();
+    const renderPass = encoder.beginRenderPass({
+        colorAttachments: [{
+            view: intermediateTexture.createView(),
+            loadOp: 'clear',
+            storeOp: 'store'
+        }]
+    });
+    renderPass.setPipeline(tensorCopyPipeline!);
+    renderPass.setBindGroup(0, device.createBindGroup({
+        layout: tensorCopyPipeline!.getBindGroupLayout(0),
+        entries: [
+            { binding: 0, resource: externalTex },
+            { binding: 1, resource: sampler! },
+            { binding: 2, resource: { buffer: sizeBuffer } }
+        ]
+    }));
+    renderPass.draw(4);
+    renderPass.end();
 
-  // Get pooled uniform buffer for compute shader params (width, height)
-  const paramsBuffer = getUniformBuffer16();
-  tempFloat32Array4[0] = targetWidth;
-  tempFloat32Array4[1] = targetHeight;
-  tempFloat32Array4[2] = 0;
-  tempFloat32Array4[3] = 0;
-  device!.queue.writeBuffer(paramsBuffer, 0, tempFloat32Array4);
+    // Get pooled uniform buffer for compute shader params (width, height)
+    const paramsBuffer = getUniformBuffer16();
+    tempFloat32Array4[0] = targetWidth;
+    tempFloat32Array4[1] = targetHeight;
+    tempFloat32Array4[2] = 0;
+    tempFloat32Array4[3] = 0;
+    device.queue.writeBuffer(paramsBuffer, 0, tempFloat32Array4);
 
-  // Use the float32 compute shader to convert RGBA to NCHW float32
-  const computePass = encoder.beginComputePass();
-  computePass.setPipeline(rgbaToFloat32Pipeline!);
-  computePass.setBindGroup(0, device!.createBindGroup({
-    layout: rgbaToFloat32Pipeline!.getBindGroupLayout(0),
-    entries: [
-      { binding: 0, resource: intermediateTexture.createView() },
-      { binding: 1, resource: { buffer: tensorBuffer } },
-      { binding: 2, resource: { buffer: paramsBuffer } }
-    ]
-  }));
+    // Use the float32 compute shader to convert RGBA to NCHW float32
+    const computePass = encoder.beginComputePass();
+    computePass.setPipeline(rgbaToFloat32Pipeline!);
+    computePass.setBindGroup(0, device.createBindGroup({
+        layout: rgbaToFloat32Pipeline!.getBindGroupLayout(0),
+        entries: [
+            { binding: 0, resource: intermediateTexture.createView() },
+            { binding: 1, resource: { buffer: tensorBuffer } },
+            { binding: 2, resource: { buffer: paramsBuffer } }
+        ]
+    }));
 
-  // Each thread processes one pixel, workgroup size is 16x16
-  const workgroupsX = Math.ceil(targetWidth / 16);
-  const workgroupsY = Math.ceil(targetHeight / 16);
-  computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
-  computePass.end();
+    // Each thread processes one pixel, workgroup size is 16x16
+    const workgroupsX = Math.ceil(targetWidth / 16);
+    const workgroupsY = Math.ceil(targetHeight / 16);
+    computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+    computePass.end();
 
-  device!.queue.submit([encoder.finish()]);
+    device.queue.submit([encoder.finish()]);
 
-  // Schedule deferred cleanup (no sync point)
-  registerDeferredCleanup(() => {
-    returnUniformBuffer8(sizeBuffer);
-    returnUniformBuffer16(paramsBuffer);
-    returnPooledTexture(intermediateTexture);
-  });
+    // Schedule deferred cleanup (no sync point)
+    registerDeferredCleanup(() => {
+        returnUniformBuffer8(sizeBuffer);
+        returnUniformBuffer16(paramsBuffer);
+        returnPooledTexture(intermediateTexture);
+    });
 
-  // NOTE: We intentionally don't await onSubmittedWorkDone() here.
-  // ONNX Runtime WebGPU backend shares the same device and handles
-  // GPU command dependencies internally via WebGPU's implicit synchronization.
-  // Removing this sync saves 1-5ms per frame.
+    // NOTE: We intentionally don't await onSubmittedWorkDone() here.
+    // ONNX Runtime WebGPU backend shares the same device and handles
+    // GPU command dependencies internally via WebGPU's implicit synchronization.
+    // Removing this sync saves 1-5ms per frame.
 
-  // Optional debug hook for forcing GPU→CPU readback
-  const downloadCallback = ENABLE_DEBUG_TENSOR_DOWNLOAD
-    ? async () => {
-        const readBuffer = device!.createBuffer({
-          size: totalBytes,
-          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
-        });
+    // Optional debug hook for forcing GPU→CPU readback
+    const downloadCallback = ENABLE_DEBUG_TENSOR_DOWNLOAD
+        ? async () => {
+            const readBuffer = device!.createBuffer({
+                size: totalBytes,
+                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+            });
 
-        const encoder = device!.createCommandEncoder();
-        encoder.copyBufferToBuffer(tensorBuffer, 0, readBuffer, 0, totalBytes);
+            const encoder = device!.createCommandEncoder();
+            encoder.copyBufferToBuffer(tensorBuffer, 0, readBuffer, 0, totalBytes);
         device!.queue.submit([encoder.finish()]);
 
         await readBuffer.mapAsync(GPUMapMode.READ);
@@ -679,22 +679,22 @@ export async function videoFrameToTensorFloat32(
         readBuffer.destroy();
 
         return float32Data;
-      }
-    : undefined;
+        }
+        : undefined;
 
-  // NCHW layout: [1, 3, height, width] - channels first (planar)
-  // Create float32 tensor - buffer contains float32 data from GPU shader
-  // ONNX Runtime will handle conversion to float16 if the model requires it
-  const tensor = ort.Tensor.fromGpuBuffer(tensorBuffer, {
-    dataType: 'float32',
-    dims: [1, 3, targetHeight, targetWidth],
-    ...(downloadCallback ? { download: downloadCallback } : {}),
-    dispose: () => {
-      returnPooledBuffer(tensorBuffer);
-    }
-  });
+    // NCHW layout: [1, 3, height, width] - channels first (planar)
+    // Create float32 tensor - buffer contains float32 data from GPU shader
+    // ONNX Runtime will handle conversion to float16 if the model requires it
+    const tensor = ort.Tensor.fromGpuBuffer(tensorBuffer, {
+        dataType: 'float32',
+        dims: [1, 3, targetHeight, targetWidth],
+        ...(downloadCallback ? { download: downloadCallback } : {}),
+        dispose: () => {
+            returnPooledBuffer(tensorBuffer);
+        }
+    });
 
-  return tensor;
+    return tensor;
 }
 
 
@@ -707,23 +707,23 @@ export async function videoFrameToTensorFloat32(
  * @returns Float32Array with mask values
  */
 export async function readMaskToCPU(
-  maskBuffer: GPUBuffer,
-  maskSize: number
+    maskBuffer: GPUBuffer,
+    maskSize: number
 ): Promise<Float32Array> {
-  if (!device) {
-    await initTensorWebGPU();
-  }
+    if (!device) {
+        await initTensorWebGPU();
+    }
 
-  // Calculate byte size for float32
-  const byteSize = maskSize * 4;
+    // Calculate byte size for float32
+    const byteSize = maskSize * 4;
 
-  const readBuffer = device!.createBuffer({
-    size: byteSize,
-    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
-  });
+    const readBuffer = device!.createBuffer({
+        size: byteSize,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+    });
 
-  const encoder = device!.createCommandEncoder();
-  encoder.copyBufferToBuffer(maskBuffer, 0, readBuffer, 0, byteSize);
+    const encoder = device!.createCommandEncoder();
+    encoder.copyBufferToBuffer(maskBuffer, 0, readBuffer, 0, byteSize);
   device!.queue.submit([encoder.finish()]);
 
   await readBuffer.mapAsync(GPUMapMode.READ);
@@ -741,41 +741,41 @@ export async function readMaskToCPU(
  * Get the WebGPU device used for tensor operations
  */
 export function getTensorDevice(): GPUDevice | null {
-  return device;
+    return device;
 }
 
 /**
   * Clean up all tensor-related GPU resources
   */
- export function disposeTensorResources(): void {
-  // Clean up texture pools
-  for (const pool of tensorTexturePool.values()) {
-    pool.forEach(tex => tex.destroy());
-  }
-  tensorTexturePool.clear();
+export function disposeTensorResources(): void {
+    // Clean up texture pools
+    for (const pool of tensorTexturePool.values()) {
+        pool.forEach(tex => tex.destroy());
+    }
+    tensorTexturePool.clear();
 
-  // Clean up buffer pools
-  for (const pool of tensorBufferPool.values()) {
-    pool.forEach(buf => buf.destroy());
-  }
-  tensorBufferPool.clear();
+    // Clean up buffer pools
+    for (const pool of tensorBufferPool.values()) {
+        pool.forEach(buf => buf.destroy());
+    }
+    tensorBufferPool.clear();
 
-  // Clean up uniform buffer pools
-  uniformBuffer8Pool.forEach(buf => buf.destroy());
-  uniformBuffer8Pool.length = 0;
-  uniformBuffer16Pool.forEach(buf => buf.destroy());
-  uniformBuffer16Pool.length = 0;
+    // Clean up uniform buffer pools
+    uniformBuffer8Pool.forEach(buf => buf.destroy());
+    uniformBuffer8Pool.length = 0;
+    uniformBuffer16Pool.forEach(buf => buf.destroy());
+    uniformBuffer16Pool.length = 0;
 
-  // Clean up deferred cleanup queue
-  cleanupQueue.clear();
-  frameCounter = 0;
+    // Clean up deferred cleanup queue
+    cleanupQueue.clear();
+    frameCounter = 0;
 
-  // Note: device is shared, don't destroy it here
- }
+    // Note: device is shared, don't destroy it here
+}
 
 /**
  * Return a pooled buffer to the pool (internal, for use by segmentation worker)
  */
 export function returnPooledBufferInternal(buffer: GPUBuffer): void {
-  returnPooledBuffer(buffer);
+    returnPooledBuffer(buffer);
 }

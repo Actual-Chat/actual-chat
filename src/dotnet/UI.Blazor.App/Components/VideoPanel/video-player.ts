@@ -306,7 +306,7 @@ export class VideoPlayer {
         durationMs: number,
         isKeyFrame: boolean
     ): void {
-        if (this.decoder && this.decoder.state === 'configured') {
+        if (this.decoder?.state === 'configured') {
             try {
                 const chunk = new EncodedVideoChunk({
                     type: isKeyFrame ? 'key' : 'delta',

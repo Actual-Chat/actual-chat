@@ -41,7 +41,7 @@ const CODEC_PROFILES = {
     ],
 };
 
-export async function detectSupportedCodecs(width: number = 1920, height: number = 1080): Promise<CodecInfo[]> {
+export async function detectSupportedCodecs(width = 1920, height = 1080): Promise<CodecInfo[]> {
     const results: CodecInfo[] = [];
 
     // Check H.264 codecs

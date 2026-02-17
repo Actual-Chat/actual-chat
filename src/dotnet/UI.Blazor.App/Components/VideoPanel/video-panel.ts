@@ -42,7 +42,7 @@ export class VideoPanel {
             return;
 
         // Get canvas element for rendering
-        this.canvas = this.videoPanel.querySelector('.call-video') as HTMLCanvasElement;
+        this.canvas = this.videoPanel.querySelector('.call-video')!;
         if (this.canvas) {
             this.canvasCtx = this.canvas.getContext('2d');
         }
