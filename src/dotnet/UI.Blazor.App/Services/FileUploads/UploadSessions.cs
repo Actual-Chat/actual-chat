@@ -35,15 +35,15 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     public bool Resume(string sessionId)
-        => _sessions.TryGetValue(sessionId, out var sessionHolder) && sessionHolder.Session.Resume();
+        => _sessions.TryGetValue(sessionId, out var sessionRef) && sessionRef.Session.Resume();
 
     public async Task<UploadSession?> TryGetSession(string sessionId)
     {
         if (sessionId.IsNullOrEmpty())
             throw new ArgumentException(nameof(sessionId));
 
-        if (_sessions.TryGetValue(sessionId, out var sessionHolder))
-            return sessionHolder.Session;
+        if (_sessions.TryGetValue(sessionId, out var sessionRef))
+            return sessionRef.Session;
 
         var snapshot = await _repo.Get(sessionId).ConfigureAwait(false);
         if (snapshot is null)
@@ -82,22 +82,23 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
     public void AddReference(string sessionId)
     {
-        if (!_sessions.TryGetValue(sessionId, out var sessionHolder))
+        if (!_sessions.TryGetValue(sessionId, out var sessionRef))
             throw new InvalidOperationException($"Session {sessionId} not found");
 
-        Interlocked.Increment(ref sessionHolder.ReferenceCount);
+        Interlocked.Increment(ref sessionRef.ReferenceCount);
     }
 
     public void ReleaseReference(string sessionId)
     {
-        if (!_sessions.TryGetValue(sessionId, out var sessionHolder))
+        if (!_sessions.TryGetValue(sessionId, out var sessionRef))
             throw new InvalidOperationException($"Session {sessionId} not found");
 
-        var newCount = Interlocked.Decrement(ref sessionHolder.ReferenceCount);
+        var newCount = Interlocked.Decrement(ref sessionRef.ReferenceCount);
         if (newCount != 0)
             return;
 
-        var session = sessionHolder.Session;
+        var session = sessionRef.Session;
+        Log.LogDebug("Releasing reference for session '{SessionId}'", sessionId);
         var completed = session.Cancel();
         _ = BackgroundTask.Run( async () => {
             await completed.ConfigureAwait(false);
@@ -114,7 +115,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await _repo.Delete(sessionId).ConfigureAwait(false);
         _sessions.TryRemove(sessionId, out _);
         UploadSessionsState.Remove(sessionId);
-        Log.LogInformation("Deleted session '{SessionId}'", sessionId);
+        Log.LogDebug("Deleted session '{SessionId}'", sessionId);
     }
 
     private Func<UploadSessionSnapshot, CancellationToken, Task> CreateStorage()
