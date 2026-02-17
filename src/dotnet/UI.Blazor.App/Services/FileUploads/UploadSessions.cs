@@ -5,7 +5,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     private readonly Task _cleanupTask;
     private readonly UploadSessionRepo _repo;
     private readonly UploadOperations _uploadOperations;
-    private readonly ConcurrentDictionary<string, SessionHolder> _sessions = new (StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, SessionRef> _sessions = new (StringComparer.Ordinal);
     private readonly Func<UploadSessionSnapshot, CancellationToken, Task> _storage;
 
     private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;
@@ -30,7 +30,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         var snapshot = CreateNewUploadSessionSnapshot(fileProvider, metadata, now);
         var session = new UploadSession(snapshot, _uploadOperations, _storage);
         await _repo.Save(snapshot).ConfigureAwait(false);
-        _sessions[session.SessionId] = new SessionHolder(session);
+        _sessions[session.SessionId] = new SessionRef(session);
         return session.SessionId;
     }
 
@@ -56,7 +56,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         snapshot.FileProvider.Initialize(Hub.Services);
         var session = new UploadSession(snapshot, _uploadOperations, _storage);
-        _sessions[sessionId] = new SessionHolder(session);
+        _sessions[sessionId] = new SessionRef(session);
         SetProgress(sessionId, GetProgressFromSnapshot(snapshot));
         return session;
     }
@@ -163,7 +163,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         => _sessions.ContainsKey(sessionId);
 
     // Nested types
-    public class SessionHolder(UploadSession session)
+    public class SessionRef(UploadSession session)
     {
         public UploadSession Session { get; } = session;
         public long ReferenceCount;
