@@ -31,7 +31,7 @@ public class FileUploadOperation(Func<Task> startFunc)
      }
 }
 
-public class OperationQueue
+public class FileUploadQueue
 {
     private const int MaxActiveCount = 2;
     private readonly Lock _lock = new();

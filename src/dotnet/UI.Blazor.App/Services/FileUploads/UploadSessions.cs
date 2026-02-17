@@ -99,10 +99,10 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             return;
 
         var session = sessionRef.Session;
-        Log.LogDebug("Releasing reference for session '{SessionId}'", sessionId);
+        Log.LogDebug("Releasing reference for session '{SessionId}' ('{FileName}')", sessionId, session.FileProvider.Metadata.FileName);
         var completed = session.Cancel();
         _ = BackgroundTask.Run( async () => {
-            await completed.ConfigureAwait(false);
+            await completed.WaitAsync(TimeSpan.FromSeconds(30)).SilentAwait(false);
             await DeleteSessionInternal(session).ConfigureAwait(false);
         });
     }
@@ -116,7 +116,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await _repo.Delete(sessionId).ConfigureAwait(false);
         _sessions.TryRemove(sessionId, out _);
         UploadSessionsState.Remove(sessionId);
-        Log.LogDebug("Deleted session '{SessionId}'", sessionId);
+        Log.LogDebug("Deleted session '{SessionId}' ('{FileName}')", sessionId, session.FileProvider.Metadata.FileName);
     }
 
     private Func<UploadSessionSnapshot, CancellationToken, Task> CreateStorage()

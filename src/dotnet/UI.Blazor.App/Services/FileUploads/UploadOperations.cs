@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class UploadOperations(AppUIHub hub)
 {
-    private readonly OperationQueue _operationQueue = new ();
+    private readonly FileUploadQueue _uploadQueue = new ();
 
     private static readonly TimeSpan MonitorServerProcessingTimeout = TimeSpan.FromMinutes(15);
 
@@ -37,11 +37,11 @@ public class UploadOperations(AppUIHub hub)
     {
         var snapshot = snapshotAccessor.Get();
         var fileProvider = snapshot.FileProvider;
-        await fileProvider.WhenFileStreamReady().ConfigureAwait(false);
+        await fileProvider.WhenFileStreamReady().WaitAsync(cancellationToken).ConfigureAwait(false);
         await GetOrRegisterUpload(snapshotAccessor, cancellationToken).ConfigureAwait(false); // Ensure upload id is registered
         progress ??= new Progress<double>(_ => { });
         var uploadOperation = new FileUploadOperation(StartUpload);
-        _operationQueue.Enqueue(uploadOperation);
+        _uploadQueue.Enqueue(uploadOperation);
         await uploadOperation.Task.ConfigureAwait(false);
         return;
 

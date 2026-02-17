@@ -21,7 +21,7 @@ public class UploadSession
     private readonly Func<UploadSessionSnapshot, CancellationToken, Task>? _storage;
     private readonly SemaphoreSlim _stateLock = new(1, 1);
     private readonly TaskCompletionSource<MediaId> _whenMediaIdReserved = TaskCompletionSourceExt.New<MediaId>();
-    private CancellationTokenSource? _cts;
+    private volatile CancellationTokenSource? _cts;
     private UploadSessionSnapshot _snapshot;
     private int _isRunning;
     private Task _runTask = Task.CompletedTask;
@@ -40,12 +40,12 @@ public class UploadSession
 
     public string SessionId => _snapshot.SessionId;
     public IFileProvider FileProvider => _snapshot.FileProvider;
+    public string FileName => FileProvider.Metadata.FileName;
     public MediaId? MediaId => _snapshot.ReservedMediaId;
     public UploadId? UploadId => _snapshot.UploadId;
     public UploadSessionState CurrentState => _snapshot.CurrentState;
     public bool IsFailed => _snapshot.IsFailed;
     public Exception? LastError { get; private set; }
-    public double StageProgress => _snapshot.StageProgress;
     [MemberNotNullWhen(true, nameof(MediaContent))]
     public bool IsCompleted => CurrentState == UploadSessionState.Completed;
     public MediaContent? MediaContent => _snapshot.MediaContent;
