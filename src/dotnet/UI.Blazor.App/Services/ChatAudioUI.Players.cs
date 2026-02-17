@@ -119,8 +119,6 @@ public partial class ChatAudioUI
         if (player is null)
             return Task.CompletedTask;
 
-        player.Playback.IsPaused.Updated -= OnIsPausedUpdated;
-        player.Playback.IsPlaying.Updated -= OnIsPlayingUpdated;
         return player.Stop();
     }
 
@@ -138,8 +136,6 @@ public partial class ChatAudioUI
     private Task<Task> StartListeningPlayer(ChatId chatId, CancellationToken cancellationToken)
     {
         var player = GetOrCreatePlayer(chatId, ChatPlayerKind.Listening);
-        player.Playback.IsPaused.Updated += OnIsPausedUpdated;
-        player.Playback.IsPlaying.Updated += OnIsPlayingUpdated;
         var whenPlaying = player.WhenPlaying;
         return whenPlaying is { IsCompleted: false }
             ? Task.FromResult(whenPlaying)
@@ -161,16 +157,8 @@ public partial class ChatAudioUI
         var player = GetOrCreatePlayer(chatId, ChatPlayerKind.Replaying);
         DebugLog?.LogInformation("StartReplayPlayer: calling player.Start for {ChatId}", chatId);
         var startTask = player.Start(startAt, cancellationToken);
-        player.Playback.IsPaused.Updated += OnIsPausedUpdated;
-        player.Playback.IsPlaying.Updated += OnIsPlayingUpdated;
         return startTask;
     }
-
-    private void OnIsPausedUpdated(State state, StateEventKind kind)
-        => AudioWidget.RecomputeState();
-
-    private void OnIsPlayingUpdated(State state, StateEventKind kind)
-        => AudioWidget.RecomputeState();
 
     private AudioFocusRestoreHandler? OnAudioFocusLost(bool mayRecover, bool canDuck)
     {

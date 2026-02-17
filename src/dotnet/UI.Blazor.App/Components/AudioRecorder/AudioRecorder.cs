@@ -7,7 +7,7 @@ using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
+public sealed class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 {
     public static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(30);
     public static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
@@ -24,15 +24,13 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     private AppUIHub Hub { get; }
     private HostInfo HostInfo => Hub.HostInfo;
+    private AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
+    private TuneUI TuneUI => Hub.TuneUI;
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private MomentClockSet Clocks => Hub.Clocks;
-    private TuneUI TuneUI => Hub.TuneUI;
 
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
-
-    protected AudioFocusUI AudioFocusUI => Hub.AudioFocusUI;
-    protected AudioWidget AudioWidget => Hub.AudioWidget;
 
     public MicrophonePermissionHandler MicrophonePermission
         => field ??= Hub.Services.GetRequiredService<MicrophonePermissionHandler>();
@@ -249,7 +247,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
         DebugLog?.LogDebug("Chat #{ChatId}: recording is starting, {State}", chatId, State.Value);
-        AudioWidget.SetRecodingState(chatId);
     }
 
     private void MarkStopped()
@@ -274,7 +271,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         _recordingActivity?.Dispose();
         ReleaseAudioFocus();
         DebugLog?.LogDebug("Recording is stopped, {State}", State.Value);
-        AudioWidget.SetRecodingState(null);
     }
 
     private void ReleaseAudioFocus()
