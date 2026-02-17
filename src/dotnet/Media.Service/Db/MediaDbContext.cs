@@ -8,7 +8,7 @@ namespace ActualChat.Media.Db;
 public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContextBase(options)
 {
     public DbSet<DbMedia> Media { get; protected set; } = null!;
-    public DbSet<DbMediaProgress> MediaStatuses { get; protected set; } = null!;
+    public DbSet<DbMediaProgress> MediaProgresses { get; protected set; } = null!;
     public DbSet<DbLinkPreview> LinkPreviews { get; protected set; } = null!;
     public DbSet<DbGrabStatus> GrabStatuses { get; protected set; } = null!;
 

@@ -38,10 +38,10 @@ public class MediaProgressBackend(IServiceProvider services) : DbServiceBase<Med
                 Version = VersionGenerator.NextVersion()
             };
             var dbMediaProgress = new DbMediaProgress(progress);
-            dbContext.MediaStatuses.Add(dbMediaProgress);
+            dbContext.MediaProgresses.Add(dbMediaProgress);
         }
         else if (change.IsUpdate(out var updateProgress)) {
-            var dbMediaProgress = await dbContext.MediaStatuses
+            var dbMediaProgress = await dbContext.MediaProgresses
                 .Get(mediaId.Value, cancellationToken)
                 .ConfigureAwait(false);
             dbMediaProgress.RequireVersion(expectedVersion);
@@ -51,7 +51,7 @@ public class MediaProgressBackend(IServiceProvider services) : DbServiceBase<Med
             dbMediaProgress.UpdateFrom(progress);
         }
         else if (change.IsRemove()) {
-            var dbMediaProgress = await dbContext.MediaStatuses
+            var dbMediaProgress = await dbContext.MediaProgresses
                 .Get(mediaId.Value, cancellationToken)
                 .ConfigureAwait(false);
             if (dbMediaProgress is not null) {
