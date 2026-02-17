@@ -22,7 +22,7 @@
             <div class="video-frame @videoFrameCls">
                 <canvas class="call-video"></canvas>
                 @if (isRecording) {
-                    <HeaderButton Class="settings-btn show-with-delay" Click="@OnSettingsClick">
+                    <HeaderButton Class="settings-btn" Click="@OnSettingsClick">
                         <i class="icon-settings text-lg"></i>
                     </HeaderButton>
                     <div class="video-participant-label">
@@ -75,6 +75,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public bool Show { get; set; }
     [Parameter] public string? PendingCameraDeviceId { get; set; }
+    [Parameter] public bool PendingBlurEnabled { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
@@ -96,8 +97,7 @@
                 _autoStartPending = false;
                 if (!string.IsNullOrEmpty(PendingCameraDeviceId))
                     await JSRef.InvokeVoidAsync("setSelectedCamera", PendingCameraDeviceId);
-                var videoState = State.Value.VideoState;
-                await JSRef.InvokeVoidAsync("setBlurEnabled", videoState.IsBackgroundBlurEnabled);
+                await JSRef.InvokeVoidAsync("setBlurEnabled", PendingBlurEnabled);
                 await JSRef.InvokeVoidAsync("startRecording");
             }
         }
