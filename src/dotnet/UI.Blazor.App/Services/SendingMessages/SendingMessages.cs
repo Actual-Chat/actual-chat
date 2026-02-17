@@ -242,8 +242,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             attachmentsState.Register(attachment);
             if (!attachmentIsOk)
                 attachmentsState.SetPreview(attachment.Id, AttachmentPreview.NoFileAccess);
-            else if (mediaContent is not null)
-                attachmentsState.SetMediaContent(attachment.Id, mediaContent);
             attachments.Add(attachment);
         }
         if (attachments.Count == 0)
