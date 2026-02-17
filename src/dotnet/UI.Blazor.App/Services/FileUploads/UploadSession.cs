@@ -53,13 +53,16 @@ public class UploadSession
     public bool IsTerminated => CurrentState == UploadSessionState.Completed || CurrentState == UploadSessionState.Cancelled;
     public Task<MediaId> WhenMediaReserved => _whenMediaIdReserved.Task;
 
-    public void Start()
+    public bool Resume()
     {
-        if (IsTerminated)
-            throw new InvalidOperationException("Upload session has already terminated.");
+        if (CurrentState == UploadSessionState.Cancelled)
+            throw new InvalidOperationException("Upload session is cancelled. Can't resume.");
+
+        if (CurrentState == UploadSessionState.Completed)
+            return false;
 
         if (Interlocked.CompareExchange(ref _isRunning, 1, 0) != 0)
-            throw new InvalidOperationException("Upload is already in progress.");
+            return false;
 
         _cts = new CancellationTokenSource();
         var cancellationToken = _cts.Token;
@@ -69,6 +72,7 @@ public class UploadSession
             _cts = null;
             Interlocked.Exchange(ref _isRunning, 0);
         }, TaskScheduler.Default);
+        return true;
     }
 
     public async Task Cancel()

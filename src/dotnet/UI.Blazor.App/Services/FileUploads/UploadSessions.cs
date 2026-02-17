@@ -34,13 +34,12 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         return session.SessionId;
     }
 
-    public bool Start(string sessionId)
+    public bool Resume(string sessionId)
     {
         if (!_sessions.TryGetValue(sessionId, out var sessionHolder))
             return false;
 
-        sessionHolder.Session.Start();
-        return true;
+        return sessionHolder.Session.Resume();
     }
 
     public async Task<UploadSession?> TryGetSession(string sessionId)
@@ -119,7 +118,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
         await _repo.Delete(sessionId).ConfigureAwait(false);
         _sessions.TryRemove(sessionId, out _);
-        Hub.UploadSessionsState.Remove(sessionId);
+        UploadSessionsState.Remove(sessionId);
         Log.LogInformation("Deleted session '{SessionId}'", sessionId);
     }
 

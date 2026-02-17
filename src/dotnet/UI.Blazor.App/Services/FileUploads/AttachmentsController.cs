@@ -37,7 +37,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
     {
         var uploadSessionId = attachment.DemandUploadSessionId();
         try {
-            UploadSessions.Start(uploadSessionId);
+            UploadSessions.Resume(uploadSessionId);
         }
         catch (Exception ex) {
             Log.LogWarning(ex, "Failed to resume upload session '{SessionId}'", uploadSessionId);
