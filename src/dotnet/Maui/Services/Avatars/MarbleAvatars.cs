@@ -13,18 +13,22 @@ public static class MarbleAvatars
     private const string BasePathData = "M32.414 59.35L50.376 70.5H72.5v-71H33.728L26.5 13.381l19.057 27.08L32.414 59.35z";
     private const string OverlayPathData = "M22.216 24L0 46.75l14.108 38.129L78 86l-3.081-59.276-22.378 4.005 12.972 20.186-23.35 27.395L22.215 24z";
 
-    public static void GeneratePng(string key, FilePath filePath, string title = "", bool doNotBlur = false)
+    public static void GeneratePng(string key, FilePath filePath, string title = "", bool doNotBlur = false, int? size = null)
     {
+        size ??= Size;
+        var scale = (float)size.Value / Size;
         var properties = GenerateColors(key, DefaultColors);
-        var imageInfo = new SKImageInfo(Size, Size, SKColorType.Rgba8888, SKAlphaType.Premul);
+        var imageInfo = new SKImageInfo(size.Value, size.Value, SKColorType.Rgba8888, SKAlphaType.Premul);
         using var surface = SKSurface.Create(imageInfo);
         var canvas = surface.Canvas;
         canvas.Clear(SKColors.Transparent);
 
+        canvas.Scale(scale);
         canvas.Save();
         canvas.ClipRect(new SKRect(0, 0, Size, Size), SKClipOperation.Intersect, true);
 
-        using var blurFilter = doNotBlur ? null : SKImageFilter.CreateBlur(BlurSigma, BlurSigma);
+        var scaledBlurSigma = BlurSigma * scale;
+        using var blurFilter = doNotBlur ? null : SKImageFilter.CreateBlur(scaledBlurSigma, scaledBlurSigma);
 
         DrawBackground(canvas, properties[0]);
 
