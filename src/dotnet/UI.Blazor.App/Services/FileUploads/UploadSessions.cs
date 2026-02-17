@@ -5,15 +5,15 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     private readonly Task _cleanupTask;
     private readonly UploadSessionRepo _repo;
     private readonly UploadOperations _uploadOperations;
-    private readonly UploadSessionsState _uploadSessionsState;
     private readonly ConcurrentDictionary<string, SessionHolder> _sessions = new (StringComparer.Ordinal);
     private readonly Func<UploadSessionSnapshot, CancellationToken, Task> _storage;
+
+    private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;
 
     public UploadSessions(AppUIHub hub) :base(hub)
     {
         _repo = new UploadSessionRepo(hub.Services);
         _uploadOperations = new UploadOperations(hub);
-        _uploadSessionsState = hub.UploadSessionsState;
         _cleanupTask = BackgroundTask.Run(Cleanup);
         _storage = CreateStorage();
     }
@@ -158,7 +158,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     private void SetProgress(string sessionId, UploadSessionProgress progress)
-        => Hub.UploadSessionsState.SetProgress(sessionId, progress);
+        => UploadSessionsState.SetProgress(sessionId, progress);
 
     private bool CheckIfTouched(string sessionId)
         => _sessions.ContainsKey(sessionId);
