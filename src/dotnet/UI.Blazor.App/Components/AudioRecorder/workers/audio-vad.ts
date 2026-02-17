@@ -1,5 +1,5 @@
 // TODO: remove eslint-disables and fix errors
-/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-enum-comparison,@typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-enum-comparison,@typescript-eslint/no-explicit-any */
 import { AUDIO_REC as AR, AUDIO_VAD as AV } from '_constants';
 import { clamp, lerp, RunningUnitMedian, RunningEMA, approximateGain } from 'math';
 import { ResolvedPromise } from 'promises';
@@ -240,7 +240,7 @@ export class NeuralVoiceActivityDetector extends VoiceActivityDetectorBase {
     private readonly modelUri: URL;
 
     private readonly buffer: Float32Array; // legacy buffer; not used with batched model
-    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+     
     private session: ort.InferenceSession | null = null;
     private state: ort.Tensor;
     private context: ort.Tensor;
