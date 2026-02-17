@@ -18,4 +18,5 @@ public partial record UploadSessionSnapshot
     [DataMember, MemoryPackOrder(11)] public bool IsFailed { get; set; }
     [DataMember, MemoryPackOrder(12)] public MediaId? ReservedMediaId { get; set; }
     [DataMember, MemoryPackOrder(13)] public double StageProgress { get; set; }
+    [DataMember, MemoryPackOrder(14)] public string MediaScope { get; set; } = "";
 }

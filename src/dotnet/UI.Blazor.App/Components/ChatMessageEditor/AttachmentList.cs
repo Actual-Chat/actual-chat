@@ -12,6 +12,8 @@ public class AttachmentList : IAttachmentList
     public IEnumerable<Attachment> Items => _attachments;
     public event EventHandler? Changed;
 
+    public string MediaScope { get; init; } = "";
+
     public void Add(Attachment attachment)
     {
         _attachments = _attachments.Add(attachment);

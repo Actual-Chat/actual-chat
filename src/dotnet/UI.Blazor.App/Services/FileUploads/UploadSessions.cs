@@ -18,7 +18,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         _storage = CreateStorage();
     }
 
-    public async Task<string> CreateSession(IFileProvider fileProvider, PropertyBag metadata)
+    public async Task<string> CreateSession(IFileProvider fileProvider, PropertyBag metadata, string mediaScope)
     {
         if (fileProvider == null)
             throw new ArgumentNullException(nameof(fileProvider));
@@ -27,7 +27,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await fileProvider.PrepareForSaving().ConfigureAwait(false);
 
         var now = _uploadOperations.Now();
-        var snapshot = CreateNewUploadSessionSnapshot(fileProvider, metadata, now);
+        var snapshot = CreateNewUploadSessionSnapshot(fileProvider, metadata, now, mediaScope);
         var session = new UploadSession(snapshot, _uploadOperations, _storage);
         await _repo.Save(snapshot).ConfigureAwait(false);
         _sessions[session.SessionId] = new SessionRef(session);
@@ -66,7 +66,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     private static UploadSessionSnapshot CreateNewUploadSessionSnapshot(IFileProvider fileProvider, PropertyBag metadata,
-        Moment now)
+        Moment now, string mediaScope)
     {
         var snapshot = new UploadSessionSnapshot {
             SessionId = Guid.NewGuid().ToString(),
@@ -76,6 +76,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             DataVersion = 1,
             CreatedAt = now,
             LastUpdatedAt = now,
+            MediaScope = mediaScope,
         };
         return snapshot;
     }

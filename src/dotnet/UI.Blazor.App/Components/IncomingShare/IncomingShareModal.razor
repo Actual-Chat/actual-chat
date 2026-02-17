@@ -121,9 +121,10 @@
         try {
             var postTasks = new List<(Task, ChatId, int)>();
             var comment = _comment;
+            var mediaScope = selectedChatIds.Count == 1 ? selectedChatIds.First().Value : "";
             foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
                 var attachments = await CreateAttachmentList(filesChunk);
-                var uploads = (await SendingMessages.Upload(attachments))!;
+                var uploads = (await SendingMessages.Upload(attachments, mediaScope))!;
                 foreach (var chatId in selectedChatIds) {
                     var postTask = PostMessage(chatId, comment, uploads, attachments.Length);
                     postTasks.Add((postTask, chatId, filesChunk.Length));

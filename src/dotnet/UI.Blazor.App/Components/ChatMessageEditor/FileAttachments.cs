@@ -132,7 +132,7 @@ public class FileAttachments : UIServiceBase<AppUIHub>
             return false;
         }
         // NOTE: Start upload immediately after adding attachments.
-        attachment = await AttachmentsController.InitUploadSession(attachment);
+        attachment = await AttachmentsController.InitUploadSession(attachment, list.MediaScope);
         AttachmentsState.Register(attachment);
         await AttachmentsController.ResumeUpload(attachment);
         list.Add(attachment);

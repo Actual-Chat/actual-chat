@@ -57,7 +57,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             .RunIsolated(cancellationToken);
     }
 
-    public async Task<FilesUploadHandle?> Upload(ImmutableArray<Attachment> attachments)
+    public async Task<FilesUploadHandle?> Upload(ImmutableArray<Attachment> attachments, string mediaScope = "")
     {
         if (attachments.Length == 0)
             return null;
@@ -69,7 +69,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 if (attachment.FileProvider is not { } fileProvider)
                     throw new InvalidOperationException($"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
-                uploadSessionId = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession()).ConfigureAwait(false);
+                uploadSessionId = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession(), mediaScope).ConfigureAwait(false);
             }
             var attachEntry = new UploadFileRequestEntry(uploadSessionId, attachment.FileName, attachment.FileType, attachment.Length, attachment.Width, attachment.Height, attachment.Id);
             uploadEntries.Add(attachEntry);
