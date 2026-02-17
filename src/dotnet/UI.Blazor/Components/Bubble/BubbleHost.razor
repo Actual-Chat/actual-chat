@@ -96,7 +96,7 @@
 
     public async Task ResetBubbles() {
         _bubble = null;
-        await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, []);
+        await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None);
         StateHasChanged();
     }
 
@@ -122,6 +122,7 @@
             var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
             if (ReferenceEquals(_jsRef, null))
                 return;
+
             await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, readBubbles);
             StateHasChanged();
         }
