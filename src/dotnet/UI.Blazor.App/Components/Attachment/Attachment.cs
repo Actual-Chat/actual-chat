@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.UI.Blazor.App.Components;
 
-public abstract record Attachment(string FileName, string FileType, long Length, int Width, int Height)
+public record Attachment(string FileName, string FileType, long Length, int Width, int Height)
 {
     public AttachmentId Id { get; init; } = AttachmentId.New();
 
