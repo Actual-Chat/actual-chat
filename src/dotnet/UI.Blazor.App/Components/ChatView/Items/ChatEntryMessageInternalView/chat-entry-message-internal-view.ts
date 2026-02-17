@@ -66,13 +66,17 @@ export class ChatEntryMessageInternalView {
             this.changeSize(height);
         }, 1500);
 
-        // Always initialize markupHeight to prevent jittering when returning to chat
-        this.markupHeight = this.messageMarkup.offsetHeight;
-
         if (isStreaming) {
-            this.messageMarkup.style.height = `${this.markupHeight}px`;
-            this.isHeightAuto = false;
-            this.observerHandler(true);
+            fastRaf({
+                read: () => {
+                    this.markupHeight = this.messageMarkup.offsetHeight;
+                },
+                write: () => {
+                    this.messageMarkup.style.height = `${this.markupHeight}px`;
+                    this.isHeightAuto = false;
+                    this.observerHandler(true);
+                },
+            });
         }
         if (!this.playableText && isStreaming) {
             this.createPlayableTextObserver = new MutationObserver(this.smoothShowPlayableText);
