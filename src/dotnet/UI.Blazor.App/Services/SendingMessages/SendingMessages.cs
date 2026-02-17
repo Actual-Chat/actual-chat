@@ -172,14 +172,12 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             // TODO: to think what to do with this. For now UploadApp is responsible for resuming stored sessions.
             var attachmentIsOk = false;
             Task<bool>? whenFilePermissionGranted = null;
-            MediaContent? mediaContent = null;
             try {
                 var session = await UploadSessions.TryGetSession(uploadSessionId).ConfigureAwait(false);
                 if (session is not null) {
                     if (session.IsCompleted) {
                         // If media was already uploaded, use it directly to display a preview.
                         // Do not try to access the file.
-                        mediaContent = session.MediaContent;
                         whenFilePermissionGranted = NeverGetFilePermission();
                         async Task<bool> NeverGetFilePermission() {
                             await TaskExt.NeverEnding(CancellationToken.None).ConfigureAwait(false);
@@ -275,13 +273,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private void SubscribePreviewResolved(AttachmentId attachmentId, AttachExtra extras)
     {
-        // if (extras.GetPreviewUrl.IsCompleted)
-        //     return;
-
         _ =  extras.GetPreviewUrl.ContinueWith(t => {
             // Preview resolved.
 #pragma warning disable VSTHRD002
-            Hub.AttachmentsState.SetPreview(attachmentId, AttachmentPreview.Preview(t.Result));
+            Hub.AttachmentsState.SetPreview(attachmentId, AttachmentPreview.Preview(t.GetAwaiter().GetResult()));
  #pragma warning restore VSTHRD002
         }, TaskScheduler.Default);
     }
@@ -293,10 +288,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
             // File permission was denied.
             Hub.AttachmentsState.SetPreview(attachmentId, AttachmentPreview.NoFileAccess);
-            // Hub.AttachmentsState.Update(attachmentId,
-            //     a => a with {
-            //         Failed = true,
-            //     });
         }, TaskScheduler.Default);
 
     private async Task CleanupAttachments(string postRequestUuid, IEnumerable<Attachment> attachments)
@@ -355,13 +346,13 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 }
                 catch (OperationCanceledException exception1) {
                     chatSendingMessages.ConfirmMessageFailedToSend(sendingMessage, exception1);
-                    resultSource.TrySetCanceled();
+                    resultSource.TrySetCanceled(cancellationToken);
                 }
             }
             else {
                 chatSendingMessages.ConfirmMessageFailedToSend(sendingMessage, exception);
                 if (cancellationToken1.IsCancellationRequested)
-                    resultSource.TrySetCanceled();
+                    resultSource.TrySetCanceled(cancellationToken);
                 else
                     resultSource.TrySetException(exception);
             }
@@ -519,13 +510,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     {
         var cmd1 = new Chats_RemoveTextEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
         await Commander.Run(cmd1, cancellationToken).ConfigureAwait(false);
-    }
-
-
-    private static async Task<ChatEntry?> FakeSend()
-    {
-        await Task.Delay(5000).ConfigureAwait(false);
-        return null;
     }
 
     // Nested types
