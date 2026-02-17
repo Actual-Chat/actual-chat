@@ -1,5 +1,4 @@
 using ActualChat.Kvas;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -36,6 +35,12 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
 
         // Wait when settings are read
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
+        await _settings.Computed.Synchronize().ConfigureAwait(false);
+
+        // If there was a recent account change, add a delay to let invalidations propagate
+        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);
+
+        // Re-synchronize after the invalidation delay to pick up user-specific data
         await _settings.Computed.Synchronize().ConfigureAwait(false);
 
         // Delay first display to not interfere with permissions

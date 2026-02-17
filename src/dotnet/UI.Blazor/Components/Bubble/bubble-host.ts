@@ -131,8 +131,9 @@ export class BubbleHost {
         this.showNextBubble();
     }
 
-    public resetBubbles(readBubbles: string[]): void {
-        debugLog?.log(`resetBubbles`);
+    // readBubbles here are bubbleRefs of bubbles read by the user, which shouldn't be shown again
+    public resetBubbles(readBubbles: string[] = []): void {
+        debugLog?.log(`resetBubbles, readBubbles:`, readBubbles);
 
         // Clear suppress flag to allow bubbles to show again
         this._suppressAll = false;
@@ -142,7 +143,11 @@ export class BubbleHost {
 
         this.readBubbles.push(...readBubbles);
 
-        this._bubbles.forEach(x => x.isRead = false);
+        this._bubbles.forEach(x => {
+            x.isRead = this.readBubbles.includes(x.bubbleRef);
+            x.index = undefined;
+            x.total = undefined;
+        });
         this.updateBubbles();
         this.showNextBubble();
     }
