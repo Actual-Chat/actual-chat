@@ -45,12 +45,6 @@ export interface RecordingConfig {
     enabled: boolean;
     backend: 'wasm' | 'builtin';
   };
-  // WebSocket transfer settings
-  websocketConfig?: {
-    enabled: boolean;
-    serverUrl?: string;
-    role?: 'sender' | 'receiver' | 'bidirectional';
-  };
 }
 
 export interface RecordingState {
@@ -382,14 +376,6 @@ export class RecordingService extends EventTarget {
                 dropProbability: this.config.frameDropping.dropProbability ?? 0.1
             };
             console.log(`RecordingService: Frame dropping enabled with ${(this.config.frameDropping.dropProbability ?? 0.1) * 100}% drop probability`);
-        }
-
-        // Add WebSocket configuration if enabled
-        if (this.config.websocketConfig?.enabled) {
-            pipelineConfig.useWebSocketTransfer = true;
-            pipelineConfig.websocketServerUrl = this.config.websocketConfig.serverUrl;
-            pipelineConfig.websocketRole = this.config.websocketConfig.role;
-            console.log(`RecordingService: WebSocket transfer enabled, server: ${this.config.websocketConfig.serverUrl}, role: ${this.config.websocketConfig.role}`);
         }
 
         // Add streaming configuration if enabled
