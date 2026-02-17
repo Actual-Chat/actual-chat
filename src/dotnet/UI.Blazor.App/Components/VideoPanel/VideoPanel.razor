@@ -14,10 +14,11 @@
     var hasRemoteStreams = m.RemoteStreams.Length > 0;
     var remoteStreamsCls = hasRemoteStreams ? "has-remote-streams" : "";
     var videoFrameCls = isRecording ? "" : "preview-off";
+    var firstOpenCls = _isFirstOpen ? "first-time-open" : "";
 }
 
 @if (_rendered) {
-    <div @ref="Ref" class="video-panel first-time-open @cls @recordingCls @remoteStreamsCls">
+    <div @ref="Ref" class="video-panel @firstOpenCls @cls @recordingCls @remoteStreamsCls">
         <div class="c-content">
             <div class="video-frame @videoFrameCls">
                 <canvas class="call-video"></canvas>
@@ -63,6 +64,7 @@
     }
 
     private bool _rendered;
+    private bool _isFirstOpen = true;
     private bool _autoStartPending;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPanel.create";
     private static readonly string JSSetSessionContextMethod = "setSessionContext";
@@ -91,6 +93,7 @@
             JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
 
             await UpdateSessionContext();
+            _ = ClearFirstOpenAsync();
 
             // Auto-start recording if requested from JoinVideoCallModal
             if (_autoStartPending) {
@@ -106,6 +109,7 @@
     protected override async Task OnParametersSetAsync() {
         if (Show && !_rendered) {
             _rendered = true;
+            _isFirstOpen = true;
             _autoStartPending = true;
         } else if (!Show && _rendered && JSRef is not null) {
             await JSRef.InvokeVoidAsync("startClosing");
@@ -126,6 +130,11 @@
         BlazorRef = null!;
 
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ClearFirstOpenAsync() {
+        await Task.Delay(1000);
+        _isFirstOpen = false;
     }
 
     [JSInvokable]
