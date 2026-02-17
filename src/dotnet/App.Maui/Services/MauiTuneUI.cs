@@ -42,49 +42,44 @@ public class MauiTuneUI : TuneUI
 
     public override async Task PlayAndWait(Tune tune)
     {
-        var audioService = AudioManager.Current;
         if (!Tunes.TryGetValue(tune, out var info))
             return;
 
         var vibrateTask = Vibrate(tune);
-        var playSoundTask = PlaySound();
+        var playSoundTask = PlaySound(info.Sound);
         await Task.WhenAll(vibrateTask, playSoundTask).ConfigureAwait(false);
-        return;
-
-        async Task PlaySound()
-        {
-            if (info.Sound.IsNullOrEmpty())
-                return;
-
-            var playerTask = _players.GetOrAdd(info.Sound,
-                async sound => {
-                    var filePath = $"sounds/{sound}.m4a";
-                    var stream = await FileSystem.OpenAppPackageFileAsync(filePath).ConfigureAwait(false);
-                    return audioService.CreateAsyncPlayer(
-                        stream,
-                        new AudioPlayerOptions {
-#if ANDROID
-                            AudioContentType = Android.Media.AudioContentType.Sonification,
-                            AudioUsageKind = Android.Media.AudioUsageKind.AssistanceSonification,
-#endif
-                        });
-                });
-            var player = await playerTask.ConfigureAwait(false);
-            await PlayInternal(player).ConfigureAwait(true);
-        }
-
-        async Task PlayInternal(AsyncAudioPlayer player)
-        {
-            var scope = await TryAcquireAudioFocus().ConfigureAwait(false);
-            if (scope is null)
-                return;
-
-            await player.PlayAsync(CancellationToken.None).ConfigureAwait(false);
-            ReleaseAudioFocus();
-        }
     }
 
     // Protected methods
+
+    protected virtual async Task PlaySound(string soundName)
+    {
+        if (soundName.IsNullOrEmpty())
+            return;
+
+        var audioService = AudioManager.Current;
+        var playerTask = _players.GetOrAdd(soundName,
+            async sound => {
+                var filePath = $"sounds/{sound}.m4a";
+                var stream = await FileSystem.OpenAppPackageFileAsync(filePath).ConfigureAwait(false);
+                return audioService.CreateAsyncPlayer(
+                    stream,
+                    new AudioPlayerOptions {
+#if ANDROID
+                        AudioContentType = Android.Media.AudioContentType.Sonification,
+                        AudioUsageKind = Android.Media.AudioUsageKind.AssistanceSonification,
+#endif
+                    });
+            });
+        var player = await playerTask.ConfigureAwait(false);
+
+        var scope = await TryAcquireAudioFocus().ConfigureAwait(false);
+        if (scope is null)
+            return;
+
+        await player.PlayAsync(CancellationToken.None).ConfigureAwait(false);
+        ReleaseAudioFocus();
+    }
 
     protected virtual async Task Vibrate(Tune tune)
     {
