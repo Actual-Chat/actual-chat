@@ -21,10 +21,10 @@
 
     public override bool CanSkip => true;
 
-    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsSummarizationStepCompleted;
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsSummarizationTutorialStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsSummarizationStepCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsSummarizationTutorialStepCompleted = true });
 
     protected override Task<bool> Validate()
         => Task.FromResult(true);

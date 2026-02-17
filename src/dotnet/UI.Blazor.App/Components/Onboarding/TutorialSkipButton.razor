@@ -2,9 +2,9 @@
 @inherits ActualChat.UI.Blazor.ComponentBase<AppUIHub>
 @{
     var cls = Stepper.CurrentStep switch {
-        TranscriptPlaybackStep => "step-2",
-        PlacesFeatureStep => "step-3",
-        SummarizationStep => "step-4",
+        // TranscriptReplayTutorialStep => "step-2", // Disabled
+        PlacesTutorialStep => "step-2",
+        SummarizationTutorialStep => "step-3",
         _ => "",
     };
 }

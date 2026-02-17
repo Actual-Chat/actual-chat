@@ -1,6 +1,5 @@
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -141,16 +140,16 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
             // Mark all steps as completed (skip onboarding)
             _userSettings.Value = new UserOnboardingSettings {
                 IsAvatarStepCompleted = true,
-                IsCreateChatsStepCompleted = true,
+                // IsCreateChatsStepCompleted = true, // Disabled
                 IsVerifyPhoneStepCompleted = true,
                 IsVerifyEmailStepCompleted = true,
-                IsTimeZoneStepCompleted = true,
+                // IsTimeZoneStepCompleted = true, // Disabled
                 IsDataCollectionStepCompleted = true,
-                IsSpeechTranscriptionStepCompleted = true,
-                IsTranscriptPlaybackStepCompleted = true,
-                IsPlacesFeatureStepCompleted = true,
+                IsTranscriptionTutorialStepCompleted = true,
+                // IsTranscriptReplayTutorialStepCompleted = true, // Disabled
+                IsPlacesTutorialStepCompleted = true,
                 IsLanguagesStepCompleted = true,
-                IsSummarizationStepCompleted = true,
+                IsSummarizationTutorialStepCompleted = true,
             };
             _localSettings.Value = new LocalOnboardingSettings {
                 IsPermissionsStepCompleted = true,
