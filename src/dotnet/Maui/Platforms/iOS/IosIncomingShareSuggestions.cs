@@ -47,8 +47,8 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
         var handle = new INPersonHandle(chat.Id.Value, INPersonHandleType.Unknown);
         return new INPerson(
             personHandle: handle,
-            nameComponents: null, // TODO: implement
-            displayName: chat.Title,
+            nameComponents: null,
+            displayName: FormatTitle(chat.Title),
             image: image,
             contactIdentifier: null,
             customIdentifier: chat.Id.Value);
@@ -57,7 +57,7 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
     private static INSendMessageIntent CreateSendMessageIntent(Chat.Chat chat, INImage? image)
     {
         var isPeer = chat.Kind is ChatKind.Peer;
-        var speakableGroupName = !isPeer ? new INSpeakableString(chat.Title) : null;
+        var speakableGroupName = !isPeer ? new INSpeakableString(FormatTitle(chat.Title)) : null;
 
         var intent = new INSendMessageIntent(
             recipients: isPeer ? [CreateRecipient(chat, image)] : [],
@@ -75,4 +75,8 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
 
         return intent;
     }
+
+    private static string FormatTitle(string title)
+        // ReSharper disable once HeuristicUnreachableCode
+        => MauiSettings.IsDevApp ? $"🛠{title}️" : title;
 }
