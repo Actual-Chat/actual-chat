@@ -16,6 +16,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly IMutableState<bool> _isBackgroundBlurEnabled;
     private readonly IMutableState<string?> _errorMessage;
 
+    // Tracks the last chat where the user started video recording (in-memory, resets on reload)
+    private ChatId? _joinedVideoChatId;
+
     // Active speaker focus state
     private readonly IMutableState<AuthorId?> _focusedSpeakerId;
     private CancellationTokenSource? _focusDebounceCts;
@@ -79,6 +82,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _selectedCameraDeviceId.Value = cameraDeviceId;
         _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
         _errorMessage.Value = null;
+        _joinedVideoChatId = chatId;
     }
 
     public void SetSelectedCamera(string? cameraDeviceId)
@@ -89,6 +93,16 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     public void SetError(string? errorMessage)
         => _errorMessage.Value = errorMessage;
+
+    public bool HasJoinedVideoCall(ChatId chatId)
+        => _joinedVideoChatId == chatId;
+
+    public void ResumeRecording(ChatId chatId)
+    {
+        // Resume recording without overwriting camera/blur settings preserved from the previous recording
+        _recordingChatId.Value = chatId;
+        _errorMessage.Value = null;
+    }
 
     // JS callback handlers (called from VideoPanel)
 
@@ -107,6 +121,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     {
         _errorMessage.Value = error;
         _recordingChatId.Value = null;
+        _joinedVideoChatId = null;
     }
 
     // Active speaker focus
