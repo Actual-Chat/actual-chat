@@ -41,15 +41,14 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
         }
         catch (Exception ex) {
             Log.LogWarning(ex, "Failed to resume upload session '{SessionId}'", uploadSessionId);
-            AttachmentsState.SetFailureState(attachment.Id, FailureState.Failed);
         }
         return Task.CompletedTask;
     }
 
     public async Task RestartUpload(Attachment attachment)
     {
-        var failureState = await AttachmentsState.GetFailureState(attachment.Id, default).ConfigureAwait(false);
-        if (failureState is not FailureState.Failed)
+        var progress = await AttachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
+        if (progress.IsFailed)
             throw new InvalidOperationException("Can't restart. Upload is not failed");
         var previewState = await AttachmentsState.GetPreview(attachment.Id, default).ConfigureAwait(false);
         if (previewState.State is PreviewAccessState.NoFileAccess)
