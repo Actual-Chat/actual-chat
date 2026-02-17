@@ -5,7 +5,7 @@
  * Architecture:
  * - Encoder Worker (universal, RPC-based)
  * - Decoder Worker (universal, RPC-based)
- * - TransferSimulator (network simulation in main thread)
+ * - TransferSimulator (local encode→decode loopback in main thread)
  * - Canvas fallbacks for browsers without MSTP/MSTG support
  */
 
@@ -17,7 +17,6 @@ import type { DecoderWorker as DecoderWorker } from '../workers/decoder-worker-c
 import type { SegmentationWorker, SegmentationConfig, SegmentationStats, SegmentationWorkerCallbacks } from '../workers/segmentation-worker-contract';
 import type { EncoderConfig, EncoderStats, EncodedChunkData } from '../webcodecs-encoder';
 import { TransferSimulator, type TransferConfig, type TransferStats } from '../utils/transfer-simulator';
-import { WebSocketTransferAdapter } from '../utils/websocket-transfer';
 import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
 import { MediaStreamRecorder } from '../utils/mp4-muxer';
 import {
@@ -50,13 +49,6 @@ export interface PipelineConfig {
     enabled: boolean;
     dropProbability?: number; // Probability between 0 and 1 (default: 0.1 = 10% drop rate)
   };
-  /**
-   * WebSocket transfer configuration (optional)
-   * When enabled, uses real WebSocket communication instead of TransferSimulator
-   */
-  useWebSocketTransfer?: boolean;
-  websocketServerUrl?: string;
-  websocketRole?: 'sender' | 'receiver' | 'bidirectional';
   /**
    * Streaming configuration (optional)
    * When enabled, streams encoded chunks to server for real-time viewing
@@ -107,8 +99,6 @@ export class VideoPipeline implements IVideoPipeline {
 
     // Network simulation (Chrome path only - represents boundary between sender and receiver)
     private transferSimulator: TransferSimulator | null = null;
-    private websocketTransfer: WebSocketTransferAdapter | null = null;
-
     // Video streaming
     private videoStream: VideoStream | null = null; // VideoStream instance
     private pendingStreamFrames: VideoStreamFrame[] = []; // Buffer frames until we get codec description
@@ -252,10 +242,7 @@ export class VideoPipeline implements IVideoPipeline {
             }
         }
 
-        if (this.websocketTransfer) {
-            this.websocketTransfer.sendChunk(chunkData);
-            console.log(`[Pipeline] Chunk (${chunkData.type}) sent via WebSocket to receiver`);
-        } else if (this.transferSimulator) {
+        if (this.transferSimulator) {
             void this.transferSimulator.sendChunk(chunkData);
             // console.log(`[Pipeline] Chunk #${chunkSeq} (${chunkData.type}) delivered through network simulation to decoder`);
         }
@@ -405,38 +392,16 @@ export class VideoPipeline implements IVideoPipeline {
             this.outputStream = this.outputCanvas.captureStream(this.config.encoderConfig.framerate);
         }
 
-        // Setup transfer mechanism - use WebSocket for multi-device sessions, simulator for single-device testing
-        if (this.config.useWebSocketTransfer) {
-            console.log('[Pipeline] Using WebSocket transfer for multi-device session');
-            this.websocketTransfer = new WebSocketTransferAdapter(
-                {
-                    serverUrl: this.config.websocketServerUrl ?? 'ws://localhost:8080',
-                    role: this.config.websocketRole ?? 'sender',
-                    bandwidth: this.config.transferConfig.bandwidth,
-                    latency: this.config.transferConfig.latency,
-                    jitter: this.config.transferConfig.jitter,
-                    packetLoss: this.config.transferConfig.packetLoss
-                },
-                (chunkData: EncodedChunkData) => {
-                    void (async () => {
-                        await this.decoder.decodeChunk(chunkData);
-                        console.log(`[Pipeline] WebSocket delivered ${chunkData.type} chunk to decoder via RPC`);
-                    })();
-                }
-            );
-            this.websocketTransfer.connect();
-        } else {
-            // Use transfer simulator for single-device testing
-            this.transferSimulator = new TransferSimulator(
-                this.config.transferConfig,
-                (chunkData: EncodedChunkData) => {
-                    void (async () => {
-                        await this.decoder.decodeChunk(chunkData);
-                    })();
-                }
-            );
-            console.log('[Pipeline] Transfer simulator initialized in main thread (network boundary)');
-        }
+        // Setup transfer simulator for local encode→decode loopback
+        this.transferSimulator = new TransferSimulator(
+            this.config.transferConfig,
+            (chunkData: EncodedChunkData) => {
+                void (async () => {
+                    await this.decoder.decodeChunk(chunkData);
+                })();
+            }
+        );
+        console.log('[Pipeline] Transfer simulator initialized in main thread (network boundary)');
 
         // Initialize video streaming if enabled (stream will be created when first keyframe with description arrives)
         if (this.config.streaming?.enabled) {
@@ -625,10 +590,7 @@ export class VideoPipeline implements IVideoPipeline {
         }
 
         // Cleanup transfer mechanism
-        if (this.websocketTransfer) {
-            this.websocketTransfer.disconnect();
-            this.websocketTransfer = null;
-        } else if (this.transferSimulator) {
+        if (this.transferSimulator) {
             this.transferSimulator.reset();
             this.transferSimulator = null;
         }
@@ -755,10 +717,7 @@ export class VideoPipeline implements IVideoPipeline {
     }
 
     getTransferStats(): TransferStats {
-    // Get transfer stats from the appropriate transfer mechanism
-        if (this.websocketTransfer) {
-            return this.websocketTransfer.getStats();
-        } else if (this.transferSimulator) {
+        if (this.transferSimulator) {
             return this.transferSimulator.getStats();
         }
         return { ...this.currentStats.transfer };
