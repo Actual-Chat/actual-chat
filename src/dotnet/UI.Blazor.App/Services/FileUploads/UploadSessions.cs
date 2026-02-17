@@ -28,8 +28,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
 
         var now = _uploadOperations.Now();
         var snapshot = CreateNewUploadSessionSnapshot(fileProvider, metadata, now);
-        var storage = CreateStorage();
-        var session = new UploadSession(snapshot, _uploadOperations, storage);
+        var session = new UploadSession(snapshot, _uploadOperations, _storage);
         await _repo.Save(snapshot).ConfigureAwait(false);
         _sessions[session.SessionId] = new SessionHolder(session);
         return session.SessionId;
@@ -57,7 +56,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             return null;
 
         snapshot.FileProvider.Initialize(Hub.Services);
-        var session = new UploadSession(snapshot, _uploadOperations, CreateStorage());
+        var session = new UploadSession(snapshot, _uploadOperations, _storage);
         _sessions[sessionId] = new SessionHolder(session);
         SetProgress(sessionId, GetProgressFromSnapshot(snapshot));
         return session;
