@@ -9,31 +9,9 @@ public sealed class IosTuneUI(UIHub hub) : MauiTuneUI(hub)
     private AudioEngines AudioEngines => field ??= Hub.Services.GetRequiredService<AudioEngines>();
     private Haptics Haptics => field ??= Hub.Services.GetRequiredService<Haptics>();
 
-    public override Task Play(Tune tune)
-        => ForegroundTask.Run(() => {
-                DebugLog?.LogInformation("Play: '{Tune}'", tune);
-                var (_, sound) = Tunes[tune];
-                _ = Vibrate(tune);
-                return PlaySound(sound);
-            },
-            Log,
-            $"Failed to play '{tune}'",
-            StopToken);
-
-    public override Task PlayAndWait(Tune tune)
-    {
-        var (_, sound) = Tunes[tune];
-        return Task.WhenAll(Vibrate(tune), PlaySound(sound));
-    }
-
     // Protected methods
 
-    protected override Task Vibrate(Tune tune)
-        => BackgroundTask.Run(() => Haptics.Vibrate(tune, Tunes[tune].Vibration), Log, $"Failed to vibrate '{tune}'");
-
-    // Private methods
-
-    private async Task PlaySound(string soundName)
+    protected override async Task PlaySound(string soundName)
     {
         DebugLog?.LogInformation("PlaySound: '{SoundName}'", soundName);
         if (soundName.IsNullOrEmpty())
@@ -46,4 +24,7 @@ public sealed class IosTuneUI(UIHub hub) : MauiTuneUI(hub)
             Log.LogError(e, "Failed to play sound {SoundName}", soundName);
         }
     }
+
+    protected override Task Vibrate(Tune tune)
+        => BackgroundTask.Run(() => Haptics.Vibrate(tune, Tunes[tune].Vibration), Log, $"Failed to vibrate '{tune}'");
 }
