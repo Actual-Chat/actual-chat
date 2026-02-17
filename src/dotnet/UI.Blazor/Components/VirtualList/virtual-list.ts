@@ -750,12 +750,13 @@ export class VirtualList {
             this.updateState('onResize: measured', this.state, { itemRange: null });
 
             const now = Date.now();
+            // Skip scroll position restoration if we have a scrollToKey and recently restored position
             if (this.state.renderState.scrollToKey && now - this.state.scrollPositionRestoredAt < ScrollDebounce)
-                return; // do not restore the scroll position if already restored recently with navigation to the item
+                return;
 
-            const renderState = { ...this.state.renderState, scrollToKey: undefined };
-            const scrollMetadata = this.getScrollMetadata(renderState);
-            void this.restoreScrollPosition(renderState, scrollMetadata);
+            // Use debounced scroll restoration to batch multiple resize events together
+            // This prevents jittering when returning to a chat and items are being measured
+            this.restoreScrollPositionOnResizeDebounced();
         }
     };
 
@@ -1291,6 +1292,12 @@ export class VirtualList {
     }
 
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce);
+
+    private restoreScrollPositionOnResizeDebounced = debounce(() => {
+        const renderState = { ...this.state.renderState, scrollToKey: undefined };
+        const scrollMetadata = this.getScrollMetadata(renderState);
+        void this.restoreScrollPosition(renderState, scrollMetadata);
+    }, ScrollDebounce);
 
     private turnOffIsScrolling() {
         if (this.userScrollDirection !== 'none') {

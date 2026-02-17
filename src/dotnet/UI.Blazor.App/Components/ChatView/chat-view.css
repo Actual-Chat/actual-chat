@@ -177,6 +177,8 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply h-auto;
     @apply my-0.5 pr-1.5;
     @apply text-02 text-text-1;
+}
+.chat-message-markup.streaming {
     transition: height 0.25s linear;
 }
 .chat-message-markup.empty {
