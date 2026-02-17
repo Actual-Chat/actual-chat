@@ -1813,8 +1813,9 @@ export class VirtualList {
             const interactivePivot = interactivePivots[0];
             const itemKey = interactivePivot.itemKey;
             cornerstoneItemIndex = orderedItems.findIndex(i => i.key === itemKey);
-            cornerstoneItem = orderedItems[cornerstoneItemIndex];
-            if (cornerstoneItem.range && interactivePivot.stickyOffset) {
+            // ordered items might be re-built after render
+            cornerstoneItem = orderedItems[cornerstoneItemIndex] ?? null;
+            if (cornerstoneItem?.range && interactivePivot.stickyOffset) {
                 // adjust cornerstone item range based on sticky offset
                 const offsetDelta = interactivePivot.stickyOffset;
                 cornerstoneItem.range = new NumberRange(
