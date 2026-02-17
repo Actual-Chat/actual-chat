@@ -330,6 +330,39 @@ public override async Task Require(CancellationToken cancellationToken)
 - `.ResultAwait(true/false)` awaits a task and returns `Result<T>` w/o throwing any exceptions.
 
 
+6. **Prefer `OrdinalStringExt` extensions over raw `StringComparison` calls.**
+   Use extension methods from `OrdinalStringExt` (`ActualChat` namespace)
+   instead of passing `StringComparison.Ordinal` / `StringComparison.OrdinalIgnoreCase`
+   manually. They are shorter, more readable, and null-safe.
+
+| Instead of | Use |
+|---|---|
+| `s.Equals(other, StringComparison.Ordinal)` | `OrdinalEquals(s, other)` |
+| `s.StartsWith(prefix, StringComparison.Ordinal)` | `s.OrdinalStartsWith(prefix)` |
+| `s.EndsWith(suffix, StringComparison.Ordinal)` | `s.OrdinalEndsWith(suffix)` |
+| `s.Contains(fragment, StringComparison.Ordinal)` | `s.OrdinalContains(fragment)` |
+| `s.IndexOf(value, StringComparison.Ordinal)` | `s.OrdinalIndexOf(value)` |
+| `s.LastIndexOf(value, StringComparison.Ordinal)` | `s.OrdinalLastIndexOf(value)` |
+| `s.Replace(old, new, StringComparison.Ordinal)` | `s.OrdinalReplace(old, new)` |
+| `StringComparer.Ordinal.Compare(x, y)` | `OrdinalCompare(x, y)` |
+
+   Case-insensitive variants follow the same pattern with `OrdinalIgnoreCase` prefix
+   (e.g., `OrdinalIgnoreCaseEquals`, `s.OrdinalIgnoreCaseStartsWith(prefix)`).
+   These extensions also support `Symbol` and `StringSegment` types
+   where applicable. See `src/dotnet/Core/Text/OrdinalStringExt.cs` for the full API.
+
+7. **Prefer `InvariantStringExt` extensions for `ToString` with invariant culture.**
+   Use `ToInvariantString()` from `InvariantStringExt` (`ActualChat` namespace)
+   instead of passing `CultureInfo.InvariantCulture` manually.
+
+| Instead of | Use |
+|---|---|
+| `value.ToString(CultureInfo.InvariantCulture)` | `value.ToInvariantString()` |
+| `value.ToString(format, CultureInfo.InvariantCulture)` | `value.ToInvariantString(format)` |
+
+   Works on any `IConvertible` / `IFormattable` type and is null-safe.
+   See `src/dotnet/Core/Text/InvariantStringExt.cs` for the full API.
+
 ### Disabled/Silenced Warnings
 
 Search for `<NoWarn>` to see the list of disabled warnings.
