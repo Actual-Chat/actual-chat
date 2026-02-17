@@ -26,7 +26,6 @@
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly TaskCompletionSource _whenCompletedSource = new();
 
-    private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
     private IJSObjectReference? _jsPlayerRef;
     private Task? _playTask;
     private bool _isDisposed;
@@ -93,7 +92,6 @@
         DebugLog?.LogDebug(
             "[VideoTrackPlayer {StreamId}] OnPlaying: {Offset}, buffer: {IsBufferLow}",
             StreamInfo.StreamId, offset, isBufferLow ? "low" : "ok");
-        UpdateBufferState(isBufferLow);
         return Task.CompletedTask;
     }
 
@@ -144,30 +142,24 @@
     private async Task PlayAsync(CancellationToken cancellationToken)
     {
         try {
-            // Calculate skip offset to catch up to real-time
             var clocks = Services.Clocks();
             var skipTo = clocks.ServerClock.Now - StreamInfo.StartedAt;
             if (skipTo < TimeSpan.Zero)
                 skipTo = TimeSpan.Zero;
 
             DebugLog?.LogDebug(
-                "[VideoTrackPlayer {StreamId}] Getting video source, skipTo={SkipTo}",
+                "[VideoTrackPlayer {StreamId}] Starting SignalR pull, skipTo={SkipTo}",
                 StreamInfo.StreamId, skipTo);
 
-            // Get video source from server
-            var videoSource = await StreamClient
-                .GetVideo(StreamInfo.StreamId.Value, skipTo, cancellationToken)
-                .ConfigureAwait(false);
+            // Initiate pull from JS — it connects via SignalR and feeds frames directly
+            await _jsPlayerRef!.InvokeVoidAsync(
+                "startPull",
+                cancellationToken,
+                StreamInfo.StreamId.Value,
+                skipTo.TotalMilliseconds);
 
-            var frameCount = 0;
-            await foreach (var frame in videoSource.GetFrames(cancellationToken).ConfigureAwait(false)) {
-                await PushFrameAsync(frame, cancellationToken).ConfigureAwait(false);
-                frameCount++;
-            }
-
-            DebugLog?.LogDebug(
-                "[VideoTrackPlayer {StreamId}] Processed {FrameCount} frames",
-                StreamInfo.StreamId, frameCount);
+            // Wait for playback completion (signaled by JS via OnEnded callback)
+            await _whenCompletedSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             // Expected during disposal
@@ -177,46 +169,6 @@
         }
         finally {
             _whenCompletedSource.TrySetResult();
-        }
-    }
-
-    private async ValueTask PushFrameAsync(VideoFrame frame, CancellationToken cancellationToken)
-    {
-        if (_jsPlayerRef == null || _isDisposed)
-            return;
-
-        try {
-            // Push frame to JS
-            _ = _jsPlayerRef.InvokeVoidAsync(
-                "pushFrame",
-                cancellationToken,
-                frame.Data,
-                frame.Offset.TotalMilliseconds,
-                frame.Duration.TotalMilliseconds,
-                frame.IsKeyFrame,
-                frame.Description);
-
-            // Wait for buffer to need more data (with timeout)
-            await _whenBufferLowSource.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
-        }
-        catch (TimeoutException e) {
-            Log.LogError(
-                e,
-                "[VideoTrackPlayer {StreamId}] PushFrameAsync: buffer wait timed out, offset={FrameOffset}",
-                StreamInfo.StreamId,
-                frame.Offset);
-        }
-    }
-
-    private void UpdateBufferState(bool isBufferLow)
-    {
-        if (isBufferLow)
-            _whenBufferLowSource.TrySetResult();
-        else {
-            if (!_whenBufferLowSource.Task.IsCompleted)
-                return;
-
-            _whenBufferLowSource = TaskCompletionSourceExt.New();
         }
     }
 

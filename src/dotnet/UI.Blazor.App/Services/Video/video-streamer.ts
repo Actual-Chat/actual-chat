@@ -42,11 +42,13 @@ function encodeFrame(frame: VideoStreamFrame): Uint8Array {
     const obj: Record<string, unknown> = {
         offset: frame.offset,
         duration: frame.duration,
-        isKeyFrame: frame.isKeyFrame,
-        width: frame.width,
-        height: frame.height,
         data: frame.data,
     };
+    if (frame.isKeyFrame) {
+        obj.isKeyFrame = true;
+        obj.width = frame.width;
+        obj.height = frame.height;
+    }
     if (frame.description) {
         obj.description = frame.description;
     }
