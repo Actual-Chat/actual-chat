@@ -30,6 +30,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private AnalyticEvents AnalyticEvents => Hub.AnalyticEvents;
     private UploadSessions UploadSessions => Hub.UploadSessions;
+    private AttachmentsState AttachmentsState => Hub.AttachmentsState;
     private IChats Chats => Hub.Chats;
     private Moment Now => Clocks.SystemClock.Now;
 
@@ -130,19 +131,6 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             !entry.AfterSendMessageHandlerKey.IsNullOrEmpty() ? new AfterSendMessageHandler(entry.AfterSendMessageHandlerKey, entry.AfterSendMessageHandlerArgs) : null,
             checkResend);
 
-    private record AttachExtra(Task<bool> WhenFilePermissionGranted, Task<string> GetPreviewUrl);
-
-    private record UploadAttachment(
-        string FileName,
-        string FileType,
-        long Length,
-        int Width,
-        int Height,
-        AttachExtra Extras) : Attachment(FileName, FileType, Length, Width, Height)
-    {
-        public bool NoFileAccess { get; init; }
-    }
-
     private async Task<AttachmentUploads?> CreateAttachmentUploads(SendMessageRequestEntry entry, IReadOnlyList<Attachment>? sourceAttachments)
     {
         var attachEntries = entry.AttachFileRequests;
@@ -152,8 +140,8 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
         if (sourceAttachments is not null && sourceAttachments.Count != attachEntries.Length)
             throw StandardError.Internal("Source attachments count is not equal to attach file requests count.");
 
-        var attachments = new List<UploadAttachment>();
-        var attachmentsState = Hub.AttachmentsState;
+        var attachmentInfos = new List<AttachmentInfo>();
+        var attachmentsState = AttachmentsState;
         for (var i = 0; i < attachEntries.Length; i++) {
             var attachEntry = attachEntries[i];
             var sourceAttachment = sourceAttachments?[i];
@@ -221,16 +209,13 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             async Task CleanupRequest()
                 => await _requestsRepo.RemoveAttachRequest(entry.Uuid, attachEntry, CancellationToken.None).ConfigureAwait(false);
 
-            var attachExtra = new AttachExtra(whenFilePermissionGranted ?? Task.FromResult(false), getPreviewUrl);
-            var attachment = new UploadAttachment(
+            var attachment = new Attachment(
                 attachEntry.FileName,
                 attachEntry.FileType,
                 attachEntry.FileLength,
                 attachEntry.Width,
-                attachEntry.Height,
-                attachExtra) {
+                attachEntry.Height) {
                 UploadSessionId = uploadSessionId,
-                NoFileAccess = !attachmentIsOk
             };
             attachment.Cleanups.Add(new AttachmentCleanup(AttachmentCleanupKind.PersistedPostMessageRequest, CleanupRequest));
             UploadSessions.AddReference(uploadSessionId);
@@ -238,53 +223,49 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             if (sourceAttachmentId is not null)
                 attachmentsState.Unregister(sourceAttachmentId.Value);
             attachmentsState.Register(attachment);
-            if (!attachmentIsOk)
-                attachmentsState.SetPreview(attachment.Id, AttachmentPreview.NoFileAccess);
-            attachments.Add(attachment);
+            var attachmentInfo = new AttachmentInfo(attachment, !attachmentIsOk, whenFilePermissionGranted ?? Task.FromResult(false), getPreviewUrl);
+            attachmentInfos.Add(attachmentInfo);
         }
-        if (attachments.Count == 0)
+        if (attachmentInfos.Count == 0)
             return null;
 
         var attachmentsController = Services.GetRequiredService<AttachmentsController>();
         var attachmentList = new AttachmentList();
         attachmentList.Subscribe(attachmentsController);
-        foreach (var attachment in attachments) {
+        foreach (var attachmentInfo in attachmentInfos) {
+            var attachment = attachmentInfo.Attachment;
             attachmentList.Add(attachment);
-            if (attachment.NoFileAccess)
+            if (attachmentInfo.NoFileAccess) {
+                attachmentsState.SetPreview(attachment.Id, AttachmentPreview.NoFileAccess);
                 continue;
+            }
+            SubscribeFilePermissionsGranted(attachment.Id, attachmentInfo.WhenFilePermissionGranted);
+            SubscribePreviewResolved(attachment.Id, attachmentInfo.GetPreviewUrl);
             var attachmentProgress = await attachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
             if (attachmentProgress.IsReady || attachmentProgress.IsFailed)
                 continue;
             attachmentsController.ResumeUpload(attachment);
         }
-
-        foreach (var attachment in attachments) {
-            var attachmentProgress = await attachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
-            if (!attachmentProgress.IsReady)
-                SubscribeFilePermissionsGranted(attachment.Id, attachment.Extras);
-            SubscribePreviewResolved(attachment.Id, attachment.Extras);
-        }
-
         return new AttachmentUploads(attachmentList, attachmentsState);
     }
 
-    private void SubscribePreviewResolved(AttachmentId attachmentId, AttachExtra extras)
+    private void SubscribePreviewResolved(AttachmentId attachmentId, Task<string> getPreviewUrl)
     {
-        _ =  extras.GetPreviewUrl.ContinueWith(t => {
+        _ =  getPreviewUrl.ContinueWith(t => {
             // Preview resolved.
 #pragma warning disable VSTHRD002
-            Hub.AttachmentsState.SetPreview(attachmentId, AttachmentPreview.Preview(t.GetAwaiter().GetResult()));
+            AttachmentsState.SetPreview(attachmentId, AttachmentPreview.Preview(t.GetAwaiter().GetResult()));
  #pragma warning restore VSTHRD002
         }, TaskScheduler.Default);
     }
 
-    private void SubscribeFilePermissionsGranted(AttachmentId attachmentId, AttachExtra extras)
-        => _ = extras.WhenFilePermissionGranted.ContinueWith(t => {
+    private void SubscribeFilePermissionsGranted(AttachmentId attachmentId, Task<bool> whenFilePermissionGranted)
+        => _ = whenFilePermissionGranted.ContinueWith(t => {
             if (t.GetAwaiter().GetResult())
                 return;
 
             // File permission was denied.
-            Hub.AttachmentsState.SetPreview(attachmentId, AttachmentPreview.NoFileAccess);
+            AttachmentsState.SetPreview(attachmentId, AttachmentPreview.NoFileAccess);
         }, TaskScheduler.Default);
 
     private async Task CleanupAttachments(string postRequestUuid, IEnumerable<Attachment> attachments)
@@ -523,4 +504,10 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
     {
         string IHasId<string>.Id => Uuid;
     }
+
+    private record AttachmentInfo(
+        Attachment Attachment,
+        bool NoFileAccess,
+        Task<bool> WhenFilePermissionGranted,
+        Task<string> GetPreviewUrl);
 }
