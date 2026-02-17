@@ -160,7 +160,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         => _sessions.ContainsKey(sessionId);
 
     // Nested types
-    public class SessionRef(UploadSession session)
+    private class SessionRef(UploadSession session)
     {
         public UploadSession Session { get; } = session;
         public long ReferenceCount;
