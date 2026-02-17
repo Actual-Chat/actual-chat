@@ -12,12 +12,14 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
 
     public void Register(Attachment attachment)
     {
-        if (attachment.UploadSessionId.IsNullOrEmpty())
+        var uploadSessionId = attachment.UploadSessionId;
+        if (uploadSessionId.IsNullOrEmpty())
             throw new InvalidOperationException("Attachment upload is not initialized yet.");
-        if (!_infos.TryAdd(attachment.Id, new AttachmentInfo(attachment.UploadSessionId)))
-            throw new InvalidOperationException("Attachment already registered");
+        if (!_infos.TryAdd(attachment.Id, new AttachmentInfo(uploadSessionId)))
+            throw new InvalidOperationException("Attachment already has been registered");
         using (Invalidation.Begin())
             _ = GetAttachmentInfo(attachment.Id, default);
+
         if (attachment is SourceAttachment source)
             SetPreview(attachment.Id, AttachmentPreview.Preview(source.PreviewUrl));
     }
@@ -40,12 +42,6 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsReady(AttachmentId id, CancellationToken cancellationToken)
-    {
-        var state = await GetProgress(id, cancellationToken).ConfigureAwait(false);
-        return state.IsReady;
-    }
-
     public virtual async Task<AttachmentProgress> GetProgress(AttachmentId id, CancellationToken cancellationToken)
     {
         var sessionId = await GetUploadSessionId(id, cancellationToken);
@@ -72,6 +68,13 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     }
 
     [ComputeMethod]
+    public virtual async Task<bool> IsReady(AttachmentId id, CancellationToken cancellationToken)
+    {
+        var state = await GetProgress(id, cancellationToken).ConfigureAwait(false);
+        return state.IsReady;
+    }
+
+    [ComputeMethod]
     public virtual Task<AttachmentPreview> GetPreview(AttachmentId id, CancellationToken cancellationToken)
     {
         var preview = _previews.GetValueOrDefault(id) ?? AttachmentPreview.PendingGetAccessRequest;
@@ -79,7 +82,7 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     }
 
     [ComputeMethod]
-    public virtual Task<AttachmentInfo?> GetAttachmentInfo(AttachmentId id, CancellationToken cancellationToken)
+    protected virtual Task<AttachmentInfo?> GetAttachmentInfo(AttachmentId id, CancellationToken cancellationToken)
     {
         var state = _infos.GetValueOrDefault(id);
         return Task.FromResult(state);
@@ -120,7 +123,7 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     }
 
     // Nested types
+    protected sealed record AttachmentInfo(string UploadSessionId);
+
     private sealed record StageProgressInfo(int BaseProgress, int StageWidth, string Details);
 }
-
-public sealed record AttachmentInfo(string UploadSessionId);
