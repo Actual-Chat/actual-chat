@@ -10,14 +10,16 @@
     var isPanelVisible = IsRecordingHere || IsListeningHere || m.IsAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
 
     // Show video panel when recording or remote streams exist
-    if ((m.VideoState?.IsRecording == true || m.IsAnyoneVideoStreaming) && !_showVideoPanel) {
+    if (m.VideoState?.IsRecording == true && !_showVideoPanel) {
         _showVideoPanel = true;
         _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
+        _pendingBlurEnabled = m.VideoState?.IsBackgroundBlurEnabled ?? false;
     }
-    // Hide video panel when recording stopped AND no remote video streams
-    else if (_showVideoPanel && m.VideoState?.IsRecording != true && !m.IsAnyoneVideoStreaming) {
+    // Hide video panel when recording stopped
+    else if (_showVideoPanel && m.VideoState?.IsRecording != true) {
         _showVideoPanel = false;
         _pendingCameraDeviceId = null;
+        _pendingBlurEnabled = false;
     }
 }
 
@@ -96,11 +98,12 @@
     </div>
 }
 
-<VideoPanel Show="@_showVideoPanel" PendingCameraDeviceId="@_pendingCameraDeviceId"/>
+<VideoPanel Show="@_showVideoPanel" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
 
 @code {
     private bool _showVideoPanel;
     private string? _pendingCameraDeviceId;
+    private bool _pendingBlurEnabled;
 
     private IChats Chats => Hub.Chats;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
