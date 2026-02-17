@@ -322,7 +322,10 @@ public override async Task Require(CancellationToken cancellationToken)
 }
 ```
 
-4. Two overloads similar to `.ConfigureAwait(...)` are used:
+4. **Do not use `new TaskCompletionSource()`** directly.
+   Use `TaskCompletionSourceExt.New()` or `TaskCompletionSourceExt.New<T>()` instead.
+
+5. Two overloads similar to `.ConfigureAwait(...)` are used:
 - `.SilentAwait(true/false)` awaits a task w/o throwing any exceptions
 - `.ResultAwait(true/false)` awaits a task and returns `Result<T>` w/o throwing any exceptions.
 
