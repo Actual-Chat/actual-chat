@@ -207,6 +207,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
                 MediaProgressBackend,
                 Commander,
                 mediaId,
+                "",
                 cancellationToken).ConfigureAwait(false);
             throw;
         }
@@ -226,6 +227,7 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
         IMediaProgressBackend mediaProgressBackend,
         ICommander commander,
         MediaId mediaId,
+        string errorMessage,
         CancellationToken cancellationToken)
     {
         var mediaProgress = await mediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
@@ -239,10 +241,10 @@ public class UploadsBackend(IServiceProvider services) : DbServiceBase<MediaDbCo
             0,
             MediaStage.ServerProcessing,
             progress,
-            "Failed to process upload");
+            errorMessage.NullIfEmpty() ?? "Failed to process upload");
         var failedChange = new Change<MediaProgress> { Update = failedProgress };
-        await commander.Call(new MediaProgressBackend_Change(mediaId, null, failedChange), cancellationToken)
-            .ConfigureAwait(false);
+        var change = new MediaProgressBackend_Change(mediaId, null, failedChange);
+        await commander.Call(change, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<Uri> InitiateUploadSession(Upload upload, CancellationToken cancellationToken)

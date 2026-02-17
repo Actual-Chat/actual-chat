@@ -43,8 +43,8 @@ public class MediaProgressBackend(IServiceProvider services) : DbServiceBase<Med
         else if (change.IsUpdate(out var updateProgress)) {
             var dbMediaProgress = await dbContext.MediaStatuses
                 .Get(mediaId.Value, cancellationToken)
-                .RequireVersion(expectedVersion)
                 .ConfigureAwait(false);
+            dbMediaProgress.RequireVersion(expectedVersion);
             progress = updateProgress with {
                 Version = VersionGenerator.NextVersion(dbMediaProgress.Version)
             };

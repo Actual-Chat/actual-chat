@@ -20,10 +20,9 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
         try {
             // Verify media exists and has no content yet
             var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
-            if (media == null) {
-                SetError(StandardError.NotFound<Media>());
-                return;
-            }
+            if (media == null)
+                throw StandardError.NotFound<Media>();
+
             if (!media.ContentId.IsNullOrEmpty()) {
                 Console.Log("Media already has content");
                 SetResult(new MediaContent(mediaId, media.ContentId));
@@ -32,10 +31,8 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
 
             // Verify upload exists
             var upload = await UploadsBackend.Get(uploadId, cancellationToken).ConfigureAwait(false);
-            if (upload == null) {
-                SetError(new InvalidOperationException("Upload not found"));
-                return;
-            }
+            if (upload == null)
+                throw StandardError.NotFound<Upload>();
 
             try {
                 // Process upload and bind to media
@@ -48,16 +45,16 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
             catch (Exception e) {
                 // Set status to Failed
                 Console.Log($"Processing failed: {e.Message}");
-                SetError(e);
             }
         }
-        finally {
-            if (Result is { HasError: true })
-                await ActualChat.Media.UploadsBackend.ReportMediaServerProcessingError(
-                    MediaProgressBackend,
-                    Commander,
-                    mediaId,
-                    cancellationToken).ConfigureAwait(false);
+        catch {
+            await ActualChat.Media.UploadsBackend.ReportMediaServerProcessingError(
+                MediaProgressBackend,
+                Commander,
+                mediaId,
+                "",
+                cancellationToken).ConfigureAwait(false);
+            throw;
         }
     }
 
