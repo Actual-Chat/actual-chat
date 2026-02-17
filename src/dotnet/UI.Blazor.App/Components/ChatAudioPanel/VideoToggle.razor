@@ -52,6 +52,9 @@
         if (m.IsLocalVideoRecording) {
             // Stop own video recording (keep panel open for remote streams)
             ChatVideoUI.SetRecordingChatId(null);
+        } else if (ChatVideoUI.HasJoinedVideoCall(Chat.Id)) {
+            // Already joined this call — resume without modal
+            ChatVideoUI.ResumeRecording(Chat.Id);
         } else {
             // Open join/start modal
             var mode = m.AreOthersVideoStreaming
