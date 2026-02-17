@@ -1,4 +1,5 @@
 import { Log } from 'logging';
+import { fastRaf } from 'fast-raf';
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
@@ -32,8 +33,10 @@ export class VideoPlayer {
     private readonly maxBufferSize = 5; // frames
     private lastReportedBufferLow = true;
 
-    // Animation frame for rendering
-    private animationFrameId: number | null = null;
+    // Frame pacing state
+    private playbackStartTime: number = 0;     // wall-clock ms (performance.now) when first frame rendered
+    private firstFrameTimestamp: number = 0;    // timestamp of first decoded frame (microseconds)
+    private renderKey: string;
 
     /** Creates a new VideoPlayer instance for Blazor interop */
     static create(
@@ -64,6 +67,7 @@ export class VideoPlayer {
         this.authorId = authorId;
         this.canvas = canvas;
         this.canvasCtx = canvas.getContext('2d');
+        this.renderKey = `vr-${streamId}`;
 
         // Set canvas size
         canvas.width = width || 1280;
@@ -179,16 +183,7 @@ export class VideoPlayer {
     private onFrameDecoded(frame: VideoFrame): void {
         this.pendingFrames.push(frame);
         this.bufferSize++;
-
-        // Update buffer state
-        const isBufferLow = this.bufferSize < 2;
-        if (isBufferLow !== this.lastReportedBufferLow) {
-            this.lastReportedBufferLow = isBufferLow;
-            void this.reportPlaying(frame.timestamp / 1000, isBufferLow);
-        }
-
-        // Render the frame
-        this.renderNextFrame();
+        this.scheduleRender();
     }
 
     private onDecoderError(error: Error): void {
@@ -196,33 +191,68 @@ export class VideoPlayer {
         void this.reportEnded(error.message);
     }
 
-    private renderNextFrame(): void {
-        if (this.pendingFrames.length === 0) {
-            return;
+    private scheduleRender(): void {
+        if (this.pendingFrames.length === 0 || !this.isPlaying) return;
+        // Key dedup: if already scheduled for this player, fastRaf returns false (no-op)
+        fastRaf({ write: () => this.onRenderFrame(), key: this.renderKey });
+    }
+
+    private onRenderFrame(): void {
+        if (!this.isPlaying || this.pendingFrames.length === 0) return;
+
+        const now = performance.now();
+
+        // Initialize timing anchor on first frame
+        if (this.playbackStartTime === 0) {
+            this.playbackStartTime = now;
+            this.firstFrameTimestamp = this.pendingFrames[0].timestamp; // microseconds
         }
 
-        const frame = this.pendingFrames.shift();
-        if (!frame) return;
+        const elapsedUs = (now - this.playbackStartTime) * 1000; // ms → μs
+        const targetTimestamp = this.firstFrameTimestamp + elapsedUs;
 
-        this.bufferSize--;
-
-        if (this.canvasCtx) {
-            try {
-                // Update canvas size if needed
-                if (this.canvas.width !== frame.displayWidth || this.canvas.height !== frame.displayHeight) {
-                    this.canvas.width = frame.displayWidth;
-                    this.canvas.height = frame.displayHeight;
-                    debugLog?.log(`Canvas resized to ${frame.displayWidth}x${frame.displayHeight}`);
-                }
-
-                this.canvasCtx.drawImage(frame, 0, 0);
-            } catch (error) {
-                errorLog?.log('Error rendering frame:', error);
-            } finally {
-                frame.close();
+        // Find the latest frame due for presentation; drop earlier ones
+        let frameToRender: VideoFrame | null = null;
+        while (this.pendingFrames.length > 0 && this.pendingFrames[0].timestamp <= targetTimestamp) {
+            if (frameToRender) {
+                frameToRender.close(); // Drop skipped frame
+                this.bufferSize--;
             }
-        } else {
-            frame.close();
+            frameToRender = this.pendingFrames.shift()!;
+        }
+
+        if (frameToRender) {
+            this.bufferSize--;
+            this.drawFrame(frameToRender);
+            frameToRender.close();
+        }
+
+        this.updateBufferState();
+
+        // Re-schedule if more frames pending (fastRaf will batch into next rAF)
+        if (this.pendingFrames.length > 0)
+            this.scheduleRender();
+    }
+
+    private drawFrame(frame: VideoFrame): void {
+        if (!this.canvasCtx) return;
+        try {
+            if (this.canvas.width !== frame.displayWidth || this.canvas.height !== frame.displayHeight) {
+                this.canvas.width = frame.displayWidth;
+                this.canvas.height = frame.displayHeight;
+                debugLog?.log(`Canvas resized to ${frame.displayWidth}x${frame.displayHeight}`);
+            }
+            this.canvasCtx.drawImage(frame, 0, 0);
+        } catch (error) {
+            errorLog?.log('Error rendering frame:', error);
+        }
+    }
+
+    private updateBufferState(): void {
+        const isBufferLow = this.bufferSize < 3;
+        if (isBufferLow !== this.lastReportedBufferLow) {
+            this.lastReportedBufferLow = isBufferLow;
+            void this.reportPlaying(0, isBufferLow);
         }
     }
 
@@ -295,6 +325,7 @@ export class VideoPlayer {
                 this.decoder.configure(newConfig);
                 this.decoderConfig = newConfig;
             }
+            this.playbackStartTime = 0; // Reset pacing anchor to re-sync
         }
 
         this.decodeChunk(frameData, timestampMs, durationMs, isKeyFrame);
@@ -338,11 +369,7 @@ export class VideoPlayer {
         if (!this.isPlaying) return;
 
         this.isPlaying = false;
-
-        if (this.animationFrameId !== null) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
+        this.playbackStartTime = 0;
 
         // Close all pending frames
         for (const frame of this.pendingFrames) {
