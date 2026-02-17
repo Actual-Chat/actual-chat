@@ -9,22 +9,25 @@ import Denque from 'denque';
 import { rpcClientServer, RpcNoWait } from 'rpc';
 import * as ort from 'onnxruntime-web';
 import {
-    videoFrameToTensorUint8,
-    videoFrameToTensorFloat32,
     initTensorWebGPU,
-    readMaskToCPU,
     processDeferredCleanups,
-    returnPooledBuffer
+    returnPooledBuffer,
+    videoFrameToTensorFloat32,
+    videoFrameToTensorUint8,
 } from '../tensor-utils';
-import { applyBackgroundBlur, initBlurWebGPU, processBlurDeferredCleanups, type MaskDataType } from '../webgpu-blur';
+import { applyBackgroundBlur, initBlurWebGPU, processBlurDeferredCleanups } from '../webgpu-blur';
 import { WebGPUManager } from '../webgpu-manager';
 
-import type { SegmentationWorker, SegmentationWorkerCallbacks } from './segmentation-worker-contract';
-import type { SegmentationConfig, SegmentationStats, ModelConfig } from './segmentation-worker-contract';
-import { getModelConfig, DEFAULT_MODEL_CONFIG } from './segmentation-worker-contract';
+import type {
+    ModelConfig,
+    SegmentationConfig,
+    SegmentationStats,
+    SegmentationWorker,
+    SegmentationWorkerCallbacks,
+} from './segmentation-worker-contract';
+import { DEFAULT_MODEL_CONFIG, getModelConfig } from './segmentation-worker-contract';
 
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
-// @ts-ignore
 import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
 
 // Worker state
@@ -44,8 +47,6 @@ let droppedFrames = 0;
 
 // Frame skipping state
 let frameCounter = 0;
-let lastInferenceFrame = 0;
-let lastMask: Float32Array | null = null;
 
 // Frame queuing state (for non-blocking async processing)
 interface QueuedFrame {
@@ -121,29 +122,27 @@ async function processQueue(): Promise<void> {
             const qf = frameQueue.shift();
             if (!qf) break;
 
-            const frameStartTime = performance.now();
-
             // Process deferred cleanups from previous frames (no sync overhead)
             processDeferredCleanups();
             processBlurDeferredCleanups();
 
             // Add frame skipping to reduce GPU load and allow video decoding to catch up
             // Skip every N frames to reduce contention, especially on mobile devices
-            const frameSkipInterval = config?.frameSkipInterval || 1; // Default: 1 = no skip
+            const frameSkipInterval = config.frameSkipInterval ?? 1;
             if (frameSkipInterval > 1 && frameCounter % frameSkipInterval !== 0) {
                 console.log(`[SegmentationWorker] Skipping frame #${qf.sequenceNumber} to reduce GPU contention (skip interval: ${frameSkipInterval})`);
                 qf.frame.close();
                 continue;
             }
 
-            console.log(`[SegmentationWorker] Processing frame #${qf.sequenceNumber} (format: ${resolvedModelConfig?.tensorFormat ?? 'unknown'})`);
+            console.log(`[SegmentationWorker] Processing frame #${qf.sequenceNumber} (format: ${resolvedModelConfig!.tensorFormat})`);
 
             // Run single-frame inference
             const inferenceStartTime = performance.now();
 
             // Create input tensor based on model format
             let inputTensor: ort.Tensor;
-            if (resolvedModelConfig?.tensorFormat === 'nchw_float32') {
+            if (resolvedModelConfig!.tensorFormat === 'nchw_float32') {
                 inputTensor = await videoFrameToTensorFloat32(
                     qf.frame,
                     config.inputWidth,
@@ -154,37 +153,20 @@ async function processQueue(): Promise<void> {
                 inputTensor = await videoFrameToTensorUint8(qf.frame, config.inputWidth, config.inputHeight);
             }
 
-            // Track mask (GPU buffer or CPU array)
-            let maskInput: GPUBuffer;
-
             // Get output format configuration
-            const outputFormat = resolvedModelConfig?.outputFormat ?? DEFAULT_MODEL_CONFIG.outputFormat;
-            const outputLayout = resolvedModelConfig?.outputLayout ?? DEFAULT_MODEL_CONFIG.outputLayout;
+            const outputFormat = resolvedModelConfig!.outputFormat ?? DEFAULT_MODEL_CONFIG.outputFormat;
+            const outputLayout = resolvedModelConfig!.outputLayout ?? DEFAULT_MODEL_CONFIG.outputLayout;
             const maskSize = config.inputWidth * config.inputHeight;
 
             // Run inference with GPU buffer tensor - output will also be on GPU
-            let results: ort.InferenceSession.ReturnType;
             const outputName = session!.outputNames[0];
-
-            // Create reusable output tensor with pre-allocated GPU buffer
-            if (!outputTensor && outputGpuBuffer) {
-                const maskSize = config.inputWidth * config.inputHeight;
-                outputTensor = ort.Tensor.fromGpuBuffer(outputGpuBuffer, {
-                    dataType: 'float32',
-                    dims: [1, 1, config.inputHeight, config.inputWidth],
-                    dispose: () => {
-                        // Don't actually dispose the buffer, just mark for potential reuse
-                        // The buffer is managed by the segmentation worker
-                    }
-                });
-            }
 
             // Use fetches to specify the output tensor for reuse
             const fetches: ort.InferenceSession.FetchesType = {
                 [outputName]: outputTensor
             };
 
-            results = await session!.run({ [session!.inputNames[0]]: inputTensor }, fetches);
+            await session!.run({ [session!.inputNames[0]]: inputTensor }, fetches);
 
             // DEBUG: Log output tensor details to diagnose mask alignment issues
             console.log('[SegmentationWorker] Output tensor details:', {
@@ -194,7 +176,7 @@ async function processQueue(): Promise<void> {
                 location: outputTensor.location,
                 size: outputTensor.size,
                 expectedSize: maskSize,
-                format: resolvedModelConfig?.tensorFormat,
+                format: resolvedModelConfig!.tensorFormat,
                 outputFormat,
                 outputLayout
             });
@@ -215,7 +197,7 @@ async function processQueue(): Promise<void> {
             const gpuBuffer = outputTensor.gpuBuffer;
 
             // Single channel - use GPU buffer directly - no splitting needed for single frame!
-            maskInput = gpuBuffer;
+            const maskInput = gpuBuffer;
             console.log('[SegmentationWorker] Using GPU buffer mask directly (zero-copy path)');
 
             // Return input tensor's GPU buffer to pool for reuse
@@ -263,9 +245,6 @@ async function processQueue(): Promise<void> {
             totalInferenceTime += inferenceTime;
             totalBlurTime += blurTime;
             totalProcessingTime += frameProcessingTime;
-
-            // Update inference tracking
-            lastInferenceFrame = frameCounter;
 
             console.log(`[SegmentationWorker] Completed frame #${qf.sequenceNumber} (inference: ${inferenceTime.toFixed(2)}ms, blur: ${blurTime.toFixed(2)}ms, total: ${frameProcessingTime.toFixed(2)}ms, blurEnabled: ${config.blurEnabled})`);
             pipeline.onFrameProcessed(finalFrame, qf.sequenceNumber, frameProcessingTime);
@@ -315,11 +294,7 @@ const serverImpl: SegmentationWorker = {
                 console.log('[SegmentationWorker] Successfully loaded model with WebGPU backend');
 
                 // Get ORT's WebGPU device for shared usage
-                const ortDevice = await ort.env.webgpu?.device;
-                if (!ortDevice) {
-                    throw new Error('ONNX Runtime WebGPU device not available');
-                }
-                const blurDevice = ortDevice;
+                const blurDevice = await ort.env.webgpu.device;
                 console.log('[SegmentationWorker] Using shared WebGPU device for inference + blur');
                 // Initialize shared WebGPU manager with the blur device
                 await WebGPUManager.init(blurDevice);
@@ -341,13 +316,19 @@ const serverImpl: SegmentationWorker = {
                 });
                 console.log(`[SegmentationWorker] Pre-allocated output GPU buffer (${outputBufferSize} bytes)`);
 
+                // Create reusable output tensor with pre-allocated GPU buffer
+                outputTensor = ort.Tensor.fromGpuBuffer(outputGpuBuffer, {
+                    dataType: 'float32',
+                    dims: [1, 1, config.inputHeight, config.inputWidth],
+                    dispose: () => {
+                        // Don't actually dispose the buffer, just mark for potential reuse
+                        // The buffer is managed by the segmentation worker
+                    }
+                });
+
             } catch (error) {
                 console.error('[SegmentationWorker] WebGPU backend failed:', error);
                 throw new Error(`WebGPU backend failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
-
-            if (!session) {
-                throw new Error('Failed to create ONNX session with any backend');
             }
 
             console.log('[SegmentationWorker] ONNX model loaded successfully');
@@ -376,6 +357,7 @@ const serverImpl: SegmentationWorker = {
    * Process a single frame with segmentation and background blur
    * Uses frame skipping, motion detection, and queuing optimizations
    */
+    // eslint-disable-next-line
     processFrame: async (frame: VideoFrame, _noWait: RpcNoWait): Promise<void> => {
         if (!session || !config || !processing) {
             console.warn('[SegmentationWorker] Not initialized or not processing');
@@ -389,6 +371,7 @@ const serverImpl: SegmentationWorker = {
     /**
    * Update segmentation configuration
    */
+    // eslint-disable-next-line
     updateConfig: async (newConfig: Partial<SegmentationConfig>): Promise<void> => {
         if (!config) {
             throw new Error('Worker not initialized');
@@ -407,22 +390,22 @@ const serverImpl: SegmentationWorker = {
     /**
    * Get current performance statistics
    */
+    // eslint-disable-next-line
     getStats: async (): Promise<SegmentationStats> => {
-        const stats: SegmentationStats = {
+        return {
             processedFrames,
             averageInferenceTime: processedFrames > 0 ? totalInferenceTime / processedFrames : 0,
             averageBlurTime: processedFrames > 0 ? totalBlurTime / processedFrames : 0,
             averageTotalTime: processedFrames > 0 ? totalProcessingTime / processedFrames : 0,
             droppedFrames,
-            backend: config?.backend || 'unknown'
+            backend: config?.backend ?? 'unknown'
         };
-
-        return stats;
     },
 
     /**
    * Stop processing and clean up resources
    */
+    // eslint-disable-next-line
     stop: async (): Promise<void> => {
         console.log('[SegmentationWorker] Stopping segmentation worker...');
 
@@ -447,16 +430,12 @@ const serverImpl: SegmentationWorker = {
         }
 
         // Clean up output GPU buffer
-        if (outputGpuBuffer) {
-            outputGpuBuffer.destroy();
-        }
+        outputGpuBuffer.destroy();
 
         // Reset all state
         config = null;
         resolvedModelConfig = null;
         frameCounter = 0;
-        lastInferenceFrame = 0;
-        lastMask = null;
         processingFrame = false;
         frameSequence = 0;
 

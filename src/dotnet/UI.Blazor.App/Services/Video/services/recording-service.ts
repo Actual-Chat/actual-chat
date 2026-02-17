@@ -188,8 +188,8 @@ export class RecordingService extends EventTarget {
             // Get actual video dimensions from the stream
             const videoTrack = this.inputStream.getVideoTracks()[0];
             const settings = videoTrack.getSettings();
-            const actualWidth = settings.width || this.config.width;
-            const actualHeight = settings.height || this.config.height;
+            const actualWidth = settings.width ?? this.config.width;
+            const actualHeight = settings.height ?? this.config.height;
 
             console.log(`RecordingService: Actual video dimensions: ${actualWidth}x${actualHeight}`);
             console.log(`RecordingService: Requested dimensions: ${this.config.width}x${this.config.height}`);
@@ -278,7 +278,7 @@ export class RecordingService extends EventTarget {
 
     private async acquireMediaStream(): Promise<MediaStream> {
         if (this.config.mode === 'webcam') {
-            const videoConstraints: any = {
+            const videoConstraints: MediaTrackConstraints = {
                 width: { ideal: this.config.width },
                 height: { ideal: this.config.height },
                 frameRate: { ideal: this.config.framerate }
@@ -330,7 +330,7 @@ export class RecordingService extends EventTarget {
 
         const pipelineConfig: PipelineConfig = {
             encoderConfig: {
-                codec: codecString as any,
+                codec: codecString,
                 width: width,
                 height: height,
                 bitrate: this.config.bitrate,

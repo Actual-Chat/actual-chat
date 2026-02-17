@@ -1,5 +1,3 @@
-// TODO: Fix ESLint errors
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-deprecated, @typescript-eslint/no-floating-promises */
 import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 import { Log } from 'logging';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
@@ -38,14 +36,10 @@ export class VideoPanel {
     constructor(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.videoPanel = videoPanel;
-        if (!this.videoPanel)
-            return;
 
         // Get canvas element for rendering
         this.canvas = this.videoPanel.querySelector('.call-video')!;
-        if (this.canvas) {
-            this.canvasCtx = this.canvas.getContext('2d');
-        }
+        this.canvasCtx = this.canvas.getContext('2d');
 
         this.parentElement = this.videoPanel.parentElement;
         const needToShowElements = this.videoPanel.querySelectorAll('.show-with-delay');
@@ -67,7 +61,7 @@ export class VideoPanel {
         if (this.recordBtn) {
             fromEvent(this.recordBtn, 'click')
                 .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.onRecordBtnClick());
+                .subscribe(() => void this.onRecordBtnClick());
         }
 
         // Escape key handler
@@ -168,7 +162,7 @@ export class VideoPanel {
                 latency: 0,
                 jitter: 0,
                 packetLoss: 0,
-                cameraDeviceId: this.selectedCameraDeviceId || undefined,
+                cameraDeviceId: this.selectedCameraDeviceId ?? undefined,
                 backgroundBlur: {
                     enabled: this.isBlurEnabled,
                 },
@@ -221,7 +215,7 @@ export class VideoPanel {
                             this.canvas.height = frame.displayHeight;
                         }
                     }
-                    this.canvasCtx.drawImage(frame as any, 0, 0);
+                    this.canvasCtx.drawImage(frame, 0, 0);
                 }
             });
 
@@ -275,17 +269,13 @@ export class VideoPanel {
     private startRenderingStream(stream: MediaStream): void {
         const videoTrack = stream.getVideoTracks()[0];
         console.warn('[VideoPanel] startRenderingStream: videoTrack:', !!videoTrack, 'canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
-        if (!videoTrack || !this.canvas || !this.canvasCtx) {
-            console.error('[VideoPanel] startRenderingStream: missing required elements, aborting');
-            return;
-        }
 
         // Create a video element to render the stream
         const video = document.createElement('video');
         video.srcObject = stream;
         video.muted = true;
         video.playsInline = true;
-        video.play();
+        void video.play();
 
         let frameCount = 0;
         const renderFrame = () => {
@@ -295,7 +285,7 @@ export class VideoPanel {
             }
             frameCount++;
             if (frameCount <= 3 || frameCount % 300 === 0)
-                console.warn('[VideoPanel] renderFrame #' + frameCount + ': videoWidth=' + video.videoWidth + ', videoHeight=' + video.videoHeight);
+                console.warn(`[VideoPanel] renderFrame #${frameCount}: videoWidth=${String(video.videoWidth)}, videoHeight=${String(video.videoHeight)}`);
 
             // When blur is enabled, the preview callback renders blurred frames directly.
             // Only draw the raw camera feed when blur is off.
@@ -360,7 +350,7 @@ export class VideoPanel {
         }
 
         // Notify Blazor of state change
-        this.blazorRef.invokeMethodAsync('OnRecorderStateChanged', JSON.stringify(state));
+        void this.blazorRef.invokeMethodAsync('OnRecorderStateChanged', JSON.stringify(state));
     }
 
     /**
@@ -368,7 +358,7 @@ export class VideoPanel {
      */
     private onRecorderError(error: Error): void {
         errorLog?.log('Recorder error:', error);
-        this.blazorRef.invokeMethodAsync('OnRecordingError', error.message);
+        void this.blazorRef.invokeMethodAsync('OnRecordingError', error.message);
     }
 
     /**
@@ -394,7 +384,7 @@ export class VideoPanel {
     }
 
     public dispose() {
-        if (this.disposed$.isStopped)
+        if (this.disposed$.closed)
             return;
 
         // Stop rendering
@@ -402,7 +392,7 @@ export class VideoPanel {
 
         // Stop recording service
         if (this.recordingService) {
-            this.recordingService.stop().catch(() => {});
+            void this.recordingService.stop();
             this.recordingService = null;
         }
 
@@ -433,7 +423,7 @@ export class VideoPanel {
         // Stop recording before closing
         if (this.isRecording && this.recordingService) {
             this.stopRenderingStream();
-            this.recordingService.stop().catch(() => {});
+            void this.recordingService.stop();
         }
 
         this.videoPanel.classList.remove('first-time-open');
@@ -445,7 +435,7 @@ export class VideoPanel {
             if (handled) return;
             handled = true;
             content.removeEventListener('animationend', complete);
-            this.blazorRef.invokeMethodAsync('CloseVideoPanel');
+            void this.blazorRef.invokeMethodAsync('CloseVideoPanel');
         };
 
         content.addEventListener('animationend', complete);

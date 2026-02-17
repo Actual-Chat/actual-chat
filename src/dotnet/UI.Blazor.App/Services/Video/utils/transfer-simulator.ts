@@ -52,6 +52,7 @@ export class TransferSimulator {
         this.lastBitrateUpdate = this.startTime;
     }
 
+    // eslint-disable-next-line
     async sendChunk(chunk: EncodedChunkData): Promise<void> {
     // Track chunk type for bandwidth monitoring
         if (chunk.type === 'key') {
@@ -89,7 +90,7 @@ export class TransferSimulator {
 
         // Start processing queue if not already running
         if (!this.isProcessingQueue) {
-            this.processDeliveryQueue();
+            void this.processDeliveryQueue();
         }
     }
 
@@ -118,6 +119,7 @@ export class TransferSimulator {
         this.isProcessingQueue = false;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private updateStats(bytes: number, _latency: number): void {
         this.stats.totalBytes += bytes;
         this.stats.totalChunks++;

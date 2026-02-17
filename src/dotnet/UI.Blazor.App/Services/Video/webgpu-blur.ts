@@ -48,23 +48,9 @@ const clearMipmapCache = () => {
 
 // Texture pool with correct usage flags - keyed by dimensions
 const texturePool = new Map<string, GPUTexture[]>();
-const getTexture = (w: number, h: number): GPUTexture => {
-    const key = `${w},${h}`;
-    const pool = texturePool.get(key) || [];
-
-    if (pool.length > 0) {
-        return pool.pop()!;
-    }
-
-    return device!.createTexture({
-        size: { width: w, height: h },
-        format: FORMAT,
-        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
-    });
-};
 const returnTexture = (t: GPUTexture) => {
     const key = `${t.width},${t.height}`;
-    const pool = texturePool.get(key) || [];
+    const pool = texturePool.get(key) ?? [];
     pool.push(t);
     texturePool.set(key, pool);
 };
@@ -100,7 +86,6 @@ function returnUniform8Buffer(buffer: GPUBuffer): void {
 
 // Pre-allocated TypedArrays to avoid per-frame allocations
 const tempUint32Array2 = new Uint32Array(2);
-const tempFloat32Array2 = new Float32Array(2);
 
 
 // Deferred cleanup system to eliminate sync points
@@ -116,7 +101,7 @@ const BLUR_CLEANUP_DELAY_FRAMES = 3;
   */
 function registerBlurDeferredCleanup(cleanupFn: () => void): void {
     const cleanupFrame = blurFrameCounter + BLUR_CLEANUP_DELAY_FRAMES;
-    const cleanups = blurCleanupQueue.get(cleanupFrame) || [];
+    const cleanups = blurCleanupQueue.get(cleanupFrame) ?? [];
     cleanups.push(cleanupFn);
     blurCleanupQueue.set(cleanupFrame, cleanups);
 }
@@ -383,7 +368,7 @@ const COMPOSITE_WGSL = /* wgsl */`
 
       let orig = textureSampleBaseClampToEdge(original, blurSampler, uv);
       let blur = textureSample(blurred, blurSampler, uv);
-      
+
       // The mask is already upscaled and smoothed, sample directly with linear filtering
       let maskValue = textureSample(mask, blurSampler, uv).r;
 
@@ -395,7 +380,7 @@ const COMPOSITE_WGSL = /* wgsl */`
 
       // DEBUG: show mask only
       // return vec4f(vec3f(maskValue), 1.0);
-    
+
 
       // Alpha is now 0.0-1.0 probability, use directly for blending
       // Higher probability = more person (less blur)
@@ -436,11 +421,11 @@ export async function initBlurWebGPU(gpuDevice?: GPUDevice): Promise<void> {
         }
         console.log('[WebGPU-Blur] Reinitializing with new shared device');
     }
-  
+
     device = sharedDevice;
-  
+
     // Initialize GPU resources with the provided device
-    await initializeGpuResources();
+    initializeGpuResources();
 }
 
 /**
@@ -458,7 +443,7 @@ function ensureInitialized() {
 }
 
 // Separated GPU resource initialization (can be called with external device)
-async function initializeGpuResources() {
+function initializeGpuResources() {
     if (!device) throw new Error('Device not initialized');
 
     // Query preferred canvas format for maximum compatibility
@@ -518,21 +503,6 @@ async function initializeGpuResources() {
         ]
     });
 
-    const maskUpscaleLayout = device.createBindGroupLayout({
-        entries: [
-            { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } }, // source mask (rgba8unorm)
-            { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
-            { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }
-        ]
-    });
-
-    const copyLayout = device.createBindGroupLayout({
-        entries: [
-            { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-            { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: {} }
-        ]
-    });
-
     downsample2dPipeline = device.createRenderPipeline({
         layout: device.createPipelineLayout({ bindGroupLayouts: [upsampleLayout] }),
         vertex: { module: device.createShaderModule({ code: FULLSCREEN_VS }), entryPoint: 'vs' },
@@ -585,11 +555,11 @@ function uploadMaskFromBuffer(
         cachedUpscaledMask.destroy();
         cachedUpscaledMask = null;
     }
-  
+
     // Create or reuse mask texture if dimensions match
     if (!cachedMaskTexture || lastMaskW !== w || lastMaskH !== h) {
         if (cachedMaskTexture) cachedMaskTexture.destroy();
-    
+
         cachedMaskTexture = device!.createTexture({
             size: { width: w, height: h },
             format: 'rgba8unorm', // filterable mask format
@@ -598,7 +568,7 @@ function uploadMaskFromBuffer(
         lastMaskW = w;
         lastMaskH = h;
     }
-  
+
     // Get pooled uniform buffer for dimensions (reduces allocation overhead)
     const dimsBuffer = getUniform8Buffer();
     tempUint32Array2[0] = w;
@@ -619,7 +589,7 @@ function uploadMaskFromBuffer(
           { binding: 2, resource: { buffer: dimsBuffer } }
       ]
   }));
-  
+
   const workgroupsX = Math.ceil(w / 16);
   const workgroupsY = Math.ceil(h / 16);
   computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
@@ -689,18 +659,13 @@ export async function applyBackgroundBlur(
 
     const src = device!.importExternalTexture({ source: frame });
     const encoder = device!.createCommandEncoder();
-  
-    // Handle mask input - either CPU array or GPU buffer
-    let maskTex: GPUTexture;
-    const isGpuBuffer = personMask instanceof GPUBuffer ||
-    (typeof personMask === 'object' && 'size' in personMask && 'usage' in personMask);
-  
+
     // GPU buffer path - no CPU roundtrip
-    maskTex = uploadMaskFromBuffer(encoder, personMask, maskWidth, maskHeight);
-  
+    const maskTex = uploadMaskFromBuffer(encoder, personMask, maskWidth, maskHeight);
+
     // Pass 1: Upscale mask to video resolution FIRST (needed for mask-aware blur)
     // const upscaledMask = getUpscaledMask(encoder, maskTex, w, h);
-  
+
     const offsetMultiplier = 0.5;
 
     // Dynamic pyramid blur based on blur strength

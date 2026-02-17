@@ -50,7 +50,7 @@ export class WebCodecsEncoder {
     private onError: (error: Error) => void
     ) {
         this.encoder = new VideoEncoder({
-            output: (chunk, metadata) => {
+            output: (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => {
                 // Track encode time - pop the start time from queue
                 const startTime = this.encodeStartTimes.shift();
                 if (startTime !== undefined) {
@@ -77,9 +77,9 @@ export class WebCodecsEncoder {
 
                 this.onChunk(chunkData);
             },
-            error: (e) => {
+            error: (e: DOMException) => {
                 console.error('WebCodecs Encoder error:', e);
-                this.onError(e);
+                this.onError(e as unknown as Error);
             }
         });
     }
@@ -87,7 +87,7 @@ export class WebCodecsEncoder {
     initialize(): void {
         try {
             console.log(`[Encoder] Initializing with: ${this.config.width}x${this.config.height} @ ${(this.config.bitrate / 1_000_000).toFixed(1)}Mbps`);
-      
+
             const encoderConfig: VideoEncoderConfig = {
                 codec: this.config.codec,
                 width: this.config.width,
@@ -107,11 +107,9 @@ export class WebCodecsEncoder {
             if (this.config.codec.startsWith('avc1')) {
                 encoderConfig.avc = { format: 'avc' }; // AVCC format provides description in metadata
             } else if (this.config.codec.startsWith('hev1') || this.config.codec.startsWith('hvc1')) {
-                // HEVC format - use type assertion since TypeScript types may not include HEVC yet
-                (encoderConfig as any).hevc = { format: 'hevc' }; // HEVC format provides description in metadata
+                (encoderConfig as VideoEncoderConfig & { hevc?: { format: string } }).hevc = { format: 'hevc' };
             } else if (this.config.codec.startsWith('av01')) {
                 // AV1 doesn't need additional format configuration
-                // The codec string itself contains all necessary information
             }
 
             if (this.config.scalabilityMode) {
@@ -171,6 +169,7 @@ export class WebCodecsEncoder {
         }
     }
 
+    // eslint-disable-next-line
     async reconfigure(params: { bitrate?: number; width?: number; height?: number }): Promise<void> {
         if (this.encoder.state !== 'configured') {
             throw new Error('Encoder is not configured');
@@ -219,17 +218,16 @@ export class WebCodecsEncoder {
         if (this.config.codec.startsWith('avc1')) {
             encoderConfig.avc = { format: 'avc' };
         } else if (this.config.codec.startsWith('hev1') || this.config.codec.startsWith('hvc1')) {
-            // HEVC format - use type assertion since TypeScript types may not include HEVC yet
-            (encoderConfig as any).hevc = { format: 'hevc' };
+            (encoderConfig as VideoEncoderConfig & { hevc?: { format: string } }).hevc = { format: 'hevc' };
         } else if (this.config.codec.startsWith('av01')) {
             // AV1 doesn't need additional format configuration
         }
 
         // Reconfigure the encoder
-        console.log('[Encoder] Calling VideoEncoder.configure() with new bitrate:', (encoderConfig.bitrate || 0) / 1_000_000, 'Mbps');
+        console.log('[Encoder] Calling VideoEncoder.configure() with new bitrate:', (encoderConfig.bitrate ?? 0) / 1_000_000, 'Mbps');
         this.encoder.configure(encoderConfig);
         console.log('[Encoder] VideoEncoder.configure() completed');
-    
+
         // FIX: Force immediate keyframe on next frame by setting lastKeyFrame far enough in the past
         // This ensures the condition (frameCount - lastKeyFrame >= keyframeInterval) will be true on next encode
         this.lastKeyFrame = this.frameCount - this.config.keyframeInterval;
@@ -263,7 +261,7 @@ export class WebCodecsEncoder {
                     ? 'likely (preferred)'
                     : 'software (preferred)';
             }
-        } catch (e) {
+        } catch {
             hardwareAcceleration = 'unknown';
         }
 

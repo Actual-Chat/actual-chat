@@ -5,6 +5,7 @@
 
 import type { EncodedChunkData } from '../webcodecs-encoder';
 import { VideoWebSocketClient } from './websocket-client.js';
+import type { WebSocketClientStats } from './websocket-client.js';
 import type { TransferConfig, TransferStats } from './transfer-simulator.js';
 
 export interface WebSocketTransferConfig extends TransferConfig {
@@ -69,7 +70,7 @@ export class WebSocketTransferAdapter {
         this.stats.averageChunkSize = this.stats.totalBytes / this.stats.totalChunks;
 
         // Calculate latency (simulated since we don't have real network latency)
-        const now = performance.now();
+        // TODO(AK): add stream latency
         const latency = 10; // Small constant latency for WebSocket overhead
         this.latencyHistory.push(latency);
         if (this.latencyHistory.length > 100) {
@@ -83,7 +84,7 @@ export class WebSocketTransferAdapter {
         this.onChunkReceived(chunk);
     }
 
-    private handleConnectionStateChange(state: any): void {
+    private handleConnectionStateChange(state: WebSocketClientStats): void {
         this.connected = state.connectionState === 'connected';
 
         if (state.connectionState === 'connected') {
@@ -93,7 +94,7 @@ export class WebSocketTransferAdapter {
         }
     }
 
-    public async sendChunk(chunk: EncodedChunkData): Promise<void> {
+    public sendChunk(chunk: EncodedChunkData): void {
         if (!this.connected) {
             console.warn('[WebSocketTransfer] Cannot send chunk - not connected to WebSocket server');
             this.stats.packetsLost++;
@@ -106,7 +107,6 @@ export class WebSocketTransferAdapter {
         this.stats.averageChunkSize = this.stats.totalBytes / this.stats.totalChunks;
 
         // Calculate bitrate
-        const now = performance.now();
         this.bytesInLastSecond += chunk.byteLength;
 
         // Send via WebSocket

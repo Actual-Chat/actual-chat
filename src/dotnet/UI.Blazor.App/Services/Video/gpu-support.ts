@@ -30,7 +30,7 @@ export async function detectGPUBackends(): Promise<GPUBackendSupport> {
 
     // Test WebGPU support - check if browser supports it
     try {
-        if ('gpu' in navigator && navigator.gpu) {
+        if ('gpu' in navigator) {
             const adapter = await navigator.gpu.requestAdapter();
             if (adapter) {
                 support.webgpu = true;
@@ -53,8 +53,8 @@ export async function detectGPUBackends(): Promise<GPUBackendSupport> {
             support.webgl = true;
             const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
             if (debugInfo) {
-                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) as string;
+                const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) as string;
                 support.details.webgl = `Renderer: ${renderer}, Vendor: ${vendor}`;
             } else {
                 support.details.webgl = 'WebGL context available';

@@ -82,7 +82,7 @@ declare class MediaStreamTrackGenerator<T = VideoFrame> extends MediaStreamTrack
 export interface IVideoPipeline {
   start(inputStream: MediaStream): Promise<MediaStream>;
   stop(): Promise<Blob>;
-  reconfigure(params: { bitrate: number; width: number; height: number }): void;
+  reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
   toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
   switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
   toggleAV1Decoder(useWasm: boolean): Promise<void>;
@@ -164,7 +164,7 @@ export class VideoPipeline implements IVideoPipeline {
         };
     private statsInterval: number | null = null;
 
-    private onEncoderEncodedChunk = async (chunkData: EncodedChunkData) => {
+    private onEncoderEncodedChunk = (chunkData: EncodedChunkData) => {
     // const chunkSeq = chunkData.sequenceNumber ?? -1;
     // console.log(`[Pipeline] Encoded chunk #${chunkSeq} received from sender via RPC: ${chunkData.type}, size: ${chunkData.byteLength}`);
 
@@ -174,7 +174,7 @@ export class VideoPipeline implements IVideoPipeline {
             chunkData.chunk.copyTo(chunkBytes);
             // Convert microseconds to .NET TimeSpan ticks (100-nanosecond units)
             const frame: VideoStreamFrame = {
-                offset: microsecondsToTicks(chunkData.chunk.timestamp ?? chunkData.timestamp),
+                offset: microsecondsToTicks(chunkData.chunk.timestamp),
                 duration: microsecondsToTicks(chunkData.chunk.duration ?? 0),
                 isKeyFrame: chunkData.type === 'key',
                 width: this.config.encoderConfig.width,
@@ -199,8 +199,8 @@ export class VideoPipeline implements IVideoPipeline {
                 if (!this.codecSettings && descBytes.length > 0) {
                     // Convert to base64 for transmission
                     let binary = '';
-                    for (let i = 0; i < descBytes.length; i++) {
-                        binary += String.fromCharCode(descBytes[i]);
+                    for (const byte of descBytes) {
+                        binary += String.fromCharCode(byte);
                     }
                     this.codecSettings = btoa(binary);
                     // Log first few bytes for debugging
@@ -253,20 +253,18 @@ export class VideoPipeline implements IVideoPipeline {
         }
 
         if (this.websocketTransfer) {
-            await this.websocketTransfer.sendChunk(chunkData);
+            this.websocketTransfer.sendChunk(chunkData);
             console.log(`[Pipeline] Chunk (${chunkData.type}) sent via WebSocket to receiver`);
         } else if (this.transferSimulator) {
-            await this.transferSimulator.sendChunk(chunkData);
+            void this.transferSimulator.sendChunk(chunkData);
             // console.log(`[Pipeline] Chunk #${chunkSeq} (${chunkData.type}) delivered through network simulation to decoder`);
         }
     };
 
     private onDecoderDecodedFrame = async (frame: VideoFrame) => {
     // Normalize timestamp to be relative to first frame (fixes video playback position display)
-        if (this.firstFrameTimestamp === null) {
-            this.firstFrameTimestamp = frame.timestamp;
-            // console.log(`[Pipeline] First frame timestamp set to: ${this.firstFrameTimestamp}μs`);
-        }
+        this.firstFrameTimestamp ??= frame.timestamp;
+        // console.log(`[Pipeline] First frame timestamp set to: ${this.firstFrameTimestamp}μs`);
         const normalizedTimestamp = frame.timestamp - this.firstFrameTimestamp;
         // const originalSeconds = frame.timestamp / 1_000_000;
         // const normalizedSeconds = normalizedTimestamp / 1_000_000;
@@ -318,12 +316,7 @@ export class VideoPipeline implements IVideoPipeline {
         }
 
         // Send processed frame to encoder
-        if (this.encoder) {
-            await this.encoder.encodeFrame(frame);
-        } else {
-            console.error('[Pipeline] No encoder available for processed frame');
-            frame.close();
-        }
+        await this.encoder.encodeFrame(frame);
     };
 
     private onSegmentationError = (error: Error) => {
@@ -375,8 +368,8 @@ export class VideoPipeline implements IVideoPipeline {
                 'VideoPipeline.segmentation',
                 this.segmentationWorkerInstance,
         {
-            onFrameProcessed: this.onSegmentationFrameProcessed.bind(this),
-            onError: this.onSegmentationError.bind(this)
+            onFrameProcessed: (frame: VideoFrame, seq: number, time: number) => { void this.onSegmentationFrameProcessed(frame, seq, time); },
+            onError: this.onSegmentationError
         } as SegmentationWorkerCallbacks
             );
             console.log('[VideoPipeline] Segmentation worker created and RPC proxy initialized');
@@ -397,9 +390,10 @@ export class VideoPipeline implements IVideoPipeline {
             this.writer = this.generator.writable.getWriter();
             console.log('Using MediaStreamTrackGenerator for output');
         } else if (this.hasVTGInWindow()) {
-            const vtg = new (globalThis as any).VideoTrackGenerator();
-            this.generator = vtg;
-            this.writer = (vtg).writable.getWriter();
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+            const vtg: any = new (globalThis as any).VideoTrackGenerator();
+            this.generator = vtg as MediaStreamTrackGenerator;
+            this.writer = (vtg as MediaStreamTrackGenerator).writable.getWriter();
             console.log('Using VideoTrackGenerator for output');
         } else {
             // Canvas fallback for browsers without MSTG (older Safari)
@@ -408,7 +402,7 @@ export class VideoPipeline implements IVideoPipeline {
             this.outputCanvas.width = this.config.encoderConfig.width;
             this.outputCanvas.height = this.config.encoderConfig.height;
             this.outputCanvasCtx = this.outputCanvas.getContext('2d', { willReadFrequently: true });
-            this.outputStream = this.outputCanvas.captureStream(this.config.encoderConfig.framerate || 30);
+            this.outputStream = this.outputCanvas.captureStream(this.config.encoderConfig.framerate);
         }
 
         // Setup transfer mechanism - use WebSocket for multi-device sessions, simulator for single-device testing
@@ -416,19 +410,18 @@ export class VideoPipeline implements IVideoPipeline {
             console.log('[Pipeline] Using WebSocket transfer for multi-device session');
             this.websocketTransfer = new WebSocketTransferAdapter(
                 {
-                    serverUrl: this.config.websocketServerUrl || 'ws://localhost:8080',
-                    role: this.config.websocketRole || 'sender',
+                    serverUrl: this.config.websocketServerUrl ?? 'ws://localhost:8080',
+                    role: this.config.websocketRole ?? 'sender',
                     bandwidth: this.config.transferConfig.bandwidth,
                     latency: this.config.transferConfig.latency,
                     jitter: this.config.transferConfig.jitter,
                     packetLoss: this.config.transferConfig.packetLoss
                 },
-                async (chunkData: EncodedChunkData) => {
-                    // Deliver chunk to decoder worker via RPC (received from WebSocket)
-                    if (this.decoder) {
+                (chunkData: EncodedChunkData) => {
+                    void (async () => {
                         await this.decoder.decodeChunk(chunkData);
                         console.log(`[Pipeline] WebSocket delivered ${chunkData.type} chunk to decoder via RPC`);
-                    }
+                    })();
                 }
             );
             this.websocketTransfer.connect();
@@ -436,12 +429,10 @@ export class VideoPipeline implements IVideoPipeline {
             // Use transfer simulator for single-device testing
             this.transferSimulator = new TransferSimulator(
                 this.config.transferConfig,
-                async (chunkData: EncodedChunkData) => {
-                    // Deliver chunk to decoder worker via RPC (simulates receiving from network)
-                    if (this.decoder) {
+                (chunkData: EncodedChunkData) => {
+                    void (async () => {
                         await this.decoder.decodeChunk(chunkData);
-                        // console.log(`[Pipeline] Network simulation delivered ${chunkData.type} chunk to decoder via RPC`);
-                    }
+                    })();
                 }
             );
             console.log('[Pipeline] Transfer simulator initialized in main thread (network boundary)');
@@ -463,9 +454,6 @@ export class VideoPipeline implements IVideoPipeline {
 
         // Get input video track
         const videoTrack = inputStream.getVideoTracks()[0];
-        if (!videoTrack) {
-            throw new Error('No video track found in input stream');
-        }
 
 
         // IMPORTANT: Set processing to true BEFORE creating frame extractor
@@ -504,16 +492,12 @@ export class VideoPipeline implements IVideoPipeline {
                 this.segmentationWorker.initialize(
                     this.config.backgroundBlur.segmentationConfig,
                     { timeoutMs: 10000 } // Longer timeout for model loading
-                ).catch(error => {
+                ).catch((error: unknown) => {
                     console.error('[Pipeline] Failed to initialize segmentation worker:', error);
                     throw error;
                 })
             );
             console.log('[Pipeline] Initializing segmentation worker for background blur');
-        }
-
-        if (!this.encoder || !this.decoder) {
-            throw new Error('RPC proxies not initialized');
         }
 
         await Promise.all(initPromises);
@@ -522,26 +506,24 @@ export class VideoPipeline implements IVideoPipeline {
 
         // Start pumping frames to encoder worker
         // Note: this.processing was already set to true earlier (before frame extractor creation)
-        this.pumpFrames();
+        void this.pumpFrames();
 
         // Start stats polling via RPC
-        this.statsInterval = window.setInterval(async () => {
-            if (this.encoder) {
-                const stats = await this.encoder.getStats();
-                this.currentStats.encoder = stats;
-            }
-            if (this.decoder) {
-                const stats = await this.decoder.getStats();
-                this.currentStats.decoder = stats;
-            }
-            if (this.segmentationWorker) {
-                try {
-                    const stats = await this.segmentationWorker.getStats();
-                    this.currentStats.segmentation = stats;
-                } catch (error) {
-                    console.warn('[Pipeline] Failed to get segmentation stats:', error);
+        this.statsInterval = window.setInterval(() => {
+            void (async () => {
+                const encoderStats = await this.encoder.getStats();
+                this.currentStats.encoder = encoderStats;
+                const decoderStats = await this.decoder.getStats();
+                this.currentStats.decoder = decoderStats;
+                if (this.segmentationWorker) {
+                    try {
+                        const segStats = await this.segmentationWorker.getStats();
+                        this.currentStats.segmentation = segStats;
+                    } catch (error) {
+                        console.warn('[Pipeline] Failed to get segmentation stats:', error);
+                    }
                 }
-            }
+            })();
         }, 1000);
 
         console.log('Pipeline started successfully with RPC: Encoder Worker (sender) → TransferSimulator (network) → Decoder Worker (receiver)');
@@ -581,11 +563,6 @@ export class VideoPipeline implements IVideoPipeline {
             this.statsInterval = null;
         }
 
-        // Always use unified stop logic
-        if (!this.encoder || !this.decoder) {
-            throw new Error('No active workers');
-        }
-
         // Stop MediaRecorder first to get properly muxed video
         let recordedBlob: Blob | null = null;
         if (this.outputRecorder) {
@@ -605,7 +582,7 @@ export class VideoPipeline implements IVideoPipeline {
         if (this.frameReader) {
             try {
                 await this.frameReader.cancel();
-            } catch (e) {
+            } catch (e: unknown) {
                 console.warn('Frame reader cancel error:', e);
             }
             this.frameReader = null;
@@ -669,8 +646,8 @@ export class VideoPipeline implements IVideoPipeline {
         // Cleanup RPC clients and worker instances
         this.encoder.dispose();
         this.decoder.dispose();
-        this.encoderWorkerInstance?.terminate();
-        this.decoderWorkerInstance?.terminate();
+        this.encoderWorkerInstance.terminate();
+        this.decoderWorkerInstance.terminate();
 
         if (this.segmentationWorker) {
             this.segmentationWorker.dispose();
@@ -689,7 +666,7 @@ export class VideoPipeline implements IVideoPipeline {
         console.log('Pipeline stopped with RPC cleanup');
 
         // Return MediaRecorder blob if available, otherwise create empty blob
-        return recordedBlob || new Blob([], { type: 'video/webm' });
+        return recordedBlob ?? new Blob([], { type: 'video/webm' });
     }
 
 
@@ -707,9 +684,7 @@ export class VideoPipeline implements IVideoPipeline {
         this.config.encoderConfig.height = params.height;
 
         // Unified: always reconfigure via RPC
-        if (this.encoder) {
-            await this.encoder.reconfigure(params);
-        }
+        await this.encoder.reconfigure(params);
     }
 
     /**
@@ -748,8 +723,8 @@ export class VideoPipeline implements IVideoPipeline {
                 'VideoPipeline.segmentation',
                 this.segmentationWorkerInstance,
                 {
-                    onFrameProcessed: this.onSegmentationFrameProcessed.bind(this),
-                    onError: this.onSegmentationError.bind(this)
+                    onFrameProcessed: this.onSegmentationFrameProcessed,
+                    onError: this.onSegmentationError
                 }
             );
 
@@ -867,8 +842,8 @@ export class VideoPipeline implements IVideoPipeline {
             'VideoPipeline.segmentation',
             this.segmentationWorkerInstance,
       {
-          onFrameProcessed: this.onSegmentationFrameProcessed.bind(this),
-          onError: this.onSegmentationError.bind(this)
+          onFrameProcessed: (frame: VideoFrame, seq: number, time: number) => { void this.onSegmentationFrameProcessed(frame, seq, time); },
+          onError: this.onSegmentationError
       } as SegmentationWorkerCallbacks
         );
 
@@ -886,10 +861,6 @@ export class VideoPipeline implements IVideoPipeline {
    */
     async toggleAV1Decoder(useWasm: boolean): Promise<void> {
         console.log(`[Pipeline] Toggling AV1 decoder to ${useWasm ? 'WASM' : 'built-in'}`);
-
-        if (!this.decoder) {
-            throw new Error('Decoder not available');
-        }
 
         try {
             // Toggle the decoder type via RPC
@@ -932,7 +903,7 @@ export class VideoPipeline implements IVideoPipeline {
         video.playsInline = true;
         video.srcObject = new MediaStream([videoTrack]);
 
-        const framerate = this.config.encoderConfig.framerate || 30;
+        const framerate = this.config.encoderConfig.framerate;
         const interval = 1000 / framerate;
 
         // Track frames that have been enqueued but not yet consumed
@@ -942,13 +913,10 @@ export class VideoPipeline implements IVideoPipeline {
         let metadataLoaded = false;
         let playPromise: Promise<void> | null = null;
 
-        // Capture processing state reference for closure
-        const pipelineRef = this;
-
         const stream = new ReadableStream<VideoFrame>({
             start: (controller) => {
                 const pump = () => {
-                    if (!pipelineRef.processing) {
+                    if (!this.processing) {
                         controller.close();
                         return;
                     }
@@ -992,22 +960,19 @@ export class VideoPipeline implements IVideoPipeline {
 
                     // Try to play the video (Safari requires explicit play())
                     if (video.paused) {
-                        playPromise = video.play().catch(error => {
+                        playPromise = video.play().catch((error: unknown) => {
                             console.warn('[Pipeline] Canvas extractor: Video play() failed, trying to extract anyway:', error);
-                            // Even if play() fails, we might still be able to extract frames
                             videoReady = true;
-                            pump(); // Start pumping frames
+                            pump();
                         });
 
-                        if (playPromise) {
-                            playPromise.then(() => {
-                                console.log('[Pipeline] Canvas extractor: Video playback started');
-                                videoReady = true;
-                                pump(); // Start pumping frames
-                            }).catch(() => {
-                                // Already handled above
-                            });
-                        }
+                        void playPromise.then(() => {
+                            console.log('[Pipeline] Canvas extractor: Video playback started');
+                            videoReady = true;
+                            pump();
+                        }).catch(() => {
+                            // Already handled above
+                        });
                     } else {
                         videoReady = true;
                         pump(); // Start pumping frames
@@ -1026,10 +991,11 @@ export class VideoPipeline implements IVideoPipeline {
                 }, 2000);
 
                 // Cleanup timeout on cancellation
-                const originalCancel = controller.error.bind(controller);
-                controller.error = (reason?: any) => {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                const originalError: (e?: unknown) => void = controller.error.bind(controller);
+                controller.error = (reason?: unknown) => {
                     clearTimeout(fallbackTimeout);
-                    return originalCancel(reason);
+                    originalError(reason);
                 };
             },
 
@@ -1039,7 +1005,7 @@ export class VideoPipeline implements IVideoPipeline {
                 for (const frame of pendingFrames) {
                     try {
                         frame.close();
-                    } catch (e) {
+                    } catch (e: unknown) {
                         console.warn('[Pipeline] Error closing pending frame during cancellation:', e);
                     }
                 }
@@ -1057,14 +1023,15 @@ export class VideoPipeline implements IVideoPipeline {
         const reader = stream.getReader();
 
         // Override the reader's cancel method to ensure cleanup
-        const originalCancel = reader.cancel.bind(reader);
-        reader.cancel = async (reason?: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const originalCancel: (reason?: unknown) => Promise<void> = reader.cancel.bind(reader);
+        reader.cancel = async (reason?: unknown) => {
             // Clean up any pending frames
             console.log(`[Pipeline] Reader cancelled, closing ${pendingFrames.length} pending frames`);
             for (const frame of pendingFrames) {
                 try {
                     frame.close();
-                } catch (e) {
+                } catch (e: unknown) {
                     console.warn('[Pipeline] Error closing pending frame during reader cancellation:', e);
                 }
             }
@@ -1080,12 +1047,13 @@ export class VideoPipeline implements IVideoPipeline {
         };
 
         // Track when frames are consumed to remove them from pending list
-        const originalRead = reader.read.bind(reader);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const originalRead: () => Promise<ReadableStreamReadResult<VideoFrame>> = reader.read.bind(reader);
         reader.read = async () => {
             const result = await originalRead();
 
             // If we got a frame, remove it from pending (it will be closed by consumer)
-            if (!result.done && result.value) {
+            if (!result.done) {
                 const frameIndex = pendingFrames.indexOf(result.value);
                 if (frameIndex !== -1) {
                     pendingFrames.splice(frameIndex, 1);
@@ -1100,43 +1068,19 @@ export class VideoPipeline implements IVideoPipeline {
 
 
     private async pumpFrames(): Promise<void> {
-        if (!this.frameReader || !this.encoder) {
-            console.error('[Pipeline] Cannot pump frames: frameReader or encoder is null');
-            return;
-        }
-
         console.log('[Pipeline] Starting frame pump...');
         let frameCount = 0;
         let droppedFrames = 0;
-        let consecutiveNullFrames = 0;
-        const MAX_CONSECUTIVE_NULL_FRAMES = 10; // Safety limit
 
         try {
             while (this.processing) {
-                const { done, value: frame } = await this.frameReader.read();
+                const { done, value: frame } = await this.frameReader!.read();
 
                 if (done) {
                     console.log(`[Pipeline] Frame stream ended after ${frameCount} frames`);
                     break;
                 }
 
-                // Handle null frames (Safari canvas fallback issue)
-                if (!frame) {
-                    consecutiveNullFrames++;
-                    console.warn(`[Pipeline] Null frame received #${consecutiveNullFrames} in a row`);
-
-                    if (consecutiveNullFrames >= MAX_CONSECUTIVE_NULL_FRAMES) {
-                        console.error(`[Pipeline] Too many consecutive null frames (${consecutiveNullFrames}), stopping pipeline`);
-                        this.processing = false;
-                        break;
-                    }
-
-                    // Small delay before retrying
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                    continue;
-                }
-
-                consecutiveNullFrames = 0; // Reset counter
                 frameCount++;
 
                 if (frameCount % 30 === 1) { // Log every 30th frame
@@ -1205,14 +1149,17 @@ export class VideoPipeline implements IVideoPipeline {
     }
 
     private hasMSTPInWindow(): boolean {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         return typeof (globalThis as any).MediaStreamTrackProcessor === 'function';
     }
 
     private hasMSTGInWindow(): boolean {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         return typeof (globalThis as any).MediaStreamTrackGenerator === 'function';
     }
 
     private hasVTGInWindow(): boolean {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         return typeof (globalThis as any).VideoTrackGenerator === 'function';
     }
 }

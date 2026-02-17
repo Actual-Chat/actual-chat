@@ -6,7 +6,7 @@ import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
 
-const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoStreamer');
+const { debugLog, errorLog } = Log.get('VideoStreamer');
 
 export interface VideoStreamConfig {
     codec: string;
@@ -78,7 +78,7 @@ export class VideoStream {
             console.warn('[VideoStream] addFrame: skipping, stream is completed');
             return;
         }
-        if (!frame.data?.length) {
+        if (!frame.data.length) {
             console.warn('[VideoStream] addFrame: skipping empty frame');
             return;
         }
@@ -113,15 +113,11 @@ export class VideoStream {
                 if (subject === null || !VideoStreamer.isConnected) {
                     debugLog?.log('[VideoStream] Connecting to SignalR...');
                     await VideoStreamer.ensureConnected();
-                    if (this.isDisposed) {
-                        debugLog?.log('[VideoStream] Disposed while connecting, exiting');
-                        return;
-                    }
 
                     console.log('[VideoStream] Connected, creating subject and calling PushVideo with codecSettings:', this.config.codecSettings?.length ?? 0, 'chars');
                     subject = new signalR.Subject<Uint8Array[]>();
                     // Use PushVideo - simple forwarding, no processing
-                    await VideoStreamer.connection.send(
+                    await VideoStreamer.connection!.send(
                         'PushVideo',
                         this.sessionToken,
                         this.chatId,
@@ -175,7 +171,7 @@ export class VideoStream {
 }
 
 export class VideoStreamer {
-    public static connection: signalR.HubConnection;
+    public static connection: signalR.HubConnection | null = null;
     public static readonly streams = new Array<VideoStream>();
     public static lastStream: VideoStream | null = null;
 
@@ -200,8 +196,8 @@ export class VideoStreamer {
         this.connection.onreconnected((id) => console.warn('[VideoStreamer] Reconnected:', id));
 
         this.connection.start()
-            .then(() => console.warn('[VideoStreamer] Connected successfully, state:', this.connection.state))
-            .catch((err) => console.error('[VideoStreamer] Connection failed:', err));
+            .then(() => console.warn('[VideoStreamer] Connected successfully, state:', this.connection!.state))
+            .catch((err: unknown) => console.error('[VideoStreamer] Connection failed:', err));
     }
 
     public static get isConnected(): boolean {
@@ -210,8 +206,8 @@ export class VideoStreamer {
 
     public static async ensureConnected(): Promise<void> {
         while (!this.isConnected) {
-            if (this.connection.state === HubConnectionState.Disconnected) {
-                await this.connection.start();
+            if (this.connection!.state === HubConnectionState.Disconnected) {
+                await this.connection!.start();
             }
             await new Promise(r => setTimeout(r, 100));
         }

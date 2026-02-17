@@ -58,7 +58,7 @@ export class StatsService extends EventTarget {
     inputStream?: MediaStream
     ) {
         super();
-        this.inputStream = inputStream || null;
+        this.inputStream = inputStream ?? null;
         this.metrics = this.getInitialMetrics();
     }
 
@@ -87,11 +87,9 @@ export class StatsService extends EventTarget {
         if (!this.inputStream) return;
 
         const videoTrack = this.inputStream.getVideoTracks()[0];
-        if (videoTrack) {
-            const settings = videoTrack.getSettings();
-            this.metrics.inputResolution = `${settings.width || 0}x${settings.height || 0}`;
-            this.metrics.inputFramerate = settings.frameRate || 0;
-        }
+        const settings = videoTrack.getSettings();
+        this.metrics.inputResolution = `${settings.width ?? 0}x${settings.height ?? 0}`;
+        this.metrics.inputFramerate = settings.frameRate ?? 0;
     }
 
     private updateMetrics(): void {
