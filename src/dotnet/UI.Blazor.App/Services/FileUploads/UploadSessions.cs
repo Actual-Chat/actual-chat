@@ -117,9 +117,9 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         if (session.UploadId is {} uploadId)
             await _uploadOperations.RemoveUpload(uploadId, CancellationToken.None).ConfigureAwait(false);
         await session.FileProvider.ClearForRemoving().ConfigureAwait(false);
-        await _repo.Delete(session.SessionId).ConfigureAwait(false);
-        Hub.UploadSessionsState.Remove(sessionId);
+        await _repo.Delete(sessionId).ConfigureAwait(false);
         _sessions.TryRemove(sessionId, out _);
+        Hub.UploadSessionsState.Remove(sessionId);
         Log.LogInformation("Deleted session '{SessionId}'", sessionId);
     }
 
