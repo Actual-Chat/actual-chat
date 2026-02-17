@@ -17,7 +17,7 @@ public interface IUploads : IComputeService
     Task<long> OnAppend(Uploads_Append command, CancellationToken cancellationToken);
     [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<MediaContent> OnConvertToMediaContent(Uploads_ConvertToMediaContent command, CancellationToken cancellationToken);
-    [CommandHandler]
+    [CommandHandler, RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task OnStartProcessUpload(Uploads_StartProcessUpload command, CancellationToken cancellationToken);
 }
 
