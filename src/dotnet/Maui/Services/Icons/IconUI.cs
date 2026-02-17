@@ -19,7 +19,7 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
     {
         var url = UrlMapper.PicturePreview128Url(query.Picture);
         if (url.IsNullOrEmpty())
-            return await GenerateAvatar(query.AvatarKey, query.AvatarKind, query.AvatarSize, cancellationToken).ConfigureAwait(false);
+            return await GenerateAvatar(query.AvatarKey, query.AvatarKind, query.AvatarSize, query.AvatarTitle, cancellationToken).ConfigureAwait(false);
 
         var filePath = await GetExternalImage(url, cancellationToken).ConfigureAwait(false);
         return filePath.IsEmpty ? null : new LoadedImage(filePath, null);
@@ -57,16 +57,17 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
     }
 
     [ComputeMethod]
-    protected virtual Task<LoadedImage?> GenerateAvatar(string key, AvatarKind kind, int? size, CancellationToken cancellationToken)
+    protected virtual Task<LoadedImage?> GenerateAvatar(string key, AvatarKind kind, int? size, string title, CancellationToken cancellationToken)
     {
-        var sSize = size is { } s ? $"@{s}" : "";
-        var filePath = GetCacheFilePath($"avatar:{kind}:{key}{sSize}", ".png");
+        var sSize = size > 0 ? $"@{size}" : "";
+        var sTitle = !title.IsNullOrEmpty() ? $"#{title}" : "";
+        var filePath = GetCacheFilePath($"avatar:{kind}:{key}{sSize}{sTitle}", ".png");
         if (File.Exists(filePath))
             return Task.FromResult<LoadedImage?>(new LoadedImage(filePath, kind));
 
         EnsureIconCacheDir();
         if (kind is AvatarKind.Marble)
-            MarbleAvatars.GeneratePng(key, filePath, size: size);
+            MarbleAvatars.GeneratePng(key, filePath, title: title, size: size);
         else
             BeamAvatars.GeneratePng(key, filePath, size: size);
         return Task.FromResult<LoadedImage?>(new LoadedImage(filePath, kind));
