@@ -15,8 +15,8 @@
         _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
         _pendingBlurEnabled = m.VideoState?.IsBackgroundBlurEnabled ?? false;
     }
-    // Hide video panel when recording stopped
-    else if (_showVideoPanel && m.VideoState?.IsRecording != true) {
+    // Hide video panel when recording stopped AND no remote video streams
+    else if (_showVideoPanel && m.VideoState?.IsRecording != true && !m.IsAnyoneVideoStreaming) {
         _showVideoPanel = false;
         _pendingCameraDeviceId = null;
         _pendingBlurEnabled = false;
