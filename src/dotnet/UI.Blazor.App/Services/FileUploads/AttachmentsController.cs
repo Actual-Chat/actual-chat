@@ -33,28 +33,22 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
         }
     }
 
-    public Task ResumeUpload(Attachment attachment)
+    public void ResumeUpload(Attachment attachment)
     {
         var uploadSessionId = attachment.DemandUploadSessionId();
-        try {
-            UploadSessions.Resume(uploadSessionId);
-        }
-        catch (Exception ex) {
-            Log.LogWarning(ex, "Failed to resume upload session '{SessionId}'", uploadSessionId);
-        }
-        return Task.CompletedTask;
+        UploadSessions.Resume(uploadSessionId);
     }
 
     public async Task RestartUpload(Attachment attachment)
     {
         var progress = await AttachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
-        if (progress.IsFailed)
+        if (!progress.IsFailed)
             throw new InvalidOperationException("Can't restart. Upload is not failed");
         var previewState = await AttachmentsState.GetPreview(attachment.Id, default).ConfigureAwait(false);
         if (previewState.State is PreviewAccessState.NoFileAccess)
             throw new InvalidOperationException("Can't restart. No access to file");
 
-        await ResumeUpload(attachment).ConfigureAwait(false);
+        ResumeUpload(attachment);
     }
 
     Task IAttachmentListEventsListener.AttachmentsRemoved(AttachmentList list, Attachment[] attachments)
@@ -71,17 +65,12 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
             .SuppressExceptions();
     }
 
-    Task IAttachmentListEventsListener.RestartUploadRequested(
+    async Task IAttachmentListEventsListener.RestartUploadRequested(
         AttachmentList list,
         Attachment attachment)
     {
         _ = TuneUI.Play(Tune.ChangeAttachments);
-        return BackgroundTask.Run(async () => {
-                    await RestartUpload(attachment).ConfigureAwait(false);
-                },
-                Log,
-                "RestartUpload")
-            .SuppressExceptions();
+        await RestartUpload(attachment).ConfigureAwait(false);
     }
 
     private static async Task CleanupAttachmentResources(Attachment a)
