@@ -7,7 +7,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
     private UploadSessions UploadSessions => Hub.UploadSessions;
     private AttachmentsState AttachmentsState => Hub.AttachmentsState;
 
-    public async Task<Attachment> InitUploadSession(Attachment attachment)
+    public async Task<Attachment> InitUploadSession(Attachment attachment, string mediaScope)
     {
         if (!attachment.UploadSessionId.IsNullOrEmpty())
             throw new InvalidOperationException("Upload session already assigned");
@@ -17,7 +17,7 @@ public class AttachmentsController(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
                 $"Can't initialize upload for attachment '{attachment.Id}'. No file provider assigned.");
 
         try {
-            var uploadSessionId = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession()).ConfigureAwait(false);
+            var uploadSessionId = await UploadSessions.CreateSession(fileProvider, attachment.GetMetadataForUploadSession(), mediaScope).ConfigureAwait(false);
             attachment = attachment with {
                 UploadSessionId = uploadSessionId,
             };

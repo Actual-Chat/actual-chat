@@ -10,6 +10,8 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
 
     public AttachmentList Attachments => _attachments;
 
+    public string MediaScope { get; init; } = "";
+
     public AttachmentListHolder(AppUIHub hub) : base(hub)
     {
         _attachments = CreateAttachmentList();
@@ -28,7 +30,7 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
 
     private AttachmentList CreateAttachmentList()
     {
-        var list = new AttachmentList();
+        var list = new AttachmentList { MediaScope = MediaScope };
         var attachmentsController = Services.GetRequiredService<AttachmentsController>();
         list.Subscribe(attachmentsController);
         return list;

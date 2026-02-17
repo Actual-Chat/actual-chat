@@ -116,7 +116,9 @@
     public ChatMessageEditor() { }
 
     protected override void OnInitialized() {
-        _attachmentListHolder = new AttachmentListHolder(Hub);
+        _attachmentListHolder = new AttachmentListHolder(Hub) {
+            MediaScope = Chat.Id.Value,
+        };
         _attachmentListHolder.Changed += OnAttachmentListChanged;
         FileAttachments =  new FileAttachments(Hub, Chat.Id);
         AttachmentFilePicker = Hub.Services.GetService<IAttachmentFilePicker>();
@@ -217,7 +219,7 @@
                         _ => throw new InternalError("Invalid RelatedEntryKind")
                     };
                 } else {
-                    uploads = await SendingMessages.Upload([..attachmentListSnapshot.Attachments.Items]);
+                    uploads = await SendingMessages.Upload([..attachmentListSnapshot.Attachments.Items], Chat.Id.Value);
                     cmd = SendMessageRequest.NewMessage(Chat.Id, text, uploads);
                 }
                 postTask = await SendingMessages.Send(cmd, CancellationToken.None);
