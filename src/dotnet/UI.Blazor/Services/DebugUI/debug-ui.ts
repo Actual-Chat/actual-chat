@@ -2,6 +2,19 @@ import { Log } from 'logging';
 
 const { infoLog } = Log.get('DebugUI');
 
+interface BlazorEventDescriptor {
+    eventName: string;
+    eventHandlerId: number;
+}
+
+interface BlazorInternal {
+    endInvokeDotNetFromJS: (asyncCallId: number, success: boolean, resultOrError: string) => unknown;
+}
+
+interface BlazorGlobal {
+    _internal?: BlazorInternal;
+}
+
 export class DebugUI {
     private static backendRef: DotNet.DotNetObject = null!;
     private static _eventSnifferInstalled = false;
@@ -21,7 +34,7 @@ export class DebugUI {
     };
 
     public static async getThreadPoolSettings(): Promise<string> {
-        const settings = await this.backendRef.invokeMethodAsync("GetThreadPoolSettings");
+        const settings = await this.backendRef.invokeMethodAsync('GetThreadPoolSettings');
         console.log(settings);
         return settings as string;
     }
@@ -49,7 +62,7 @@ export class DebugUI {
 
     public static startDOMEventSniffer(): void {
         if (this._eventSnifferInstalled) {
-            infoLog?.log("startDOMEventSniffer: already installed");
+            infoLog?.log('startDOMEventSniffer: already installed');
             return;
         }
         this._eventSnifferInstalled = true;
@@ -62,29 +75,31 @@ export class DebugUI {
             if (recentEvents.length > MAX) recentEvents.shift();
         };
 
-        const snapshot = () => JSON.parse(JSON.stringify(recentEvents));
+        const snapshot = (): Record<string, unknown>[] => JSON.parse(JSON.stringify(recentEvents)) as Record<string, unknown>[];
 
         // 1. Blazor-level interception via pre-start hook
         let hasBlazorHook = false;
-        const hook = (globalThis as any).__blazorEventSnifferHook as
-            | ((cb: (desc: any, args: any) => void) => void)
+        const hook = (globalThis as Record<string, unknown>).__blazorEventSnifferHook as
+            | ((cb: (desc: BlazorEventDescriptor) => void) => void)
             | undefined;
         if (hook) {
-            hook((eventDescriptor, _eventArgs) => {
+            hook((eventDescriptor) => {
+                const eventName = eventDescriptor.eventName;
+                const handlerId = eventDescriptor.eventHandlerId;
                 const entry = {
                     time: new Date().toISOString().slice(11, 23),
-                    src: "blazor",
-                    eventName: eventDescriptor?.eventName,
-                    handlerId: eventDescriptor?.eventHandlerId,
+                    src: 'blazor',
+                    eventName,
+                    handlerId,
                 };
                 push(entry);
-                console.debug("Blazor dispatch:", entry.eventName, "handlerId=" + entry.handlerId);
+                console.debug('Blazor dispatch:', entry.eventName, 'handlerId=' + String(entry.handlerId));
             });
             hasBlazorHook = true;
         }
 
         // 2. DOM-level capturing for context
-        const TRACK = ["click", "mouseenter", "mouseleave", "pointerdown", "pointerup", "focusin", "focusout"];
+        const TRACK = ['click', 'mouseenter', 'mouseleave', 'pointerdown', 'pointerup', 'focusin', 'focusout'];
         TRACK.forEach((type) => {
             document.addEventListener(
                 type,
@@ -92,11 +107,11 @@ export class DebugUI {
                     const target = e.target as Element;
                     push({
                         time: new Date().toISOString().slice(11, 23),
-                        src: "dom",
+                        src: 'dom',
                         type: e.type,
-                        tag: target?.tagName,
-                        cls: (target?.className || "").toString().substring(0, 60),
-                        key: target?.closest?.("[data-key]")?.getAttribute("data-key"),
+                        tag: target.tagName,
+                        cls: (typeof target.className === 'string' ? target.className : '').substring(0, 60),
+                        key: target.closest('[data-key]')?.getAttribute('data-key'),
                     });
                 },
                 true,
@@ -104,46 +119,46 @@ export class DebugUI {
         });
 
         // 3. Catch NullRef from Blazor's endInvokeDotNetFromJS
-        const bi = (globalThis as any).Blazor?._internal;
+        const bi = ((globalThis as Record<string, unknown>).Blazor as BlazorGlobal | undefined)?._internal;
         if (bi?.endInvokeDotNetFromJS) {
             const orig = bi.endInvokeDotNetFromJS;
             bi.endInvokeDotNetFromJS = function (asyncCallId: number, success: boolean, resultOrError: string) {
                 if (
                     !success &&
-                    typeof resultOrError === "string" &&
-                    (resultOrError.includes("NullReferenceException") ||
-                        resultOrError.includes("no event handler") ||
-                        resultOrError.includes("DispatchEventAsync"))
+                    typeof resultOrError === 'string' &&
+                    (resultOrError.includes('NullReferenceException') ||
+                        resultOrError.includes('no event handler') ||
+                        resultOrError.includes('DispatchEventAsync'))
                 ) {
                     console.error(
-                        "%c Blazor event dispatch failed! ",
-                        "background:red;color:white;font-weight:bold;padding:2px 6px",
-                        "\nCallId:",
+                        '%c Blazor event dispatch failed! ',
+                        'background:red;color:white;font-weight:bold;padding:2px 6px',
+                        '\nCallId:',
                         asyncCallId,
-                        "\nError:",
+                        '\nError:',
                         resultOrError.substring(0, 200),
-                        "\nRecent events:",
+                        '\nRecent events:',
                         snapshot(),
                     );
                 }
-                return orig.apply(this, arguments);
+                return orig.call(this, asyncCallId, success, resultOrError);
             };
         }
 
         // 4. Fallback: unhandled promise rejections
-        window.addEventListener("unhandledrejection", (e) => {
-            const msg =
-                (e as PromiseRejectionEvent).reason?.message || (e as PromiseRejectionEvent).reason?.toString?.() || "";
-            if (msg.includes("NullReferenceException")) {
+        window.addEventListener('unhandledrejection', (e) => {
+            const reason = e.reason as { message?: string; toString?: () => string } | undefined;
+            const msg = reason?.message ?? reason?.toString?.() ?? '';
+            if (msg.includes('NullReferenceException')) {
                 console.error(
-                    "%c NullRef caught! ",
-                    "background:red;color:white;font-weight:bold;padding:2px 6px",
-                    "\nRecent events:",
+                    '%c NullRef caught! ',
+                    'background:red;color:white;font-weight:bold;padding:2px 6px',
+                    '\nRecent events:',
                     snapshot(),
                 );
             }
         });
 
-        infoLog?.log(`startDOMEventSniffer: installed` + (hasBlazorHook ? "" : " (no Blazor hook)"));
+        infoLog?.log(`startDOMEventSniffer: installed` + (hasBlazorHook ? '' : ' (no Blazor hook)'));
     }
 }
