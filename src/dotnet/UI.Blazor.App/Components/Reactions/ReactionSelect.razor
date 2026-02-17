@@ -54,7 +54,7 @@
             Emoji = emoji,
         };
 
-        _ = Hub.AccountSettings.UserReactionSettings().Update(s => s.IncrementUsage(emoji.Id.Value));
+        _ = Hub.AccountSettings.UserReactionSettings().Update(s => s.WithIncrementedUsage(emoji.Id.Value));
         await UICommander.Run(new Reactions_React(Session, reaction));
     }
 }
