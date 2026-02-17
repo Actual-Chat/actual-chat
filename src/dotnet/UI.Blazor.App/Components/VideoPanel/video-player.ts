@@ -1,5 +1,9 @@
+import * as signalR from '@microsoft/signalr';
+import { decode } from '@msgpack/msgpack';
 import { Log } from 'logging';
 import { fastRaf } from 'fast-raf';
+import { VideoStreamer } from '../../Services/Video/video-streamer';
+import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
@@ -33,9 +37,12 @@ export class VideoPlayer {
     private readonly maxBufferSize = 5; // frames
     private lastReportedBufferLow = true;
 
+    // SignalR pull subscription
+    private pullSubscription: signalR.ISubscription<Uint8Array[]> | null = null;
+
     // Frame pacing state
-    private playbackStartTime: number = 0;     // wall-clock ms (performance.now) when first frame rendered
-    private firstFrameTimestamp: number = 0;    // timestamp of first decoded frame (microseconds)
+    private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
+    private firstFrameTimestamp = 0;    // timestamp of first decoded frame (microseconds)
     private renderKey: string;
 
     /** Creates a new VideoPlayer instance for Blazor interop */
@@ -365,11 +372,75 @@ export class VideoPlayer {
         void this.reportPlaying(0, true);
     }
 
+    public async startPull(streamId: string, skipToMs: number): Promise<void> {
+        if (!this.isPlaying) {
+            warnLog?.log('startPull called but player not started');
+            return;
+        }
+
+        const hubUrl = new URL('/api/hub/streams', window.location.origin).toString();
+        VideoStreamer.init(hubUrl);
+        await VideoStreamer.ensureConnected();
+
+        const connection = VideoStreamer.connection!;
+        const sessionToken = SessionTokens.current;
+
+        debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms`);
+
+        const streamResult = connection.stream<Uint8Array[]>(
+            'GetVideo', sessionToken, streamId, skipToMs);
+
+        this.pullSubscription = streamResult.subscribe({
+            next: (batch: Uint8Array[]) => {
+                for (const frameBytes of batch) {
+                    this.processReceivedFrame(frameBytes);
+                }
+            },
+            error: (err: Error) => {
+                errorLog?.log('Pull stream error:', err);
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                void this.reportEnded(err?.message ?? 'Pull stream error');
+            },
+            complete: () => {
+                debugLog?.log('Pull stream completed');
+                void this.reportEnded(undefined);
+            },
+        });
+    }
+
+    private processReceivedFrame(frameBytes: Uint8Array): void {
+        try {
+            const map = decode(frameBytes) as Record<string, unknown>;
+
+            const offset = map.offset as number;          // .NET ticks
+            const duration = map.duration as number;       // .NET ticks
+            const isKeyFrame = (map.isKeyFrame as boolean | undefined) ?? false;
+            const data = map.data as Uint8Array;
+            const description = map.description as Uint8Array | undefined;
+
+            // Convert ticks to milliseconds (1 tick = 100ns = 0.0001ms)
+            const offsetMs = offset / 10000;
+            const durationMs = duration / 10000;
+
+            this.pushFrame(data, offsetMs, durationMs, isKeyFrame, description);
+        } catch (error) {
+            errorLog?.log('Error deserializing received frame:', error);
+        }
+    }
+
+    public stopPull(): void {
+        if (this.pullSubscription) {
+            this.pullSubscription.dispose();
+            this.pullSubscription = null;
+        }
+    }
+
     public async stop(): Promise<void> {
         if (!this.isPlaying) return;
 
         this.isPlaying = false;
         this.playbackStartTime = 0;
+        this.stopPull();
 
         // Close all pending frames
         for (const frame of this.pendingFrames) {

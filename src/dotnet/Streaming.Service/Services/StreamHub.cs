@@ -74,6 +74,8 @@ public class StreamHub(IServiceProvider services) : Hub
         {
             var batchCount = 0;
             var frameCount = 0;
+            var lastWidth = width;
+            var lastHeight = height;
             await foreach (var batch in source) {
                 batchCount++;
                 if (batch.Length == 0)
@@ -86,13 +88,18 @@ public class StreamHub(IServiceProvider services) : Hub
                     if (frameBytes.Length == 0)
                         continue;
 
-                    var frame = DeserializeVideoFrame(frameBytes, codec);
+                    var frame = DeserializeVideoFrame(frameBytes, codec, lastWidth, lastHeight);
                     if (frame == null) {
                         if (batchCount <= 3)
                             Log.LogWarning("PushVideo: failed to deserialize frame in batch #{BatchCount}, bytes[0..8]={Hex}",
                                 batchCount,
                                 Convert.ToHexString(frameBytes.AsSpan(0, Math.Min(8, frameBytes.Length))));
                         continue;
+                    }
+
+                    if (frame.IsKeyFrame) {
+                        lastWidth = frame.Width;
+                        lastHeight = frame.Height;
                     }
 
                     frameCount++;
@@ -115,6 +122,64 @@ public class StreamHub(IServiceProvider services) : Hub
             codecSettings,
             clientStartOffset,
             ToVideoFrames(videoStream));
+    }
+
+    // Video pull method for JS client — streams video frames via SignalR
+    public async IAsyncEnumerable<byte[][]> GetVideo(
+        string sessionToken,
+        string streamId,
+        double skipToMs)
+    {
+        // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+        var httpContext = Context.GetHttpContext()!;
+        _ = GetSessionFromToken(sessionToken) ?? httpContext.GetSessionFromCookie();
+
+        using var stopCts = CreateStopTokenSource(httpContext);
+        if (stopCts.IsCancellationRequested)
+            yield break;
+
+        var parsedStreamId = StreamId.Parse(streamId);
+        var skipTo = TimeSpan.FromMilliseconds(skipToMs);
+
+        Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}", parsedStreamId, skipTo);
+
+        RpcStream<VideoFrame>? rpcStream;
+        try {
+            rpcStream = await LiveVideoBackend
+                .GetVideo(parsedStreamId, skipTo, stopCts.Token)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, "GetVideo: Error getting video for {StreamId}", streamId);
+            yield break;
+        }
+
+        if (rpcStream == null) {
+            Log.LogWarning("GetVideo: Stream {StreamId} not found", streamId);
+            yield break;
+        }
+
+        var batch = new List<byte[]>(10);
+        var frameCount = 0;
+
+        await foreach (var frame in ((IAsyncEnumerable<VideoFrame>)rpcStream)
+            .WithCancellation(stopCts.Token)) {
+            frameCount++;
+            batch.Add(SerializeVideoFrame(frame));
+
+            if (batch.Count >= 10) {
+                if (frameCount <= 30 || frameCount % 30 == 0)
+                    Log.LogInformation("GetVideo sending batch: {Count} frames, total={Total}",
+                        batch.Count, frameCount);
+                yield return batch.ToArray();
+                batch.Clear();
+            }
+        }
+
+        if (batch.Count > 0)
+            yield return batch.ToArray();
+
+        Log.LogInformation("GetVideo: stream ended after {Count} frames", frameCount);
     }
 
     // Private methods
@@ -221,7 +286,7 @@ public class StreamHub(IServiceProvider services) : Hub
     /// We parse manually because the project's MessagePack attributes are shims
     /// (MemoryPack is the primary serializer).
     /// </summary>
-    private static VideoFrame? DeserializeVideoFrame(byte[] bytes, string fallbackCodec)
+    private static VideoFrame? DeserializeVideoFrame(byte[] bytes, string fallbackCodec, int fallbackWidth = 0, int fallbackHeight = 0)
     {
         try {
             var reader = new MessagePackReader(bytes);
@@ -273,8 +338,8 @@ public class StreamHub(IServiceProvider services) : Hub
                 Data = data ?? [],
                 Offset = new TimeSpan(offset),
                 Duration = new TimeSpan(duration),
-                Width = width,
-                Height = height,
+                Width = width != 0 ? width : fallbackWidth,
+                Height = height != 0 ? height : fallbackHeight,
                 Description = description,
                 Codec = isKeyFrame ? (codec ?? fallbackCodec) : codec,
             };
@@ -282,5 +347,45 @@ public class StreamHub(IServiceProvider services) : Hub
         catch {
             return null;
         }
+    }
+
+    private static byte[] SerializeVideoFrame(VideoFrame frame)
+    {
+        var buffer = new ArrayBufferWriter<byte>();
+        var writer = new MessagePackWriter(buffer);
+
+        var fieldCount = 3; // offset, duration, data
+        if (frame.IsKeyFrame) fieldCount += 3; // isKeyFrame, width, height
+        if (frame.Description != null) fieldCount++;
+        if (frame.Codec != null) fieldCount++;
+
+        writer.WriteMapHeader(fieldCount);
+
+        writer.Write("offset");
+        writer.Write(frame.Offset.Ticks);
+        writer.Write("duration");
+        writer.Write(frame.Duration.Ticks);
+        writer.Write("data");
+        writer.Write(frame.Data);
+
+        if (frame.IsKeyFrame) {
+            writer.Write("isKeyFrame");
+            writer.Write(true);
+            writer.Write("width");
+            writer.Write(frame.Width);
+            writer.Write("height");
+            writer.Write(frame.Height);
+        }
+        if (frame.Description != null) {
+            writer.Write("description");
+            writer.Write(frame.Description);
+        }
+        if (frame.Codec != null) {
+            writer.Write("codec");
+            writer.Write(frame.Codec);
+        }
+
+        writer.Flush();
+        return buffer.WrittenSpan.ToArray();
     }
 }
