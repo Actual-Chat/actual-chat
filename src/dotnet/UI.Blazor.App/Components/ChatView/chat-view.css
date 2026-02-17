@@ -272,12 +272,6 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message.mention .chat-message-markup {
     @apply ml-0;
 }
-body.narrow .message-menu .reaction-select {
-    @apply gap-2;
-}
-body.narrow .message-menu .reaction-select-reaction-emoji {
-    @apply w-8 h-8;
-}
 body.hoverable .chat-message:hover .message-reactions-add {
     @apply visible;
 }

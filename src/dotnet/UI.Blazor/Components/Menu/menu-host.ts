@@ -332,6 +332,11 @@ export class MenuHost implements Disposable {
             // We couldn't find any menu to activate on click
             const isClickInsideMenu = event.target.closest('.ac-menu, .ac-menu-hover') != null;
             if (isClickInsideMenu && this.menu != null) {
+                // Check if click is on element that should keep menu open
+                const shouldKeepOpen = event.target.closest('[data-menu-keep-open]') != null;
+                if (shouldKeepOpen)
+                    return;
+
                 // The menu will process the action, but we can schedule menu hiding here
                 const menu = this.menu;
                 nextTick(() => this.hide({ id: menu.id }));

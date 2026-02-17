@@ -22,122 +22,140 @@
     var canUnselect = isSelected;
 }
 
-<div class="message-menu">
-    <ReactionSelect Entry="@e"/>
-    @if (showPlayButton) {
-        <MessageMenuPlay Entry="@e" IsMenu="true"/>
-    }
-    @if (canEdit) {
-        <MenuEntry
-            Icon="icon-edit"
-            Class="important-item"
-            FocusOnEditor="true"
-            Text="Edit"
-            Click="@(() => ChatEditorUI.Edit(e))">
-        </MenuEntry>
-    }
-    @if (canReply) {
-        <MenuEntry
-            Icon="icon-reply"
-            FocusOnEditor="true"
-            Text="Reply"
-            Click="@Reply">
-        </MenuEntry>
-    }
-    @if (canCopyText) {
-        <MenuEntry
-            Icon="icon-copy"
-            Text="Copy text"
-            Click="@(() => SelectionUI.CopyToClipboard(e.Id))">
-        </MenuEntry>
-    }
-    @if (canCopyLink) {
-        <CopyTrigger Tooltip="" CopyText="@ClickedLinkUrl" Class="ac-menu-item !p-0">
+@if (_showAllReactions) {
+    <div class="message-menu">
+        <div class="reactions-menu">
+            @foreach (var emoji in Emojis.All) {
+                <MenuEntry
+                    Class="reactions-menu-item"
+                    Click="@(_ => React(emoji))">
+                    <IconContent>
+                        <EmojiIcon Emoji="@emoji" Class="reactions-menu-emoji"/>
+                    </IconContent>
+                </MenuEntry>
+            }
+        </div>
+    </div>
+} else {
+    <div class="message-menu">
+        <ReactionSelect Entry="@e" OnExpandClick="ShowAllReactions"/>
+        @if (showPlayButton) {
+            <MessageMenuPlay Entry="@e" IsMenu="true"/>
+        }
+        @if (canEdit) {
+            <MenuEntry
+                Icon="icon-edit"
+                Class="important-item"
+                FocusOnEditor="true"
+                Text="Edit"
+                Click="@(() => ChatEditorUI.Edit(e))">
+            </MenuEntry>
+        }
+        @if (canReply) {
+            <MenuEntry
+                Icon="icon-reply"
+                FocusOnEditor="true"
+                Text="Reply"
+                Click="@Reply">
+            </MenuEntry>
+        }
+        @if (canCopyText) {
             <MenuEntry
                 Icon="icon-copy"
-                Text="Copy link">
+                Text="Copy text"
+                Click="@(() => SelectionUI.CopyToClipboard(e.Id))">
             </MenuEntry>
-        </CopyTrigger>
-    }
-    @if (canCopyCode) {
-        <CopyTrigger Tooltip="" CopyText="@ClickedCode?.Trim()" Class="ac-menu-item !p-0">
+        }
+        @if (canCopyLink) {
+            <CopyTrigger Tooltip="" CopyText="@ClickedLinkUrl" Class="ac-menu-item !p-0">
+                <MenuEntry
+                    Icon="icon-copy"
+                    Text="Copy link">
+                </MenuEntry>
+            </CopyTrigger>
+        }
+        @if (canCopyCode) {
+            <CopyTrigger Tooltip="" CopyText="@ClickedCode?.Trim()" Class="ac-menu-item !p-0">
+                <MenuEntry
+                    Icon="icon-copy"
+                    Text="Copy code">
+                </MenuEntry>
+            </CopyTrigger>
+        }
+        @if (canCopyMessageLink) {
+            <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
+                <MenuEntry
+                    Icon="icon-link-2"
+                    Text="Copy message link">
+                </MenuEntry>
+            </CopyTrigger>
+        }
+        @if (canForward) {
+            <MenuEntry
+                Icon="icon-share"
+                Text="Forward"
+                Click="@(() => SelectionUI.Forward(e.Id))">
+            </MenuEntry>
+        }
+        @if (canStartThread) {
+            <MenuEntry
+                Icon="icon-conversation"
+                Text="Start thread"
+                Click="@(() => SelectionUI.StartThread(e.Id))">
+            </MenuEntry>
+        }
+        @if (canDelete) {
+            <MenuEntry
+                Class="warning-item"
+                Icon="icon-trash03"
+                Text="Delete message"
+                Click="@(() => SelectionUI.Delete(e.Id))">
+            </MenuEntry>
+        }
+        @if (canSelect || canUnselect) {
+            <MenuEntrySeparator/>
+        }
+        @if (canUnselect) {
             <MenuEntry
                 Icon="icon-copy"
-                Text="Copy code">
+                Text="Copy selection"
+                Click="@(() => SelectionUI.CopyToClipboard())">
             </MenuEntry>
-        </CopyTrigger>
-    }
-    @if (canCopyMessageLink) {
-        <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
             <MenuEntry
-                Icon="icon-link-2"
-                Text="Copy message link">
+                Icon="icon-share"
+                Text="Forward selection"
+                Click="@(() => SelectionUI.Forward())">
             </MenuEntry>
-        </CopyTrigger>
-    }
-    @if (canForward) {
-        <MenuEntry
-            Icon="icon-share"
-            Text="Forward"
-            Click="@(() => SelectionUI.Forward(e.Id))">
-        </MenuEntry>
-    }
-    @if (canStartThread) {
-        <MenuEntry
-            Icon="icon-conversation"
-            Text="Start thread"
-            Click="@(() => SelectionUI.StartThread(e.Id))">
-        </MenuEntry>
-    }
-    @if (canDelete) {
-        <MenuEntry
-            Class="warning-item"
-            Icon="icon-trash03"
-            Text="Delete message"
-            Click="@(() => SelectionUI.Delete(e.Id))">
-        </MenuEntry>
-    }
-    @if (canSelect || canUnselect) {
-        <MenuEntrySeparator/>
-    }
-    @if (canUnselect) {
-        <MenuEntry
-            Icon="icon-copy"
-            Text="Copy selection"
-            Click="@(() => SelectionUI.CopyToClipboard())">
-        </MenuEntry>
-        <MenuEntry
-            Icon="icon-share"
-            Text="Forward selection"
-            Click="@(() => SelectionUI.Forward())">
-        </MenuEntry>
-        <MenuEntry
-            Icon="icon-conversation"
-            Text="Start thread"
-            Click="@(() => SelectionUI.StartThread())">
-        </MenuEntry>
-        <MenuEntry
-            Icon="icon-trash03"
-            Text="Clear selection"
-            Click="@(() => SelectionUI.Clear())">
-        </MenuEntry>
-        <MenuEntrySeparator/>
-        <MenuEntry
-            Icon="icon-select"
-            Text="Unselect"
-            Click="@(() => SelectionUI.Unselect(e.Id))">
-        </MenuEntry>
-    }
-    @if (canSelect) {
-        <MenuEntry
-            Icon="icon-select"
-            Text="Select"
-            Click="@(() => SelectionUI.Select(e.Id))">
-        </MenuEntry>
-    }
-</div>
+            <MenuEntry
+                Icon="icon-conversation"
+                Text="Start thread"
+                Click="@(() => SelectionUI.StartThread())">
+            </MenuEntry>
+            <MenuEntry
+                Icon="icon-trash03"
+                Text="Clear selection"
+                Click="@(() => SelectionUI.Clear())">
+            </MenuEntry>
+            <MenuEntrySeparator/>
+            <MenuEntry
+                Icon="icon-select"
+                Text="Unselect"
+                Click="@(() => SelectionUI.Unselect(e.Id))">
+            </MenuEntry>
+        }
+        @if (canSelect) {
+            <MenuEntry
+                Icon="icon-select"
+                Text="Select"
+                Click="@(() => SelectionUI.Select(e.Id))">
+            </MenuEntry>
+        }
+    </div>
+}
 
 @code {
+    private bool _showAllReactions;
+
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
 
@@ -152,4 +170,18 @@
 
     private Task Reply()
         => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, (TextEntryId)ChatEntry.Id, focusOnEditor: true);
+
+    private void ShowAllReactions()
+        => _showAllReactions = true;
+
+    private async Task React(Emoji emoji) {
+        _ = TuneUI.Play(Tune.React);
+        var reaction = new Reaction {
+            Id = Symbol.Empty,
+            AuthorId = null!,
+            EntryId = ChatEntry.Id.ToTextEntryId(),
+            Emoji = emoji,
+        };
+        await UICommander.Run(new Reactions_React(Session, reaction));
+    }
 }

@@ -1,8 +1,13 @@
 .reaction-select {
-    @apply flex-x items-center;
+    @apply grid items-center gap-2 md:gap-0.5;
+    @apply w-full md:max-w-64;
+    @apply p-2;
+    grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr));
 }
 .reaction-select-reaction {
-    @apply min-w-0 px-2;
+    @apply flex-none;
+    @apply min-w-0 w-8 h-8;
+    @apply p-0;
 }
 .reaction-select-reaction-emoji {
     @apply h-6 w-6;
@@ -12,4 +17,23 @@
 }
 .reaction-select-menu .reaction-select-reaction-emoji {
     @apply h-6 w-6;
+}
+body.narrow .message-menu .reaction-select-reaction-emoji {
+    @apply w-7 h-7;
+}
+.reaction-select-reaction .ac-menu-icon {
+    @apply flex items-center justify-center;
+    @apply w-full h-full;
+}
+.reaction-select-toggle {
+    @apply flex-none flex items-center justify-center;
+    @apply w-8 h-8;
+    @apply rounded-md;
+    @apply cursor-pointer;
+    @apply text-03;
+}
+body.hoverable .reaction-select-toggle:hover,
+.touch-capable .reaction-select-toggle:active {
+    @apply bg-hover;
+    @apply text-primary;
 }
