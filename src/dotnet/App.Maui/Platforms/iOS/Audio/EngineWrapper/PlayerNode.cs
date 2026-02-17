@@ -47,12 +47,18 @@ public class PlayerNode : AudioNode, IDisposable
             Node.ScheduleBuffer(pcm, AVAudioPlayerNodeCompletionCallbackType.PlayedBack, callback);
     }
 
-    public async Task ScheduleFileAndWait(AVAudioFile audioFile, CancellationToken cancellationToken = default)
+    public Task ScheduleFileAndWait(AVAudioFile audioFile, CancellationToken cancellationToken = default)
     {
-        using var _ = Disposable.New(Node.Stop);
-        await Node.ScheduleFileAsync(audioFile, null, AVAudioPlayerNodeCompletionCallbackType.PlayedBack)
-            .WaitAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var whenPlayed = AsyncTaskMethodBuilderExt.New();
+        lock (_lock)
+            // NOTE: ScheduleFileAsync seems to have a synchronous continuation and leads to deadlock
+ #pragma warning disable CA1849
+            Node.ScheduleFile(audioFile,
+                null,
+                AVAudioPlayerNodeCompletionCallbackType.PlayedBack,
+                _ => whenPlayed.TrySetResult());
+ #pragma warning restore CA1849
+        return whenPlayed.Task.WaitAsync(cancellationToken);
     }
 
     public void Stop()
