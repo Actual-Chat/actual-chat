@@ -8,7 +8,6 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     private static readonly FrozenDictionary<UploadStage, StageProgressInfo> StageProgressMap = BuildStageProgressMap();
     private readonly ConcurrentDictionary<AttachmentId, AttachmentInfo> _infos = new();
     private readonly ConcurrentDictionary<AttachmentId, AttachmentPreview> _previews = new();
-    private readonly ConcurrentDictionary<AttachmentId, MediaContent> _mediaContents = new();
     private UploadSessionsState UploadSessionsState => Hub.UploadSessionsState;
 
     public void Register(Attachment attachment)
@@ -27,11 +26,9 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     {
         _infos.TryRemove(id, out _);
         _previews.TryRemove(id, out _);
-        _mediaContents.TryRemove(id, out _);
         using (Invalidation.Begin()) {
             _ = GetAttachmentInfo(id, default);
             _ = GetPreview(id, default);
-            _ = GetMediaContent(id, default);
         }
     }
 
@@ -40,13 +37,6 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         _previews[id] = preview;
         using (Invalidation.Begin())
             _ = GetPreview(id, default);
-    }
-
-    public void SetMediaContent(AttachmentId id, MediaContent mediaContent)
-    {
-        _mediaContents[id] = mediaContent;
-        using (Invalidation.Begin())
-            _ = GetMediaContent(id, default);
     }
 
     [ComputeMethod]
@@ -86,13 +76,6 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
     {
         var preview = _previews.GetValueOrDefault(id) ?? AttachmentPreview.PendingGetAccessRequest;
         return Task.FromResult(preview);
-    }
-
-    [ComputeMethod]
-    public virtual Task<MediaContent?> GetMediaContent(AttachmentId id, CancellationToken cancellationToken)
-    {
-        var mediaContent = _mediaContents.GetValueOrDefault(id);
-        return Task.FromResult(mediaContent);
     }
 
     [ComputeMethod]
