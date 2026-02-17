@@ -197,11 +197,6 @@ export interface SegmentationStats {
   backend: string;
 }
 
-export interface SegmentationWorkerCallbacks {
-  // Callbacks for segmentation worker events
-  // Currently empty as we use direct RPC returns
-}
-
 // Default segmentation configuration values
 export const DEFAULT_SEGMENTATION_CONFIG = {
     /** Default blur radius for background blur effect (pixels) */
@@ -258,7 +253,7 @@ export function getModelConfig(modelUrl: string): ModelConfig {
     const filename = extractFilename(modelUrl);
 
     // Try exact key match first (keys are now filenames)
-    if (MODEL_CONFIGS[filename]) {
+    if (filename in MODEL_CONFIGS) {
         console.log(`[getModelConfig] Match for filename: ${filename}`);
         return MODEL_CONFIGS[filename];
     }

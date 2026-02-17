@@ -281,19 +281,19 @@ export function buildHVCC(parameterSets: HEVCParameterSets): Uint8Array {
     hvcc[offset++] = 1; // configurationVersion
   
     // Profile/tier/level
-    hvcc[offset++] = ((spsInfo.generalProfileSpace || 0) << 6) | 
-                   ((spsInfo.generalTierFlag || 0) << 5) | 
-                   (spsInfo.generalProfileIdc || 1);
+    hvcc[offset++] = ((spsInfo.generalProfileSpace ?? 0) << 6) |
+                   ((spsInfo.generalTierFlag ?? 0) << 5) |
+                   (spsInfo.generalProfileIdc ?? 1);
   
     // general_profile_compatibility_flags (4 bytes)
-    const compat = spsInfo.generalProfileCompatibilityFlags || 0;
+    const compat = spsInfo.generalProfileCompatibilityFlags ?? 0;
     hvcc[offset++] = (compat >> 24) & 0xFF;
     hvcc[offset++] = (compat >> 16) & 0xFF;
     hvcc[offset++] = (compat >> 8) & 0xFF;
     hvcc[offset++] = compat & 0xFF;
   
     // general_constraint_indicator_flags (6 bytes)
-    const constraint = spsInfo.generalConstraintIndicatorFlags || 0n;
+    const constraint = spsInfo.generalConstraintIndicatorFlags ?? 0n;
     hvcc[offset++] = Number((constraint >> 40n) & 0xFFn);
     hvcc[offset++] = Number((constraint >> 32n) & 0xFFn);
     hvcc[offset++] = Number((constraint >> 24n) & 0xFFn);
@@ -301,7 +301,7 @@ export function buildHVCC(parameterSets: HEVCParameterSets): Uint8Array {
     hvcc[offset++] = Number((constraint >> 8n) & 0xFFn);
     hvcc[offset++] = Number(constraint & 0xFFn);
   
-    hvcc[offset++] = spsInfo.generalLevelIdc || 93; // general_level_idc
+    hvcc[offset++] = spsInfo.generalLevelIdc ?? 93; // general_level_idc
   
     // min_spatial_segmentation_idc (12 bits) + reserved (4 bits)
     hvcc[offset++] = 0xF0;
@@ -311,13 +311,13 @@ export function buildHVCC(parameterSets: HEVCParameterSets): Uint8Array {
     hvcc[offset++] = 0xFC;
   
     // chromaFormat (2 bits) + reserved (6 bits)
-    hvcc[offset++] = 0xFC | ((spsInfo.chromaFormatIdc || 1) & 0x03);
+    hvcc[offset++] = 0xFC | ((spsInfo.chromaFormatIdc ?? 1) & 0x03);
   
     // bitDepthLumaMinus8 (3 bits) + reserved (5 bits)
-    hvcc[offset++] = 0xF8 | ((spsInfo.bitDepthLumaMinus8 || 0) & 0x07);
+    hvcc[offset++] = 0xF8 | ((spsInfo.bitDepthLumaMinus8 ?? 0) & 0x07);
   
     // bitDepthChromaMinus8 (3 bits) + reserved (5 bits)
-    hvcc[offset++] = 0xF8 | ((spsInfo.bitDepthChromaMinus8 || 0) & 0x07);
+    hvcc[offset++] = 0xF8 | ((spsInfo.bitDepthChromaMinus8 ?? 0) & 0x07);
   
     // avgFrameRate (16 bits)
     hvcc[offset++] = 0x00;
@@ -326,8 +326,8 @@ export function buildHVCC(parameterSets: HEVCParameterSets): Uint8Array {
     // constantFrameRate (2 bits) + numTemporalLayers (3 bits) + 
     // temporalIdNested (1 bit) + lengthSizeMinusOne (2 bits)
     hvcc[offset++] = (0 << 6) | // constantFrameRate
-                   (((spsInfo.numTemporalLayers || 1) & 0x07) << 3) |
-                   (((spsInfo.temporalIdNested || 1) & 0x01) << 2) |
+                   (((spsInfo.numTemporalLayers ?? 1) & 0x07) << 3) |
+                   (((spsInfo.temporalIdNested ?? 1) & 0x01) << 2) |
                    3; // lengthSizeMinusOne = 3 (4-byte length)
   
     // numOfArrays

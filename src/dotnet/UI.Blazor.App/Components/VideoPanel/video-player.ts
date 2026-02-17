@@ -72,7 +72,7 @@ export class VideoPlayer {
         debugLog?.log(`VideoPlayer created for stream ${streamId}, codec: ${codec}, size: ${width}x${height}`);
 
         // Initialize decoder
-        this.initDecoder(codec, width, height, codecSettings);
+        void this.initDecoder(codec, width, height, codecSettings);
     }
 
     private async initDecoder(codec: string, width: number, height: number, codecSettings: string): Promise<void> {
@@ -120,8 +120,8 @@ export class VideoPlayer {
             }
 
             this.decoder = new VideoDecoder({
-                output: (frame) => this.onFrameDecoded(frame),
-                error: (e) => this.onDecoderError(e),
+                output: (frame: VideoFrame) => this.onFrameDecoded(frame),
+                error: (e: DOMException) => this.onDecoderError(e),
             });
 
             this.decoder.configure(this.decoderConfig);
@@ -184,7 +184,7 @@ export class VideoPlayer {
         const isBufferLow = this.bufferSize < 2;
         if (isBufferLow !== this.lastReportedBufferLow) {
             this.lastReportedBufferLow = isBufferLow;
-            this.reportPlaying(frame.timestamp / 1000, isBufferLow);
+            void this.reportPlaying(frame.timestamp / 1000, isBufferLow);
         }
 
         // Render the frame
@@ -193,7 +193,7 @@ export class VideoPlayer {
 
     private onDecoderError(error: Error): void {
         errorLog?.log('Decoder error:', error);
-        this.reportEnded(error.message);
+        void this.reportEnded(error.message);
     }
 
     private renderNextFrame(): void {
@@ -226,13 +226,13 @@ export class VideoPlayer {
         }
     }
 
-    public async pushFrame(
+    public pushFrame(
         frameData: Uint8Array,
         timestampMs: number,
         durationMs: number,
         isKeyFrame: boolean,
-        description?: Uint8Array // Codec description (SPS/PPS for H.264) - only present on keyframes
-    ): Promise<void> {
+        description?: Uint8Array
+    ): void {
         if (!this.isPlaying) {
             return;
         }
@@ -331,7 +331,7 @@ export class VideoPlayer {
         debugLog?.log(`VideoPlayer started for stream ${this.streamId}`);
 
         // Report initial playing state
-        this.reportPlaying(0, true);
+        void this.reportPlaying(0, true);
     }
 
     public async stop(): Promise<void> {
@@ -348,7 +348,7 @@ export class VideoPlayer {
         for (const frame of this.pendingFrames) {
             try {
                 frame.close();
-            } catch (e) {
+            } catch {
                 // Ignore
             }
         }
@@ -360,7 +360,7 @@ export class VideoPlayer {
             try {
                 await this.decoder.flush();
                 this.decoder.close();
-            } catch (e) {
+            } catch {
                 // Ignore
             }
             this.decoder = null;
@@ -371,7 +371,7 @@ export class VideoPlayer {
 
     private async reportPlaying(offsetMs: number, isBufferLow: boolean): Promise<void> {
         try {
-            await this.blazorRef?.invokeMethodAsync('OnPlaying', offsetMs, isBufferLow);
+            await this.blazorRef.invokeMethodAsync('OnPlaying', offsetMs, isBufferLow);
         } catch (e) {
             warnLog?.log('reportPlaying error:', e);
         }
@@ -380,7 +380,7 @@ export class VideoPlayer {
     private async reportEnded(error?: string): Promise<void> {
         try {
             debugLog?.log(`VideoPlayer reporting ended for stream ${this.streamId}:`, error);
-            await this.blazorRef?.invokeMethodAsync('OnEnded', error ?? null);
+            await this.blazorRef.invokeMethodAsync('OnEnded', error ?? null);
         } catch (e) {
             warnLog?.log('reportEnded error:', e);
         }

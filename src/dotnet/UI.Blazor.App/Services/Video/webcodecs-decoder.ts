@@ -34,7 +34,7 @@ export class WebCodecsDecoder {
     private onError: (error: Error) => void
     ) {
         this.decoder = new VideoDecoder({
-            output: (frame) => {
+            output: (frame: VideoFrame) => {
                 // Track decode time - pop the start time from queue
                 const startTime = this.decodeStartTimes.shift();
                 if (startTime !== undefined) {
@@ -58,9 +58,9 @@ export class WebCodecsDecoder {
 
                 this.onFrame(frame);
             },
-            error: (e) => {
+            error: (e: DOMException) => {
                 console.error('WebCodecs Decoder error:', e);
-                this.onError(e);
+                this.onError(e as unknown as Error);
             }
         });
     }
@@ -182,7 +182,7 @@ export class WebCodecsDecoder {
                     ? 'likely (preferred)'
                     : 'software (preferred)';
             }
-        } catch (e) {
+        } catch {
             hardwareAcceleration = 'unknown';
         }
 

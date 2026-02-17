@@ -134,15 +134,15 @@ async function isCodecSupported(
                     if (modeSupport.supported) {
                         scalabilityModes.push(mode);
                     }
-                } catch (error) {
+                } catch {
                     // Mode not supported, continue
                 }
             }
         }
 
         return {
-            supported: support.supported || false,
-            hardwareAccelerated: hardwareAccelerated || false,
+            supported: support.supported ?? false,
+            hardwareAccelerated: hardwareAccelerated ?? false,
             scalabilityModes,
         };
     } catch (error) {

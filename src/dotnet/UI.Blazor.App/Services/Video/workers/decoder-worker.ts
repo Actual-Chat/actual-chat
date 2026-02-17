@@ -4,9 +4,9 @@
  * Receives encoded chunks and outputs decoded frames via RPC callbacks.
  */
 
-import { rpcClientServer, rpcNoWait, rpcServer } from 'rpc';
+import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { DecoderWorker, DecoderWorkerCallbacks } from './decoder-worker-contract';
-import { WebCodecsDecoder, type DecoderConfig, type DecoderStats } from '../webcodecs-decoder';
+import { type DecoderConfig, type DecoderStats, WebCodecsDecoder } from '../webcodecs-decoder';
 import type { EncodedChunkData } from '../webcodecs-encoder';
 import { extractHVCC } from '../hevc-parser';
 
@@ -25,23 +25,20 @@ let lastKeyframeSequence = -1;
 const MAX_REORDER_GAP = 5; // If we receive packets 5+ ahead, assume intermediate ones are lost
 let waitingForKeyframe = false; // Flag to indicate we're in error recovery mode
 
-// RPC callbacks to main thread (initialized below)
-let callbacks: DecoderWorkerCallbacks;
-
 // Process buffered chunks in sequence order
-async function processBufferedChunks(): Promise<void> {
+function processBufferedChunks(): void {
     while (reorderBuffer.has(nextExpectedSequence)) {
         const chunk = reorderBuffer.get(nextExpectedSequence)!;
         reorderBuffer.delete(nextExpectedSequence);
         console.log(`[Decoder Worker] Processing buffered chunk #${nextExpectedSequence}`);
-        await decodeChunk(chunk);
+        decodeChunk(chunk);
         nextExpectedSequence++;
     }
 }
 
 // Decode a single chunk (guaranteed to be in sequence order)
 function decodeChunk(chunkData: EncodedChunkData): void {
-    const seq = chunkData.sequenceNumber ?? -1;
+    const seq = chunkData.sequenceNumber;
 
     try {
     // Track keyframes for decoder recovery
@@ -57,14 +54,13 @@ function decodeChunk(chunkData: EncodedChunkData): void {
                 // Reinitialize decoder
                 decoder = new WebCodecsDecoder(
                     { ...currentDecoderConfig!, description: undefined },
-                    async (frame: VideoFrame) => {
+                    (frame: VideoFrame) => {
                         frameCount++;
                         if (frameCount % 30 === 1) {
                             const timestampSeconds = frame.timestamp / 1_000_000; // Convert microseconds to seconds
                             console.log(`[Decoder Worker] Decoded frame #${frameCount}: ${frame.displayWidth}x${frame.displayHeight}, timestamp: ${frame.timestamp}μs (${timestampSeconds.toFixed(2)}s)`);
                         }
-                        // Send frame via RPC callback (fire-and-forget for performance)
-                        await callbacks.onDecodedFrame(frame, rpcNoWait);
+                        void callbacks.onDecodedFrame(frame, rpcNoWait);
                     },
                     (error) => {
                         console.error('[Decoder Worker] Decoder error:', error);
@@ -188,6 +184,7 @@ const serverImpl: DecoderWorker = {
     /**
    * Initialize the decoder
    */
+    // eslint-disable-next-line
     initialize: async (config): Promise<void> => {
         try {
             console.log(`[Decoder Worker] Initializing decoder via RPC with codec: ${config.codec}`);
@@ -201,14 +198,13 @@ const serverImpl: DecoderWorker = {
                     ...config,
                     description: undefined // Don't require description - decoder will auto-configure
                 },
-                async (frame: VideoFrame) => {
+                (frame: VideoFrame) => {
                     frameCount++;
                     if (frameCount % 30 === 1) { // Log every 30th frame to avoid console spam
                         const timestampSeconds = frame.timestamp / 1_000_000; // Convert microseconds to seconds
                         console.log(`[Decoder Worker] Decoded frame #${frameCount}: ${frame.displayWidth}x${frame.displayHeight}, timestamp: ${frame.timestamp}μs (${timestampSeconds.toFixed(2)}s)`);
                     }
-                    // Send decoded frame back to main thread via RPC callback (fire-and-forget)
-                    await callbacks.onDecodedFrame(frame, rpcNoWait);
+                    void callbacks.onDecodedFrame(frame, rpcNoWait);
                 },
                 (error) => {
                     console.error('[Decoder Worker] Decoder error:', error);
@@ -217,7 +213,7 @@ const serverImpl: DecoderWorker = {
             );
 
             // Initialize the decoder
-            await decoder.initialize();
+            decoder.initialize();
             console.log(`[Decoder Worker] Decoder initialized via RPC for codec: ${config.codec}`);
 
             // Mark as ready
@@ -275,13 +271,14 @@ const serverImpl: DecoderWorker = {
     /**
    * Decode an encoded chunk
    */
+    // eslint-disable-next-line
     decodeChunk: async (chunkData): Promise<void> => {
         if (!processing) {
             console.warn('[Decoder Worker] Dropping chunk - not processing');
             return;
         }
 
-        const seq = chunkData.sequenceNumber ?? -1;
+        const seq = chunkData.sequenceNumber;
         // console.log(`[Decoder Worker] Received ${chunkData.type} chunk #${seq} via RPC, size: ${chunkData.byteLength}`);
 
         // If we're waiting for a keyframe due to packet loss, drop all non-keyframe chunks
@@ -297,7 +294,7 @@ const serverImpl: DecoderWorker = {
             reorderBuffer.clear();
             nextExpectedSequence = seq;
             // Process this keyframe immediately
-            await decodeChunk(chunkData);
+            decodeChunk(chunkData);
             nextExpectedSequence = seq + 1;
             return;
         }
@@ -335,7 +332,7 @@ const serverImpl: DecoderWorker = {
 
                     // Jump to the keyframe sequence
                     nextExpectedSequence = firstKeyframeSeq;
-                    await processBufferedChunks();
+                    processBufferedChunks();
                 } else {
                     // No keyframe available - enter recovery mode
                     console.warn(`[Decoder Worker] No keyframe in buffer after lost packet #${nextExpectedSequence}. Entering recovery mode - waiting for next keyframe.`);
@@ -349,7 +346,7 @@ const serverImpl: DecoderWorker = {
             if (chunkData.type === 'key') {
                 console.log(`[Decoder Worker] Received keyframe #${seq} while waiting for #${nextExpectedSequence}, resetting sequence`);
                 nextExpectedSequence = seq;
-                await decodeChunk(chunkData);
+                decodeChunk(chunkData);
                 nextExpectedSequence = seq + 1;
                 // Clear old buffered chunks before this keyframe
                 for (const [bufSeq] of reorderBuffer) {
@@ -357,22 +354,22 @@ const serverImpl: DecoderWorker = {
                         reorderBuffer.delete(bufSeq);
                     }
                 }
-                await processBufferedChunks();
+                processBufferedChunks();
                 return;
             }
 
             // Try to process buffered chunks in order
-            await processBufferedChunks();
+            processBufferedChunks();
             return;
         }
 
         // Process this chunk immediately (it's in order)
-        await decodeChunk(chunkData);
+        decodeChunk(chunkData);
 
         // Increment and try to process next buffered chunks
         if (seq !== -1) {
             nextExpectedSequence = seq + 1;
-            await processBufferedChunks();
+            processBufferedChunks();
         }
     },
 
@@ -393,20 +390,21 @@ const serverImpl: DecoderWorker = {
     /**
    * Get current decoder statistics
    */
+    // eslint-disable-next-line
     getStats: async (): Promise<DecoderStats> => {
-        const decoderStats: DecoderStats = decoder?.getStats() || {
+        return decoder?.getStats() ?? {
             decodedFrames: 0,
             droppedFrames: 0,
             averageDecodeTime: 0,
             hardwareAcceleration: 'unknown',
             resolution: 'N/A'
         };
-        return decoderStats;
     },
 
     /**
    * Toggle between WASM and built-in decoders
    */
+    // eslint-disable-next-line
     toggleDecoderType: async (useWasm: boolean): Promise<void> => {
         try {
             console.log(`[Decoder Worker] Toggling decoder type to ${useWasm ? 'WASM' : 'built-in'}`);
@@ -430,7 +428,7 @@ const serverImpl: DecoderWorker = {
 };
 
 // Initialize RPC communication (bidirectional)
-callbacks = rpcClientServer<DecoderWorkerCallbacks>(
+const callbacks = rpcClientServer<DecoderWorkerCallbacks>(
     'DecoderWorker',
   self as unknown as Worker,
   serverImpl

@@ -85,6 +85,22 @@ export interface WebSocketClientStats {
   reconnectAttempts: number;
 }
 
+interface WebSocketMessage {
+  type: string;
+  clientId?: string;
+  sessionId?: string;
+  participants?: ParticipantInfo[];
+  sessionConfig?: SessionConfig;
+  role?: string;
+  peer?: PeerInfo;
+  reason?: string;
+  chunk?: EncodedChunkData;
+  senderId?: string;
+  action?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data?: any;
+}
+
 // ============================================================================
 // WebSocket Client Class
 // ============================================================================
@@ -110,7 +126,7 @@ export class VideoWebSocketClient {
 
     // Event callbacks
     private onChunkReceivedCallback: ((chunk: EncodedChunkData) => void) | null = null;
-    private onControlMessageCallback: ((message: any) => void) | null = null;
+    private onControlMessageCallback: ((message: WebSocketMessage) => void) | null = null;
     private onConnectionStateChangeCallback: ((state: WebSocketClientStats) => void) | null = null;
 
     // Session callbacks
@@ -121,10 +137,10 @@ export class VideoWebSocketClient {
     constructor(config: WebSocketClientConfig) {
         this.config = {
             serverUrl: config.serverUrl,
-            role: config.role || 'bidirectional', // Default to bidirectional
-            reconnectInterval: config.reconnectInterval || 3000,
-            maxReconnectAttempts: config.maxReconnectAttempts || 10,
-            chunkBufferSize: config.chunkBufferSize || 100
+            role: config.role ?? 'bidirectional',
+            reconnectInterval: config.reconnectInterval ?? 3000,
+            maxReconnectAttempts: config.maxReconnectAttempts ?? 10,
+            chunkBufferSize: config.chunkBufferSize ?? 100
         };
 
         this.stats = {
@@ -166,9 +182,9 @@ export class VideoWebSocketClient {
         }
 
         return {
-            type: override?.type || type,
-            userAgent: override?.userAgent || userAgent,
-            codecSupport: override?.codecSupport || codecSupport
+            type: override?.type ?? type,
+            userAgent: override?.userAgent ?? userAgent,
+            codecSupport: override?.codecSupport ?? codecSupport
         };
     }
 
@@ -193,7 +209,7 @@ export class VideoWebSocketClient {
             };
 
             this.socket.onmessage = (event) => {
-                this.handleMessage(event.data);
+                this.handleMessage(event.data as string);
             };
 
             this.socket.onclose = (event) => {
@@ -236,13 +252,13 @@ export class VideoWebSocketClient {
         this.stats.lastActivity = Date.now();
 
         try {
-            const message = JSON.parse(data);
+            const message = JSON.parse(data) as WebSocketMessage;
             console.log(`[WebSocketClient] Received message:`, message.type);
 
             switch (message.type) {
             // Connection messages
             case 'welcome':
-                this.clientId = message.clientId;
+                this.clientId = message.clientId ?? null;
                 console.log(`[WebSocketClient] Welcome from server, clientId: ${this.clientId}`);
                 break;
 
@@ -285,27 +301,28 @@ export class VideoWebSocketClient {
     // Session Message Handlers
     // ============================================================================
 
-    private handleSessionJoined(message: any): void {
+    private handleSessionJoined(message: WebSocketMessage): void {
         this.currentSession = {
-            id: message.sessionId,
-            joinCode: '', // Not used in auto-join mode
+            id: message.sessionId ?? '',
+            joinCode: '',
             state: 'active',
-            participants: message.participants || [],
-            config: message.sessionConfig || {} as SessionConfig,
+            participants: message.participants ?? [],
+            config: message.sessionConfig ?? {} as SessionConfig,
             expiresAt: 0
         };
-        this.currentRole = message.role || 'bidirectional';
+        this.currentRole = (message.role as 'sender' | 'receiver' | 'bidirectional');
 
         console.log(`[WebSocketClient] Joined session as ${message.role}`);
         this.onSessionJoinedCallback?.(this.currentSession);
     }
 
-    private handlePeerJoined(message: any): void {
-        const peer: PeerInfo = message.peer;
+    private handlePeerJoined(message: WebSocketMessage): void {
+        const peer = message.peer;
+        if (!peer) return;
         console.log(`[WebSocketClient] Peer joined: ${peer.clientId} (${peer.deviceType})`);
 
         // Update participants list if we have a current session
-        if (this.currentSession && peer) {
+        if (this.currentSession) {
             const participant: ParticipantInfo = {
                 clientId: peer.clientId,
                 deviceType: peer.deviceType,
@@ -322,9 +339,9 @@ export class VideoWebSocketClient {
         this.onPeerJoinedCallback?.(peer);
     }
 
-    private handlePeerLeft(message: any): void {
-        const clientId = message.clientId;
-        const reason = message.reason || 'unknown';
+    private handlePeerLeft(message: WebSocketMessage): void {
+        const clientId = message.clientId ?? '';
+        const reason = message.reason ?? 'unknown';
         console.log(`[WebSocketClient] Peer left: ${clientId} (${reason})`);
 
         // Remove from participants list if we have a current session
@@ -341,25 +358,25 @@ export class VideoWebSocketClient {
     // Video Message Handlers
     // ============================================================================
 
-    private handleVideoChunk(message: any): void {
+    private handleVideoChunk(message: WebSocketMessage): void {
         if (!message.chunk) {
             console.warn(`[WebSocketClient] Invalid video chunk message:`, message);
             return;
         }
 
-        const chunk: EncodedChunkData = message.chunk;
+        const chunk = message.chunk;
         this.stats.chunksReceived++;
         this.stats.bytesReceived += chunk.byteLength;
         this.stats.lastActivity = Date.now();
 
-        console.log(`[WebSocketClient] Received ${chunk.type} chunk (${(chunk.byteLength / 1024).toFixed(2)} KB) from ${message.senderId}`);
+        console.log(`[WebSocketClient] Received ${chunk.type} chunk (${(chunk.byteLength / 1024).toFixed(2)} KB) from ${message.senderId ?? 'unknown'}`);
 
         if (this.onChunkReceivedCallback) {
             this.onChunkReceivedCallback(chunk);
         }
     }
 
-    private handleControlMessage(message: any): void {
+    private handleControlMessage(message: WebSocketMessage): void {
         console.log(`[WebSocketClient] Control message:`, message.action);
 
         if (this.onControlMessageCallback) {
@@ -388,7 +405,7 @@ export class VideoWebSocketClient {
     }
 
     private scheduleReconnect(): void {
-        if (this.reconnectAttempts >= (this.config.maxReconnectAttempts || 10)) {
+        if (this.reconnectAttempts >= (this.config.maxReconnectAttempts ?? 10)) {
             console.log(`[WebSocketClient] Max reconnect attempts reached (${this.reconnectAttempts})`);
             return;
         }
@@ -396,7 +413,7 @@ export class VideoWebSocketClient {
         this.reconnectAttempts++;
         this.stats.reconnectAttempts = this.reconnectAttempts;
 
-        const delay = this.config.reconnectInterval || 3000;
+        const delay = this.config.reconnectInterval ?? 3000;
         console.log(`[WebSocketClient] Scheduling reconnect attempt ${this.reconnectAttempts} in ${delay}ms...`);
 
         this.reconnectTimeout = window.setTimeout(() => {
@@ -459,7 +476,7 @@ export class VideoWebSocketClient {
         this.stats.bytesSent += chunk.byteLength;
     }
 
-    public sendControlMessage(action: string, data?: any): void {
+    public sendControlMessage(action: string, data?: unknown): void {
         const message = {
             type: 'control',
             action: action,
@@ -474,13 +491,13 @@ export class VideoWebSocketClient {
     // Message Sending
     // ============================================================================
 
-    public sendMessage(message: any): void {
+    public sendMessage(message: Record<string, unknown>): void {
         const messageStr = JSON.stringify(message);
 
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             // Queue message if not connected
             this.messageQueue.push(messageStr);
-            console.log(`[WebSocketClient] Queued message (not connected):`, message.type);
+            console.log(`[WebSocketClient] Queued message (not connected):`, String(message.type));
             return;
         }
 
@@ -498,7 +515,7 @@ export class VideoWebSocketClient {
             this.stats.lastActivity = Date.now();
 
             // Update stats based on message type
-            const parsed = JSON.parse(message);
+            const parsed = JSON.parse(message) as WebSocketMessage;
             if (parsed.type === 'video_chunk') {
                 this.stats.chunksSent++;
             }
@@ -582,7 +599,7 @@ export class VideoWebSocketClient {
         this.onChunkReceivedCallback = callback;
     }
 
-    public onControlMessage(callback: (message: any) => void): void {
+    public onControlMessage(callback: (message: WebSocketMessage) => void): void {
         this.onControlMessageCallback = callback;
     }
 

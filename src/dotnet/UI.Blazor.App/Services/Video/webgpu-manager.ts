@@ -25,32 +25,25 @@ export class WebGPUManager {
             return externalDevice;
         }
 
-        if (!this.initPromise) {
-            this.initPromise = (async () => {
-                const navigatorRef = globalThis.navigator as Navigator | undefined;
-                if (!navigatorRef?.gpu) {
-                    throw new Error('WebGPU not available in this environment');
-                }
+        this.initPromise ??= (async () => {
+            const navigatorRef = globalThis.navigator as Navigator | undefined;
+            if (!navigatorRef?.gpu) {
+                throw new Error('WebGPU not available in this environment');
+            }
 
-                const adapter = await navigatorRef.gpu.requestAdapter();
-                if (!adapter) {
-                    throw new Error('Failed to acquire WebGPU adapter');
-                }
+            const adapter = await navigatorRef.gpu.requestAdapter();
+            if (!adapter) {
+                throw new Error('Failed to acquire WebGPU adapter');
+            }
 
-                const createdDevice = await adapter.requestDevice();
-                this.attachDevice(createdDevice);
-                return createdDevice;
-            })().finally(() => {
-                this.initPromise = null;
-            });
-        }
+            const createdDevice = await adapter.requestDevice();
+            this.attachDevice(createdDevice);
+            return createdDevice;
+        })().finally(() => {
+            this.initPromise = null;
+        });
 
-        const pendingInit = this.initPromise;
-        if (!pendingInit) {
-            throw new Error('WebGPU initialization did not start correctly');
-        }
-
-        return pendingInit;
+        return this.initPromise;
     }
 
     /**

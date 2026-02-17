@@ -105,8 +105,7 @@ export class JoinVideoCallModal {
             const frame = this.container.querySelector('.video-frame');
             if (frame) {
                 // Hide placeholder text
-                const plug = frame.querySelector('.plug-text');
-                if (plug) plug.style.display = 'none';
+                frame.querySelector<HTMLElement>('.plug-text')!.style.display = 'none';
 
                 frame.appendChild(this.videoEl);
             }
@@ -140,8 +139,7 @@ export class JoinVideoCallModal {
         // Restore placeholder text
         const frame = this.container.querySelector('.video-frame');
         if (frame) {
-            const plug = frame.querySelector('.plug-text');
-            if (plug) plug.style.display = '';
+            frame.querySelector<HTMLElement>('.plug-text')!.style.display = '';
         }
 
         infoLog?.log('Camera preview stopped');
@@ -193,7 +191,7 @@ export class JoinVideoCallModal {
                 'PreviewBlur',
                 this.segmentationWorkerInstance,
                 {
-                    onFrameProcessed: (frame: VideoFrame, _seq: number, _time: number) => {
+                    onFrameProcessed: (frame: VideoFrame) => {
                         // Draw blurred frame to canvas
                         if (this.canvasCtx && this.isBlurActive) {
                             if (this.canvasEl.width !== frame.displayWidth ||
@@ -201,7 +199,7 @@ export class JoinVideoCallModal {
                                 this.canvasEl.width = frame.displayWidth;
                                 this.canvasEl.height = frame.displayHeight;
                             }
-                            this.canvasCtx.drawImage(frame as any, 0, 0);
+                            this.canvasCtx.drawImage(frame as CanvasImageSource, 0, 0);
                         }
                         // Close frame since no encoder takes ownership
                         frame.close();
@@ -214,9 +212,6 @@ export class JoinVideoCallModal {
 
             // Initialize worker (loads ONNX model + WebGPU)
             await this.segmentationWorker.initialize(segConfig, { timeoutMs: 15000 });
-
-            // Check if blur was cancelled during async initialization
-            if (!this.segmentationWorker) return;
 
             this.isBlurActive = true;
 

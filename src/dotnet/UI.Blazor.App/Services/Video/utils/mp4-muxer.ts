@@ -31,7 +31,7 @@ export class MediaStreamRecorder {
             }
 
             this.mediaRecorder.ondataavailable = (event) => {
-                if (event.data && event.data.size > 0) {
+                if (event.data.size > 0) {
                     this.recordedChunks.push(event.data);
                 }
             };
@@ -55,7 +55,7 @@ export class MediaStreamRecorder {
             }
 
             this.mediaRecorder.onstop = () => {
-                const mimeType = this.mediaRecorder?.mimeType || this.mimeType;
+                const mimeType = this.mediaRecorder?.mimeType ?? this.mimeType;
                 const blob = new Blob(this.recordedChunks, { type: mimeType });
                 console.log(`[MediaStreamRecorder] Recording stopped. Blob size: ${(blob.size / 1024 / 1024).toFixed(2)} MB, MIME: ${mimeType}`);
                 resolve(blob);

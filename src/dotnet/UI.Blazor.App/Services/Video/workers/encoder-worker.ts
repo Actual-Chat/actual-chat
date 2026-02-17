@@ -4,12 +4,10 @@
  * Receives VideoFrame objects and outputs encoded chunks via RPC callbacks.
  */
 
-import { rpcClientServer, rpcNoWait, rpcClient } from 'rpc';
-import type { Disposable } from 'disposable';
+import { rpcClientServer, rpcNoWait } from 'rpc';
 
-import { WebCodecsEncoder, type EncoderConfig, type EncoderStats, type EncodedChunkData } from '../webcodecs-encoder';
+import { type EncoderConfig, type EncoderStats, WebCodecsEncoder } from '../webcodecs-encoder';
 import type { EncoderWorker, EncoderWorkerCallbacks } from './encoder-worker-contract';
-import type { DecoderWorker } from './decoder-worker-contract';
 
 // Worker state
 let encoder: WebCodecsEncoder | null = null;
@@ -19,9 +17,6 @@ let encoderConfig: EncoderConfig | null = null;
 let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
 let startTimestamp: number | undefined = undefined;
-
-// RPC callbacks to main thread (initialized below)
-let callbacks: EncoderWorkerCallbacks;
 
 // Resize frame to match encoder dimensions while preserving aspect ratio
 function resizeFrame(frame: VideoFrame, targetWidth: number, targetHeight: number): VideoFrame {
@@ -81,7 +76,7 @@ function resizeFrame(frame: VideoFrame, targetWidth: number, targetHeight: numbe
     // Create new VideoFrame from canvas
     const newFrame = new VideoFrame(resizeCanvas, {
         timestamp: frame.timestamp - (startTimestamp ?? 0),
-        duration: frame.duration || undefined
+        duration: frame.duration ?? undefined
     });
 
     // Close original frame
@@ -95,6 +90,7 @@ const serverImpl: EncoderWorker = {
     /**
    * Initialize the encoder
    */
+    // eslint-disable-next-line
     initialize: async (config): Promise<void> => {
         try {
             console.log('[Encoder Worker] Initializing encoder via RPC...');
@@ -104,27 +100,12 @@ const serverImpl: EncoderWorker = {
 
             encoder = new WebCodecsEncoder(
                 config,
-                async (chunkData) => {
-                    // Log chunk sizes to verify bitrate changes
-                    // const chunkSizeKB = (chunkData.byteLength / 1024).toFixed(2);
-                    // if (chunkData.type === 'key') {
-                    //   console.log(`[Encoder Worker] 🔑 Keyframe encoded: ${chunkSizeKB} KB (current config: ${encoderConfig?.bitrate ? (encoderConfig.bitrate / 1_000_000).toFixed(1) : '?'} Mbps, ${encoderConfig?.width}x${encoderConfig?.height})`);
-                    //   console.log(`[Encoder Worker] Keyframe metadata:`, {
-                    //     hasMetadata: !!chunkData.metadata,
-                    //     hasDecoderConfig: !!chunkData.metadata?.decoderConfig,
-                    //     hasDescription: !!chunkData.metadata?.decoderConfig?.description,
-                    //     metadata: chunkData.metadata
-                    //   });
-                    // } else if (frameCount % 30 === 0) {
-                    //   // Log delta frames periodically
-                    //   console.log(`[Encoder Worker] Delta frame encoded: ${chunkSizeKB} KB (config: ${encoderConfig?.width}x${encoderConfig?.height}, ${(encoderConfig?.bitrate || 0) / 1_000_000}Mbps)`);
-                    // }
-
+                (chunkData) => {
                     // Serialize metadata properly (it contains ArrayBuffer which needs special handling)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     let serializedMetadata: any = undefined;
                     if (chunkData.metadata?.decoderConfig?.description) {
                         const desc = chunkData.metadata.decoderConfig.description;
-                        // Copy description to a new ArrayBuffer so it can be transferred
                         let sourceArray: Uint8Array;
                         if (desc instanceof ArrayBuffer) {
                             sourceArray = new Uint8Array(desc);
@@ -133,8 +114,7 @@ const serverImpl: EncoderWorker = {
                         } else if (ArrayBuffer.isView(desc)) {
                             sourceArray = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
                         } else {
-                            // Fallback: treat as Uint8Array
-                            sourceArray = new Uint8Array(desc as any);
+                            sourceArray = new Uint8Array(desc as ArrayBuffer);
                         }
 
                         const descBuffer = new ArrayBuffer(sourceArray.byteLength);
@@ -152,16 +132,14 @@ const serverImpl: EncoderWorker = {
                         }
                     }
 
-                    // Send chunk either directly to decoder (if connected) or to main thread
                     const enrichedChunkData = {
                         ...chunkData,
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         metadata: serializedMetadata,
                         sequenceNumber: chunkData.sequenceNumber
                     };
 
-
-                    // Send to main thread via RPC callback (traditional path)
-                    await callbacks.onEncodedChunk(enrichedChunkData, rpcNoWait);
+                    void callbacks.onEncodedChunk(enrichedChunkData, rpcNoWait);
                 },
                 (error) => {
                     console.error('[Encoder Worker] Encoder error:', error);
@@ -222,6 +200,7 @@ const serverImpl: EncoderWorker = {
     /**
    * Encode a single frame
    */
+    // eslint-disable-next-line
     encodeFrame: async (frame): Promise<void> => {
         if (!encoder || !processing || !encoderConfig) {
             frame.close();
@@ -313,8 +292,9 @@ const serverImpl: EncoderWorker = {
     /**
    * Get current encoder statistics
    */
+    // eslint-disable-next-line
     getStats: async (): Promise<EncoderStats> => {
-        const stats: EncoderStats = encoder?.getStats() || {
+        return encoder?.getStats() ?? {
             encodedFrames: 0,
             droppedFrames: 0,
             keyFrames: 0,
@@ -322,12 +302,11 @@ const serverImpl: EncoderWorker = {
             averageEncodeTime: 0,
             hardwareAcceleration: 'unknown'
         };
-        return stats;
     },
 };
 
 // Initialize RPC communication (bidirectional)
-callbacks = rpcClientServer<EncoderWorkerCallbacks>(
+const callbacks = rpcClientServer<EncoderWorkerCallbacks>(
     'EncoderWorker',
   self as unknown as Worker,
   serverImpl
