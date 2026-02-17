@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public sealed record UploadSessionProgress(UploadStage Stage, double Progress = 0, string Details = "")
+public sealed record UploadSessionProgress(UploadStage Stage, double StageProgress = 0, string Details = "")
 {
     public static readonly UploadSessionProgress New = new(UploadStage.New);
 
