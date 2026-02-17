@@ -14,7 +14,7 @@ public class IosIncomingShareSuggestions(IServiceProvider services) : IncomingSh
     protected override async Task SuggestInternal(ContactId contactId, CancellationToken cancellationToken)
     {
         var contact = await Contacts.Get(Session, contactId, cancellationToken).Require().ConfigureAwait(false);
-        var loadedImage = await IconUI.Get(contact.GetIconQuery(), cancellationToken).ConfigureAwait(false);
+        var loadedImage = await IconUI.Get(contact.GetIconQuery(avatarSize: 160), cancellationToken).ConfigureAwait(false);
         // NOTE: Embed image data into the intent rather than referencing a file URL,
         // because iOS may purge CacheDirectory at any time, breaking file references.
         using var inImage = loadedImage is not null

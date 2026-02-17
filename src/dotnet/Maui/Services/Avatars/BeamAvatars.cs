@@ -5,17 +5,21 @@ namespace ActualChat.Maui.Services;
 
 public static class BeamAvatars
 {
-    private const int Size = 36;
+    private const int DesignSize = 36;
+    private const int Size = 80;
     private static readonly string[] DefaultColors = ["FFDBA0", "BBBEFF", "9294E1", "FF9BC0", "0F2FE8"];
 
-    public static void GeneratePng(string key, FilePath filePath)
+    public static void GeneratePng(string key, FilePath filePath, int? size = null)
     {
+        size ??= Size;
+        var scale = (float)size.Value / DesignSize;
         var data = GenerateData(key, DefaultColors);
-        var imageInfo = new SKImageInfo(Size, Size, SKColorType.Rgba8888, SKAlphaType.Premul);
+        var imageInfo = new SKImageInfo(size.Value, size.Value, SKColorType.Rgba8888, SKAlphaType.Premul);
         using var surface = SKSurface.Create(imageInfo);
         var canvas = surface.Canvas;
         canvas.Clear(SKColors.Transparent);
 
+        canvas.Scale(scale);
         DrawBackground(canvas, data.BackgroundColor);
         DrawWrapper(canvas, data);
         DrawFace(canvas, data);
@@ -32,7 +36,7 @@ public static class BeamAvatars
         paint.IsAntialias = true;
         paint.Style = SKPaintStyle.Fill;
 
-        canvas.DrawRect(new SKRect(0, 0, Size, Size), paint);
+        canvas.DrawRect(new SKRect(0, 0, DesignSize, DesignSize), paint);
     }
 
     private static void DrawWrapper(SKCanvas canvas, AvatarData data)
@@ -44,14 +48,14 @@ public static class BeamAvatars
 
         canvas.Save();
         canvas.Translate((float)data.WrapperTranslateX, (float)data.WrapperTranslateY);
-        canvas.RotateDegrees(data.WrapperRotate, Size / 2f, Size / 2f);
+        canvas.RotateDegrees(data.WrapperRotate, DesignSize / 2f, DesignSize / 2f);
         canvas.Scale((float)data.WrapperScale);
 
         if (data.IsCircle)
-            canvas.DrawCircle(Size / 2f, Size / 2f, Size / 2f, paint);
+            canvas.DrawCircle(DesignSize / 2f, DesignSize / 2f, DesignSize / 2f, paint);
         else {
-            var cornerRadius = Size / 6f;
-            canvas.DrawRoundRect(new SKRect(0, 0, Size, Size), cornerRadius, cornerRadius, paint);
+            var cornerRadius = DesignSize / 6f;
+            canvas.DrawRoundRect(new SKRect(0, 0, DesignSize, DesignSize), cornerRadius, cornerRadius, paint);
         }
 
         canvas.Restore();
@@ -66,7 +70,7 @@ public static class BeamAvatars
 
         canvas.Save();
         canvas.Translate((float)data.FaceTranslateX, (float)data.FaceTranslateY);
-        canvas.RotateDegrees(data.FaceRotate, Size / 2f, Size / 2f);
+        canvas.RotateDegrees(data.FaceRotate, DesignSize / 2f, DesignSize / 2f);
 
         // Draw eyes
         var eyeWidth = 1.5f;
@@ -115,9 +119,9 @@ public static class BeamAvatars
         var range = colors.Length;
         var wrapperColor = AvatarUtils.GetRandomColor(numFromName, colors, range);
         var preTranslateX = AvatarUtils.GetUnit(numFromName, 10, 1);
-        var wrapperTranslateX = preTranslateX < 5 ? preTranslateX + Size / 9.0 : preTranslateX;
+        var wrapperTranslateX = preTranslateX < 5 ? preTranslateX + DesignSize / 9.0 : preTranslateX;
         var preTranslateY = AvatarUtils.GetUnit(numFromName, 10, 2);
-        var wrapperTranslateY = preTranslateY < 5 ? preTranslateY + Size / 9.0 : preTranslateY;
+        var wrapperTranslateY = preTranslateY < 5 ? preTranslateY + DesignSize / 9.0 : preTranslateY;
 
         return new AvatarData {
             WrapperColor = wrapperColor,
@@ -126,14 +130,14 @@ public static class BeamAvatars
             WrapperTranslateX = wrapperTranslateX,
             WrapperTranslateY = wrapperTranslateY,
             WrapperRotate = AvatarUtils.GetUnit(numFromName, 360),
-            WrapperScale = 1 + AvatarUtils.GetUnit(numFromName, Size / 12) / 10.0,
+            WrapperScale = 1 + AvatarUtils.GetUnit(numFromName, DesignSize / 12) / 10.0,
             IsMouthOpen = AvatarUtils.GetBoolDigit(numFromName, 2),
             IsCircle = AvatarUtils.GetBoolDigit(numFromName, 1),
             EyeSpread = AvatarUtils.GetUnit(numFromName, 5),
             MouthSpread = AvatarUtils.GetUnit(numFromName, 3),
             FaceRotate = AvatarUtils.GetUnit(numFromName, 10, 3),
-            FaceTranslateX = wrapperTranslateX > Size / 6.0 ? wrapperTranslateX / 2 : AvatarUtils.GetUnit(numFromName, 8, 1),
-            FaceTranslateY = wrapperTranslateY > Size / 6.0 ? wrapperTranslateY / 2 : AvatarUtils.GetUnit(numFromName, 7, 2),
+            FaceTranslateX = wrapperTranslateX > DesignSize / 6.0 ? wrapperTranslateX / 2 : AvatarUtils.GetUnit(numFromName, 8, 1),
+            FaceTranslateY = wrapperTranslateY > DesignSize / 6.0 ? wrapperTranslateY / 2 : AvatarUtils.GetUnit(numFromName, 7, 2),
         };
     }
 
