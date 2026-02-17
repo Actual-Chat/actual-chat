@@ -31,6 +31,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private IncomingShareSuggestions? IncomingShareSuggestions { get; }
     private AudioSettings AudioSettings => Hub.AudioSettings;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
+    private AudioWidget AudioWidget => Hub.AudioWidget;
     private Moment CpuNow => Clocks.CpuClock.Now;
     private Moment ServerNow => Clocks.ServerClock.Now;
     private new ILogger? DebugLog => DebugMode ? Log : null;
@@ -51,6 +52,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             (ReplayState?)null,
             StateCategories.Get(type, nameof(ReplayState)));
         _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Playback, OnAudioFocusLost);
+        Hub.AudioWidget.ResetState();
     }
 
     void INotifyInitialized.Initialized()

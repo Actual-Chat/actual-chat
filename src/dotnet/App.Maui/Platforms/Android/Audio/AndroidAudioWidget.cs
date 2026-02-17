@@ -4,44 +4,30 @@ using IntentExtras = ActualChat.App.Maui.Audio.AndroidAudioWidgetForegroundServi
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AndroidAudioWidget : AudioWidget
+public class AndroidAudioWidget(IServiceProvider services) : AudioWidget(services)
 {
-    private static volatile AndroidAudioWidget? _instance;
-    private static volatile bool _isShown;
+    private static AndroidAudioWidget? _instance;
 
     private static Context Context => Platform.AppContext;
-
-    public AndroidAudioWidget(AppUIHub hub) : base(hub)
-    {
-        Interlocked.Exchange(ref _instance, this);
-        _ = DispatchToBlazor(_ => HideImpl());
-    }
+    private bool _isShown;
 
     public static void Pause() => _instance?.InvokeAction(ActionNames.Pause);
     public static void Resume() => _instance?.InvokeAction(ActionNames.Resume);
     public static void Stop() => _instance?.InvokeAction(ActionNames.Stop);
-    public static void Hide() => HideImpl();
+    public static void Hide() => _instance?.HideImpl();
 
     protected override void OnStateChanged(AudioWidgetState? state, AudioWidgetState? oldState)
-        => _ = DispatchToBlazor(_ => {
-            if (_instance != this)
-                return;
-
-            if (state is null)
-                HideImpl();
-            else
-                ShowImpl(state);
-        });
-
-    public override void Dispose()
     {
-        Interlocked.CompareExchange(ref _instance, null, this);
-        base.Dispose();
+        _instance = this;
+        if (state is null)
+            HideImpl();
+        else
+            ShowImpl(state);
     }
 
     // Private methods
 
-    private static void ShowImpl(AudioWidgetState state)
+    private void ShowImpl(AudioWidgetState state)
     {
         var context = Context;
         var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
@@ -56,7 +42,7 @@ public class AndroidAudioWidget : AudioWidget
         _isShown = true;
     }
 
-    private static void HideImpl()
+    private void HideImpl()
     {
         if (!_isShown)
             return;

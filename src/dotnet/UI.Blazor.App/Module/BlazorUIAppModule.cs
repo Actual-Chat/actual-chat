@@ -192,7 +192,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
             services.AddScoped<IMediaMetadataUI>(_ => new WebMediaMetadataUI());
         }
-        services.AddScoped(c => new AudioWidget(c.AppUIHub()));
+        services.AddScoped(c => new AudioWidget(c)); // Scoped in WASM/SSB, singleton in MAUI
 
         // IModalViews
         services.AddTypeMap<IModalView>(map => map

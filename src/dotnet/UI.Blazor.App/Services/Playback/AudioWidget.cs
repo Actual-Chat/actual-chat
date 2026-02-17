@@ -4,38 +4,56 @@ public enum AudioWidgetMode { Replaying, Listening, Recording }
 public sealed record AudioWidgetChatInfo(ChatId Id, string Title, string PicUrl, int ExtraChatCount);
 public sealed record AudioWidgetState(AudioWidgetMode Mode, AudioWidgetChatInfo Chat, bool IsPaused);
 
-public class AudioWidget : IDisposable
+public class AudioWidget
 {
-    private readonly ComputedState<AudioWidgetState?> _state;
-    private AudioWidgetState? _lastState;
+    private readonly Lock _lock = new();
+    private readonly MutableState<AudioWidgetState?> _state;
+    private Task _lastComputeStateTask = Task.CompletedTask;
+    private ReplayState? _replayState;
+    private ImmutableHashSet<ChatId>? _listeningChatIds;
+    private ChatId? _recordingChatId;
 
-    private AppUIHub Hub { get; }
-    private Session Session => Hub.Session;
-    private IChats Chats => Hub.Chats;
-    private IAccounts Accounts => Hub.Accounts;
-    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private UrlMapper UrlMapper => Hub.UrlMapper;
+    private IServiceProvider Services { get; }
+    private ScopedServicesAccessor ScopedServicesAccessor { get; }
+    private ChatAudioUI? ChatAudioUI => ScopedServicesAccessor()?.AppUIHub().ChatAudioUI;
+    private Session Session => field ??= Services.GetRequiredService<Session>();
+    private IChats Chats => field ??= Services.GetRequiredService<IChats>();
+    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
+    private UrlMapper UrlMapper => field ??= Services.GetRequiredService<UrlMapper>();
 
     public IState<AudioWidgetState?> State => _state;
 
-    public AudioWidget(AppUIHub hub)
+    public AudioWidget(IServiceProvider services)
     {
-        Hub = hub;
-        _state = hub.StateFactory.NewComputed(
-            new ComputedState<AudioWidgetState?>.Options() {
-                InitialValue = null,
-                UpdateDelayer = FixedDelayer.NextTick,
-                Category = StateCategories.Get(GetType(), nameof(State)),
-            },
-            ComputeState);
-        _state.Updated += OnStateUpdated;
+        Services = services;
+        ScopedServicesAccessor = services.GetRequiredService<ScopedServicesAccessor>();
+        _state = services.StateFactory().NewMutable(
+            (AudioWidgetState?)null,
+            StateCategories.Get(GetType(), nameof(State)));
     }
 
-    public virtual void Dispose()
+    // This method is called to trigger widget reset on UI restart in MAUI
+    public void ResetState()
     {
-        _state.Updated -= OnStateUpdated;
-        _state.Dispose();
+        lock (_lock) {
+            _replayState = null;
+            _listeningChatIds = null;
+            _recordingChatId = null;
+            SetState(null);
+        }
     }
+
+    public void SetReplayState(ReplayState? state)
+        => MutateState(() => _replayState = state);
+
+    public void SetListeningState(ImmutableHashSet<ChatId>? listeningChatIds)
+        => MutateState(() => _listeningChatIds = listeningChatIds);
+
+    public void SetRecodingState(ChatId? recordingChatId)
+        => MutateState(() => _recordingChatId = recordingChatId);
+
+    public void RecomputeState()
+        => MutateState(null);
 
     // Protected methods
 
@@ -44,82 +62,93 @@ public class AudioWidget : IDisposable
 
     protected void InvokeAction(string actionName)
     {
-        var replayState = ChatAudioUI.ReplayState.Value;
+        ReplayState? replayState;
+        ImmutableHashSet<ChatId>? listeningChatIds;
+        lock (_lock) {
+            replayState = _replayState;
+            listeningChatIds = _listeningChatIds;
+        }
+
         if (replayState is not null)
             InvokeReplayAction(replayState, actionName);
-        else {
-            var state = _state.Value;
-            if (state is { Mode: AudioWidgetMode.Listening })
-                InvokeListeningAction(state.Chat.Id, actionName);
-        }
+        else if (listeningChatIds is { IsEmpty: false })
+            InvokeListeningAction(listeningChatIds, actionName);
     }
 
     // Private methods
 
-    private void OnStateUpdated(State state, StateEventKind eventKind)
+    private void SetState(AudioWidgetState? state)
     {
-        if (eventKind != StateEventKind.Updated)
-            return;
+        lock (_lock) {
+            var oldState = _state.Value;
+            if (oldState == state)
+                return;
 
-        var newState = _state.Value;
-        var oldState = _lastState;
-        if (newState == oldState)
-            return;
-
-        _lastState = newState;
-        OnStateChanged(newState, oldState);
+            _state.Value = state;
+            OnStateChanged(state, oldState);
+        }
     }
 
-    private async Task<AudioWidgetState?> ComputeState(CancellationToken cancellationToken)
+    private void MutateState(Action? action)
     {
-        ChatId? chatId = null;
-        AudioWidgetMode? mode = null;
-        int extraChatCount = 0;
-        bool isPaused = false;
-
-        // Priority: Recording > Replaying > Listening
-        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
-        if (recordingChatId is not null) {
-            mode = AudioWidgetMode.Recording;
-            chatId = recordingChatId;
+        ChatId? recordingChatId;
+        ReplayState? replayState;
+        ImmutableHashSet<ChatId>? listeningChatIds;
+        Task lastComputeStateTask;
+        lock(_lock) {
+            action?.Invoke();
+            recordingChatId = _recordingChatId;
+            replayState = _replayState;
+            listeningChatIds = _listeningChatIds;
+            lastComputeStateTask = _lastComputeStateTask;
+            _lastComputeStateTask = CompleteAsync();
         }
-        else {
-            var replayState = await ChatAudioUI.ReplayState.Use(cancellationToken).ConfigureAwait(false);
-            if (replayState is not null) {
-                chatId = replayState.ChatId;
-                var player = await ChatAudioUI.GetReplayer(chatId, cancellationToken).ConfigureAwait(false);
-                if (player is not null) {
-                    var isPlaying = await player.Playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-                    if (isPlaying) {
+        return;
+
+        async Task CompleteAsync() {
+            await lastComputeStateTask.SilentAwait();
+
+            ChatId? chatId = null;
+            AudioWidgetMode? mode = null;
+            int extraChatCount = 0;
+            bool isPaused = false;
+
+            // Priority: Recording > Replaying > Listening
+            if (recordingChatId is not null) {
+                mode = AudioWidgetMode.Recording;
+                chatId = recordingChatId;
+            }
+            else if (ChatAudioUI is { } chatAudioUI) {
+                if (replayState is not null) {
+                    chatId = replayState.ChatId;
+                    var player = chatAudioUI.GetReplayerNonComputed(chatId);
+                    if (player?.Playback.IsPlaying.Value ?? false) {
                         mode = AudioWidgetMode.Replaying;
-                        isPaused = await player.Playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
+                        isPaused = player.Playback.IsPaused.Value;
                     }
                 }
-            }
-            else {
-                var listeningChatIds = await ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
-                if (!listeningChatIds.IsEmpty) {
+                else if (listeningChatIds is { IsEmpty: false }) {
                     chatId = listeningChatIds.First();
-                    var player = await ChatAudioUI.GetListener(chatId, cancellationToken).ConfigureAwait(false);
-                    if (player is not null) {
-                        var isPlaying = await player.Playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
-                        if (isPlaying) {
-                            mode = AudioWidgetMode.Listening;
-                            extraChatCount = listeningChatIds.Count - 1;
-                            isPaused = await player.Playback.IsPaused.Use(cancellationToken).ConfigureAwait(false);
-                        }
+                    var player = chatAudioUI.GetListenerNonComputed(chatId);
+                    if (player?.Playback.IsPlaying.Value ?? false) {
+                        mode = AudioWidgetMode.Listening;
+                        extraChatCount = listeningChatIds.Count - 1;
+                        isPaused = player.Playback.IsPaused.Value;
                     }
                 }
             }
+
+            var state = (AudioWidgetState?)null;
+            if (mode is { } vMode) {
+                var chatInfo = await GetChatInfo(chatId!).ConfigureAwait(false);
+                if (extraChatCount > 0)
+                    chatInfo = chatInfo with {
+                        ExtraChatCount = extraChatCount
+                    };
+                state = new AudioWidgetState(vMode, chatInfo, isPaused);
+            }
+            SetState(state);
         }
-
-        if (mode is not { } vMode)
-            return null;
-
-        var chatInfo = await GetChatInfo(chatId!).ConfigureAwait(false);
-        if (extraChatCount > 0)
-            chatInfo = chatInfo with { ExtraChatCount = extraChatCount };
-        return new AudioWidgetState(vMode, chatInfo, isPaused);
     }
 
     private async Task<AudioWidgetChatInfo> GetChatInfo(ChatId chatId)
@@ -145,30 +174,47 @@ public class AudioWidget : IDisposable
 
     private void InvokeReplayAction(ReplayState state, string actionName)
     {
+        var chatAudioUI = ChatAudioUI;
+        if (chatAudioUI is null)
+            return;
+
         switch (actionName) {
         case ActionNames.Stop:
-            ChatAudioUI.StopReplay();
+            chatAudioUI.StopReplay();
             break;
         case ActionNames.Pause:
-            ChatAudioUI.GetReplayerNonComputed(state.ChatId)?.Pause();
+            chatAudioUI
+                .GetReplayerNonComputed(state.ChatId)
+                ?.Pause();
             break;
         case ActionNames.Resume:
-            _ = ChatAudioUI.GetReplayerNonComputed(state.ChatId)?.Resume();
+            _ = chatAudioUI
+                .GetReplayerNonComputed(state.ChatId)
+                ?.Resume();
             break;
         }
     }
 
-    private void InvokeListeningAction(ChatId chatId, string actionName)
+    private void InvokeListeningAction(ImmutableHashSet<ChatId> listeningChatIds, string actionName)
     {
+        var chatAudioUI = ChatAudioUI;
+        if (chatAudioUI is null)
+            return;
+
+        var chatId = listeningChatIds.First();
         switch (actionName) {
         case ActionNames.Stop:
-            _ = ChatAudioUI.SetListeningState(chatId, false);
+            _ = chatAudioUI.SetListeningState(chatId, false);
             break;
         case ActionNames.Pause:
-            ChatAudioUI.GetListenerNonComputed(chatId)?.Pause();
+            chatAudioUI
+                .GetListenerNonComputed(chatId)
+                ?.Pause();
             break;
         case ActionNames.Resume:
-            _ = ChatAudioUI.GetListenerNonComputed(chatId)?.Resume();
+            _ = chatAudioUI
+                .GetListenerNonComputed(chatId)
+                ?.Resume();
             break;
         }
     }

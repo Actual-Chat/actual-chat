@@ -14,6 +14,7 @@ public sealed class ChatListener : ChatPlayer
     public override void Pause()
     {
         _ = Playback.Pause(CancellationToken.None);
+        Hub.AudioWidget.RecomputeState();
         ChatAudioUI!.TryReleaseAudioFocus();
     }
 
@@ -29,6 +30,7 @@ public sealed class ChatListener : ChatPlayer
             return;
 
         _ = Playback.Resume(default);
+        Hub.AudioWidget.RecomputeState();
     }
 
     protected override async Task Play(
