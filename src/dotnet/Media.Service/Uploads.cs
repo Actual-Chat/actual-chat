@@ -11,6 +11,7 @@ public class Uploads(IServiceProvider services) : IUploads
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IUploadsBackend Backend { get; } = services.GetRequiredService<IUploadsBackend>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
+    private IMediaProgressBackend MediaProgressBackend { get; } = services.GetRequiredService<IMediaProgressBackend>();
     private ICommander Commander { get; } = services.Commander();
     private FlowHub FlowHub => field ??= services.FlowHub();
 
@@ -89,6 +90,15 @@ public class Uploads(IServiceProvider services) : IUploads
             throw StandardError.NotFound<Media>();
         if (media.UserId != user.Id)
             throw StandardError.Unauthorized("You don't have permission to access this media.");
+
+        var mediaProgress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        if (mediaProgress != null
+            && mediaProgress.Stage == MediaStage.ServerProcessing
+            && !mediaProgress.ErrorMessage.IsNullOrEmpty()) {
+            // Reset media progress if there was an error reported.
+            var progress = new MediaProgress(mediaProgress.Id, 0, MediaStage.ServerProcessing, mediaProgress.StageProgress, "");
+            await Commander.Run(new MediaProgressBackend_Change(mediaProgress.Id, mediaProgress.Version, Change.Update(progress)), cancellationToken).ConfigureAwait(false);
+        }
 
         // Schedule the UploadProcessingFlow
         await FlowHub

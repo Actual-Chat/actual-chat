@@ -57,7 +57,7 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         var isFailed = uploadProgress.IsFailed;
         var details = (isReady, isFailed) switch {
             (true, _) => "",
-            (_, true) => "Failed: " + uploadProgress.ErrorMessage,
+            (_, true) => "Failed: " + (uploadProgress.ErrorMessage.NullIfEmpty() ?? stageInfo.Details),
             _ => stageInfo.Details,
         };
         return new AttachmentProgress(overallProgress, details) {

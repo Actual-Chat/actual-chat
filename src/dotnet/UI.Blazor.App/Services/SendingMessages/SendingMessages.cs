@@ -258,7 +258,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var attachmentProgress = await attachmentsState.GetProgress(attachment.Id, default).ConfigureAwait(false);
             if (attachmentProgress.IsReady || attachmentProgress.IsFailed)
                 continue;
-            await attachmentsController.ResumeUpload(attachment).ConfigureAwait(false);
+            attachmentsController.ResumeUpload(attachment);
         }
 
         foreach (var attachment in attachments) {
