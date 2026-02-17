@@ -35,12 +35,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
     }
 
     public bool Resume(string sessionId)
-    {
-        if (!_sessions.TryGetValue(sessionId, out var sessionHolder))
-            return false;
-
-        return sessionHolder.Session.Resume();
-    }
+        => _sessions.TryGetValue(sessionId, out var sessionHolder) && sessionHolder.Session.Resume();
 
     public async Task<UploadSession?> TryGetSession(string sessionId)
     {
