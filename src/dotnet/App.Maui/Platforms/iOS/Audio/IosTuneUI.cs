@@ -32,14 +32,15 @@ public sealed class IosTuneUI(UIHub hub) : MauiTuneUI(hub)
             return;
 
         try {
+            var cancellationToken = StopToken;
             var engine = AudioEngines.Tunes;
-            using var audioFileLease = await _audioFiles.Rent(soundName).ConfigureAwait(false);
+            using var audioFileLease = await _audioFiles.Rent(soundName, cancellationToken).ConfigureAwait(false);
             var audioFile = audioFileLease.Resource;
 
             using var node = engine.NewPlayer(audioFile.ProcessingFormat);
             engine.EnsureRunning();
             node.Play();
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var cts = cancellationToken.CreateLinkedTokenSource(TimeSpan.FromSeconds(10));
             await node.ScheduleFileAndWait(audioFile, cts.Token).ConfigureAwait(false);
         }
         catch (Exception e) {
