@@ -66,9 +66,12 @@ export class ChatEntryMessageInternalView {
             this.changeSize(height);
         }, 1500);
 
+        // Always initialize markupHeight to prevent jittering when returning to chat
+        this.markupHeight = this.messageMarkup.offsetHeight;
+
         if (isStreaming) {
-            this.markupHeight = this.messageMarkup.offsetHeight;
             this.messageMarkup.style.height = `${this.markupHeight}px`;
+            this.isHeightAuto = false;
             this.observerHandler(true);
         }
         if (!this.playableText && isStreaming) {
