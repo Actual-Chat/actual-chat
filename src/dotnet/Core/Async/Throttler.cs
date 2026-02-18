@@ -64,7 +64,7 @@ public class ThrottleWithTrailing<T>(MomentClock clock, TimeSpan interval, Actio
             if (!_hasPending)
                 return;
 
-            _lastInvokeTime = DateTime.UtcNow;
+            _lastInvokeTime = clock.Now;
 
             var value = _pendingItem!;
             _pendingItem = default;

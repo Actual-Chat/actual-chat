@@ -14,7 +14,7 @@ public sealed partial record MediaProgress(
 ) : IHasId<MediaId>, IHasVersion<long>
 {
     [IgnoreDataMember, MemoryPackIgnore]
-    public bool HasFailed = !ErrorMessage.IsNullOrEmpty();
+    public bool HasFailed => !ErrorMessage.IsNullOrEmpty();
 
     // This record relies on referential equality
     public bool Equals(MediaProgress? other) => ReferenceEquals(this, other);
