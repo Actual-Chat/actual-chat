@@ -34,14 +34,6 @@ export class Theme {
         });
     }
 
-    public static setSafeAreaColors(topColor: string | null, bottomColor: string | null): void {
-        const root = document.documentElement;
-        if (topColor) root.style.setProperty('--safe-area-top-bg', topColor);
-        else root.style.removeProperty('--safe-area-top-bg');
-        if (bottomColor) root.style.setProperty('--safe-area-bottom-bg', bottomColor);
-        else root.style.removeProperty('--safe-area-bottom-bg');
-    }
-
     public static set(theme: string | null): void {
         if (!availableThemes.find(x => x === theme))
             theme = null;

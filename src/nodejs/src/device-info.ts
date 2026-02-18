@@ -18,8 +18,6 @@ export const DeviceInfo = {
     isTouchCapable: (typeof window !== 'undefined'
         && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0))
         && window.matchMedia('(pointer: coarse)').matches),
-    hasSafeAreaTop: false,
-    hasSafeAreaBottom: false,
 
     init: function (): void {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -49,18 +47,5 @@ export const DeviceInfo = {
             classList.add('touch-capable');
         else
             classList.add('touch-incapable');
-
-        const probe = document.createElement('div');
-        probe.style.cssText = 'position:fixed;top:0;left:0;pointer-events:none;visibility:hidden;'
-            + 'padding-top:env(safe-area-inset-top,0px);'
-            + 'padding-bottom:env(safe-area-inset-bottom,0px);';
-        document.body.appendChild(probe);
-        const cs = getComputedStyle(probe);
-        DeviceInfo.hasSafeAreaTop = parseFloat(cs.paddingTop) > 0;
-        DeviceInfo.hasSafeAreaBottom = parseFloat(cs.paddingBottom) > 0;
-        document.body.removeChild(probe);
-
-        if (DeviceInfo.hasSafeAreaTop) classList.add('has-safe-area-top');
-        if (DeviceInfo.hasSafeAreaBottom) classList.add('has-safe-area-bottom');
     }
 };

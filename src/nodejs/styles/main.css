@@ -29,18 +29,18 @@ body {
     height: var(--safe-area-top);
     width: 100%;
     flex-shrink: 0;
-    background-color: var(--safe-area-top-bg, inherit);
 }
 .safe-area-bottom {
     height: var(--safe-area-bottom);
     width: 100%;
     flex-shrink: 0;
-    background-color: var(--safe-area-bottom-bg, inherit);
 }
 
-/* Hidden when no insets */
-body:not(.has-safe-area-top) .safe-area-top { display: none; }
-body:not(.has-safe-area-bottom) .safe-area-bottom { display: none; }
+/* Debug: force safe areas visible or hidden */
+body.force-safe-areas .safe-area-top { min-height: 34px; }
+body.force-safe-areas .safe-area-bottom { min-height: 34px; }
+body.hide-safe-areas .safe-area-top,
+body.hide-safe-areas .safe-area-bottom { display: none; }
 
 @keyframes blink_input_opacity_to_prevent_scrolling_when_focus {
     0% { opacity: 0; }

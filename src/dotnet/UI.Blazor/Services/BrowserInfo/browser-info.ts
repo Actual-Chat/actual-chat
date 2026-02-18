@@ -62,8 +62,6 @@ export class BrowserInfo {
             isTouchCapable: DeviceInfo.isTouchCapable,
             isWasmReady: isWasmReady,
             windowId: this.windowId,
-            hasSafeAreaTop: DeviceInfo.hasSafeAreaTop,
-            hasSafeAreaBottom: DeviceInfo.hasSafeAreaBottom,
         };
         infoLog?.log(`init:`, JSON.stringify(initResult), hostKind);
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
@@ -170,6 +168,4 @@ export interface InitResult {
     isTouchCapable: boolean;
     isWasmReady: boolean | null;
     windowId: string;
-    hasSafeAreaTop: boolean;
-    hasSafeAreaBottom: boolean;
 }
