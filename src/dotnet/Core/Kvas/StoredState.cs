@@ -38,6 +38,14 @@ public sealed class StoredState<[DynamicallyAccessedMembers(DynamicallyAccessedM
             Initialize(options);
     }
 
+    public override bool IsSynchronized(ComputedSynchronizer synchronizer)
+        => WhenRead.IsCompleted;
+
+    public override Task WhenSynchronized(ComputedSynchronizer synchronizer, CancellationToken cancellationToken = default)
+        => WhenRead.WaitAsync(cancellationToken);
+
+    // Protected methods
+
     protected override Computed CreateComputed()
     {
         var computed = base.CreateComputed();

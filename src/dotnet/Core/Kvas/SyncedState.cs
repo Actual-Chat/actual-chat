@@ -37,6 +37,7 @@ public static class SyncedState
         public static bool TryComputeSynchronously { get; set; } = ComputedState.DefaultOptions.TryComputeSynchronously;
         public static bool FlowExecutionContext { get; set; } = ComputedState.DefaultOptions.FlowExecutionContext;
         public static TimeSpan GracefulDisposeDelay { get; set; } = ComputedState.DefaultOptions.GracefulDisposeDelay;
+        public static TimeSpan PostReadSynchronizationTimeout { get; set; } = TimeSpan.FromMilliseconds(100);
     }
 
     public static readonly TimeSpan MaxDiscardedWriteAge = TimeSpan.FromSeconds(15);
@@ -133,6 +134,24 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
             var isWritten = await writeTask.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (isWritten)
                 return;
+        }
+    }
+
+    public override bool IsSynchronized(ComputedSynchronizer synchronizer)
+        => WhenFirstTimeRead.IsCompleted && ReadState.IsSynchronized(synchronizer);
+
+    public override Task WhenSynchronized(ComputedSynchronizer synchronizer, CancellationToken cancellationToken = default)
+    {
+        return IsSynchronized(synchronizer)
+            ? Task.CompletedTask
+            : CompleteAsync();
+
+        async Task CompleteAsync() {
+            await WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await ReadState.WhenSynchronized(synchronizer, cancellationToken).ConfigureAwait(false);
+            await ReadState.Snapshot.WhenUpdated()
+                .WaitAsync(Settings.PostReadSynchronizationTimeout, cancellationToken)
+                .SilentAwait(false);
         }
     }
 
@@ -318,6 +337,7 @@ public sealed class SyncedState<[DynamicallyAccessedMembers(DynamicallyAccessedM
         public bool TryComputeSynchronously { get; init; } = SyncedState.DefaultOptions.TryComputeSynchronously;
         public bool FlowExecutionContext { get; init; } = SyncedState.DefaultOptions.FlowExecutionContext;
         public TimeSpan GracefulDisposeDelay { get; init; } = SyncedState.DefaultOptions.GracefulDisposeDelay;
+        public TimeSpan PostReadSynchronizationTimeout { get; init; } = SyncedState.DefaultOptions.PostReadSynchronizationTimeout;
 
         internal abstract Task<T> Read(CancellationToken cancellationToken);
         internal abstract Task Write(T value, CancellationToken cancellationToken);

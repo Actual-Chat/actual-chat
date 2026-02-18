@@ -32,16 +32,11 @@ public sealed class BubbleUI : UIServiceBase<UIHub>
         await Clocks.Timeout(2)
             .ApplyTo(ct => AccountUI.OwnAccount.Computed.When(x => !x.IsGuestOrNull(), ct))
             .SilentAwait(false);
-
-        // Wait when settings are read
-        await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        await _settings.Computed.Synchronize().ConfigureAwait(false);
-
         // If there was a recent account change, add a delay to let invalidations propagate
         await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);
 
         // Re-synchronize after the invalidation delay to pick up user-specific data
-        await _settings.Computed.Synchronize().ConfigureAwait(false);
+        await _settings.WhenSynchronized().ConfigureAwait(false);
 
         // Delay first display to not interfere with permissions
         await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
