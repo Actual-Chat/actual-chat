@@ -1,10 +1,16 @@
 .reactions-menu {
-    @apply grid gap-1;
-    @apply w-full md:max-w-80 h-full max-h-30;
+    @apply flex-y gap-2;
+    @apply w-full md:min-w-72 md:max-w-80 h-full max-h-120;
     @apply p-2;
     @apply overflow-y-auto;
-    grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr));
     scrollbar-width: none;
+}
+.reactions-menu-group {
+    @apply flex flex-col gap-1;
+}
+.reactions-menu-group-items {
+    @apply grid gap-1;
+    grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr));
 }
 .reactions-menu-item {
     @apply flex-none flex items-center justify-center;
