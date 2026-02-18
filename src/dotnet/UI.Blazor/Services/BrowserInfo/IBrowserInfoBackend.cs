@@ -26,7 +26,9 @@ public interface IBrowserInfoBackend
         bool IsWebKit,
         bool IsTouchCapable,
         bool? IsWasmReady,
-        string WindowId);
+        string WindowId,
+        bool HasSafeAreaTop = false,
+        bool HasSafeAreaBottom = false);
 
     public sealed record ThemeInfo(
         string? Theme,

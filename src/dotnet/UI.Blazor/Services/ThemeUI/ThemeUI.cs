@@ -21,6 +21,9 @@ public class ThemeUI(UIHub hub) : UIWorkerBase<UIHub>(hub)
         return JS.InvokeVoidAsync(JSSetMethod, sTheme);
     }
 
+    public ValueTask SetSafeAreaColors(string? topColor, string? bottomColor)
+        => JS.InvokeVoidAsync($"{JSThemeClassName}.setSafeAreaColors", topColor, bottomColor);
+
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         await WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);

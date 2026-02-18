@@ -1,6 +1,4 @@
 using ActualChat.Maui;
-using Microsoft.Maui.Controls.PlatformConfiguration;
-using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
 
 namespace ActualChat.App.Maui;
 
@@ -14,12 +12,7 @@ public partial class MainPage : ContentPage
     {
         Interlocked.Exchange(ref _current, this);
 
-        On<iOS>().SetUseSafeArea(true);
-#if ANDROID
-        // .NET 10 changed ContentPage to default to SafeAreaEdges.None (edge-to-edge) on Android.
-        // Set to All to avoid system bars (status bar, navigation bar) overlapping content.
-        SafeAreaEdges = new SafeAreaEdges(SafeAreaRegions.All);
-#endif
+        // Safe areas handled by CSS via viewport-fit=cover and env(safe-area-inset-*)
         BackgroundColor = MauiSettings.SplashBackgroundColor;
         RecreateWebView();
 
