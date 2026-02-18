@@ -66,6 +66,7 @@
 @import './Components/RightPanel/right-panel.css';
 @import './Components/SearchPanel/search-panel.css';
 @import './Components/Settings/settings-modal.css';
+@import './Components/Settings/time-zone-editor-modal.css';
 @import './Components/Selection/selection-header.css';
 @import './Components/Share/share-modal.css';
 @import './Components/StatusBadge/status-badge.css';

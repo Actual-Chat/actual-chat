@@ -5,12 +5,6 @@
     var dataCollectionStatus = m.IsDataCollectionEnabled
         ? "Telemetry data collection is allowed."
         : "Disallowed";
-    var experimentalFeatureStatus = m.AreExperimentalFeaturesEnabled
-        ? "Early access features are enabled."
-        : "Disabled";
-    var incompleteUIStatus = m.IsIncompleteUIEnabled
-        ? "Early access UI is enabled."
-        : "Disabled";
 }
 
 @if (NativeAppSettings != null) {
@@ -36,62 +30,10 @@
     </p>
 </Tile>
 
-@if (m.IsAdmin) {
-    <TileTopic Topic="Early Access Features"/>
-    <Tile Class="early-access-features">
-        <TileItem Click="@OnExperimentalFeatureEnabledClick">
-            <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Enable early access features</Content>
-            <Caption>@experimentalFeatureStatus</Caption>
-            <Right>
-                <Toggle IsChecked="@m.AreExperimentalFeaturesEnabled"/>
-            </Right>
-        </TileItem>
-        <TileItem Click="@OnIncompleteUIEnabledClick">
-            <Icon><i class="icon-info text-2xl"></i></Icon>
-            <Content>Enable early access UI features</Content>
-            <Caption>@incompleteUIStatus</Caption>
-            <Right>
-                <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
-            </Right>
-        </TileItem>
-    </Tile>
-}
-<TileTopic Topic="Troubleshooting"/>
-<Tile>
-    <TileItem Click="@OnLogUIEnabledClick">
-        <Content>Enable log viewer</Content>
-        <Right>
-            <Toggle IsChecked="@m.IsLogUIEnabled"/>
-        </Right>
-    </TileItem>
-</Tile>
-
-<TileTopic Topic="Walk-through"/>
-<Button
-    Class="add-avatar-btn"
-    Click="@(OnRestartWalkThrough)">
-    <Icon><i class="icon-refresh text-xl"></i></Icon>
-    <Title>Restart walk-through</Title>
-</Button>
-
-@if (m.IsAdmin) {
-    <TileTopic Topic="Onboarding"/>
-    <Button
-        Class="add-avatar-btn"
-        Click="@(OnRestartOnboarding)">
-        <Icon><i class="icon-refresh text-xl"></i></Icon>
-        <Title>Restart onboarding</Title>
-    </Button>
-}
-
 @code {
     private INativeAppSettings? NativeAppSettings { get; set; }
 
-    private BubbleUI BubbleUI => Hub.BubbleUI;
-    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
-    private LogUI LogUI => Hub.LogUI;
 
     protected override void OnInitialized()
         => NativeAppSettings = Hub.Services.GetService<INativeAppSettings>();
@@ -101,24 +43,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await AccountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
-        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
-        return new(
-            settings.IsDataCollectionEnabled ?? false,
-            settings.AreExperimentalFeaturesEnabled ?? false,
-            settings.IsIncompleteUIEnabled ?? false,
-            account.IsAdmin,
-            appSettings.IsLogViewerEnabledOrDefault);
-    }
-
-    private async Task OnRestartWalkThrough() {
-        await BubbleUI.ResetSettings();
-        ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
-    }
-
-    private void OnRestartOnboarding() {
-        OnboardingUI.ResetSettings();
-        ToastUI.Show("Onboarding steps are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
+        return new(settings.IsDataCollectionEnabled ?? false);
     }
 
     private async Task OnEnableTelemetryClick() {
@@ -128,32 +53,10 @@
         await DataCollectionSettingsUI.UpdateState(settings.IsDataCollectionEnabled is true, CancellationToken.None);
     }
 
-    private Task OnExperimentalFeatureEnabledClick()
-        => AccountSettings.UserAppSettings().Update(x => x with {
-            AreExperimentalFeaturesEnabled = !(x.AreExperimentalFeaturesEnabled ?? false),
-        });
-
-    private Task OnIncompleteUIEnabledClick()
-        => AccountSettings.UserAppSettings().Update(x => x with {
-            IsIncompleteUIEnabled = !(x.IsIncompleteUIEnabled ?? false),
-        });
-
-    private async Task OnLogUIEnabledClick() {
-        await LocalSettings.LocalAppSettings().Update(x => x with {
-            IsLogViewerEnabled = !x.IsLogViewerEnabledOrDefault,
-        });
-        LogUI.IsEnabled.Invalidate();
-    }
-
     // Nested types
 
-    public record Model(
-        bool IsDataCollectionEnabled,
-        bool AreExperimentalFeaturesEnabled,
-        bool IsIncompleteUIEnabled,
-        bool IsAdmin,
-        bool IsLogUIEnabled)
+    public record Model(bool IsDataCollectionEnabled)
     {
-        public static readonly Model None = new(false, false, false, false, false);
+        public static readonly Model None = new(false);
     }
 }
