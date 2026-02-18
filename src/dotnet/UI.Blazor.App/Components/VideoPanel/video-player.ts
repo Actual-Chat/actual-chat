@@ -39,7 +39,6 @@ export class VideoPlayer {
 
     // SignalR pull subscription
     private pullSubscription: signalR.ISubscription<Uint8Array[]> | null = null;
-    private sessionToken = '';
 
     // Frame pacing state
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
@@ -376,13 +375,11 @@ export class VideoPlayer {
         this.isPlaying = true;
         debugLog?.log(`VideoPlayer started for stream ${this.streamId}`);
 
-        // Start latency report timer (every 5 seconds)
-        this.latencyReportTimer = setInterval(() => this.reportLatencyTick(), 5000);
-
         // Report initial playing state
         void this.reportPlaying(0, true);
     }
 
+    /** Called by Blazor */
     public async startPull(streamId: string, skipToMs: number): Promise<void> {
         if (!this.isPlaying) {
             warnLog?.log('startPull called but player not started');
@@ -395,12 +392,13 @@ export class VideoPlayer {
 
         const connection = VideoStreamer.connection!;
         const sessionToken = SessionTokens.current;
-        this.sessionToken = sessionToken;
-
         debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms`);
 
         const streamResult = connection.stream<Uint8Array[]>(
             'GetVideo', sessionToken, streamId, skipToMs);
+
+        // Start latency report timer now that we're receiving frames
+        this.latencyReportTimer ??= setInterval(() => this.reportLatencyTick(), 5000);
 
         this.pullSubscription = streamResult.subscribe({
             next: (batch: Uint8Array[]) => {
@@ -501,9 +499,10 @@ export class VideoPlayer {
 
         // Report latency via SignalR hub (same connection as GetVideo) so peerId matches
         const connection = VideoStreamer.connection;
-        if (connection && this.sessionToken) {
+        const sessionToken = SessionTokens.current;
+        if (connection) {
             try {
-                void connection.invoke('ReportVideoLatency', this.sessionToken, this.streamId, streamOffsetMs);
+                void connection.invoke('ReportVideoLatency', sessionToken, this.streamId, streamOffsetMs);
             } catch (e) {
                 warnLog?.log('reportLatencyTick error:', e);
             }
