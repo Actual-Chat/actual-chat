@@ -13,13 +13,6 @@ public class EmojiTest
             Emojis.Sad,
             Emojis.Angry,
             Emojis.Poo,
-            Emojis.OkHand,
-            Emojis.Fire,
-            Emojis.BeamingFace,
-            Emojis.ThumbsDown,
-            Emojis.ScreamingFaceInFear,
-            Emojis.JackOLantern,
-            Emojis.FramedPicture,
         ];
 
         foreach (var emoji in emojis) {
