@@ -39,6 +39,7 @@ export class VideoPlayer {
 
     // SignalR pull subscription
     private pullSubscription: signalR.ISubscription<Uint8Array[]> | null = null;
+    private sessionToken = '';
 
     // Frame pacing state
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
@@ -46,9 +47,7 @@ export class VideoPlayer {
     private renderKey: string;
 
     // Latency measurement
-    private lastRenderedOffsetMs = 0;   // offset of the latest frame fed to pushFrame()
-    private firstFrameOffsetMs = 0;     // absolute offset of the first frame received (ms)
-    private skipToMs = 0;               // skipTo passed to startPull (ms from stream start)
+    private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
     private latencyReportTimer: ReturnType<typeof setInterval> | null = null;
 
     /** Creates a new VideoPlayer instance for Blazor interop */
@@ -360,6 +359,9 @@ export class VideoPlayer {
                 });
 
                 this.decoder.decode(chunk);
+
+                // Track the latest decoded frame offset for latency reporting
+                this.lastRenderedOffsetMs = timestampMs;
             } catch (error) {
                 errorLog?.log('Error decoding chunk:', error);
             }
@@ -387,14 +389,13 @@ export class VideoPlayer {
             return;
         }
 
-        this.skipToMs = skipToMs;
-
         const hubUrl = new URL('/api/hub/streams', window.location.origin).toString();
         VideoStreamer.init(hubUrl);
         await VideoStreamer.ensureConnected();
 
         const connection = VideoStreamer.connection!;
         const sessionToken = SessionTokens.current;
+        this.sessionToken = sessionToken;
 
         debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms`);
 
@@ -433,11 +434,6 @@ export class VideoPlayer {
             const offsetMs = offset / 10000;
             const durationMs = duration / 10000;
 
-            // Track the latest frame offset for latency reporting
-            if (this.firstFrameOffsetMs === 0)
-                this.firstFrameOffsetMs = offsetMs;
-            this.lastRenderedOffsetMs = offsetMs;
-
             this.pushFrame(data, offsetMs, durationMs, isKeyFrame, description);
         } catch (error) {
             errorLog?.log('Error deserializing received frame:', error);
@@ -456,8 +452,7 @@ export class VideoPlayer {
 
         this.isPlaying = false;
         this.playbackStartTime = 0;
-        this.firstFrameOffsetMs = 0;
-        this.skipToMs = 0;
+        this.lastRenderedOffsetMs = 0;
 
         // Stop latency reporting
         if (this.latencyReportTimer !== null) {
@@ -493,16 +488,25 @@ export class VideoPlayer {
     }
 
     private reportLatencyTick(): void {
-        if (!this.isPlaying || this.lastRenderedOffsetMs <= 0 || this.firstFrameOffsetMs <= 0) return;
-        // Convert absolute frame offset to offset-from-stream-start:
-        // skipToMs = how far into the stream we joined
-        // (lastRendered - firstFrame) = playback progress since we started receiving
-        const streamOffsetMs = this.skipToMs + (this.lastRenderedOffsetMs - this.firstFrameOffsetMs);
-        debugLog?.log(`reportLatencyTick: streamId=${this.streamId}, streamOffsetMs=${streamOffsetMs.toFixed(0)}`);
-        try {
-            void this.blazorRef.invokeMethodAsync('OnLatencyReport', streamOffsetMs);
-        } catch (e) {
-            warnLog?.log('reportLatencyTick error:', e);
+        if (!this.isPlaying)
+            return;
+
+        if (this.lastRenderedOffsetMs <= 0) {
+            warnLog?.log(`reportLatencyTick: skip — lastRendered=${this.lastRenderedOffsetMs.toFixed(0)}`);
+            return;
+        }
+        // lastRenderedOffsetMs is already 0-based from stream start (server frame offset)
+        const streamOffsetMs = this.lastRenderedOffsetMs;
+        warnLog?.log(`reportLatencyTick: streamId=${this.streamId}, streamOffsetMs=${streamOffsetMs.toFixed(0)}`);
+
+        // Report latency via SignalR hub (same connection as GetVideo) so peerId matches
+        const connection = VideoStreamer.connection;
+        if (connection && this.sessionToken) {
+            try {
+                void connection.invoke('ReportVideoLatency', this.sessionToken, this.streamId, streamOffsetMs);
+            } catch (e) {
+                warnLog?.log('reportLatencyTick error:', e);
+            }
         }
     }
 

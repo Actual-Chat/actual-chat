@@ -35,5 +35,5 @@ public interface ILiveVideoBackend : IComputeService, IBackendService
 
     Task PushVideo(VideoRecord record, RpcStream<VideoFrame> videoStream, CancellationToken cancellationToken);
 
-    Task ReportPeerLatency(StreamId streamId, string peerId, TimeSpan latency, CancellationToken cancellationToken = default);
+    Task ReportPeerLatency(StreamId streamId, string peerId, double streamOffsetMs, CancellationToken cancellationToken = default);
 }

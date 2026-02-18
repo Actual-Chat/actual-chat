@@ -173,6 +173,9 @@ public partial class LiveVideoBackend
         public bool HasStream(StreamId streamId)
             => _streams.ContainsKey(streamId);
 
+        public VideoStreamInfo? GetStreamInfo(StreamId streamId)
+            => _streams.GetValueOrDefault(streamId);
+
         public AuthorId[] GetStreamingAuthorIds()
         {
             if (_streams.IsEmpty)

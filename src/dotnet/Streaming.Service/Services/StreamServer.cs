@@ -68,15 +68,6 @@ public class StreamServer(IServiceProvider services) : IStreamServer
         return Task.CompletedTask;
     }
 
-    public Task ReportVideoLatency(string streamId, TimeSpan latency, CancellationToken cancellationToken)
-    {
-        AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
-        var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
-        Log.LogDebug("ReportVideoLatency: StreamId={StreamId}, PeerId={PeerId}, LatencyMs={LatencyMs:F0}",
-            streamId, peerId, latency.TotalMilliseconds);
-        return LiveVideoBackend.ReportPeerLatency(StreamId.Parse(streamId), peerId, latency, cancellationToken);
-    }
-
     public async Task<RpcStream<VideoQualityPreset>?> ObserveStreamQualityRequests(string streamId, CancellationToken cancellationToken)
     {
         Log.LogInformation("ObserveStreamQualityRequests: StreamId={StreamId} subscription starting", streamId);
