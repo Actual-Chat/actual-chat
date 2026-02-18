@@ -19,6 +19,7 @@ public static class MauiSettings
     public const bool AreDevToolsEnabled = false;
 #endif
 #endif
+    public const string AppScheme = IsDevApp ? "voxt-dev" : "voxt";
     public const string DefaultHost =
         UseLocalhost
             ? Constants.Hosts.LocalVoxt :

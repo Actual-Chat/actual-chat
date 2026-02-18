@@ -5,6 +5,8 @@ namespace ActualChat.App.Maui.IosShareExt.Components;
 
 public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
 {
+    private ShareUI ShareUI => Hub.ShareUI;
+
     protected override void OnInitialRender(Model model)
     {
         TranslatesAutoresizingMaskIntoConstraints = false;
@@ -57,7 +59,7 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
         signInButton.SetTitleColor(UIColor.White, UIControlState.Normal);
         signInButton.BackgroundColor = new UIColor(red: 0.27f, green: 0.42f, blue: 1.0f, alpha: 1.0f);
         signInButton.Layer.CornerRadius = 12;
-        signInButton.TouchUpInside += Safe(OpenMainApp);
+        signInButton.TouchUpInside += Safe(ShareUI.OpenMainApp);
 
         // Close button
         var closeButton = UIButton.FromType(UIButtonType.System);
@@ -96,13 +98,6 @@ public class SignInView(IosHub hub) : ComputedStateView<SignInView.Model>(hub)
 
     protected override Task<Model> ComputeState(CancellationToken cancellationToken)
         => Task.FromResult(new Model());
-
-    private async Task OpenMainApp(CancellationToken cancellationToken)
-    {
-        var url = new NSUrl("voxt://");
-        await UIKitExt.OpenUrl(url).ConfigureAwait(false);
-        await UIKitExt.CloseApp(cancellationToken).ConfigureAwait(false);
-    }
 
     // Nested types
     public sealed record Model;

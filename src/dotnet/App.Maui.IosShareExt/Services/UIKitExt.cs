@@ -19,8 +19,21 @@ public static class UIKitExt
             generator.NotificationOccurred(UINotificationFeedbackType.Success);
         });
 
-    public static Task OpenUrl(NSUrl url)
-        => MainThread.InvokeOnMainThreadAsync(() => ExtensionContext.OpenUrlAsync(url));
+    // NSExtensionContext.OpenUrl is not available in share extensions.
+    // Walk the responder chain to reach UIApplication.
+    public static Task OpenUrl(NSUrl url, CancellationToken cancellationToken = default)
+        => MainThread.InvokeOnMainThreadAsync(() => {
+                var selector = new ObjCRuntime.Selector("openURL:");
+                UIResponder? responder = Platform.GetCurrentUIViewController();
+                while (responder is not null) {
+                    if (responder.RespondsToSelector(selector)) {
+                        responder.PerformSelector(selector, url);
+                        return;
+                    }
+                    responder = responder.NextResponder;
+                }
+            })
+            .WaitAsync(cancellationToken);
 
     public static Task<ChatId?> GetSuggestedRecipient()
         => MainThread.InvokeOnMainThreadAsync(GetSuggestedRecipientUnsafe);

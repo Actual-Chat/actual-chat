@@ -1,6 +1,7 @@
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Chat;
 using ActualChat.Contacts;
+using ActualChat.Maui;
 using ActualChat.Media;
 using ActualChat.Search;
 using ActualChat.UI.App.Services;
@@ -134,6 +135,14 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     {
         _step.Value = ShareStep.Uploading;
         _sendWorker.Start(true);
+    }
+
+    public async Task OpenMainApp(CancellationToken cancellationToken)
+    {
+        Log.LogInformation("Opening main app");
+        await UIKitExt.OpenUrl(new NSUrl($"{MauiSettings.AppScheme}://"), cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Main app opened");
+        await UIKitExt.CloseApp(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task CancelUploading(CancellationToken cancellationToken)
