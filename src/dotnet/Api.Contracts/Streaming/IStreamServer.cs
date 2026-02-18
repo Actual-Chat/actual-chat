@@ -13,6 +13,5 @@ public interface IStreamServer : IRpcService
     Task<RpcStream<VideoFrame>?> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
     Task<RpcStream<TranscriptDiff>?> GetTranscript(string streamId, CancellationToken cancellationToken);
     Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken);
-    Task ReportVideoLatency(string streamId, TimeSpan latency, CancellationToken cancellationToken);
     Task<RpcStream<VideoQualityPreset>?> ObserveStreamQualityRequests(string streamId, CancellationToken cancellationToken);
 }

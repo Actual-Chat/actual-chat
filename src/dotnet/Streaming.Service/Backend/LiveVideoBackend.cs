@@ -190,20 +190,26 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend, 
         }
     }
 
-    public virtual Task ReportPeerLatency(StreamId streamId, string peerId, TimeSpan latency, CancellationToken cancellationToken = default)
+    public virtual Task ReportPeerLatency(StreamId streamId, string peerId, double streamOffsetMs, CancellationToken cancellationToken = default)
     {
-        AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
-        Log.LogDebug("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, LatencyMs={LatencyMs:F0}",
-            streamId, peerId, latency.TotalMilliseconds);
-        var found = false;
-        foreach (var (_, chatState) in _chatStates)
-            if (chatState.HasStream(streamId)) {
-                chatState.RecordPeerLatency(streamId, peerId, (float)latency.TotalMilliseconds);
-                found = true;
-                break;
+        foreach (var (_, chatState) in _chatStates) {
+            var streamInfo = chatState.GetStreamInfo(streamId);
+            if (streamInfo != null) {
+                var latency = Clocks.ServerClock.Now - (streamInfo.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
+                if (latency > TimeSpan.Zero) {
+                    AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
+                    Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}",
+                        streamId, peerId, streamOffsetMs, latency.TotalMilliseconds);
+                    chatState.RecordPeerLatency(streamId, peerId, (float)latency.TotalMilliseconds);
+                }
+                else {
+                    Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
+                        streamId, peerId, latency.TotalMilliseconds);
+                }
+                return Task.CompletedTask;
             }
-        if (!found)
-            Log.LogWarning("ReportPeerLatency: No ChatState owns StreamId={StreamId}", streamId);
+        }
+        Log.LogWarning("ReportPeerLatency: No ChatState owns StreamId={StreamId}", streamId);
         return Task.CompletedTask;
     }
 

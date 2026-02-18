@@ -109,9 +109,6 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
         => StreamServer.ReportAudioLatency(latency, cancellationToken);
 
-    public Task ReportVideoLatency(string streamId, TimeSpan latency, CancellationToken cancellationToken)
-        => StreamServer.ReportVideoLatency(streamId, latency, cancellationToken);
-
     public async IAsyncEnumerable<VideoQualityPreset> ObserveStreamQualityRequests(
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)

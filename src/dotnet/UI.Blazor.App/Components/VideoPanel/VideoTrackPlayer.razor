@@ -33,7 +33,6 @@
 
     private ILogger Log => field ??= Services.LogFor<VideoTrackPlayer>();
     private IJSRuntime JS => field ??= Services.GetRequiredService<IJSRuntime>();
-    private IStreamClient StreamClient => field ??= Services.GetRequiredService<IStreamClient>();
     private ILiveVideoStreams LiveVideoStreams => field ??= Services.GetRequiredService<ILiveVideoStreams>();
     private Session Session => field ??= Services.Session();
 
@@ -92,18 +91,6 @@
         DebugLog?.LogDebug(
             "[VideoTrackPlayer {StreamId}] OnPlaying: {Offset}, buffer: {IsBufferLow}",
             StreamInfo.StreamId, offset, isBufferLow ? "low" : "ok");
-        return Task.CompletedTask;
-    }
-
-    [JSInvokable]
-    public Task OnLatencyReport(double playbackOffsetMs)
-    {
-        var clocks = Services.Clocks();
-        var latency = clocks.ServerClock.Now - (StreamInfo.StartedAt + TimeSpan.FromMilliseconds(playbackOffsetMs));
-        DebugLog?.LogDebug("OnLatencyReport: StreamId={StreamId}, playbackOffsetMs={OffsetMs:F0}, computedLatency={LatencyMs:F0}ms",
-            StreamInfo.StreamId, playbackOffsetMs, latency.TotalMilliseconds);
-        if (latency > TimeSpan.Zero)
-            _ = StreamClient.ReportVideoLatency(StreamInfo.StreamId.Value, latency, CancellationToken.None);
         return Task.CompletedTask;
     }
 

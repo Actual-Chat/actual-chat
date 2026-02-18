@@ -73,9 +73,9 @@ function resizeFrame(frame: VideoFrame, targetWidth: number, targetHeight: numbe
     // Draw frame centered with aspect ratio preserved
     resizeCtx.drawImage(frame, offsetX, offsetY, drawWidth, drawHeight);
 
-    // Create new VideoFrame from canvas
+    // Create new VideoFrame from canvas (timestamp normalization happens in encodeFrame)
     const newFrame = new VideoFrame(resizeCanvas, {
-        timestamp: frame.timestamp - (startTimestamp ?? 0),
+        timestamp: frame.timestamp,
         duration: frame.duration ?? undefined
     });
 
@@ -215,7 +215,19 @@ const serverImpl: EncoderWorker = {
             }
 
             // Resize frame if dimensions don't match encoder configuration
-            const processedFrame = resizeFrame(frame, encoderConfig.width, encoderConfig.height);
+            let processedFrame = resizeFrame(frame, encoderConfig.width, encoderConfig.height);
+
+            // Normalize timestamp to 0-based (relative to first frame).
+            // resizeFrame may or may not return a new frame, so we always normalize here.
+            const normalizedTs = processedFrame.timestamp - startTimestamp!;
+            if (normalizedTs !== processedFrame.timestamp) {
+                const normalized = new VideoFrame(processedFrame, {
+                    timestamp: normalizedTs,
+                    duration: processedFrame.duration ?? undefined,
+                });
+                processedFrame.close();
+                processedFrame = normalized;
+            }
 
             // Encode frame (keyframe every 30 frames for 1 second at 30fps)
             const isKeyFrame = frameCount % 30 === 0;
@@ -223,7 +235,7 @@ const serverImpl: EncoderWorker = {
             frameCount++;
         } catch (error) {
             console.error('[Encoder Worker] Error processing frame:', error);
-            frame.close();
+            try { frame.close(); } catch { /* already closed */ }
             throw error; // RPC automatically propagates errors
         }
     },

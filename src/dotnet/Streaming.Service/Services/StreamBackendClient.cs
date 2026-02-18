@@ -125,12 +125,6 @@ public sealed class StreamBackendClient : IStreamClient
         return Task.CompletedTask;
     }
 
-    public Task ReportVideoLatency(string streamId, TimeSpan latency, CancellationToken cancellationToken)
-    {
-        AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
-        return Task.CompletedTask;
-    }
-
     public async IAsyncEnumerable<VideoQualityPreset> ObserveStreamQualityRequests(
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
