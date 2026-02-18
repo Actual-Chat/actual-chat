@@ -28,6 +28,7 @@ import {
 } from '../video-streamer';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
+import { SessionTokens } from '../../../../UI.Blazor/Services/Security/session-tokens';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
@@ -58,7 +59,6 @@ export interface PipelineConfig {
    */
   streaming?: {
     enabled: boolean;
-    sessionToken: string;
     chatId: string;
   };
 }
@@ -211,8 +211,9 @@ export class VideoPipeline implements IVideoPipeline {
                         height: this.config.encoderConfig.height,
                         codecSettings: this.codecSettings,
                     };
+                    const sessionToken = SessionTokens.current;
                     this.videoStream = VideoStreamer.addStream(
-                        this.config.streaming.sessionToken,
+                        sessionToken,
                         this.config.streaming.chatId,
                         streamConfig
                     );

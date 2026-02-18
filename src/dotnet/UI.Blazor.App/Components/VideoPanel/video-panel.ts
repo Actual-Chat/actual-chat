@@ -15,7 +15,6 @@ export class VideoPanel {
     private readonly canvas: HTMLCanvasElement | null = null;
     private readonly canvasCtx: CanvasRenderingContext2D | null = null;
     private readonly expandBtn: HTMLElement | null = null;
-    private readonly recordBtn: HTMLElement | null = null;
     private parentElement: HTMLElement | null = null;
     private disposed$: Subject<void> = new Subject<void>();
 
@@ -25,8 +24,7 @@ export class VideoPanel {
     private animationFrameId: number | null = null;
     private previewTrack: MediaStreamTrack | null = null;
     private selectedCameraDeviceId: string | null = null;
-    private sessionToken: string | null = null;
-    private chatId: string | null = null;
+    private chatId: string = '';
     private isBlurEnabled = false;
 
     static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
@@ -54,14 +52,6 @@ export class VideoPanel {
             fromEvent(this.expandBtn, 'click')
                 .pipe(takeUntil(this.disposed$))
                 .subscribe(() => this.onExpandBtnClick());
-        }
-
-        // Record button
-        this.recordBtn = this.videoPanel.querySelector('.record-btn');
-        if (this.recordBtn) {
-            fromEvent(this.recordBtn, 'click')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => void this.onRecordBtnClick());
         }
 
         // Escape key handler
@@ -106,15 +96,6 @@ export class VideoPanel {
     }
 
     /**
-     * Update session context for streaming
-     */
-    public setSessionContext(chatId: string, sessionToken: string): void {
-        this.chatId = chatId;
-        this.sessionToken = sessionToken;
-        infoLog?.log('Session context updated for video streaming:', { chatId });
-    }
-
-    /**
      * Set whether background blur should be enabled when recording starts
      */
     public setBlurEnabled(enabled: boolean): void {
@@ -133,29 +114,14 @@ export class VideoPanel {
     }
 
     /**
-     * Toggle recording state
-     */
-    public async toggleRecording(): Promise<void> {
-        if (this.isRecording) {
-            await this.stopRecording();
-        } else {
-            await this.startRecording();
-        }
-    }
-
-    /**
      * Initialize and start video recording
      */
-    public async startRecording(): Promise<void> {
-        console.warn('[VideoPanel] startRecording called, isRecording:', this.isRecording, 'sessionToken:', !!this.sessionToken, 'chatId:', this.chatId);
+    public async startRecording(chatId: string): Promise<void> {
+        this.chatId = chatId;
+        console.warn('[VideoPanel] startRecording called, isRecording:', this.isRecording, 'chatId:', this.chatId);
         if (this.isRecording) {
             warnLog?.log('Already recording');
             return;
-        }
-
-        if (!this.sessionToken || !this.chatId) {
-            console.error('[VideoPanel] Missing session context!', { sessionToken: !!this.sessionToken, chatId: this.chatId });
-            throw new Error('Missing session context for video streaming');
         }
 
         infoLog?.log('Starting video recording...');
@@ -180,7 +146,6 @@ export class VideoPanel {
                 // Enable streaming to server for real-time viewing
                 streaming: {
                     enabled: true,
-                    sessionToken: this.sessionToken,
                     chatId: this.chatId,
                 }
             };
@@ -233,7 +198,6 @@ export class VideoPanel {
             // Set isRecording BEFORE starting the render loop — the render loop
             // checks this flag and exits permanently if it's false on the first frame.
             this.isRecording = true;
-            this.updateRecordButtonState();
 
             // Start rendering preview AFTER isRecording is set
             console.warn('[VideoPanel] Starting preview rendering, canvas:', !!this.canvas, 'canvasCtx:', !!this.canvasCtx);
@@ -263,7 +227,6 @@ export class VideoPanel {
             await this.recordingService.stop();
             this.stopRenderingStream();
             this.isRecording = false;
-            this.updateRecordButtonState();
 
             // Notify Blazor
             await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
@@ -371,28 +334,6 @@ export class VideoPanel {
     private onRecorderError(error: Error): void {
         errorLog?.log('Recorder error:', error);
         void this.blazorRef.invokeMethodAsync('OnRecordingError', error.message);
-    }
-
-    /**
-     * Update record button visual state
-     */
-    private updateRecordButtonState(): void {
-        if (!this.recordBtn) return;
-
-        if (this.isRecording) {
-            this.recordBtn.classList.add('recording');
-            this.recordBtn.setAttribute('aria-label', 'Stop recording');
-        } else {
-            this.recordBtn.classList.remove('recording');
-            this.recordBtn.setAttribute('aria-label', 'Start recording');
-        }
-    }
-
-    /**
-     * Handle record button click
-     */
-    private async onRecordBtnClick(): Promise<void> {
-        await this.toggleRecording();
     }
 
     public dispose() {

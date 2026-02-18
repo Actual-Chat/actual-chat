@@ -30,7 +30,6 @@ export interface RecordingConfig {
   // Streaming settings
   streaming?: {
     enabled: boolean;
-    sessionToken: string;
     chatId: string;
   };
   // Background blur settings
@@ -384,7 +383,6 @@ export class RecordingService extends EventTarget {
         if (this.config.streaming?.enabled) {
             pipelineConfig.streaming = {
                 enabled: true,
-                sessionToken: this.config.streaming.sessionToken,
                 chatId: this.config.streaming.chatId,
             };
             infoLog?.log('Streaming enabled to chat', this.config.streaming.chatId);
