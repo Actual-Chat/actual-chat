@@ -108,4 +108,21 @@ public class StreamClient(IServiceProvider services) : IStreamClient
 
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
         => StreamServer.ReportAudioLatency(latency, cancellationToken);
+
+    public Task ReportVideoLatency(string streamId, TimeSpan latency, CancellationToken cancellationToken)
+        => StreamServer.ReportVideoLatency(streamId, latency, cancellationToken);
+
+    public async IAsyncEnumerable<VideoQualityPreset> ObserveStreamQualityRequests(
+        string streamId,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var rpcStream = await StreamServer.ObserveStreamQualityRequests(streamId, cancellationToken).ConfigureAwait(false);
+        if (rpcStream == null)
+            yield break;
+
+        var stream = rpcStream
+            .SuppressException<VideoQualityPreset, RpcReconnectFailedException>(cancellationToken);
+        await foreach (var preset in stream.ConfigureAwait(false))
+            yield return preset;
+    }
 }

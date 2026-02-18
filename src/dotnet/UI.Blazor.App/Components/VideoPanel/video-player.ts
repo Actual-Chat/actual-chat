@@ -45,6 +45,12 @@ export class VideoPlayer {
     private firstFrameTimestamp = 0;    // timestamp of first decoded frame (microseconds)
     private renderKey: string;
 
+    // Latency measurement
+    private lastRenderedOffsetMs = 0;   // offset of the latest frame fed to pushFrame()
+    private firstFrameOffsetMs = 0;     // absolute offset of the first frame received (ms)
+    private skipToMs = 0;               // skipTo passed to startPull (ms from stream start)
+    private latencyReportTimer: ReturnType<typeof setInterval> | null = null;
+
     /** Creates a new VideoPlayer instance for Blazor interop */
     static create(
         canvas: HTMLCanvasElement,
@@ -368,6 +374,9 @@ export class VideoPlayer {
         this.isPlaying = true;
         debugLog?.log(`VideoPlayer started for stream ${this.streamId}`);
 
+        // Start latency report timer (every 5 seconds)
+        this.latencyReportTimer = setInterval(() => this.reportLatencyTick(), 5000);
+
         // Report initial playing state
         void this.reportPlaying(0, true);
     }
@@ -377,6 +386,8 @@ export class VideoPlayer {
             warnLog?.log('startPull called but player not started');
             return;
         }
+
+        this.skipToMs = skipToMs;
 
         const hubUrl = new URL('/api/hub/streams', window.location.origin).toString();
         VideoStreamer.init(hubUrl);
@@ -422,6 +433,11 @@ export class VideoPlayer {
             const offsetMs = offset / 10000;
             const durationMs = duration / 10000;
 
+            // Track the latest frame offset for latency reporting
+            if (this.firstFrameOffsetMs === 0)
+                this.firstFrameOffsetMs = offsetMs;
+            this.lastRenderedOffsetMs = offsetMs;
+
             this.pushFrame(data, offsetMs, durationMs, isKeyFrame, description);
         } catch (error) {
             errorLog?.log('Error deserializing received frame:', error);
@@ -440,6 +456,15 @@ export class VideoPlayer {
 
         this.isPlaying = false;
         this.playbackStartTime = 0;
+        this.firstFrameOffsetMs = 0;
+        this.skipToMs = 0;
+
+        // Stop latency reporting
+        if (this.latencyReportTimer !== null) {
+            clearInterval(this.latencyReportTimer);
+            this.latencyReportTimer = null;
+        }
+
         this.stopPull();
 
         // Close all pending frames
@@ -465,6 +490,20 @@ export class VideoPlayer {
         }
 
         debugLog?.log(`VideoPlayer stopped for stream ${this.streamId}`);
+    }
+
+    private reportLatencyTick(): void {
+        if (!this.isPlaying || this.lastRenderedOffsetMs <= 0 || this.firstFrameOffsetMs <= 0) return;
+        // Convert absolute frame offset to offset-from-stream-start:
+        // skipToMs = how far into the stream we joined
+        // (lastRendered - firstFrame) = playback progress since we started receiving
+        const streamOffsetMs = this.skipToMs + (this.lastRenderedOffsetMs - this.firstFrameOffsetMs);
+        debugLog?.log(`reportLatencyTick: streamId=${this.streamId}, streamOffsetMs=${streamOffsetMs.toFixed(0)}`);
+        try {
+            void this.blazorRef.invokeMethodAsync('OnLatencyReport', streamOffsetMs);
+        } catch (e) {
+            warnLog?.log('reportLatencyTick error:', e);
+        }
     }
 
     private async reportPlaying(offsetMs: number, isBufferLow: boolean): Promise<void> {

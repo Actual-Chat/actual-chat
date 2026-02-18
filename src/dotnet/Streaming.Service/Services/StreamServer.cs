@@ -2,6 +2,7 @@ using ActualChat.Diagnostics;
 using ActualChat.Transcription;
 using ActualChat.Video;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Streaming.Services;
 
@@ -20,9 +21,10 @@ public class StreamServer(IServiceProvider services) : IStreamServer
 
     public async Task<RpcStream<VideoFrame>?> GetVideo(string streamId, TimeSpan skipTo, CancellationToken cancellationToken)
     {
+        var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
         RpcStream<VideoFrame>? frames = null;
         try {
-            frames = await LiveVideoBackend.GetVideo(StreamId.Parse(streamId), skipTo, cancellationToken).ConfigureAwait(false);
+            frames = await LiveVideoBackend.GetVideo(StreamId.Parse(streamId), skipTo, peerId, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (RpcReconnectFailedException) { }
@@ -64,5 +66,23 @@ public class StreamServer(IServiceProvider services) : IStreamServer
     {
         AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);
         return Task.CompletedTask;
+    }
+
+    public Task ReportVideoLatency(string streamId, TimeSpan latency, CancellationToken cancellationToken)
+    {
+        AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
+        var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
+        Log.LogDebug("ReportVideoLatency: StreamId={StreamId}, PeerId={PeerId}, LatencyMs={LatencyMs:F0}",
+            streamId, peerId, latency.TotalMilliseconds);
+        return LiveVideoBackend.ReportPeerLatency(StreamId.Parse(streamId), peerId, latency, cancellationToken);
+    }
+
+    public async Task<RpcStream<VideoQualityPreset>?> ObserveStreamQualityRequests(string streamId, CancellationToken cancellationToken)
+    {
+        Log.LogInformation("ObserveStreamQualityRequests: StreamId={StreamId} subscription starting", streamId);
+        var rpcStream = await LiveVideoBackend
+            .ObserveStreamQualityRequests(StreamId.Parse(streamId), cancellationToken)
+            .ConfigureAwait(false);
+        return RpcStream.New((IAsyncEnumerable<VideoQualityPreset>)rpcStream);
     }
 }

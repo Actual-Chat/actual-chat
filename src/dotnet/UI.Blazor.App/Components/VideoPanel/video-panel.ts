@@ -133,6 +133,17 @@ export class VideoPanel {
     }
 
     /**
+     * Toggle recording state
+     */
+    public async toggleRecording(): Promise<void> {
+        if (this.isRecording) {
+            await this.stopRecording();
+        } else {
+            await this.startRecording();
+        }
+    }
+
+    /**
      * Initialize and start video recording
      */
     public async startRecording(): Promise<void> {
@@ -264,6 +275,18 @@ export class VideoPanel {
     }
 
     /**
+     * Reconfigure encoder bitrate/resolution (called from Blazor quality subscription)
+     */
+    public reconfigure(width: number, height: number, bitrate: number): void {
+        if (!this.recordingService) {
+            warnLog?.log('reconfigure: no active recording service');
+            return;
+        }
+        infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps`);
+        void this.recordingService.getPipeline()?.reconfigure({ bitrate, width, height });
+    }
+
+    /**
      * Start rendering the output stream to canvas
      */
     private startRenderingStream(stream: MediaStream): void {
@@ -322,17 +345,6 @@ export class VideoPanel {
         if (this.previewTrack) {
             this.previewTrack.stop();
             this.previewTrack = null;
-        }
-    }
-
-    /**
-     * Toggle recording state
-     */
-    public async toggleRecording(): Promise<void> {
-        if (this.isRecording) {
-            await this.stopRecording();
-        } else {
-            await this.startRecording();
         }
     }
 

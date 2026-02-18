@@ -140,13 +140,14 @@ public class StreamHub(IServiceProvider services) : Hub
 
         var parsedStreamId = StreamId.Parse(streamId);
         var skipTo = TimeSpan.FromMilliseconds(skipToMs);
+        var peerId = Context.ConnectionId;
 
-        Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}", parsedStreamId, skipTo);
+        Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}, PeerId={PeerId}", parsedStreamId, skipTo, peerId);
 
         RpcStream<VideoFrame>? rpcStream;
         try {
             rpcStream = await LiveVideoBackend
-                .GetVideo(parsedStreamId, skipTo, stopCts.Token)
+                .GetVideo(parsedStreamId, skipTo, peerId, stopCts.Token)
                 .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
