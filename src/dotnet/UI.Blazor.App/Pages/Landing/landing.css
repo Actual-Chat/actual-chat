@@ -3,6 +3,7 @@
     @apply select-text;
     @apply bg-01 text-01;
     color-scheme: only light;
+    padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
 }
 .landing .landing-video,
 .landing .landing-video-plug {
@@ -142,6 +143,7 @@ body.narrow .landing .title-text.main {
     @apply opacity-100;
     @apply duration-300 ease-in-out;
     transition-property: backdrop-filter, opacity;
+    padding-top: calc(0.5rem + var(--safe-area-top));
 }
 .landing .landing-header > .c-content {
     @apply flex-1 flex-x;
@@ -1325,6 +1327,7 @@ body.narrow .landing-video-modal .c-footer {
     @apply overflow-hidden;
     @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
     height: calc(var(--vh, 1vh) * 100);
+    padding-bottom: var(--safe-area-bottom);
 }
 body.narrow .page-links {
     @apply min-h-screen;

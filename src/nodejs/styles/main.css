@@ -173,7 +173,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .base-layout-body {
     @apply relative;
     @apply flex-1 flex-y flex-nowrap;
-    @apply w-full;
+    @apply min-w-0;
     @apply float-left;
 }
 .base-layout-body > .c-layout-content {
