@@ -130,9 +130,12 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend, 
     public void Dispose()
         => _videoStreams.Dispose();
 
-    public virtual async Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+    public virtual Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+        => GetVideo(streamId, skipTo, null, cancellationToken);
+
+    public virtual async Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string? peerId, CancellationToken cancellationToken)
     {
-        Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}", streamId, skipTo);
+        Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}, PeerId={PeerId}", streamId, skipTo, peerId);
         var stream = await _videoStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         if (stream == null) {
             Log.LogWarning("GetVideo: Stream {StreamId} not found in StreamStore", streamId);
@@ -147,15 +150,19 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend, 
         {
             await foreach (var frame in source.WithCancellation(cancellationToken)) {
                 frameCount++;
-                if (frameCount <= 3 || frameCount % 30 == 0)
-                    Log.LogInformation("GetVideo sending frame #{Count}: Offset={Offset}ms, Size={Size}, IsKey={IsKey}",
-                        frameCount, frame.Offset.TotalMilliseconds, frame.Data?.Length ?? 0, frame.IsKeyFrame);
+                if (frameCount <= 3 || frameCount % 100 == 0)
+                    Log.LogDebug("GetVideo sending frame #{Count}: Offset={Offset}ms, Size={Size}, IsKey={IsKey}, PeerId={PeerId}",
+                        frameCount, frame.Offset.TotalMilliseconds, frame.Data?.Length ?? 0, frame.IsKeyFrame, peerId);
                 yield return frame;
             }
-            Log.LogInformation("GetVideo stream ended after {Count} frames", frameCount);
+            Log.LogDebug("GetVideo stream ended after {Count} frames for PeerId={PeerId}", frameCount, peerId);
         }
 
         stream = SkipToKeyFrame(LogFrames(stream), skipTo, cancellationToken);
+
+        if (peerId != null)
+            stream = ApplyGopSkipping(stream, streamId, peerId, cancellationToken);
+
         return RpcStream.New(stream);
     }
 
@@ -183,7 +190,85 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend, 
         }
     }
 
+    public virtual Task ReportPeerLatency(StreamId streamId, string peerId, TimeSpan latency, CancellationToken cancellationToken = default)
+    {
+        AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
+        Log.LogDebug("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, LatencyMs={LatencyMs:F0}",
+            streamId, peerId, latency.TotalMilliseconds);
+        var found = false;
+        foreach (var (_, chatState) in _chatStates)
+            if (chatState.HasStream(streamId)) {
+                chatState.RecordPeerLatency(streamId, peerId, (float)latency.TotalMilliseconds);
+                found = true;
+                break;
+            }
+        if (!found)
+            Log.LogWarning("ReportPeerLatency: No ChatState owns StreamId={StreamId}", streamId);
+        return Task.CompletedTask;
+    }
+
+    public virtual Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        // Find the ChatState that owns this stream
+        foreach (var (_, chatState) in _chatStates)
+            if (chatState.HasStream(streamId)) {
+                Log.LogInformation("ObserveStreamQualityRequests: StreamId={StreamId} found in ChatState", streamId);
+                var directives = chatState.ObserveQualityDirectives(streamId, cancellationToken);
+                return Task.FromResult(RpcStream.New(directives, isReconnectable: false));
+            }
+
+        // Stream not found — return a stream with just the default quality
+        Log.LogWarning("ObserveStreamQualityRequests: StreamId={StreamId} not found, returning default High quality", streamId);
+        async IAsyncEnumerable<VideoQualityPreset> DefaultStream()
+        {
+            yield return VideoQualityPreset.High;
+            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+        }
+        return Task.FromResult(RpcStream.New(DefaultStream(), isReconnectable: false));
+    }
+
     // Private methods
+
+    private bool ShouldSkipGopsForPeer(StreamId streamId, string peerId)
+    {
+        foreach (var (_, chatState) in _chatStates)
+            if (chatState.HasStream(streamId))
+                return chatState.ShouldSkipGopsForPeer(streamId, peerId);
+        return false;
+    }
+
+    private async IAsyncEnumerable<VideoFrame> ApplyGopSkipping(
+        IAsyncEnumerable<VideoFrame> source,
+        StreamId streamId,
+        string peerId,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var skippingGop = false;
+        var gopCount = 0;
+        var skippedGopCount = 0;
+        await foreach (var frame in source.WithCancellation(cancellationToken)) {
+            if (frame.IsKeyFrame) {
+                var wasSkipping = skippingGop;
+                // Re-evaluate at each GOP boundary
+                skippingGop = ShouldSkipGopsForPeer(streamId, peerId);
+                gopCount++;
+                if (skippingGop)
+                    skippedGopCount++;
+
+                if (wasSkipping != skippingGop)
+                    Log.LogInformation("ApplyGopSkipping: {Action} skipping GOPs for PeerId={PeerId}, StreamId={StreamId}",
+                        skippingGop ? "START" : "STOP", peerId, streamId);
+
+                if (gopCount % 100 == 0)
+                    Log.LogDebug("ApplyGopSkipping: PeerId={PeerId}, StreamId={StreamId}, GOPs={GopCount}, Skipped={SkippedCount}",
+                        peerId, streamId, gopCount, skippedGopCount);
+            }
+            if (!skippingGop)
+                yield return frame;
+        }
+    }
 
     private async Task PushVideoInternal(
         VideoRecord record,
@@ -219,12 +304,12 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend, 
             {
                 await foreach (var frame in source.WithCancellation(cancellationToken)) {
                     frameCount++;
-                    if (frameCount <= 3 || frameCount % 30 == 0 || frame.IsKeyFrame)
-                        Log.LogInformation("PushVideoInternal frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
+                    if (frameCount <= 3 || frameCount % 100 == 0)
+                        Log.LogDebug("PushVideoInternal frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
                             frameCount, frame.Offset.TotalMilliseconds, frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Description?.Length ?? 0);
                     yield return frame;
                 }
-                Log.LogInformation("PushVideoInternal: stream completed with {Count} frames", frameCount);
+                Log.LogDebug("PushVideoInternal: stream completed with {Count} frames", frameCount);
             }
 
             var memoizer = LogFrames(videoFrames).SlidingMemoize(

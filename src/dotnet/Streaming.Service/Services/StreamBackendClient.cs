@@ -124,4 +124,29 @@ public sealed class StreamBackendClient : IStreamClient
         AppMeters.AudioLatency.Record((float)latency.TotalMilliseconds);
         return Task.CompletedTask;
     }
+
+    public Task ReportVideoLatency(string streamId, TimeSpan latency, CancellationToken cancellationToken)
+    {
+        AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
+        return Task.CompletedTask;
+    }
+
+    public async IAsyncEnumerable<VideoQualityPreset> ObserveStreamQualityRequests(
+        string streamId,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        // In backend client (same-node), forward directly to LiveVideoBackend
+        RpcStream<VideoQualityPreset>? rpcStream;
+        try {
+            rpcStream = await LiveVideoBackend
+                .ObserveStreamQualityRequests(StreamId.Parse(streamId), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            yield break;
+        }
+
+        await foreach (var preset in rpcStream.ConfigureAwait(false))
+            yield return preset;
+    }
 }
