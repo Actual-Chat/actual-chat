@@ -26,8 +26,6 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     public bool IsEdge { get; protected set; }
     public bool IsWebKit { get; protected set; }
     public bool IsTouchCapable { get; protected set; }
-    public bool HasSafeAreaTop { get; protected set; }
-    public bool HasSafeAreaBottom { get; protected set; }
     public string WindowId { get; protected set; } = "";
     public Task WhenReady => WhenReadySource.Task;
     public Task WhenWasmReady => WhenWasmReadySource.Task;
@@ -61,8 +59,6 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
         IsEdge = initResult.IsEdge;
         IsWebKit = initResult.IsWebKit;
         IsTouchCapable = initResult.IsTouchCapable;
-        HasSafeAreaTop = initResult.HasSafeAreaTop;
-        HasSafeAreaBottom = initResult.HasSafeAreaBottom;
         WindowId = initResult.WindowId;
         if (initResult.IsWasmReady == true)
             WhenWasmReadySource.TrySetResult();
