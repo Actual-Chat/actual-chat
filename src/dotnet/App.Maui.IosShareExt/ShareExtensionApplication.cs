@@ -29,7 +29,7 @@ public class ShareExtensionApplication(ServiceProvider services) : IHasServices
             MauiDiagnostics.InitSentrySdk();
             MauiDiagnostics.CreateSentryTraceProvider();
             var services = CreateServiceProvider();
-            _ = services.GetRequiredService<SessionInitializer>().SetSession();
+            _ = services.GetRequiredService<SessionInitializer>();
             return new ShareExtensionApplication(services);
         }
         catch (Exception e)
