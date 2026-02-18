@@ -26,6 +26,9 @@ import type {
     SegmentationWorkerCallbacks,
 } from './segmentation-worker-contract';
 import { DEFAULT_MODEL_CONFIG, getModelConfig } from './segmentation-worker-contract';
+import { Log } from 'logging';
+
+const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoSegmentation');
 
 // Import the ONNX model so esbuild copies it to dist/assets/onnx/
 import SegmentationModelUrl from './selfie_segmentation_olive_webgpu.onnx';
@@ -65,7 +68,7 @@ let frameSequence = 0;
  */
 function initializeQueue(cfg: SegmentationConfig) {
     frameQueue = new Denque<QueuedFrame>();
-    console.log(`[SegmentationWorker] Frame queue initialized, maxSize=${cfg.maxQueueSize}`);
+    infoLog?.log(`Frame queue initialized, maxSize=${cfg.maxQueueSize}`);
 }
 
 /**
@@ -90,14 +93,13 @@ function enqueueFrame(frame: VideoFrame): void {
     while (frameQueue.length >= config.maxQueueSize) {
         const dropped = frameQueue.shift();
         if (dropped) {
-            console.warn(`[SegmentationWorker] Dropping frame #${dropped.sequenceNumber} (queue full)`);
+            debugLog?.log(`Dropping frame #${dropped.sequenceNumber} (queue full)`);
             dropped.frame.close();
             droppedFrames++;
         }
     }
 
     frameQueue.push(queuedFrame);
-    console.log(`[SegmentationWorker] Enqueued frame ${frame.displayWidth}x${frame.displayHeight} #${queuedFrame.sequenceNumber}, queue size=${frameQueue.length}`);
 
     // Trigger processing if not already running
     if (!processingFrame) {
@@ -130,12 +132,10 @@ async function processQueue(): Promise<void> {
             // Skip every N frames to reduce contention, especially on mobile devices
             const frameSkipInterval = config.frameSkipInterval ?? 1;
             if (frameSkipInterval > 1 && frameCounter % frameSkipInterval !== 0) {
-                console.log(`[SegmentationWorker] Skipping frame #${qf.sequenceNumber} to reduce GPU contention (skip interval: ${frameSkipInterval})`);
                 qf.frame.close();
                 continue;
             }
 
-            console.log(`[SegmentationWorker] Processing frame #${qf.sequenceNumber} (format: ${resolvedModelConfig!.tensorFormat})`);
 
             // Run single-frame inference
             const inferenceStartTime = performance.now();
@@ -156,7 +156,6 @@ async function processQueue(): Promise<void> {
             // Get output format configuration
             const outputFormat = resolvedModelConfig!.outputFormat ?? DEFAULT_MODEL_CONFIG.outputFormat;
             const outputLayout = resolvedModelConfig!.outputLayout ?? DEFAULT_MODEL_CONFIG.outputLayout;
-            const maskSize = config.inputWidth * config.inputHeight;
 
             // Run inference with GPU buffer tensor - output will also be on GPU
             const outputName = session!.outputNames[0];
@@ -168,19 +167,6 @@ async function processQueue(): Promise<void> {
 
             await session!.run({ [session!.inputNames[0]]: inputTensor }, fetches);
 
-            // DEBUG: Log output tensor details to diagnose mask alignment issues
-            console.log('[SegmentationWorker] Output tensor details:', {
-                name: outputName,
-                dims: outputTensor.dims,
-                type: outputTensor.type,
-                location: outputTensor.location,
-                size: outputTensor.size,
-                expectedSize: maskSize,
-                format: resolvedModelConfig!.tensorFormat,
-                outputFormat,
-                outputLayout
-            });
-
             // Validate output tensor dimensions match expected layout
             const dims = outputTensor.dims;
             if (outputFormat === 'single_channel' && dims.length === 4) {
@@ -188,9 +174,9 @@ async function processQueue(): Promise<void> {
                 const expectedNCHW = dims[1] === 1 && dims[2] === config.inputHeight && dims[3] === config.inputWidth;
 
                 if (outputLayout === 'nhwc' && !expectedNHWC && expectedNCHW) {
-                    console.warn(`[SegmentationWorker] Output layout mismatch: config says 'nhwc' [1,H,W,1] but tensor is [${dims.join(',')}] which looks like NCHW [1,1,H,W]`);
+                    warnLog?.log(`Output layout mismatch: config says 'nhwc' [1,H,W,1] but tensor is [${dims.join(',')}] which looks like NCHW [1,1,H,W]`);
                 } else if (outputLayout === 'nchw' && !expectedNCHW && expectedNHWC) {
-                    console.warn(`[SegmentationWorker] Output layout mismatch: config says 'nchw' [1,1,H,W] but tensor is [${dims.join(',')}] which looks like NHWC [1,H,W,1]`);
+                    warnLog?.log(`Output layout mismatch: config says 'nchw' [1,1,H,W] but tensor is [${dims.join(',')}] which looks like NHWC [1,H,W,1]`);
                 }
             }
 
@@ -198,7 +184,6 @@ async function processQueue(): Promise<void> {
 
             // Single channel - use GPU buffer directly - no splitting needed for single frame!
             const maskInput = gpuBuffer;
-            console.log('[SegmentationWorker] Using GPU buffer mask directly (zero-copy path)');
 
             // Return input tensor's GPU buffer to pool for reuse
             returnPooledBuffer(inputTensor.gpuBuffer);
@@ -222,11 +207,9 @@ async function processQueue(): Promise<void> {
                     }
                 );
                 finalFrame = blurred;
-                console.log(`[SegmentationWorker] Applied blur to frame #${qf.sequenceNumber}`);
             } else {
                 // Pass through original frame without blur
                 finalFrame = qf.frame;
-                console.log(`[SegmentationWorker] Skipped blur for frame #${qf.sequenceNumber} (blur disabled)`);
             }
 
             const blurEndTime = performance.now();
@@ -246,7 +229,6 @@ async function processQueue(): Promise<void> {
             totalBlurTime += blurTime;
             totalProcessingTime += frameProcessingTime;
 
-            console.log(`[SegmentationWorker] Completed frame #${qf.sequenceNumber} (inference: ${inferenceTime.toFixed(2)}ms, blur: ${blurTime.toFixed(2)}ms, total: ${frameProcessingTime.toFixed(2)}ms, blurEnabled: ${config.blurEnabled})`);
             pipeline.onFrameProcessed(finalFrame, qf.sequenceNumber, frameProcessingTime);
         }
     } finally {
@@ -261,7 +243,7 @@ const serverImpl: SegmentationWorker = {
    */
     initialize: async (segmentationConfig: SegmentationConfig): Promise<void> => {
         try {
-            console.log('[SegmentationWorker] Initializing segmentation worker via RPC...');
+            infoLog?.log('Initializing segmentation worker...');
 
             config = segmentationConfig;
 
@@ -287,15 +269,15 @@ const serverImpl: SegmentationWorker = {
                     enableGraphCapture: true
                 };
 
-                console.log(`[SegmentationWorker] Loading model from bundled URL: ${modelUrl}`);
+                infoLog?.log('Loading model from:', modelUrl);
 
                 session = await ort.InferenceSession.create(modelUrl, sessionOptions);
 
-                console.log('[SegmentationWorker] Successfully loaded model with WebGPU backend');
+                infoLog?.log('Model loaded with WebGPU backend');
 
                 // Get ORT's WebGPU device for shared usage
                 const blurDevice = await ort.env.webgpu.device;
-                console.log('[SegmentationWorker] Using shared WebGPU device for inference + blur');
+                infoLog?.log('Using shared WebGPU device');
                 // Initialize shared WebGPU manager with the blur device
                 await WebGPUManager.init(blurDevice);
 
@@ -304,7 +286,7 @@ const serverImpl: SegmentationWorker = {
 
                 // Initialize blur module with WebGPU device
                 await initBlurWebGPU(blurDevice);
-                console.log('[SegmentationWorker] WebGPU resources initialized for background blur');
+                infoLog?.log('WebGPU resources initialized');
 
                 // Pre-allocate output GPU buffer to enable reuse
                 const maskSize = config.inputWidth * config.inputHeight;
@@ -314,7 +296,7 @@ const serverImpl: SegmentationWorker = {
                     size: outputBufferSize,
                     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
                 });
-                console.log(`[SegmentationWorker] Pre-allocated output GPU buffer (${outputBufferSize} bytes)`);
+                infoLog?.log(`Pre-allocated output GPU buffer (${outputBufferSize} bytes)`);
 
                 // Create reusable output tensor with pre-allocated GPU buffer
                 outputTensor = ort.Tensor.fromGpuBuffer(outputGpuBuffer, {
@@ -327,20 +309,17 @@ const serverImpl: SegmentationWorker = {
                 });
 
             } catch (error) {
-                console.error('[SegmentationWorker] WebGPU backend failed:', error);
+                errorLog?.log('WebGPU backend failed:', error);
                 throw new Error(`WebGPU backend failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
 
-            console.log('[SegmentationWorker] ONNX model loaded successfully');
-            console.log(`[SegmentationWorker] Model inputs:`, session.inputNames);
-            console.log(`[SegmentationWorker] Model outputs:`, session.outputNames);
+            infoLog?.log('ONNX model loaded successfully');
+            infoLog?.log('Model inputs:', session.inputNames);
+            infoLog?.log('Model outputs:', session.outputNames);
 
             // Resolve and cache model config for tensor conversion
             resolvedModelConfig = segmentationConfig.modelConfig ?? getModelConfig(modelUrl);
-            console.log(`[SegmentationWorker] Model config resolved for ${modelUrl}:`);
-            console.log(`[SegmentationWorker]   - Input tensor format: ${resolvedModelConfig.tensorFormat}`);
-            console.log(`[SegmentationWorker]   - Output format: ${resolvedModelConfig.outputFormat ?? DEFAULT_MODEL_CONFIG.outputFormat}`);
-            console.log(`[SegmentationWorker]   - Output layout: ${resolvedModelConfig.outputLayout ?? DEFAULT_MODEL_CONFIG.outputLayout}`);
+            infoLog?.log(`Model config: format=${resolvedModelConfig.tensorFormat}, output=${resolvedModelConfig.outputFormat ?? DEFAULT_MODEL_CONFIG.outputFormat}, layout=${resolvedModelConfig.outputLayout ?? DEFAULT_MODEL_CONFIG.outputLayout}`);
 
             // Initialize frame queue for async processing
             initializeQueue(segmentationConfig);
@@ -348,7 +327,7 @@ const serverImpl: SegmentationWorker = {
             processing = true;
 
         } catch (error) {
-            console.error('[SegmentationWorker] Failed to initialize:', error);
+            errorLog?.log('Failed to initialize:', error);
             throw error;
         }
     },
@@ -360,7 +339,7 @@ const serverImpl: SegmentationWorker = {
     // eslint-disable-next-line
     processFrame: async (frame: VideoFrame, _noWait: RpcNoWait): Promise<void> => {
         if (!session || !config || !processing) {
-            console.warn('[SegmentationWorker] Not initialized or not processing');
+            warnLog?.log('Not initialized or not processing');
             frame.close();
             return; // Return original frame unchanged
         }
@@ -377,7 +356,7 @@ const serverImpl: SegmentationWorker = {
             throw new Error('Worker not initialized');
         }
 
-        console.log('[SegmentationWorker] Updating configuration:', newConfig);
+        infoLog?.log('Updating configuration:', newConfig);
 
         // Update config
         config = { ...config, ...newConfig };
@@ -407,7 +386,7 @@ const serverImpl: SegmentationWorker = {
    */
     // eslint-disable-next-line
     stop: async (): Promise<void> => {
-        console.log('[SegmentationWorker] Stopping segmentation worker...');
+        infoLog?.log('Stopping segmentation worker...');
 
         processing = false;
 
@@ -445,14 +424,14 @@ const serverImpl: SegmentationWorker = {
         totalProcessingTime = 0;
         droppedFrames = 0;
 
-        console.log('[SegmentationWorker] Segmentation worker stopped');
+        infoLog?.log('Segmentation worker stopped');
     },
 
     /**
    * Dispose of the worker resources
    */
     dispose: (): void => {
-        console.log('[SegmentationWorker] Disposing segmentation worker...');
+        infoLog?.log('Disposing segmentation worker...');
     // The RPC system will handle cleanup
     }
 };
@@ -464,4 +443,4 @@ const pipeline = rpcClientServer<SegmentationWorkerCallbacks>(
   serverImpl
 );
 
-console.log('[SegmentationWorker] Segmentation worker initialized with RPC support');
+infoLog?.log('Segmentation worker initialized');

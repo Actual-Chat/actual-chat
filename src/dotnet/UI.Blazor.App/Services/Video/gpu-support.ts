@@ -1,3 +1,7 @@
+import { Log } from 'logging';
+
+const { debugLog } = Log.get('VideoSegmentation');
+
 /**
  * GPU Backend Detection and Support
  * Detects available GPU backends for ONNX Runtime Web
@@ -79,7 +83,7 @@ export async function detectGPUBackends(): Promise<GPUBackendSupport> {
         support.recommended = 'wasm';
     }
 
-    console.log('[GPU Support] Detected backends:', support);
+    debugLog?.log('Detected backends:', support);
     return support;
 }
 

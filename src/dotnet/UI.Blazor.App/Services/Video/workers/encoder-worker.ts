@@ -5,9 +5,12 @@
  */
 
 import { rpcClientServer, rpcNoWait } from 'rpc';
+import { Log } from 'logging';
 
 import { type EncoderConfig, type EncoderStats, WebCodecsEncoder } from '../webcodecs-encoder';
 import type { EncoderWorker, EncoderWorkerCallbacks } from './encoder-worker-contract';
+
+const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoEncoder');
 
 // Worker state
 let encoder: WebCodecsEncoder | null = null;
@@ -32,14 +35,14 @@ function resizeFrame(frame: VideoFrame, targetWidth: number, targetHeight: numbe
 
     // Create canvas if needed
     if (resizeCanvas?.width !== targetWidth || resizeCanvas.height !== targetHeight) {
-        console.log(`[Encoder Worker] Creating new resize canvas: ${targetWidth}x${targetHeight}`);
+        infoLog?.log(`Creating resize canvas: ${targetWidth}x${targetHeight}`);
         resizeCanvas = new OffscreenCanvas(targetWidth, targetHeight);
         resizeCtx = resizeCanvas.getContext('2d', { willReadFrequently: true });
     }
 
     if (!resizeCtx) {
     // Fallback - return original frame
-        console.warn('[Encoder Worker] Could not create 2D context for resizing');
+        warnLog?.log('Could not create 2D context for resizing');
         return frame;
     }
 
@@ -93,7 +96,7 @@ const serverImpl: EncoderWorker = {
     // eslint-disable-next-line
     initialize: async (config): Promise<void> => {
         try {
-            console.log('[Encoder Worker] Initializing encoder via RPC...');
+            infoLog?.log('Initializing encoder...');
 
             // Store encoder config for frame resizing
             encoderConfig = config;
@@ -128,7 +131,7 @@ const serverImpl: EncoderWorker = {
                         };
 
                         if (chunkData.type === 'key') {
-                            console.log(`[Encoder Worker] Keyframe metadata serialized, description size: ${descBuffer.byteLength}`);
+                            debugLog?.log('Keyframe metadata serialized, description size:', descBuffer.byteLength);
                         }
                     }
 
@@ -142,7 +145,7 @@ const serverImpl: EncoderWorker = {
                     void callbacks.onEncodedChunk(enrichedChunkData, rpcNoWait);
                 },
                 (error) => {
-                    console.error('[Encoder Worker] Encoder error:', error);
+                    errorLog?.log('Encoder error:', error);
                     // Errors during encoding will propagate through encodeFrame() promise rejection
                 }
             );
@@ -154,10 +157,10 @@ const serverImpl: EncoderWorker = {
             processing = true;
             frameCount = 0;
 
-            console.log('[Encoder Worker] Ready to encode frames');
+            infoLog?.log('Ready to encode frames');
             // No callback needed - initialize() returning successfully means ready
         } catch (error) {
-            console.error('[Encoder Worker] Failed to initialize encoder:', error);
+            errorLog?.log('Failed to initialize encoder:', error);
             throw error; // RPC automatically propagates errors
         }
     },
@@ -167,7 +170,7 @@ const serverImpl: EncoderWorker = {
    */
     stop: async (): Promise<void> => {
         try {
-            console.log('[Encoder Worker] Stopping encoder via RPC...');
+            infoLog?.log('Stopping encoder...');
 
             processing = false;
 
@@ -176,13 +179,13 @@ const serverImpl: EncoderWorker = {
                 try {
                     await encoder.flush();
                     encoder.close();
-                    console.log('[Encoder Worker] Encoder closed');
+                    infoLog?.log('Encoder closed');
                 } catch (error) {
-                    console.warn('[Encoder Worker] Encoder close error:', error);
+                    warnLog?.log('Encoder close error:', error);
                 }
             }
 
-            console.log('[Encoder Worker] Encoder stopped');
+            infoLog?.log('Encoder stopped');
 
             // Reset state
             encoder = null;
@@ -192,7 +195,7 @@ const serverImpl: EncoderWorker = {
             frameCount = 0;
             startTimestamp = undefined;
         } catch (error) {
-            console.error('[Encoder Worker] Failed to stop encoder:', error);
+            errorLog?.log('Failed to stop encoder:', error);
             throw error; // RPC automatically propagates errors
         }
     },
@@ -211,7 +214,7 @@ const serverImpl: EncoderWorker = {
             // Record start timestamp for normalization
             if (startTimestamp === undefined) {
                 startTimestamp = frame.timestamp;
-                console.log(`[Encoder Worker] Start timestamp set to ${startTimestamp}μs`);
+                infoLog?.log(`Start timestamp set to ${startTimestamp}μs`);
             }
 
             // Resize frame if dimensions don't match encoder configuration
@@ -219,7 +222,7 @@ const serverImpl: EncoderWorker = {
 
             // Normalize timestamp to 0-based (relative to first frame).
             // resizeFrame may or may not return a new frame, so we always normalize here.
-            const normalizedTs = processedFrame.timestamp - startTimestamp!;
+            const normalizedTs = processedFrame.timestamp - startTimestamp;
             if (normalizedTs !== processedFrame.timestamp) {
                 const normalized = new VideoFrame(processedFrame, {
                     timestamp: normalizedTs,
@@ -234,7 +237,7 @@ const serverImpl: EncoderWorker = {
             encoder.encode(processedFrame, isKeyFrame);
             frameCount++;
         } catch (error) {
-            console.error('[Encoder Worker] Error processing frame:', error);
+            errorLog?.log('Error processing frame:', error);
             try { frame.close(); } catch { /* already closed */ }
             throw error; // RPC automatically propagates errors
         }
@@ -247,9 +250,9 @@ const serverImpl: EncoderWorker = {
         if (encoder) {
             try {
                 await encoder.flush();
-                console.log('[Encoder Worker] Encoder flushed');
+                infoLog?.log('Encoder flushed');
             } catch (error) {
-                console.warn('[Encoder Worker] Encoder flush error:', error);
+                warnLog?.log('Encoder flush error:', error);
             }
         }
     },
@@ -259,28 +262,17 @@ const serverImpl: EncoderWorker = {
    */
     reconfigure: async (params): Promise<void> => {
         if (!encoder || !processing || !encoderConfig) {
-            console.warn('[Encoder Worker] Cannot reconfigure: encoder not active');
+            warnLog?.log('Cannot reconfigure: encoder not active');
             return;
         }
 
         try {
-            console.log(`[Encoder Worker] 🔧 RECONFIGURE REQUEST via RPC: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
-            console.log('[Encoder Worker] Current frame count:', frameCount);
-
-            const oldBitrate = encoderConfig.bitrate;
-            const oldWidth = encoderConfig.width;
-            const oldHeight = encoderConfig.height;
+            infoLog?.log(`Reconfigure request: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
 
             // Update stored config
             encoderConfig.bitrate = params.bitrate;
             encoderConfig.width = params.width;
             encoderConfig.height = params.height;
-
-            console.log('[Encoder Worker] Config changed from:',
-                `${oldBitrate / 1_000_000}Mbps ${oldWidth}x${oldHeight}`,
-                'to:',
-                `${encoderConfig.bitrate / 1_000_000}Mbps ${encoderConfig.width}x${encoderConfig.height}`
-            );
 
             // Reconfigure encoder
             await encoder.reconfigure({
@@ -293,10 +285,9 @@ const serverImpl: EncoderWorker = {
             resizeCanvas = null;
             resizeCtx = null;
 
-            console.log('[Encoder Worker] ✅ Encoder reconfigured successfully via RPC');
-            console.log('[Encoder Worker] 📊 Next keyframe will occur naturally based on encoding logic');
+            infoLog?.log('Encoder reconfigured successfully');
         } catch (error) {
-            console.error('[Encoder Worker] Failed to reconfigure encoder:', error);
+            errorLog?.log('Failed to reconfigure encoder:', error);
             throw error; // RPC automatically propagates errors
         }
     },
@@ -324,4 +315,4 @@ const callbacks = rpcClientServer<EncoderWorkerCallbacks>(
   serverImpl
 );
 
-console.log('[Encoder Worker] Encoder worker initialized with RPC support');
+infoLog?.log('Encoder worker initialized');

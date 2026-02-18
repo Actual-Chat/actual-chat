@@ -96,6 +96,10 @@ export type LogScope =
     | 'VideoPlayer'
     | 'VideoRecorder'
     | 'VideoStreamer'
+    | 'VideoPipeline'
+    | 'VideoEncoder'
+    | 'VideoDecoder'
+    | 'VideoSegmentation'
     | 'VisualMediaViewer'
     | 'WebAuth'
     | 'WebFileProvider';
@@ -235,11 +239,8 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('MarkupEditor', LogLevel.Debug);
     // minLevels.set('ChatMessageEditor', LogLevel.Debug);
 
-    // Video debugging
-    minLevels.set('VideoStreamer', LogLevel.Debug);
-    minLevels.set('VideoPlayer', LogLevel.Debug);
-    minLevels.set('VideoRecorder', LogLevel.Debug);
-    minLevels.set('VideoPanel', LogLevel.Debug);
+    // Video scopes: VideoPipeline, VideoEncoder, VideoDecoder, VideoSegmentation
+    // (use logLevels.override('VideoPipeline', 1) in browser console to enable debug)
 
     // minLevels.clear(); // To quickly discard any tweaks :)
     persist(minLevels);

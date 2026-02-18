@@ -5,6 +5,9 @@
 
 import { RpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
+import { Log } from 'logging';
+
+const { debugLog, warnLog } = Log.get('VideoSegmentation');
 
 /**
  * Tensor format types supported by different ONNX models.
@@ -254,20 +257,18 @@ export function getModelConfig(modelUrl: string): ModelConfig {
 
     // Try exact key match first (keys are now filenames)
     if (filename in MODEL_CONFIGS) {
-        console.log(`[getModelConfig] Match for filename: ${filename}`);
         return MODEL_CONFIGS[filename];
     }
 
     // Try matching by extracted filename from keys
     for (const [key, config] of Object.entries(MODEL_CONFIGS)) {
         if (extractFilename(key) === filename) {
-            console.log(`[getModelConfig] Filename match: "${filename}" (URL: ${modelUrl} -> Key: ${key})`);
             return config;
         }
     }
 
     // No match found, use default
-    console.warn(`[getModelConfig] No config found for URL: ${modelUrl}, filename: ${filename}. Using default config.`);
+    warnLog?.log('No model config found for:', filename, '- using default');
     return DEFAULT_MODEL_CONFIG;
 }
 
@@ -305,7 +306,7 @@ export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['ba
     }
 
     // TEMP: Use desktop-like config for mobile to test pipeline
-    console.log('[AdaptiveConfig] Using desktop-like config for mobile testing');
+    debugLog?.log('Using desktop-like config for mobile testing');
     return {
         backend,
         blurEnabled: true,

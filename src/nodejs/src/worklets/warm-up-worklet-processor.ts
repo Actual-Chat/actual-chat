@@ -18,7 +18,7 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
     public process(
         _inputs: Float32Array[][],
         outputs: Float32Array[][],
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         
         _parameters: Record<string, Float32Array>
     ): boolean {
         timerQueue?.triggerExpired();

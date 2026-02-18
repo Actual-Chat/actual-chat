@@ -1,5 +1,5 @@
 // TODO: remove eslint-disables and fix errors
-/* eslint-disable @typescript-eslint/no-unused-vars,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-deprecated,@typescript-eslint/no-unsafe-argument,@typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-deprecated,@typescript-eslint/no-unsafe-argument,@typescript-eslint/no-unsafe-member-access */
 import { DeviceInfo } from 'device-info';
 import { getOrInheritData } from 'dom-helpers';
 import { throttle } from 'promises';

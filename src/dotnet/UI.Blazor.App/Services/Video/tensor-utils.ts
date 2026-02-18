@@ -5,6 +5,9 @@
 
 import * as ort from 'onnxruntime-web';
 import { WebGPUManager } from './webgpu-manager.js';
+import { Log } from 'logging';
+
+const { warnLog } = Log.get('VideoSegmentation');
 
 // WebGPU state (shared through WebGPUManager)
 let device: GPUDevice | null = null;
@@ -385,7 +388,7 @@ export function processDeferredCleanups(currentFrame: number = ++frameCounter): 
                 try {
                     cleanup();
                 } catch (error) {
-                    console.warn('[TensorUtils] Error during deferred cleanup:', error);
+                    warnLog?.log('Error during deferred cleanup:', error);
                 }
             }
             cleanupQueue.delete(frameNum);

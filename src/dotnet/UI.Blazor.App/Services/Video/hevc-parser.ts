@@ -4,6 +4,10 @@
  * according to ISO/IEC 14496-15
  */
 
+import { Log } from 'logging';
+
+const { infoLog, warnLog, errorLog } = Log.get('VideoDecoder');
+
 export interface HEVCParameterSets {
   vps: Uint8Array[];  // Video Parameter Sets (NAL type 32)
   sps: Uint8Array[];  // Sequence Parameter Sets (NAL type 33)
@@ -223,7 +227,7 @@ function parseSPS(sps: Uint8Array): Partial<HEVCDecoderConfigurationRecord> {
             temporalIdNested
         };
     } catch (error) {
-        console.error('Error parsing SPS:', error);
+        errorLog?.log('Error parsing SPS:', error);
         // Return defaults
         return {
             generalProfileSpace: 0,
@@ -366,21 +370,16 @@ export function extractHVCC(chunk: EncodedVideoChunk): Uint8Array | null {
     
         // Need at least one SPS to build valid HVCC
         if (parameterSets.sps.length === 0) {
-            console.warn('[HEVC Parser] No SPS found in chunk, cannot build HVCC');
+            warnLog?.log('No SPS found in chunk, cannot build HVCC');
             return null;
         }
     
         const hvcc = buildHVCC(parameterSets);
-        console.log('[HEVC Parser] Built HVCC:', {
-            size: hvcc.length,
-            vps: parameterSets.vps.length,
-            sps: parameterSets.sps.length,
-            pps: parameterSets.pps.length
-        });
+        infoLog?.log('Built HVCC:', { size: hvcc.length, vps: parameterSets.vps.length, sps: parameterSets.sps.length, pps: parameterSets.pps.length });
     
         return hvcc;
     } catch (error) {
-        console.error('[HEVC Parser] Error extracting HVCC:', error);
+        errorLog?.log('Error extracting HVCC:', error);
         return null;
     }
 }

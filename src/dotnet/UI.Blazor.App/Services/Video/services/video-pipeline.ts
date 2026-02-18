@@ -27,6 +27,9 @@ import {
     VideoStream,
 } from '../video-streamer';
 import { Versioning } from 'versioning';
+import { Log } from 'logging';
+
+const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
 export interface PipelineConfig {
   encoderConfig: EncoderConfig;
@@ -193,11 +196,7 @@ export class VideoPipeline implements IVideoPipeline {
                         binary += String.fromCharCode(byte);
                     }
                     this.codecSettings = btoa(binary);
-                    // Log first few bytes for debugging
-                    const hexBytes = Array.from(descBytes.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                    console.log(`[Pipeline] Captured codec description (SPS/PPS): ${descBytes.length} bytes -> ${this.codecSettings.length} base64 chars`);
-                    console.log(`[Pipeline] Description first 20 bytes (hex): ${hexBytes}`);
-                    console.log(`[Pipeline] Description base64: ${this.codecSettings}`);
+                    debugLog?.log('Captured codec description:', descBytes.length, 'bytes,', this.codecSettings.length, 'base64 chars');
                 }
             }
 
@@ -205,7 +204,7 @@ export class VideoPipeline implements IVideoPipeline {
             if (!this.videoStream) {
                 if (this.codecSettings) {
                     // We have the codec description, create the stream now
-                    console.log(`[Pipeline] Creating VideoStream with codecSettings (${this.codecSettings.length} chars)`);
+                    infoLog?.log(`Creating VideoStream with codecSettings (${this.codecSettings.length} chars)`);
                     const streamConfig: VideoStreamConfig = {
                         codec: this.config.encoderConfig.codec,
                         width: this.config.encoderConfig.width,
@@ -217,7 +216,7 @@ export class VideoPipeline implements IVideoPipeline {
                         this.config.streaming.chatId,
                         streamConfig
                     );
-                    console.log(`[Pipeline] VideoStream created, sending ${this.pendingStreamFrames.length} buffered frames`);
+                    infoLog?.log(`VideoStream created, sending ${this.pendingStreamFrames.length} buffered frames`);
 
                     // Send all buffered frames
                     for (const bufferedFrame of this.pendingStreamFrames) {
@@ -226,18 +225,13 @@ export class VideoPipeline implements IVideoPipeline {
                     this.pendingStreamFrames = [];
 
                     // Send the current frame
-                    console.log(`[Pipeline] Streaming frame to server: type=${chunkData.type}, size=${chunkBytes.length}`);
                     this.videoStream.addFrame(frame);
                 } else {
                     // Buffer the frame until we get the codec description
                     this.pendingStreamFrames.push(frame);
-                    if (this.pendingStreamFrames.length <= 3 || this.pendingStreamFrames.length % 30 === 0) {
-                        console.log(`[Pipeline] Buffering frame (waiting for codec description): ${this.pendingStreamFrames.length} frames buffered`);
-                    }
                 }
             } else {
                 // Stream exists, send the frame directly
-                console.log(`[Pipeline] Streaming frame to server: type=${chunkData.type}, size=${chunkBytes.length}`);
                 this.videoStream.addFrame(frame);
             }
         }
@@ -278,10 +272,10 @@ export class VideoPipeline implements IVideoPipeline {
                 this.outputCanvasCtx.drawImage(frame, 0, 0, frameWidth, frameHeight);
                 // console.log(`[Pipeline] Frame rendered to canvas: ${frameWidth}x${frameHeight}`);
             } else {
-                console.error('[Pipeline] No output method available, dropping frame');
+                errorLog?.log('No output method available, dropping frame');
             }
         } catch (error) {
-            console.error('[Pipeline] Error outputting decoded frame:', error);
+            errorLog?.log('Error outputting decoded frame:', error);
         } finally {
             // Close both frames
             normalizedFrame.close();
@@ -290,15 +284,13 @@ export class VideoPipeline implements IVideoPipeline {
     };
 
     private onSegmentationFrameProcessed = async (frame: VideoFrame, _sequenceNumber: number, _processingTime: number) => {
-        console.log(`[Pipeline] Segmentation processed frame #${_sequenceNumber} in ${_processingTime.toFixed(2)}ms`);
-
         // Render to preview canvas before transferring to encoder
         // (drawImage reads the frame without consuming it; encodeFrame transfers it)
         if (this.previewCallback) {
             try {
                 this.previewCallback(frame);
             } catch (error) {
-                console.error('[Pipeline] Preview callback error:', error);
+                errorLog?.log('Preview callback error:', error);
             }
         }
 
@@ -307,27 +299,27 @@ export class VideoPipeline implements IVideoPipeline {
     };
 
     private onSegmentationError = (error: Error) => {
-        console.error(`[Pipeline] Segmentation error: ${error.message}`);
+        errorLog?.log('Segmentation error:', error.message);
     // Could implement fallback logic here (e.g., disable blur and continue without it)
     };
 
     constructor(private config: PipelineConfig) {
     // Create worker instances
         const encoderWorkerPath = Versioning.mapPath('/dist/videoEncoderWorker.js');
-        console.warn('[VideoPipeline] Creating encoder worker from:', encoderWorkerPath);
+        infoLog?.log('Creating encoder worker from:', encoderWorkerPath);
         this.encoderWorkerInstance = new Worker(
             encoderWorkerPath,
             { type: 'module' }
         );
-        this.encoderWorkerInstance.onerror = (e) => console.error('[VideoPipeline] Encoder worker error:', e);
+        this.encoderWorkerInstance.onerror = (e) => errorLog?.log('Encoder worker error:', e);
 
         const decoderWorkerPath = Versioning.mapPath('/dist/videoDecoderWorker.js');
-        console.warn('[VideoPipeline] Creating decoder worker from:', decoderWorkerPath);
+        infoLog?.log('Creating decoder worker from:', decoderWorkerPath);
         this.decoderWorkerInstance = new Worker(
             decoderWorkerPath,
             { type: 'module' }
         );
-        this.decoderWorkerInstance.onerror = (e) => console.error('[VideoPipeline] Decoder worker error:', e);
+        this.decoderWorkerInstance.onerror = (e) => errorLog?.log('Decoder worker error:', e);
 
         // Create RPC proxies
         this.encoder = rpcClientServer<EncoderWorker>(
@@ -344,7 +336,7 @@ export class VideoPipeline implements IVideoPipeline {
 
         // Initialize segmentation worker if background blur is enabled
         if (this.config.backgroundBlur?.enabled) {
-            console.log('[VideoPipeline] Creating segmentation worker for background blur with config:', this.config.backgroundBlur);
+            infoLog?.log('Creating segmentation worker for background blur with config:', this.config.backgroundBlur);
             const segmentationWorkerPath = Versioning.mapPath('/dist/videoSegmentationWorker.js');
             this.segmentationWorkerInstance = new Worker(
                 segmentationWorkerPath,
@@ -359,32 +351,32 @@ export class VideoPipeline implements IVideoPipeline {
             onError: this.onSegmentationError
         } as SegmentationWorkerCallbacks
             );
-            console.log('[VideoPipeline] Segmentation worker created and RPC proxy initialized');
+            infoLog?.log('Segmentation worker created and RPC proxy initialized');
         } else {
-            console.log('[VideoPipeline] Background blur not enabled in config:', this.config.backgroundBlur);
+            infoLog?.log('Background blur not enabled in config:', this.config.backgroundBlur);
         }
     }
 
     public async start(inputStream: MediaStream): Promise<MediaStream> {
-        console.log('Starting unified video pipeline with RPC...');
+        infoLog?.log('Starting unified video pipeline with RPC...');
 
         // Use unified two-worker architecture for all browsers
-        console.log('Using unified architecture: two RPC workers with canvas fallbacks when needed');
+        infoLog?.log('Using unified architecture: two RPC workers with canvas fallbacks when needed');
 
         // Create output generator or canvas fallback
         if (this.hasMSTGInWindow()) {
             this.generator = new MediaStreamTrackGenerator({ kind: 'video' });
             this.writer = this.generator.writable.getWriter();
-            console.log('Using MediaStreamTrackGenerator for output');
+            infoLog?.log('Using MediaStreamTrackGenerator for output');
         } else if (this.hasVTGInWindow()) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
             const vtg: any = new (globalThis as any).VideoTrackGenerator();
             this.generator = vtg as MediaStreamTrackGenerator;
             this.writer = (vtg as MediaStreamTrackGenerator).writable.getWriter();
-            console.log('Using VideoTrackGenerator for output');
+            infoLog?.log('Using VideoTrackGenerator for output');
         } else {
             // Canvas fallback for browsers without MSTG (older Safari)
-            console.log('MSTG not available - using canvas-based output fallback');
+            infoLog?.log('MSTG not available - using canvas-based output fallback');
             this.outputCanvas = document.createElement('canvas');
             this.outputCanvas.width = this.config.encoderConfig.width;
             this.outputCanvas.height = this.config.encoderConfig.height;
@@ -401,11 +393,11 @@ export class VideoPipeline implements IVideoPipeline {
                 })();
             }
         );
-        console.log('[Pipeline] Transfer simulator initialized in main thread (network boundary)');
+        infoLog?.log('Transfer simulator initialized in main thread (network boundary)');
 
         // Initialize video streaming if enabled (stream will be created when first keyframe with description arrives)
         if (this.config.streaming?.enabled) {
-            console.log('[Pipeline] Initializing video streaming to server (will wait for first keyframe with codec description)');
+            infoLog?.log('Initializing video streaming to server (will wait for first keyframe with codec description)');
 
             // Initialize VideoStreamer SignalR connection
             const hubUrl = new URL('/api/hub/streams', window.location.origin).toString();
@@ -413,7 +405,7 @@ export class VideoPipeline implements IVideoPipeline {
 
             // VideoStream will be created when first keyframe with description arrives
             // This ensures we can pass codecSettings to the server
-            console.log('[Pipeline] Video streaming SignalR initialized, waiting for first keyframe');
+            infoLog?.log('Video streaming SignalR initialized, waiting for first keyframe');
         }
 
 
@@ -428,20 +420,20 @@ export class VideoPipeline implements IVideoPipeline {
 
         // Create processor to extract frames (with canvas fallback for older Safari)
         const hasMSTP = this.hasMSTPInWindow();
-        console.log(`[Pipeline] MSTP available: ${hasMSTP}`);
+        infoLog?.log(`MSTP available: ${hasMSTP}`);
 
         if (hasMSTP) {
             try {
                 this.processor = new MediaStreamTrackProcessor({ track: videoTrack });
                 this.frameReader = this.processor.readable.getReader();
-                console.log('[Pipeline] Using MediaStreamTrackProcessor for frame extraction');
+                debugLog?.log('Using MSTP for frame extraction');
             } catch (error) {
-                console.error('[Pipeline] MSTP creation failed, falling back to canvas:', error);
+                errorLog?.log('MSTP creation failed, falling back to canvas:', error);
                 this.frameReader = this.createCanvasFrameExtractor(videoTrack);
             }
         } else {
             // Canvas-based fallback for older browsers
-            console.log('[Pipeline] MSTP not available - using canvas-based frame extraction fallback');
+            infoLog?.log('MSTP not available - using canvas-based frame extraction fallback');
             this.frameReader = this.createCanvasFrameExtractor(videoTrack);
         }
 
@@ -458,16 +450,16 @@ export class VideoPipeline implements IVideoPipeline {
                     this.config.backgroundBlur.segmentationConfig,
                     { timeoutMs: 10000 } // Longer timeout for model loading
                 ).catch((error: unknown) => {
-                    console.error('[Pipeline] Failed to initialize segmentation worker:', error);
+                    errorLog?.log('Failed to initialize segmentation worker:', error);
                     throw error;
                 })
             );
-            console.log('[Pipeline] Initializing segmentation worker for background blur');
+            infoLog?.log('Initializing segmentation worker for background blur');
         }
 
         await Promise.all(initPromises);
-        console.log('[Pipeline] Encoder worker ready via RPC');
-        console.log('[Pipeline] Decoder worker ready via RPC');
+        infoLog?.log('Encoder worker ready via RPC');
+        infoLog?.log('Decoder worker ready via RPC');
 
         // Start pumping frames to encoder worker
         // Note: this.processing was already set to true earlier (before frame extractor creation)
@@ -485,13 +477,13 @@ export class VideoPipeline implements IVideoPipeline {
                         const segStats = await this.segmentationWorker.getStats();
                         this.currentStats.segmentation = segStats;
                     } catch (error) {
-                        console.warn('[Pipeline] Failed to get segmentation stats:', error);
+                        warnLog?.log('Failed to get segmentation stats:', error);
                     }
                 }
             })();
         }, 1000);
 
-        console.log('Pipeline started successfully with RPC: Encoder Worker (sender) → TransferSimulator (network) → Decoder Worker (receiver)');
+        infoLog?.log('Pipeline started successfully with RPC: Encoder Worker (sender) -> TransferSimulator (network) -> Decoder Worker (receiver)');
 
         if (this.generator) {
             this.outputStream = new MediaStream([this.generator]);
@@ -500,7 +492,7 @@ export class VideoPipeline implements IVideoPipeline {
             const mimeType = this.getMediaRecorderMimeType();
             this.outputRecorder = new MediaStreamRecorder(mimeType);
             this.outputRecorder.start(this.outputStream);
-            console.log(`Started MediaRecorder for output stream with MIME: ${mimeType}`);
+            infoLog?.log(`Started MediaRecorder for output stream with MIME: ${mimeType}`);
 
             return this.outputStream;
         }
@@ -511,7 +503,7 @@ export class VideoPipeline implements IVideoPipeline {
             const mimeType = this.getMediaRecorderMimeType();
             this.outputRecorder = new MediaStreamRecorder(mimeType);
             this.outputRecorder.start(this.outputStream);
-            console.log(`Started MediaRecorder for canvas output stream with MIME: ${mimeType}`);
+            infoLog?.log(`Started MediaRecorder for canvas output stream with MIME: ${mimeType}`);
 
             return this.outputStream;
         }
@@ -520,7 +512,7 @@ export class VideoPipeline implements IVideoPipeline {
     }
 
     public async stop(): Promise<Blob> {
-        console.log('Stopping unified pipeline...');
+        infoLog?.log('Stopping unified pipeline...');
 
         // Stop stats polling
         if (this.statsInterval) {
@@ -533,9 +525,9 @@ export class VideoPipeline implements IVideoPipeline {
         if (this.outputRecorder) {
             try {
                 recordedBlob = await this.outputRecorder.stop();
-                console.log(`MediaRecorder stopped, blob size: ${(recordedBlob.size / 1024 / 1024).toFixed(2)} MB`);
+                infoLog?.log(`MediaRecorder stopped, blob size: ${(recordedBlob.size / 1024 / 1024).toFixed(2)} MB`);
             } catch (error) {
-                console.warn('MediaRecorder stop error:', error);
+                warnLog?.log('MediaRecorder stop error:', error);
             }
             this.outputRecorder = null;
         }
@@ -548,26 +540,26 @@ export class VideoPipeline implements IVideoPipeline {
             try {
                 await this.frameReader.cancel();
             } catch (e: unknown) {
-                console.warn('Frame reader cancel error:', e);
+                warnLog?.log('Frame reader cancel error:', e);
             }
             this.frameReader = null;
         }
 
         // Stop encoder worker via RPC
         await this.encoder.stop();
-        console.log('[Pipeline] Encoder stopped via RPC');
+        infoLog?.log('Encoder stopped via RPC');
 
         // Stop decoder worker via RPC
         await this.decoder.stop();
-        console.log('[Pipeline] Decoder stopped via RPC');
+        infoLog?.log('Decoder stopped via RPC');
 
         // Stop segmentation worker if it exists
         if (this.segmentationWorker) {
             try {
                 await this.segmentationWorker.stop();
-                console.log('[Pipeline] Segmentation worker stopped via RPC');
+                infoLog?.log('Segmentation worker stopped via RPC');
             } catch (error) {
-                console.warn('[Pipeline] Error stopping segmentation worker:', error);
+                warnLog?.log('Error stopping segmentation worker:', error);
             }
         }
 
@@ -575,9 +567,9 @@ export class VideoPipeline implements IVideoPipeline {
         if (this.writer) {
             try {
                 await this.writer.close();
-                console.log('Writer closed');
+                infoLog?.log('Writer closed');
             } catch (error) {
-                console.warn('Writer close error:', error);
+                warnLog?.log('Writer close error:', error);
             }
             this.writer = null;
         }
@@ -585,7 +577,7 @@ export class VideoPipeline implements IVideoPipeline {
         // Stop generator
         if (this.generator) {
             this.generator.stop();
-            console.log('Generator stopped');
+            infoLog?.log('Generator stopped');
             this.generator = null;
         }
 
@@ -598,7 +590,7 @@ export class VideoPipeline implements IVideoPipeline {
         // Complete video stream if active
         if (this.videoStream) {
             this.videoStream.complete();
-            console.log('[Pipeline] Video stream completed');
+            infoLog?.log('Video stream completed');
             this.videoStream = null;
         }
 
@@ -625,7 +617,7 @@ export class VideoPipeline implements IVideoPipeline {
             this.outputStream = null;
         }
 
-        console.log('Pipeline stopped with RPC cleanup');
+        infoLog?.log('Pipeline stopped with RPC cleanup');
 
         // Return MediaRecorder blob if available, otherwise create empty blob
         return recordedBlob ?? new Blob([], { type: 'video/webm' });
@@ -638,7 +630,7 @@ export class VideoPipeline implements IVideoPipeline {
    * Dynamically reconfigure encoder with new bitrate and/or resolution
    */
     async reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void> {
-        console.log(`[VideoPipeline] Reconfiguring via RPC: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
+        infoLog?.log(`Reconfiguring via RPC: ${params.bitrate / 1_000_000}Mbps, ${params.width}x${params.height}`);
 
         // Update config
         this.config.encoderConfig.bitrate = params.bitrate;
@@ -653,7 +645,7 @@ export class VideoPipeline implements IVideoPipeline {
    * Dynamically toggle background blur on/off during recording
    */
     async toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void> {
-        console.log(`[VideoPipeline] Toggling background blur: ${enabled ? 'ON' : 'OFF'}`);
+        infoLog?.log(`Toggling background blur: ${enabled ? 'ON' : 'OFF'}`);
 
         if (enabled && !this.segmentationWorker) {
             // Initialize segmentation worker if enabling blur and it doesn't exist
@@ -673,7 +665,7 @@ export class VideoPipeline implements IVideoPipeline {
                 throw new Error('Cannot enable blur: background blur not configured');
             }
 
-            console.log('[VideoPipeline] Initializing segmentation worker for dynamic blur enable...');
+            infoLog?.log('Initializing segmentation worker for dynamic blur enable...');
 
             const segmentationWorkerPath = Versioning.mapPath('/dist/videoSegmentationWorker.js');
             this.segmentationWorkerInstance = new Worker(
@@ -696,7 +688,7 @@ export class VideoPipeline implements IVideoPipeline {
                 { timeoutMs: 10000 }
             );
 
-            console.log('[VideoPipeline] Segmentation worker initialized for dynamic blur toggle');
+            infoLog?.log('Segmentation worker initialized for dynamic blur toggle');
         }
 
         if (this.config.backgroundBlur) {
@@ -706,10 +698,10 @@ export class VideoPipeline implements IVideoPipeline {
         // Update segmentation worker config to enable/disable blur
         if (this.segmentationWorker) {
             await this.segmentationWorker.updateConfig({ blurEnabled: enabled });
-            console.log(`[VideoPipeline] Updated segmentation worker blurEnabled to ${enabled}`);
+            infoLog?.log(`Updated segmentation worker blurEnabled to ${enabled}`);
         }
 
-        console.log(`[VideoPipeline] Background blur ${enabled ? 'enabled' : 'disabled'}`);
+        infoLog?.log(`Background blur ${enabled ? 'enabled' : 'disabled'}`);
     }
 
     getEncoderStats(): EncoderStats {
@@ -744,7 +736,7 @@ export class VideoPipeline implements IVideoPipeline {
    * Update segmentation configuration dynamically during recording
    */
     async updateSegmentationConfig(config: Partial<SegmentationConfig>): Promise<void> {
-        console.log(`[VideoPipeline] Updating segmentation config:`, config);
+        infoLog?.log('Updating segmentation config:', config);
 
         if (this.segmentationWorker) {
             // Update worker config via RPC
@@ -765,7 +757,7 @@ export class VideoPipeline implements IVideoPipeline {
    * Recreates the segmentation worker with the new backend configuration
    */
     async switchSegmentationBackend(newBackend: 'webgpu' | 'wasm'): Promise<void> {
-        console.log(`[VideoPipeline] Switching segmentation backend to: ${newBackend}`);
+        infoLog?.log(`Switching segmentation backend to: ${newBackend}`);
 
         if (!this.segmentationWorker || !this.config.backgroundBlur) {
             throw new Error('Segmentation worker not available or background blur not enabled');
@@ -779,7 +771,7 @@ export class VideoPipeline implements IVideoPipeline {
                 this.segmentationWorkerInstance.terminate();
             }
         } catch (error) {
-            console.warn('[VideoPipeline] Error stopping current segmentation worker:', error);
+            warnLog?.log('Error stopping current segmentation worker:', error);
         }
 
         // Update config with new backend
@@ -812,21 +804,21 @@ export class VideoPipeline implements IVideoPipeline {
         // Update local config
         this.config.backgroundBlur.segmentationConfig = updatedConfig;
 
-        console.log(`[VideoPipeline] Successfully switched segmentation backend to ${newBackend}`);
+        infoLog?.log(`Successfully switched segmentation backend to ${newBackend}`);
     }
 
     /**
    * Toggle between WASM and built-in AV1 decoders
    */
     async toggleAV1Decoder(useWasm: boolean): Promise<void> {
-        console.log(`[Pipeline] Toggling AV1 decoder to ${useWasm ? 'WASM' : 'built-in'}`);
+        infoLog?.log(`Toggling AV1 decoder to ${useWasm ? 'WASM' : 'built-in'}`);
 
         try {
             // Toggle the decoder type via RPC
             await this.decoder.toggleDecoderType(useWasm);
-            console.log(`[Pipeline] Successfully toggled AV1 decoder to ${useWasm ? 'WASM' : 'built-in'}`);
+            infoLog?.log(`Successfully toggled AV1 decoder to ${useWasm ? 'WASM' : 'built-in'}`);
         } catch (error) {
-            console.error('[Pipeline] Failed to toggle AV1 decoder:', error);
+            errorLog?.log('Failed to toggle AV1 decoder:', error);
             throw error;
         }
     }
@@ -835,7 +827,7 @@ export class VideoPipeline implements IVideoPipeline {
    * Update frame dropping configuration dynamically during recording
    */
     updateFrameDroppingConfig(enabled: boolean, dropProbability = 0.1): void {
-        console.log(`[VideoPipeline] Updating frame dropping config: enabled=${enabled}, probability=${dropProbability}`);
+        infoLog?.log(`Updating frame dropping config: enabled=${enabled}, probability=${dropProbability}`);
 
         // Create or update local config
         this.config.frameDropping = {
@@ -843,7 +835,7 @@ export class VideoPipeline implements IVideoPipeline {
             dropProbability
         };
 
-        console.log(`[VideoPipeline] Frame dropping config now:`, this.config.frameDropping);
+        infoLog?.log('Frame dropping config now:', this.config.frameDropping);
     }
 
     /**
@@ -851,7 +843,7 @@ export class VideoPipeline implements IVideoPipeline {
    * Enhanced for Safari compatibility with proper video element handling
    */
     private createCanvasFrameExtractor(videoTrack: MediaStreamTrack): ReadableStreamDefaultReader<VideoFrame> {
-        console.log('[Pipeline] Creating canvas-based frame extractor (Safari fallback)');
+        infoLog?.log('Creating canvas-based frame extractor (Safari fallback)');
 
         const canvas = document.createElement('canvas');
         const video = document.createElement('video');
@@ -905,7 +897,7 @@ export class VideoPipeline implements IVideoPipeline {
                             pendingFrames.push(frame);
                             controller.enqueue(frame);
                         } catch (error) {
-                            console.error('[Pipeline] Canvas frame extraction error:', error);
+                            errorLog?.log('Canvas frame extraction error:', error);
                         }
                     }
 
@@ -914,19 +906,19 @@ export class VideoPipeline implements IVideoPipeline {
 
                 // Handle video events properly for Safari
                 video.onloadedmetadata = () => {
-                    console.log('[Pipeline] Canvas extractor: video metadata loaded', video.videoWidth, 'x', video.videoHeight);
+                    infoLog?.log('Canvas extractor: video metadata loaded', video.videoWidth, 'x', video.videoHeight);
                     metadataLoaded = true;
 
                     // Try to play the video (Safari requires explicit play())
                     if (video.paused) {
                         playPromise = video.play().catch((error: unknown) => {
-                            console.warn('[Pipeline] Canvas extractor: Video play() failed, trying to extract anyway:', error);
+                            warnLog?.log('Canvas extractor: Video play() failed, trying to extract anyway:', error);
                             videoReady = true;
                             pump();
                         });
 
                         void playPromise.then(() => {
-                            console.log('[Pipeline] Canvas extractor: Video playback started');
+                            infoLog?.log('Canvas extractor: Video playback started');
                             videoReady = true;
                             pump();
                         }).catch(() => {
@@ -938,12 +930,12 @@ export class VideoPipeline implements IVideoPipeline {
                     }
                 };
 
-                video.onerror = (e) => console.error('[Pipeline] Canvas extractor video error:', e, video.error);
+                video.onerror = (e) => errorLog?.log('Canvas extractor video error:', e, video.error);
 
                 // Fallback: if metadata never loads, start after timeout
                 const fallbackTimeout = window.setTimeout(() => {
                     if (!metadataLoaded) {
-                        console.warn('[Pipeline] Video metadata not loaded after timeout, attempting to extract frames anyway');
+                        warnLog?.log('Video metadata not loaded after timeout, attempting to extract frames anyway');
                         videoReady = true;
                         pump();
                     }
@@ -960,12 +952,12 @@ export class VideoPipeline implements IVideoPipeline {
 
             cancel: () => {
                 // Clean up any pending frames when stream is cancelled
-                console.log(`[Pipeline] Canvas frame extractor cancelled, closing ${pendingFrames.length} pending frames`);
+                infoLog?.log(`Canvas frame extractor cancelled, closing ${pendingFrames.length} pending frames`);
                 for (const frame of pendingFrames) {
                     try {
                         frame.close();
                     } catch (e: unknown) {
-                        console.warn('[Pipeline] Error closing pending frame during cancellation:', e);
+                        warnLog?.log('Error closing pending frame during cancellation:', e);
                     }
                 }
                 pendingFrames.length = 0;
@@ -986,12 +978,12 @@ export class VideoPipeline implements IVideoPipeline {
         const originalCancel: (reason?: unknown) => Promise<void> = reader.cancel.bind(reader);
         reader.cancel = async (reason?: unknown) => {
             // Clean up any pending frames
-            console.log(`[Pipeline] Reader cancelled, closing ${pendingFrames.length} pending frames`);
+            infoLog?.log(`Reader cancelled, closing ${pendingFrames.length} pending frames`);
             for (const frame of pendingFrames) {
                 try {
                     frame.close();
                 } catch (e: unknown) {
-                    console.warn('[Pipeline] Error closing pending frame during reader cancellation:', e);
+                    warnLog?.log('Error closing pending frame during reader cancellation:', e);
                 }
             }
             pendingFrames.length = 0;
@@ -1027,7 +1019,7 @@ export class VideoPipeline implements IVideoPipeline {
 
 
     private async pumpFrames(): Promise<void> {
-        console.log('[Pipeline] Starting frame pump...');
+        infoLog?.log('Starting frame pump...');
         let frameCount = 0;
         let droppedFrames = 0;
 
@@ -1036,29 +1028,21 @@ export class VideoPipeline implements IVideoPipeline {
                 const { done, value: frame } = await this.frameReader!.read();
 
                 if (done) {
-                    console.log(`[Pipeline] Frame stream ended after ${frameCount} frames`);
+                    infoLog?.log(`Frame stream ended after ${frameCount} frames`);
                     break;
                 }
 
                 frameCount++;
-
-                if (frameCount % 30 === 1) { // Log every 30th frame
-                    console.log(`[Pipeline] Pumping frame #${frameCount}: ${frame.displayWidth}x${frame.displayHeight}, timestamp: ${frame.timestamp}μs`);
-                }
 
                 // Check if frame should be randomly dropped
                 if (this.config.frameDropping?.enabled) {
                     const dropProbability = this.config.frameDropping.dropProbability ?? 0.1; // Default 10% drop rate
                     const randomValue = Math.random();
                     if (randomValue < dropProbability) {
-                        console.log(`[Pipeline] Randomly dropping frame #${frameCount} (random=${randomValue.toFixed(3)} < probability=${dropProbability})`);
                         frame.close();
                         droppedFrames++;
                         continue; // Skip processing this frame
                     }
-                } else if (frameCount % 300 === 0) {
-                    // Log every 300 frames to show frame dropping is disabled
-                    console.log(`[Pipeline] Frame dropping status at frame #${frameCount}:`, this.config.frameDropping);
                 }
 
                 // Route frame through segmentation worker if background blur is enabled
@@ -1066,9 +1050,8 @@ export class VideoPipeline implements IVideoPipeline {
                     try {
                         // Send frame to segmentation worker for processing
                         await this.segmentationWorker.processFrame(frame, rpcNoWait);
-                        console.log('[Pipeline] processFrame called on segmentation worker via RPC');
                     } catch (error) {
-                        console.error(`[Pipeline] Segmentation worker error on frame #${frameCount}:`, error);
+                        errorLog?.log(`Segmentation worker error on frame #${frameCount}:`, error);
                         // Fallback: send frame directly to encoder if segmentation fails
                         await this.encoder.encodeFrame(frame);
                     }
@@ -1079,10 +1062,10 @@ export class VideoPipeline implements IVideoPipeline {
             }
         } catch (error) {
             if (this.processing) {
-                console.error(`[Pipeline] Error pumping frames after ${frameCount} frames:`, error);
+                errorLog?.log(`Error pumping frames after ${frameCount} frames:`, error);
             }
         }
-        console.log(`[Pipeline] Frame pump stopped. Total frames pumped: ${frameCount}, dropped: ${droppedFrames}`);
+        infoLog?.log(`Frame pump stopped. Total frames pumped: ${frameCount}, dropped: ${droppedFrames}`);
     }
 
 
