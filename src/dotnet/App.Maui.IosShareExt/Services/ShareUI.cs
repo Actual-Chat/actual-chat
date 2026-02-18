@@ -139,9 +139,9 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     public async Task OpenMainApp(CancellationToken cancellationToken)
     {
-        Log.LogInformation("Opening main app");
-        await UIKitExt.OpenUrl(new NSUrl($"{MauiSettings.AppScheme}://"), cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("Main app opened");
+        var url = new NSUrl($"{MauiSettings.AppScheme}://");
+        Log.LogInformation("Opening main app `{Url}`", url);
+        await UIKitExt.OpenUrl(url, cancellationToken).ConfigureAwait(false);
         await UIKitExt.CloseApp(cancellationToken).ConfigureAwait(false);
     }
 
