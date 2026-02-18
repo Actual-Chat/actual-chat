@@ -44,7 +44,7 @@ public class ReconnectUI(UIHub hub)
         if (GetPeer() is not { } peer)
             return;
 
-        peer.ResetTryIndex();
+        peer.ResetConnectionAttemptIndex();
         RpcReconnectDelayer.CancelDelays();
     }
 
@@ -65,7 +65,7 @@ public class ReconnectUI(UIHub hub)
         Log.LogInformation(
             "Reconnecting on device awake ({SleepDuration} of sleep, {LastKeepAliveDelay} keep-alive delay)",
             sleepDuration.ToShortString(), keepAliveDelay.ToShortString());
-        peer.ResetTryIndex();
+        peer.ResetConnectionAttemptIndex();
         _ = peer.Disconnect();
     }
 

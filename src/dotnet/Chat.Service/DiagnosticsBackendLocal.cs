@@ -103,7 +103,7 @@ public class DiagnosticsBackendLocal(IServiceProvider services) : IComputeServic
         var info = new ConnectionStateDiagInfo(
             state.Handshake,
             state.Error?.ToString() ?? "",
-            state.TryIndex,
+            state.ConnectionAttemptIndex,
             state.ReaderTokenSource?.IsCancellationRequested ?? false
         );
         if (rpcConnection is not null) {
