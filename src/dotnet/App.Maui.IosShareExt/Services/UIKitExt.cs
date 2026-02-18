@@ -19,20 +19,9 @@ public static class UIKitExt
             generator.NotificationOccurred(UINotificationFeedbackType.Success);
         });
 
-    // NSExtensionContext.OpenUrl is not available in share extensions.
-    // Walk the responder chain to reach UIApplication.
     public static Task OpenUrl(NSUrl url, CancellationToken cancellationToken = default)
-        => MainThread.InvokeOnMainThreadAsync(() => {
-                var selector = new ObjCRuntime.Selector("openURL:");
-                UIResponder? responder = Platform.GetCurrentUIViewController();
-                while (responder is not null) {
-                    if (responder.RespondsToSelector(selector)) {
-                        responder.PerformSelector(selector, url);
-                        return;
-                    }
-                    responder = responder.NextResponder;
-                }
-            })
+        => MainThread.InvokeOnMainThreadAsync(
+                () => UIApplication.SharedApplication.OpenUrlAsync(url, new UIApplicationOpenUrlOptions()))
             .WaitAsync(cancellationToken);
 
     public static Task<ChatId?> GetSuggestedRecipient()
@@ -42,4 +31,5 @@ public static class UIKitExt
         => ExtensionContext.GetIntent() is INSendMessageIntent sendMessageIntent
             ? ChatId.ParseNullable(sendMessageIntent.ConversationIdentifier)
             : null;
+
 }
