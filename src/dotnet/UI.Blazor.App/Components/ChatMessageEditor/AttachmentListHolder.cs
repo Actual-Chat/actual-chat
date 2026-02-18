@@ -10,10 +10,11 @@ public class AttachmentListHolder : UIServiceBase<AppUIHub>
 
     public AttachmentList Attachments => _attachments;
 
-    public string MediaScope { get; init; } = "";
+    public string MediaScope { get; }
 
-    public AttachmentListHolder(AppUIHub hub) : base(hub)
+    public AttachmentListHolder(AppUIHub hub, string mediaScope) : base(hub)
     {
+        MediaScope = mediaScope;
         _attachments = CreateAttachmentList();
         SubscribeToListEvents(_attachments);
     }
