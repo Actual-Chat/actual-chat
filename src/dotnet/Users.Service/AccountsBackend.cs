@@ -438,7 +438,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
             if (AdminEmails.Contains(email))
                 return true; // Predefined admin email
-            if (account.Identities.HasGoogleIdentity() && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
+            if (OrdinalEquals(emailAddress.Host, AdminEmailDomain))
                 return true; // company email
             if (Constants.Auth.TestAgent.IsTestAgentEmail(email))
                 return true; // test agent email
