@@ -1,5 +1,6 @@
 @using ActualChat.UI.Blazor.Services
 <div class="page-with-header-and-footer">
+    <RenderSlot Name="@LayoutSlots.LeftSafeArea"/>
     <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Left.IsVisible">
         <ErrorBarrier Name="PageWithHeaderAndFooter-LeftDrawer" Kind="@ErrorBarrierKind.Medium">
             @LeftDrawer
@@ -39,6 +40,7 @@
             @RightDrawer
         </ErrorBarrier>
     </RegionVisibilityProvider>
+    <RenderSlot Name="@LayoutSlots.RightSafeArea"/>
 </div>
 
 @code {

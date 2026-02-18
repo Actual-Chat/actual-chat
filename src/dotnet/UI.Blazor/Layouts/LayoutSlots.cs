@@ -14,4 +14,6 @@ public static class LayoutSlots
     public const string MiddlePanelBottomSafeArea = nameof(MiddlePanelBottomSafeArea);
     public const string RightPanelTopSafeArea = nameof(RightPanelTopSafeArea);
     public const string RightPanelBottomSafeArea = nameof(RightPanelBottomSafeArea);
+    public const string LeftSafeArea = nameof(LeftSafeArea);
+    public const string RightSafeArea = nameof(RightSafeArea);
 }

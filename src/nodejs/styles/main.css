@@ -35,12 +35,26 @@ body {
     width: 100%;
     flex-shrink: 0;
 }
+.safe-area-left {
+    width: var(--safe-area-left);
+    height: 100%;
+    flex-shrink: 0;
+}
+.safe-area-right {
+    width: var(--safe-area-right);
+    height: 100%;
+    flex-shrink: 0;
+}
 
 /* Debug: force safe areas visible or hidden */
 body.force-safe-areas .safe-area-top { min-height: 34px; }
 body.force-safe-areas .safe-area-bottom { min-height: 34px; }
+body.force-safe-areas .safe-area-left { min-width: 34px; }
+body.force-safe-areas .safe-area-right { min-width: 34px; }
 body.hide-safe-areas .safe-area-top,
-body.hide-safe-areas .safe-area-bottom { display: none; }
+body.hide-safe-areas .safe-area-bottom,
+body.hide-safe-areas .safe-area-left,
+body.hide-safe-areas .safe-area-right { display: none; }
 
 @keyframes blink_input_opacity_to_prevent_scrolling_when_focus {
     0% { opacity: 0; }

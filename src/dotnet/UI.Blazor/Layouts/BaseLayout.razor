@@ -2,7 +2,9 @@
 @using ActualChat.UI.Blazor.Services
 
 <div class="base-layout">
+    <div class="safe-area-left bg-04"></div>
     <div class="base-layout-body">
+        <div class="safe-area-top bg-04"></div>
         <div class="c-layout-content">
             @if (Hub.IsInteractive) {
                 <ToastHost @key="@ToastHostKey"/>
@@ -13,7 +15,9 @@
                 </ErrorBarrier>
             </NoComponent>
         </div>
+        <div class="safe-area-bottom bg-04"></div>
     </div>
+    <div class="safe-area-right bg-04"></div>
 </div>
 
 @code {
