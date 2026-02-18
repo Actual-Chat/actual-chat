@@ -27,7 +27,7 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
         await fileProvider.PrepareForSaving().ConfigureAwait(false);
 
         var now = _uploadOperations.Now();
-        var snapshot = CreateNewUploadSessionSnapshot(fileProvider, metadata, now, mediaScope);
+        var snapshot = UploadSession.NewUploadSnapshot(fileProvider, metadata, now, mediaScope);
         var session = new UploadSession(snapshot, _uploadOperations, _storage);
         await _repo.Save(snapshot).ConfigureAwait(false);
         _sessions[session.SessionId] = new SessionRef(session);
@@ -63,22 +63,6 @@ public partial class UploadSessions : UIServiceBase<AppUIHub>
             throw new InvalidOperationException($"Session {sessionId} not found");
 
         return await session.WhenMediaReserved.ConfigureAwait(false);
-    }
-
-    private static UploadSessionSnapshot CreateNewUploadSessionSnapshot(IFileProvider fileProvider, PropertyBag metadata,
-        Moment now, string mediaScope)
-    {
-        var snapshot = new UploadSessionSnapshot {
-            SessionId = Guid.NewGuid().ToString(),
-            FileProvider = fileProvider,
-            Metadata = metadata,
-            CurrentState = UploadSessionState.Created,
-            DataVersion = 1,
-            CreatedAt = now,
-            LastUpdatedAt = now,
-            MediaScope = mediaScope,
-        };
-        return snapshot;
     }
 
     public void AddReference(string sessionId)
