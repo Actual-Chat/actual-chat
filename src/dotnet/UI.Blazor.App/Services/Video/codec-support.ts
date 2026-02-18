@@ -3,6 +3,10 @@
  * Detects which video codecs are supported by the browser
  */
 
+import { Log } from 'logging';
+
+const { errorLog } = Log.get('VideoDecoder');
+
 export interface CodecInfo {
     name: string;
     codec: string;
@@ -146,7 +150,7 @@ async function isCodecSupported(
             scalabilityModes,
         };
     } catch (error) {
-        console.error(`Error checking codec support for ${codec}:`, error);
+        errorLog?.log(`Error checking codec support for ${codec}:`, error);
         return { supported: false, hardwareAccelerated: false, scalabilityModes: [] };
     }
 }

@@ -3,6 +3,10 @@
  * Records the decoded output stream using MediaRecorder for proper muxing
  */
 
+import { Log } from 'logging';
+
+const { infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
+
 export class MediaStreamRecorder {
     private mediaRecorder: MediaRecorder | null = null;
     private recordedChunks: Blob[] = [];
@@ -24,7 +28,7 @@ export class MediaStreamRecorder {
 
             // Test if MIME type is supported
             if (!MediaRecorder.isTypeSupported(this.mimeType)) {
-                console.warn(`[MediaStreamRecorder] MIME type ${this.mimeType} not supported, using default`);
+                warnLog?.log('MIME type', this.mimeType, 'not supported, using default');
                 this.mediaRecorder = new MediaRecorder(stream);
             } else {
                 this.mediaRecorder = new MediaRecorder(stream, options);
@@ -37,9 +41,9 @@ export class MediaStreamRecorder {
             };
 
             this.mediaRecorder.start(100); // Collect data every 100ms
-            console.log(`[MediaStreamRecorder] Started recording with MIME type: ${this.mediaRecorder.mimeType}`);
+            infoLog?.log('MediaRecorder started with MIME type:', this.mediaRecorder.mimeType);
         } catch (error) {
-            console.error('[MediaStreamRecorder] Error starting recording:', error);
+            errorLog?.log('MediaRecorder error starting recording:', error);
             throw error;
         }
     }
@@ -57,12 +61,12 @@ export class MediaStreamRecorder {
             this.mediaRecorder.onstop = () => {
                 const mimeType = this.mediaRecorder?.mimeType ?? this.mimeType;
                 const blob = new Blob(this.recordedChunks, { type: mimeType });
-                console.log(`[MediaStreamRecorder] Recording stopped. Blob size: ${(blob.size / 1024 / 1024).toFixed(2)} MB, MIME: ${mimeType}`);
+                infoLog?.log('MediaRecorder stopped. Blob size:', (blob.size / 1024 / 1024).toFixed(2), 'MB, MIME:', mimeType);
                 resolve(blob);
             };
 
             this.mediaRecorder.onerror = (event: Event) => {
-                console.error('[MediaStreamRecorder] Recording error:', event);
+                errorLog?.log('MediaRecorder error:', event);
                 reject(new Error('MediaRecorder error'));
             };
 

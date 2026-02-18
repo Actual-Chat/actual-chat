@@ -1,3 +1,7 @@
+import { Log } from 'logging';
+
+const { warnLog } = Log.get('VideoSegmentation');
+
 /**
  * Centralized WebGPU device ownership shared between ONNX Runtime, tensor utilities,
  * and blur pipelines. Ensures a single GPUDevice and shared sampler instance.
@@ -15,7 +19,7 @@ export class WebGPUManager {
         const existingDevice = this.device;
         if (existingDevice) {
             if (externalDevice && externalDevice !== existingDevice) {
-                console.warn('[WebGPUManager] Ignoring secondary device initialization request.');
+                warnLog?.log('Ignoring secondary device initialization request');
             }
             return existingDevice;
         }

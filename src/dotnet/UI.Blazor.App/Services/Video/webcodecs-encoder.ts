@@ -3,6 +3,10 @@
  * Encodes video frames to H.264 chunks with statistics tracking
  */
 
+import { Log } from 'logging';
+
+const { infoLog, errorLog } = Log.get('VideoEncoder');
+
 export interface EncoderConfig {
   codec: string; // Support any codec string to handle H.264, HEVC, AV1, VP9, etc.
   width: number;
@@ -78,7 +82,7 @@ export class WebCodecsEncoder {
                 this.onChunk(chunkData);
             },
             error: (e: DOMException) => {
-                console.error('WebCodecs Encoder error:', e);
+                errorLog?.log('Encoder error:', e);
                 this.onError(e as unknown as Error);
             }
         });
@@ -86,7 +90,7 @@ export class WebCodecsEncoder {
 
     initialize(): void {
         try {
-            console.log(`[Encoder] Initializing with: ${this.config.width}x${this.config.height} @ ${(this.config.bitrate / 1_000_000).toFixed(1)}Mbps`);
+            infoLog?.log(`Initializing: ${this.config.width}x${this.config.height} @ ${(this.config.bitrate / 1_000_000).toFixed(1)}Mbps`);
 
             const encoderConfig: VideoEncoderConfig = {
                 codec: this.config.codec,
@@ -113,11 +117,11 @@ export class WebCodecsEncoder {
             }
 
             if (this.config.scalabilityMode) {
-                console.log(`Using scalability mode: ${this.config.scalabilityMode}`);
+                infoLog?.log('Using scalability mode:', this.config.scalabilityMode);
             }
             this.encoder.configure(encoderConfig);
         } catch (error) {
-            console.error('Failed to configure encoder:', error);
+            errorLog?.log('Failed to configure encoder:', error);
             throw error;
         }
     }
@@ -138,11 +142,7 @@ export class WebCodecsEncoder {
 
         if (shouldBeKeyFrame) {
             this.lastKeyFrame = this.frameCount;
-            console.log('[Encoder] 🔑 KEYFRAME at frame', this.frameCount,
-                '(forced:', forceKeyFrame,
-                'interval reached:', (this.frameCount - this.lastKeyFrame >= this.config.keyframeInterval),
-                'input frame:', `${frame.displayWidth}x${frame.displayHeight}`,
-                'encoder config:', `${this.config.width}x${this.config.height} @ ${this.config.bitrate / 1_000_000}Mbps`);
+            infoLog?.log('Keyframe at frame', this.frameCount);
         }
 
         try {
@@ -152,7 +152,7 @@ export class WebCodecsEncoder {
             this.droppedFrames++;
             // Remove the start time since encode failed
             this.encodeStartTimes.pop();
-            console.error('Error encoding frame:', error);
+            errorLog?.log('Error encoding frame:', error);
             this.onError(error as Error);
         } finally {
             frame.close();
@@ -164,7 +164,7 @@ export class WebCodecsEncoder {
             try {
                 await this.encoder.flush();
             } catch (error) {
-                console.error('Error flushing encoder:', error);
+                errorLog?.log('Error flushing encoder:', error);
             }
         }
     }
@@ -174,9 +174,6 @@ export class WebCodecsEncoder {
         if (this.encoder.state !== 'configured') {
             throw new Error('Encoder is not configured');
         }
-
-        console.log('[Encoder] 🔧 RECONFIGURE called with:', params);
-        console.log('[Encoder] Current state - frameCount:', this.frameCount, 'lastKeyFrame:', this.lastKeyFrame);
 
         const oldBitrate = this.config.bitrate;
         const oldWidth = this.config.width;
@@ -193,11 +190,7 @@ export class WebCodecsEncoder {
             this.config.height = params.height;
         }
 
-        console.log('[Encoder] Config changed from:',
-            `${oldBitrate / 1_000_000}Mbps ${oldWidth}x${oldHeight}`,
-            'to:',
-            `${this.config.bitrate / 1_000_000}Mbps ${this.config.width}x${this.config.height}`
-        );
+        infoLog?.log(`Reconfigure: ${oldBitrate / 1_000_000}Mbps ${oldWidth}x${oldHeight} -> ${this.config.bitrate / 1_000_000}Mbps ${this.config.width}x${this.config.height}`);
 
         const encoderConfig: VideoEncoderConfig = {
             codec: this.config.codec,
@@ -224,15 +217,11 @@ export class WebCodecsEncoder {
         }
 
         // Reconfigure the encoder
-        console.log('[Encoder] Calling VideoEncoder.configure() with new bitrate:', (encoderConfig.bitrate ?? 0) / 1_000_000, 'Mbps');
         this.encoder.configure(encoderConfig);
-        console.log('[Encoder] VideoEncoder.configure() completed');
 
         // FIX: Force immediate keyframe on next frame by setting lastKeyFrame far enough in the past
         // This ensures the condition (frameCount - lastKeyFrame >= keyframeInterval) will be true on next encode
         this.lastKeyFrame = this.frameCount - this.config.keyframeInterval;
-        console.log('[Encoder] ✅ Keyframe counter adjusted to force IMMEDIATE keyframe on next frame');
-        console.log('[Encoder] 🔑 Next frame (frame', this.frameCount, ') will be encoded as keyframe with new bitrate:', this.config.bitrate / 1_000_000, 'Mbps');
     }
 
     close(): void {

@@ -6,7 +6,7 @@ import Denque from 'denque';
 import { EventHandlerSet } from 'event-handling';
 import { Log } from 'logging';
 
-const { debugLog, errorLog } = Log.get('VideoStreamer');
+const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoStreamer');
 
 export interface VideoStreamConfig {
     codec: string;
@@ -77,17 +77,17 @@ export class VideoStream {
 
     public addFrame(frame: VideoStreamFrame): void {
         if (this.isCompleted) {
-            console.warn('[VideoStream] addFrame: skipping, stream is completed');
+            warnLog?.log('addFrame: skipping, stream is completed');
             return;
         }
         if (!frame.data.length) {
-            console.warn('[VideoStream] addFrame: skipping empty frame');
+            warnLog?.log('addFrame: skipping empty frame');
             return;
         }
         this.frames.push(frame);
         // Always log frame additions for debugging
         if (this.frames.length <= 3 || this.frames.length % 30 === 0)
-            console.log('[VideoStream] addFrame: added frame, queue size:', this.frames.length, 'isKey:', frame.isKeyFrame, 'size:', frame.data.length);
+            debugLog?.log('addFrame: queue size:', this.frames.length, 'isKey:', frame.isKeyFrame, 'size:', frame.data.length);
         this.frameAdded.trigger();
     }
 
@@ -97,12 +97,12 @@ export class VideoStream {
     }
 
     private async stream(): Promise<void> {
-        console.log('[VideoStream] stream() started, isCompleted:', this.isCompleted, 'isDisposed:', this.isDisposed);
+        infoLog?.log('stream() started');
 
         if (this.streamAfter) {
-            debugLog?.log('[VideoStream] Waiting for previous stream to complete...');
+            debugLog?.log('Waiting for previous stream to complete...');
             await this.streamAfter;
-            debugLog?.log('[VideoStream] Previous stream completed');
+            debugLog?.log('Previous stream completed');
         }
 
         // Subject sends byte[][] (each frame MessagePack-encoded as byte[])
@@ -113,10 +113,10 @@ export class VideoStream {
         while (!this.isDisposed) {
             try {
                 if (subject === null || !VideoStreamer.isConnected) {
-                    debugLog?.log('[VideoStream] Connecting to SignalR...');
+                    debugLog?.log('Connecting to SignalR...');
                     await VideoStreamer.ensureConnected();
 
-                    console.log('[VideoStream] Connected, creating subject and calling PushVideo with codecSettings:', this.config.codecSettings?.length ?? 0, 'chars');
+                    infoLog?.log('Connected, calling PushVideo with codecSettings:', this.config.codecSettings?.length ?? 0, 'chars');
                     subject = new signalR.Subject<Uint8Array[]>();
                     // Use PushVideo - simple forwarding, no processing
                     await VideoStreamer.connection!.send(
@@ -130,7 +130,7 @@ export class VideoStream {
                         Date.now() / 1000,
                         subject
                     );
-                    console.log('[VideoStream] PushVideo called successfully with codecSettings');
+                    infoLog?.log('PushVideo called successfully');
                 }
 
                 while (VideoStreamer.isConnected && !this.isDisposed) {
@@ -141,34 +141,34 @@ export class VideoStream {
                         if (frame) {
                             chunksToSend.push(frame);
                         } else if (this.isCompleted || chunksToSend.length > 0) {
-                            debugLog?.log('[VideoStream] Breaking inner loop: isCompleted=', this.isCompleted, 'chunksToSend.length=', chunksToSend.length);
+                            debugLog?.log('Breaking inner loop: isCompleted=', this.isCompleted, 'chunksToSend.length=', chunksToSend.length);
                             break;
                         } else {
-                            // debugLog?.log('[VideoStream] Waiting for frames...');
+                            // debugLog?.log('Waiting for frames...');
                             await this.frameAdded.whenNext();
                         }
                     }
 
                     if (chunksToSend.length > 0) {
-                        console.log('[VideoStream] Sending', chunksToSend.length, 'frames to server');
+                        debugLog?.log('Sending', chunksToSend.length, 'frames to server');
                         // Encode each frame as MessagePack bytes, send as byte[][]
                         const encodedFrames = chunksToSend.map(f => encodeFrame(f));
                         subject.next(encodedFrames);
                     }
 
                     if (this.isCompleted && this.frames.length === 0) {
-                        console.log('[VideoStream] Stream completed, calling subject.complete()');
+                        infoLog?.log('Stream completed');
                         subject.complete();
                         this.isDisposed = true;
                     }
                 }
-                debugLog?.log('[VideoStream] Exited inner while loop, isConnected:', VideoStreamer.isConnected, 'isDisposed:', this.isDisposed);
+                debugLog?.log('Exited inner while loop, isConnected:', VideoStreamer.isConnected, 'isDisposed:', this.isDisposed);
             } catch (error) {
                 subject = null;
-                errorLog?.log('[VideoStream] stream error:', error);
+                errorLog?.log('stream error:', error);
             }
         }
-        debugLog?.log('[VideoStream] stream() exiting');
+        debugLog?.log('stream() exiting');
     }
 }
 
@@ -178,9 +178,9 @@ export class VideoStreamer {
     public static lastStream: VideoStream | null = null;
 
     public static init(hubUrl: string): void {
-        console.warn('[VideoStreamer] init called with hubUrl:', hubUrl);
+        infoLog?.log('init called with hubUrl:', hubUrl);
         if (this.connection) {
-            console.warn('[VideoStreamer] Connection already exists, state:', this.connection.state);
+            warnLog?.log('Connection already exists, state:', this.connection.state);
             return;
         }
 
@@ -193,13 +193,13 @@ export class VideoStreamer {
             .withHubProtocol(new MessagePackHubProtocol())
             .build();
 
-        this.connection.onclose((err) => console.warn('[VideoStreamer] Connection closed:', err));
-        this.connection.onreconnecting((err) => console.warn('[VideoStreamer] Reconnecting:', err));
-        this.connection.onreconnected((id) => console.warn('[VideoStreamer] Reconnected:', id));
+        this.connection.onclose((err) => warnLog?.log('Connection closed:', err));
+        this.connection.onreconnecting((err) => warnLog?.log('Reconnecting:', err));
+        this.connection.onreconnected((id) => warnLog?.log('Reconnected:', id));
 
         this.connection.start()
-            .then(() => console.warn('[VideoStreamer] Connected successfully, state:', this.connection!.state))
-            .catch((err: unknown) => console.error('[VideoStreamer] Connection failed:', err));
+            .then(() => infoLog?.log('Connected successfully, state:', this.connection!.state))
+            .catch((err: unknown) => errorLog?.log('Connection failed:', err));
     }
 
     public static get isConnected(): boolean {

@@ -41,6 +41,22 @@ export default tseslint.config(
                 "ignoreArrowShorthand": true,
             }],
             '@typescript-eslint/dot-notation': 'off',
+            '@typescript-eslint/no-unused-vars': [
+                'error', // or 'warn'
+                {
+                    caughtErrors: 'all',            // also check catch (err) { … }
+                    vars: 'all',
+
+                    // ── The important part ──
+                    argsIgnorePattern: '^_',           // arguments like _req, _,
+                    varsIgnorePattern: '^_',           // let _sequenceNumber = …
+                    caughtErrorsIgnorePattern: '^_',   // catch (_err) { … }
+                    destructuredArrayIgnorePattern: '^_',  // const [a, _b, c] = …
+
+                    // Optional but very commonly used together:
+                    ignoreRestSiblings: true,       // const { a, ...rest } = obj;   ← rest is ignored
+                },
+            ],
         },
         languageOptions: {
             parser: tsParser,

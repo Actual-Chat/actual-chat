@@ -4,6 +4,9 @@
  */
 
 import type { EncodedChunkData } from '../webcodecs-encoder';
+import { Log } from 'logging';
+
+const { debugLog, warnLog } = Log.get('VideoPipeline');
 
 export interface TransferConfig {
   bandwidth: number; // bytes per second
@@ -56,13 +59,13 @@ export class TransferSimulator {
     async sendChunk(chunk: EncodedChunkData): Promise<void> {
     // Track chunk type for bandwidth monitoring
         if (chunk.type === 'key') {
-            console.log(`[TransferSimulator] 🔑 Sending keyframe chunk: ${(chunk.byteLength / 1024).toFixed(2)} KB`);
+            debugLog?.log('Sending keyframe chunk:', (chunk.byteLength / 1024).toFixed(2), 'KB');
         }
 
         // Simulate packet loss
         if (Math.random() < this.config.packetLoss) {
             this.stats.packetsLost++;
-            console.warn('Packet lost (simulated)');
+            warnLog?.log('Packet lost (simulated)');
             return; // Drop packet
         }
 
@@ -119,7 +122,7 @@ export class TransferSimulator {
         this.isProcessingQueue = false;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     private updateStats(bytes: number, _latency: number): void {
         this.stats.totalBytes += bytes;
         this.stats.totalChunks++;
@@ -143,11 +146,10 @@ export class TransferSimulator {
 
         // Calculate current bitrate (over last second)
         const now = performance.now();
-        const bitrateKbps = this.stats.currentBitrate / 1000;
 
         // Log bandwidth stats periodically (every second)
         if (this.stats.totalChunks % 30 === 0 && this.stats.totalChunks > 0) {
-            console.log(`[TransferSimulator] 📊 Current bandwidth: ${bitrateKbps.toFixed(1)} Kbps, avg chunk: ${(this.stats.averageChunkSize / 1024).toFixed(2)} KB`);
+            // Bandwidth stats removed - use getStats() for monitoring
         }
         if (now - this.lastBitrateUpdate >= 1000) {
             this.stats.currentBitrate = (this.bytesInLastSecond * 8) / 1000; // kbps

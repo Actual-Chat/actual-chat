@@ -8,6 +8,9 @@ import { getBestScalabilityMode } from '../codec-support';
 import { detectGPUBackends } from '../gpu-support';
 import type { SegmentationConfig } from '../workers/segmentation-worker-contract';
 import { createDefaultSegmentationConfig, createAdaptiveSegmentationConfig } from '../workers/segmentation-worker-contract';
+import { Log } from 'logging';
+
+const { infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
 export interface RecordingConfig {
   mode: 'webcam' | 'screen';
@@ -76,7 +79,7 @@ export class RecordingService extends EventTarget {
     }
 
     async toggleBlur(enabled: boolean): Promise<void> {
-        console.log(`RecordingService: Toggling blur ${enabled ? 'ON' : 'OFF'}`);
+        infoLog?.log('Toggling blur', enabled ? 'ON' : 'OFF');
 
         if (!this.pipeline) {
             throw new Error('No active pipeline');
@@ -104,7 +107,7 @@ export class RecordingService extends EventTarget {
     }
 
     updateSegmentationBackend(backend: 'webgpu' | 'webgl' | 'wasm'): void {
-        console.log(`RecordingService: Updating segmentation backend to ${backend}`);
+        infoLog?.log('Updating segmentation backend to', backend);
 
         if (this.config.backgroundBlur) {
             let segConfig = this.config.backgroundBlur.segmentationConfig;
@@ -127,7 +130,7 @@ export class RecordingService extends EventTarget {
     }
 
     updateSegmentationBlurRadius(blurRadius: number): void {
-        console.log(`RecordingService: Updating segmentation blur radius to ${blurRadius}`);
+        infoLog?.log('Updating blur radius to', blurRadius);
 
         if (this.config.backgroundBlur) {
             if (this.config.backgroundBlur.segmentationConfig) {
@@ -152,7 +155,7 @@ export class RecordingService extends EventTarget {
     }
 
     async toggleAV1Decoder(useWasm: boolean): Promise<void> {
-        console.log(`RecordingService: Toggling AV1 decoder to ${useWasm ? 'WASM' : 'built-in'}`);
+        infoLog?.log('Toggling AV1 decoder to', useWasm ? 'WASM' : 'built-in');
 
         if (!this.pipeline) {
             throw new Error('No active pipeline');
@@ -163,7 +166,7 @@ export class RecordingService extends EventTarget {
     }
 
     updateFrameDropping(enabled: boolean, dropProbability = 0.1): void {
-        console.log(`RecordingService: Updating frame dropping to ${enabled ? 'enabled' : 'disabled'} with ${dropProbability * 100}% drop rate`);
+        infoLog?.log(`Updating frame dropping: ${enabled ? 'enabled' : 'disabled'} ${dropProbability * 100}%`);
 
         this.config.frameDropping = {
             enabled,
@@ -174,7 +177,7 @@ export class RecordingService extends EventTarget {
     async start(): Promise<void> {
         try {
             this.setState({ status: 'acquiring-media' });
-            console.log('RecordingService: Acquiring media stream...');
+            infoLog?.log('Acquiring media stream...');
 
             // Get input stream based on mode
             this.inputStream = await this.acquireMediaStream();
@@ -185,11 +188,10 @@ export class RecordingService extends EventTarget {
             const actualWidth = settings.width ?? this.config.width;
             const actualHeight = settings.height ?? this.config.height;
 
-            console.log(`RecordingService: Actual video dimensions: ${actualWidth}x${actualHeight}`);
-            console.log(`RecordingService: Requested dimensions: ${this.config.width}x${this.config.height}`);
+            infoLog?.log(`Actual video dimensions: ${actualWidth}x${actualHeight}`);
 
             this.setState({ status: 'initializing-pipeline' });
-            console.log(`RecordingService: Initializing pipeline with ${this.config.codec.toUpperCase()} codec...`);
+            infoLog?.log('Initializing pipeline with', this.config.codec.toUpperCase(), 'codec');
 
             // Create and start pipeline with actual dimensions
             /*if (this.config.codec === 'av1') {
@@ -212,9 +214,9 @@ export class RecordingService extends EventTarget {
                 status: 'recording'
             });
 
-            console.log('RecordingService: Recording started');
+            infoLog?.log('Recording started');
         } catch (error) {
-            console.error('RecordingService: Start failed:', error);
+            errorLog?.log('Start failed:', error);
 
             // Provide user-friendly error message for codec issues
             let errorMessage = 'Failed to start recording';
@@ -239,7 +241,7 @@ export class RecordingService extends EventTarget {
             throw new Error('No active recording');
         }
 
-        console.log('RecordingService: Stopping recording...');
+        infoLog?.log('Stopping recording...');
         this.setState({ status: 'stopping' });
 
         // Stop duration tracking
@@ -258,7 +260,7 @@ export class RecordingService extends EventTarget {
         try {
             await this.pipeline.stop();
         } catch (error) {
-            console.warn('RecordingService: Pipeline stop error:', error);
+            warnLog?.log('Pipeline stop error:', error);
         }
         this.pipeline = null;
 
@@ -267,7 +269,7 @@ export class RecordingService extends EventTarget {
             status: 'idle'
         });
 
-        console.log('RecordingService: Recording and streaming stopped');
+        infoLog?.log('Recording stopped');
     }
 
     private async acquireMediaStream(): Promise<MediaStream> {
@@ -317,9 +319,9 @@ export class RecordingService extends EventTarget {
             ? getBestScalabilityMode(this.config.scalabilityModes)
             : undefined;
 
-        console.log(`RecordingService: Using codec string: ${codecString} for ${this.config.codec}`);
+        infoLog?.log('Using codec string:', codecString, 'for', this.config.codec);
         if (scalabilityMode) {
-            console.log(`RecordingService: Using scalability mode: ${scalabilityMode}`);
+            infoLog?.log('Using scalability mode:', scalabilityMode);
         }
 
         const pipelineConfig: PipelineConfig = {
@@ -355,12 +357,12 @@ export class RecordingService extends EventTarget {
             if (this.config.backgroundBlur.segmentationConfig) {
                 // Use the configured backend
                 segmentationConfig = { ...this.config.backgroundBlur.segmentationConfig };
-                console.log(`RecordingService: Background blur enabled with configured ${segmentationConfig.backend} backend`);
+                infoLog?.log('Background blur enabled with', segmentationConfig.backend, 'backend');
             } else {
                 // Fallback: detect GPU capabilities to determine best backend
                 const gpuSupport = await detectGPUBackends();
                 segmentationConfig = createDefaultSegmentationConfig(gpuSupport.recommended);
-                console.log(`RecordingService: Background blur enabled with auto-detected ${gpuSupport.recommended} backend`);
+                infoLog?.log('Background blur enabled with', gpuSupport.recommended, 'backend');
             }
 
             pipelineConfig.backgroundBlur = {
@@ -375,7 +377,7 @@ export class RecordingService extends EventTarget {
                 enabled: true,
                 dropProbability: this.config.frameDropping.dropProbability ?? 0.1
             };
-            console.log(`RecordingService: Frame dropping enabled with ${(this.config.frameDropping.dropProbability ?? 0.1) * 100}% drop probability`);
+            infoLog?.log(`Frame dropping enabled with ${(this.config.frameDropping.dropProbability ?? 0.1) * 100}% drop probability`);
         }
 
         // Add streaming configuration if enabled
@@ -385,7 +387,7 @@ export class RecordingService extends EventTarget {
                 sessionToken: this.config.streaming.sessionToken,
                 chatId: this.config.streaming.chatId,
             };
-            console.log(`RecordingService: Streaming enabled to chat ${this.config.streaming.chatId}`);
+            infoLog?.log('Streaming enabled to chat', this.config.streaming.chatId);
         }
 
         return pipelineConfig;

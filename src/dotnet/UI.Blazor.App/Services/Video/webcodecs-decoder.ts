@@ -4,6 +4,9 @@
  */
 
 import type { EncodedChunkData } from './webcodecs-encoder';
+import { Log } from 'logging';
+
+const { infoLog, warnLog, errorLog } = Log.get('VideoDecoder');
 
 export interface DecoderConfig {
   codec: string;
@@ -52,14 +55,14 @@ export class WebCodecsDecoder {
                 if (!this.lastResolution ||
             this.lastResolution.width !== currentResolution.width ||
             this.lastResolution.height !== currentResolution.height) {
-                    console.log(`[Decoder] 📐 RESOLUTION CHANGED: ${this.lastResolution ? `${this.lastResolution.width}x${this.lastResolution.height}` : 'initial'} → ${currentResolution.width}x${currentResolution.height} (frame #${this.frameCount})`);
+                    infoLog?.log(`Resolution changed: ${this.lastResolution ? `${this.lastResolution.width}x${this.lastResolution.height}` : 'initial'} -> ${currentResolution.width}x${currentResolution.height}`);
                     this.lastResolution = currentResolution;
                 }
 
                 this.onFrame(frame);
             },
             error: (e: DOMException) => {
-                console.error('WebCodecs Decoder error:', e);
+                errorLog?.log('Decoder error:', e);
                 this.onError(e as unknown as Error);
             }
         });
@@ -81,7 +84,7 @@ export class WebCodecsDecoder {
             // Safari-specific optimizations for H.264 decoding
             const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
             if (isSafari && this.config.codec.includes('avc1')) {
-                console.log('[Decoder] Safari detected - applying H.264 specific optimizations');
+                infoLog?.log('Safari detected - applying H.264 optimizations');
 
                 // Safari benefits from explicit hardware acceleration preference
                 decoderConfig.hardwareAcceleration = 'prefer-hardware';
@@ -91,9 +94,9 @@ export class WebCodecsDecoder {
             }
 
             this.decoder.configure(decoderConfig);
-            console.log('Decoder initialized', this.decoder.state);
+            infoLog?.log('Decoder initialized:', this.decoder.state);
         } catch (error) {
-            console.error('Failed to configure decoder:', error);
+            errorLog?.log('Failed to configure decoder:', error);
             throw error;
         }
     }
@@ -107,7 +110,7 @@ export class WebCodecsDecoder {
                 hardwareAcceleration: this.config.hardwareAcceleration,
                 description
             });
-            console.log('Decoder reconfigured with description');
+            infoLog?.log('Decoder reconfigured with description');
         }
     }
 
@@ -117,13 +120,13 @@ export class WebCodecsDecoder {
 
         if (currentState === 'closed') {
             this.droppedFrames++;
-            console.error(`[Decoder] Decoder is closed, cannot decode ${chunkData.type} chunk. This may indicate a browser bug or unsupported codec configuration.`);
+            errorLog?.log('Decoder is closed, cannot decode', chunkData.type, 'chunk');
             return;
         }
 
         if (currentState !== 'configured') {
             this.droppedFrames++;
-            console.warn(`[Decoder] Decoder not ready (state: ${currentState}), dropping ${chunkData.type} chunk`);
+            warnLog?.log(`Decoder not ready (state: ${currentState}), dropping ${chunkData.type} chunk`);
             return;
         }
 
@@ -135,15 +138,14 @@ export class WebCodecsDecoder {
 
             // Check state after decode to detect silent failures
             if (this.decoder.state === 'closed') {
-                console.error(`[Decoder] Decoder closed after decoding ${chunkData.type} frame. This indicates a browser-level codec issue.`);
+                errorLog?.log('Decoder closed after decoding', chunkData.type, 'frame');
                 this.onError(new Error(`Decoder closed unexpectedly after ${chunkData.type} frame - possible browser HEVC/AV1 bug`));
             }
         } catch (error) {
             this.droppedFrames++;
             // Remove the start time since decode failed
             this.decodeStartTimes.pop();
-            console.error(`[Decoder] Error decoding ${chunkData.type} chunk at timestamp ${chunkData.timestamp}:`, error);
-            console.error('[Decoder] State after error:', this.decoder.state);
+            errorLog?.log(`Error decoding ${chunkData.type} chunk at timestamp ${chunkData.timestamp}:`, error);
             this.onError(error as Error);
         }
     }
@@ -153,7 +155,7 @@ export class WebCodecsDecoder {
             try {
                 await this.decoder.flush();
             } catch (error) {
-                console.error('Error flushing decoder:', error);
+                errorLog?.log('Error flushing decoder:', error);
             }
         }
     }

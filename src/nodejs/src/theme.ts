@@ -27,7 +27,7 @@ export class Theme {
         this.apply(false);
         const defaultThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         // TODO(AY): review eslint suppressions
-        // eslint-disable-next-line @typescript-eslint/no-deprecated, @typescript-eslint/no-unused-vars
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         defaultThemeMediaQuery.addListener(_ => {
             Theme.defaultTheme = detectDefaultTheme();
             Theme.apply();

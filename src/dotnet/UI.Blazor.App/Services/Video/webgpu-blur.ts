@@ -1,4 +1,7 @@
 import { WebGPUManager } from './webgpu-manager.js';
+import { Log } from 'logging';
+
+const { infoLog, warnLog } = Log.get('VideoSegmentation');
 
 let device: GPUDevice | null = null;
 let sampler: GPUSampler;
@@ -119,7 +122,7 @@ export function processBlurDeferredCleanups(currentFrame: number = ++blurFrameCo
                 try {
                     cleanup();
                 } catch (error) {
-                    console.warn('[WebGPUBlur] Error during deferred cleanup:', error);
+                    warnLog?.log('Error during deferred cleanup:', error);
                 }
             }
             blurCleanupQueue.delete(frameNum);
@@ -419,7 +422,7 @@ export async function initBlurWebGPU(gpuDevice?: GPUDevice): Promise<void> {
         if (device === sharedDevice) {
             return;
         }
-        console.log('[WebGPU-Blur] Reinitializing with new shared device');
+        infoLog?.log('Reinitializing blur with new shared device');
     }
 
     device = sharedDevice;
@@ -452,14 +455,11 @@ function initializeGpuResources() {
         const gpu = navigator.gpu as GPU | undefined;
         if (gpu && typeof gpu.getPreferredCanvasFormat === 'function') {
             FORMAT = gpu.getPreferredCanvasFormat();
-            console.log(`[WebGPU-Blur] Using preferred canvas format: ${FORMAT}`);
         } else {
             FORMAT = 'bgra8unorm'; // Fallback
-            console.log(`[WebGPU-Blur] getPreferredCanvasFormat not available, using fallback: ${FORMAT}`);
         }
     } catch {
         FORMAT = 'bgra8unorm'; // Fallback for workers without navigator.gpu
-        console.log(`[WebGPU-Blur] Using fallback canvas format: ${FORMAT}`);
     }
 
     sampler = WebGPUManager.getSampler();
