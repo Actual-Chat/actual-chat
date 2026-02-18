@@ -19,6 +19,9 @@ public static class UIKitExt
             generator.NotificationOccurred(UINotificationFeedbackType.Success);
         });
 
+    public static Task OpenUrl(NSUrl url)
+        => MainThread.InvokeOnMainThreadAsync(() => ExtensionContext.OpenUrlAsync(url));
+
     public static Task<ChatId?> GetSuggestedRecipient()
         => MainThread.InvokeOnMainThreadAsync(GetSuggestedRecipientUnsafe);
 
