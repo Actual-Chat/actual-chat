@@ -3,6 +3,9 @@ using SkiaSharp;
 
 namespace ActualChat.Maui.Services;
 
+/// <summary>
+/// Generates marble-style PNG avatars using SkiaSharp.
+/// </summary>
 public static class MarbleAvatars
 {
     private const int Size = 80;
@@ -46,6 +49,8 @@ public static class MarbleAvatars
         using var stream = new SKFileWStream(filePath);
         pixmap.Encode(stream, SKEncodedImageFormat.Png, 100);
     }
+
+    // Private methods
 
     private static void DrawBackground(SKCanvas canvas, ColorProperty background)
     {
@@ -113,22 +118,27 @@ public static class MarbleAvatars
 
     private static SKColor ParseColor(string hex)
     {
-        if (hex.StartsWith("#", StringComparison.Ordinal))
+        if (hex.OrdinalStartsWith("#"))
             hex = hex[1..];
 
         if (hex.Length != 6 && hex.Length != 8)
             throw new ArgumentException("Expected a 6- or 8-digit hex color.", nameof(hex));
 
-        var r = byte.Parse(hex.Substring(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var g = byte.Parse(hex.Substring(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var b = byte.Parse(hex.Substring(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var r = byte.Parse(hex[..2], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var g = byte.Parse(hex[2..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var b = byte.Parse(hex[4..6], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
         var a = hex.Length == 8
-            ? byte.Parse(hex.Substring(6, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture)
+            ? byte.Parse(hex[6..8], NumberStyles.HexNumber, CultureInfo.InvariantCulture)
             : (byte)255;
 
         return new SKColor(r, g, b, a);
     }
 
+    // Nested types
+
+    /// <summary>
+    /// Properties for a colored element in a marble avatar.
+    /// </summary>
     private record ColorProperty
     {
         public required string Color { get; init; }

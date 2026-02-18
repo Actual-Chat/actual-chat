@@ -3,6 +3,9 @@ using SkiaSharp;
 
 namespace ActualChat.Maui.Services;
 
+/// <summary>
+/// Generates beam-style PNG avatars with facial features using SkiaSharp.
+/// </summary>
 public static class BeamAvatars
 {
     private const int DesignSize = 36;
@@ -28,6 +31,8 @@ public static class BeamAvatars
         using var stream = new SKFileWStream(filePath);
         pixmap.Encode(stream, SKEncodedImageFormat.Png, 100);
     }
+
+    // Private methods
 
     private static void DrawBackground(SKCanvas canvas, string colorHex)
     {
@@ -143,16 +148,21 @@ public static class BeamAvatars
 
     private static SKColor ParseColor(string hex)
     {
-        if (hex.StartsWith("#", StringComparison.Ordinal))
+        if (hex.OrdinalStartsWith("#"))
             hex = hex[1..];
 
-        var r = byte.Parse(hex.Substring(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var g = byte.Parse(hex.Substring(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var b = byte.Parse(hex.Substring(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var r = byte.Parse(hex[..2], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var g = byte.Parse(hex[2..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var b = byte.Parse(hex[4..6], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 
         return new SKColor(r, g, b);
     }
 
+    // Nested types
+
+    /// <summary>
+    /// Generated properties for a beam-style avatar.
+    /// </summary>
     private record AvatarData
     {
         public required string WrapperColor { get; init; }
