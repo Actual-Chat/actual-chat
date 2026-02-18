@@ -10,7 +10,9 @@
     Side="SideNavSide.Right"
     IsOpen="@isOpen"
     VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(b => PanelsUI.Right.SetIsVisible(b)))">
+    <RenderSlot Name="@LayoutSlots.RightPanelTopSafeArea"/>
     <RightPanelContent Chat="@Chat"/>
+    <RenderSlot Name="@LayoutSlots.RightPanelBottomSafeArea"/>
 </SideNav>
 
 @code {

@@ -8,6 +8,7 @@
     <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
         <ErrorBarrier Name="PageWithHeaderAndFooter-Content">
         <div class="@Class">
+            <RenderSlot Name="@LayoutSlots.MiddlePanelTopSafeArea"/>
             <div class="layout-header">
                 @Header
             </div>
@@ -29,6 +30,7 @@
                     </div>
                 </div>
             </div>
+            <RenderSlot Name="@LayoutSlots.MiddlePanelBottomSafeArea"/>
         </div>
         </ErrorBarrier>
     </RegionVisibilityProvider>

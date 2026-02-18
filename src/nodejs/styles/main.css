@@ -17,6 +17,31 @@ body {
     width: 100%;
 }
 
+/* Safe area insets */
+:root {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+.safe-area-top {
+    height: var(--safe-area-top);
+    width: 100%;
+    flex-shrink: 0;
+    background-color: var(--safe-area-top-bg, inherit);
+}
+.safe-area-bottom {
+    height: var(--safe-area-bottom);
+    width: 100%;
+    flex-shrink: 0;
+    background-color: var(--safe-area-bottom-bg, inherit);
+}
+
+/* Hidden when no insets */
+body:not(.has-safe-area-top) .safe-area-top { display: none; }
+body:not(.has-safe-area-bottom) .safe-area-bottom { display: none; }
+
 @keyframes blink_input_opacity_to_prevent_scrolling_when_focus {
     0% { opacity: 0; }
     100% { opacity: 1; }
@@ -346,7 +371,8 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfoo
 }
 
 .default-layout {
-    @apply w-full;
+    @apply flex-y;
+    @apply h-full w-full;
     @apply overflow-hidden;
 }
 .default-layout .layout-header {

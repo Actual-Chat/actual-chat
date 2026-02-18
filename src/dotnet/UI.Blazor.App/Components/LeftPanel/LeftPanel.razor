@@ -6,6 +6,7 @@
     Side="SideNavSide.Left"
     IsOpen="@_isOpen"
     VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(isOpen => PanelsUI.Left.SetIsVisible(isOpen)))">
+    <RenderSlot Name="@LayoutSlots.LeftPanelTopSafeArea"/>
     <div class="left-panel">
         <ErrorBarrier Name="LeftPanelContent" Kind="@ErrorBarrierKind.Full">
             <LeftPanelButtons/>
@@ -18,6 +19,7 @@
             }
         </ErrorBarrier>
     </div>
+    <RenderSlot Name="@LayoutSlots.LeftPanelBottomSafeArea"/>
 </SideNav>
 
 @code {

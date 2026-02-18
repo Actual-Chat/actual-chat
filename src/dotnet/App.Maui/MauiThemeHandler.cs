@@ -95,7 +95,7 @@ public class MauiThemeHandler
             Theme.Dark => StatusBarStyle.LightContent,
             _ => StatusBarStyle.Default,
         };
-        StatusBar.SetColor(Color.FromArgb(topBarColor));
+        StatusBar.SetColor(Colors.Transparent);
         StatusBar.SetStyle(style);
         mainPage.BackgroundColor = Color.FromArgb(bottomBarColor);
         return true;
