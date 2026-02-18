@@ -43,8 +43,8 @@ public sealed partial class UploadProcessingFlow : Flow<MediaContent>
                 SetResult(mediaContent);
             }
             catch (Exception e) {
-                // Set status to Failed
                 Console.Log($"Processing failed: {e.Message}");
+                throw;
             }
         }
         catch {
