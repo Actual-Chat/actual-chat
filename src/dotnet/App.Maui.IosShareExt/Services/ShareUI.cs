@@ -19,10 +19,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly MutableState<double> _uploadPct;
     private readonly FuncWorker _sendWorker;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
-    private readonly MutableState<ShareStep> _step;
+    private readonly MutableState<bool> _isSending;
+    private readonly MutableState<bool> _isSent;
+    private readonly MutableState<bool> _hasFailed;
 
     public MutableState<PlaceId?> SelectedPlaceId { get; }
-    public IState<ShareStep> Step => _step;
     public IState<double> UploadPct => _uploadPct;
     public IState<bool> CanSend => _canSend;
 
@@ -42,7 +43,9 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         Hub = hub;
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
         Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
-        _step = Hub.StateFactory.NewMutable<ShareStep>();
+        _isSending = Hub.StateFactory.NewMutable<bool>();
+        _isSent = Hub.StateFactory.NewMutable<bool>();
+        _hasFailed = Hub.StateFactory.NewMutable<bool>();
         _uploadPct = Hub.StateFactory.NewMutable<double>();
         _canSend = Hub.StateFactory.NewMutable<bool>();
         _sendWorker = FuncWorker.New(ct
@@ -57,35 +60,49 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         try {
-            var session = await Hub.SessionResolver.GetSession(cancellationToken).ConfigureAwait(false);
-            var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-            if (ownAccount.IsGuest) {
-                _step.Value = ShareStep.SignIn;
+            var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+            if (ownAccount.IsGuest)
                 return;
-            }
 
-            if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId) {
-                _step.Value = ShareStep.ContactSelection;
+            if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId)
                 return;
-            }
 
-            // Show upload progress immediately when sharing from a contact suggestion
-            _step.Value = ShareStep.Uploading;
-
+            // Auto-send when sharing from a contact suggestion
             var contactId = ContactId.NewAny(ownAccount.Id, chatId);
-
             _selectedIds.Add(contactId);
             _canSend.Value = true;
             StartSending();
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to initialize");
-            _step.Value = ShareStep.Failed;
+            _hasFailed.Value = true;
         }
     }
 
     protected override Task DisposeAsyncCore()
         => _sendWorker.DisposeSilentlyAsync().AsTask();
+
+    [ComputeMethod]
+    public virtual async Task<ShareStep> GetStep(CancellationToken cancellationToken)
+    {
+        var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+        if (ownAccount.IsGuest)
+            return ShareStep.SignIn;
+
+        var hasFailed = await _hasFailed.Use(cancellationToken).ConfigureAwait(false);
+        if (hasFailed)
+            return ShareStep.Failed;
+
+        var isSent = await _isSent.Use(cancellationToken).ConfigureAwait(false);
+        if (isSent)
+            return ShareStep.Completed;
+
+        var isSending = await _isSending.Use(cancellationToken).ConfigureAwait(false);
+        if (isSending)
+            return ShareStep.Uploading;
+
+        return ShareStep.ContactSelection;
+    }
 
     [ComputeMethod]
     public virtual Task<bool> IsContactSelected(ContactId contactId, CancellationToken cancellationToken)
@@ -133,7 +150,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     public void StartSending()
     {
-        _step.Value = ShareStep.Uploading;
+        _isSending.Value = true;
         _sendWorker.Start(true);
     }
 
@@ -185,7 +202,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                     await CreateChatEntry(chatId, entryText, [], cancellationToken).ConfigureAwait(false);
             }
 
-            _step.Value = ShareStep.Completed;
+            _isSent.Value = true;
 
             UIKitExt.PlaySuccessHaptic();
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
@@ -194,7 +211,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         catch (Exception e)
         {
             Log.LogError(e, "Failed to send message");
-            _step.Value = ShareStep.Failed;
+            _hasFailed.Value = true;
             throw;
         }
     }

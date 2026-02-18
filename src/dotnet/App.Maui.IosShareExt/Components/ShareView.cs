@@ -159,7 +159,7 @@ public class ShareView(IosHub hub) : ComputedStateView<ShareView.Model>(hub)
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var step = await ShareUI.Step.Use(cancellationToken).ConfigureAwait(false);
+        var step = await ShareUI.GetStep(cancellationToken).ConfigureAwait(false);
         return new Model(step);
     }
 
