@@ -27,9 +27,25 @@ public class UploadSession
     private Task _runTask = Task.CompletedTask;
     private readonly UploadOperations _uploadOperations;
 
+    public static UploadSessionSnapshot NewUploadSnapshot(IFileProvider fileProvider, PropertyBag metadata,
+        Moment now, string mediaScope)
+    {
+        var snapshot = new UploadSessionSnapshot {
+            SessionId = Guid.NewGuid().ToString(),
+            FileProvider = fileProvider,
+            Metadata = metadata,
+            CurrentState = UploadSessionState.Created,
+            DataVersion = 1,
+            CreatedAt = now,
+            LastUpdatedAt = now,
+            MediaScope = mediaScope,
+        };
+        return snapshot;
+    }
+
     public UploadSession(UploadSessionSnapshot snapshot,
         UploadOperations uploadOperations,
-        Func<UploadSessionSnapshot, CancellationToken, Task> storage)
+        Func<UploadSessionSnapshot, CancellationToken, Task>? storage = null)
     {
         _uploadOperations = uploadOperations;
         _storage = storage;
