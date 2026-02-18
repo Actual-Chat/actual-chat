@@ -1,5 +1,14 @@
 @using ActualChat.UI.App.Services.NativeAppSettings
-@inherits ComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, DeveloperTools.Model>
+@{
+    var m = State.Value;
+    var experimentalFeatureStatus = m.AreExperimentalFeaturesEnabled
+        ? "Early access features are enabled."
+        : "Disabled";
+    var incompleteUIStatus = m.IsIncompleteUIEnabled
+        ? "Early access UI is enabled."
+        : "Disabled";
+}
 
 @if (NativeHostSwitcher != null) {
     <TileTopic Topic="Host"/>
@@ -15,12 +24,88 @@
     </Tile>
 }
 
+@if (m.IsAdmin) {
+    <TileTopic Topic="Early Access Features"/>
+    <Tile Class="early-access-features">
+        <TileItem Click="@OnExperimentalFeatureEnabledClick">
+            <Icon><i class="icon-info text-2xl"></i></Icon>
+            <Content>Enable early access features</Content>
+            <Caption>@experimentalFeatureStatus</Caption>
+            <Right>
+                <Toggle IsChecked="@m.AreExperimentalFeaturesEnabled"/>
+            </Right>
+        </TileItem>
+        <TileItem Click="@OnIncompleteUIEnabledClick">
+            <Icon><i class="icon-info text-2xl"></i></Icon>
+            <Content>Enable early access UI features</Content>
+            <Caption>@incompleteUIStatus</Caption>
+            <Right>
+                <Toggle IsChecked="@m.IsIncompleteUIEnabled"/>
+            </Right>
+        </TileItem>
+    </Tile>
+}
+
+<TileTopic Topic="Troubleshooting"/>
+<Tile>
+    <TileItem Click="@OnLogUIEnabledClick">
+        <Content>Enable log viewer</Content>
+        <Right>
+            <Toggle IsChecked="@m.IsLogUIEnabled"/>
+        </Right>
+    </TileItem>
+</Tile>
+
 @code {
     private IMauiHostSwitcher? NativeHostSwitcher { get; set; }
     private IMauiLogAccessor? MauiLogAccessor { get; set; }
 
+    private LogUI LogUI => Hub.LogUI;
+
     protected override void OnInitialized() {
         NativeHostSwitcher = Services.GetService<IMauiHostSwitcher>();
         MauiLogAccessor = Services.GetService<IMauiLogAccessor>();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var settings = await AccountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        var account = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        var appSettings = await LocalSettings.LocalAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        return new(
+            settings.AreExperimentalFeaturesEnabled ?? false,
+            settings.IsIncompleteUIEnabled ?? false,
+            account.IsAdmin,
+            appSettings.IsLogViewerEnabledOrDefault);
+    }
+
+    private Task OnExperimentalFeatureEnabledClick()
+        => AccountSettings.UserAppSettings().Update(x => x with {
+            AreExperimentalFeaturesEnabled = !(x.AreExperimentalFeaturesEnabled ?? false),
+        });
+
+    private Task OnIncompleteUIEnabledClick()
+        => AccountSettings.UserAppSettings().Update(x => x with {
+            IsIncompleteUIEnabled = !(x.IsIncompleteUIEnabled ?? false),
+        });
+
+    private async Task OnLogUIEnabledClick() {
+        await LocalSettings.LocalAppSettings().Update(x => x with {
+            IsLogViewerEnabled = !x.IsLogViewerEnabledOrDefault,
+        });
+        LogUI.IsEnabled.Invalidate();
+    }
+
+    // Nested types
+
+    public record Model(
+        bool AreExperimentalFeaturesEnabled,
+        bool IsIncompleteUIEnabled,
+        bool IsAdmin,
+        bool IsLogUIEnabled)
+    {
+        public static readonly Model None = new(false, false, false, false);
     }
 }

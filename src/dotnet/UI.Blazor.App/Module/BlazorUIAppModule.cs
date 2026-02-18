@@ -121,6 +121,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<TranslationTargetLanguageModal.Model, TranslationTargetLanguageModal>()
             .Add<JoinVideoCallModal.Model, JoinVideoCallModal>()
             .Add<IncomingCallModal.Model, IncomingCallModal>()
+            .Add<TimeZoneEditorModal.Model, TimeZoneEditorModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map
