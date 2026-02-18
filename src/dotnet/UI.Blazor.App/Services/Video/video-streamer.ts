@@ -61,6 +61,7 @@ function encodeFrame(frame: VideoStreamFrame): Uint8Array {
 export class VideoStream {
     private readonly frames = new Denque<VideoStreamFrame>();
     private readonly frameAdded = new EventHandlerSet<void>();
+    private addedFrameCount = 0;
 
     public isCompleted = false;
     public isDisposed = false;
@@ -85,9 +86,9 @@ export class VideoStream {
             return;
         }
         this.frames.push(frame);
-        // Always log frame additions for debugging
-        if (this.frames.length <= 3 || this.frames.length % 30 === 0)
-            debugLog?.log('addFrame: queue size:', this.frames.length, 'isKey:', frame.isKeyFrame, 'size:', frame.data.length);
+        this.addedFrameCount++;
+        if (this.addedFrameCount <= 3 || this.addedFrameCount % 300 === 0)
+            debugLog?.log('addFrame: total:', this.addedFrameCount, 'queue:', this.frames.length, 'isKey:', frame.isKeyFrame, 'size:', frame.data.length);
         this.frameAdded.trigger();
     }
 
@@ -141,7 +142,6 @@ export class VideoStream {
                         if (frame) {
                             chunksToSend.push(frame);
                         } else if (this.isCompleted || chunksToSend.length > 0) {
-                            debugLog?.log('Breaking inner loop: isCompleted=', this.isCompleted, 'chunksToSend.length=', chunksToSend.length);
                             break;
                         } else {
                             // debugLog?.log('Waiting for frames...');
@@ -150,7 +150,6 @@ export class VideoStream {
                     }
 
                     if (chunksToSend.length > 0) {
-                        debugLog?.log('Sending', chunksToSend.length, 'frames to server');
                         // Encode each frame as MessagePack bytes, send as byte[][]
                         const encodedFrames = chunksToSend.map(f => encodeFrame(f));
                         subject.next(encodedFrames);
