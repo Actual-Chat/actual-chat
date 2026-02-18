@@ -2,7 +2,6 @@ using ActualChat.Media;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
-using ActualChat.UI.Services;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -22,7 +21,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
         var mediaProgressBackend = tester.AppServices.GetRequiredService<IMediaProgressBackend>();
 
         var testContent = "Hello, this is test content for UploadSession!"u8.ToArray();
-        var fileProvider = new TestFileProvider(testContent, "test-upload.txt", "text/plain");
+        var fileProvider = new DataFileProvider(testContent, "test-upload.txt", "text/plain");
         fileProvider.Initialize(hub.Services);
         var metadata = new PropertyBag().Set("TestKey", "TestValue");
         var scope = "upload-session-test";
@@ -65,16 +64,13 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
     }
 
     // Test file provider that uploads data via ChunkedFileUploader
-    private sealed class TestFileProvider : IFileProvider
+    private sealed class DataFileProvider : IFileProvider
     {
         private readonly byte[] _data;
-        private IServiceProvider _services = null!;
 
         public FileMetadata Metadata { get; }
 
-        private ChunkedFileUploader ChunkedFileUploader => _services.GetRequiredService<ChunkedFileUploader>();
-
-        public TestFileProvider(byte[] data, string fileName, string contentType)
+        public DataFileProvider(byte[] data, string fileName, string contentType)
         {
             _data = data;
             Metadata = new FileMetadata {
@@ -84,8 +80,7 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
             };
         }
 
-        public void Initialize(IServiceProvider services)
-            => _services = services;
+        public void Initialize(IServiceProvider services) {}
 
         public Task PrepareForSaving() => Task.CompletedTask;
 
@@ -99,10 +94,16 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
 
         public Task WhenFileStreamReady() => Task.CompletedTask;
 
-        public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
-            => ChunkedFileUploader.UploadData(uploadId, GetStream(), progressTracker, ct);
+        public IUploadSource GetUploadSource()
+        {
+            var metadata = new UploadSourceMetadata(
+                Metadata.FileType,
+                Metadata.Length,
+                Metadata.FileName);
+            return new StreamUploadSource(metadata, GetFile);
 
-        private Task<Stream> GetStream()
-            => Task.FromResult<Stream>(new MemoryStream(_data));
+            Task<Stream> GetFile()
+                => Task.FromResult<Stream>(new MemoryStream(_data));
+        }
     }
 }

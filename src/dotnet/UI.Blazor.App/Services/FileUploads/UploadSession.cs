@@ -145,6 +145,7 @@ public class UploadSession
 
     private Task RunClientProcessing(CancellationToken cancellationToken) => ExecuteStep(async () => {
         // No actual work for now, just transition to Uploading
+        // Transcode a file source if needed and save the result.
         await TransitionTo(UploadSessionState.Uploading).ConfigureAwait(false);
     }, cancellationToken);
 
@@ -161,7 +162,12 @@ public class UploadSession
         var snapshotAccessor = new UploadSessionSnapshotAccessor(
             () => _snapshot,
             (update, ct) => UpdateState(update, cancellationToken: ct));
+
+        // Use transcoded source if available, otherwise get from the file provider
+        var uploadSource = GetTranscodedSource() ?? _snapshot.FileProvider.GetUploadSource();
+
         await _uploadOperations.UploadData(
+            uploadSource,
             snapshotAccessor,
             progress,
             cancellationToken).ConfigureAwait(false);
@@ -228,6 +234,9 @@ public class UploadSession
             _stateLock.Release();
         }
     }
+
+    private IUploadSource? GetTranscodedSource()
+        => null;
 }
 
 public readonly struct UploadSessionSnapshotAccessor(

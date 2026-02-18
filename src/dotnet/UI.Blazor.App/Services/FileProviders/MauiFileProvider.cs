@@ -1,4 +1,3 @@
-using ActualChat.UI.Services;
 using ActualLab.IO;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -13,7 +12,6 @@ public partial class MauiFileProvider : IFileProvider
     [DataMember, MemoryPackOrder(1)]
     public FilePath FileRef { get; init; } = "";
 
-    private ChunkedFileUploader ChunkedFileUploader => _services.GetRequiredService<ChunkedFileUploader>();
     private IMauiFileProviderImpl Impl => field ??= _services.GetRequiredService<IMauiFileProviderImplFactory>().Create(FileRef);
     private ILogger Log => field ??= _services.LogFor<MauiFileProvider>();
 
@@ -25,17 +23,6 @@ public partial class MauiFileProvider : IFileProvider
 
     public Task PrepareForSaving()
         => Impl.PrepareForSaving();
-
-    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
-    {
-        return ChunkedFileUploader.UploadData(uploadId, GetFile(), progressTracker, ct);
-
-        async Task<Stream> GetFile()
-        {
-            var stream = await OpenRead().ConfigureAwait(false);
-            return stream ?? throw StandardError.Internal("No file access.");
-        }
-    }
 
     public async Task<bool> CheckAccess()
     {
@@ -55,6 +42,21 @@ public partial class MauiFileProvider : IFileProvider
 
     public Task WhenFileStreamReady()
         => Task.CompletedTask;
+
+    public IUploadSource GetUploadSource()
+    {
+        var metadata = new UploadSourceMetadata(
+            Metadata.FileType,
+            Metadata.Length,
+            Metadata.FileName);
+        return new StreamUploadSource(metadata, GetFile);
+
+        async Task<Stream> GetFile()
+        {
+            var stream = await OpenRead().ConfigureAwait(false);
+            return stream ?? throw StandardError.Internal("No file access.");
+        }
+    }
 
     public Task<bool> WhenUserConsentGranted()
         => Task.FromResult(true);

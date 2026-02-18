@@ -91,8 +91,15 @@ public partial class WebFileProvider : IFileProvider
     public Task WhenFileStreamReady()
         => DemandWebFileProviderInternal().WhenFileStreamReady();
 
-    public Task UploadData(UploadId uploadId, IProgress<double> progressTracker, CancellationToken ct)
-        => DemandWebFileProviderInternal().UploadData(uploadId, progressTracker, ct);
+    public IUploadSource GetUploadSource()
+    {
+        var @internal = DemandWebFileProviderInternal();
+        var metadata = new UploadSourceMetadata(
+            Metadata.FileType,
+            Metadata.Length,
+            Metadata.FileName);
+        return new WebUploadSource(metadata, @internal);
+    }
 
     private IWebFileProviderInternal DemandWebFileProviderInternal()
     {
