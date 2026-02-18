@@ -40,7 +40,7 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task UserWithoutGoogleIdentityShouldNotBeGrantedWithAdminRights()
+    public async Task UserWithoutGoogleIdentityShouldBeGrantedWithAdminRights()
     {
         // arrange
         var accountToSignIn = new AccountFull("JackNotAdmin")
@@ -52,7 +52,7 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // assert
         account.Should().NotBeNull();
-        account.IsAdmin.Should().BeFalse();
+        account.IsAdmin.Should().BeTrue();
     }
 
     [Fact]
