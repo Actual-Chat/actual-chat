@@ -56,6 +56,13 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         try {
+            var session = await Hub.SessionResolver.GetSession(cancellationToken).ConfigureAwait(false);
+            var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            if (ownAccount.IsGuest) {
+                _step.Value = ShareStep.SignIn;
+                return;
+            }
+
             if (await UIKitExt.GetSuggestedRecipient().ConfigureAwait(false) is not { } chatId) {
                 _step.Value = ShareStep.ContactSelection;
                 return;
@@ -64,7 +71,6 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             // Show upload progress immediately when sharing from a contact suggestion
             _step.Value = ShareStep.Uploading;
 
-            var ownAccount = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
             var contactId = ContactId.NewAny(ownAccount.Id, chatId);
 
             _selectedIds.Add(contactId);
