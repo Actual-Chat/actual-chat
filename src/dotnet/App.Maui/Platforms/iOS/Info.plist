@@ -71,6 +71,7 @@
 	<false/>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<false/>
+	<!-- URL scheme: voxt-dev for dev, replaced with voxt for prod in CI -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -80,7 +81,7 @@
 			<string>ai.voxt.dev</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>voxt</string>
+				<string>voxt-dev</string>
 			</array>
 		</dict>
 	</array>
