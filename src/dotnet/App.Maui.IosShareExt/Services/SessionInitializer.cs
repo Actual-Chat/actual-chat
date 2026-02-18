@@ -1,24 +1,30 @@
 using ActualChat.Maui;
 using ActualChat.Security;
+using ActualLab.Interception;
 
 namespace ActualChat.App.Maui.IosShareExt.Services;
 
 public class SessionInitializer(TrueSessionResolver trueSessionResolver, ILogger<SessionInitializer> log)
+    : WorkerBase, IComputeService, INotifyInitialized
 {
-    public async Task SetSession(CancellationToken cancellationToken = default)
+    void INotifyInitialized.Initialized()
+        => this.Start();
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => AsyncChain.From(SetSession)
+            .LogError(log)
+            .RetryForever(RetryDelaySeq.Fixed(1))
+            .RunIsolated(cancellationToken);
+
+    private async Task SetSession(CancellationToken cancellationToken)
     {
-        try {
-            var sessionId = await IosSharedSecureStorage.Default.GetAsync("Fusion.SessionId")
-                .WaitAsync(cancellationToken)
-                .ConfigureAwait(false);
-            if (sessionId.IsNullOrEmpty()) {
-                log.LogCritical("No session id found.");
-                return;
-            }
-            trueSessionResolver.Session = new Session(sessionId);
+        var sessionId = await IosSharedSecureStorage.Default.GetAsync("Fusion.SessionId")
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (sessionId.IsNullOrEmpty()) {
+            log.LogCritical("No session id found.");
+            return;
         }
-        catch (Exception e) {
-            log.LogCritical(e, "Failed to set session.");
-        }
+        trueSessionResolver.Session = new Session(sessionId);
     }
 }
