@@ -79,19 +79,19 @@ body.no-select {
     height: var(--safe-area-top);
     width: 100%;
     flex-shrink: 0;
-    background-color: var(--background-04);
+    background-color: transparent;
 }
 .safe-area-bottom {
     height: var(--safe-area-bottom);
     width: 100%;
     flex-shrink: 0;
-    background-color: var(--background-04);
+    background-color: transparent;
 }
 .safe-area-left {
     width: var(--safe-area-left);
     height: 100%;
     flex-shrink: 0;
-    background-color: black;
+    background-color: var(--background-04);
 }
 .safe-area-left::after {
     content: '';
@@ -101,14 +101,14 @@ body.no-select {
     bottom: 0;
     width: var(--safe-area-left);
     z-index: 99999;
-    background-color: black;
+    background-color: var(--background-04);
     touch-action: none;
 }
 .safe-area-right {
     width: var(--safe-area-right);
     height: 100%;
     flex-shrink: 0;
-    background-color: black;
+    background-color: var(--background-04);
 }
 .safe-area-right::after {
     content: '';
@@ -118,12 +118,8 @@ body.no-select {
     bottom: 0;
     width: var(--safe-area-right);
     z-index: 99999;
-    background-color: black;
+    background-color: var(--background-04);
     touch-action: none;
-}
-.safe-area-transparent {
-    background-color: transparent;
-    backdrop-filter: blur(8px);
 }
 .safe-area-bottom-overlay {
     @apply absolute bottom-0 left-0 right-0;

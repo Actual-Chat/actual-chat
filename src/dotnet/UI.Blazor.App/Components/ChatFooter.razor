@@ -3,6 +3,7 @@
 @{
     var m = Model;
     var chat = Chat;
+    var hasEditor = false;
 }
 
 <div class="writable-chat-footer">
@@ -12,11 +13,12 @@
         <ReadOnlyChatFooter Text="" />
     } else {
         @if (m.CanPost) {
+            hasEditor = true;
             <ChatMessageEditor @key="@chat.Id.Value" Chat="@chat" />
         } else if (m.CanJoin || m.ShouldJoinPlaceFirst) {
             <div class="chat-footer">
                 @if (!m.IsGuest) {
-                    <div>
+                    <div class="join-footer">
                         <span class="c-text">To post or talk,&nbsp;</span>
                         @if (m.ShouldJoinPlaceFirst) {
                             <Button Click="@(() => OnJoinPlace(m.Place!))" Class="btn-sm btn-primary">Join '@m.Place!.Title' place</Button>
@@ -44,6 +46,9 @@
         } else {
             <ReadOnlyChatFooter/>
         }
+    }
+    @if (!hasEditor) {
+        <div class="safe-area-bottom"></div>
     }
 </div>
 
