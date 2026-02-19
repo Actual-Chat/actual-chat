@@ -98,8 +98,6 @@ body.narrow .modal-frame.modal-sm {
 
 .narrow .narrow-view__modal__position-stretch {
     @apply rounded-none;
-    padding-top: var(--safe-area-top);
-    padding-bottom: var(--safe-area-bottom);
 }
 
 /* Full-screen mode overrides */

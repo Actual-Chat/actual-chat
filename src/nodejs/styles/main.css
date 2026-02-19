@@ -93,15 +93,41 @@ body.no-select {
     flex-shrink: 0;
     background-color: black;
 }
+.safe-area-left::after {
+    content: '';
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--safe-area-left);
+    z-index: 99999;
+    background-color: black;
+    touch-action: none;
+}
 .safe-area-right {
     width: var(--safe-area-right);
     height: 100%;
     flex-shrink: 0;
     background-color: black;
 }
+.safe-area-right::after {
+    content: '';
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--safe-area-right);
+    z-index: 99999;
+    background-color: black;
+    touch-action: none;
+}
 .safe-area-transparent {
     background-color: transparent;
     backdrop-filter: blur(8px);
+}
+.safe-area-bottom-overlay {
+    @apply absolute bottom-0 left-0 right-0;
+    touch-action: none;
 }
 
 /* Debug: debugUI.showSafeAreas(true|false|null) */
