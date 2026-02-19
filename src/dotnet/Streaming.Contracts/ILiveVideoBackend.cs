@@ -15,11 +15,6 @@ public interface ILiveVideoBackend : IComputeService, IBackendService
     [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
     Task<RpcStream<VideoStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken);
 
-    [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
-    Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(StreamId streamId, CancellationToken cancellationToken);
-
-    Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken);
-
     [ComputeMethod]
     Task<AuthorId[]> GetVideoStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken);
 
@@ -31,8 +26,4 @@ public interface ILiveVideoBackend : IComputeService, IBackendService
 
     Task RegisterVideoStreamMember(ChatId chatId, string sessionId, CancellationToken cancellationToken);
     Task UnregisterVideoStreamMember(ChatId chatId, string sessionId, CancellationToken cancellationToken);
-
-    Task PushVideo(VideoRecord record, RpcStream<VideoFrame> videoStream, CancellationToken cancellationToken);
-
-    Task ReportPeerLatency(StreamId streamId, string peerId, double streamOffsetMs, CancellationToken cancellationToken = default);
 }
