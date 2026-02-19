@@ -6,17 +6,19 @@ import type { SegmentationWorker, SegmentationWorkerCallbacks } from '../../Serv
 import { createAdaptiveSegmentationConfig } from '../../Services/Video/workers/segmentation-worker-contract';
 import { detectGPUBackends } from '../../Services/Video/gpu-support';
 import { Versioning } from 'versioning';
+import { fastRaf } from 'fast-raf';
 
 const { infoLog, errorLog } = Log.get('VideoRecorder');
 
 export class JoinVideoCallModal {
     private blazorRef: DotNet.DotNetObject;
     private readonly container: HTMLElement;
-    private readonly videoEl: HTMLVideoElement;
-    private readonly canvasEl: HTMLCanvasElement;
+    private readonly videoEl: HTMLVideoElement; // off-DOM, frame source only
+    private readonly canvasEl: HTMLCanvasElement; // on-DOM, single display canvas
     private readonly canvasCtx: CanvasRenderingContext2D | null;
     private stream: MediaStream | null = null;
     private selectedDeviceId: string | null = null;
+    private isRendering = false;
 
     // Blur preview state
     private segmentationWorkerInstance: Worker | null = null;
@@ -49,21 +51,18 @@ export class JoinVideoCallModal {
         this.blazorRef = blazorRef;
         this.container = container;
 
-        // Create a hidden video element for rendering the camera preview
+        // Off-DOM video element — used only as a frame source for canvas drawing
         this.videoEl = document.createElement('video');
-        this.videoEl.className = 'camera-preview';
         this.videoEl.muted = true;
         this.videoEl.playsInline = true;
         this.videoEl.autoplay = true;
 
-        // Create canvas element for blurred preview.
-        // Positioned absolutely on top of the video so the video keeps decoding frames.
+        // Display canvas — inserted into DOM to show camera preview
         this.canvasEl = document.createElement('canvas');
-        this.canvasEl.className = 'blur-canvas';
-        this.canvasEl.style.display = 'none';
+        this.canvasEl.className = 'camera-preview';
         this.canvasCtx = this.canvasEl.getContext('2d');
 
-        // Offscreen canvas for capturing frames from the video element
+        // Off-DOM canvas for capturing frames to feed the blur worker
         this.captureCanvas = document.createElement('canvas');
         this.captureCtx = this.captureCanvas.getContext('2d')!;
     }
@@ -100,15 +99,19 @@ export class JoinVideoCallModal {
 
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
             this.videoEl.srcObject = this.stream;
+            // Off-DOM video elements don't honor autoplay — must call play() explicitly
+            void this.videoEl.play();
 
-            // Insert video element into the video-frame container
+            // Insert canvas into the video-frame container
             const frame = this.container.querySelector('.video-frame');
             if (frame) {
                 // Hide placeholder text
                 frame.querySelector<HTMLElement>('.plug-text')!.style.display = 'none';
-
-                frame.appendChild(this.videoEl);
+                frame.appendChild(this.canvasEl);
             }
+
+            // Start RAF render loop to draw raw camera frames to canvas
+            this.startRenderLoop();
 
             infoLog?.log('Camera preview started');
             return true;
@@ -122,14 +125,13 @@ export class JoinVideoCallModal {
         // Stop blur preview first
         await this.stopBlurPreview();
 
+        this.stopRenderLoop();
+
         if (this.stream) {
             this.stream.getTracks().forEach(t => t.stop());
             this.stream = null;
         }
 
-        if (this.videoEl.parentElement) {
-            this.videoEl.parentElement.removeChild(this.videoEl);
-        }
         this.videoEl.srcObject = null;
 
         if (this.canvasEl.parentElement) {
@@ -163,7 +165,7 @@ export class JoinVideoCallModal {
     /**
      * Toggle blur preview on/off.
      * When enabled, starts a segmentation worker to process camera frames
-     * and renders the blurred output to a canvas overlay.
+     * and renders the blurred output to the same canvas.
      */
     public async toggleBlur(enabled: boolean): Promise<void> {
         if (enabled && !this.isBlurActive) {
@@ -172,6 +174,34 @@ export class JoinVideoCallModal {
             await this.stopBlurPreview();
         }
     }
+
+    private startRenderLoop(): void {
+        this.stopRenderLoop();
+        this.isRendering = true;
+        fastRaf(this.renderFrame, 'join-video-preview');
+    }
+
+    private stopRenderLoop(): void {
+        this.isRendering = false;
+    }
+
+    private renderFrame = (): void => {
+        if (!this.isRendering || !this.canvasCtx) return;
+
+        // When blur is active, the blur callback renders to canvas instead
+        if (!this.isBlurActive) {
+            if (this.videoEl.videoWidth > 0 && this.videoEl.videoHeight > 0) {
+                if (this.canvasEl.width !== this.videoEl.videoWidth ||
+                    this.canvasEl.height !== this.videoEl.videoHeight) {
+                    this.canvasEl.width = this.videoEl.videoWidth;
+                    this.canvasEl.height = this.videoEl.videoHeight;
+                }
+                this.canvasCtx.drawImage(this.videoEl, 0, 0);
+            }
+        }
+
+        fastRaf(this.renderFrame, 'join-video-preview');
+    };
 
     private async startBlurPreview(): Promise<void> {
         if (!this.stream || this.isBlurActive) return;
@@ -192,7 +222,7 @@ export class JoinVideoCallModal {
                 this.segmentationWorkerInstance,
                 {
                     onFrameProcessed: (frame: VideoFrame) => {
-                        // Draw blurred frame to canvas
+                        // Draw blurred frame to the same canvas
                         if (this.canvasCtx && this.isBlurActive) {
                             if (this.canvasEl.width !== frame.displayWidth ||
                                 this.canvasEl.height !== frame.displayHeight) {
@@ -214,15 +244,6 @@ export class JoinVideoCallModal {
             await this.segmentationWorker.initialize(segConfig, { timeoutMs: 15000 });
 
             this.isBlurActive = true;
-
-            // Show canvas on top of video (video stays visible underneath so it keeps decoding)
-            this.canvasEl.style.display = '';
-
-            // Ensure canvas is in DOM
-            const frameContainer = this.container.querySelector('.video-frame');
-            if (frameContainer && !this.canvasEl.parentElement) {
-                frameContainer.appendChild(this.canvasEl);
-            }
 
             // Start frame pump
             this.pumpBlurFrames();
@@ -275,9 +296,6 @@ export class JoinVideoCallModal {
             this.segmentationWorkerInstance.terminate();
             this.segmentationWorkerInstance = null;
         }
-
-        // Hide canvas (video is always visible underneath)
-        this.canvasEl.style.display = 'none';
 
         infoLog?.log('Blur preview stopped');
     }
