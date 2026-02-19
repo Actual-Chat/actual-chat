@@ -1,7 +1,7 @@
 ﻿@using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
-@if (HideWhenCopyLink && (MauiShare is null || !_canUseWebShare))
+@if (HideWhenCopyLink && MauiShare is null && !_canUseWebShare)
     return;
 
 <div class="btn-share-action share-externally-button @Class">
