@@ -73,9 +73,8 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             InvalidateListActiveStreams(chatId);
             InvalidateGetVideoStreamingAuthorIds(chatId);
         }
-        else {
+        else
             Log.LogWarning("RegisterActiveStream({ChatId}): Stream already registered (duplicate)", chatId);
-        }
         return Task.CompletedTask;
     }
 
