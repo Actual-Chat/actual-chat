@@ -3,7 +3,6 @@
 @{
     var m = Model;
     var chat = Chat;
-    var hasEditor = false;
 }
 
 <div class="writable-chat-footer">
@@ -13,7 +12,6 @@
         <ReadOnlyChatFooter Text="" />
     } else {
         @if (m.CanPost) {
-            hasEditor = true;
             <ChatMessageEditor @key="@chat.Id.Value" Chat="@chat" />
         } else if (m.CanJoin || m.ShouldJoinPlaceFirst) {
             <div class="chat-footer">
@@ -46,9 +44,6 @@
         } else {
             <ReadOnlyChatFooter/>
         }
-    }
-    @if (!hasEditor) {
-        <div class="safe-area-bottom"></div>
     }
 </div>
 
