@@ -15,6 +15,7 @@ body.narrow .chat-audio-panel {
     @apply p-0;
     @apply rounded-b-4xl;
     @apply overflow-visible;
+    @apply pointer-events-none;
 }
 body.narrow .chat-message-editor:has(.related-chat-entry-panel) .chat-audio-panel,
 body.narrow .text-mode .chat-audio-panel,
@@ -671,6 +672,10 @@ body.narrow .narrow-panel .narrow-recorder-tooltip {
 body.narrow .audio-panel-wrapper {
     @apply items-end gap-x-1;
     @apply pl-9;
+    @apply pointer-events-none;
+}
+body.narrow .audio-panel-wrapper > * {
+    @apply pointer-events-auto;
 }
 body.narrow .narrow-panel .audio-panel-wrapper {
     @apply pl-10;

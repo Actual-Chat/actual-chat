@@ -210,7 +210,7 @@ body.narrow .stepper-image-filler {
     @apply text-[var(--blue-30)];
     box-shadow: 0 4px 9px 0 rgba(41, 112, 255, 0.29);
 }
-.tutorial-btn-wrapper.step-4 .tutorial-btn {
+.tutorial-btn-wrapper.step-3 .tutorial-btn {
     @apply bg-[var(--magenta-60)];
     @apply text-white;
 }
@@ -218,20 +218,25 @@ body.narrow .stepper-image-filler {
     @apply content-empty;
     @apply absolute;
     @apply w-14 h-14;
-    @apply rounded-full border-2 border-transparent;
-    border-top-color: var(--magenta-60);
-    transform: rotate(45deg);
-    transition: border-color 0.3s;
+    @apply rounded-full;
+    background: conic-gradient(
+        from -60deg,
+        var(--magenta-60) 0deg 120deg,
+        transparent 120deg
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+    transition: background 0.3s;
 }
 .tutorial-btn-wrapper.step-2 .tutorial-btn::before {
-    border-right-color: var(--magenta-60);
+    background: conic-gradient(
+        from -60deg,
+        var(--magenta-60) 0deg 240deg,
+        transparent 240deg
+    );
 }
 .tutorial-btn-wrapper.step-3 .tutorial-btn::before {
-    border-right-color: var(--magenta-60);
-    border-bottom-color: var(--magenta-60);
-}
-.tutorial-btn-wrapper.step-4 .tutorial-btn::before {
-    border-color: var(--magenta-60);
+    background: var(--magenta-60);
 }
 
 .tutorial-btn-wrapper .tutorial-btn::after {

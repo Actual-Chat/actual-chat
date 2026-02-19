@@ -9,7 +9,7 @@
     };
 }
 
-<div class="line-progress">
+<div class="line-progress @(StepCount <= 1 ? "invisible" : "")">
     @for (var i = 0; i < StepCount; i++) {
         var cls = i == CurrentStepIndex ? "c-current" : "";
         <div class="line-progress-item @decorationCls @cls"></div>

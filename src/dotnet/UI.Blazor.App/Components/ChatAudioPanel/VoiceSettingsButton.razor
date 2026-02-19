@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Kvas
 @inherits ComputedStateComponent<AppUIHub, VoiceSettingsButton.Model?>
 @{
     var m = State.Value;
@@ -12,11 +11,19 @@
 
 @if (IsNarrow) {
     <button class="volume-settings-btn text" @onclick="@OnClick">
-        <div class="c-text">@((language ?? primary).ShortTitle)</div>
+        @if (language is not null) {
+            <div class="c-text">@language.ShortTitle</div>
+        } else {
+            <div class="c-text"><i class="icon-language-auto"></i></div>
+        }
     </button>
 } else {
     <div class="language-wrapper">
-        <div class="selected-language">@(language is not null ? language.ShortTitle : "?" + primary.ShortTitle + "?")</div>
+        @if (language is not null) {
+            <div class="selected-language">@language.ShortTitle</div>
+        } else {
+            <div class="selected-language"><i class="icon-language-auto"></i></div>
+        }
         <ButtonRound
             Class="transcription-options-btn"
             Tooltip="Voice settings"

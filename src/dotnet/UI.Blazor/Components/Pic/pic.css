@@ -4,6 +4,9 @@
 .pic > .c-content {
     @apply w-full h-full;
 }
+.pic.pic-blurred > .c-content {
+    @apply blur-lg;
+}
 
 .pic-generated {
     @apply rounded-full;
