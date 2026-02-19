@@ -130,10 +130,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend, 
     public void Dispose()
         => _videoStreams.Dispose();
 
-    public virtual Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken)
-        => GetVideo(streamId, skipTo, null, cancellationToken);
-
-    public virtual async Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string? peerId, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken)
     {
         Log.LogInformation("GetVideo: StreamId={StreamId}, SkipTo={SkipTo}, PeerId={PeerId}", streamId, skipTo, peerId);
         var stream = await _videoStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
@@ -160,8 +157,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend, 
 
         stream = SkipToKeyFrame(LogFrames(stream), skipTo, cancellationToken);
 
-        if (peerId != null)
-            stream = ApplyGopSkipping(stream, streamId, peerId, cancellationToken);
+        stream = ApplyGopSkipping(stream, streamId, peerId, cancellationToken);
 
         return RpcStream.New(stream);
     }

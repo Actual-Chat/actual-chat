@@ -18,8 +18,7 @@ public interface ILiveVideoBackend : IComputeService, IBackendService
     [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
     Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(StreamId streamId, CancellationToken cancellationToken);
 
-    Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken);
-    Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string? peerId, CancellationToken cancellationToken);
+    Task<RpcStream<VideoFrame>?> GetVideo(StreamId streamId, TimeSpan skipTo, string peerId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<AuthorId[]> GetVideoStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken);
