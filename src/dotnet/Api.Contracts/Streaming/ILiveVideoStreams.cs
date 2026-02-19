@@ -1,3 +1,6 @@
+using ActualChat.Video;
+using ActualLab.Rpc;
+
 namespace ActualChat.Streaming;
 
 public interface ILiveVideoStreams : IComputeService
@@ -13,4 +16,7 @@ public interface ILiveVideoStreams : IComputeService
 
     Task RegisterVideoStreamMember(Session session, ChatId chatId, CancellationToken cancellationToken);
     Task UnregisterVideoStreamMember(Session session, ChatId chatId, CancellationToken cancellationToken);
+
+    Task<RpcStream<VideoFrame>?> GetVideo(Session session, StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken);
+    Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(Session session, StreamId streamId, CancellationToken cancellationToken);
 }

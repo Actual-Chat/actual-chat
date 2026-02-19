@@ -1,4 +1,6 @@
 using ActualChat.Chat;
+using ActualChat.Video;
+using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
@@ -63,5 +65,22 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
         await Backend.UnregisterVideoStreamMember(chatId, session.Id, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<RpcStream<VideoFrame>?> GetVideo(
+        Session session,
+        StreamId streamId,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
+    {
+        return await Backend.GetVideo(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        return await Backend.ObserveStreamQualityRequests(streamId, cancellationToken).ConfigureAwait(false);
     }
 }

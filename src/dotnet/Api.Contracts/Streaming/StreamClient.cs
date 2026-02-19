@@ -1,7 +1,6 @@
 using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.Transcription;
-using ActualChat.Video;
 using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
@@ -13,9 +12,7 @@ public class StreamClient(IServiceProvider services) : IStreamClient
     private IServiceProvider Services { get; } = services;
 
     private IStreamServer StreamServer => field ??= Services.GetRequiredService<IStreamServer>();
-    private MomentClockSet Clocks => field ??= Services.Clocks();
     private ILogger AudioSourceLog => field ??= Services.LogFor<AudioSource>();
-    private ILogger VideoSourceLog => field ??= Services.LogFor<VideoSource>();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     public async Task<AudioSource> GetAudio(
@@ -49,43 +46,6 @@ public class StreamClient(IServiceProvider services) : IStreamClient
             cancellationToken);
     }
 
-    public async Task<VideoSource> GetVideo(
-        string streamId,
-        TimeSpan skipTo,
-        CancellationToken cancellationToken)
-    {
-        Log.LogDebug("GetVideo({StreamId}, SkipTo = {SkipTo})", streamId, skipTo.ToShortString());
-        var rpcStream = await StreamServer.GetVideo(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-        var stream = rpcStream ?? AsyncEnumerable.Empty<VideoFrame>();
-        var frameStream = stream
-            .SuppressException<VideoFrame, RpcReconnectFailedException>(cancellationToken)
-            .WithBuffer(StreamBufferSize, cancellationToken);
-
-        // Extract format from the first keyframe
-        var (firstFrameTask, restStream) = frameStream.SplitHead(cancellationToken);
-        var firstFrame = await firstFrameTask.ConfigureAwait(false);
-
-        var format = new VideoFormat {
-            Codec = firstFrame.Codec ?? "avc1",
-            Width = firstFrame.Width,
-            Height = firstFrame.Height,
-            CodecSettings = firstFrame.Description != null
-                ? Convert.ToBase64String(firstFrame.Description)
-                : "",
-        };
-
-        // Prepend first frame back to stream
-        var fullStream = restStream.Prepend(firstFrame);
-
-        return new VideoSource(
-            Clocks.SystemClock.Now,
-            format,
-            fullStream,
-            skipTo,
-            VideoSourceLog,
-            cancellationToken);
-    }
-
     public async IAsyncEnumerable<TranscriptDiff> GetTranscript(
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -108,18 +68,4 @@ public class StreamClient(IServiceProvider services) : IStreamClient
 
     public Task ReportAudioLatency(TimeSpan latency, CancellationToken cancellationToken)
         => StreamServer.ReportAudioLatency(latency, cancellationToken);
-
-    public async IAsyncEnumerable<VideoQualityPreset> ObserveStreamQualityRequests(
-        string streamId,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var rpcStream = await StreamServer.ObserveStreamQualityRequests(streamId, cancellationToken).ConfigureAwait(false);
-        if (rpcStream == null)
-            yield break;
-
-        var stream = rpcStream
-            .SuppressException<VideoQualityPreset, RpcReconnectFailedException>(cancellationToken);
-        await foreach (var preset in stream.ConfigureAwait(false))
-            yield return preset;
-    }
 }
