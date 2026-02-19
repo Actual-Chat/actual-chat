@@ -25,7 +25,7 @@ public class StreamHub(IServiceProvider services) : Hub
     private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
     private IHostApplicationLifetime HostLifetime { get; } = services.HostLifetime();
     private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
-    private ILiveVideoBackend LiveVideoBackend { get; } = services.GetRequiredService<ILiveVideoBackend>();
+    private IVideoStreamingBackend VideoStreamingBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 
     // Currently unused
@@ -130,7 +130,7 @@ public class StreamHub(IServiceProvider services) : Hub
         _ = GetSessionFromToken(sessionToken); // validate token
         var peerId = Context.ConnectionId;
         var parsedStreamId = StreamId.Parse(streamId);
-        return LiveVideoBackend.ReportPeerLatency(parsedStreamId, peerId, streamOffsetMs, CancellationToken.None);
+        return VideoStreamingBackend.ReportPeerLatency(parsedStreamId, peerId, streamOffsetMs, CancellationToken.None);
     }
 
     // Video pull method for JS client — streams video frames via SignalR
@@ -155,7 +155,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
         RpcStream<VideoFrame>? rpcStream;
         try {
-            rpcStream = await LiveVideoBackend
+            rpcStream = await VideoStreamingBackend
                 .GetVideo(parsedStreamId, skipTo, peerId, stopCts.Token)
                 .ConfigureAwait(false);
         }
@@ -272,7 +272,7 @@ public class StreamHub(IServiceProvider services) : Hub
 
         var frames = videoStream.SuppressCancellation(stopCts.Token);
         var frameStream = RpcStream.New(frames);
-        await LiveVideoBackend
+        await VideoStreamingBackend
             .PushVideo(videoRecord, frameStream, CancellationToken.None)
             .SilentAwait(false);
     }

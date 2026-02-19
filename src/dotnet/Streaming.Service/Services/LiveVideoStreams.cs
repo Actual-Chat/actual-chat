@@ -8,6 +8,7 @@ namespace ActualChat.Streaming;
 public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
 {
     private ILiveVideoBackend Backend { get; } = services.GetRequiredService<ILiveVideoBackend>();
+    private IVideoStreamingBackend VideoStreamingBackend { get; } = services.GetRequiredService<IVideoStreamingBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private ILogger Log => field ??= services.LogFor(GetType());
 
@@ -75,7 +76,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
-        return await Backend.GetVideo(streamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
+        return await VideoStreamingBackend.GetVideo(streamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(
@@ -83,6 +84,6 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        return await Backend.ObserveStreamQualityRequests(streamId, cancellationToken).ConfigureAwait(false);
+        return await VideoStreamingBackend.ObserveStreamQualityRequests(streamId, cancellationToken).ConfigureAwait(false);
     }
 }
