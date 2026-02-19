@@ -67,8 +67,8 @@
             <div class="onboarding-footer">
                 @if (!isTutorial) {
                     <LineProgress
-                        StepCount="@stepper.StepCount"
-                        CurrentStepIndex="@stepper.CurrentStepIndex">
+                        StepCount="@stepper.VisibleStepCount"
+                        CurrentStepIndex="@stepper.CurrentVisibleStepIndex">
                     </LineProgress>
                 }
                 <div class="btn-group">
