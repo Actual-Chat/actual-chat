@@ -2,7 +2,6 @@
 .ac-menu-host {
     @apply fixed z-menu-container overflow-hidden;
     @apply pointer-events-none select-none;
-    padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
 }
 .ac-menu-host:has(.ac-menu),
 .ac-menu-host:has(.ac-menu-hover) {

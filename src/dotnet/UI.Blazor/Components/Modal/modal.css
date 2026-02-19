@@ -6,7 +6,6 @@
     @apply h-full w-full;
     @apply overflow-hidden;
     @apply outline-0;
-    padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
     backdrop-filter: blur(2px) opacity(0.8) brightness(0.8);
     background-color: rgba(0,0,0,0.5);
     animation: modal-blur-on 250ms ease-in-out;

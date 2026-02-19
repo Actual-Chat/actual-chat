@@ -18,38 +18,6 @@
     <RecordingSubHeader/>
 </RenderIntoStack>
 
-@* Left panel safe area bars: bg-04 (matches left-panel background) *@
-<RenderIntoSlot Name="@LayoutSlots.LeftPanelTopSafeArea">
-    <div class="safe-area-top bg-04"></div>
-</RenderIntoSlot>
-<RenderIntoSlot Name="@LayoutSlots.LeftPanelBottomSafeArea">
-    <div class="safe-area-bottom bg-04"></div>
-</RenderIntoSlot>
-
-@* Middle panel safe area bars *@
-<RenderIntoSlot Name="@LayoutSlots.MiddlePanelTopSafeArea">
-    <div class="safe-area-top bg-01"></div>
-</RenderIntoSlot>
-<RenderIntoSlot Name="@LayoutSlots.MiddlePanelBottomSafeArea">
-    <div class="safe-area-bottom bg-post-panel"></div>
-</RenderIntoSlot>
-
-@* Right panel safe area bars: bg-03 (matches right-panel background) *@
-<RenderIntoSlot Name="@LayoutSlots.RightPanelTopSafeArea">
-    <div class="safe-area-top bg-03"></div>
-</RenderIntoSlot>
-<RenderIntoSlot Name="@LayoutSlots.RightPanelBottomSafeArea">
-    <div class="safe-area-bottom bg-03"></div>
-</RenderIntoSlot>
-
-@* Left/right safe area bars: bg-04 (matches left-panel background) *@
-<RenderIntoSlot Name="@LayoutSlots.LeftSafeArea">
-    <div class="safe-area-left bg-04"></div>
-</RenderIntoSlot>
-<RenderIntoSlot Name="@LayoutSlots.RightSafeArea">
-    <div class="safe-area-right bg-04"></div>
-</RenderIntoSlot>
-
 @if (!HostInfo.HostKind.IsMauiApp()) {
     <PageHeader />
 }

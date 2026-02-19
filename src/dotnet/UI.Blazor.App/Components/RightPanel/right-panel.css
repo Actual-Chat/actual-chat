@@ -1,7 +1,7 @@
 .right-panel {
     @apply relative;
-    @apply flex-1 flex-y;
-    @apply w-full;
+    @apply flex-y;
+    @apply w-full h-full;
     @apply border-l border-transparent;
     @apply bg-03;
     @apply overflow-hidden;

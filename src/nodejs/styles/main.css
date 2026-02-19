@@ -17,45 +17,6 @@ body {
     width: 100%;
 }
 
-/* Safe area insets */
-:root {
-    --safe-area-top: env(safe-area-inset-top, 0px);
-    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-area-left: env(safe-area-inset-left, 0px);
-    --safe-area-right: env(safe-area-inset-right, 0px);
-}
-
-.safe-area-top {
-    height: var(--safe-area-top);
-    width: 100%;
-    flex-shrink: 0;
-}
-.safe-area-bottom {
-    height: var(--safe-area-bottom);
-    width: 100%;
-    flex-shrink: 0;
-}
-.safe-area-left {
-    width: var(--safe-area-left);
-    height: 100%;
-    flex-shrink: 0;
-}
-.safe-area-right {
-    width: var(--safe-area-right);
-    height: 100%;
-    flex-shrink: 0;
-}
-
-/* Debug: force safe areas visible or hidden */
-body.force-safe-areas .safe-area-top { min-height: 34px; }
-body.force-safe-areas .safe-area-bottom { min-height: 34px; }
-body.force-safe-areas .safe-area-left { min-width: 34px; }
-body.force-safe-areas .safe-area-right { min-width: 34px; }
-body.hide-safe-areas .safe-area-top,
-body.hide-safe-areas .safe-area-bottom,
-body.hide-safe-areas .safe-area-left,
-body.hide-safe-areas .safe-area-right { display: none; }
-
 @keyframes blink_input_opacity_to_prevent_scrolling_when_focus {
     0% { opacity: 0; }
     100% { opacity: 1; }
@@ -173,7 +134,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .base-layout-body {
     @apply relative;
     @apply flex-1 flex-y flex-nowrap;
-    @apply min-w-0;
+    @apply w-full;
     @apply float-left;
 }
 .base-layout-body > .c-layout-content {
@@ -385,8 +346,7 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfoo
 }
 
 .default-layout {
-    @apply flex-y;
-    @apply h-full w-full;
+    @apply w-full;
     @apply overflow-hidden;
 }
 .default-layout .layout-header {
