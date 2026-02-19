@@ -1,6 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.Video;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Streaming;
 
@@ -73,7 +74,8 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        return await Backend.GetVideo(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
+        return await Backend.GetVideo(streamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(
