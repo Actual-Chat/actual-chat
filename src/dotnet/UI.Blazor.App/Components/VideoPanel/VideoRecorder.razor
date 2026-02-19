@@ -141,9 +141,11 @@
 
             Log.LogInformation("SubscribeToQualityRequests: found own StreamId={StreamId}, subscribing", ownStreamId);
 
-            await foreach (var preset in Hub.StreamClient
-                .ObserveStreamQualityRequests(ownStreamId.Value, ct)
-                .ConfigureAwait(false)) {
+            var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
+            var qualityStream = await liveVideoStreams
+                .ObserveStreamQualityRequests(Session, ownStreamId, ct)
+                .ConfigureAwait(false);
+            await foreach (var preset in qualityStream.ConfigureAwait(false)) {
                 Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps)",
                     preset.Level, preset.Width, preset.Height, preset.Bitrate);
                 if (JSRef is not null)
