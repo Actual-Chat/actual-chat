@@ -1,0 +1,40 @@
+.video-recorder:not(.recording) {
+    display: none;
+}
+.video-recorder .call-video {
+    @apply absolute inset-0;
+    @apply w-full h-full;
+    @apply object-cover;
+    @apply rounded-lg;
+    transform: scaleX(-1);
+}
+.video-recorder .btn-h.settings-btn {
+    @apply absolute top-2 left-2;
+    @apply text-white text-lg;
+}
+body.hoverable .video-recorder .btn-h.settings-btn:hover {
+    @apply text-white;
+    @apply opacity-80;
+}
+
+/* Participant labels */
+.video-recorder .video-participant-label {
+    @apply absolute bottom-2 left-2;
+    @apply flex items-center gap-1;
+    @apply bg-[var(--black-60)] text-white;
+    @apply px-2 py-1 rounded-lg;
+    @apply text-xs;
+    pointer-events: none;
+}
+.video-recorder .video-participant-label i {
+    @apply text-xs;
+}
+
+/* Error display */
+.video-recorder .video-error {
+    @apply absolute bottom-12 left-1/2 -translate-x-1/2;
+    @apply bg-[var(--red-70)] text-white;
+    @apply px-4 py-2 rounded-lg;
+    @apply text-sm;
+    @apply max-w-xs text-center;
+}

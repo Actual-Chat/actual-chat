@@ -1,7 +1,7 @@
 import { Log } from 'logging';
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
-import type { VideoDevice } from '../VideoPanel/video-panel';
+import type { VideoDevice } from '../VideoPanel/video-recorder';
 import type { SegmentationWorker, SegmentationWorkerCallbacks } from '../../Services/Video/workers/segmentation-worker-contract';
 import { createAdaptiveSegmentationConfig } from '../../Services/Video/workers/segmentation-worker-contract';
 import { detectGPUBackends } from '../../Services/Video/gpu-support';

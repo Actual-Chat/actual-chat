@@ -547,6 +547,8 @@ services.AddTypeMap<IModalView>(map => map
 
 Organize styles in a dedicated CSS file within the component folder.
 
+**Important:** New CSS files must be imported in `src/dotnet/UI.Blazor.App/styles.css`. Without this import, styles won't be included in the build. Add an `@import` line in alphabetical order within the relevant section.
+
 #### TypeScript/Lit Elements
 
 **Example:** `chat-roulette-svg.lit.ts`
