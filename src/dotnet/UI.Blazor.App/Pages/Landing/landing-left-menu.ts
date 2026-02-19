@@ -43,14 +43,13 @@ export class LandingLeftMenu {
         if (!this._ref.classList.contains('open'))
             return;
 
+        this._blazorRef.invokeMethodAsync('Close');
+
         const container = this._ref.querySelector('.c-container');
         if (!container)
             return;
         const withinMenu = event.composedPath().includes(container);
-        if (withinMenu)
-            return;
-
-        this._blazorRef.invokeMethodAsync('Close');
-        stopEvent(event);
+        if (!withinMenu)
+            stopEvent(event);
     };
 }

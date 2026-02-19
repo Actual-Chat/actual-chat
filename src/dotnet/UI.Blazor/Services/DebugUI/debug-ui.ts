@@ -60,6 +60,16 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('ResetBubbles', enable);
     };
 
+    public static showSafeAreas(show: boolean | null | undefined): void {
+        const cl = document.body.classList;
+        cl.remove('show-safe-areas', 'hide-safe-areas');
+        if (show === true)
+            cl.add('show-safe-areas');
+        else if (show === false)
+            cl.add('hide-safe-areas');
+        infoLog?.log(`showSafeAreas: ${show ?? 'default'}`);
+    }
+
     public static startDOMEventSniffer(): void {
         if (this._eventSnifferInstalled) {
             infoLog?.log('startDOMEventSniffer: already installed');

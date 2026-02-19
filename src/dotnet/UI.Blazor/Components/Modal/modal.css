@@ -74,6 +74,7 @@ body.narrow .modal-frame.modal-md {
     @apply w-auto h-auto;
     @apply rounded-b-none;
     height: 80vh;
+    padding-bottom: var(--safe-area-bottom);
 }
 body.narrow .modal-frame.modal-sm {
     @apply absolute left-4 right-4;
@@ -88,6 +89,7 @@ body.narrow .modal-frame.modal-sm {
     @apply w-auto h-auto;
     @apply rounded-b-none;
     height: 80vh;
+    padding-bottom: var(--safe-area-bottom);
 }
 
 .narrow .narrow-view__modal__position-stretch {
@@ -98,6 +100,11 @@ body.narrow .modal-frame.modal-sm {
 .modal-overlay-fullscreen .modal-focus-trap,
 .modal-overlay-fullscreen .modal .modal-content {
     @apply h-full w-full;
+}
+/* Safe area: full-screen dialogs exclude left/right (handled by base-layout) */
+.modal-overlay-fullscreen .modal-frame.modal-chrome {
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
 }
 
 .modal-chrome-wrapper {

@@ -86,27 +86,7 @@ export class Landing {
         if (this.downloadLinksPage)
             this.scrollContainer = getScrollContainer(this.downloadLinksPage);
 
-        const remInPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
-        const offset = 3 * remInPx;
-        const rootMargin = this.firstPage ? `-${this.firstPage.scrollHeight - offset}px 0px 0px 0px` : '0px';
-        const observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    if (this.header)
-                        this.header.classList.remove('blur-bg');
-                } else {
-                    if (this.header)
-                        this.header.classList.add('blur-bg');
-                }
-            });
-        }, {
-            root: null,
-            threshold: 0,
-            rootMargin: rootMargin,
-        });
-
-        if (this.firstPage)
-            observer.observe(this.firstPage);
+        // blur is always applied via CSS — no need for IntersectionObserver toggle
     }
 
     public dispose() {

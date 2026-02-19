@@ -30,10 +30,11 @@ body.wide .ac-menu {
     @apply shadow-modal-wide;
 }
 body.narrow .ac-menu {
-    @apply !left-4 right-4 bottom-10;
+    @apply !left-4 right-4;
     @apply p-3;
     @apply overflow-hidden;
     @apply shadow-modal-narrow;
+    bottom: calc(2.5rem + var(--safe-area-bottom));
 }
 
 @keyframes ac-menu-show {

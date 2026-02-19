@@ -67,6 +67,57 @@ body.no-select {
     }
 }
 
+/* Safe area insets — CSS variables wrapping env() for debug overrides */
+:root {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+.safe-area-top {
+    height: var(--safe-area-top);
+    width: 100%;
+    flex-shrink: 0;
+    background-color: var(--background-04);
+}
+.safe-area-bottom {
+    height: var(--safe-area-bottom);
+    width: 100%;
+    flex-shrink: 0;
+    background-color: var(--background-04);
+}
+.safe-area-left {
+    width: var(--safe-area-left);
+    height: 100%;
+    flex-shrink: 0;
+    background-color: black;
+}
+.safe-area-right {
+    width: var(--safe-area-right);
+    height: 100%;
+    flex-shrink: 0;
+    background-color: black;
+}
+.safe-area-transparent {
+    background-color: transparent;
+    backdrop-filter: blur(8px);
+}
+
+/* Debug: debugUI.showSafeAreas(true|false|null) */
+body.show-safe-areas {
+    --safe-area-top: 34px;
+    --safe-area-bottom: 34px;
+    --safe-area-left: 34px;
+    --safe-area-right: 34px;
+}
+body.hide-safe-areas {
+    --safe-area-top: 0px;
+    --safe-area-bottom: 0px;
+    --safe-area-left: 0px;
+    --safe-area-right: 0px;
+}
+
 /* Styled inputs */
 
 input.input-imprinted {

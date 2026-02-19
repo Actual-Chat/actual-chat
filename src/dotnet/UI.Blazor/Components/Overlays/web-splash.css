@@ -66,11 +66,12 @@ body.wide .web-splash .wide-image {
     @apply h-[var(--web-splash-logo-size)] w-[var(--web-splash-logo-size)];
 }
 .web-splash .progress {
-    @apply absolute bottom-[32px];
+    @apply absolute;
     @apply flex justify-start items-center;
     @apply min-w-full max-w-full min-h-1 overflow-hidden;
     @apply rounded-full;
     @apply bg-[var(--white-05)];
+    bottom: calc(32px + var(--safe-area-bottom));
 }
 .web-splash .progress-value {
     @apply w-full h-1;

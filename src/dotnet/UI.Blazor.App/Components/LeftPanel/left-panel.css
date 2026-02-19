@@ -186,6 +186,11 @@ body.hoverable .add-members-btn:hover {
     @apply text-white;
 }
 
+.left-panel-bottom-overlay {
+    @apply absolute bottom-0 left-0 right-0;
+    @apply pointer-events-none;
+}
+
 .navbar-button .voxt-btn {
     @apply p-1.5;
 }

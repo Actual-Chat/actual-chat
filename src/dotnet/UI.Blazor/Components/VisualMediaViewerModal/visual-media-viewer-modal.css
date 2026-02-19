@@ -18,6 +18,7 @@
     @apply w-full;
     @apply bg-[var(--black-80)];
     @apply md:shadow-md;
+    padding-top: var(--safe-area-top);
     transition: transform 300ms ease-in-out, opacity 300ms ease-in-out;
 }
 .image-viewer-header > .c-author {
@@ -58,7 +59,7 @@ body.hoverable .image-viewer-header .btn-h:hover {
 }
 .image-viewer-header.show-to-hide {
     opacity: 0;
-    transform: translateY(-3.5rem);
+    transform: translateY(calc(-3.5rem - var(--safe-area-top)));
 }
 
 /* Image viewer footer */
@@ -68,15 +69,15 @@ body.hoverable .image-viewer-header .btn-h:hover {
     @apply h-14 w-full;
     @apply bg-[var(--black-80)];
     @apply md:shadow-md-top;
+    padding-bottom: var(--safe-area-bottom);
     transition: transform 200ms ease-in-out, opacity 200ms ease-in-out;
-
 }
 .image-viewer-footer.hide-to-show {
     transform: translateY(0);
     opacity: 1;
 }
 .image-viewer-footer.show-to-hide {
-    transform: translateY(3.5rem);
+    transform: translateY(calc(3.5rem + var(--safe-area-bottom)));
     opacity: 0;
 }
 

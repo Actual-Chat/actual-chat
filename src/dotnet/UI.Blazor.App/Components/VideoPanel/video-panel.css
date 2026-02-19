@@ -19,6 +19,7 @@ body.narrow .video-panel.expanded {
     @apply fixed z-tooltip inset-0;
     @apply max-w-none max-h-none;
     @apply p-0;
+    padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
 }
 .video-panel.expanded > .c-content {
     @apply rounded-none;

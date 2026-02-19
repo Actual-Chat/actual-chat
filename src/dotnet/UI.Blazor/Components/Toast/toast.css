@@ -7,10 +7,10 @@
     @apply overflow-y-auto;
 }
 body.narrow .toast-container {
-    @apply top-12;
+    top: calc(3rem + var(--safe-area-top));
 }
 body.wide .toast-container {
-    @apply bottom-12;
+    bottom: calc(3rem + var(--safe-area-bottom));
 }
 .toast-container > .c-content {
     @apply relative;

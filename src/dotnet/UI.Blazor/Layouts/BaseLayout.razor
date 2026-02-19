@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 
 <div class="base-layout">
+    <div class="safe-area-left"></div>
     <div class="base-layout-body">
         <div class="c-layout-content">
             @if (Hub.IsInteractive) {
@@ -14,6 +15,7 @@
             </NoComponent>
         </div>
     </div>
+    <div class="safe-area-right"></div>
 </div>
 
 @code {
