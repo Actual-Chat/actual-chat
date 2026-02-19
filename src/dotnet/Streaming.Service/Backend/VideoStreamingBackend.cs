@@ -10,7 +10,6 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
 {
     private readonly StreamStore<VideoFrame> _videoStreams;
     private readonly ConcurrentDictionary<StreamId, StreamLatencyState> _latencyStates = new();
-    private readonly ConcurrentDictionary<StreamId, Moment> _streamStartTimes = new();
 
     private ILogger Log => field ??= Services.LogFor(GetType());
     private MeshNode ThisNode => field ??= Services.MeshWatcher().ThisNode;
@@ -29,6 +28,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             StreamIdValidator = ValidateStreamId,
             StreamCount = AppMeters.VideoStreamCount,
             ExpirationDelay = Constants.Video.StreamExpirationDelay,
+            OnStreamExpire = OnVideoStreamExpire,
             Log = services.LogFor($"{typeFullName}.VideoStreams"),
         };
     }
@@ -95,18 +95,16 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     public virtual Task ReportPeerLatency(StreamId streamId, string peerId, double streamOffsetMs, CancellationToken cancellationToken = default)
     {
         if (_latencyStates.TryGetValue(streamId, out var latencyState)) {
-            if (_streamStartTimes.TryGetValue(streamId, out var startedAt)) {
-                var latency = Clocks.ServerClock.Now - (startedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
-                if (latency > TimeSpan.Zero) {
-                    AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
-                    Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}",
-                        streamId, peerId, streamOffsetMs, latency.TotalMilliseconds);
-                    latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds);
-                }
-                else {
-                    Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
-                        streamId, peerId, latency.TotalMilliseconds);
-                }
+            var latency = Clocks.ServerClock.Now - (latencyState.StartedAt + TimeSpan.FromMilliseconds(streamOffsetMs));
+            if (latency > TimeSpan.Zero) {
+                AppMeters.VideoLatency.Record((float)latency.TotalMilliseconds);
+                Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, StreamOffsetMs={StreamOffsetMs:F0}, LatencyMs={LatencyMs:F0}",
+                    streamId, peerId, streamOffsetMs, latency.TotalMilliseconds);
+                latencyState.RecordPeerLatency(peerId, (float)latency.TotalMilliseconds);
+            }
+            else {
+                Log.LogWarning("ReportPeerLatency: StreamId={StreamId}, PeerId={PeerId}, negative latency={LatencyMs:F0}ms (clock skew?), skipping",
+                    streamId, peerId, latency.TotalMilliseconds);
             }
             return Task.CompletedTask;
         }
@@ -135,6 +133,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
     }
 
     // Private methods
+
+    private void OnVideoStreamExpire(StreamId streamId)
+    {
+        if (_latencyStates.TryRemove(streamId, out var ls))
+            ls.Complete();
+    }
 
     private bool ShouldSkipGopsForPeer(StreamId streamId, string peerId)
     {
@@ -200,8 +204,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.RegisterActiveStream(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
-        _latencyStates[record.StreamId] = new StreamLatencyState(Log);
-        _streamStartTimes[record.StreamId] = beginsAt;
+        _latencyStates[record.StreamId] = new StreamLatencyState(Log, beginsAt);
 
         try {
             // Publish video stream for real-time viewing
@@ -230,9 +233,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             // Unregister stream when it ends — cross-service RPC call
             await LiveVideoBackend.UnregisterActiveStream(record.ChatId, record.StreamId, CancellationToken.None)
                 .ConfigureAwait(false);
-            if (_latencyStates.TryRemove(record.StreamId, out var ls))
-                ls.Complete();
-            _streamStartTimes.TryRemove(record.StreamId, out _);
+            // Latency state cleanup deferred to OnVideoStreamExpire — peers may still read buffered frames
         }
     }
 
@@ -300,8 +301,10 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
-    public sealed class StreamLatencyState(ILogger log)
+    public sealed class StreamLatencyState(ILogger log, Moment startedAt)
     {
+        public Moment StartedAt { get; } = startedAt;
+
         private readonly ConcurrentDictionary<string, PeerLatencyState> _peers = new(StringComparer.Ordinal);
         private readonly AsyncObservable<VideoQualityPreset> _qualityDirectives = new();
         private readonly Lock _evaluationLock = new();
