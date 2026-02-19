@@ -1,6 +1,10 @@
 .new-place-modal.modal-frame {
     @apply gap-y-0;
 }
+body.narrow .new-place-modal.narrow-view__modal__position-stretch {
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+}
 .new-place-modal .dialog-body {
     @apply flex-y;
     @apply gap-y-2;

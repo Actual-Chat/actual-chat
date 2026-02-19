@@ -7,6 +7,8 @@
     @apply overflow-y-auto;
 }
 body.narrow .toast-container {
+    left: var(--safe-area-left);
+    right: var(--safe-area-right);
     top: calc(3rem + var(--safe-area-top));
 }
 body.wide .toast-container {

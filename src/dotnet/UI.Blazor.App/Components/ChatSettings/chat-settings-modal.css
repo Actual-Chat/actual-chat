@@ -1,6 +1,10 @@
 ﻿.edit-settings-modal {
     @apply text-03;
 }
+body.narrow .edit-settings-modal.narrow-view__modal__position-stretch {
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+}
 
 .edit-settings-modal.modal-frame {
     @apply px-0;

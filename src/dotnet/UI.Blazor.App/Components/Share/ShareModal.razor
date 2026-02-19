@@ -18,7 +18,7 @@
     Class="@cls"
     HasCloseButton="true"
     Title="@(ModalModel.Title.NullIfEmpty() ?? "Share")"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
     <FormBlock Class="with-contact-list">
         @if (_selectorKind == SelectorKind.Contact) {

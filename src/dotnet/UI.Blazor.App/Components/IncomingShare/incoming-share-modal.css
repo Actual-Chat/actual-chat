@@ -2,6 +2,10 @@
     @apply px-0 pb-0;
     @apply gap-y-0;
 }
+body.narrow .share-incoming-modal.narrow-view__modal__position-stretch {
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+}
 .share-incoming-modal .no-padding-header-decorator {
     @apply mx-0;
 }

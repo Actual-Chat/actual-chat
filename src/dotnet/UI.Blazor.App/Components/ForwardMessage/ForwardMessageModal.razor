@@ -58,7 +58,7 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
-        => _viewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnSend, "Send");
+        => _viewSettings = DialogFrameNarrowViewSettings.ForSubmitButton(OnSend, "Send");
 
     private void OnSend() {
         ModalModel.SelectedChatIds = SelectedChatIds;
