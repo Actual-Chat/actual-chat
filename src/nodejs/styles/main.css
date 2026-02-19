@@ -422,7 +422,8 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfoo
 }
 
 .default-layout {
-    @apply w-full;
+    @apply flex-y;
+    @apply h-full w-full;
     @apply overflow-hidden;
 }
 .default-layout .layout-header {
@@ -529,13 +530,16 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .layout-subfoo
 }
 .page-with-header-and-footer .layout-body-wrapper {
     @apply flex-1 flex-x justify-center;
-    @apply h-full;
+    @apply h-0 min-h-0; /* grows to max h */
     @apply overflow-hidden;
 }
 .page-with-header-and-footer .layout-body-wrapper > .c-container {
     @apply relative flex-1 -flex-y;
     @apply h-full;
     @apply overflow-hidden;
+}
+.page-with-header-and-footer .layout-body-wrapper > .c-container > .layout-body {
+    @apply h-0 min-h-0; /* grows to max h */
 }
 .page-with-header-and-footer .layout-body-wrapper > .c-container:not(:has(.has-safe-area-bottom)) {
     padding-bottom: var(--safe-area-bottom);
