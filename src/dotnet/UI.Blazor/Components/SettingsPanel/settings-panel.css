@@ -114,7 +114,7 @@ body.narrow .settings-panel > .c-tabs .c-footer {
     }
 }
 .tab-inner {
-    @apply flex-1 flex-y items-center;
+    @apply flex-1 flex-y items-stretch md:items-center;
     @apply md:w-3/5;
 }
 .hide-tabs .settings-tab {
