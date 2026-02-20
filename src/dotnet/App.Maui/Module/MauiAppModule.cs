@@ -78,7 +78,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 #elif ANDROID
         services.AddScoped<AudioFocusUI>(c => new AndroidAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new MauiTuneUI(c.UIHub()));
-        services.AddSingleton<AudioWidget>(c => new AndroidAudioWidget(c)); // Scoped in WASM/SSB, singleton in MAUI
+        services.AddScoped<AudioWidget>(c => new AndroidAudioWidget(c.AppUIHub()));
         services.AddSingleton<VoiceActivityDetector>(c => new TfLiteVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
 #elif IOS || MACCATALYST

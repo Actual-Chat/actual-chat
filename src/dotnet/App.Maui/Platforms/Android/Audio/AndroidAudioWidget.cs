@@ -4,30 +4,44 @@ using IntentExtras = ActualChat.App.Maui.Audio.AndroidAudioWidgetForegroundServi
 
 namespace ActualChat.App.Maui.Audio;
 
-public class AndroidAudioWidget(IServiceProvider services) : AudioWidget(services)
+public class AndroidAudioWidget : AudioWidget
 {
-    private static AndroidAudioWidget? _instance;
+    private static volatile AndroidAudioWidget? _instance;
+    private static volatile bool _isShown;
 
     private static Context Context => Platform.AppContext;
-    private bool _isShown;
+
+    public AndroidAudioWidget(AppUIHub hub) : base(hub)
+    {
+        Interlocked.Exchange(ref _instance, this);
+        _ = DispatchToBlazor(_ => HideImpl());
+    }
 
     public static void Pause() => _instance?.InvokeAction(ActionNames.Pause);
     public static void Resume() => _instance?.InvokeAction(ActionNames.Resume);
     public static void Stop() => _instance?.InvokeAction(ActionNames.Stop);
-    public static void Hide() => _instance?.HideImpl();
+    public static void Hide() => HideImpl();
 
     protected override void OnStateChanged(AudioWidgetState? state, AudioWidgetState? oldState)
+        => _ = DispatchToBlazor(_ => {
+            if (_instance != this)
+                return;
+
+            if (state is null)
+                HideImpl();
+            else
+                ShowImpl(state);
+        });
+
+    public override void Dispose()
     {
-        _instance = this;
-        if (state is null)
-            HideImpl();
-        else
-            ShowImpl(state);
+        Interlocked.CompareExchange(ref _instance, null, this);
+        base.Dispose();
     }
 
     // Private methods
 
-    private void ShowImpl(AudioWidgetState state)
+    private static void ShowImpl(AudioWidgetState state)
     {
         var context = Context;
         var intent = new Intent(context, typeof(AndroidAudioWidgetForegroundService));
@@ -42,7 +56,7 @@ public class AndroidAudioWidget(IServiceProvider services) : AudioWidget(service
         _isShown = true;
     }
 
-    private void HideImpl()
+    private static void HideImpl()
     {
         if (!_isShown)
             return;
