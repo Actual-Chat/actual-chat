@@ -11,4 +11,9 @@ public static class FeaturesExt
         this IFeatures features,
         CancellationToken cancellationToken = default)
         => features.Get<Features_EnableAnonymousChat>(cancellationToken);
+
+    public static ValueTask<bool> IsVideoStreamingEnabled(
+        this IFeatures features,
+        CancellationToken cancellationToken = default)
+        => features.Get<Features_EnableVideoStreaming>(cancellationToken);
 }

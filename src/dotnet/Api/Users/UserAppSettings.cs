@@ -12,4 +12,5 @@ public sealed partial record UserAppSettings : IHasOrigin, IHasKvasKey<UserAppSe
     [DataMember, MemoryPackOrder(0)] public bool? IsDataCollectionEnabled{ get; init; }
     [DataMember, MemoryPackOrder(2)] public bool? AreExperimentalFeaturesEnabled{ get; init; }
     [DataMember, MemoryPackOrder(3)] public bool? IsIncompleteUIEnabled{ get; init; }
+    [DataMember, MemoryPackOrder(4)] public bool? IsVideoStreamingEnabled{ get; init; }
 }
