@@ -18,8 +18,8 @@ public static partial class Constants
         public static readonly bool WebKvasBackend = false;
         public static readonly bool MeshLocks = false;
         public static readonly bool ShardOwners = false;
-        public static readonly bool QueueProcessors = true;
-        public static readonly bool Flows = true;
+        public static readonly bool QueueProcessors = false;
+        public static readonly bool Flows = false;
 
         // UI services
         public static readonly bool History = false;
@@ -31,14 +31,14 @@ public static partial class Constants
         // Audio
         public static readonly bool WebMReader = false;
         public static readonly bool AudioSource = false;
-        public static readonly bool AudioProcessor = true;
+        public static readonly bool AudioProcessor = false;
         public static readonly bool AudioTrackPlayer = false;
         public static readonly bool NativeAudioPlayer = false;
         public static readonly bool LiveStreaming = false;
-        public const bool Tunes = false;
+        public static readonly bool Tunes = false;
 
         public static readonly bool ChatAudioUI = false;
-        public static readonly bool AudioRecording = true;
+        public static readonly bool AudioRecording = false;
         public static readonly bool AudioRecordingStream = false;
         public static bool ListenOwnAudio => HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp;
 
