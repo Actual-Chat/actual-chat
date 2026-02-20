@@ -16,7 +16,7 @@ void (async () => {
                 return;
 
             const vh = window.visualViewport.height * 0.01;
-            window.document.body.style.setProperty('--vh', `${vh}px`);
+            window.document.documentElement.style.setProperty('--vh', `${vh}px`);
         });
     }
 

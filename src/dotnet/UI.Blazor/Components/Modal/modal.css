@@ -51,7 +51,7 @@ body.narrow .modal-overlay {
 
 body.device-ios .modal-overlay,
 body.device-android .modal-overlay {
-    @apply ios-height;
+    @apply has-viewport-height;
 }
 
 .modal-focus-trap {
@@ -84,6 +84,7 @@ body.narrow .modal-frame.modal-sm {
     @apply absolute left-4 right-4;
     @apply min-h-fit h-auto;
     @apply rounded-xl;
+    min-height: 0;
     max-height: 80vh;
     bottom: 4vh;
 }
@@ -134,7 +135,7 @@ body.narrow .modal-frame.modal-sm {
 }
 body.device-ios .modal-chrome,
 body.device-android .modal-chrome {
-    @apply ios-height;
+    @apply has-viewport-height;
 }
 .modal-frame {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;
@@ -156,7 +157,7 @@ body.device-android .modal-chrome {
 }
 body.device-ios .modal-frame,
 body.device-android .modal-frame {
-    @apply ios-height;
+    @apply has-viewport-height;
 }
 @supports (transition-behavior: allow-discrete) {
     .modal-overlay .modal-frame {

@@ -20,7 +20,7 @@
 }
 
 body.device-ios .side-nav {
-    @apply ios-height;
+    @apply has-viewport-height;
 }
 
 .side-nav.animated {

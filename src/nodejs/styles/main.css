@@ -5,7 +5,7 @@
 }
 
 html {
-    @apply overflow-hidden;
+    @apply overflow-hidden has-viewport-height;
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
     font-size: var(--font-size);
 }
@@ -24,7 +24,7 @@ body {
 
 /* iOS-specific styles */
 body.device-ios {
-    @apply ios-height;
+    @apply has-viewport-height;
 }
 
 body.device-ios :has(input:focus),
@@ -39,11 +39,11 @@ body.device-ios * {
 
 /* Android-specific styles */
 body.device-android {
-    @apply ios-height;
+    @apply has-viewport-height;
     overflow: hidden;
 }
 body.device-android #app {
-    @apply ios-height;
+    @apply has-viewport-height;
     overflow: hidden;
 }
 
