@@ -181,9 +181,13 @@
             return;
 
         try {
-            await LiveVideoStreams.RegisterVideoStreamMember(Session, StreamInfo.ChatId, CancellationToken.None);
+            var decoderCodecs = await JS.InvokeAsync<string[]>(
+                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+            await LiveVideoStreams.RegisterVideoStreamMember(
+                Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
             _isViewerRegistered = true;
-            DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] Registered as viewer", StreamInfo.StreamId);
+            DebugLog?.LogDebug("[VideoTrackPlayer {StreamId}] Registered as viewer with decoder codecs: {Codecs}",
+                StreamInfo.StreamId, string.Join(", ", decoderCodecs));
         }
         catch (Exception ex) {
             Log.LogError(ex, "[VideoTrackPlayer {StreamId}] Failed to register as viewer", StreamInfo.StreamId);

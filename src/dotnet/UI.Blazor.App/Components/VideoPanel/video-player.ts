@@ -166,10 +166,13 @@ export class VideoPlayer {
             this.decoder.configure(this.decoderConfig);
             debugLog?.log('WebCodecs decoder configured');
 
-            // If we have codec settings, we don't need to wait for keyframe with description
-            if (codecSettings) {
+            // If we have codec settings, we don't need to wait for keyframe with description.
+            // AV1 doesn't produce separate codec description (SPS/PPS) like H.264,
+            // so the decoder can work with just the codec string.
+            const isAV1 = codecString.startsWith('av01');
+            if (codecSettings || isAV1) {
                 this.waitingForKeyframe = false;
-                console.log('[VideoPlayer] Decoder configured with codecSettings from VideoFormat, not waiting for keyframe with description');
+                console.log(`[VideoPlayer] Decoder configured, not waiting for keyframe with description (codecSettings=${!!codecSettings}, isAV1=${isAV1})`);
             }
         } catch (error) {
             errorLog?.log('Failed to initialize WebCodecs decoder:', error);

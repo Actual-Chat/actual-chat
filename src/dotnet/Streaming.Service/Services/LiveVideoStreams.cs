@@ -52,11 +52,12 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
     public async Task RegisterVideoStreamMember(
         Session session,
         ChatId chatId,
+        ApiArray<string> supportedDecoderCodecs,
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        await Backend.RegisterVideoStreamMember(chatId, session.Id, cancellationToken).ConfigureAwait(false);
+        await Backend.RegisterVideoStreamMember(chatId, session.Id, supportedDecoderCodecs, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task UnregisterVideoStreamMember(
@@ -67,6 +68,27 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
         await Backend.UnregisterVideoStreamMember(chatId, session.Id, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<string> GetRecommendedCodec(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Read);
+        return await Backend.GetRecommendedCodec(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<RpcStream<string>> ObserveRecommendedCodec(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
+        chatRules.Require(ChatPermissions.Read);
+        return await Backend.ObserveRecommendedCodec(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<RpcStream<VideoFrame>?> GetVideo(

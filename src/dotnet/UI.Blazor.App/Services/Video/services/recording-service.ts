@@ -172,6 +172,51 @@ export class RecordingService extends EventTarget {
         };
     }
 
+    async switchCodec(codec: string): Promise<void> {
+        if (!this.pipeline) {
+            warnLog?.log('switchCodec: no active pipeline');
+            return;
+        }
+
+        // Map category to codec string
+        let codecString: string;
+        if (codec === 'av1') {
+            codecString = 'av01.0.08M.08'; // AV1 Main, Level 4.0
+        } else {
+            codecString = 'avc1.640028'; // H.264 High profile level 4.0
+        }
+
+        // Skip if already using this codec category
+        const currentIsAV1 = this.config.codecString?.startsWith('av01') ?? false;
+        const targetIsAV1 = codecString.startsWith('av01');
+        if (currentIsAV1 === targetIsAV1)
+            return;
+
+        // Verify the encoder can handle this codec before switching
+        try {
+            const support = await VideoEncoder.isConfigSupported({
+                codec: codecString,
+                width: this.config.width,
+                height: this.config.height,
+                bitrate: this.config.bitrate,
+                framerate: this.config.framerate,
+            });
+            if (!support.supported) {
+                warnLog?.log(`switchCodec: ${codecString} not supported by encoder, ignoring`);
+                return;
+            }
+        } catch {
+            warnLog?.log(`switchCodec: failed to check support for ${codecString}, ignoring`);
+            return;
+        }
+
+        infoLog?.log(`Switching codec from ${this.config.codec} to ${codec} (${codecString})`);
+        this.config.codec = codec as 'h264' | 'av1';
+        this.config.codecString = codecString;
+
+        await this.pipeline.switchCodec(codecString);
+    }
+
     async start(): Promise<void> {
         try {
             this.setState({ status: 'acquiring-media' });
