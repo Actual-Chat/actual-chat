@@ -124,9 +124,16 @@ body.no-select {
 .safe-area-bottom-overlay {
     @apply absolute bottom-0 left-0 right-0;
     touch-action: none;
-    backdrop-filter: blur(8px);
+    background: linear-gradient(to bottom, transparent, var(--background-03));
 }
-body.device-ios .safe-area-bottom-overlay {
+.safe-area-bottom-overlay::before {
+    content: '';
+    @apply absolute inset-0;
+    backdrop-filter: blur(8px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black);
+    mask-image: linear-gradient(to bottom, transparent, black);
+}
+body.device-ios .safe-area-bottom-overlay::before {
     backdrop-filter: none;
 }
 
