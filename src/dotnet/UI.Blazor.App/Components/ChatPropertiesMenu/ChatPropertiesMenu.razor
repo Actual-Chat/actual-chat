@@ -5,7 +5,13 @@
     if (m == null)
         return;
 
-    var rules = m.Chat.Rules;
+    var chat = m.Chat;
+    var rules = chat.Rules;
+    var shareChatTitle = chat.Id is PeerChatId
+        ? $"Share {chat.Title}'s contact"
+        : chat.IsPublic
+            ? "Share chat"
+            : "Share chat join link";
 }
 
 <CascadingValue Value="m">
@@ -44,7 +50,7 @@
 *@
     <MenuEntry
         Icon="icon-share"
-        Text="Share chat"
+        Text="@shareChatTitle"
         Click="@OnShareClick">
     </MenuEntry>
     <ChatMenuAddMember/>
