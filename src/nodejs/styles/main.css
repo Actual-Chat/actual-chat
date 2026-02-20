@@ -126,6 +126,9 @@ body.no-select {
     touch-action: none;
     backdrop-filter: blur(8px);
 }
+body.device-ios .safe-area-bottom-overlay {
+    backdrop-filter: none;
+}
 
 /* Uncomment to force safe areas before JS loads (skeleton testing, etc.) */
 /*
