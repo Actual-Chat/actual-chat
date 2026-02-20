@@ -59,7 +59,7 @@ export class TransferSimulator {
     async sendChunk(chunk: EncodedChunkData): Promise<void> {
     // Track chunk type for bandwidth monitoring
         if (chunk.type === 'key') {
-            debugLog?.log('Sending keyframe chunk:', (chunk.byteLength / 1024).toFixed(2), 'KB');
+            debugLog?.log(`Sending keyframe chunk: seq=${chunk.sequenceNumber}, ${(chunk.byteLength / 1024).toFixed(2)} KB`);
         }
 
         // Simulate packet loss

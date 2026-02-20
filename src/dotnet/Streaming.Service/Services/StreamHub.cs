@@ -169,25 +169,15 @@ public class StreamHub(IServiceProvider services) : Hub
             yield break;
         }
 
-        var batch = new List<byte[]>(10);
         var frameCount = 0;
 
         await foreach (var frame in ((IAsyncEnumerable<VideoFrame>)rpcStream)
             .WithCancellation(stopCts.Token)) {
             frameCount++;
-            batch.Add(SerializeVideoFrame(frame));
-
-            if (batch.Count >= 10) {
-                if (frameCount <= 30 || frameCount % 30 == 0)
-                    Log.LogInformation("GetVideo sending batch: {Count} frames, total={Total}",
-                        batch.Count, frameCount);
-                yield return batch.ToArray();
-                batch.Clear();
-            }
+            if (frameCount <= 30 || frameCount % 30 == 0)
+                Log.LogInformation("GetVideo sending frame #{Total}", frameCount);
+            yield return new[] { SerializeVideoFrame(frame) };
         }
-
-        if (batch.Count > 0)
-            yield return batch.ToArray();
 
         Log.LogInformation("GetVideo: stream ended after {Count} frames", frameCount);
     }

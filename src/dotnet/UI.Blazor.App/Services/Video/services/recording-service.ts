@@ -331,7 +331,7 @@ export class RecordingService extends EventTarget {
                 bitrate: this.config.bitrate,
                 framerate: this.config.framerate,
                 keyframeInterval: 30, // 1 keyframe per second at 30fps
-                latencyMode: 'quality',
+                latencyMode: 'realtime',
                 hardwareAcceleration: 'prefer-hardware',
                 scalabilityMode: scalabilityMode
             },

@@ -179,6 +179,11 @@ export class VideoPipeline implements IVideoPipeline {
                 data: chunkBytes
             };
 
+            if (chunkData.type === 'key') {
+                const offsetMs = normalizedTimestamp / 1000;
+                debugLog?.log(`Streaming keyframe: seq=${chunkData.sequenceNumber}, offsetMs=${offsetMs.toFixed(0)}, ${(chunkBytes.length / 1024).toFixed(2)} KB`);
+            }
+
             // Extract codec description from keyframes (required for H.264 decoder)
             if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
                 const desc = chunkData.metadata.decoderConfig.description;

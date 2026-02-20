@@ -140,10 +140,12 @@
             return new Model(isRightPanelVisible, [], videoState.IsRecording, false, emptyNames, null);
 
         // Filter out own stream (shown in local preview)
+        // TEMP: Include own stream for latency troubleshooting (normally filtered out)
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken);
         var remoteStreams = activeStreams
             .Where(s => ownAuthor?.Id != s.AuthorId)
             .ToArray();
+        // var remoteStreams = activeStreams.ToArray();
 
         // Resolve author names for remote streams
         var authorNames = new Dictionary<AuthorId, string>();

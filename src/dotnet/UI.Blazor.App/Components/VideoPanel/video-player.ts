@@ -57,11 +57,13 @@ export class VideoPlayer {
     private renderKey: string;
     private renderFrameCount = 0;       // count of rendered frames (for periodic logging)
     private receivedFrameCount = 0;     // count of received frames (for periodic logging)
+    private receivedKeyframeCount = 0;   // count of received keyframes (for correlation with encoder)
     private lastSyncLogTime = 0;        // throttle sync logging
 
     // Latency measurement
     private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
     private latencyReportTimer: ReturnType<typeof setInterval> | null = null;
+    private pipelineLatencyMs = 0;      // Smoothed video pipeline latency estimate (ms)
 
     // Audio sync
     private startedAtMs: number;
@@ -216,6 +218,17 @@ export class VideoPlayer {
     private onFrameDecoded(frame: VideoFrame): void {
         this.pendingFrames.push(frame);
         this.bufferSize++;
+
+        // Update pipeline latency estimate from this fresh frame
+        const frameOffsetMs = frame.timestamp / 1000; // μs → ms
+        const capturedAtMs = this.startedAtMs + frameOffsetMs;
+        const currentLatencyMs = Date.now() - capturedAtMs;
+        if (currentLatencyMs > 0) {
+            this.pipelineLatencyMs = this.pipelineLatencyMs === 0
+                ? currentLatencyMs
+                : this.pipelineLatencyMs * 0.95 + currentLatencyMs * 0.05;
+        }
+
         // Safety cap: prevent unbounded buffer growth (30 frames = 1s at 30fps)
         while (this.pendingFrames.length > 30) {
             const dropped = this.pendingFrames.shift()!;
@@ -254,10 +267,13 @@ export class VideoPlayer {
         const audioState = getAudioSyncState(this.authorId);
         if (audioState) {
             const audioPlayingAtMs = interpolatePlayingAt(audioState) * 1000;
-            const targetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs) + audioPlayingAtMs;
+            const rawTargetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs) + audioPlayingAtMs;
+
+            // Compensate for pipeline latency so target is achievable
+            const targetVideoOffsetMs = rawTargetVideoOffsetMs - this.pipelineLatencyMs;
             targetTimestamp = targetVideoOffsetMs * 1000; // ms → μs
 
-            // Re-anchor wall-clock for smooth fallback when audio disappears
+            // Re-anchor wall-clock to COMPENSATED target (not raw audio target)
             this.playbackStartTime = now;
             this.firstFrameTimestamp = targetTimestamp;
 
@@ -266,9 +282,11 @@ export class VideoPlayer {
                 this.lastSyncLogTime = now;
                 const driftMs = this.lastRenderedOffsetMs - targetVideoOffsetMs;
                 debugLog?.log(
-                    `audioSync: targetOffsetMs=${targetVideoOffsetMs.toFixed(0)}, ` +
-                    `lastRenderedOffsetMs=${this.lastRenderedOffsetMs.toFixed(0)}, ` +
-                    `driftMs=${driftMs.toFixed(0)}, pendingFrames=${this.pendingFrames.length}`);
+                    `audioSync: rawTargetMs=${rawTargetVideoOffsetMs.toFixed(0)}, ` +
+                    `pipelineMs=${this.pipelineLatencyMs.toFixed(0)}, ` +
+                    `targetMs=${targetVideoOffsetMs.toFixed(0)}, ` +
+                    `renderedMs=${this.lastRenderedOffsetMs.toFixed(0)}, ` +
+                    `driftMs=${driftMs.toFixed(0)}, pending=${this.pendingFrames.length}`);
             }
         } else {
             // Wall-clock pacing (no audio to sync to)
@@ -499,10 +517,15 @@ export class VideoPlayer {
             const durationMs = duration / 10000;
 
             this.receivedFrameCount++;
-            if (this.receivedFrameCount % 100 === 1) {
+            if (isKeyFrame) {
+                this.receivedKeyframeCount++;
+                debugLog?.log(
+                    `Received keyframe #${this.receivedKeyframeCount}: offsetMs=${offsetMs.toFixed(0)}, ` +
+                    `dataLen=${data.length}, descLen=${description?.length ?? 0}`);
+            } else if (this.receivedFrameCount % 100 === 1) {
                 debugLog?.log(
                     `processReceivedFrame #${this.receivedFrameCount}: offsetMs=${offsetMs.toFixed(0)}, ` +
-                    `durationMs=${durationMs.toFixed(1)}, isKey=${isKeyFrame}, dataLen=${data.length}`);
+                    `durationMs=${durationMs.toFixed(1)}, dataLen=${data.length}`);
             }
 
             this.pushFrame(data, offsetMs, durationMs, isKeyFrame, description);
@@ -526,6 +549,8 @@ export class VideoPlayer {
         this.lastRenderedOffsetMs = 0;
         this.renderFrameCount = 0;
         this.receivedFrameCount = 0;
+        this.receivedKeyframeCount = 0;
+        this.pipelineLatencyMs = 0;
 
         // Stop latency reporting
         if (this.latencyReportTimer !== null) {
