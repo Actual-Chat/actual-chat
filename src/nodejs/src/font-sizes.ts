@@ -48,7 +48,8 @@ export class FontSizes {
 }
 
 function getDefault() {
-    return DeviceInfo.isIos ? '18px' : '16px';
+    return '16px';
+    // return DeviceInfo.isIos ? '18px' : '16px';
 }
 
 function getValidOrDefault(size: string): string {
