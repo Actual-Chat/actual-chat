@@ -28,6 +28,8 @@ import {
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
 import { SessionTokens } from '../../../../UI.Blazor/Services/Security/session-tokens';
+import type { Subscription } from 'rxjs';
+import { RecorderStateHub } from '../../../Components/AudioRecorder/recorder-state-hub';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
@@ -59,6 +61,19 @@ export interface PipelineConfig {
   streaming?: {
     enabled: boolean;
     chatId: string;
+  };
+  /**
+   * VAD-based adaptive framerate (optional)
+   * When enabled, reduces framerate and bitrate when the sender is not speaking
+   */
+  adaptiveFramerate?: {
+    enabled: boolean;
+    /** Framerate when silent. Default: 5 */
+    reducedFps?: number;
+    /** Bitrate multiplier when silent (0-1). Default: 0.25 */
+    reducedBitrateRatio?: number;
+    /** Delay before reducing framerate after speech stops (ms). Default: 500 */
+    silenceDelayMs?: number;
   };
 }
 
@@ -118,6 +133,14 @@ export class VideoPipeline implements IVideoPipeline {
     // Common
     private outputStream: MediaStream | null = null;
     private processing = false;
+
+    // VAD-based adaptive framerate
+    private isSpeaking = true;
+    private vadSubscription: Subscription | null = null;
+    private vadSilenceTimer: ReturnType<typeof setTimeout> | null = null;
+    private lastPassedFrameTime = 0;
+    private readonly reducedFrameIntervalMs: number;
+    private savedBitrate: number;
 
     // Timestamp normalization for proper video playback
     private firstFrameTimestamp: number | null = null;
@@ -214,7 +237,7 @@ export class VideoPipeline implements IVideoPipeline {
                 // AV1 doesn't produce a separate codec description (SPS/PPS) like H.264,
                 // so we can create the stream on the first keyframe without codecSettings.
                 const isAV1 = this.config.encoderConfig.codec.startsWith('av01');
-                const canCreateStream = this.codecSettings || (isAV1 && chunkData.type === 'key');
+                const canCreateStream = this.codecSettings ?? (isAV1 && chunkData.type === 'key');
 
                 if (canCreateStream) {
                     // We have what we need — create the stream now
@@ -325,6 +348,11 @@ export class VideoPipeline implements IVideoPipeline {
     };
 
     constructor(private config: PipelineConfig) {
+    // Compute adaptive framerate settings
+        const af = config.adaptiveFramerate;
+        this.reducedFrameIntervalMs = 1000 / (af?.reducedFps ?? 5);
+        this.savedBitrate = config.encoderConfig.bitrate;
+
     // Create worker instances
         const encoderWorkerPath = Versioning.mapPath('/dist/videoEncoderWorker.js');
         infoLog?.log('Creating encoder worker from:', encoderWorkerPath);
@@ -522,6 +550,17 @@ export class VideoPipeline implements IVideoPipeline {
     public async stop(): Promise<void> {
         infoLog?.log('Stopping unified pipeline...');
 
+        // Unsubscribe from VAD
+        if (this.vadSubscription) {
+            this.vadSubscription.unsubscribe();
+            this.vadSubscription = null;
+        }
+        if (this.vadSilenceTimer !== null) {
+            clearTimeout(this.vadSilenceTimer);
+            this.vadSilenceTimer = null;
+        }
+        this.isSpeaking = true;
+
         // Stop stats polling
         if (this.statsInterval) {
             clearInterval(this.statsInterval);
@@ -630,6 +669,18 @@ export class VideoPipeline implements IVideoPipeline {
         this.config.encoderConfig.bitrate = params.bitrate;
         this.config.encoderConfig.width = params.width;
         this.config.encoderConfig.height = params.height;
+
+        // Track base bitrate for VAD-based reduction
+        this.savedBitrate = params.bitrate;
+
+        // If currently in VAD silence, apply reduced ratio to new base bitrate
+        if (!this.isSpeaking && this.config.adaptiveFramerate?.enabled) {
+            const ratio = this.config.adaptiveFramerate.reducedBitrateRatio ?? 0.25;
+            const reducedBitrate = Math.round(params.bitrate * ratio);
+            debugLog?.log(`reconfigure during silence: applying reduced bitrate ${reducedBitrate}`);
+            await this.encoder.reconfigure({ ...params, bitrate: reducedBitrate });
+            return;
+        }
 
         // Unified: always reconfigure via RPC
         await this.encoder.reconfigure(params);
@@ -875,6 +926,91 @@ export class VideoPipeline implements IVideoPipeline {
     }
 
     /**
+     * Subscribe to audio VAD state to drive adaptive framerate.
+     * Call after pipeline is started.
+     */
+    subscribeToVad(): void {
+        if (this.vadSubscription) return;
+
+        this.vadSubscription = RecorderStateHub.recorderStateChanged$.subscribe(state => {
+            // When audio is not recording, treat as speaking (don't reduce framerate)
+            const active = !state.isRecording || state.isVoiceActive;
+            this.setVadActive(active);
+        });
+
+        // Sync with current state
+        const current = RecorderStateHub.getState();
+        this.setVadActive(!current.isRecording || current.isVoiceActive);
+
+        debugLog?.log('Subscribed to VAD for adaptive framerate');
+    }
+
+    /**
+     * Update the base bitrate used for VAD-based reduction.
+     * Call when server-driven quality changes arrive.
+     */
+    updateSavedBitrate(bitrate: number): void {
+        this.savedBitrate = bitrate;
+        // If currently silent, reapply the reduced ratio to the new base
+        if (!this.isSpeaking) {
+            const ratio = this.config.adaptiveFramerate?.reducedBitrateRatio ?? 0.25;
+            const reducedBitrate = Math.round(this.savedBitrate * ratio);
+            debugLog?.log(`updateSavedBitrate: silent, applying reduced bitrate ${reducedBitrate}`);
+            void this.encoder.reconfigure({
+                bitrate: reducedBitrate,
+                width: this.config.encoderConfig.width,
+                height: this.config.encoderConfig.height,
+            });
+        }
+    }
+
+    private setVadActive(isActive: boolean): void {
+        if (isActive) {
+            // Cancel pending silence timer
+            if (this.vadSilenceTimer !== null) {
+                clearTimeout(this.vadSilenceTimer);
+                this.vadSilenceTimer = null;
+            }
+
+            // Restore from silence
+            if (!this.isSpeaking) {
+                this.isSpeaking = true;
+                debugLog?.log('VAD: speech resumed, restoring full framerate and bitrate');
+
+                // Restore bitrate
+                void this.encoder.reconfigure({
+                    bitrate: this.savedBitrate,
+                    width: this.config.encoderConfig.width,
+                    height: this.config.encoderConfig.height,
+                });
+
+                // Force keyframe for clean decode after gap
+                void this.encoder.forceKeyFrame();
+            }
+        } else {
+            // Start silence timer (debounce before reducing)
+            if (this.isSpeaking && this.vadSilenceTimer === null) {
+                const delay = this.config.adaptiveFramerate?.silenceDelayMs ?? 500;
+                this.vadSilenceTimer = setTimeout(() => {
+                    this.vadSilenceTimer = null;
+                    this.isSpeaking = false;
+                    this.lastPassedFrameTime = 0; // allow next frame through immediately
+
+                    // Reduce bitrate
+                    const ratio = this.config.adaptiveFramerate?.reducedBitrateRatio ?? 0.25;
+                    const reducedBitrate = Math.round(this.savedBitrate * ratio);
+                    debugLog?.log(`VAD: silence detected, reducing to ${this.config.adaptiveFramerate?.reducedFps ?? 5}fps, bitrate ${reducedBitrate}`);
+                    void this.encoder.reconfigure({
+                        bitrate: reducedBitrate,
+                        width: this.config.encoderConfig.width,
+                        height: this.config.encoderConfig.height,
+                    });
+                }, delay);
+            }
+        }
+    }
+
+    /**
    * Create canvas-based frame extractor (fallback for browsers without MSTP)
    * Enhanced for Safari compatibility with proper video element handling
    */
@@ -1079,6 +1215,17 @@ export class VideoPipeline implements IVideoPipeline {
                         droppedFrames++;
                         continue; // Skip processing this frame
                     }
+                }
+
+                // VAD-based adaptive framerate: drop frames when not speaking
+                if (!this.isSpeaking && this.config.adaptiveFramerate?.enabled) {
+                    const now = performance.now();
+                    if (now - this.lastPassedFrameTime < this.reducedFrameIntervalMs) {
+                        frame.close();
+                        droppedFrames++;
+                        continue;
+                    }
+                    this.lastPassedFrameTime = now;
                 }
 
                 // Route frame through segmentation worker if background blur is enabled

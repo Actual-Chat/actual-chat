@@ -47,6 +47,13 @@ export interface RecordingConfig {
     enabled: boolean;
     backend: 'wasm' | 'builtin';
   };
+  // VAD-based adaptive framerate settings
+  adaptiveFramerate?: {
+    enabled: boolean;
+    reducedFps?: number;
+    reducedBitrateRatio?: number;
+    silenceDelayMs?: number;
+  };
 }
 
 export interface RecordingState {
@@ -430,6 +437,12 @@ export class RecordingService extends EventTarget {
                 chatId: this.config.streaming.chatId,
             };
             infoLog?.log('Streaming enabled to chat', this.config.streaming.chatId);
+        }
+
+        // Add adaptive framerate configuration if enabled
+        if (this.config.adaptiveFramerate?.enabled) {
+            pipelineConfig.adaptiveFramerate = { ...this.config.adaptiveFramerate };
+            infoLog?.log('Adaptive framerate enabled');
         }
 
         return pipelineConfig;

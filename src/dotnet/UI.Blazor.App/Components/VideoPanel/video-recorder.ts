@@ -131,7 +131,11 @@ export class VideoRecorder {
                 streaming: {
                     enabled: true,
                     chatId: this.chatId,
-                }
+                },
+                // Enable VAD-based adaptive framerate to reduce bandwidth when not speaking
+                adaptiveFramerate: {
+                    enabled: true,
+                },
             };
 
             console.warn('[VideoRecorder] Creating RecordingService with streaming:', config.streaming);
@@ -171,6 +175,9 @@ export class VideoRecorder {
             console.warn('[VideoRecorder] Calling recordingService.start()...');
             await this.recordingService.start();
             console.warn('[VideoRecorder] recordingService.start() completed successfully');
+
+            // Subscribe to VAD for adaptive framerate
+            this.recordingService.getPipeline()?.subscribeToVad();
 
             // Set preview callback so blurred frames render to the preview canvas
             this.recordingService.setPreviewCallback((frame: VideoFrame) => {
