@@ -18,7 +18,6 @@ import type { SegmentationWorker, SegmentationConfig, SegmentationStats, Segment
 import type { EncoderConfig, EncoderStats, EncodedChunkData } from '../webcodecs-encoder';
 import { TransferSimulator, type TransferConfig, type TransferStats } from '../utils/transfer-simulator';
 import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
-import { MediaStreamRecorder } from '../utils/mp4-muxer';
 import {
     VideoStreamer,
     type VideoStreamConfig,
@@ -76,7 +75,7 @@ declare class MediaStreamTrackGenerator<T = VideoFrame> extends MediaStreamTrack
 
 export interface IVideoPipeline {
   start(inputStream: MediaStream): Promise<MediaStream>;
-  stop(): Promise<Blob>;
+  stop(): Promise<void>;
   reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
   toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
   switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
@@ -118,7 +117,6 @@ export class VideoPipeline implements IVideoPipeline {
     // Common
     private outputStream: MediaStream | null = null;
     private processing = false;
-    private outputRecorder: MediaStreamRecorder | null = null;
 
     // Timestamp normalization for proper video playback
     private firstFrameTimestamp: number | null = null;
@@ -502,49 +500,24 @@ export class VideoPipeline implements IVideoPipeline {
 
         if (this.generator) {
             this.outputStream = new MediaStream([this.generator]);
-
-            // Start recording the output stream with MediaRecorder for proper muxing
-            const mimeType = this.getMediaRecorderMimeType();
-            this.outputRecorder = new MediaStreamRecorder(mimeType);
-            this.outputRecorder.start(this.outputStream);
-            infoLog?.log(`Started MediaRecorder for output stream with MIME: ${mimeType}`);
-
             return this.outputStream;
         }
 
         // Use output stream from canvas if we created one
         if (this.outputStream) {
-            // Start recording
-            const mimeType = this.getMediaRecorderMimeType();
-            this.outputRecorder = new MediaStreamRecorder(mimeType);
-            this.outputRecorder.start(this.outputStream);
-            infoLog?.log(`Started MediaRecorder for canvas output stream with MIME: ${mimeType}`);
-
             return this.outputStream;
         }
 
         throw new Error('Failed to create output stream');
     }
 
-    public async stop(): Promise<Blob> {
+    public async stop(): Promise<void> {
         infoLog?.log('Stopping unified pipeline...');
 
         // Stop stats polling
         if (this.statsInterval) {
             clearInterval(this.statsInterval);
             this.statsInterval = null;
-        }
-
-        // Stop MediaRecorder first to get properly muxed video
-        let recordedBlob: Blob | null = null;
-        if (this.outputRecorder) {
-            try {
-                recordedBlob = await this.outputRecorder.stop();
-                infoLog?.log(`MediaRecorder stopped, blob size: ${(recordedBlob.size / 1024 / 1024).toFixed(2)} MB`);
-            } catch (error) {
-                warnLog?.log('MediaRecorder stop error:', error);
-            }
-            this.outputRecorder = null;
         }
 
         // Stop pumping frames
@@ -634,9 +607,6 @@ export class VideoPipeline implements IVideoPipeline {
         }
 
         infoLog?.log('Pipeline stopped with RPC cleanup');
-
-        // Return MediaRecorder blob if available, otherwise create empty blob
-        return recordedBlob ?? new Blob([], { type: 'video/webm' });
     }
 
 
@@ -1090,26 +1060,6 @@ export class VideoPipeline implements IVideoPipeline {
     }
 
 
-
-    /**
-    * Get MediaRecorder MIME type - uses WebM/VP9 for best compatibility
-    */
-    private getMediaRecorderMimeType(): string {
-    // Try VP9 first (best quality and compatibility)
-        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
-            return 'video/webm;codecs=vp9';
-        }
-        // Try VP8 as fallback
-        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
-            return 'video/webm;codecs=vp8';
-        }
-        // Try H.264 in MP4
-        if (MediaRecorder.isTypeSupported('video/mp4')) {
-            return 'video/mp4';
-        }
-        // Let browser decide
-        return '';
-    }
 
     private hasMSTPInWindow(): boolean {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
