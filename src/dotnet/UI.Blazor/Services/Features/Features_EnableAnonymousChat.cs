@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 // ReSharper disable once InconsistentNaming
 public sealed class Features_EnableAnonymousChat : FeatureDef<bool>, IClientFeatureDef
 {
-    public static bool IsEnabled { get; } = !(OSInfo.IsIOS || OSInfo.IsMacOS);
+    public static bool IsEnabled { get; } = !(OSInfo.IsIOS || OSInfo.IsMacOS || OSInfo.IsAndroid || OSInfo.IsWindows);
 
     public override Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
     {
