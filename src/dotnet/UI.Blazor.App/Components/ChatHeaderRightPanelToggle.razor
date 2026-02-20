@@ -7,7 +7,7 @@
 }
 
 @if (ScreenSize.IsNarrow()) {
-    @if (chat is not null && m.EnableIncompleteUI) {
+    @if (chat is not null) {
         <HeaderButton
             data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
             data-bubble-priority="401"
@@ -70,19 +70,16 @@
             chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
 
         var isRightPanelVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
-        var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
 
         if (ScreenSize.IsNarrow())
             return new Model() {
                 Chat = chat,
                 IsRightPanelVisible = true,
-                EnableIncompleteUI = enableIncompleteUI,
             }; // Do not hide button on narrow screen. Right panel will hide middle column with chat header entirely.
 
         return new Model {
             Chat = chat,
             IsRightPanelVisible = isRightPanelVisible,
-            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -93,6 +90,5 @@
 
         public Chat? Chat { get; init; }
         public bool IsRightPanelVisible { get; init; }
-        public bool EnableIncompleteUI { get; init; }
     }
 }

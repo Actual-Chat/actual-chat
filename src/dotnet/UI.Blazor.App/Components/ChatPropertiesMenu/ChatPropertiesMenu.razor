@@ -15,6 +15,7 @@
         Text="Open right panel"
         Click="@OnOpenRightPanelClick">
     </MenuEntry>
+@*
     <MenuEntry
         Icon="icon-phone-call"
         Text="Start Voice call">
@@ -40,14 +41,13 @@
             </div>
         </TextContent>
     </MenuEntry>
-    <MenuEntry
-        Icon="icon-person-add"
-        Text="Add member">
-    </MenuEntry>
+*@
     <MenuEntry
         Icon="icon-share"
-        Text="Share chat">
+        Text="Share chat"
+        Click="@OnShareClick">
     </MenuEntry>
+    <ChatMenuAddMember/>
     @if (rules.CanLeave()) {
         <ChatMenuLeave/>
     }
@@ -71,4 +71,7 @@
 
     private void OnOpenRightPanelClick()
         => Hub.PanelsUI.Right.Toggle();
+
+    private Task OnShareClick()
+        => Hub.ShareUI.Share(_chatId);
 }
