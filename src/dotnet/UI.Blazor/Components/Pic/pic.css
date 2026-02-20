@@ -18,6 +18,8 @@
     @apply absolute right-0 top-0 left-0 bottom-0;
     @apply overflow-hidden;
     filter: blur(40px);
+    will-change: transform;
+    transform: translateZ(0);
 }
 .pic-blurred .pic-image {
     @apply rounded-none;
