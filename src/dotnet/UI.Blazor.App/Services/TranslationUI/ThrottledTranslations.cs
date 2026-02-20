@@ -5,8 +5,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IAsyncDisposable
 {
     public const int ConcurrencyLevel = 10;
-    private readonly ConstrainedWorkQueue<TranslationId, Translation> _translationQueue;
-    private readonly ConstrainedWorkQueue<TextEntryId, ChatEntryLanguage> _languageQueue;
+    private readonly ConcurrentProcessor<TranslationId, Translation> _translations;
+    private readonly ConcurrentProcessor<TextEntryId, ChatEntryLanguage> _languageDetections;
 
     private ITranslations Translations => Hub.Translations;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -14,14 +14,14 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
 
     public ThrottledTranslations(AppUIHub hub) : base(hub)
     {
-        _translationQueue = new (ConcurrencyLevel, WhenTranslated, hub.LogFor<ConstrainedWorkQueue<TranslationId, Translation>>());
-        _languageQueue = new (ConcurrencyLevel, WhenLanguageDetected, hub.LogFor<ConstrainedWorkQueue<TextEntryId, ChatEntryLanguage>>());
+        _translations = new (ConcurrencyLevel, WhenTranslated, log: hub.LogFor<ConcurrentProcessor<TranslationId, Translation>>());
+        _languageDetections = new (ConcurrencyLevel, WhenLanguageDetected, log: hub.LogFor<ConcurrentProcessor<TextEntryId, ChatEntryLanguage>>());
     }
 
     public async ValueTask DisposeAsync()
     {
-        await _translationQueue.DisposeSilentlyAsync().ConfigureAwait(false);
-        await _languageQueue.DisposeSilentlyAsync().ConfigureAwait(false);
+        await _translations.DisposeSilentlyAsync().ConfigureAwait(false);
+        await _languageDetections.DisposeSilentlyAsync().ConfigureAwait(false);
     }
 
     public Task<Translation?> GetExisting(TranslationId id, CancellationToken cancellationToken)
@@ -29,36 +29,32 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
 
     public async Task<Translation?> Get(
         TranslationId id,
-        string consumerId,
         CancellationToken cancellationToken)
     {
         var session = Session;
         var existingTranslation = await Translations.Get(session, id, false, cancellationToken).ConfigureAwait(false);
         if (existingTranslation is null)
-            await _translationQueue.Add(id, consumerId, cancellationToken).ConfigureAwait(false);
+            _translations.Enqueue(id);
         return existingTranslation;
     }
 
-    public async Task<ChatEntryLanguage?> GetLanguage(TextEntryId entryId, string consumerId, CancellationToken cancellationToken)
+    public async Task<ChatEntryLanguage?> GetLanguage(TextEntryId entryId, CancellationToken cancellationToken)
     {
         var existing = await GetLanguageInternal(entryId, cancellationToken).ConfigureAwait(false);
         if (existing is null)
-            await _languageQueue.Add(entryId, consumerId, cancellationToken).ConfigureAwait(false);
+            _languageDetections.Enqueue(entryId);
 
         return existing;
     }
 
     internal Task<Translation>? GetWorkItem(TranslationId id)
-        => _translationQueue.Get(id);
+        => _translations.Get(id)?.ResultTask;
 
     internal IReadOnlyList<(TranslationId Id, Task<Translation> Task)> ListRunning()
-        => _translationQueue.ListRunning();
-
-    internal IReadOnlyList<(TranslationId Id, Task<Translation> Task)> ListAll()
-        => _translationQueue.ListAll();
+        => _translations.Queue.Where(x => x.IsStarted).Select(x => (x.Key, x.ResultTask)).ToList();
 
     internal IReadOnlyList<(TranslationId Id, Task<Translation> Task)> ListQueued()
-        => _translationQueue.ListQueued();
+        => _translations.Queue.Where(x => !x.IsStarted).Select(x => (x.Key, x.ResultTask)).ToList();
 
     [ComputeMethod]
     protected virtual async Task<State?> GetTranslationVisibilityState(CancellationToken cancellationToken)
@@ -96,20 +92,20 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
             .Capture(() => GetTranslationVisibilityState(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         State? last = null;
-        await foreach (var cState in cState0.Changes(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var (state, _) in cState0.Changes(cancellationToken).ConfigureAwait(false)) {
             // TODO(FC): dequeue for thread entries - use ChatUI.GetThreadPreviewEntries
-            _translationQueue.Remove(TranslationConsumers.ChatView, GetDisappearedTranslationIds(cState));
-            _languageQueue.Remove(TranslationConsumers.ChatView, GetDisappearedEntryIds(cState));
-            last = cState.Value;
+            _translations.RemoveMany(false, GetDisappearedTranslationIds(state).ToArray());
+            _languageDetections.RemoveMany(false, GetDisappearedEntryIds(state).ToArray());
+            last = state;
         }
         return;
 
-        IEnumerable<TranslationId> GetDisappearedTranslationIds(Computed<State?> cState)
+        IEnumerable<TranslationId> GetDisappearedTranslationIds(State? state)
         {
             if (last is null)
                 return [];
 
-            return cState.Value is { } state
+            return state is not null
                 ? ToPossibleTranslationIds(
                     last.ItemVisibility.VisibleKeys.Except(state.ItemVisibility.VisibleKeys),
                     last.ItemVisibility.ChatId,
@@ -119,12 +115,12 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
                     last.TargetLanguage);
         }
 
-        IEnumerable<TextEntryId> GetDisappearedEntryIds(Computed<State?> cState)
+        IEnumerable<TextEntryId> GetDisappearedEntryIds(State? state)
         {
             if (last is null)
                 return [];
 
-            return cState.Value is { } state
+            return state is not null
                 ? last.ItemVisibility.VisibleTextEntryIds.Except(state.ItemVisibility.VisibleTextEntryIds)
                 : last.ItemVisibility.VisibleTextEntryIds;
         }

@@ -22,7 +22,6 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     private TranscriptUI TranscriptUI => Hub.TranscriptUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private ChatUI ChatUI => Hub.ChatUI;
-    private string ConsumerId { get; } = UniqueNames.Name(nameof(TranslationUITest));
 
     protected override async Task InitializeAsync()
     {
@@ -403,7 +402,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
     private Task<Translation> AssertTranslation(ChatEntry entry, string expected, double similarity = 0.7)
         => ComputedTest.When(async ct => {
-            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ConsumerId, ct).Require();
+            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ct).Require();
             if (expected.IsNullOrEmpty())
                 translation.Content.Should().Be(expected);
             else
@@ -416,7 +415,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     {
         var translations = new List<Translation?>();
         foreach (var entry in entries) {
-            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), ConsumerId, cancellationToken);
+            var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken);
             translations.Add(translation);
         }
         return translations;

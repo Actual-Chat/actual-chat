@@ -106,10 +106,10 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
     }
 
     [ComputeMethod]
-    public virtual async Task<Translation?> Get(TranslationSourceId translationSourceId, string consumerId, CancellationToken cancellationToken = default){
+    public virtual async Task<Translation?> Get(TranslationSourceId translationSourceId, CancellationToken cancellationToken = default){
         var translationId = await ToTranslationId(translationSourceId, cancellationToken).ConfigureAwait(false);
         return await Translations
-            .Get(translationId, consumerId, cancellationToken)
+            .Get(translationId, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -157,7 +157,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
                return false;
        }
 
-       var entryLanguage = await Translations.GetLanguage(entryId, TranslationConsumers.ChatView, cancellationToken).ConfigureAwait(false);
+       var entryLanguage = await Translations.GetLanguage(entryId, cancellationToken).ConfigureAwait(false);
        if (entryLanguage == null)
            return null;
 
