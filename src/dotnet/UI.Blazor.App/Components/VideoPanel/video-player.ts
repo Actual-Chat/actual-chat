@@ -4,7 +4,7 @@ import { Log } from 'logging';
 import { fastRaf } from 'fast-raf';
 import { VideoStreamer } from '../../Services/Video/video-streamer';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
-import { getAudioSyncState, interpolatePlayingAt } from 'audio-video-sync';
+import { AudioVideoSync } from 'audio-video-sync';
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
@@ -264,9 +264,9 @@ export class VideoPlayer {
 
         // Compute target — audio-driven when available, wall-clock fallback
         let targetTimestamp: number;
-        const audioState = getAudioSyncState(this.authorId);
+        const audioState = AudioVideoSync.get(this.authorId);
         if (audioState) {
-            const audioPlayingAtMs = interpolatePlayingAt(audioState) * 1000;
+            const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
             const rawTargetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs) + audioPlayingAtMs;
 
             // Compensate for pipeline latency so target is achievable

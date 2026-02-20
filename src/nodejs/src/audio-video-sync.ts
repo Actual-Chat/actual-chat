@@ -19,35 +19,42 @@ export interface AudioSyncState {
 const registry = new Map<string, AudioSyncState>();
 let lastLogTime = 0;
 
-/** Called by AudioPlayer on every feeder state change */
-export function updateAudioSyncState(authorId: string, state: AudioSyncState): void {
-    registry.set(authorId, state);
-    const now = performance.now();
-    if (now - lastLogTime > 1000) {
-        lastLogTime = now;
-        debugLog?.log(
-            `updateAudioSyncState: authorId=${authorId}, playingAt=${state.playingAtSec.toFixed(2)}s, ` +
-            `state=${state.playbackState}, recordedAtMs=${state.recordedAtMs.toFixed(0)}`);
+export class AudioVideoSync {
+    /** Called by AudioPlayer on every feeder state change, and from C# AudioTrackPlayer on MAUI */
+    static update(authorId: string, playingAtSec: number, recordedAtMs: number, playbackState: string): void {
+        const state: AudioSyncState = {
+            playingAtSec,
+            capturedAt: performance.now(),
+            recordedAtMs,
+            playbackState: playbackState as AudioPlaybackState,
+        };
+        registry.set(authorId, state);
+        const now = state.capturedAt;
+        if (now - lastLogTime > 1000) {
+            lastLogTime = now;
+            debugLog?.log(
+                `update: authorId=${authorId}, playingAt=${playingAtSec.toFixed(2)}s, ` +
+                `state=${playbackState}, recordedAtMs=${recordedAtMs.toFixed(0)}`);
+        }
     }
-}
 
-/** Called by AudioPlayer on end/reset */
-export function clearAudioSyncState(authorId: string): void {
-    debugLog?.log(`clearAudioSyncState: authorId=${authorId}`);
-    registry.delete(authorId);
-}
-
-/** Called by VideoPlayer in render loop */
-export function getAudioSyncState(authorId: string): AudioSyncState | undefined {
-    return registry.get(authorId);
-}
-
-/** Extrapolate current playingAt for 'playing' state; returns seconds */
-export function interpolatePlayingAt(state: AudioSyncState): number {
-    if (state.playbackState !== 'playing') {
-        // Not playing — return last known position without extrapolation
-        return state.playingAtSec;
+    /** Called by AudioPlayer on end/reset, and from C# AudioTrackPlayer.OnEnded() on MAUI */
+    static clear(authorId: string): void {
+        debugLog?.log(`clear: authorId=${authorId}`);
+        registry.delete(authorId);
     }
-    const elapsedSec = (performance.now() - state.capturedAt) / 1000;
-    return state.playingAtSec + elapsedSec;
+
+    /** Called by VideoPlayer in render loop */
+    static get(authorId: string): AudioSyncState | undefined {
+        return registry.get(authorId);
+    }
+
+    /** Extrapolate current playingAt for 'playing' state; returns seconds */
+    static interpolatePlayingAt(state: AudioSyncState): number {
+        if (state.playbackState !== 'playing') {
+            return state.playingAtSec;
+        }
+        const elapsedSec = (performance.now() - state.capturedAt) / 1000;
+        return state.playingAtSec + elapsedSec;
+    }
 }
