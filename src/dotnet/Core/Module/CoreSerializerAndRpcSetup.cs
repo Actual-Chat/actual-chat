@@ -22,7 +22,7 @@ public static class CoreSerializerAndRpcSetup
             RpcSerializationFormat.MemoryPackV6C);
 
         RpcSerializationFormatResolver.Default
-#if true // DEBUG
+#if DEBUG
             = new(GetFullRpcSerializationFormat().Key);
 #else
             = new((isServer ? GetFullRpcSerializationFormat() : GetCompactRpcSerializationFormat()).Key);
