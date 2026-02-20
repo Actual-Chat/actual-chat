@@ -4,10 +4,6 @@
 .pic > .c-content {
     @apply w-full h-full;
 }
-.pic.pic-blurred > .c-content {
-    @apply blur-lg;
-}
-
 .pic-generated {
     @apply rounded-full;
     @apply cursor-default pointer-events-none select-none;
@@ -21,12 +17,7 @@
     @apply opacity-70;
     @apply absolute right-0 top-0 left-0 bottom-0;
     @apply overflow-hidden;
-}
-.pic-blurred::after {
-    content: '';
-    @apply absolute inset-0;
-    -webkit-backdrop-filter: blur(40px);
-    backdrop-filter: blur(40px);
+    filter: blur(40px);
 }
 .pic-blurred .pic-image {
     @apply rounded-none;
