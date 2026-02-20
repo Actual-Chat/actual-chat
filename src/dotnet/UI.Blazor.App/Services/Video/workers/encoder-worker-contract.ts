@@ -51,6 +51,12 @@ export interface EncoderWorker {
      * Get current encoder statistics
      */
     getStats(): Promise<EncoderStats>;
+
+    /**
+     * Force the next encoded frame to be a keyframe.
+     * Used when restoring full framerate after VAD silence period.
+     */
+    forceKeyFrame(): Promise<void>;
 }
 
 /**

@@ -327,6 +327,15 @@ const serverImpl: EncoderWorker = {
     },
 
     /**
+   * Force the next encoded frame to be a keyframe
+   */
+    // eslint-disable-next-line
+    forceKeyFrame: async (): Promise<void> => {
+        frameCount = 0; // Next encode will be keyframe (frameCount % 30 === 0)
+        infoLog?.log('Forced next frame to be keyframe');
+    },
+
+    /**
    * Get current encoder statistics
    */
     // eslint-disable-next-line
