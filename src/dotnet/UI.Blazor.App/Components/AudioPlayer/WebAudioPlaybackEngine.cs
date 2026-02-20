@@ -35,10 +35,15 @@ public sealed class WebAudioPlaybackEngine(
         var author = trackInfo.Author;
         var audioSource = (AudioSource)source;
         var preSkip = audioSource.Format.PreSkip;
+        var authorId = author?.Id.Value;
+        var recordedAtMs = trackInfo.RecordedAt.EpochOffset.TotalMilliseconds;
+        Log.LogDebug(
+            "[WebAudioPlaybackEngine #{AudioTrackPlayerId}] Play: authorId={AuthorId}, recordedAtMs={RecordedAtMs}",
+            id, authorId, recordedAtMs);
         var js = services.JSRuntime();
         var whenPlayerCreated = js.InvokeAsync<IJSObjectReference>(JSCreateMethod,
             CancellationToken.None,
-            _blazorRef, id, preSkip, author.Avatar.Name, chat.Title);
+            _blazorRef, id, preSkip, author.Avatar.Name, chat.Title, authorId, recordedAtMs);
         _whenPlayerCreated = whenPlayerCreated.AsTask();
         _jsRef = await whenPlayerCreated.ConfigureAwait(false);
     }

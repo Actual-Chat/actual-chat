@@ -61,7 +61,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
             Log.LogDebug("GetVideo stream ended after {Count} frames for PeerId={PeerId}", frameCount, peerId);
         }
 
-        stream = SkipToKeyFrame(LogFrames(stream), skipTo, cancellationToken);
+        stream = SkipToLatestBufferedKeyFrame(LogFrames(stream), Log, cancellationToken);
 
         stream = ApplyGopSkipping(stream, streamId, peerId, cancellationToken);
 
@@ -256,6 +256,64 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         // Skip frames until we find a keyframe at or after the requested position.
         // For video, we must start from a keyframe to decode correctly.
         return stream.SkipWhile(frame => frame.Offset < skipTo || !frame.IsKeyFrame);
+    }
+
+    /// <summary>
+    /// Skips to the latest keyframe in the memoizer's replay buffer.
+    /// Buffered frames are detected by checking MoveNextAsync().IsCompleted —
+    /// SlidingMemoizer.Replay() pre-fills a channel synchronously, so buffered
+    /// reads complete instantly while live reads are async.
+    /// </summary>
+    private static async IAsyncEnumerable<VideoFrame> SkipToLatestBufferedKeyFrame(
+        IAsyncEnumerable<VideoFrame> stream,
+        ILogger log,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var buffer = new List<VideoFrame>();
+        var lastKeyFrameIdx = -1;
+
+        await using var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+
+        // Phase 1: Read all synchronously-available (buffered) frames
+        while (true) {
+            var moveNext = enumerator.MoveNextAsync();
+
+            if (!moveNext.IsCompleted) {
+                // Buffer exhausted — moveNext is the first live frame (still pending)
+                var startIdx = lastKeyFrameIdx >= 0 ? lastKeyFrameIdx : 0;
+                if (startIdx > 0)
+                    log.LogInformation(
+                        "SkipToLatestBufferedKeyFrame: skipped {Skipped} frames, emitting {Emitted} from buffer (total={Total}, lastKeyFrame at #{Idx})",
+                        startIdx, buffer.Count - startIdx, buffer.Count, lastKeyFrameIdx);
+
+                for (var i = startIdx; i < buffer.Count; i++)
+                    yield return buffer[i];
+                buffer.Clear();
+
+                // Await the pending live frame
+                if (!await moveNext.ConfigureAwait(false))
+                    yield break;
+                yield return enumerator.Current;
+                break;
+            }
+
+            if (!moveNext.Result) {
+                // Stream ended during buffer read
+                var startIdx = lastKeyFrameIdx >= 0 ? lastKeyFrameIdx : 0;
+                for (var i = startIdx; i < buffer.Count; i++)
+                    yield return buffer[i];
+                yield break;
+            }
+
+            var frame = enumerator.Current;
+            buffer.Add(frame);
+            if (frame.IsKeyFrame)
+                lastKeyFrameIdx = buffer.Count - 1;
+        }
+
+        // Phase 2: Pass-through for remaining live frames
+        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+            yield return enumerator.Current;
     }
 
     // Latency state classes

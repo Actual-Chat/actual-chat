@@ -4,8 +4,19 @@ import { Log } from 'logging';
 import { fastRaf } from 'fast-raf';
 import { VideoStreamer } from '../../Services/Video/video-streamer';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
+import { getAudioSyncState, interpolatePlayingAt } from 'audio-video-sync';
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
+
+function arrayBufferEqual(a: AllowSharedBufferSource, b: AllowSharedBufferSource): boolean {
+    const viewA = ArrayBuffer.isView(a) ? new Uint8Array(a.buffer, a.byteOffset, a.byteLength) : new Uint8Array(a);
+    const viewB = ArrayBuffer.isView(b) ? new Uint8Array(b.buffer, b.byteOffset, b.byteLength) : new Uint8Array(b);
+    if (viewA.length !== viewB.length) return false;
+    for (let i = 0; i < viewA.length; i++) {
+        if (viewA[i] !== viewB[i]) return false;
+    }
+    return true;
+}
 
 interface PendingChunk {
     frameData: Uint8Array;
@@ -44,10 +55,16 @@ export class VideoPlayer {
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
     private firstFrameTimestamp = 0;    // timestamp of first decoded frame (microseconds)
     private renderKey: string;
+    private renderFrameCount = 0;       // count of rendered frames (for periodic logging)
+    private receivedFrameCount = 0;     // count of received frames (for periodic logging)
+    private lastSyncLogTime = 0;        // throttle sync logging
 
     // Latency measurement
     private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
     private latencyReportTimer: ReturnType<typeof setInterval> | null = null;
+
+    // Audio sync
+    private startedAtMs: number;
 
     /** Creates a new VideoPlayer instance for Blazor interop */
     static create(
@@ -58,9 +75,10 @@ export class VideoPlayer {
         codec: string,
         width: number,
         height: number,
-        codecSettings: string
+        codecSettings: string,
+        startedAtMs: number
     ): VideoPlayer {
-        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas);
+        return new VideoPlayer(blazorRef, streamId, authorId, codec, width, height, codecSettings, canvas, startedAtMs);
     }
 
     constructor(
@@ -71,11 +89,13 @@ export class VideoPlayer {
         width: number,
         height: number,
         codecSettings: string,
-        canvas: HTMLCanvasElement
+        canvas: HTMLCanvasElement,
+        startedAtMs: number
     ) {
         this.blazorRef = blazorRef;
         this.streamId = streamId;
         this.authorId = authorId;
+        this.startedAtMs = startedAtMs;
         this.canvas = canvas;
         this.canvasCtx = canvas.getContext('2d');
         this.renderKey = `vr-${streamId}`;
@@ -84,7 +104,9 @@ export class VideoPlayer {
         canvas.width = width || 1280;
         canvas.height = height || 720;
 
-        debugLog?.log(`VideoPlayer created for stream ${streamId}, codec: ${codec}, size: ${width}x${height}`);
+        debugLog?.log(
+            `VideoPlayer created for stream ${streamId}, codec: ${codec}, size: ${width}x${height}, ` +
+            `authorId=${authorId}, startedAtMs=${startedAtMs.toFixed(0)}`);
 
         // Initialize decoder
         void this.initDecoder(codec, width, height, codecSettings);
@@ -194,6 +216,12 @@ export class VideoPlayer {
     private onFrameDecoded(frame: VideoFrame): void {
         this.pendingFrames.push(frame);
         this.bufferSize++;
+        // Safety cap: prevent unbounded buffer growth (30 frames = 1s at 30fps)
+        while (this.pendingFrames.length > 30) {
+            const dropped = this.pendingFrames.shift()!;
+            dropped.close();
+            this.bufferSize--;
+        }
         this.scheduleRender();
     }
 
@@ -216,11 +244,48 @@ export class VideoPlayer {
         // Initialize timing anchor on first frame
         if (this.playbackStartTime === 0) {
             this.playbackStartTime = now;
-            this.firstFrameTimestamp = this.pendingFrames[0].timestamp; // microseconds
+            this.firstFrameTimestamp = this.pendingFrames[0].timestamp; // μs
         }
 
-        const elapsedUs = (now - this.playbackStartTime) * 1000; // ms → μs
-        const targetTimestamp = this.firstFrameTimestamp + elapsedUs;
+        this.renderFrameCount++;
+
+        // Compute target — audio-driven when available, wall-clock fallback
+        let targetTimestamp: number;
+        const audioState = getAudioSyncState(this.authorId);
+        if (audioState) {
+            const audioPlayingAtMs = interpolatePlayingAt(audioState) * 1000;
+            const targetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs) + audioPlayingAtMs;
+            targetTimestamp = targetVideoOffsetMs * 1000; // ms → μs
+
+            // Re-anchor wall-clock for smooth fallback when audio disappears
+            this.playbackStartTime = now;
+            this.firstFrameTimestamp = targetTimestamp;
+
+            // Periodic sync logging
+            if (now - this.lastSyncLogTime > 1000) {
+                this.lastSyncLogTime = now;
+                const driftMs = this.lastRenderedOffsetMs - targetVideoOffsetMs;
+                debugLog?.log(
+                    `audioSync: targetOffsetMs=${targetVideoOffsetMs.toFixed(0)}, ` +
+                    `lastRenderedOffsetMs=${this.lastRenderedOffsetMs.toFixed(0)}, ` +
+                    `driftMs=${driftMs.toFixed(0)}, pendingFrames=${this.pendingFrames.length}`);
+            }
+        } else {
+            // Wall-clock pacing (no audio to sync to)
+            const elapsedUs = (now - this.playbackStartTime) * 1000; // ms → μs
+            targetTimestamp = this.firstFrameTimestamp + elapsedUs;
+
+            if (now - this.lastSyncLogTime > 2000) {
+                this.lastSyncLogTime = now;
+                debugLog?.log(`audioSync: no audio state for authorId=${this.authorId}`);
+            }
+        }
+
+        if (this.renderFrameCount % 60 === 0) {
+            debugLog?.log(
+                `onRenderFrame #${this.renderFrameCount}: lastRenderedOffsetMs=${this.lastRenderedOffsetMs.toFixed(0)}, ` +
+                `pendingFrames=${this.pendingFrames.length}`);
+        }
 
         // Find the latest frame due for presentation; drop earlier ones
         let frameToRender: VideoFrame | null = null;
@@ -234,13 +299,14 @@ export class VideoPlayer {
 
         if (frameToRender) {
             this.bufferSize--;
+            this.lastRenderedOffsetMs = frameToRender.timestamp / 1000; // μs → ms
             this.drawFrame(frameToRender);
             frameToRender.close();
         }
 
         this.updateBufferState();
 
-        // Re-schedule if more frames pending (fastRaf will batch into next rAF)
+        // Re-schedule if more frames pending
         if (this.pendingFrames.length > 0)
             this.scheduleRender();
     }
@@ -319,24 +385,27 @@ export class VideoPlayer {
         }
 
         // If we receive a new keyframe with description, reconfigure the decoder
-        // Note: description.buffer may be larger than the actual data if it's a view,
-        // so we need to slice it properly
+        // only when the description actually changed (avoids resetting pacing anchor
+        // every ~1s keyframe when the codec config is identical)
         if (isKeyFrame && description && description.length > 0) {
-            debugLog?.log(`Reconfiguring decoder with new description: ${description.length} bytes`);
-            if (this.decoder && this.decoderConfig) {
-                // Create a proper ArrayBuffer from the Uint8Array (handles views correctly)
-                const descBuffer = description.buffer.slice(
-                    description.byteOffset,
-                    description.byteOffset + description.byteLength
-                );
-                const newConfig: VideoDecoderConfig = {
-                    ...this.decoderConfig,
-                    description: descBuffer,
-                };
-                this.decoder.configure(newConfig);
-                this.decoderConfig = newConfig;
+            const currentDesc = this.decoderConfig?.description;
+            const descChanged = !currentDesc || !arrayBufferEqual(currentDesc, description);
+            if (descChanged) {
+                debugLog?.log(`Reconfiguring decoder with new description: ${description.length} bytes`);
+                if (this.decoder && this.decoderConfig) {
+                    const descBuffer = description.buffer.slice(
+                        description.byteOffset,
+                        description.byteOffset + description.byteLength
+                    );
+                    const newConfig: VideoDecoderConfig = {
+                        ...this.decoderConfig,
+                        description: descBuffer,
+                    };
+                    this.decoder.configure(newConfig);
+                    this.decoderConfig = newConfig;
+                }
+                this.playbackStartTime = 0; // Reset pacing anchor to re-sync
             }
-            this.playbackStartTime = 0; // Reset pacing anchor to re-sync
         }
 
         this.decodeChunk(frameData, timestampMs, durationMs, isKeyFrame);
@@ -358,9 +427,6 @@ export class VideoPlayer {
                 });
 
                 this.decoder.decode(chunk);
-
-                // Track the latest decoded frame offset for latency reporting
-                this.lastRenderedOffsetMs = timestampMs;
             } catch (error) {
                 errorLog?.log('Error decoding chunk:', error);
             }
@@ -398,7 +464,7 @@ export class VideoPlayer {
             'GetVideo', sessionToken, streamId, skipToMs);
 
         // Start latency report timer now that we're receiving frames
-        this.latencyReportTimer ??= setInterval(() => this.reportLatencyTick(), 5000);
+        this.latencyReportTimer ??= setInterval(() => this.reportLatencyTick(), 10_000);
 
         this.pullSubscription = streamResult.subscribe({
             next: (batch: Uint8Array[]) => {
@@ -432,6 +498,13 @@ export class VideoPlayer {
             const offsetMs = offset / 10000;
             const durationMs = duration / 10000;
 
+            this.receivedFrameCount++;
+            if (this.receivedFrameCount % 100 === 1) {
+                debugLog?.log(
+                    `processReceivedFrame #${this.receivedFrameCount}: offsetMs=${offsetMs.toFixed(0)}, ` +
+                    `durationMs=${durationMs.toFixed(1)}, isKey=${isKeyFrame}, dataLen=${data.length}`);
+            }
+
             this.pushFrame(data, offsetMs, durationMs, isKeyFrame, description);
         } catch (error) {
             errorLog?.log('Error deserializing received frame:', error);
@@ -451,6 +524,8 @@ export class VideoPlayer {
         this.isPlaying = false;
         this.playbackStartTime = 0;
         this.lastRenderedOffsetMs = 0;
+        this.renderFrameCount = 0;
+        this.receivedFrameCount = 0;
 
         // Stop latency reporting
         if (this.latencyReportTimer !== null) {
@@ -495,7 +570,15 @@ export class VideoPlayer {
         }
         // lastRenderedOffsetMs is already 0-based from stream start (server frame offset)
         const streamOffsetMs = this.lastRenderedOffsetMs;
-        warnLog?.log(`reportLatencyTick: streamId=${this.streamId}, streamOffsetMs=${streamOffsetMs.toFixed(0)}`);
+
+        const nowMs = Date.now();
+        const recordedAtMs = this.startedAtMs + this.lastRenderedOffsetMs;
+        const latencyMs = nowMs - recordedAtMs;
+        warnLog?.log(
+            `LATENCY: authorId=${this.authorId}, streamId=${this.streamId}, ` +
+            `now=${nowMs.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
+            `(startedAt=${this.startedAtMs.toFixed(0)}+offset=${this.lastRenderedOffsetMs.toFixed(0)}), ` +
+            `latency=${latencyMs.toFixed(0)}ms`);
 
         // Report latency via SignalR hub (same connection as GetVideo) so peerId matches
         const connection = VideoStreamer.connection;
