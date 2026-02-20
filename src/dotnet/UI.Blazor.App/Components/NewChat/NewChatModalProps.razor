@@ -99,20 +99,22 @@
                     </Right>
                 </TileItem>
             }
-            <TileItem Class="field-allow-anonym clickable" Click="@OnAllowAnonymousAuthorsClick">
-                <Icon>
-                    <i class="icon-question-mark-bubble"></i>
-                </Icon>
-                <Content>
-                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously" IsRequired="true"></Label>
-                </Content>
-                <Caption>
-                    Signed-in users can join this chat without revealing their identity
-                </Caption>
-                <Right>
-                    <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
-                </Right>
-            </TileItem>
+            @if (Features_EnableAnonymousChat.IsEnabled) {
+                <TileItem Class="field-allow-anonym clickable" Click="@OnAllowAnonymousAuthorsClick">
+                    <Icon>
+                        <i class="icon-question-mark-bubble"></i>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously" IsRequired="true"></Label>
+                    </Content>
+                    <Caption>
+                        Signed-in users can join this chat without revealing their identity
+                    </Caption>
+                    <Right>
+                        <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
+                    </Right>
+                </TileItem>
+            }
         </FormBlock>
     }
 

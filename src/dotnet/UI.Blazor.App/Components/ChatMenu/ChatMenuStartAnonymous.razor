@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 @inherits FusionComponentBase<AppUIHub>
-@if (_peerUserId is null) {
+@if (_peerUserId is null || !Features_EnableAnonymousChat.IsEnabled) {
     return;
 }
 

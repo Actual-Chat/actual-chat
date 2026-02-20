@@ -136,20 +136,22 @@
                     </Right>
                 </TileItem>
             }
-            <TileItem Class="field-allow-anonym clickable" Click="@OnAllowAnonymousAuthorsClick">
-                <Icon>
-                    <i class="icon-anonym"></i>
-                </Icon>
-                <Content>
-                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
-                </Content>
-                <Caption>
-                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
-                </Caption>
-                <Right>
-                    <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
-                </Right>
-            </TileItem>
+            @if (Features_EnableAnonymousChat.IsEnabled) {
+                <TileItem Class="field-allow-anonym clickable" Click="@OnAllowAnonymousAuthorsClick">
+                    <Icon>
+                        <i class="icon-anonym"></i>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+                    </Content>
+                    <Caption>
+                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+                    </Caption>
+                    <Right>
+                        <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
+                    </Right>
+                </TileItem>
+            }
         </FormBlock>
         @if (m.AllowEditIsTemplate && _form.IsPublic) {
             <FormBlock Class="with-input-radio first last">

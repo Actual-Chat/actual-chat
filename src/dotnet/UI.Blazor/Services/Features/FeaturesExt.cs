@@ -6,4 +6,9 @@ public static class FeaturesExt
         this IFeatures features,
         CancellationToken cancellationToken = default)
         => features.Get<Features_EnableIncompleteUI>(cancellationToken);
+
+    public static ValueTask<bool> IsAnonymousChatEnabled(
+        this IFeatures features,
+        CancellationToken cancellationToken = default)
+        => features.Get<Features_EnableAnonymousChat>(cancellationToken);
 }
