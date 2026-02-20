@@ -73,8 +73,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        var settings = await AccountSettings.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
-        var isVideoFeatureEnabled = settings.AreExperimentalFeaturesEnabled ?? false;
+        var isVideoFeatureEnabled = await Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         if (chat?.Id is null)
             return new(null, enableIncompleteUI, false, false, isVideoFeatureEnabled);
 

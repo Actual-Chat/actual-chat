@@ -7,16 +7,18 @@
         searchCls += " on";
     var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
-    var isPanelVisible = IsRecordingHere || IsListeningHere || m.IsAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
+    var isVideoStreamingEnabled = m.IsVideoStreamingEnabled;
+    var isAnyoneVideoStreaming = isVideoStreamingEnabled && m.IsAnyoneVideoStreaming;
+    var isPanelVisible = IsRecordingHere || IsListeningHere || isAnyoneVideoStreaming || (m.IsAnyoneTalking && m.AudioState?.ChatId == chat?.Id);
 
     // Show video panel when recording or remote streams exist
-    if (m.VideoState?.IsRecording == true && !_showVideoPanel) {
+    if (isVideoStreamingEnabled && m.VideoState?.IsRecording == true && !_showVideoPanel) {
         _showVideoPanel = true;
         _pendingCameraDeviceId = m.VideoState?.SelectedCameraDeviceId;
         _pendingBlurEnabled = m.VideoState?.IsBackgroundBlurEnabled ?? false;
     }
     // Hide video panel when recording stopped AND no remote video streams
-    else if (_showVideoPanel && m.VideoState?.IsRecording != true && !m.IsAnyoneVideoStreaming) {
+    else if (_showVideoPanel && (m.VideoState?.IsRecording != true && !m.IsAnyoneVideoStreaming || !isVideoStreamingEnabled)) {
         _showVideoPanel = false;
         _pendingCameraDeviceId = null;
         _pendingBlurEnabled = false;
@@ -98,7 +100,9 @@
     </div>
 }
 
-<VideoPanel Show="@_showVideoPanel" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
+@if (m.IsVideoStreamingEnabled) {
+    <VideoPanel Show="@_showVideoPanel" PendingCameraDeviceId="@_pendingCameraDeviceId" PendingBlurEnabled="@_pendingBlurEnabled"/>
+}
 
 @code {
     private bool _showVideoPanel;
@@ -161,6 +165,7 @@
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
         var enableIncompleteUI = await Hub.Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
+        var isVideoStreamingEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
         return new() {
             Chat = chat,
             AudioState = audioState,
@@ -170,6 +175,7 @@
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
             EnableIncompleteUI = enableIncompleteUI,
+            IsVideoStreamingEnabled = isVideoStreamingEnabled,
         };
     }
 
@@ -212,5 +218,6 @@
         public bool HasSelection { get; init; }
         public bool IsSearchMode { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public bool IsVideoStreamingEnabled { get; init; }
     }
 }
