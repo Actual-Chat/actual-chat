@@ -32,6 +32,7 @@
     }
 
     private CancellationTokenSource? _qualityCts;
+    private CancellationTokenSource? _codecCts;
     private bool _autoStartPending;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
 
@@ -49,6 +50,8 @@
     public override async ValueTask DisposeAsync() {
         _qualityCts.CancelAndDisposeSilently();
         _qualityCts = null;
+        _codecCts.CancelAndDisposeSilently();
+        _codecCts = null;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -87,6 +90,7 @@
         if (chatId != null) {
             ChatVideoUI.OnRecordingStarted(chatId);
             _ = SubscribeToQualityRequests(chatId);
+            _ = SubscribeToRecommendedCodec(chatId);
         }
         await InvokeAsync(StateHasChanged);
     }
@@ -95,6 +99,8 @@
     public async Task OnRecordingStopped() {
         _qualityCts.CancelAndDisposeSilently();
         _qualityCts = null;
+        _codecCts.CancelAndDisposeSilently();
+        _codecCts = null;
         ChatVideoUI.OnRecordingStopped();
         await InvokeAsync(StateHasChanged);
     }
@@ -155,6 +161,30 @@
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToQualityRequests failed");
+        }
+    }
+
+    private async Task SubscribeToRecommendedCodec(ChatId chatId) {
+        _codecCts.CancelAndDisposeSilently();
+        var cts = _codecCts = new CancellationTokenSource();
+        var ct = cts.Token;
+
+        try {
+            Log.LogInformation("SubscribeToRecommendedCodec: starting for ChatId={ChatId}", chatId);
+
+            var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
+            var codecStream = await liveVideoStreams
+                .ObserveRecommendedCodec(Session, chatId, ct)
+                .ConfigureAwait(false);
+            await foreach (var codec in codecStream.ConfigureAwait(false)) {
+                Log.LogInformation("SubscribeToRecommendedCodec: received codec={Codec}", codec);
+                if (JSRef is not null)
+                    await JSRef.InvokeVoidAsync("switchCodec", ct, codec);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (Exception e) {
+            Log.LogWarning(e, "SubscribeToRecommendedCodec failed");
         }
     }
 

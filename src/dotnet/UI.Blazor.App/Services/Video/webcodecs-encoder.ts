@@ -20,6 +20,7 @@ export interface EncoderConfig {
 }
 
 export interface EncodedChunkData {
+  codec?: string; // Codec string (e.g., 'avc1.640028', 'av01.0.08M.08') — set by encoder worker
   chunk: EncodedVideoChunk;
   metadata: EncodedVideoChunkMetadata | undefined;
   timestamp: number;
@@ -222,6 +223,62 @@ export class WebCodecsEncoder {
         // FIX: Force immediate keyframe on next frame by setting lastKeyFrame far enough in the past
         // This ensures the condition (frameCount - lastKeyFrame >= keyframeInterval) will be true on next encode
         this.lastKeyFrame = this.frameCount - this.config.keyframeInterval;
+    }
+
+    async switchCodec(newConfig: EncoderConfig): Promise<void> {
+        // Flush and close existing encoder
+        if (this.encoder.state === 'configured') {
+            try {
+                await this.encoder.flush();
+            } catch (error) {
+                errorLog?.log('Error flushing encoder during codec switch:', error);
+            }
+            this.encoder.close();
+        }
+
+        // Update config
+        this.config = newConfig;
+
+        // Reset counters to force immediate keyframe
+        this.reset();
+
+        // Create new encoder with same callbacks
+        this.encoder = new VideoEncoder({
+            output: (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => {
+                const startTime = this.encodeStartTimes.shift();
+                if (startTime !== undefined) {
+                    const encodeTime = performance.now() - startTime;
+                    this.encodeTimeHistory.push(encodeTime);
+                    if (this.encodeTimeHistory.length > 100) {
+                        this.encodeTimeHistory.shift();
+                    }
+                }
+
+                const chunkData: EncodedChunkData = {
+                    chunk,
+                    metadata,
+                    timestamp: chunk.timestamp,
+                    type: chunk.type,
+                    byteLength: chunk.byteLength,
+                    sequenceNumber: this.chunkSequence++
+                };
+
+                this.totalBytes += chunk.byteLength;
+                if (chunk.type === 'key') {
+                    this.keyFrameCount++;
+                }
+
+                this.onChunk(chunkData);
+            },
+            error: (e: DOMException) => {
+                errorLog?.log('Encoder error:', e);
+                this.onError(e as unknown as Error);
+            }
+        });
+
+        // Configure with new codec
+        this.initialize();
+        infoLog?.log(`Codec switched to ${newConfig.codec}`);
     }
 
     close(): void {

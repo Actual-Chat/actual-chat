@@ -137,6 +137,7 @@ const serverImpl: EncoderWorker = {
 
                     const enrichedChunkData = {
                         ...chunkData,
+                        codec: encoderConfig!.codec,
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         metadata: serializedMetadata,
                         sequenceNumber: chunkData.sequenceNumber
@@ -289,6 +290,39 @@ const serverImpl: EncoderWorker = {
         } catch (error) {
             errorLog?.log('Failed to reconfigure encoder:', error);
             throw error; // RPC automatically propagates errors
+        }
+    },
+
+    /**
+   * Switch codec: flush and close current encoder, create and configure new encoder
+   */
+    switchCodec: async (config: EncoderConfig): Promise<void> => {
+        if (!encoder) {
+            warnLog?.log('Cannot switch codec: encoder not active');
+            return;
+        }
+
+        try {
+            infoLog?.log(`Switching codec to ${config.codec}`);
+
+            // Switch codec in the encoder (flush + close old, create + configure new)
+            await encoder.switchCodec(config);
+
+            // Update stored config
+            encoderConfig = config;
+
+            // Clear resize canvas (force recreation at potentially new dimensions)
+            resizeCanvas = null;
+            resizeCtx = null;
+
+            // Reset frame counter and start timestamp for fresh keyframe scheduling
+            frameCount = 0;
+            startTimestamp = undefined;
+
+            infoLog?.log('Codec switched successfully');
+        } catch (error) {
+            errorLog?.log('Failed to switch codec:', error);
+            throw error;
         }
     },
 

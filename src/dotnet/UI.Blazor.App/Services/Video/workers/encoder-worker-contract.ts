@@ -42,6 +42,12 @@ export interface EncoderWorker {
     reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
 
     /**
+     * Switch codec: flush and close current encoder, create and configure new encoder
+     * @param config New encoder configuration with updated codec string
+     */
+    switchCodec(config: EncoderConfig): Promise<void>;
+
+    /**
      * Get current encoder statistics
      */
     getStats(): Promise<EncoderStats>;

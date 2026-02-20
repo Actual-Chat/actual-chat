@@ -1,5 +1,6 @@
 import { Log } from 'logging';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
+import { detectSupportedCodecs, getDefaultCodec } from '../../Services/Video/codec-support';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoRecorder');
 
@@ -103,10 +104,17 @@ export class VideoRecorder {
         infoLog?.log('Starting video recording...');
 
         try {
+            // Detect best supported encoder codec (AV1 preferred over H.264)
+            const supportedCodecs = await detectSupportedCodecs();
+            const bestCodecString = getDefaultCodec(supportedCodecs);
+            const codecCategory = bestCodecString.startsWith('av01') ? 'av1' as const : 'h264' as const;
+            infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString})`);
+
             // Create recording service with streaming config (uses video-pipeline internally)
             const config: RecordingConfig = {
                 mode: 'webcam',
-                codec: 'h264',
+                codec: codecCategory,
+                codecString: bestCodecString,
                 width: 1280,
                 height: 720,
                 bitrate: 2_000_000,
@@ -217,6 +225,14 @@ export class VideoRecorder {
         } catch (error) {
             errorLog?.log('Failed to stop recording:', error);
         }
+    }
+
+    /**
+     * Switch codec mid-stream (called from Blazor codec subscription)
+     */
+    public async switchCodec(codec: string): Promise<void> {
+        if (!this.recordingService) return;
+        await this.recordingService.switchCodec(codec);
     }
 
     /**

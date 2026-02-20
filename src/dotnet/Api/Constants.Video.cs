@@ -19,5 +19,8 @@ public static partial class Constants
         public static readonly TimeSpan QualityHysteresisWindow = TimeSpan.FromSeconds(15);
         public static readonly int LatencyHistorySize = 6; // ~30s at 5s intervals
         public static readonly float PeerOutlierRatio = 0.5f;
+
+        // Codec selection
+        public static readonly TimeSpan CodecSwitchHysteresisWindow = TimeSpan.FromSeconds(10);
     }
 }

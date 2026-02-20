@@ -39,11 +39,71 @@ function processBufferedChunks(): void {
     }
 }
 
+// Extract codec family prefix for comparison (e.g., 'avc1' from 'avc1.640028', 'av01' from 'av01.0.08M.08')
+function codecFamily(codec: string): string {
+    return codec.substring(0, 4);
+}
+
+// Handle codec change: flush+close old decoder, create new one with updated config
+function handleCodecChange(chunkData: EncodedChunkData): void {
+    const newCodec = chunkData.codec!;
+    const oldCodec = currentDecoderConfig!.codec;
+    infoLog?.log(`Codec change detected: ${oldCodec} -> ${newCodec}, reconfiguring decoder`);
+
+    // 1. Flush + close old decoder
+    if (decoder) {
+        try {
+            if (decoder.getState() === 'configured') {
+                // Can't await in sync context, just close
+                decoder.close();
+            }
+        } catch (error) {
+            warnLog?.log('Error closing old decoder during codec switch:', error);
+        }
+    }
+
+    // 2. Update config with new codec
+    currentDecoderConfig = { ...currentDecoderConfig!, codec: newCodec, description: undefined };
+
+    // 3. Create new decoder
+    decoder = new WebCodecsDecoder(
+        { ...currentDecoderConfig, description: undefined },
+        (frame: VideoFrame) => {
+            frameCount++;
+            void callbacks.onDecodedFrame(frame, rpcNoWait);
+        },
+        (error) => {
+            errorLog?.log('Decoder error:', error);
+        }
+    );
+    decoder.initialize();
+
+    // 4. Reset state
+    decoderConfigured = false;
+    pendingChunks = [];
+    reorderBuffer.clear();
+    lastKeyframeSequence = -1;
+    waitingForKeyframe = false;
+    nextExpectedSequence = chunkData.sequenceNumber;
+
+    infoLog?.log(`Decoder reconfigured for codec ${newCodec}, resuming at sequence #${chunkData.sequenceNumber}`);
+}
+
 // Decode a single chunk (guaranteed to be in sequence order)
 function decodeChunk(chunkData: EncodedChunkData): void {
     const seq = chunkData.sequenceNumber;
 
     try {
+    // Auto-detect codec change from keyframe data
+        if (chunkData.type === 'key' && chunkData.codec && currentDecoderConfig) {
+            const incomingFamily = codecFamily(chunkData.codec);
+            const currentFamily = codecFamily(currentDecoderConfig.codec);
+            if (incomingFamily !== currentFamily) {
+                handleCodecChange(chunkData);
+                // Fall through to normal keyframe processing below
+            }
+        }
+
     // Track keyframes for decoder recovery
         if (chunkData.type === 'key') {
             lastKeyframeSequence = seq;

@@ -77,6 +77,7 @@ export interface IVideoPipeline {
   start(inputStream: MediaStream): Promise<MediaStream>;
   stop(): Promise<void>;
   reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
+  switchCodec(newCodecString: string): Promise<void>;
   toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
   switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
   toggleAV1Decoder(useWasm: boolean): Promise<void>;
@@ -174,7 +175,8 @@ export class VideoPipeline implements IVideoPipeline {
                 isKeyFrame: chunkData.type === 'key',
                 width: this.config.encoderConfig.width,
                 height: this.config.encoderConfig.height,
-                data: chunkBytes
+                data: chunkBytes,
+                codec: chunkData.type === 'key' ? (chunkData.codec ?? this.config.encoderConfig.codec) : undefined,
             };
 
             if (chunkData.type === 'key') {
@@ -209,14 +211,20 @@ export class VideoPipeline implements IVideoPipeline {
 
             // If videoStream doesn't exist yet, check if we can create it now
             if (!this.videoStream) {
-                if (this.codecSettings) {
-                    // We have the codec description, create the stream now
-                    infoLog?.log(`Creating VideoStream with codecSettings (${this.codecSettings.length} chars)`);
+                // AV1 doesn't produce a separate codec description (SPS/PPS) like H.264,
+                // so we can create the stream on the first keyframe without codecSettings.
+                const isAV1 = this.config.encoderConfig.codec.startsWith('av01');
+                const canCreateStream = this.codecSettings || (isAV1 && chunkData.type === 'key');
+
+                if (canCreateStream) {
+                    // We have what we need — create the stream now
+                    const settings = this.codecSettings ?? '';
+                    infoLog?.log(`Creating VideoStream with codecSettings (${settings.length} chars), isAV1=${isAV1}`);
                     const streamConfig: VideoStreamConfig = {
                         codec: this.config.encoderConfig.codec,
                         width: this.config.encoderConfig.width,
                         height: this.config.encoderConfig.height,
-                        codecSettings: this.codecSettings,
+                        codecSettings: settings,
                     };
                     const sessionToken = SessionTokens.current;
                     this.videoStream = VideoStreamer.addStream(
@@ -235,7 +243,7 @@ export class VideoPipeline implements IVideoPipeline {
                     // Send the current frame
                     this.videoStream.addFrame(frame);
                 } else {
-                    // Buffer the frame until we get the codec description
+                    // Buffer the frame until we get the codec description (H.264)
                     this.pendingStreamFrames.push(frame);
                 }
             } else {
@@ -625,6 +633,48 @@ export class VideoPipeline implements IVideoPipeline {
 
         // Unified: always reconfigure via RPC
         await this.encoder.reconfigure(params);
+    }
+
+    /**
+   * Switch codec mid-stream: complete current VideoStream, reset encoder, start new stream
+   */
+    async switchCodec(newCodecString: string): Promise<void> {
+        if (newCodecString === this.config.encoderConfig.codec) {
+            infoLog?.log(`switchCodec: already using ${newCodecString}, skipping`);
+            return;
+        }
+
+        infoLog?.log(`Switching codec from ${this.config.encoderConfig.codec} to ${newCodecString}`);
+
+        // 1. Complete current video stream so the server-side stream ends
+        if (this.videoStream) {
+            this.videoStream.complete();
+            infoLog?.log('Current video stream completed');
+            this.videoStream = null;
+        }
+
+        // 2. Reset streaming state so new encoded frames trigger a new VideoStream
+        this.codecSettings = null;
+        this.firstEncodedTimestamp = null;
+        this.pendingStreamFrames = [];
+
+        // 3. Build new encoder config with the new codec
+        const newEncoderConfig: EncoderConfig = {
+            ...this.config.encoderConfig,
+            codec: newCodecString,
+        };
+
+        // Add codec-specific format (avc needs { format: 'avc' })
+        // This is handled inside the encoder's initialize(), but we update our local config
+        this.config.encoderConfig = newEncoderConfig;
+
+        // Also update decoder config to match
+        this.config.decoderConfig.codec = newCodecString;
+
+        // 4. Switch encoder in worker (flush + close old, create + configure new)
+        await this.encoder.switchCodec(newEncoderConfig);
+
+        infoLog?.log(`Codec switched to ${newCodecString}`);
     }
 
     /**

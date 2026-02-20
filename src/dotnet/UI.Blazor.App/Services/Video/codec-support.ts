@@ -217,6 +217,19 @@ export async function getAV1CodecSupport(): Promise<CodecInfo[]> {
     return results;
 }
 
+export async function detectSupportedDecoderCodecs(): Promise<string[]> {
+    const codecs: string[] = ['h264']; // H.264 always assumed supported
+    try {
+        const av1 = await VideoDecoder.isConfigSupported({
+            codec: 'av01.0.08M.08',
+            codedWidth: 1280,
+            codedHeight: 720,
+        });
+        if (av1.supported) codecs.push('av1');
+    } catch { /* not supported */ }
+    return codecs;
+}
+
 export function getBestScalabilityMode(scalabilityModes: string[]): string | undefined {
     // Priority: L1T1 > L1T2 > L1T3
     if (scalabilityModes.includes('L1T1')) {

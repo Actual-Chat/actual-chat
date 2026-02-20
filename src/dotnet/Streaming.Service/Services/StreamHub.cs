@@ -70,6 +70,16 @@ public class StreamHub(IServiceProvider services) : Hub
         // Convert raw byte[][] batches to VideoFrame stream.
         // Each byte[] is a MessagePack map with camelCase string keys from the JS client.
         // We parse manually because the project's MessagePack attributes are shims.
+        return PushVideoInternal(
+            sessionToken,
+            chatId,
+            codec,
+            width,
+            height,
+            codecSettings,
+            clientStartOffset,
+            ToVideoFrames(videoStream));
+
         async IAsyncEnumerable<VideoFrame> ToVideoFrames(IAsyncEnumerable<byte[][]> source)
         {
             var batchCount = 0;
@@ -112,16 +122,6 @@ public class StreamHub(IServiceProvider services) : Hub
             }
             Log.LogInformation("PushVideo: stream ended after {BatchCount} batches, {FrameCount} total frames", batchCount, frameCount);
         }
-
-        return PushVideoInternal(
-            sessionToken,
-            chatId,
-            codec,
-            width,
-            height,
-            codecSettings,
-            clientStartOffset,
-            ToVideoFrames(videoStream));
     }
 
     // Latency reporting for JS video clients — uses same ConnectionId as GetVideo
