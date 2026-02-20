@@ -113,6 +113,7 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
 
     public Func<Task>? ShowMicTroubleshooterHandler { get; set; }
     public Func<Task>? ShowPhotoTroubleshooterHandler { get; set; }
+    public Func<Task>? ShowIncomingShareModalHandler { get; set; }
 
     [JSInvokable]
     public async Task ShowMicTroubleshooter()
@@ -128,5 +129,13 @@ public sealed class DebugUI : UIServiceBase<UIHub>, IDisposable
         if (ShowPhotoTroubleshooterHandler is { } handler)
             await handler().ConfigureAwait(false);
         Log.LogInformation("ShowPhotoTroubleshooter: done");
+    }
+
+    [JSInvokable]
+    public async Task ShowIncomingShareModal()
+    {
+        if (ShowIncomingShareModalHandler is { } handler)
+            await handler().ConfigureAwait(false);
+        Log.LogInformation("ShowIncomingShareModal: done");
     }
 }

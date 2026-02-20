@@ -1,6 +1,6 @@
 body.narrow .time-zone-editor-modal.narrow-view__modal__position-stretch {
     padding-top: var(--safe-area-top);
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
+    padding-bottom: calc(0.5rem + var(--safe-area-bottom));
 }
 .time-zone-editor-modal .time-zone-list {
     @apply flex-y gap-y-1;

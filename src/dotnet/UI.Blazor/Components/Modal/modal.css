@@ -81,12 +81,15 @@ body.narrow .modal-frame.modal-md {
     padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 body.narrow .modal-frame.modal-sm {
-    @apply absolute left-4 right-4;
+    @apply absolute;
+    left: calc(1rem + var(--safe-area-left));
+    right: calc(1rem + var(--safe-area-right));
     @apply min-h-fit h-auto;
     @apply rounded-xl;
     min-height: 0;
     max-height: 80vh;
-    bottom: 4vh;
+    bottom: calc(4vh + var(--safe-area-bottom));
+    @apply pb-4;
 }
 
 .narrow .narrow-view__modal__position-bottom {
@@ -99,6 +102,11 @@ body.narrow .modal-frame.modal-sm {
 
 .narrow .narrow-view__modal__position-stretch {
     @apply rounded-none;
+}
+
+.modal-frame .safe-area-bottom-overlay {
+    @apply sticky;
+    background: linear-gradient(to bottom, transparent, var(--modal-background));
 }
 
 /* Full-screen mode overrides */
@@ -215,7 +223,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply bg-02;
 }
 .modal-header-interactive .btn-submit {
-    @apply mr-2;
+    @apply w-auto mr-2;
 }
 
 .modal-header-interactive .btn .btn-content {

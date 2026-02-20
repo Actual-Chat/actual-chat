@@ -68,6 +68,10 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('ShowPhotoTroubleshooter');
     };
 
+    public static showIncomingShareModal(): void {
+        void this.backendRef.invokeMethodAsync('ShowIncomingShareModal');
+    };
+
     public static showSafeAreas(show: boolean | null | undefined): void {
         const cl = document.body.classList;
         cl.remove('show-safe-areas', 'hide-safe-areas');

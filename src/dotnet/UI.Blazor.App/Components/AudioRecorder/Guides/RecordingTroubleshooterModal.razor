@@ -35,9 +35,7 @@
         }
     }
 
-    var title = type == GuideType.Unknown
-        ? "Troubleshoot recording issues"
-        : "Microphone access guide";
+    var title = "Recording troubleshooter";
     var buttonTitle = RecordingPermissionRequester.CanRequest
         ? "Settings"
         : "OK";
@@ -82,6 +80,7 @@
         }
 
     </FormBlock>
+    <div class="safe-area-bottom safe-area-bottom-overlay"></div>
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="OnClick">

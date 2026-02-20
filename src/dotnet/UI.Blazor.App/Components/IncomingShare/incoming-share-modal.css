@@ -4,7 +4,7 @@
 }
 body.narrow .share-incoming-modal.narrow-view__modal__position-stretch {
     padding-top: var(--safe-area-top);
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
+    padding-bottom: var(--safe-area-bottom);
 }
 .share-incoming-modal .no-padding-header-decorator {
     @apply mx-0;
@@ -15,6 +15,9 @@ body.narrow .share-incoming-modal.narrow-view__modal__position-stretch {
 .share-incoming-modal .dialog-footer {
     @apply p-0;
 }
+.share-incoming-modal .contact-selector-place-picker {
+    @apply pt-2;
+}
 .share-incoming-modal .contact-selector-list {
     @apply pt-2;
 }
@@ -22,6 +25,9 @@ body.narrow .share-incoming-modal.narrow-view__modal__position-stretch {
     @apply pb-0;
 }
 
+.share-incoming-modal .search-box-new input {
+    @apply rounded-none;
+}
 .share-incoming-modal .embedded-message-editor {
     @apply border-b-0;
 }

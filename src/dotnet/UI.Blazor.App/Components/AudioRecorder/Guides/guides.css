@@ -1,10 +1,8 @@
-body.narrow .guide-modal.narrow-view__modal__position-stretch {
-    padding-top: var(--safe-area-top);
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
-}
 .guide-modal .modal-header-interactive {
     @apply bg-bubble;
-    @apply text-06;
+    @apply max-h-none;
+    padding-top: calc(1rem + var(--safe-area-top));
+    @apply pb-4 text-06;
 }
 .guide-modal .form-block {
     @apply gap-y-6;
@@ -14,11 +12,12 @@ body.narrow .guide-modal.narrow-view__modal__position-stretch {
 }
 .guide-modal .modal-header-interactive .modal-title {
     @apply text-06;
-    @apply text-headline-1;
+    @apply text-title-1;
 }
 
 .guide-modal .modal-header-interactive .btn .btn-content {
     @apply text-06;
+    @apply text-title-1;
 }
 
 .guide-modal .dialog-body {

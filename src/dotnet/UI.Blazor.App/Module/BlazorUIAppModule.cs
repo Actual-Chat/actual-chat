@@ -207,6 +207,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             var debugUI = new DebugUI(hub);
             debugUI.ShowMicTroubleshooterHandler = () => hub.ModalUI.Show(new RecordingTroubleshooterModal.Model());
             debugUI.ShowPhotoTroubleshooterHandler = () => hub.ModalUI.Show(new PhotoTroubleshooterModal.Model());
+            debugUI.ShowIncomingShareModalHandler = () => hub.ModalUI.Show(new IncomingShareModal.Model("Test shared text"));
             return debugUI;
         });
 
