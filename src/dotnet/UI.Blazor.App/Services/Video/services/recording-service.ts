@@ -59,7 +59,6 @@ export class RecordingService extends EventTarget {
     private config: RecordingConfig;
     private pipeline: VideoPipeline /*| AV1VideoPipeline*/ | null = null;
     private inputStream: MediaStream | null = null;
-    private outputStream: MediaStream | null = null;
     private state: RecordingState = {
         isRecording: false,
         duration: 0,
@@ -200,7 +199,7 @@ export class RecordingService extends EventTarget {
             const pipelineConfig = await this.buildPipelineConfig(actualWidth, actualHeight);
             this.pipeline = new VideoPipeline(pipelineConfig);
             // }
-            this.outputStream = await this.pipeline.start(this.inputStream);
+            await this.pipeline.start(this.inputStream);
 
             // Start duration tracking
             this.startTime = performance.now();
@@ -410,7 +409,6 @@ export class RecordingService extends EventTarget {
             this.inputStream.getTracks().forEach(track => track.stop());
             this.inputStream = null;
         }
-        this.outputStream = null;
         this.pipeline = null;
         this.startTime = 0;
     }
@@ -421,10 +419,6 @@ export class RecordingService extends EventTarget {
 
     getInputStream(): MediaStream | null {
         return this.inputStream;
-    }
-
-    getOutputStream(): MediaStream | null {
-        return this.outputStream;
     }
 
     /**
