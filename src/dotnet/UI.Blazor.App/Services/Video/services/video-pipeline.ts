@@ -305,7 +305,12 @@ export class VideoPipeline implements IVideoPipeline {
         }
 
         // Send processed frame to encoder
-        await this.encoder.encodeFrame(frame);
+        try {
+            await this.encoder.encodeFrame(frame);
+        } catch {
+            // Close frame if RPC transfer failed (e.g., encoder shutting down)
+            try { frame.close(); } catch { /* already transferred/closed */ }
+        }
     };
 
     private onSegmentationError = (error: Error) => {
@@ -1057,18 +1062,23 @@ export class VideoPipeline implements IVideoPipeline {
                 }
 
                 // Route frame through segmentation worker if background blur is enabled
-                if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
-                    try {
-                        // Send frame to segmentation worker for processing
-                        await this.segmentationWorker.processFrame(frame, rpcNoWait);
-                    } catch (error) {
-                        errorLog?.log(`Segmentation worker error on frame #${frameCount}:`, error);
-                        // Fallback: send frame directly to encoder if segmentation fails
+                try {
+                    if (this.segmentationWorker && this.config.backgroundBlur?.enabled) {
+                        try {
+                            // Send frame to segmentation worker for processing
+                            await this.segmentationWorker.processFrame(frame, rpcNoWait);
+                        } catch (error) {
+                            errorLog?.log(`Segmentation worker error on frame #${frameCount}:`, error);
+                            // Fallback: send frame directly to encoder if segmentation fails
+                            await this.encoder.encodeFrame(frame);
+                        }
+                    } else {
+                        // Send frame directly to encoder via RPC (frame is auto-transferred)
                         await this.encoder.encodeFrame(frame);
                     }
-                } else {
-                    // Send frame directly to encoder via RPC (frame is auto-transferred)
-                    await this.encoder.encodeFrame(frame);
+                } catch {
+                    // Close frame if RPC transfer failed (e.g., worker shutting down)
+                    try { frame.close(); } catch { /* already transferred/closed */ }
                 }
             }
         } catch (error) {
