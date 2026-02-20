@@ -30,6 +30,7 @@ public partial class MauiWebView
             MauiSettings.SplashBackgroundColor.Green,
             MauiSettings.SplashBackgroundColor.Blue);
         WKWebView.ScrollView.Bounces = false;
+        WKWebView.ScrollView.ContentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentBehavior.Never;
         WKWebView.AllowsBackForwardNavigationGestures = false;
     }
 
