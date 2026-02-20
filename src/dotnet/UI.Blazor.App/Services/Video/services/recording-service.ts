@@ -237,7 +237,7 @@ export class RecordingService extends EventTarget {
 
     async stop(): Promise<void> {
         if (!this.pipeline) {
-            throw new Error('No active recording');
+            return;
         }
 
         infoLog?.log('Stopping recording...');
