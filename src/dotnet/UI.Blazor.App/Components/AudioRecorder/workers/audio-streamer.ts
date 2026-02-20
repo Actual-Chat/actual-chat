@@ -21,6 +21,7 @@ export class AudioStream implements Disposable {
 
     private readonly frames = new Denque<Uint8Array>();
     private readonly frameAdded = new EventHandlerSet<void>();
+    private firstFrameTimestamp: number | null = null;
 
     public readonly name: string;
     public isCompleted = false;
@@ -69,6 +70,8 @@ export class AudioStream implements Disposable {
     public addFrame(source: Uint8Array | EncodedAudioChunk, isEncodedAudioChunk = false): void {
         if (!source || source.byteLength == 0 || this.isCompleted)
             return;
+
+        this.firstFrameTimestamp ??= Date.now();
 
         const buffer = bufferPool.get();
         let frame: Uint8Array;
@@ -120,7 +123,7 @@ export class AudioStream implements Disposable {
                     await AudioStreamer.connection.send(
                         'ProcessAudioChunks',
                         this.sessionToken, this.chatId, this.repliedChatEntryId,
-                        Date.now() / 1000, this.preSkip, subject);
+                        (this.firstFrameTimestamp ?? Date.now()) / 1000, this.preSkip, subject);
                     this.repliedChatEntryId = undefined; // We don't want to send a few "replies" in case we retry
                 }
                 while (AudioStreamer.isConnected && !this.isDisposed) {

@@ -106,6 +106,7 @@ export class VideoPipeline implements IVideoPipeline {
     private videoStream: VideoStream | null = null; // VideoStream instance
     private pendingStreamFrames: VideoStreamFrame[] = []; // Buffer frames until we get codec description
     private codecSettings: string | null = null; // Base64 encoded codec description (SPS/PPS for H.264)
+    private firstEncodedTimestamp: number | null = null; // First encoded chunk timestamp (microseconds) for 0-based normalization
 
     // Canvas fallbacks (when MSTG not available)
     private outputCanvas: HTMLCanvasElement | null = null;
@@ -165,9 +166,12 @@ export class VideoPipeline implements IVideoPipeline {
         if (this.config.streaming?.enabled) {
             const chunkBytes = new Uint8Array(chunkData.byteLength);
             chunkData.chunk.copyTo(chunkBytes);
+            // Normalize to 0-based offset so startedAtMs + offset gives correct epoch time
+            this.firstEncodedTimestamp ??= chunkData.chunk.timestamp; // microseconds
+            const normalizedTimestamp = chunkData.chunk.timestamp - this.firstEncodedTimestamp;
             // Convert microseconds to .NET TimeSpan ticks (100-nanosecond units)
             const frame: VideoStreamFrame = {
-                offset: microsecondsToTicks(chunkData.chunk.timestamp),
+                offset: microsecondsToTicks(normalizedTimestamp),
                 duration: microsecondsToTicks(chunkData.chunk.duration ?? 0),
                 isKeyFrame: chunkData.type === 'key',
                 width: this.config.encoderConfig.width,
@@ -597,6 +601,7 @@ export class VideoPipeline implements IVideoPipeline {
 
         // Reset timestamp normalization
         this.firstFrameTimestamp = null;
+        this.firstEncodedTimestamp = null;
 
         // Cleanup RPC clients and worker instances
         this.encoder.dispose();

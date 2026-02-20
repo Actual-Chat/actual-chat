@@ -18,6 +18,7 @@ import { ObjectPool } from 'object-pool';
 import { Resettable } from 'resettable';
 import { AudioInitializer } from '../../Services/audio-initializer';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
+import { updateAudioSyncState, clearAudioSyncState } from 'audio-video-sync';
 
 const { logScope, debugLog, warnLog } = Log.get('AudioPlayer');
 
@@ -138,6 +139,9 @@ export class AudioPlayer implements Resettable {
     private whenEnded?: PromiseSource<void>;
 
     private playbackState: PlaybackState = 'paused';
+    private authorId: string | null = null;
+    private recordedAtMs = 0;
+    private lastLatencyLogTime = 0;
 
     public static get isInitialized() {
         return AudioPlayer.whenInitialized.isCompleted();
@@ -176,10 +180,10 @@ export class AudioPlayer implements Resettable {
     }
 
     /** Called from Blazor */
-    public static async create(blazorRef: DotNet.DotNetObject, id: string, preSkip: number, title: string, album: string): Promise<AudioPlayer> {
+    public static async create(blazorRef: DotNet.DotNetObject, id: string, preSkip: number, title: string, album: string, authorId: string | null, recordedAtMs: number): Promise<AudioPlayer> {
         await AudioPlayer.init();
         const player = AudioPlayer.pool.get();
-        await player.startPlayback(blazorRef, id, preSkip, title, album);
+        await player.startPlayback(blazorRef, id, preSkip, title, album, authorId, recordedAtMs);
         return player;
     }
 
@@ -194,10 +198,16 @@ export class AudioPlayer implements Resettable {
         id: string,
         preSkip: number,
         title: string,
-        album: string): Promise<void> {
+        album: string,
+        authorId: string | null,
+        recordedAtMs: number): Promise<void> {
 
-        debugLog?.log(`#${this.internalId} -> startPlayback()`);
+        debugLog?.log(
+            `#${this.internalId} -> startPlayback(): authorId=${authorId}, ` +
+            `recordedAtMs=${recordedAtMs.toFixed(0)}`);
         this.blazorRef = blazorRef;
+        this.authorId = authorId;
+        this.recordedAtMs = recordedAtMs;
         this.playbackState = 'paused';
         this.whenEnded = new PromiseSource<void>();
 
@@ -222,11 +232,16 @@ export class AudioPlayer implements Resettable {
 
     public reset(): void {
         debugLog?.log(`#${this.internalId} reset()`);
+        if (this.authorId)
+            clearAudioSyncState(this.authorId);
         const attachedFeeder = this.contextRef?.getTrait<AttachedFeederNode>(this.feederNodeTrait);
         if (attachedFeeder) {
             void attachedFeeder.feederNode.pause(rpcNoWait);
         }
         this.blazorRef = undefined;
+        this.authorId = null;
+        this.recordedAtMs = 0;
+        this.lastLatencyLogTime = 0;
         this.playbackState = 'ended';
         this.playingAction?.dispose();
         this.playingAction = undefined;
@@ -328,9 +343,14 @@ export class AudioPlayer implements Resettable {
         this.playbackState = state.playbackState;
         if (this.playbackState === 'ended') {
             try {
+                if (this.authorId)
+                    clearAudioSyncState(this.authorId);
                 await this.reportEnded();
             }
             finally {
+                this.authorId = null;
+                this.recordedAtMs = 0;
+                this.lastLatencyLogTime = 0;
                 this.playingAction?.dispose();
                 this.playingAction = undefined;
                 this.contextRef?.dispose();
@@ -340,6 +360,26 @@ export class AudioPlayer implements Resettable {
             }
         }
         else {
+            if (this.authorId) {
+                updateAudioSyncState(this.authorId, {
+                    playingAtSec: state.playingAt,
+                    capturedAt: performance.now(),
+                    recordedAtMs: this.recordedAtMs,
+                    playbackState: state.playbackState,
+                });
+
+                const now = Date.now();
+                if (now - this.lastLatencyLogTime > 10_000) {
+                    this.lastLatencyLogTime = now;
+                    const recordedAtMs = this.recordedAtMs + state.playingAt * 1000;
+                    const latencyMs = now - recordedAtMs;
+                    warnLog?.log(
+                        `LATENCY: authorId=${this.authorId}, ` +
+                        `now=${now.toFixed(0)}, recorded=${recordedAtMs.toFixed(0)} ` +
+                        `(recordedAt=${this.recordedAtMs.toFixed(0)}+playingAt=${(state.playingAt * 1000).toFixed(0)}), ` +
+                        `latency=${latencyMs.toFixed(0)}ms`);
+                }
+            }
             const isPaused = state.playbackState === 'paused';
             const isBufferLow = state.bufferState !== 'ok';
             void this.reportPlaying(state.playingAt, isPaused, isBufferLow);
