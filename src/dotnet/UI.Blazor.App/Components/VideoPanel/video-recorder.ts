@@ -23,6 +23,8 @@ export class VideoRecorder {
     private isBlurEnabled = false;
     private disposed = false;
     private lastStatus = '';
+    private cameraWidth = 0;
+    private cameraHeight = 0;
 
     static create(element: HTMLElement, blazorRef: DotNet.DotNetObject): VideoRecorder {
         return new VideoRecorder(element, blazorRef);
@@ -151,6 +153,12 @@ export class VideoRecorder {
             const previewStream = await navigator.mediaDevices.getUserMedia(previewConstraints);
             this.previewTrack = previewStream.getVideoTracks()[0];
 
+            // Store actual camera resolution for capping reconfigure requests
+            const trackSettings = this.previewTrack.getSettings();
+            this.cameraWidth = trackSettings.width ?? config.width;
+            this.cameraHeight = trackSettings.height ?? config.height;
+            infoLog?.log(`Camera resolution: ${this.cameraWidth}x${this.cameraHeight}`);
+
             // Start recording (this initializes the video-pipeline)
             console.warn('[VideoRecorder] Calling recordingService.start()...');
             await this.recordingService.start();
@@ -219,8 +227,17 @@ export class VideoRecorder {
             warnLog?.log('reconfigure: no active recording service');
             return;
         }
-        infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps`);
-        void this.recordingService.getPipeline()?.reconfigure({ bitrate, width, height });
+
+        // Cap to actual camera resolution — upscaling wastes CPU for no quality gain
+        const cappedWidth = this.cameraWidth > 0 ? Math.min(width, this.cameraWidth) : width;
+        const cappedHeight = this.cameraHeight > 0 ? Math.min(height, this.cameraHeight) : height;
+
+        if (cappedWidth !== width || cappedHeight !== height)
+            infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps → capped to ${cappedWidth}x${cappedHeight}`);
+        else
+            infoLog?.log(`reconfigure: ${width}x${height} @ ${bitrate / 1_000_000}Mbps`);
+
+        void this.recordingService.getPipeline()?.reconfigure({ bitrate, width: cappedWidth, height: cappedHeight });
     }
 
     /**

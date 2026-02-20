@@ -204,7 +204,7 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         await LiveVideoBackend.RegisterActiveStream(record.ChatId, streamInfo, cancellationToken)
             .ConfigureAwait(false);
 
-        _latencyStates[record.StreamId] = new StreamLatencyState(Log, beginsAt);
+        _latencyStates[record.StreamId] = new StreamLatencyState(Log, beginsAt, record.Format);
 
         try {
             // Publish video stream for real-time viewing
@@ -359,9 +359,18 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
         }
     }
 
-    public sealed class StreamLatencyState(ILogger log, Moment startedAt)
+    public sealed class StreamLatencyState(ILogger log, Moment startedAt, VideoFormat format)
     {
         public Moment StartedAt { get; } = startedAt;
+
+        // Cap max quality to what the camera can actually provide — prevents wasteful upscaling
+        private readonly VideoQualityLevel _maxQuality = format.Width >= 1920 && format.Height >= 1080
+            ? VideoQualityLevel.Full
+            : format.Width >= 1280 && format.Height >= 720
+                ? VideoQualityLevel.High
+                : format.Width >= 960 && format.Height >= 540
+                    ? VideoQualityLevel.Medium
+                    : VideoQualityLevel.Low;
 
         private readonly ConcurrentDictionary<string, PeerLatencyState> _peers = new(StringComparer.Ordinal);
         private readonly AsyncObservable<VideoQualityPreset> _qualityDirectives = new();
@@ -435,6 +444,12 @@ public class VideoStreamingBackend : IVideoStreamingBackend, IDisposable
                     var allFast = peers.All(p => p.Value.MedianLatencyMs < Constants.Video.LowLatencyThresholdMs);
                     if (allFast) {
                         var stepped = VideoQualityPreset.StepUp(_currentQuality);
+                        if (stepped != null && stepped.Level < _maxQuality) {
+                            // stepped.Level is higher quality than camera can provide (lower enum value) — skip
+                            log.LogInformation("EvaluateQuality: SKIP step-up to {Level}, camera max is {MaxLevel}",
+                                stepped.Level, _maxQuality);
+                            stepped = null;
+                        }
                         if (stepped != null) {
                             var oldQuality = _currentQuality;
                             _currentQuality = stepped.Level;

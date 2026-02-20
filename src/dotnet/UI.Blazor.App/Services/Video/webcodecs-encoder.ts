@@ -142,7 +142,7 @@ export class WebCodecsEncoder {
 
         if (shouldBeKeyFrame) {
             this.lastKeyFrame = this.frameCount;
-            infoLog?.log('Keyframe at frame', this.frameCount);
+            infoLog?.log(`Keyframe #${this.keyFrameCount + 1} at frame ${this.frameCount}`);
         }
 
         try {
