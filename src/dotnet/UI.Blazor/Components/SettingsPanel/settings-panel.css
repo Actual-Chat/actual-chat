@@ -25,6 +25,10 @@
 .settings-panel.hide-tabs > .c-tabs > .c-header {
     @apply bg-03;
 }
+body.narrow .settings-panel > .c-tabs > .c-header {
+    box-sizing: content-box;
+    padding-top: var(--safe-area-top);
+}
 .settings-panel > .c-tabs > .download-app-banner {
     @apply px-2;
 }
@@ -82,6 +86,9 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i,
     @apply flex-none flex-y justify-center;
     @apply h-10;
     @apply bg-03;
+}
+body.narrow .settings-panel > .c-tabs .c-footer {
+    padding-bottom: var(--safe-area-bottom);
 }
 .settings-panel > .c-tabs .c-footer > .c-content {
     @apply flex-none flex-x items-center justify-between gap-x-2;
@@ -215,6 +222,9 @@ body.hoverable .tile-btn:hover,
     @apply p-2 md:px-4 md:pb-4;
     @apply overflow-y-auto md:overflow-y-visible custom-scrollbar;
 }
+body.narrow .settings-tab-content {
+    padding-bottom: var(--safe-area-bottom);
+}
 .settings-tab-header {
     @apply sticky top-0 z-10;
     @apply ordinary-header;
@@ -223,6 +233,10 @@ body.hoverable .tile-btn:hover,
     @apply text-title-1;
     @apply bg-03 md:bg-01;
     @apply border-b border-separator md:border-none;
+}
+body.narrow .settings-tab-header {
+    box-sizing: content-box;
+    padding-top: var(--safe-area-top);
 }
 @media (min-width: 820px) {
     .settings-tab-header {
