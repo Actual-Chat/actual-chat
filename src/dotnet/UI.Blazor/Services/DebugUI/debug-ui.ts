@@ -60,6 +60,14 @@ export class DebugUI {
         void this.backendRef.invokeMethodAsync('ResetBubbles', enable);
     };
 
+    public static showMicTroubleshooter(): void {
+        void this.backendRef.invokeMethodAsync('ShowMicTroubleshooter');
+    };
+
+    public static showPhotoTroubleshooter(): void {
+        void this.backendRef.invokeMethodAsync('ShowPhotoTroubleshooter');
+    };
+
     public static showSafeAreas(show: boolean | null | undefined): void {
         const cl = document.body.classList;
         cl.remove('show-safe-areas', 'hide-safe-areas');

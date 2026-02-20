@@ -201,6 +201,15 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<PhotoTroubleshooterModal.Model, PhotoTroubleshooterModal>()
         );
 
+        // DebugUI - override base registration to wire guide handlers
+        services.AddScoped(c => {
+            var hub = c.UIHub();
+            var debugUI = new DebugUI(hub);
+            debugUI.ShowMicTroubleshooterHandler = () => hub.ModalUI.Show(new RecordingTroubleshooterModal.Model());
+            debugUI.ShowPhotoTroubleshooterHandler = () => hub.ModalUI.Show(new PhotoTroubleshooterModal.Model());
+            return debugUI;
+        });
+
         // Sending messages & File uploads
         fusion.AddService<ChatSendingMessagesTriggers>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SendingMessages(c.AppUIHub()));
