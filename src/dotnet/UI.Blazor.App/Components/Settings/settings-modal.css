@@ -4,6 +4,7 @@
 body.narrow .settings-modal.modal-frame {
     padding-top: var(--safe-area-top);
     padding-bottom: var(--safe-area-bottom);
+    background-color: var(--background-03);
 }
 .settings-tab .app-settings .tile-item {
     @apply h-auto;
