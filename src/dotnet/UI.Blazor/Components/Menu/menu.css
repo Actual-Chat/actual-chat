@@ -33,6 +33,7 @@ body.narrow .ac-menu {
     @apply p-3;
     @apply overflow-hidden;
     @apply shadow-modal-narrow;
+    top: auto !important;
     left: calc(1rem + var(--safe-area-left)) !important;
     right: calc(1rem + var(--safe-area-right));
     bottom: calc(2.5rem + var(--safe-area-bottom));

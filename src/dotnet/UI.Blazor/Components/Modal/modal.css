@@ -78,7 +78,7 @@ body.narrow .modal-frame.modal-md {
     @apply w-auto h-auto;
     @apply rounded-b-none;
     height: 80vh;
-    padding-bottom: var(--safe-area-bottom);
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 body.narrow .modal-frame.modal-sm {
     @apply absolute left-4 right-4;
@@ -94,7 +94,7 @@ body.narrow .modal-frame.modal-sm {
     @apply w-auto h-auto;
     @apply rounded-b-none;
     height: 80vh;
-    padding-bottom: var(--safe-area-bottom);
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 
 .narrow .narrow-view__modal__position-stretch {

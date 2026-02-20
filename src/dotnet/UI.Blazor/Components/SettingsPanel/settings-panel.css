@@ -223,7 +223,7 @@ body.hoverable .tile-btn:hover,
     @apply overflow-y-auto md:overflow-y-visible custom-scrollbar;
 }
 body.narrow .settings-tab-content {
-    padding-bottom: var(--safe-area-bottom);
+    padding-bottom: calc(0.5rem + var(--safe-area-bottom));
 }
 .settings-tab-header {
     @apply sticky top-0 z-10;

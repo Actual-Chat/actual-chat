@@ -1,6 +1,6 @@
 body.narrow .sign-in-modal.narrow-view__modal__position-stretch {
     padding-top: var(--safe-area-top);
-    padding-bottom: var(--safe-area-bottom);
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 .sign-in-modal-header {
     @apply text-headline-7 text-01;

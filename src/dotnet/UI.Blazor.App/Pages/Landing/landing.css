@@ -1488,7 +1488,7 @@ body.narrow .premium-features-modal.modal-frame {
 }
 body.narrow .premium-features-modal.narrow-view__modal__position-stretch {
     padding-top: var(--safe-area-top);
-    padding-bottom: var(--safe-area-bottom);
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 body.wide .premium-features-modal .modal-header {
     @apply hidden;
