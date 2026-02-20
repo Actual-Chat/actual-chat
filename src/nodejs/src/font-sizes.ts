@@ -1,4 +1,4 @@
-import { DeviceInfo } from 'device-info';
+// import { DeviceInfo } from 'device-info';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 
 const storage = window.localStorage as Storage | undefined;
