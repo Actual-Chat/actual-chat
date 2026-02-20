@@ -610,7 +610,8 @@ body.hoverable .recorder-wrapper> .c-tooltip {
     @apply bg-01;
     @apply text-base text-02;
     @apply pointer-events-none;
-    @apply bottom-28 left-0 right-0;
+    @apply left-0 right-0;
+    bottom: calc(7rem + var(--safe-area-bottom));
     margin: 0 auto;
     filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
 }
@@ -618,7 +619,7 @@ body.hoverable .recorder-wrapper> .c-tooltip {
     @apply line-clamp-1;
 }
 body.narrow .narrow-panel .narrow-recorder-tooltip {
-    @apply bottom-34;
+    bottom: calc(8.5rem + var(--safe-area-bottom));
 }
 .wide .narrow-recorder-tooltip {
     @apply hidden;
