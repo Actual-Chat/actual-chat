@@ -50,6 +50,7 @@ export * from './notification-ui';
 export * from './recaptcha-handler';
 
 export * from './Components/AudioPlayer/audio-player';
+export { AudioVideoSync } from 'audio-video-sync';
 export * from './Components/AudioRecorder/audio-recorder';
 export * from './Components/AudioRecorder/web-microphone-permission-handler';
 export * from './Components/AudioRecorder/opus-media-recorder';

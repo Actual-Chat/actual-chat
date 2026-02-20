@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Services;
@@ -12,6 +13,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private readonly string _id;
     private volatile TaskCompletionSource _whenBufferLowSource = TaskCompletionSourceExt.New();
     private IAudioPlaybackEngine? _playbackEngine;
+    private string? _authorId;
+    private double _recordedAtMs;
+    private bool _reportSyncToJs;
 
     private IServiceProvider Services { get; }
 
@@ -40,6 +44,13 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             _id, offset, isPaused ? "paused" : "playing", isBufferLow ? "low" : "ok");
         UpdateBufferState(isBufferLow);
         SetPlaybackState(TimeSpan.FromSeconds(offset), isPaused);
+        if (_reportSyncToJs) {
+            var state = isPaused ? "paused" : "playing";
+            _ = Services.JSRuntime().InvokeVoidAsync(
+                "blazorApp.AudioVideoSync.update",
+                CancellationToken.None,
+                _authorId, offset, _recordedAtMs, state);
+        }
         return Task.CompletedTask;
     }
 
@@ -54,6 +65,13 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             Log.LogError(error, "[AudioTrackPlayer #{AudioTrackPlayerId}] Playback stopped with an error", _id);
         }
         DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnEnded: {Message}", _id, errorMessage);
+        if (_reportSyncToJs) {
+            _ = Services.JSRuntime().InvokeVoidAsync(
+                "blazorApp.AudioVideoSync.clear",
+                CancellationToken.None,
+                _authorId);
+            _reportSyncToJs = false;
+        }
         SetEndState(error);
         return Task.CompletedTask;
     }
@@ -65,6 +83,11 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 var trackInfo = (ChatAudioTrackInfo)TrackInfo;
                 await MediaMetadataUI.SetPlayback(MediaMetadata.FromTrack(trackInfo), trackInfo.IsStreaming).ConfigureAwait(false);
                 _playbackEngine = Factory.Create(_id, TrackInfo, Source, this);
+                if (Services.HostInfo().HostKind.IsMauiApp()) {
+                    _authorId = trackInfo.Author?.Id.Value;
+                    _recordedAtMs = trackInfo.RecordedAt.EpochOffset.TotalMilliseconds;
+                    _reportSyncToJs = _authorId != null;
+                }
                 await _playbackEngine.Play(cancellationToken).ConfigureAwait(false);
                 break;
             case PauseCommand:
