@@ -1073,6 +1073,12 @@ body.narrow .landing .btn-download.ios-disabled {
     background-color: transparent;
     backdrop-filter: blur(8px);
 }
+/*
+body.device-ios .docs-layout::before,
+body.device-ios .docs-layout::after {
+    backdrop-filter: none;
+}
+ */
 .docs-layout::before {
     height: var(--safe-area-top);
 }
