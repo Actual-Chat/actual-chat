@@ -277,7 +277,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var cancellationToken = cts.Token;
         var chatId = await CreateChat(cancellationToken);
         await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
-        var entries = await CreateEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ParallelismDegree + 10).Select(i => $"Hello {i}"));
+        var entries = await CreateEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ConcurrencyLevel + 10).Select(i => $"Hello {i}"));
 
         // act
         var translations = await GetTranslations(entries, cancellationToken);
@@ -292,7 +292,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
             translations.Reverse();
             var running = translations.Select((x, i) => new { Translation = x, Index = i })
                 .Where(x => x.Translation is null)
-                .Take(ThrottledTranslations.ParallelismDegree)
+                .Take(ThrottledTranslations.ConcurrencyLevel)
                 .ToList();
 
             // assert
@@ -301,14 +301,14 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
                 break; // all translations completed
             }
 
-            if (running.Count >= ThrottledTranslations.ParallelismDegree) {
+            if (running.Count >= ThrottledTranslations.ConcurrencyLevel) {
                 var firstWaitingIndex = running[^1].Index + 1;
                 for (var i = firstWaitingIndex; i < translations.Count; i++)
                     translations[i]
                         .Should()
                         .BeNull(
                             "only {0} parallel simultaneous translations allowed, current running are at indices [{1}]",
-                            ThrottledTranslations.ParallelismDegree,
+                            ThrottledTranslations.ConcurrencyLevel,
                             string.Join(',', running.Select(x => x.Index)));
             }
             await Task.Delay(TimeSpan.FromSeconds(0.1), cancellationToken);
@@ -323,7 +323,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var cancellationToken = cts.Token;
         var chatId = await CreateChat(cancellationToken);
         await TranslationUI.SetTargetLanguage(chatId, Languages.German, cancellationToken);
-        var entries = await CreateVisibleEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ParallelismDegree + 10).Select(i => $"Hello {i}"));
+        var entries = await CreateVisibleEntries(chatId, Enumerable.Range(0, ThrottledTranslations.ConcurrencyLevel + 10).Select(i => $"Hello {i}"));
 
         // act
         var translations = await GetTranslations(entries, cancellationToken);

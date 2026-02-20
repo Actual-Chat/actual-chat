@@ -1,4 +1,3 @@
-using ActualChat.App.Maui.Audio;
 using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Playback;
 using ActualChat.App.Maui.Services.Recording;
@@ -38,7 +37,6 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // UI
         services.AddSingleton<ScopedServicesAccessor>(_ => static () => TryGetScopedServices(out var c) ? c : null); // Scoped in WASM/SSB, singleton in MAUI
-        services.Replace(ServiceDescriptor.Singleton<ReloadUI>(c => new MauiReloadUI(c))); // Replaces scoped ReloadUI
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c.UIHub()));
         services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
@@ -47,6 +45,8 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<IDeveloperTools>(_ => new MauiDeveloperTools());
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
         services.AddScoped<IMediaMetadataUI>(c => new MediaMetadataUI(c.AppUIHub()));
+        services.AddSingleton<ReloadUI>(c => new MauiReloadUI(c)); // Replaces scoped ReloadUI
+        services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c)); // Replaces scoped WebBackgroundStateTracker
         services.AddSingleton<MauiTestPage.IMauiTestPageBackend>(_ => new MauiTestPageBackend());
 
         // Permissions

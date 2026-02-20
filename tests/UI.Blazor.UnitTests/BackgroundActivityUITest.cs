@@ -4,12 +4,12 @@ using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.UI.Blazor.UnitTests;
 
-public class AppActivityTest: TestBase
+public class BackgroundActivityUITest: TestBase
 {
     private IServiceProvider Services { get; }
     private IServiceProvider ScopedServices { get; }
 
-    public AppActivityTest(ITestOutputHelper @out) : base(@out)
+    public BackgroundActivityUITest(ITestOutputHelper @out) : base(@out)
     {
         var hostInfo = new HostInfo {
             HostKind = HostKind.MauiApp,
@@ -24,10 +24,10 @@ public class AppActivityTest: TestBase
             .AddSingleton(c => new Features(c))
             .AddSingleton(_ => new UrlMapper(hostInfo))
             .AddScoped<UIHub>()
-            .AddSingleton<BackgroundStateTracker, MauiBackgroundStateTracker>()
+            .AddSingleton<BackgroundStateTracker, TestBackgroundStateTracker>()
             .AddFusion(fusion => {
                 fusion.AddBlazor();
-                fusion.AddService<AppActivity, TestAppActivity>();
+                fusion.AddService<BackgroundActivityUI, TestBackgroundActivityUI>();
             })
             .BuildServiceProvider();
         ScopedServices = Services.CreateScope().ServiceProvider;
@@ -36,35 +36,35 @@ public class AppActivityTest: TestBase
     [Fact]
     public async Task BasicTest()
     {
-        MauiBackgroundStateTracker.SetBackgroundState(false);
-        var backgroundStateTracker = (MauiBackgroundStateTracker)Services.GetRequiredService<BackgroundStateTracker>();
+        var backgroundStateTracker = (TestBackgroundStateTracker)Services.GetRequiredService<BackgroundStateTracker>();
+        backgroundStateTracker.SetBackgroundState(false);
         backgroundStateTracker.IsBackground.Value.Should().BeFalse();
 
-        var appActivity = (TestAppActivity)ScopedServices.GetRequiredService<AppActivity>();
-        appActivity.Start();
-        appActivity.State.Value.Should().Be(AppActivityState.Foreground);
+        var backgroundActivity = (TestBackgroundActivityUI)ScopedServices.GetRequiredService<BackgroundActivityUI>();
+        backgroundActivity.Start();
+        backgroundActivity.State.Value.Should().Be(BackgroundActivityState.Foreground);
 
-        MauiBackgroundStateTracker.SetBackgroundState(true);
-        await appActivity.State.Computed
-            .When(x => x == AppActivityState.BackgroundIdle)
+        backgroundStateTracker.SetBackgroundState(true);
+        await backgroundActivity.State.Computed
+            .When(x => x == BackgroundActivityState.BackgroundIdle)
             .WaitAsync(TimeSpan.FromSeconds(2));
 
-        appActivity.SetIsActiveInBackground(true);
-        await appActivity.State.Computed
-            .When(x => x == AppActivityState.BackgroundActive)
+        backgroundActivity.SetIsActiveInBackground(true);
+        await backgroundActivity.State.Computed
+            .When(x => x == BackgroundActivityState.BackgroundActive)
             .WaitAsync(TimeSpan.FromSeconds(2));
     }
 
     [Fact]
     public async Task MassUpdateTest()
     {
-        MauiBackgroundStateTracker.SetBackgroundState(false);
         var random = Random.Shared;
         var log = Services.LogFor(GetType());
-        var backgroundStateTracker = (MauiBackgroundStateTracker)Services.GetRequiredService<BackgroundStateTracker>();
+        var backgroundStateTracker = (TestBackgroundStateTracker)Services.GetRequiredService<BackgroundStateTracker>();
+        backgroundStateTracker.SetBackgroundState(false);
         backgroundStateTracker.IsBackground.Value.Should().BeFalse();
-        var appActivity = (TestAppActivity)ScopedServices.GetRequiredService<AppActivity>();
-        appActivity.Start();
+        var backgroundActivity = (TestBackgroundActivityUI)ScopedServices.GetRequiredService<BackgroundActivityUI>();
+        backgroundActivity.Start();
 
         using var cts = new CancellationTokenSource();
         // ReSharper disable AccessToDisposedClosure
@@ -72,14 +72,14 @@ public class AppActivityTest: TestBase
         _ = BackgroundTask.Run(async () => {
             for (int i = 0; i < 10; i++) {
                 await Task.Delay(random.Next(10,200), cts.Token);
-                MauiBackgroundStateTracker.SetBackgroundState(random.Next(3) >= 1);
+                backgroundStateTracker.SetBackgroundState(random.Next(3) >= 1);
             }
         }, cts.Token);
 
         _ = BackgroundTask.Run(async () => {
             for (int i = 0; i < 10; i++) {
                 await Task.Delay(random.Next(10,200), cts.Token);
-                appActivity.SetIsActiveInBackground(random.Next(2) == 1);
+                backgroundActivity.SetIsActiveInBackground(random.Next(2) == 1);
             }
         }, cts.Token);
 
@@ -89,7 +89,7 @@ public class AppActivityTest: TestBase
         }, CancellationToken.None);
 
         var stateChangeCount = 0;
-        await foreach (var computed in appActivity.State.Computed.Changes(cts.Token).SuppressCancellation(cts.Token)) {
+        await foreach (var computed in backgroundActivity.State.Computed.Changes(cts.Token).SuppressCancellation(cts.Token)) {
             log.LogInformation("Computed background state = {State}", computed.Value);
             stateChangeCount++;
         }
@@ -100,8 +100,24 @@ public class AppActivityTest: TestBase
     }
 }
 
+public class TestBackgroundStateTracker : BackgroundStateTracker
+{
+    private readonly MutableState<bool> _isBackgroundState;
+
+    public override IState<bool> IsBackground => _isBackgroundState;
+
+    public TestBackgroundStateTracker(IServiceProvider services)
+    {
+        _isBackgroundState = services.StateFactory()
+            .NewMutable(false, StateCategories.Get(GetType(), nameof(IsBackground)));
+    }
+
+    public void SetBackgroundState(bool isBackground)
+        => _isBackgroundState.Value = isBackground;
+}
+
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Local
-public class TestAppActivity(UIHub hub) : AppActivity(hub)
+public class TestBackgroundActivityUI(UIHub hub) : BackgroundActivityUI(hub)
 {
     private readonly MutableState<bool> _mustBeBackgroundActive
         = hub.StateFactory.NewMutable<bool>();

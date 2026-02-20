@@ -1,115 +1,89 @@
 using ActualLab.Diagnostics;
 
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.Concurrency;
 
-public class ThrottledWorkQueue<TKey, TResult> : WorkerBase where TKey : notnull
+public class ConstrainedWorkQueue<TKey, TResult> : WorkerBase where TKey : notnull
 {
     private readonly SemaphoreSlim _semaphore;
     private readonly WorkItems _workItems;
-    private readonly Channel<WorkItem> _queuedItems = Channel.CreateUnbounded<WorkItem>(new () {
-        SingleReader = true,
-    });
+    private readonly Channel<WorkItem> _queuedItems = Channel.CreateUnbounded<WorkItem>(ChannelExt.UnboundedFanInOptions);
     private readonly ConcurrentDictionary<TKey, WorkItem> _runningItems;
     private readonly Func<TKey, CancellationToken, Task<TResult>> _taskFactory;
-    private readonly ILogger _log;
     private readonly IEqualityComparer<TKey>? _keyComparer;
+    private readonly ILogger _log;
+    private ILogger? DebugLog => _log.IfEnabled(LogLevel.Debug, CoreConstants.DebugMode.ConstrainedWorkQueue);
 
-    public ThrottledWorkQueue(int parallelismDegree, Func<TKey, CancellationToken, Task<TResult>> taskFactory, ILogger<ThrottledWorkQueue<TKey, TResult>> log, IEqualityComparer<TKey>? keyComparer = null, bool start = true)
+    public ConstrainedWorkQueue(int concurrencyLevel,
+        Func<TKey, CancellationToken, Task<TResult>> taskFactory,
+        ILogger log,
+        IEqualityComparer<TKey>? keyComparer = null,
+        bool mustStart = true)
     {
         _taskFactory = taskFactory;
         _log = log;
         _keyComparer = keyComparer;
-        _semaphore = new SemaphoreSlim(parallelismDegree);
+        _semaphore = new SemaphoreSlim(concurrencyLevel);
         _workItems = new WorkItems(keyComparer);
         _runningItems = new ConcurrentDictionary<TKey, WorkItem>(keyComparer);
-        if (start)
+        if (mustStart)
             this.Start();
     }
-
-    private ILogger? DebugLog => _log.IfEnabled(LogLevel.Debug, Constants.DebugMode.ThrottledWorkQueue);
-
-    public async Task<TResult> Execute(TKey key, string consumerId, CancellationToken cancellationToken)
-    {
-        var workItem = await EnqueueInternal(key, consumerId, cancellationToken).ConfigureAwait(false);
-        return await workItem.TaskCompletionSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    public Task Enqueue(TKey key, string consumerId, CancellationToken cancellationToken)
-        => EnqueueInternal(key, consumerId, cancellationToken);
 
     public Task<TResult>? Get(TKey key)
     {
         var workItem = _workItems.Get(key);
- #pragma warning disable RCS1210
+#pragma warning disable RCS1210
         return workItem?.TaskCompletionSource.Task;
- #pragma warning restore RCS1210
+#pragma warning restore RCS1210
     }
 
-    public void Dequeue(string consumerId, params IEnumerable<TKey> keys)
-        => Dequeue(consumerId, false, keys);
+    public async Task<TResult> Execute(TKey key, string consumerId, CancellationToken cancellationToken)
+    {
+        var workItem = await AddInternal(key, consumerId, cancellationToken).ConfigureAwait(false);
+        return await workItem.TaskCompletionSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
 
-    public void Dequeue(string consumerId, bool cancelRunning, params IEnumerable<TKey> keys)
+    public Task Add(TKey key, string consumerId, CancellationToken cancellationToken)
+        => AddInternal(key, consumerId, cancellationToken);
+
+    public void Remove(string consumerId, params IEnumerable<TKey> keys)
+        => Remove(consumerId, false, keys);
+
+    public void Remove(string consumerId, bool cancelIfRunning, params IEnumerable<TKey> keys)
     {
         foreach (var key in keys)
             if (_workItems.Remove(key, consumerId) is { } workItem) {
                 DebugLog?.LogDebug("Dequeued work item #{Key}", key);
-                if (cancelRunning) {
+                if (cancelIfRunning) {
                     workItem.CancellationTokenSource.Cancel();
                     DebugLog?.LogDebug("Requested cancellation of work item #{Key}", key);
                 }
             }
     }
 
-    internal IReadOnlyList<(TKey Key, Task<TResult> Task)> ListAll()
+    public IReadOnlyList<(TKey Key, Task<TResult> Task)> ListAll()
         => ListRunning().Concat(ListQueued()).ToList();
 
-    internal IReadOnlyList<(TKey Key, Task<TResult> Task)> ListRunning()
+    public IReadOnlyList<(TKey Key, Task<TResult> Task)> ListRunning()
         => _runningItems.Values.Select(x => x.AsTuple()).ToList();
 
-    internal IReadOnlyList<(TKey Key, Task<TResult> Task)> ListQueued()
+    public IReadOnlyList<(TKey Key, Task<TResult> Task)> ListQueued()
         => _workItems.List().ExceptBy(_runningItems.Keys, x => x.Key, _keyComparer).ToList();
 
-    protected override Task OnRun(CancellationToken cancellationToken)
-    {
-        var baseChains = new[] {
-            AsyncChain.From(DispatchQueue),
-        };
-        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return (
-            from chain in baseChains
-            select chain
-                .Log(LogLevel.Debug, _log)
-                .RetryForever(retryDelays, _log)
-            ).RunIsolated(cancellationToken);
+    // Protected methods
 
-    }
-
-    private async Task<WorkItem> EnqueueInternal(TKey key, string consumerId, CancellationToken cancellationToken)
+    protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        if (_workItems.Add(key, consumerId, out var workItem))
-            try {
-                await _queuedItems.Writer.WriteAsync(workItem, cancellationToken).ConfigureAwait(false);
-                DebugLog?.LogDebug("Enqueued work item #{Key}", key);
-            }
-            catch (Exception e) {
-                _log.LogError(e, "Failed to enqueue work item #{Key}", key);
-                _workItems.Remove(key, consumerId);
-                throw;
-            }
-        return workItem;
-    }
-
-    private async Task DispatchQueue(CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested) {
+        while (true) {
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             var workItem = await _queuedItems.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+ #pragma warning disable CA2025
             _ = BackgroundTask.Run(() => ProcessWorkItem(workItem),
                 _log,
                 $"Failed to start processing work item #{workItem.Key}",
                 cancellationToken);
+ #pragma warning restore CA2025
         }
-        cancellationToken.ThrowIfCancellationRequested();
         return;
 
         async Task ProcessWorkItem(WorkItem workItem)
@@ -138,6 +112,21 @@ public class ThrottledWorkQueue<TKey, TResult> : WorkerBase where TKey : notnull
                 workItem.DisposeSilently();
             }
         }
+    }
+
+    private async Task<WorkItem> AddInternal(TKey key, string consumerId, CancellationToken cancellationToken)
+    {
+        if (_workItems.Add(key, consumerId, out var workItem))
+            try {
+                await _queuedItems.Writer.WriteAsync(workItem, cancellationToken).ConfigureAwait(false);
+                DebugLog?.LogDebug("Enqueued work item #{Key}", key);
+            }
+            catch (Exception e) {
+                _log.LogError(e, "Failed to enqueue work item #{Key}", key);
+                _workItems.Remove(key, consumerId);
+                throw;
+            }
+        return workItem;
     }
 
     private class WorkItems(IEqualityComparer<TKey>? keyComparer = null)

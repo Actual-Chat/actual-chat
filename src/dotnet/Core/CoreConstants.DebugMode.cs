@@ -22,5 +22,6 @@ public static partial class CoreConstants
         public static readonly bool StoredState = false;
         public static readonly bool SyncedState = false;
         public static readonly bool MessageProcessor = false;
+        public static readonly bool ConstrainedWorkQueue = false;
     }
 }

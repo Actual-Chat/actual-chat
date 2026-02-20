@@ -1,20 +1,21 @@
+using ActualChat.Concurrency;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IAsyncDisposable
 {
-    public const int ParallelismDegree = 10;
-    private readonly ThrottledWorkQueue<TranslationId, Translation> _translationQueue;
-    private readonly ThrottledWorkQueue<TextEntryId, ChatEntryLanguage> _languageQueue;
+    public const int ConcurrencyLevel = 10;
+    private readonly ConstrainedWorkQueue<TranslationId, Translation> _translationQueue;
+    private readonly ConstrainedWorkQueue<TextEntryId, ChatEntryLanguage> _languageQueue;
 
     private ITranslations Translations => Hub.Translations;
-
     private ChatUI ChatUI => Hub.ChatUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
 
     public ThrottledTranslations(AppUIHub hub) : base(hub)
     {
-        _translationQueue = new (ParallelismDegree, WhenTranslated, hub.LogFor<ThrottledWorkQueue<TranslationId, Translation>>());
-        _languageQueue = new (ParallelismDegree, WhenLanguageDetected, hub.LogFor<ThrottledWorkQueue<TextEntryId, ChatEntryLanguage>>());
+        _translationQueue = new (ConcurrencyLevel, WhenTranslated, hub.LogFor<ConstrainedWorkQueue<TranslationId, Translation>>());
+        _languageQueue = new (ConcurrencyLevel, WhenLanguageDetected, hub.LogFor<ConstrainedWorkQueue<TextEntryId, ChatEntryLanguage>>());
     }
 
     public async ValueTask DisposeAsync()
@@ -34,7 +35,7 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
         var session = Session;
         var existingTranslation = await Translations.Get(session, id, false, cancellationToken).ConfigureAwait(false);
         if (existingTranslation is null)
-            await _translationQueue.Enqueue(id, consumerId, cancellationToken).ConfigureAwait(false);
+            await _translationQueue.Add(id, consumerId, cancellationToken).ConfigureAwait(false);
         return existingTranslation;
     }
 
@@ -42,7 +43,7 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
     {
         var existing = await GetLanguageInternal(entryId, cancellationToken).ConfigureAwait(false);
         if (existing is null)
-            await _languageQueue.Enqueue(entryId, consumerId, cancellationToken).ConfigureAwait(false);
+            await _languageQueue.Add(entryId, consumerId, cancellationToken).ConfigureAwait(false);
 
         return existing;
     }
@@ -97,8 +98,8 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
         State? last = null;
         await foreach (var cState in cState0.Changes(cancellationToken).ConfigureAwait(false)) {
             // TODO(FC): dequeue for thread entries - use ChatUI.GetThreadPreviewEntries
-            _translationQueue.Dequeue(TranslationConsumers.ChatView, GetDisappearedTranslationIds(cState));
-            _languageQueue.Dequeue(TranslationConsumers.ChatView, GetDisappearedEntryIds(cState));
+            _translationQueue.Remove(TranslationConsumers.ChatView, GetDisappearedTranslationIds(cState));
+            _languageQueue.Remove(TranslationConsumers.ChatView, GetDisappearedEntryIds(cState));
             last = cState.Value;
         }
         return;
@@ -135,7 +136,7 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
     private Task<ChatEntryLanguage> WhenLanguageDetected(TextEntryId id, CancellationToken cancellationToken)
         => WhenNotNull(() => GetLanguageInternal(id, cancellationToken), cancellationToken);
 
-    private async Task<T> WhenNotNull<T>(Func<Task<T?>> taskFactory, CancellationToken cancellationToken)
+    private static async Task<T> WhenNotNull<T>(Func<Task<T?>> taskFactory, CancellationToken cancellationToken)
     {
         var cData0 = await Computed
             .Capture(taskFactory, cancellationToken)

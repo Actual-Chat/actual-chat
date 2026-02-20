@@ -126,8 +126,9 @@ public class AppScopedServiceStarter
                 Hub.Services.GetRequiredService<SessionTokens>().Start();
             Hub.Services.GetRequiredService<AppPresenceReporter>().Start();
             Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
-            Hub.Services.GetRequiredService<AppActivity>().Start();
+            Hub.Services.GetRequiredService<BackgroundActivityUI>().Start();
             _ = Hub.TuneUI; // Touch. Auto-starts on construction
+            _ = Hub.AudioWidget; // Touch. Auto-starts on construction
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
             if (!HostInfo.IsProductionInstance)
                 Hub.Services.GetRequiredService<DebugUI>();

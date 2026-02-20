@@ -81,9 +81,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new LoadingUI(c.UIHub()));
         services.AddScoped(c => new ReconnectUI(c.UIHub()));
         services.AddScoped(c => new ReloadUI(c));
-        if (hostKind.IsMauiApp())
-            services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c));
-        else {
+        if (!hostKind.IsMauiApp()) {
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
             services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
             services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));

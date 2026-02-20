@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.UI.Blazor.Services;
 
-public partial class AppActivity
+public partial class BackgroundActivityUI
 {
     protected override Task OnRun(CancellationToken cancellationToken)
     {
@@ -28,15 +28,15 @@ public partial class AppActivity
     }
 
     [ComputeMethod]
-    protected virtual async Task<AppActivityState> ComputeState(CancellationToken cancellationToken)
+    protected virtual async Task<BackgroundActivityState> ComputeState(CancellationToken cancellationToken)
     {
-        var isBackground = await BackgroundStateTracker.IsBackground.Use(cancellationToken).ConfigureAwait(false);
+        var isBackground = await IsRunningInBackground.Use(cancellationToken).ConfigureAwait(false);
         if (!isBackground)
-            return AppActivityState.Foreground;
+            return BackgroundActivityState.Foreground;
 
         var isActiveInBackground = await MustBeBackgroundActive(cancellationToken).ConfigureAwait(false);
         return isActiveInBackground
-            ? AppActivityState.BackgroundActive
-            : AppActivityState.BackgroundIdle;
+            ? BackgroundActivityState.BackgroundActive
+            : BackgroundActivityState.BackgroundIdle;
     }
 }

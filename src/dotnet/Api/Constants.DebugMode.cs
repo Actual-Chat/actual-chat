@@ -64,7 +64,6 @@ public static partial class Constants
         // Misc.
         public static readonly bool KubeEmulation = false;
         public static readonly bool KubeLocal = false;
-        public const bool ThrottledWorkQueue = false;
         public const bool ShareSuggestions = false;
     }
 }

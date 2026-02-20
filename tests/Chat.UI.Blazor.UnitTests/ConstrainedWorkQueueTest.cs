@@ -2,9 +2,9 @@ using ActualChat.UI.Blazor.App.Services;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
 
-public class ThrottledWorkQueueTest(ITestOutputHelper @out) : TestBase(@out)
+public class ConstrainedWorkQueueTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private string ConsumerId { get; } = UniqueNames.Name(nameof(ThrottledWorkQueueTest));
+    private string ConsumerId { get; } = UniqueNames.Name(nameof(ConstrainedWorkQueueTest));
 
     [Theory]
     [InlineData(1, 2, true)]
