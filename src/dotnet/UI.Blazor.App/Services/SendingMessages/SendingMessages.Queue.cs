@@ -1,15 +1,27 @@
-using ActualChat.Media;
-
 namespace ActualChat.UI.Blazor.App.Services;
 
 partial class SendingMessages
 {
-private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, CancellationToken cancellationToken)
+    private static readonly TimeSpan ProcessCommandTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan ProcessCommandRetryDelay = TimeSpan.FromSeconds(1);
+
+    private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("-> ProcessQueueItem. Text: '{Text}'", command.Request.Text);
-        ChatEntry chatEntry = await ProcessCommand(command, cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("<- ProcessQueueItem. Text: '{Text}'", command.Request.Text);
-        return chatEntry;
+        while (true) {
+            using var cts = cancellationToken.CreateLinkedTokenSource();
+            cts.CancelAfter(ProcessCommandTimeout);
+            try {
+                ChatEntry chatEntry = await ProcessCommand(command, cts.Token).ConfigureAwait(false);
+                DebugLog?.LogDebug("<- ProcessQueueItem. Text: '{Text}'", command.Request.Text);
+                return chatEntry;
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+                Log.LogWarning(e, "ProcessQueueItem failed for '{Text}', retrying in {Delay}s",
+                    command.Request.Text, ProcessCommandRetryDelay.TotalSeconds);
+                await Task.Delay(ProcessCommandRetryDelay, cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     private async Task<ChatEntry> ProcessCommand(PostMessageQueueItem item, CancellationToken cancellationToken)
