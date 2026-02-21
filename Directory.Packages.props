@@ -121,10 +121,10 @@
     for 16KB page alignment on Android. Upstream Svg.Skia depends on SkiaSharp 2.88.9,
     which ships libSkiaSharp.so with 4KB alignment and will never be fixed in 2.x.
     -->
-    <PackageVersion Include="Svg.Skia" Version="3.4.1" />
-    <PackageVersion Include="Svg.Custom" Version="3.4.1" />
-    <PackageVersion Include="Svg.Model" Version="3.4.1" />
-    <PackageVersion Include="ShimSkiaSharp" Version="3.4.1" />
+    <PackageVersion Include="Svg.Skia" Version="3.4.2-local" />
+    <PackageVersion Include="Svg.Custom" Version="3.4.2-local" />
+    <PackageVersion Include="Svg.Model" Version="3.4.2-local" />
+    <PackageVersion Include="ShimSkiaSharp" Version="3.4.2-local" />
   </ItemGroup>
   <!-- All other packages -->
   <ItemGroup>
