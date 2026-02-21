@@ -45,6 +45,9 @@ public class AudioFocusUI : ProcessorBase
     public virtual Task TryRecover(CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 
+    public virtual Task WarmUp()
+        => Task.CompletedTask;
+
     // Nested types
 
     private class FakeScope : AudioFocusScope

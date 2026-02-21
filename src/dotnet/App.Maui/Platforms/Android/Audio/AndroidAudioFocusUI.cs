@@ -18,6 +18,14 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
         _focusHelper.OnOutputDevicesChanged += OnOutputDevicesChanged;
     }
 
+    protected override Task DisposeAsyncCore()
+    {
+        _focusHelper.OnOutputDevicesChanged -= OnOutputDevicesChanged;
+        _focusHelper.OnFocusChanged -= OnFocusChanged;
+        _focusHelper.Dispose();
+        return base.DisposeAsyncCore();
+    }
+
     public override Task TryRecover(CancellationToken cancellationToken = default)
     {
         Log.LogInformation("TryRecover: attempting to recover audio focus");
@@ -25,15 +33,26 @@ public class AndroidAudioFocusUI : MauiAudioFocusUI
         return Task.CompletedTask;
     }
 
+    public override async Task WarmUp()
+    {
+        using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+        await Task.Run(() => _focusHelper.WarmUpAudioMode(), CancellationToken.None).ConfigureAwait(false);
+    }
+
+    // Protected and private methods
+
     protected override async Task<MauiAudioFocusHandle?> RequestAudioFocus(AudioFocusMode mode)
     {
         Log.LogInformation("-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}'", mode, _handle);
 
-        var success = mode switch {
-            AudioFocusMode.Recording => await _focusHelper.RequestFocusForCallAsync().ConfigureAwait(false),
-            AudioFocusMode.Tune => _focusHelper.RequestFocusForNotification(),
-            _ => await _focusHelper.RequestFocusForPlaybackAsync().ConfigureAwait(false)
-        };
+        var success = await Task.Run(() => mode switch {
+                AudioFocusMode.Recording => _focusHelper.RequestFocusForCall(),
+                AudioFocusMode.Playback => _focusHelper.RequestFocusForPlayback(),
+                AudioFocusMode.Tune => _focusHelper.RequestFocusForNotification(),
+                _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unsupported audio focus mode"),
+            }, CancellationToken.None)
+            .ConfigureAwait(false);
         if (!success) {
             Log.LogInformation("Failed to get audio focus");
             _handle = null;

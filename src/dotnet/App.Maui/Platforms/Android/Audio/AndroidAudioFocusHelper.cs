@@ -4,10 +4,15 @@ using OperationCanceledException = System.OperationCanceledException;
 
 namespace ActualChat.App.Maui.Audio;
 
+/// <summary>
+/// Low-level Android audio focus helper. All public methods assume sequential (serialized)
+/// calling — synchronization is handled by <see cref="AndroidAudioFocusUI"/> via AsyncLock.
+/// </summary>
 public class AndroidAudioFocusHelper : IDisposable
 {
     private readonly AudioManager _audioManager;
     private readonly AudioFocusChangeListener _audioFocusChangeListener;
+    private readonly DeviceCallback _deviceCallback;
     private readonly ILogger _log;
     private readonly IAudioDeviceRouter _deviceRouter;
     private AudioFocusRequestClass? _focusRequest;
@@ -18,10 +23,11 @@ public class AndroidAudioFocusHelper : IDisposable
 
     public AndroidAudioFocusHelper(Context context, ILogger log)
     {
+        _log = log;
         _audioManager = (AudioManager)context.GetSystemService(Context.AudioService)!;
         _audioFocusChangeListener = new AudioFocusChangeListener(OnAudioFocusChange);
-        _audioManager.RegisterAudioDeviceCallback(new DeviceCallback(OnAudioDevicesChanged), null);
-        _log = log;
+        _deviceCallback = new DeviceCallback(OnAudioDevicesChanged);
+        _audioManager.RegisterAudioDeviceCallback(_deviceCallback, null);
 
         // Chooses the implementation based on API level
         // API 31 (Android 12) introduced SetCommunicationDevice
@@ -30,14 +36,45 @@ public class AndroidAudioFocusHelper : IDisposable
            : new LegacyAudioDeviceRouter(_audioManager, context, log);
     }
 
-    public Task<bool> RequestFocusForCallAsync()
+    public void Dispose()
+    {
+        try {
+            AbandonFocus();
+        }
+        catch (Exception e) {
+            _log.LogError(e, "Failed to abandon audio focus during disposal");
+        }
+        _deviceRouter.Dispose();
+        _audioFocusChangeListener.Dispose();
+        _audioManager.UnregisterAudioDeviceCallback(_deviceCallback);
+    }
+
+    public Task<bool> RequestFocusForCall()
         => RequestFocusAsync(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
 
-    public Task<bool> RequestFocusForPlaybackAsync()
+    public Task<bool> RequestFocusForPlayback()
         => RequestFocusAsync(AudioFocus.Gain, AudioUsageKind.VoiceCommunication, AudioContentType.Speech);
 
-    public bool RequestFocusForNotification()
-        => RequestFocusSync(AudioFocus.GainTransientMayDuck, AudioUsageKind.AssistanceSonification, AudioContentType.Sonification);
+    public Task<bool> RequestFocusForNotification()
+        => RequestFocusAsync(AudioFocus.GainTransientMayDuck, AudioUsageKind.AssistanceSonification, AudioContentType.Sonification);
+
+    public async Task WarmUpAudioMode()
+    {
+        if (_hasFocus || _audioManager.Mode == Mode.InCommunication)
+            return; // Already in communication mode, nothing to warm up
+
+        _log.LogInformation("WarmUpAudioMode: briefly switching to InCommunication to prime audio HAL");
+        _audioManager.Mode = Mode.InCommunication;
+        // Give the HAL time to load the communication audio pipeline
+        await Task.Delay(300).ConfigureAwait(false);
+        // Only revert if no real audio focus was acquired during warmup
+        if (!_hasFocus) {
+            _audioManager.Mode = Mode.Normal;
+            _log.LogInformation("WarmUpAudioMode: reverted to Normal");
+        }
+        else
+            _log.LogInformation("WarmUpAudioMode: keeping InCommunication (real focus acquired)");
+    }
 
     public void AbandonFocus()
     {
@@ -82,26 +119,6 @@ public class AndroidAudioFocusHelper : IDisposable
         return _hasFocus;
     }
 
-    // Synchronous version for notification focus (doesn't need device routing)
-    private bool RequestFocusSync(AudioFocus audioFocus, AudioUsageKind audioUsageKind, AudioContentType audioContentType)
-    {
-        var attrs = new AudioAttributes.Builder()
-            .SetUsage(audioUsageKind)!
-            .SetContentType(audioContentType)!
-            .Build()!;
-
-        _focusRequest = new AudioFocusRequestClass.Builder(audioFocus)
-            .SetAudioAttributes(attrs)
-            .SetOnAudioFocusChangeListener(_audioFocusChangeListener)
-            .Build()!;
-
-        var result = _audioManager.RequestAudioFocus(_focusRequest);
-        _hasFocus = result == AudioFocusRequest.Granted;
-        _log.LogInformation("Requested audio focus for '{Usage}', granted = {Result}", audioUsageKind, _hasFocus);
-
-        return _hasFocus;
-    }
-
     private void OnAudioFocusChange(AudioFocus focusChange)
     {
         _log.LogInformation("Audio focus change: {FocusChange}", focusChange);
@@ -128,9 +145,6 @@ public class AndroidAudioFocusHelper : IDisposable
             _log.LogWarning(e, "Failed to re-route audio after device change");
         }
     }
-
-    public void Dispose()
-        => _deviceRouter.Dispose();
 
     // ========== Device Router Interface ==========
 
