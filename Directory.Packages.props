@@ -116,7 +116,15 @@
     <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Rpc.Server" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
+    <!--
+    Svg.Skia is built from our fork (Actual-Chat/Svg.Skia) targeting SkiaSharp 3.x
+    for 16KB page alignment on Android. Upstream Svg.Skia depends on SkiaSharp 2.88.9,
+    which ships libSkiaSharp.so with 4KB alignment and will never be fixed in 2.x.
+    -->
     <PackageVersion Include="Svg.Skia" Version="3.4.1" />
+    <PackageVersion Include="Svg.Custom" Version="3.4.1" />
+    <PackageVersion Include="Svg.Model" Version="3.4.1" />
+    <PackageVersion Include="ShimSkiaSharp" Version="3.4.1" />
   </ItemGroup>
   <!-- All other packages -->
   <ItemGroup>
