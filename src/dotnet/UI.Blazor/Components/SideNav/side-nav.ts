@@ -7,6 +7,7 @@ import { fromEvent } from 'rxjs';
 import { Gesture, Gestures } from 'gestures';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Log } from 'logging';
+import { unselect } from 'keyboard';
 import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
 
@@ -142,11 +143,8 @@ export class SideNav extends DisposableBag {
     private updateBodyClassList(): void {
         if (this.isOpen) {
             document.body.classList.add(this.bodyClassWhenOpen);
-            if (ScreenSize.isNarrow() || (!ScreenSize.isNarrow()) && window.getComputedStyle(this.element).position === 'absolute') {
-                const selection = window.getSelection();
-                if (selection)
-                    selection.removeAllRanges();
-            }
+            if (ScreenSize.isNarrow())
+                unselect(true);
         } else {
             document.body.classList.remove(this.bodyClassWhenOpen);
         }
