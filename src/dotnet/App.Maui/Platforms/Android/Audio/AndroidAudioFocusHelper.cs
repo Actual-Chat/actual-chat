@@ -62,6 +62,8 @@ public class AndroidAudioFocusHelper : IDisposable
     {
         if (_hasFocus || _audioManager.Mode == Mode.InCommunication)
             return; // Already in communication mode, nothing to warm up
+        if (_audioManager.IsMusicActive)
+            return; // Another app is playing audio, skip warmup to avoid interruption
 
         _log.LogInformation("WarmUpAudioMode: briefly switching to InCommunication to prime audio HAL");
         _audioManager.Mode = Mode.InCommunication;
