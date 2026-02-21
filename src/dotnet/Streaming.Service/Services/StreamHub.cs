@@ -50,9 +50,7 @@ public class StreamHub(IServiceProvider services) : Hub
             audioStream.SelectMany(c => c.AsAsyncEnumerable()));
 
     // Video streaming method for JS client.
-    // Uses byte[][] batches (like audio) to avoid MessagePack deserialization issues
-    // with VideoFrame's TimeSpan properties and [MessagePackObject] inheritance.
-    // Each byte[] in the batch is a MessagePack-encoded VideoFrameDto.
+    // Each byte[] is a MessagePack-encoded VideoFrameDto.
     public Task PushVideo(
         string sessionToken,
         string? chatId,
@@ -61,13 +59,13 @@ public class StreamHub(IServiceProvider services) : Hub
         int height,
         string? codecSettings, // Base64 encoded SPS/PPS for H.264
         double clientStartOffset,
-        IAsyncEnumerable<byte[][]> videoStream)
+        IAsyncEnumerable<byte[]> videoStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         Log.LogInformation("PushVideo: Started with codec={Codec}, {Width}x{Height}, codecSettings={CodecSettingsLen} chars",
             codec, width, height, codecSettings?.Length ?? 0);
 
-        // Convert raw byte[][] batches to VideoFrame stream.
+        // Convert raw byte[] frames to VideoFrame stream.
         // Each byte[] is a MessagePack map with camelCase string keys from the JS client.
         // We parse manually because the project's MessagePack attributes are shims.
         return PushVideoInternal(
@@ -80,47 +78,37 @@ public class StreamHub(IServiceProvider services) : Hub
             clientStartOffset,
             ToVideoFrames(videoStream));
 
-        async IAsyncEnumerable<VideoFrame> ToVideoFrames(IAsyncEnumerable<byte[][]> source)
+        async IAsyncEnumerable<VideoFrame> ToVideoFrames(IAsyncEnumerable<byte[]> source)
         {
-            var batchCount = 0;
             var frameCount = 0;
             var lastWidth = width;
             var lastHeight = height;
-            await foreach (var batch in source) {
-                batchCount++;
-                if (batch.Length == 0)
+            await foreach (var frameBytes in source) {
+                if (frameBytes.Length == 0)
                     continue;
 
-                if (batchCount <= 3 || batchCount % 30 == 0)
-                    Log.LogInformation("PushVideo: batch #{BatchCount} with {Count} frames", batchCount, batch.Length);
-
-                foreach (var frameBytes in batch) {
-                    if (frameBytes.Length == 0)
-                        continue;
-
-                    var frame = DeserializeVideoFrame(frameBytes, codec, lastWidth, lastHeight);
-                    if (frame == null) {
-                        if (batchCount <= 3)
-                            Log.LogWarning("PushVideo: failed to deserialize frame in batch #{BatchCount}, bytes[0..8]={Hex}",
-                                batchCount,
-                                Convert.ToHexString(frameBytes.AsSpan(0, Math.Min(8, frameBytes.Length))));
-                        continue;
-                    }
-
-                    if (frame.IsKeyFrame) {
-                        lastWidth = frame.Width;
-                        lastHeight = frame.Height;
-                    }
-
-                    frameCount++;
-                    if (frameCount <= 3 || frameCount % 30 == 0 || frame.IsKeyFrame)
-                        Log.LogInformation("PushVideo frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
-                            frameCount, frame.Offset.TotalMilliseconds, frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Description?.Length ?? 0);
-
-                    yield return frame;
+                var frame = DeserializeVideoFrame(frameBytes, codec, lastWidth, lastHeight);
+                if (frame == null) {
+                    if (frameCount <= 3)
+                        Log.LogWarning("PushVideo: failed to deserialize frame #{FrameCount}, bytes[0..8]={Hex}",
+                            frameCount,
+                            Convert.ToHexString(frameBytes.AsSpan(0, Math.Min(8, frameBytes.Length))));
+                    continue;
                 }
+
+                if (frame.IsKeyFrame) {
+                    lastWidth = frame.Width;
+                    lastHeight = frame.Height;
+                }
+
+                frameCount++;
+                if (frameCount <= 3 || frameCount % 30 == 0 || frame.IsKeyFrame)
+                    Log.LogInformation("PushVideo frame #{Count}: Offset={Offset}ms, IsKey={IsKey}, DataLen={DataLen}, DescLen={DescLen}",
+                        frameCount, frame.Offset.TotalMilliseconds, frame.IsKeyFrame, frame.Data?.Length ?? 0, frame.Description?.Length ?? 0);
+
+                yield return frame;
             }
-            Log.LogInformation("PushVideo: stream ended after {BatchCount} batches, {FrameCount} total frames", batchCount, frameCount);
+            Log.LogInformation("PushVideo: stream ended after {FrameCount} total frames", frameCount);
         }
     }
 
@@ -134,7 +122,7 @@ public class StreamHub(IServiceProvider services) : Hub
     }
 
     // Video pull method for JS client — streams video frames via SignalR
-    public async IAsyncEnumerable<byte[][]> GetVideo(
+    public async IAsyncEnumerable<byte[]> GetVideo(
         string sessionToken,
         string streamId,
         double skipToMs)
@@ -176,7 +164,7 @@ public class StreamHub(IServiceProvider services) : Hub
             frameCount++;
             if (frameCount <= 30 || frameCount % 30 == 0)
                 Log.LogInformation("GetVideo sending frame #{Total}", frameCount);
-            yield return new[] { SerializeVideoFrame(frame) };
+            yield return SerializeVideoFrame(frame);
         }
 
         Log.LogInformation("GetVideo: stream ended after {Count} frames", frameCount);
