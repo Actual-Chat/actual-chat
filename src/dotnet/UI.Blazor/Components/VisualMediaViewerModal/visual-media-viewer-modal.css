@@ -154,6 +154,7 @@ swiper-container::part(button-prev) {
     @apply flex-y items-center gap-x-2;
     padding-left: calc(1rem + var(--safe-area-left));
     padding-right: calc(1rem + var(--safe-area-right));
+    padding-bottom: var(--safe-area-bottom);
     background: linear-gradient(
         to right,
         var(--black-60) 0%,
