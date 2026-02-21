@@ -240,13 +240,10 @@
   <!-- Android: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
     <AndroidUseInterpreter>$(UseInterpreter)</AndroidUseInterpreter>
-    <!-- This instructs trimmer to remove managed HTTP handler - don't use it with HttpClientHandler -->
-    <UseNativeHttpHandler>true</UseNativeHttpHandler>
-    <!-- <AndroidHttpClientHandlerType>Xamarin.Android.Net.AndroidClientHandler</AndroidHttpClientHandlerType>-->
-    <!-- Default one in .NET, supports HTTP/2: -->
-    <!-- <AndroidHttpClientHandlerType>System.Net.Http.SocketsHttpHandler, System.Net.Http</AndroidHttpClientHandlerType> -->
-    <!-- Used when unspecified: -->
-    <!-- <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType>-->
+    <!-- Use SocketsHttpHandler (managed) instead of AndroidMessageHandler (JNI-based).
+         SocketsHttpHandler supports HTTP/2 and HTTP/3, avoids JNI overhead,
+         and is more stable with CoreCLR on Android. -->
+    <UseNativeHttpHandler>false</UseNativeHttpHandler>
     <!-- This also ensures debug symbols are there -->
     <DebuggerSupport>true</DebuggerSupport>
   </PropertyGroup>

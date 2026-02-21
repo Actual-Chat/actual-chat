@@ -161,9 +161,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
             var clientBaseUrl = urlMapper.ApiBaseUrl.ToUri();
             o.HttpClientActions.Add(client => {
                 client.BaseAddress = clientBaseUrl;
-                client.DefaultRequestVersion = OSInfo.IsAndroid
-                    ? HttpVersion.Version20
-                    : HttpVersion.Version30;
+                client.DefaultRequestVersion = HttpVersion.Version30;
                 client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
                 // c.LogFor(typeof(AppStartup)).LogInformation(
                 //     "HTTP client '{Name}' configured @ {BaseAddress}", name, client.BaseAddress);
