@@ -49,7 +49,7 @@ export class VideoPlayer {
     private lastReportedBufferLow = true;
 
     // SignalR pull subscription
-    private pullSubscription: signalR.ISubscription<Uint8Array[]> | null = null;
+    private pullSubscription: signalR.ISubscription<Uint8Array> | null = null;
 
     // Frame pacing state
     private playbackStartTime = 0;     // wall-clock ms (performance.now) when first frame rendered
@@ -481,17 +481,15 @@ export class VideoPlayer {
         const sessionToken = SessionTokens.current;
         debugLog?.log(`startPull: stream=${streamId}, skipTo=${skipToMs}ms`);
 
-        const streamResult = connection.stream<Uint8Array[]>(
+        const streamResult = connection.stream<Uint8Array>(
             'GetVideo', sessionToken, streamId, skipToMs);
 
         // Start latency report timer now that we're receiving frames
         this.latencyReportTimer ??= setInterval(() => this.reportLatencyTick(), 10_000);
 
         this.pullSubscription = streamResult.subscribe({
-            next: (batch: Uint8Array[]) => {
-                for (const frameBytes of batch) {
-                    this.processReceivedFrame(frameBytes);
-                }
+            next: (frameBytes: Uint8Array) => {
+                this.processReceivedFrame(frameBytes);
             },
             error: (err: Error) => {
                 errorLog?.log('Pull stream error:', err);

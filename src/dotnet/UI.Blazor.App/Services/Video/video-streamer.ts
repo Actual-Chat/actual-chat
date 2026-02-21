@@ -106,10 +106,9 @@ export class VideoStream {
             debugLog?.log('Previous stream completed');
         }
 
-        // Subject sends byte[][] (each frame MessagePack-encoded as byte[])
-        // to match server-side PushVideo(... IAsyncEnumerable<byte[][]>)
-        let subject: signalR.Subject<Uint8Array[]> | null = null;
-        const chunksToSend = new Array<VideoStreamFrame>();
+        // Subject sends byte[] (each frame MessagePack-encoded)
+        // to match server-side PushVideo(... IAsyncEnumerable<byte[]>)
+        let subject: signalR.Subject<Uint8Array> | null = null;
 
         while (!this.isDisposed) {
             try {
@@ -118,7 +117,7 @@ export class VideoStream {
                     await VideoStreamer.ensureConnected();
 
                     infoLog?.log('Connected, calling PushVideo with codecSettings:', this.config.codecSettings?.length ?? 0, 'chars');
-                    subject = new signalR.Subject<Uint8Array[]>();
+                    subject = new signalR.Subject<Uint8Array>();
                     // Use PushVideo - simple forwarding, no processing
                     await VideoStreamer.connection!.send(
                         'PushVideo',
@@ -135,30 +134,15 @@ export class VideoStream {
                 }
 
                 while (VideoStreamer.isConnected && !this.isDisposed) {
-                    chunksToSend.length = 0;
-
-                    while (chunksToSend.length < 10) {
-                        const frame = this.frames.shift();
-                        if (frame) {
-                            chunksToSend.push(frame);
-                        } else if (this.isCompleted || chunksToSend.length > 0) {
-                            break;
-                        } else {
-                            // debugLog?.log('Waiting for frames...');
-                            await this.frameAdded.whenNext();
-                        }
-                    }
-
-                    if (chunksToSend.length > 0) {
-                        // Encode each frame as MessagePack bytes, send as byte[][]
-                        const encodedFrames = chunksToSend.map(f => encodeFrame(f));
-                        subject.next(encodedFrames);
-                    }
-
-                    if (this.isCompleted && this.frames.length === 0) {
+                    const frame = this.frames.shift();
+                    if (frame) {
+                        subject.next(encodeFrame(frame));
+                    } else if (this.isCompleted && this.frames.length === 0) {
                         infoLog?.log('Stream completed');
                         subject.complete();
                         this.isDisposed = true;
+                    } else {
+                        await this.frameAdded.whenNext();
                     }
                 }
                 debugLog?.log('Exited inner while loop, isConnected:', VideoStreamer.isConnected, 'isDisposed:', this.isDisposed);
