@@ -7,15 +7,16 @@ namespace ActualChat.App.Maui.Services;
 public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 {
     private readonly List<AudioFocusRestoreHandler> _restoreAudioFocusHandlers = new ();
-    private readonly AsyncLock _asyncLock = new();
     private AudioFocusHolder? _lastAudioFocusHolder;
+
+    protected readonly AsyncLock OperationLock = new();
 
     protected AppUIHub Hub { get; } = hub;
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     public override async Task<AudioFocusScope?> TryAcquire(AudioFocusRequester requester)
     {
-        using var releaser = await _asyncLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
         releaser.MarkLockedLocally();
 
         Log.LogInformation("Trying to acquire audio focus: {Kind}", requester.Kind);
@@ -47,7 +48,7 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 
     private async Task ReleaseAudioFocus(AudioFocusRequester requester)
     {
-        using var releaser = await _asyncLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
         releaser.MarkLockedLocally();
 
         if (_lastAudioFocusHolder is null)

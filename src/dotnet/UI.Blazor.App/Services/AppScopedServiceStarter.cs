@@ -1,10 +1,9 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AppScopedServiceStarter
+public sealed class AppScopedServiceStarter
 {
     private volatile string? _sessionHash;
 
@@ -107,9 +106,6 @@ public class AppScopedServiceStarter
         }
     }
 
-    protected virtual Task OnPrepareFirstRender()
-        => Task.CompletedTask;
-
     public async Task AfterFirstRender(CancellationToken cancellationToken)
     {
         // Starts in Blazor dispatcher
@@ -127,6 +123,7 @@ public class AppScopedServiceStarter
             Hub.Services.GetRequiredService<AppPresenceReporter>().Start();
             Hub.Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Hub.Services.GetRequiredService<BackgroundActivityUI>().Start();
+            _ = Hub.AudioFocusUI.WarmUp(); // Pre-initialize audio HAL for faster first recording
             _ = Hub.TuneUI; // Touch. Auto-starts on construction
             _ = Hub.AudioWidget; // Touch. Auto-starts on construction
             Hub.Services.GetRequiredService<ThrottledTranslations>().Start();
@@ -151,9 +148,6 @@ public class AppScopedServiceStarter
             throw;
         }
     }
-
-    protected virtual Task OnAfterFirstRender(CancellationToken cancellationToken)
-        => Task.CompletedTask;
 
     // Private methods
 
