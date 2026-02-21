@@ -208,6 +208,11 @@
     <UseInterpreter Condition="'$(Configuration)' == 'Release'">false</UseInterpreter>
   </PropertyGroup>
 
+  <!-- R2R exclusions (applies to both Android and Windows Release builds) -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishReadyToRunExclude Include="PhoneNumbers.dll" />
+  </ItemGroup>
+
   <!-- Trimming -->
   <ItemGroup>
     <!--
@@ -435,6 +440,7 @@
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
     <!-- <PublishSingleFile>true</PublishSingleFile>-->
     <!-- <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>-->
     <SelfContained>true</SelfContained>
