@@ -18,6 +18,7 @@ import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Log } from 'logging';
+import { unselect } from 'keyboard';
 import { Tune, TuneUI } from '../../Services/TuneUI/tune-ui';
 
 const {  logScope, debugLog } = Log.get('MenuHost');
@@ -168,6 +169,8 @@ export class MenuHost implements Disposable {
     }
 
     private show(menu: Menu): void {
+        if (!menu.isHoverMenu)
+            unselect();
         debugLog?.log('show:', menu)
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!menu)
