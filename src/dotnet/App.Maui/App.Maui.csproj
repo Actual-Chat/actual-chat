@@ -53,6 +53,17 @@
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
+  <!-- Runtime settings (intact if it's CoreCLR, i.e. on Android & Windows) -->
+  <PropertyGroup>
+    <!-- Reduce work at startup -->
+    <TieredCompilation>true</TieredCompilation>
+    <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+    <TieredPGO>false</TieredPGO>
+    <!-- GC settings, Server GC adds ~ 80ms to startup -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
+
   <!-- Trimming & feature switches -->
   <PropertyGroup>
     <!-- Reduces WASM size + we assume this mode is used on the client -->
@@ -316,6 +327,7 @@
     <UseMonoRuntime>false</UseMonoRuntime>
     <RunAOTCompilation>false</RunAOTCompilation>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
   </PropertyGroup>
 
   <!-- Android: Profile-guided AOT profiles -->
