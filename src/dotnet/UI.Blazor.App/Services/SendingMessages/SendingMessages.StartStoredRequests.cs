@@ -5,7 +5,7 @@ partial class SendingMessages
     private async Task StartStoredPostRequests()
     {
         DebugLog?.LogDebug("StartStoredPostRequests");
-        CancellationToken cancellationToken = CancellationToken.None;
+        var cancellationToken = CancellationToken.None;
         var entries = await _requestsRepo.GetStored(cancellationToken).ConfigureAwait(false);
         var chatIds = new HashSet<ChatId>();
         foreach (var (uuid, entry) in entries) {
