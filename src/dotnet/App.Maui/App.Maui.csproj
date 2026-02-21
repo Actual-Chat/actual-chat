@@ -553,6 +553,10 @@
     <None Include="**\*.Windows.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Windows\**\*.cs" />
     <None Include="**\Windows\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <!-- webrtc-apm is Windows-only; exclude from all other platforms -->
+    <Content Remove="**\webrtc-apm.*" />
+    <NativeReference Remove="**\webrtc-apm.*" />
+    <AndroidNativeLibrary Remove="**\webrtc-apm.*;**\libwebrtc-apm.*" />
   </ItemGroup>
   <!-- Windows -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
