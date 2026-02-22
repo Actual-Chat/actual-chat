@@ -47,9 +47,6 @@ public partial class CustomBlazorWebViewHandler
         settings.EnableSmoothTransition();
 #pragma warning restore CS0618
 
-        // AndroidJSInterface methods will be available for invocation in js via 'window.Android' object.
-        webView.AddJavascriptInterface(new AndroidJSInterface(webView), "Android");
-
         var services = MauiContext!.Services;
         _androidWebViewClient = new AndroidWebViewClient(
             webView.WebViewClient,

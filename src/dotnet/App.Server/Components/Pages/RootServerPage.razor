@@ -28,7 +28,6 @@
     var hasRecaptchaConfigured = !UserSettings.GoogleRecaptchaSiteKey.IsNullOrEmpty();
     var recaptchaKey = UserSettings.GoogleRecaptchaSiteKey;
     var recaptchaNonce = nonceGenerator.Next(12);
-    CaptchaUI.Initialize(UserSettings.GoogleRecaptchaSiteKey);
 
     // Build custom import map with WASM
     var defaultImportMap = HttpContext.GetEndpoint()?.Metadata.GetMetadata<ImportMapDefinition>();
@@ -182,9 +181,9 @@
                 await window.App.whenBundleReady;
                 return true;
             },
-            browserInit: async function(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef) {
+            browserInit: async function(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef, clipboardInteropRef) {
                 await window.App.whenBundleReady;
-                await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef);
+                await window.ui.BrowserInit.init(hostKind, appKind, apiVersion, baseUri, supportedHosts, sessionHash, browserInfoBackendRef, clipboardInteropRef);
             },
         };
         window.App.whenBlazorReady = new Promise((resolve, _) => {

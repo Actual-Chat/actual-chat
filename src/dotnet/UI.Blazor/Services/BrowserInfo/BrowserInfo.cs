@@ -11,7 +11,8 @@ public class BrowserInfo : UIServiceBase<UIHub>, IBrowserInfoBackend
     protected readonly AsyncTaskMethodBuilder WhenWasmReadySource = AsyncTaskMethodBuilderExt.New();
     protected readonly object Lock = new();
 
-    public DotNetObjectReference<IBrowserInfoBackend> BlazorRef { get; private set; }
+    public DotNetObjectReference<IBrowserInfoBackend> BlazorRef { get; }
+    public DotNetObjectReference<IClipboardHandlers>? ClipboardHandlersRef { get; protected set; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ScreenSize> ScreenSize => _screenSize;
     public IState<bool> IsHoverable => _isHoverable;

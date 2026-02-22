@@ -7,26 +7,21 @@ namespace ActualChat.Users.Email;
 
 public interface IEmailSender
 {
-    Task Send(
-        string name,
-        string email,
-        string subject,
-        string html,
-        CancellationToken cancellationToken);
+    Task Send(string name, string email, string subject, string html, CancellationToken cancellationToken);
 }
 
 public sealed class EmailSender(IServiceProvider services) : IEmailSender
 {
-    private UsersSettings? _settings;
-    private UsersSettings Settings => _settings ??= services.GetRequiredService<UsersSettings>();
+    private UsersSettings Settings => field ??= services.GetRequiredService<UsersSettings>();
+    private ILogger Log { get; } = services.LogFor<EmailSender>();
 
-    public async Task Send(
-        string name,
-        string email,
-        string subject,
-        string html,
-        CancellationToken cancellationToken)
+    public async Task Send(string name, string email, string subject, string html, CancellationToken cancellationToken)
     {
+        if (!Settings.IsSmtpEnabled) {
+            Log.LogInformation("Email to {Email}: {Subject}", email, subject);
+            return;
+        }
+
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress("", Settings.SmtpFrom));
         message.To.Add(new MailboxAddress(name, email));

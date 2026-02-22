@@ -1,7 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using ActualLab.Internal;
 
 namespace ActualChat.App.Maui;
 
@@ -26,7 +25,9 @@ public class AppServicesAccessor
     private static ILogger Log // Otherwise, Rider assumes we're referencing it from elsewhere
         => _log ??= StaticLog.Factory.CreateLogger<AppServicesAccessor>();
 
+#pragma warning disable CA1044 // Properties should not be write only
     public static IServiceProvider BlazorAppServices {
+#pragma warning restore CA1044
         set {
             lock (AppServicesLock) {
                 if (value == null)
@@ -97,6 +98,12 @@ public class AppServicesAccessor
         }
         return WhenBlazorAppServicesReadyAsync(whenRendered, cancellationToken);
     }
+
+    // DispatchToMainThread
+
+
+
+    // DispatchToBlazor
 
     public static Task DispatchToBlazor(Action<IServiceProvider> workItem, string name, bool whenRendered = false)
         => DispatchToBlazor(c => _ = ForegroundTask.Run(() => {
