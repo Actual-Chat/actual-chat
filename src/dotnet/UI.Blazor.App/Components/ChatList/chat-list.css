@@ -118,6 +118,9 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
     @apply flex-1;
     @apply p-2;
 }
+.chat-list.chat-list-all .c-last {
+    padding-bottom: var(--safe-area-bottom);
+}
 .chat-list.chat-list-skeleton {
     @apply flex-1;
     @apply px-2;
