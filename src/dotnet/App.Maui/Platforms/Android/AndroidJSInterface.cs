@@ -34,10 +34,11 @@ public class AndroidJSInterface : JObject
         "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
         Justification = "All members of AndroidJSInterface are preserved with DynamicDependencyAttribute on constructor")]
     public void WriteTextToClipboard(string? newClipText)
-    {
-        var clipboard = (ClipboardManager)_webView.Context!.GetSystemService(Context.ClipboardService)!;
-        clipboard.Text = newClipText;
-    }
+        // ClipboardManager must be accessed on the main thread
+        => _webView.Post(() => {
+            var clipboard = (ClipboardManager)_webView.Context!.GetSystemService(Context.ClipboardService)!;
+            clipboard.Text = newClipText;
+        });
 
     [JavascriptInterface]
     [Export("readTextFromClipboard")]
@@ -46,7 +47,17 @@ public class AndroidJSInterface : JObject
         Justification = "All members of AndroidJSInterface are preserved with DynamicDependencyAttribute on constructor")]
     public string? ReadTextFromClipboard()
     {
-        var clipboard = (ClipboardManager)_webView.Context!.GetSystemService(Context.ClipboardService)!;
-        return clipboard.Text;
+        // ClipboardManager must be accessed on the main thread
+        var resultSource = new TaskCompletionSource<string?>();
+        _webView.Post(() => {
+            try {
+                var clipboard = (ClipboardManager)_webView.Context!.GetSystemService(Context.ClipboardService)!;
+                resultSource.SetResult(clipboard.Text);
+            }
+            catch (Exception e) {
+                resultSource.SetException(e);
+            }
+        });
+        return resultSource.Task.GetAwaiter().GetResult();
     }
 }
