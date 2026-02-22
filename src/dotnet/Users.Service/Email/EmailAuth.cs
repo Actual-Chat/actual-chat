@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text;
 using ActualChat.Hashing;
+using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.EntityFramework;
@@ -17,6 +18,7 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private static readonly string TotpFormat = new('0', Constants.Auth.Email.TotpLength);
     private const int TestAgentTotp = 111111;
 
+    private HostInfo HostInfo { get; } = services.HostInfo();
     private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
     private IEmailSender EmailSender { get; } = services.GetRequiredService<IEmailSender>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
@@ -26,16 +28,12 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
     // [ComputeMethod]
-    public virtual Task<string> ValidateCanSendToEmail(Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
-    {
-        // Basic checks: email must be set and format must be valid
-        if (email is null)
-            return Task.FromResult("Email address is not specified.");
-        var value = email.Value;
-        if (!System.Net.Mail.MailAddress.TryCreate(value, out _))
-            return Task.FromResult("Email address looks invalid.");
-        return Task.FromResult(string.Empty);
-    }
+    public virtual Task<string> ValidateCanSendToEmail(
+        Session session, ActualChat.Email email, TotpPurpose purpose, CancellationToken cancellationToken)
+        => Task.FromResult(
+            System.Net.Mail.MailAddress.TryCreate(email.Value, out _)
+                ? string.Empty
+                : "Invalid email address.");
 
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(EmailAuth_SendTotp command, CancellationToken cancellationToken)
@@ -64,6 +62,15 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var nextSendAt = NextSendAt();
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
+        if (!HostInfo.IsProductionInstance)
+            Log.LogWarning("!!! Email verification code for {Email}: {Code}", email, sTotp);
+
+        var subject = purpose switch {
+            TotpPurpose.SignInEmail => $"{CoreConstants.AppName}: sign-in code",
+            TotpPurpose.VerifyEmail => $"{CoreConstants.AppName}: email verification",
+            _ => $"{CoreConstants.AppName}: code",
+        };
+
         var parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
             { nameof(EmailVerification.Token), sTotp },
         };
@@ -72,18 +79,13 @@ public class EmailAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var mjml = await blazorRenderer.RenderComponent<EmailVerification>(parameters).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();
         var mjmlOptions = new MjmlOptions { Beautify = false };
-        var renderResult = mjmlRenderer.Render(mjml, mjmlOptions);
-        var subject = purpose switch {
-            TotpPurpose.SignInEmail => $"{CoreConstants.AppName}: sign-in code",
-            TotpPurpose.VerifyEmail => $"{CoreConstants.AppName}: email verification",
-            _ => $"{CoreConstants.AppName}: code",
-        };
-        await EmailSender.Send(
-                "",
-                email,
-                subject,
-                renderResult.Html,
-                cancellationToken)
+        var renderResult = await mjmlRenderer
+            .RenderAsync(mjml, mjmlOptions, cancellationToken)
+            .ConfigureAwait(false);
+        var html = renderResult.Html;
+
+        await EmailSender
+            .Send("", email, subject, html, cancellationToken)
             .ConfigureAwait(false);
         return nextSendAt;
 

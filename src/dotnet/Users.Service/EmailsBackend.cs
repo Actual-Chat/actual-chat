@@ -53,14 +53,12 @@ public class EmailsBackend(IServiceProvider services) : IEmailsBackend
         var mjml = await renderer.RenderComponent<Digest>(parameters).ConfigureAwait(false);
         var mjmlRenderer = new MjmlRenderer();
         var mjmlOptions = new MjmlOptions { Beautify = false };
-        var renderResult = await mjmlRenderer.RenderAsync(mjml, mjmlOptions, cancellationToken).ConfigureAwait(false);
+        var renderResult = await mjmlRenderer
+            .RenderAsync(mjml, mjmlOptions, cancellationToken)
+            .ConfigureAwait(false);
 
-        await EmailSender.Send(
-                "",
-                account.Email,
-                $"{CoreConstants.AppName}: digest",
-                renderResult.Html,
-                cancellationToken)
+        await EmailSender
+            .Send("", account.Email, $"{CoreConstants.AppName}: digest", renderResult.Html, cancellationToken)
             .ConfigureAwait(false);
 
         diagLog?.LogInformation("<- OnSendDigest. Completed");
