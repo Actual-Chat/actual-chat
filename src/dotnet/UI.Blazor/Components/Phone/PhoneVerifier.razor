@@ -34,7 +34,7 @@
             <Button Class="btn-outline c-verify-btn" IsDisabled="@isDisabled" Click="OnVerifyPhoneClick">@buttonText</Button>
             <p class="c-description">@description</p>
         </div>
-        @if (CaptchaUI.IsConfigured) {
+        @if (CaptchaUI.IsAvailable) {
             <div class="c-recaptcha-info">
                 This site is protected by reCAPTCHA and the Google
                 <a class="recaptcha-link" href="https://policies.google.com/privacy">Privacy Policy</a> and
@@ -58,7 +58,7 @@
     [Parameter] public EventCallback Verified { get; set; }
 
     protected override Task OnInitializedAsync()
-        => CaptchaUI.EnsureInitialized().AsTask();
+        => CaptchaUI.WhenReady;
 
     protected override void OnParametersSet() {
         _validationState = ValidationState.None;
@@ -72,7 +72,7 @@
             return;
         }
 
-        if (CaptchaUI.IsConfigured) {
+        if (CaptchaUI.IsAvailable) {
             _validationState = ValidationState.Validating;
             StateHasChanged();
             try {
