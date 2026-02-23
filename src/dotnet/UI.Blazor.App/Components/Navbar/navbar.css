@@ -82,8 +82,7 @@ body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-
 .navbar-group {
     @apply flex-1 flex-y gap-y-1;
     @apply overflow-auto custom-scrollbar;
-    /* Removed will-change: transform to reduce compositor layer count on Android WebView,
-       where nested compositor layers cause avatar rendering corruption (black circles) */
+    will-change: transform; /* Ensures its own composition layer */
 }
 .navbar-group > .c-container {
     @apply flex-1 flex-y;
