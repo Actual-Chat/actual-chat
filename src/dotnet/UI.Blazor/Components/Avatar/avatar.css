@@ -50,6 +50,7 @@
 }
 .avatar-circle > .c-content {
     @apply overflow-hidden;
+    isolation: isolate; /* Rendering perf. */
 }
 .avatar-circle:not(.avatar-blurred) > .c-content {
     @apply relative;

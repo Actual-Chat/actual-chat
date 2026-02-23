@@ -12,6 +12,7 @@
 .pic-rounded {
     @apply overflow-hidden;
     @apply rounded-full;
+    isolation: isolate; /* Rendering perf. */
 }
 .pic-blurred {
     @apply opacity-70;
