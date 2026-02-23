@@ -1,4 +1,5 @@
 import { Log } from 'logging';
+import { SvgCache } from '../../Components/Avatar/svg-cache';
 
 const { infoLog } = Log.get('DebugUI');
 
@@ -71,6 +72,11 @@ export class DebugUI {
     public static showIncomingShareModal(): void {
         void this.backendRef.invokeMethodAsync('ShowIncomingShareModal');
     };
+
+    public static clearSvgCache(): void {
+        SvgCache.clear();
+        infoLog?.log('clearSvgCache: done');
+    }
 
     public static showSafeAreas(show: boolean | null | undefined): void {
         const cl = document.body.classList;
