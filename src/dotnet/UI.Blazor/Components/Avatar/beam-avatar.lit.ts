@@ -9,6 +9,10 @@ let id = 0;
 
 @customElement('beam-avatar')
 export class BeamAvatar extends LitElement {
+    protected createRenderRoot() {
+        return this; // Use light DOM to avoid Shadow DOM compositing layers on Android WebView
+    }
+
     @property() key: string;
     @property() square = false;
     @property() colors: string[] = ['FFDBA0', 'BBBEFF', '9294E1', 'FF9BC0', '0F2FE8'];
