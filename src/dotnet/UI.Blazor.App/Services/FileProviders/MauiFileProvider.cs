@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using ActualLab.IO;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -43,13 +44,13 @@ public partial class MauiFileProvider : IFileProvider
     public Task WhenFileStreamReady()
         => Task.CompletedTask;
 
-    public IUploadSource GetUploadSource()
+    public UploadSource GetUploadSource()
     {
         var metadata = new UploadSourceMetadata(
             Metadata.FileType,
             Metadata.Length,
             Metadata.FileName);
-        return new StreamUploadSource(metadata, GetFile);
+        return new UploadSource(metadata, new StreamUploadSource(GetFile));
 
         async Task<Stream> GetFile()
         {

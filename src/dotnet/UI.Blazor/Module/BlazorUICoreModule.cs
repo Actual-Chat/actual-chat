@@ -108,6 +108,11 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
         services.AddScoped(_ => new BlazorAppLifecycle());
 
+        // Uploads
+        services.AddScoped<IFileUploader, WebSourceUploader>();
+        services.AddScoped<IFileUploader, StreamUploader>();
+        services.AddScoped<FileUploader>();
+
         // Fusion-based UI services
         if (hostKind == HostKind.Server)
             fusion.AddService<Temporals, FakeTemporals>(ServiceLifetime.Scoped); // No temporals on the server-side

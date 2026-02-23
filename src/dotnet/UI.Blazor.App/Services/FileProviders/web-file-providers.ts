@@ -5,7 +5,7 @@ import { PromiseSource } from 'promises';
 import { v4 as uuidv4 } from 'uuid';
 import { NullableJSObjectReference } from 'UI.Blazor/JSRuntime/nullable-js-object-reference';
 import { AttachmentWebFilePickerRegistry } from '../../Components/ChatMessageEditor/attachment-web-file-picker';
-import { ChunkedFileUpload } from '../../../UI.Blazor/Components/FileUpload/chunked-file-upload';
+import type { IUploadStreamSource } from '../../../UI.Blazor/Services/FileUploads/web-uploads';
 
 const { errorLog } = Log.get('WebFileProvider');
 
@@ -77,11 +77,10 @@ export class WebFileProviders
     }
 }
 
-export class WebFileProvider {
+export class WebFileProvider implements IUploadStreamSource {
     private readonly userConsentRequest: GetFilePermissionsRequest | null;
     private readonly whenUserConsentGrantedSource: PromiseSource<boolean>;
     private previewUrl: string | null = null;
-    private fileUpload: ChunkedFileUpload | null;
     private userConsentGranted : boolean | null = null;
     private resolvedFile: Blob | null;
 
@@ -125,7 +124,7 @@ export class WebFileProvider {
 
     public createPreviewUrl() : string
     {
-        this.previewUrl ??= URL.createObjectURL(this.GetFile());
+        this.previewUrl ??= URL.createObjectURL(this.getBlob());
         return this.previewUrl;
     }
 
@@ -143,27 +142,15 @@ export class WebFileProvider {
         return fileHandleDbKey;
     }
 
-    public start(uploadId: string, blazorRef: DotNet.DotNetObject)
+    public getBlob(): Blob
     {
-        if (this.fileUpload)
-            throw new Error('File upload already started');
-
-        this.fileUpload = ChunkedFileUpload.startWithReporter(
-            uploadId, this.GetFile(), blazorRef, () => this.fileUpload = null);
-    }
-
-    public cancel()
-    {
-        if (!this.fileUpload)
-            return;
-
-        this.fileUpload.cancel();
-        this.fileUpload = null;
+        if (!this.userConsentGranted)
+            throw new Error('User consent not granted yet');
+        return this.resolvedFile!;
     }
 
     public async clearForRemoving() : Promise<void>
     {
-        this.cancel();
         this.revokePreviewUrl();
         if (this.userConsentRequest)
             this.userConsentRequest.cancel();
@@ -186,12 +173,5 @@ export class WebFileProvider {
             return;
         URL.revokeObjectURL(this.previewUrl);
         this.previewUrl = null;
-    }
-
-    private GetFile() : Blob
-    {
-        if (!this.userConsentGranted)
-            throw new Error('User consent not granted yet');
-        return this.resolvedFile!;
     }
 }

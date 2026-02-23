@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public enum UploadSessionState
@@ -235,7 +237,7 @@ public class UploadSession
         }
     }
 
-    private IUploadSource? GetTranscodedSource()
+    private UploadSource? GetTranscodedSource()
         => null;
 }
 

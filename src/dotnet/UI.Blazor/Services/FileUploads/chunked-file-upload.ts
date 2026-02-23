@@ -1,8 +1,9 @@
 import { Log } from 'logging';
 import { delayAsync, OperationCancelledError, PromiseSource } from 'promises';
-import { BrowserInit } from '../../Services/BrowserInit/browser-init';
-import { SessionTokens } from '../../Services/Security/session-tokens';
+import { BrowserInit } from '../BrowserInit/browser-init';
+import { SessionTokens } from '../Security/session-tokens';
 import { Connectivity } from 'connectivity';
+import { IFileUpload, IUploadStreamSource } from './web-uploads';
 
 const { debugLog, warnLog, errorLog } = Log.get('FileUpload');
 
@@ -34,7 +35,7 @@ export class FileUploadProgressReporter {
     }
 }
 
-export class ChunkedFileUpload {
+export class ChunkedFileUpload implements IFileUpload {
     private readonly whenCompletedSource: PromiseSource<void> = new PromiseSource<void>();
     private readonly uploadUrl: string;
     private readonly abortController: AbortController = new AbortController();
@@ -53,10 +54,11 @@ export class ChunkedFileUpload {
 
     public static startWithReporter(
         uploadId: string,
-        blob: Blob,
+        source: IUploadStreamSource,
         blazorRef: DotNet.DotNetObject,
         onCompleted?: () => void,
     ): ChunkedFileUpload {
+        const blob = source.getBlob();
         const reporter = new FileUploadProgressReporter(blazorRef);
         const upload = new ChunkedFileUpload(uploadId, blob, pct => void reporter.reportProgress(pct));
         upload.whenCompleted.then(() => {

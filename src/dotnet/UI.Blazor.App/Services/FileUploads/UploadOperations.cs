@@ -1,4 +1,5 @@
 using ActualChat.Media;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -7,8 +8,8 @@ public class UploadOperations(AppUIHub hub)
     private static readonly TimeSpan MonitorServerProcessingTimeout = TimeSpan.FromMinutes(15);
 
     private readonly FileUploadQueue _uploadQueue = new ();
-    private readonly IReadOnlyList<IFileUploader> _uploaders
-        = hub.Services.GetRequiredService<IEnumerable<IFileUploader>>().ToList();
+    private readonly FileUploader _uploader
+        = hub.Services.GetRequiredService<FileUploader>();
 
     public Session Session => hub.Session;
     public ICommander Commander => hub.Commander;
@@ -33,7 +34,7 @@ public class UploadOperations(AppUIHub hub)
     }
 
     public async Task UploadData(
-        IUploadSource source,
+        UploadSource source,
         UploadSessionSnapshotAccessor snapshotAccessor,
         IProgress<double>? progress = null,
         CancellationToken cancellationToken = default)
@@ -52,17 +53,13 @@ public class UploadOperations(AppUIHub hub)
         {
             try {
                 var uploadId = await GetOrRegisterUpload(source, snapshotAccessor, cancellationToken).ConfigureAwait(false);
-                await GetUploader().Upload(source, uploadId, progress, cancellationToken).ConfigureAwait(false);
+                await _uploader.Upload(source.StreamSource, uploadId, progress, cancellationToken).ConfigureAwait(false);
             }
             catch (UploadNotFoundException) {
                 await snapshotAccessor.Update(s => s with { UploadId = null }, cancellationToken).ConfigureAwait(false);
                 throw;
             }
         }
-
-        IFileUploader GetUploader()
-            => _uploaders.FirstOrDefault(u => u.CanUpload(source))
-                ?? throw StandardError.Internal($"No uploader for {source.GetType().Name}");
     }
 
     public async Task StartServerProcessing(UploadSessionSnapshot snapshot, CancellationToken cancellationToken = default)
@@ -126,7 +123,7 @@ public class UploadOperations(AppUIHub hub)
         => await Commander.Call(new Uploads_Remove(Session, uploadId), cancellationToken).ConfigureAwait(false);
 
     private async Task<UploadId> GetOrRegisterUpload(
-        IUploadSource source,
+        UploadSource source,
         UploadSessionSnapshotAccessor snapshotAccessor,
         CancellationToken cancellationToken)
     {

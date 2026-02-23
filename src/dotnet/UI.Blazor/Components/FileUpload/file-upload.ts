@@ -1,15 +1,12 @@
 import { Disposable } from 'disposable';
 import { filter, fromEvent, Subject, takeUntil } from 'rxjs';
-import { Log } from 'logging';
-import { ChunkedFileUpload } from './chunked-file-upload';
-
-const { errorLog } = Log.get('FileUpload');
+import { IUploadStreamSource } from '../../Services/FileUploads/web-uploads';
 
 export interface Options {
     maxSize?: number;
 }
 
-export class FileUpload implements Disposable {
+export class FileUpload implements Disposable, IUploadStreamSource {
     private disposed$: Subject<void> = new Subject<void>();
     private pendingFile: File | null = null;
 
@@ -40,14 +37,11 @@ export class FileUpload implements Disposable {
             });
     }
 
-    public startUpload(uploadId: string, blazorRef: DotNet.DotNetObject): void {
+    getBlob(): Blob {
         const file = this.pendingFile;
-        if (!file) {
-            errorLog?.log('startUpload called but no pending file');
-            return;
-        }
-
-        ChunkedFileUpload.startWithReporter(uploadId, file, blazorRef, () => { this.clear() } );
+        if (!file)
+            throw new Error('FileUpload has no selected file.');
+        return file;
     }
 
     public clear()

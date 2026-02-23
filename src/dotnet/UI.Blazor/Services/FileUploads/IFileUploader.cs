@@ -1,11 +1,11 @@
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.UI.Blazor.Services;
 
 public interface IFileUploader
 {
-    bool CanUpload(IUploadSource source);
+    bool CanUpload(IUploadStreamSource source);
 
     Task Upload(
-        IUploadSource source,
+        IUploadStreamSource source,
         UploadId uploadId,
         IProgress<double>? progress,
         CancellationToken ct);

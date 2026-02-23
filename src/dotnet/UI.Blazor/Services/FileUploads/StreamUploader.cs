@@ -1,13 +1,13 @@
 using ActualChat.UI.Services;
 
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.UI.Blazor.Services;
 
 public class StreamUploader(ChunkedFileUploader chunkedUploader) : IFileUploader
 {
-    public bool CanUpload(IUploadSource source) => source is StreamUploadSource;
+    public bool CanUpload(IUploadStreamSource source) => source is StreamUploadSource;
 
     public async Task Upload(
-        IUploadSource source,
+        IUploadStreamSource source,
         UploadId uploadId,
         IProgress<double>? progress,
         CancellationToken ct)
