@@ -21,7 +21,7 @@ public class AndroidJSInterface : JObject
         "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
         Justification = "All members of AndroidJSInterface are preserved with DynamicDependencyAttribute on constructor")]
     public void OnPostMessage(string data)
-        => _ = MainThread.InvokeOnMainThreadAsync(() => {
+        => _ = DispatchToMainThread(() => {
             MessageReceived?.Invoke(data);
         });
 }

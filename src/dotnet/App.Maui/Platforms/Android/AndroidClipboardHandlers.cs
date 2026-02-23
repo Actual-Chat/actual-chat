@@ -8,7 +8,7 @@ public class AndroidClipboardHandlers : IClipboardHandlers
 {
     [JSInvokable]
     public Task WriteText(string? text)
-        => MainThread.InvokeOnMainThreadAsync(() => {
+        => DispatchToMainThread(() => {
             var clipboard = (ClipboardManager)Platform.AppContext.GetSystemService(Context.ClipboardService)!;
             var clip = ClipData.NewPlainText("text", text ?? "");
             clipboard.PrimaryClip = clip;
@@ -16,7 +16,7 @@ public class AndroidClipboardHandlers : IClipboardHandlers
 
     [JSInvokable]
     public Task<string?> ReadText()
-        => MainThread.InvokeOnMainThreadAsync(() => {
+        => DispatchToMainThread(() => {
             var clipboard = (ClipboardManager)Platform.AppContext.GetSystemService(Context.ClipboardService)!;
             return clipboard.PrimaryClip?.GetItemAt(0)?.Text;
         });

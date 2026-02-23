@@ -11,7 +11,7 @@ public class MauiReloadUI(IServiceProvider services) : ReloadUI(services)
     public override void Reload(bool clearCaches = false, bool clearLocalSettings = false)
     {
         Log.LogInformation("Reload requested");
-        _ = MainThreadExt.InvokeLaterAsync(async () => {
+        _ = DispatchToMainThread(async () => {
             Log.LogInformation("Reloading...");
             try {
                 await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true);
@@ -21,7 +21,7 @@ public class MauiReloadUI(IServiceProvider services) : ReloadUI(services)
                 Log.LogError(e, "Reload failed, terminating");
                 Quit(); // We can't do much in this case
             }
-        });
+        }, allowInline: false);
     }
 
     public override void Quit()
