@@ -21,7 +21,7 @@ public static class MainThreadTracker
         while (Stopwatch.GetElapsedTime(_startTimestamp).TotalSeconds < 30) {
             _invokeTimestamp = Stopwatch.GetTimestamp();
             Log.LogInformation("About to schedule MainThread tracker task");
-            await MainThread.InvokeOnMainThreadAsync(RunOnMainThread).ConfigureAwait(false);
+            await DispatchToMainThread(RunOnMainThread).ConfigureAwait(false);
             await Task.Delay(20).ConfigureAwait(false);
         }
     }

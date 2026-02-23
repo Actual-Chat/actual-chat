@@ -59,7 +59,7 @@ public class MauiThemeHandler
         if (colors.IsNullOrEmpty())
             return;
 
-        MainThread.BeginInvokeOnMainThread(() => {
+        BeginDispatchToMainThread(() => {
             if (OrdinalEquals(colors, _appliedColors))
                 return;
 

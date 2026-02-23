@@ -9,7 +9,7 @@ public class AndroidHistoryExitHandler : IHistoryExitHandler
     {
         var currentActivity = Platform.CurrentActivity;
         if (currentActivity is MainActivity)
-            MainThread.BeginInvokeOnMainThread(() => {
+            BeginDispatchToMainThread(() => {
                 if (currentActivity.IsTaskRoot)
                     currentActivity.MoveTaskToBack(true);
                 else

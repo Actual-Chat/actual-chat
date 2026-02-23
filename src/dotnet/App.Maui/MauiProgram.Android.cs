@@ -56,7 +56,7 @@ public static partial class MauiProgram
                 Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameForeground");
                 SetBackgroundState(false);
                 if (MainPage.Current is { Content: null } mainPage)
-                    MainThread.BeginInvokeOnMainThread(() => mainPage.RecreateWebView());
+                    BeginDispatchToMainThread(() => mainPage.RecreateWebView());
             });
             android.OnStop(_ => {
                 Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameBackground");

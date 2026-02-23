@@ -19,7 +19,7 @@ public class MauiKeepAwakeUI(UIHub hub) : KeepAwakeUI(hub)
     private ValueTask SetKeepDisplayAwake(bool value)
         => OperatingSystem.IsAndroid()
             ? base.SetKeepAwake(value)
-            : MainThread.InvokeOnMainThreadAsync(() => SetKeepDisplayAwakeInternal(value))
+            : DispatchToMainThread(() => SetKeepDisplayAwakeInternal(value))
                 .ToValueTask();
 
 #if WINDOWS
