@@ -1,6 +1,6 @@
 type CacheListener = (url: string) => void;
 
-const BITMAP_THRESHOLD = 128;
+const BITMAP_THRESHOLD = 144;
 
 export class SvgCache {
     private static readonly cache = new Map<string, string>();
