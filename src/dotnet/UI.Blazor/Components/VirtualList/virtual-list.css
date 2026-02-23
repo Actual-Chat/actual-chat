@@ -88,7 +88,11 @@ body.narrow .list-view-layout:has(.chat-activity-panel.listening) .virtual-list 
     @apply flex flex-y;
     @apply min-h-6;
     overflow-anchor: none;
-    content-visibility: auto; /* Skip rendering off-screen items */
+    /* Skip rendering off-screen items.
+       Uncomment if you see any issues with painting of list items or their parts,
+       such as completely black avatars, this option will exacerbate them.
+    content-visibility: auto
+    */
 }
 
 .virtual-list > .c-wrapper > ul.c-virtual-container .item {
