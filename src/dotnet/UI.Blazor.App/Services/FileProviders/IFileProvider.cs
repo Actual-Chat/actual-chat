@@ -1,4 +1,6 @@
-﻿namespace ActualChat.UI.Blazor.App.Services;
+﻿using ActualChat.UI.Blazor.Services;
+
+namespace ActualChat.UI.Blazor.App.Services;
 
 #pragma warning disable MsgPack005 // Union attr required — handled by custom formatter, Maui subtype unavailable in CI
 
@@ -13,7 +15,7 @@ public partial interface IFileProvider
     Task ClearForRemoving();
     Task<string> GetPreviewUrl();
     Task WhenFileStreamReady();
-    IUploadSource GetUploadSource();
+    UploadSource GetUploadSource();
 }
 
 // NOTE(DF): This is a workaround for the following issue:

@@ -2,6 +2,7 @@ using ActualChat.Media;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -94,13 +95,13 @@ public class UploadSessionFlowTest(ChatCollection.AppHostFixture fixture, ITestO
 
         public Task WhenFileStreamReady() => Task.CompletedTask;
 
-        public IUploadSource GetUploadSource()
+        public UploadSource GetUploadSource()
         {
             var metadata = new UploadSourceMetadata(
                 Metadata.FileType,
                 Metadata.Length,
                 Metadata.FileName);
-            return new StreamUploadSource(metadata, GetFile);
+            return new UploadSource(metadata, new StreamUploadSource(GetFile));
 
             Task<Stream> GetFile()
                 => Task.FromResult<Stream>(new MemoryStream(_data));

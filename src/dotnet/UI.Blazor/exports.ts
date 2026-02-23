@@ -12,6 +12,8 @@ export * from './Services/ElementReference/element-utils'
 export * from './Services/Escapist/escapist';
 export * from './Services/Escapist/escapist-subscription';
 export * from './Services/Escapist/keyboard-dispatcher';
+export * from './Services/FileUploads/chunked-file-upload';
+export * from './Services/FileUploads/web-uploads';
 export * from './Services/FocusUI/focus-ui'
 export * from './Services/History/history'
 export * from './Services/KeepAwakeUI/keep-awake-ui'
@@ -44,7 +46,6 @@ export * from './Components/TotpInput/totp-input';
 export * from './Components/VirtualList/virtual-list';
 export * from './Components/PicUpload/pic-upload';
 export * from './Components/FileUpload/file-upload';
-export * from './Components/FileUpload/chunked-file-upload';
 export * from './Components/Skeleton';
 export * from './Components/Share/share';
 export * from './Components/YoutubePlayer/youtube-player';
