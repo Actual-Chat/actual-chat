@@ -2,7 +2,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { html, LitElement } from 'lit';
 
 import { getBoolDigit, getContrast, getRandomColor, getUnit, hashCode } from './avatar-utils';
-import { cacheAvatar, getCachedUrl, onCached } from './avatar-cache';
+import { SvgCache } from './svg-cache';
 
 const SIZE = 36;
 
@@ -28,23 +28,21 @@ export class BeamAvatar extends LitElement {
     render() {
         const pixelSize = Math.ceil(this.clientWidth * (window.devicePixelRatio || 1)) || SIZE;
         const cacheKey = `beam-${this.key}-${pixelSize}`;
-        const cached = this.cachedUrl ?? getCachedUrl(cacheKey);
+        const cached = this.cachedUrl ?? SvgCache.get(cacheKey);
 
         if (cached)
             return html`<img src='${cached}' width='100%' height='100%' draggable='false' alt='' />`;
 
-        // Cache miss: render inline SVG and kick off async caching
+        // Cache miss: show skeleton and kick off async caching
         const svgString = BeamAvatar.generateSvgString(this.key, this.colors, this.square);
         this.unsubscribe?.();
-        this.unsubscribe = onCached(cacheKey, url => {
+        this.unsubscribe = SvgCache.onCached(cacheKey, url => {
             this.unsubscribe = undefined;
             this.cachedUrl = url;
         });
-        cacheAvatar(cacheKey, svgString, pixelSize);
+        SvgCache.add(cacheKey, svgString, pixelSize);
 
-        const span = document.createElement('span');
-        span.innerHTML = svgString;
-        return html`${span}`;
+        return html`<div style='width:100%;height:100%;border-radius:50%;background:var(--background-04)'></div>`;
     }
 
     static generateSvgString(key: string, colors: string[], square: boolean): string {

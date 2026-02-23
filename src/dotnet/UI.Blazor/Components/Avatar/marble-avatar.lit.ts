@@ -2,7 +2,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { html, LitElement } from 'lit';
 
 import { getRandomColor, getUnit, hashCode } from './avatar-utils';
-import { cacheAvatar, getCachedUrl, onCached } from './avatar-cache';
+import { SvgCache } from './svg-cache';
 
 const SIZE = 80;
 const ELEMENTS = 3;
@@ -31,23 +31,21 @@ export class MarbleAvatar extends LitElement {
         const pixelSize = Math.ceil(this.clientWidth * (window.devicePixelRatio || 1)) || SIZE;
         const title = this.title || '';
         const cacheKey = `marble-${this.key}-${title}-${this.doNotBlur ? 1 : 0}-${pixelSize}`;
-        const cached = this.cachedUrl ?? getCachedUrl(cacheKey);
+        const cached = this.cachedUrl ?? SvgCache.get(cacheKey);
 
         if (cached)
             return html`<img src='${cached}' width='100%' height='100%' draggable='false' alt='' />`;
 
-        // Cache miss: render inline SVG and kick off async caching
+        // Cache miss: show skeleton and kick off async caching
         const svgString = MarbleAvatar.generateSvgString(this.key, this.colors, this.title, this.doNotBlur);
         this.unsubscribe?.();
-        this.unsubscribe = onCached(cacheKey, url => {
+        this.unsubscribe = SvgCache.onCached(cacheKey, url => {
             this.unsubscribe = undefined;
             this.cachedUrl = url;
         });
-        cacheAvatar(cacheKey, svgString, pixelSize);
+        SvgCache.add(cacheKey, svgString, pixelSize);
 
-        const span = document.createElement('span');
-        span.innerHTML = svgString;
-        return html`${span}`;
+        return html`<div style='width:100%;height:100%;border-radius:50%;background:var(--background-04)'></div>`;
     }
 
     static generateSvgString(key: string, colors: string[], title: string, doNotBlur: boolean): string {
