@@ -81,6 +81,13 @@ export class VideoRecorder {
     }
 
     /**
+     * Forward remote stream count to the video pipeline for slowdown decisions
+     */
+    public setRemoteStreamCount(count: number): void {
+        this.recordingService?.getPipeline()?.setRemoteStreamCount(count);
+    }
+
+    /**
      * Toggle blur on an active recording
      */
     public async toggleBlur(enabled: boolean): Promise<void> {

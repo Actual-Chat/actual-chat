@@ -135,6 +135,7 @@ export class VideoPipeline implements IVideoPipeline {
     private processing = false;
 
     // VAD-based adaptive framerate
+    private remoteStreamCount = 0;
     private isSpeaking = true;
     private vadSubscription: Subscription | null = null;
     private vadSilenceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -946,6 +947,34 @@ export class VideoPipeline implements IVideoPipeline {
     }
 
     /**
+     * Update the remote stream count for slowdown decisions.
+     * Slowdown only applies in group calls (3+ total streams = 2+ remote).
+     */
+    setRemoteStreamCount(count: number): void {
+        const wasGroup = this.remoteStreamCount >= 2;
+        this.remoteStreamCount = count;
+        const isGroup = count >= 2;
+        debugLog?.log('setRemoteStreamCount:', count);
+
+        // Transitioning from group → non-group: cancel pending slowdown & restore
+        if (wasGroup && !isGroup) {
+            if (this.vadSilenceTimer !== null) {
+                clearTimeout(this.vadSilenceTimer);
+                this.vadSilenceTimer = null;
+            }
+            if (!this.isSpeaking) {
+                this.isSpeaking = true;
+                void this.encoder.reconfigure({
+                    bitrate: this.savedBitrate,
+                    width: this.config.encoderConfig.width,
+                    height: this.config.encoderConfig.height,
+                });
+                void this.encoder.forceKeyFrame();
+            }
+        }
+    }
+
+    /**
      * Update the base bitrate used for VAD-based reduction.
      * Call when server-driven quality changes arrive.
      */
@@ -988,9 +1017,9 @@ export class VideoPipeline implements IVideoPipeline {
                 void this.encoder.forceKeyFrame();
             }
         } else {
-            // Start silence timer (debounce before reducing)
-            if (this.isSpeaking && this.vadSilenceTimer === null) {
-                const delay = this.config.adaptiveFramerate?.silenceDelayMs ?? 500;
+            // Start silence timer (debounce before reducing) — only in group calls (3+ streams)
+            if (this.isSpeaking && this.vadSilenceTimer === null && this.remoteStreamCount >= 2) {
+                const delay = this.config.adaptiveFramerate?.silenceDelayMs ?? 60_000;
                 this.vadSilenceTimer = setTimeout(() => {
                     this.vadSilenceTimer = null;
                     this.isSpeaking = false;
@@ -1217,8 +1246,8 @@ export class VideoPipeline implements IVideoPipeline {
                     }
                 }
 
-                // VAD-based adaptive framerate: drop frames when not speaking
-                if (!this.isSpeaking && this.config.adaptiveFramerate?.enabled) {
+                // VAD-based adaptive framerate: drop frames when not speaking (group calls only)
+                if (!this.isSpeaking && this.config.adaptiveFramerate?.enabled && this.remoteStreamCount >= 2) {
                     const now = performance.now();
                     if (now - this.lastPassedFrameTime < this.reducedFrameIntervalMs) {
                         frame.close();
