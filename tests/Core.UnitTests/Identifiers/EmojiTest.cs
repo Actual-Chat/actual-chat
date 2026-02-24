@@ -17,12 +17,12 @@ public class EmojiTest
             // Negative
             Emojis.Angry,
             Emojis.Sad,
-            Emojis.Cry,
-            Emojis.Melt,
+            Emojis.Crying,
+            Emojis.Melting,
             Emojis.Devil,
             Emojis.Clown,
             // Love
-            Emojis.RedHeart,
+            Emojis.Love,
             Emojis.InLove,
             Emojis.BrokenHeart,
             Emojis.Please,
@@ -30,11 +30,11 @@ public class EmojiTest
             Emojis.ThumbsUp,
             Emojis.Done,
             Emojis.Eyes,
-            Emojis.Poo,
+            Emojis.Poop,
             Emojis.Boom,
             Emojis.Surprise,
             Emojis.Mysterious,
-            Emojis.Stone,
+            Emojis.StoneFaceMoai,
         ];
 
         foreach (var emoji in emojis) {

@@ -60,7 +60,7 @@ public sealed partial record UserReactionSettings : IHasKvasKey<UserReactionSett
             "😊" => 5, // Smile
             "😘" => 4, // Kiss
             "👍" => 3, // ThumbsUp
-            "❤️" => 2, // RedHeart
+            "❤️" => 2, // Love
             "😥" => 1, // Sad
             _ => 0,
         };
