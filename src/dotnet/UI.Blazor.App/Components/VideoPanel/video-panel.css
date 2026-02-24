@@ -67,11 +67,25 @@ body.hoverable .btn-h.expand-btn:hover {
     @apply absolute inset-0;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.4s ease;
 }
 .video-panel .remote-video-container.focused {
     opacity: 1;
     pointer-events: auto;
+}
+/* Previous speaker overlay — small PiP above local preview */
+.video-panel .remote-video-container.previous-speaker {
+    opacity: 1;
+    pointer-events: auto;
+    @apply z-20;
+    @apply rounded-lg overflow-hidden;
+    border: 2px solid var(--white-40);
+    transform-origin: bottom right;
+    transform: scale(0.2) translateY(-130%);
+    transition: opacity 0.3s ease, transform 0.4s ease;
+}
+.video-panel .remote-video-container.previous-speaker .video-participant-label {
+    @apply hidden;
 }
 
 /* Remote video streams */

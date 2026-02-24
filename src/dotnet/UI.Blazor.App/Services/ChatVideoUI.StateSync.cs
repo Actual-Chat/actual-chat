@@ -106,12 +106,16 @@ public partial class ChatVideoUI
         _focusDebounceCts = null;
         _pendingFocusCandidate = null;
         _focusedSpeakerId.Value = null;
+        _previousFocusedSpeakerId.Value = null;
     }
 
     private async Task DebouncedFocusSwitch(AuthorId newSpeaker, CancellationToken cancellationToken)
     {
         try {
             await Task.Delay(FocusDebounceDelay, cancellationToken).ConfigureAwait(false);
+            var oldFocus = _focusedSpeakerId.Value;
+            if (oldFocus != null && oldFocus != newSpeaker)
+                _previousFocusedSpeakerId.Value = oldFocus;
             _focusedSpeakerId.Value = newSpeaker;
             _pendingFocusCandidate = null;
         }

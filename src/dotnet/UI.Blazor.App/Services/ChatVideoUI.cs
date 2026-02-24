@@ -21,6 +21,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // Active speaker focus state
     private readonly IMutableState<AuthorId?> _focusedSpeakerId;
+    private readonly IMutableState<AuthorId?> _previousFocusedSpeakerId;
     private CancellationTokenSource? _focusDebounceCts;
     private AuthorId? _pendingFocusCandidate;
 
@@ -34,6 +35,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _errorMessage = StateFactory.NewMutable((string?)null);
         _focusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
+        _previousFocusedSpeakerId = StateFactory.NewMutable((AuthorId?)null);
     }
 
     void INotifyInitialized.Initialized()
@@ -129,6 +131,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<AuthorId?> GetFocusedSpeakerId(CancellationToken cancellationToken = default)
         => await _focusedSpeakerId.Use(cancellationToken).ConfigureAwait(false);
+
+    [ComputeMethod]
+    public virtual async Task<AuthorId?> GetPreviousFocusedSpeakerId(CancellationToken cancellationToken = default)
+        => await _previousFocusedSpeakerId.Use(cancellationToken).ConfigureAwait(false);
 
     [ComputeMethod]
     public virtual async Task<ApiArray<VideoStreamInfo>> GetActiveVideoStreams(ChatId? chatId, CancellationToken cancellationToken = default)
