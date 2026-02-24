@@ -16,6 +16,7 @@ const offscreenCanvas = new OffscreenCanvas(1, 1);
 let canvasCtx: GPUCanvasContext;
 
 let lastBlurStrength = -1;
+let cachedLevels = 3;
 
 // Texture format - will be set dynamically from navigator.gpu.getPreferredCanvasFormat()
 let FORMAT: GPUTextureFormat = 'bgra8unorm'; // Default fallback
@@ -47,19 +48,14 @@ const clearMipmapCache = () => {
         texture.destroy();
     }
     mipmapTextureCache.clear();
+    pyramidViewCache.clear();
+    cachedPyramidTexture = null;
 };
 
 // Texture pool with correct usage flags - keyed by dimensions
 const texturePool = new Map<string, GPUTexture[]>();
-const returnTexture = (t: GPUTexture) => {
-    const key = `${t.width},${t.height}`;
-    const pool = texturePool.get(key) ?? [];
-    pool.push(t);
-    texturePool.set(key, pool);
-};
 
-const offsetBufferPool: GPUBuffer[] = [];
-// Cache keys: "width,height" → buffer with correct offset values
+// Cache keys: "width,height,blurStrength" → buffer with correct offset values
 const offsetBufferCache = new Map<string, GPUBuffer>();
 
 // Uniform buffer pool for 8-byte buffers (vec2f or vec2u)
@@ -89,6 +85,7 @@ function returnUniform8Buffer(buffer: GPUBuffer): void {
 
 // Pre-allocated TypedArrays to avoid per-frame allocations
 const tempUint32Array2 = new Uint32Array(2);
+const tempFloat32Array2 = new Float32Array(2);
 
 
 // Deferred cleanup system to eliminate sync points
@@ -138,28 +135,17 @@ function getOffsetBuffer(targetW: number, targetH: number, blurStrength: number)
         return offsetBufferCache.get(key)!;
     }
 
-    // Reuse from pool if possible
-    let buffer: GPUBuffer;
-    if (offsetBufferPool.length > 0) {
-        buffer = offsetBufferPool.pop()!;
-    } else {
-        buffer = device!.createBuffer({
-            size: 8,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        });
-    }
+    const buffer = device!.createBuffer({
+        size: 8,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
 
-    const offsetX = blurStrength / targetW;
-    const offsetY = blurStrength / targetH;
-  device!.queue.writeBuffer(buffer, 0, new Float32Array([offsetX, offsetY]));
+    tempFloat32Array2[0] = blurStrength / targetW;
+    tempFloat32Array2[1] = blurStrength / targetH;
+  device!.queue.writeBuffer(buffer, 0, tempFloat32Array2);
 
   offsetBufferCache.set(key, buffer);
   return buffer;
-}
-
-function returnOffsetBuffer(buffer: GPUBuffer) {
-    // Don't destroy — just return to pool
-    offsetBufferPool.push(buffer);
 }
 
 // Mask cache
@@ -168,8 +154,41 @@ let cachedUpscaledMask: GPUTexture | null = null;
 let lastMaskW = 0;
 let lastMaskH = 0;
 
+// Texture view caches — avoid 15+ createView() calls per frame
+// Pyramid views: keyed by mip level, invalidated when pyramid texture changes
+const pyramidViewCache = new Map<number, GPUTextureView>();
+let cachedPyramidTexture: GPUTexture | null = null;
+
+// Mask texture view: single view, invalidated when mask texture changes
+let cachedMaskTextureView: GPUTextureView | null = null;
+let cachedMaskTextureForView: GPUTexture | null = null;
+
+function getPyramidView(pyramid: GPUTexture, level: number): GPUTextureView {
+    if (cachedPyramidTexture !== pyramid) {
+        pyramidViewCache.clear();
+        cachedPyramidTexture = pyramid;
+    }
+    let view = pyramidViewCache.get(level);
+    if (!view) {
+        view = pyramid.createView({ baseMipLevel: level, mipLevelCount: 1 });
+        pyramidViewCache.set(level, view);
+    }
+    return view;
+}
+
+function getMaskTextureView(maskTex: GPUTexture): GPUTextureView {
+    if (cachedMaskTextureForView !== maskTex) {
+        cachedMaskTextureView = maskTex.createView();
+        cachedMaskTextureForView = maskTex;
+    }
+    return cachedMaskTextureView!;
+}
+
 // Pipeline for copying mask from GPUBuffer to texture (float32 input)
 let maskBufferToTexturePipeline: GPUComputePipeline | null = null;
+
+// Pipeline for temporal mask smoothing (EMA blend)
+let temporalSmoothingPipeline: GPUComputePipeline | null = null;
 
 
 // Fixed fullscreen vertex shader (WGSL strict mode compliant)
@@ -181,8 +200,8 @@ const FULLSCREEN_VS = /* wgsl */`
   }
 `;
 
-// Mask threshold for person detection during blur
-const PERSON_MASK_THRESHOLD = 0.4;
+// Mask threshold for person detection during blur (unified with composite and config)
+const PERSON_MASK_THRESHOLD = 0.45;
 
 // Downsample from texture_2d (for pyramid levels beyond first) - mask-aware
 const DOWNSAMPLE_2D_WGSL = /* wgsl */`
@@ -375,8 +394,8 @@ const COMPOSITE_WGSL = /* wgsl */`
       // The mask is already upscaled and smoothed, sample directly with linear filtering
       let maskValue = textureSample(mask, blurSampler, uv).r;
 
-      // Apply smoothstep for final edge refinement
-      let alpha = smoothstep(0.35, 0.65, maskValue);
+      // Apply smoothstep for final edge refinement (symmetric around 0.45)
+      let alpha = smoothstep(0.30, 0.60, maskValue);
 
       // DEBUG: show full blurred background
       // return blur;
@@ -388,6 +407,24 @@ const COMPOSITE_WGSL = /* wgsl */`
       // Alpha is now 0.0-1.0 probability, use directly for blending
       // Higher probability = more person (less blur)
       return mix(blur, orig, alpha);
+  }
+`;
+
+// Temporal mask smoothing compute shader - blends current mask with previous via EMA
+const TEMPORAL_SMOOTHING_WGSL = /* wgsl */`
+  @group(0) @binding(0) var<storage, read> currentMask: array<f32>;
+  @group(0) @binding(1) var<storage, read_write> smoothedMask: array<f32>;
+  @group(0) @binding(2) var<uniform> params: vec2f; // alpha, element count
+
+  @compute @workgroup_size(256)
+  fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    let count = u32(params.y);
+    if (id.x >= count) { return; }
+
+    let alpha = params.x;
+    let current = currentMask[id.x];
+    let previous = smoothedMask[id.x];
+    smoothedMask[id.x] = mix(previous, current, alpha);
   }
 `;
 
@@ -538,6 +575,12 @@ function initializeGpuResources() {
         layout: 'auto',
         compute: { module: maskBufferToTextureModule, entryPoint: 'main' }
     });
+
+    const temporalSmoothingModule = device.createShaderModule({ code: TEMPORAL_SMOOTHING_WGSL });
+    temporalSmoothingPipeline = device.createComputePipeline({
+        layout: 'auto',
+        compute: { module: temporalSmoothingModule, entryPoint: 'main' }
+    });
 }
 
 
@@ -565,6 +608,8 @@ function uploadMaskFromBuffer(
             format: 'rgba8unorm', // filterable mask format
             usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING
         });
+        cachedMaskTextureView = null;
+        cachedMaskTextureForView = null;
         lastMaskW = w;
         lastMaskH = h;
     }
@@ -585,7 +630,7 @@ function uploadMaskFromBuffer(
       layout: pipeline.getBindGroupLayout(0),
       entries: [
           { binding: 0, resource: { buffer: maskBuffer } },
-          { binding: 1, resource: cachedMaskTexture.createView() },
+          { binding: 1, resource: getMaskTextureView(cachedMaskTexture) },
           { binding: 2, resource: { buffer: dimsBuffer } }
       ]
   }));
@@ -614,25 +659,99 @@ export type MaskDataType = 'float32';
 export interface BlurOptions {
   /** Blur strength in pixels (default: 12) */
   blurStrength?: number;
+  /** Whether the mask buffer has new data since last call (default: true).
+   *  When false, skips the GPU mask upload and reuses the cached mask texture. */
+  maskDirty?: boolean;
+  /** GPU buffer containing the raw (unsmoothed) mask for temporal smoothing.
+   *  When provided together with smoothingAlpha, temporal smoothing is merged
+   *  into the same GPU command encoder as the blur — saving one queue.submit(). */
+  smoothingSource?: GPUBuffer;
+  /** Smoothing factor for temporal EMA (0-1). Required when smoothingSource is set. */
+  smoothingAlpha?: number;
+}
+
+/**
+ * Apply temporal smoothing to a mask buffer using exponential moving average.
+ * Blends the current mask with the smoothed (previous) mask in-place on the GPU.
+ * @param currentMaskBuffer GPU buffer containing the current frame's raw mask
+ * @param smoothedMaskBuffer GPU buffer containing the smoothed mask (read+written in-place)
+ * @param elementCount Number of float32 elements in the mask (width * height)
+ * @param alpha Smoothing factor (0-1). Lower = more smoothing.
+ */
+/**
+ * Encode temporal smoothing compute pass onto an existing command encoder.
+ * Does NOT submit — caller is responsible for submitting.
+ */
+function encodeTemporalSmoothing(
+    encoder: GPUCommandEncoder,
+    currentMaskBuffer: GPUBuffer,
+    smoothedMaskBuffer: GPUBuffer,
+    elementCount: number,
+    alpha: number
+): void {
+    const paramsBuffer = getUniform8Buffer();
+    tempFloat32Array2[0] = alpha;
+    tempFloat32Array2[1] = elementCount;
+    device!.queue.writeBuffer(paramsBuffer, 0, tempFloat32Array2);
+
+    const computePass = encoder.beginComputePass();
+    computePass.setPipeline(temporalSmoothingPipeline!);
+    computePass.setBindGroup(0, device!.createBindGroup({
+        layout: temporalSmoothingPipeline!.getBindGroupLayout(0),
+        entries: [
+            { binding: 0, resource: { buffer: currentMaskBuffer } },
+            { binding: 1, resource: { buffer: smoothedMaskBuffer } },
+            { binding: 2, resource: { buffer: paramsBuffer } }
+        ]
+    }));
+    computePass.dispatchWorkgroups(Math.ceil(elementCount / 256));
+    computePass.end();
+
+    registerBlurDeferredCleanup(() => {
+        returnUniform8Buffer(paramsBuffer);
+    });
+}
+
+/**
+ * Apply temporal smoothing as a standalone GPU submission.
+ * Use this only when NOT using the merged path via BlurOptions.smoothingSource.
+ */
+export function applyTemporalSmoothing(
+    currentMaskBuffer: GPUBuffer,
+    smoothedMaskBuffer: GPUBuffer,
+    elementCount: number,
+    alpha: number
+): void {
+    ensureInitialized();
+
+    const encoder = device!.createCommandEncoder();
+    encodeTemporalSmoothing(encoder, currentMaskBuffer, smoothedMaskBuffer, elementCount, alpha);
+    device!.queue.submit([encoder.finish()]);
 }
 
 // Public API - accepts either CPU Float32Array or GPU buffer
-export async function applyBackgroundBlur(
+export function applyBackgroundBlur(
     frame: VideoFrame,
     personMask: GPUBuffer,
     maskWidth: number,
     maskHeight: number,
     blurStrengthOrOptions: number | BlurOptions = 12
-): Promise<VideoFrame> {
+): VideoFrame {
     ensureInitialized();
 
     // Parse options
     let blurStrength = 12;
+    let maskDirty = true;
+    let smoothingSource: GPUBuffer | undefined;
+    let smoothingAlpha: number | undefined;
 
     if (typeof blurStrengthOrOptions === 'number') {
         blurStrength = blurStrengthOrOptions;
     } else {
         blurStrength = blurStrengthOrOptions.blurStrength ?? 12;
+        maskDirty = blurStrengthOrOptions.maskDirty ?? true;
+        smoothingSource = blurStrengthOrOptions.smoothingSource;
+        smoothingAlpha = blurStrengthOrOptions.smoothingAlpha;
     }
 
     // Clear texture pool and offset buffer cache on blur strength change
@@ -644,6 +763,9 @@ export async function applyBackgroundBlur(
         }
         texturePool.clear();
         clearMipmapCache();
+        for (const buf of offsetBufferCache.values()) buf.destroy();
+        offsetBufferCache.clear();
+        cachedLevels = blurStrength < 10 ? 2 : blurStrength < 20 ? 3 : 4;
         lastBlurStrength = blurStrength;
     }
 
@@ -660,16 +782,27 @@ export async function applyBackgroundBlur(
     const src = device!.importExternalTexture({ source: frame });
     const encoder = device!.createCommandEncoder();
 
-    // GPU buffer path - no CPU roundtrip
-    const maskTex = uploadMaskFromBuffer(encoder, personMask, maskWidth, maskHeight);
+    // Merge temporal smoothing into this encoder (saves one queue.submit per frame)
+    if (smoothingSource && smoothingAlpha !== undefined && maskDirty) {
+        const maskSize = maskWidth * maskHeight;
+        encodeTemporalSmoothing(encoder, smoothingSource, personMask, maskSize, smoothingAlpha);
+    }
+
+    // Upload mask from GPU buffer (skip if mask hasn't changed and cache is valid)
+    let maskTex: GPUTexture;
+    if (maskDirty || !cachedMaskTexture || lastMaskW !== maskWidth || lastMaskH !== maskHeight) {
+        maskTex = uploadMaskFromBuffer(encoder, personMask, maskWidth, maskHeight);
+    } else {
+        maskTex = cachedMaskTexture;
+    }
 
     // Pass 1: Upscale mask to video resolution FIRST (needed for mask-aware blur)
     // const upscaledMask = getUpscaledMask(encoder, maskTex, w, h);
 
     const offsetMultiplier = 0.5;
 
-    // Dynamic pyramid blur based on blur strength
-    const levels = blurStrength < 10 ? 2 : blurStrength < 20 ? 3 : 4;
+    // Dynamic pyramid blur based on blur strength (cached on blur strength change)
+    const levels = cachedLevels;
 
     // Create single pyramid texture with all mip levels
     const pyramid = getMipmapTexture(w, h);
@@ -681,8 +814,11 @@ export async function applyBackgroundBlur(
         const isFirstLevel = level === 1;
         const pipeline = isFirstLevel ? mipmapDownsamplePipeline : downsample2dPipeline;
 
+        const levelView = getPyramidView(pyramid, level);
+        const maskView = getMaskTextureView(maskTex);
+
         const pass = encoder.beginRenderPass({
-            colorAttachments: [{ view: pyramid.createView({ baseMipLevel: level, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }]
+            colorAttachments: [{ view: levelView, loadOp: 'clear', storeOp: 'store' }]
         });
         pass.setPipeline(pipeline);
         pass.setBindGroup(0, device!.createBindGroup({
@@ -691,25 +827,25 @@ export async function applyBackgroundBlur(
                 { binding: 0, resource: currentSrc },
                 { binding: 1, resource: sampler },
                 { binding: 2, resource: { buffer: offset } },
-                { binding: 3, resource: maskTex.createView() }, // mask for person detection
-                { binding: 4, resource: sampler } // mask sampler (filtering)
+                { binding: 3, resource: maskView },
+                { binding: 4, resource: sampler }
             ]
         }));
         pass.draw(4);
         pass.end();
 
-        returnOffsetBuffer(offset);
-        currentSrc = pyramid.createView({ baseMipLevel: level, mipLevelCount: 1 });
+        currentSrc = levelView;
     }
 
     // Upsample: From deepest mip back to mip 0
+    const maskView = getMaskTextureView(maskTex);
     for (let level = levels - 1; level > 0; level--) {
-        const srcView = pyramid.createView({ baseMipLevel: level, mipLevelCount: 1 });
-        const targetView = pyramid.createView({ baseMipLevel: level - 1, mipLevelCount: 1 });
+        const srcView = getPyramidView(pyramid, level);
+        const targetView = getPyramidView(pyramid, level - 1);
         const offset = getOffsetBuffer(w >> (level - 1), h >> (level - 1), blurStrength * offsetMultiplier);
 
         const pass = encoder.beginRenderPass({
-            colorAttachments: [{ view: targetView, loadOp: 'load', storeOp: 'store' }] // Load to blend/accumulate if needed
+            colorAttachments: [{ view: targetView, loadOp: 'load', storeOp: 'store' }]
         });
         pass.setPipeline(mipmapUpsamplePipeline);
         pass.setBindGroup(0, device!.createBindGroup({
@@ -718,14 +854,12 @@ export async function applyBackgroundBlur(
                 { binding: 0, resource: srcView },
                 { binding: 1, resource: sampler },
                 { binding: 2, resource: { buffer: offset } },
-                { binding: 3, resource: maskTex.createView() }, // mask for person detection
-                { binding: 4, resource: sampler } // mask sampler (filtering)
+                { binding: 3, resource: maskView },
+                { binding: 4, resource: sampler }
             ]
         }));
         pass.draw(4);
         pass.end();
-
-        returnOffsetBuffer(offset);
     }
 
     // Composite uses pyramid.createView({ baseMipLevel: 0 }) as blurred
@@ -739,9 +873,9 @@ export async function applyBackgroundBlur(
         layout: compositePipeline.getBindGroupLayout(0),
         entries: [
             { binding: 0, resource: src },
-            { binding: 1, resource: pyramid.createView({ baseMipLevel: 0, mipLevelCount: 1 }) },
-            { binding: 2, resource: maskTex.createView() },
-            { binding: 3, resource: sampler }, // filtering sampler for both blurred and mask
+            { binding: 1, resource: getPyramidView(pyramid, 0) },
+            { binding: 2, resource: getMaskTextureView(maskTex) },
+            { binding: 3, resource: sampler },
         ]
     }));
     compositePass.draw(4);
@@ -751,19 +885,9 @@ export async function applyBackgroundBlur(
     const commandBuffer = encoder.finish();
   device!.queue.submit([commandBuffer]);
 
-  // Add synchronization to yield GPU resources for video decoding
-  // This helps prevent WebGPU inference from hogging the GPU command queue
-  // On Android mobile devices, this is critical for maintaining video decoding performance
-  if (typeof device!.queue.onSubmittedWorkDone === 'function') {
-      await device!.queue.onSubmittedWorkDone();
-  } else {
-      // Fallback: yield to event loop to allow video decoding to interleave
-      // This provides basic synchronization when onSubmittedWorkDone is not available
-      await new Promise(resolve => setTimeout(resolve, 0));
-  }
+  // No GPU sync needed: WebGPU guarantees command ordering within the same queue,
+  // and new VideoFrame(offscreenCanvas) implicitly waits for render completion.
 
-  // Clean up
-  returnTexture(pyramid);
   const timestamp = frame.timestamp;
   frame.close();
 

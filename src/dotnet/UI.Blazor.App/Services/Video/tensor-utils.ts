@@ -332,10 +332,8 @@ function getPooledBuffer(size: number, usage: GPUBufferUsageFlags): GPUBuffer {
     const key = size;
     const pool = tensorBufferPool.get(key) ?? [];
 
-    // Find a buffer with matching or greater usage
-    for (let i = 0; i < pool.length; i++) {
-    // We can't check usage flags, so we just use size as key
-        return pool.splice(i, 1)[0];
+    if (pool.length > 0) {
+        return pool.pop()!;
     }
 
     return device!.createBuffer({ size, usage });

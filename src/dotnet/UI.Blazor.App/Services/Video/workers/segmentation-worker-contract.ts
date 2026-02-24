@@ -172,6 +172,10 @@ export interface SegmentationConfig {
   /** Maximum queue size before dropping oldest frames */
   maxQueueSize: number;
 
+  /** Temporal smoothing factor for mask EMA (0-1, default 0.3).
+   *  Lower values = more smoothing (less flickering), higher = more responsive. */
+  temporalSmoothingFactor?: number;
+
   /**
    * Model tensor format configuration.
    * If not specified, will be auto-detected from MODEL_CONFIGS based on modelUrl,
@@ -203,14 +207,14 @@ export interface SegmentationStats {
 // Default segmentation configuration values
 export const DEFAULT_SEGMENTATION_CONFIG = {
     /** Default blur radius for background blur effect (pixels) */
-    blurRadius: 15,
+    blurRadius: 12,
 
     /** Default input dimensions for the model */
     inputWidth: 256,
     inputHeight: 256,
 
-    /** Default threshold for person mask (0-1) */
-    maskThreshold: 0.5,
+    /** Default threshold for person mask (0-1, unified with blur/composite shaders) */
+    maskThreshold: 0.45,
 
     /** Default inference skip frames (0 = no skip) */
     inferenceSkipFrames: 0,
@@ -222,7 +226,10 @@ export const DEFAULT_SEGMENTATION_CONFIG = {
     maxQueueSize: 5,
 
     /** Default frame skip interval to reduce GPU contention */
-    frameSkipInterval: 2,
+    frameSkipInterval: 1,
+
+    /** Default temporal smoothing factor for mask EMA */
+    temporalSmoothingFactor: 0.8,
 } as const;
 
 /**
@@ -291,12 +298,10 @@ export function createDefaultSegmentationConfig(backend: SegmentationConfig['bac
  * @returns Complete SegmentationConfig with device-adaptive values
  */
 export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['backend']): SegmentationConfig {
-    // TEMPORARILY: Use same config for mobile and desktop to test pipeline
-    // TODO: Re-enable mobile optimizations after pipeline is working
     const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
 
     if (!isMobile) {
-    // Desktop: no skipping, full quality
+        // Desktop: full quality with default frame skipping
         return {
             backend,
             blurEnabled: true,
@@ -305,13 +310,17 @@ export function createAdaptiveSegmentationConfig(backend: SegmentationConfig['ba
         };
     }
 
-    // TEMP: Use desktop-like config for mobile to test pipeline
-    debugLog?.log('Using desktop-like config for mobile testing');
+    // Mobile: reduced GPU load with more aggressive frame skipping and smoothing
+    debugLog?.log('Using mobile-optimized segmentation config');
     return {
         backend,
         blurEnabled: true,
         ...DEFAULT_SEGMENTATION_CONFIG,
-        inferenceSkipFrames: 0   // No skipping for testing
+        blurRadius: 10,
+        frameSkipInterval: 3,
+        maxQueueSize: 3,
+        temporalSmoothingFactor: 0.25,
+        inferenceSkipFrames: 0
     };
 }
 
