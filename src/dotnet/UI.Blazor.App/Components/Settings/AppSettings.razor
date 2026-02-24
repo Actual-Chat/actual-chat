@@ -100,6 +100,9 @@
     private INativeAppSettings? NativeAppSettings { get; set; }
 
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
+    private OnboardingUI OnboardingUI => Hub.OnboardingUI;
+    private BubbleUI BubbleUI => Hub.BubbleUI;
+    private LogUI LogUI => Hub.LogUI;
 
     protected override void OnInitialized()
         => NativeAppSettings = Hub.Services.GetService<INativeAppSettings>();
