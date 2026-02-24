@@ -1,6 +1,5 @@
 @implements IModalView<SettingsModal.Model>
 @using ActualChat.Hosting
-@using ActualChat.UI.App.Services.NativeAppSettings
 @inherits ComputedStateComponent<AppUIHub, SettingsModal.ComputedModel>
 @{
     var m = State.Value;
@@ -46,11 +45,9 @@
             <DocumentsPage/>
         </SettingsTab>
 
-        @if (m.ShowDeveloperTools) {
-            <SettingsTab @key="91" TabIndex="91" Title="Developer tools" Id="@SettingsTabId.DevTools" IconClass="icon-eye">
-                <DeveloperTools/>
-            </SettingsTab>
-        }
+        <SettingsTab @key="91" TabIndex="91" Title="Developer tools" Id="@SettingsTabId.DevTools" IconClass="icon-eye">
+            <DeveloperTools/>
+        </SettingsTab>
 
         @if (m.ShowLogViewer) {
             <SettingsTab @key="92" TabIndex="92" Title="Log Viewer" Id="@SettingsTabId.LogViewer" Class="log-viewer-tab" IconClass="icon-info">
@@ -73,14 +70,9 @@
 </ModalFrame>
 
 @code {
-    private IDeveloperTools? _developerTools;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    protected override void OnInitialized()
-        => _developerTools = Hub.Services.GetService<IDeveloperTools>();
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
@@ -90,11 +82,9 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
-        var showDeveloperTools = _developerTools?.IsEnabled(account) ?? false;
         var tabId = ModalModel.TabId;
         var showLogViewer = await Hub.LogUI.IsEnabled.Use(cancellationToken).ConfigureAwait(false);
         return new ComputedModel(account, tabId) {
-            ShowDeveloperTools = showDeveloperTools,
             ShowLogViewer = showLogViewer,
         };
     }
@@ -105,7 +95,6 @@
     // Nested types
 
     public sealed record ComputedModel(AccountFull AccountFull, string? TabId) {
-        public bool ShowDeveloperTools { get; init; }
         public bool ShowLogViewer { get; init; }
     }
 

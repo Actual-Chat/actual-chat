@@ -1,5 +1,6 @@
 using ActualChat.Hosting;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Storage;
 
 namespace ActualChat.Maui;
 
@@ -27,15 +28,28 @@ public static class MauiSettings
                 ? Constants.Hosts.DevVoxt
                 : Constants.Hosts.Voxt;
     public static readonly string Host;
-    public static bool IsHostOverriden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
+    public static bool IsHostOverridden => !OrdinalIgnoreCaseEquals(Host, DefaultHost);
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
     public static readonly AppKind AppKind;
     public static readonly Color SplashBackgroundColor = Color.FromArgb("#0C003D");
 
+    private const string HostOverridePreferenceKey = "app_server_instance_override";
+
+    public static string? HostOverride {
+        get => (field ??= Preferences.Default.Get(HostOverridePreferenceKey, "")).NullIfEmpty();
+        set {
+            field = value ?? "";
+            if (value.IsNullOrEmpty())
+                Preferences.Default.Remove(HostOverridePreferenceKey);
+            else
+                Preferences.Default.Set(HostOverridePreferenceKey, value);
+        }
+    }
+
     static MauiSettings()
     {
-        Host = GetHostOverride() ?? DefaultHost;
+        Host = HostOverride ?? DefaultHost;
         BaseUrl = "https://" + Host + "/";
         BaseUri = BaseUrl.ToUri();
 
@@ -51,9 +65,6 @@ public static class MauiSettings
         AppKind = AppKind.Unknown;
 #endif
     }
-
-    private static string? GetHostOverride()
-        => MauiHostStorage.GetHostOverride()?.Host;
 
     // Nested types
 
