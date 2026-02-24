@@ -25,7 +25,8 @@
                 @foreach (var streamInfo in m.RemoteStreams) {
                     var name = m.AuthorNames.GetValueOrDefault(streamInfo.AuthorId, "");
                     var isFocused = streamInfo.AuthorId == m.FocusedAuthorId;
-                    var focusedCls = isFocused ? "focused" : "";
+                    var isPrevious = streamInfo.AuthorId == m.PreviousFocusedAuthorId;
+                    var focusedCls = isFocused ? "focused" : isPrevious ? "previous-speaker" : "";
                     <VideoTrackPlayer @key="streamInfo.StreamId.Value" StreamInfo="@streamInfo" AuthorName="@name" FocusedClass="@focusedCls" />
                 }
             </div>
@@ -43,9 +44,10 @@
         bool IsRecording,
         bool IsAnyoneVideoStreaming,
         IReadOnlyDictionary<AuthorId, string> AuthorNames,
-        AuthorId? FocusedAuthorId
+        AuthorId? FocusedAuthorId,
+        AuthorId? PreviousFocusedAuthorId
     ) {
-        public static readonly Model None = new(false, [], false, false, new Dictionary<AuthorId, string>(), null);
+        public static readonly Model None = new(false, [], false, false, new Dictionary<AuthorId, string>(), null, null);
     }
 
     private bool _rendered;
@@ -112,7 +114,7 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             t => new ComputedState<Model>.Options {
-                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], false, false, new Dictionary<AuthorId, string>(), null),
+                InitialValue = new Model(!ScreenSize.IsNarrow() && PanelsUI.Right.IsVisible.Value, [], false, false, new Dictionary<AuthorId, string>(), null, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -127,7 +129,7 @@
 
         var chatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
         if (chatId is null)
-            return new Model(isRightPanelVisible, [], false, false, emptyNames, null);
+            return new Model(isRightPanelVisible, [], false, false, emptyNames, null, null);
 
         // Get centralized video state (for recording status)
         var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
@@ -137,7 +139,7 @@
         var isAnyoneStreaming = activeStreams.Count > 0;
 
         if (activeStreams.Count == 0)
-            return new Model(isRightPanelVisible, [], videoState.IsRecording, false, emptyNames, null);
+            return new Model(isRightPanelVisible, [], videoState.IsRecording, false, emptyNames, null, null);
 
         // Filter out own stream (shown in local preview)
         var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken);
@@ -164,6 +166,14 @@
             focusedAuthorId = null;
         focusedAuthorId ??= remoteStreams.Length > 0 ? remoteStreams[0].AuthorId : null;
 
-        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, isAnyoneStreaming, authorNames, focusedAuthorId);
+        // Get previous focused speaker and validate
+        var previousFocusedAuthorId = await ChatVideoUI.GetPreviousFocusedSpeakerId(cancellationToken)
+            .ConfigureAwait(false);
+        if (previousFocusedAuthorId != null
+            && (!videoAuthorIds.Contains(previousFocusedAuthorId)
+                || previousFocusedAuthorId == focusedAuthorId))
+            previousFocusedAuthorId = null;
+
+        return new Model(isRightPanelVisible, remoteStreams, videoState.IsRecording, isAnyoneStreaming, authorNames, focusedAuthorId, previousFocusedAuthorId);
     }
 }
