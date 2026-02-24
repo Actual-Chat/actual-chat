@@ -7,14 +7,14 @@ namespace ActualChat.Users;
 public class SystemProperties(IServiceProvider services)
     : DbServiceBase<UsersDbContext>(services), ISystemProperties
 {
+    private static readonly Version MinCompatibleVersion = new(2, 5);
+
     // Not a [ComputeMethod]!
     public Task<double> GetTime(CancellationToken cancellationToken)
         => Task.FromResult(Clocks.SystemClock.Now.EpochOffset.TotalSeconds);
 
     // [ComputeMethod]
-    public virtual Task<ServerApiInfo> GetServerApiInfo(
-        string expectedVersion,
-        CancellationToken cancellationToken)
+    public virtual Task<ServerApiInfo> GetServerApiInfo(string expectedVersion, CancellationToken cancellationToken)
     {
         if (expectedVersion.IsNullOrEmpty())
             return Task.FromResult(new ServerApiInfo(CompatibilityLevel.Unknown));
@@ -23,15 +23,14 @@ public class SystemProperties(IServiceProvider services)
         var clientVersionParts = expectedVersion.Split(' ');
         expectedVersion = clientVersionParts[0];
         if (!Version.TryParse(expectedVersion, out var parsedExpectedVersion))
-             throw new ArgumentOutOfRangeException(nameof(expectedVersion));
+            return Task.FromResult(new ServerApiInfo(CompatibilityLevel.Unknown));
 
         var apiVersion = ApiConstants.Version;
-        var compatibilityLevel =
-            apiVersion.Major == parsedExpectedVersion.Major
-            ? apiVersion == parsedExpectedVersion
+        var compatibilityLevel = parsedExpectedVersion < MinCompatibleVersion
+            ? CompatibilityLevel.Incompatible
+            : apiVersion == parsedExpectedVersion
                 ? CompatibilityLevel.Full
-                : CompatibilityLevel.Compatible
-            : CompatibilityLevel.Incompatible;
+                : CompatibilityLevel.Compatible;
         return Task.FromResult(new ServerApiInfo(compatibilityLevel));
     }
 
