@@ -15,7 +15,7 @@ import {
     videoFrameToTensorFloat32,
     videoFrameToTensorUint8,
 } from '../tensor-utils';
-import { applyBackgroundBlur, initBlurWebGPU, processBlurDeferredCleanups } from '../webgpu-blur';
+import { applyBackgroundBlur, applyTemporalSmoothing, initBlurWebGPU, processBlurDeferredCleanups } from '../webgpu-blur';
 import { WebGPUManager } from '../webgpu-manager';
 
 import type {
@@ -40,6 +40,7 @@ let processing = false;
 let resolvedModelConfig: ModelConfig | null = null; // Cached model config for tensor conversion
 let outputGpuBuffer: GPUBuffer = null!; // Reusable output GPU buffer
 let outputTensor: ort.Tensor = null!; // Reusable output tensor
+let smoothedMaskBuffer: GPUBuffer = null!; // Temporally smoothed mask buffer
 
 // Performance tracking
 let processedFrames = 0;
@@ -50,6 +51,7 @@ let droppedFrames = 0;
 
 // Frame skipping state
 let frameCounter = 0;
+let hasValidMask = false; // Whether outputGpuBuffer contains a valid mask from a previous inference
 
 // Frame queuing state (for non-blocking async processing)
 interface QueuedFrame {
@@ -123,6 +125,7 @@ async function processQueue(): Promise<void> {
         while (!frameQueue.isEmpty() && processing) {
             const qf = frameQueue.shift();
             if (!qf) break;
+            frameCounter++;
 
             // Process deferred cleanups from previous frames (no sync overhead)
             processDeferredCleanups();
@@ -130,12 +133,37 @@ async function processQueue(): Promise<void> {
 
             // Add frame skipping to reduce GPU load and allow video decoding to catch up
             // Skip every N frames to reduce contention, especially on mobile devices
+            // On skipped frames, reuse the previous mask to still produce blurred output
             const frameSkipInterval = config.frameSkipInterval ?? 1;
-            if (frameSkipInterval > 1 && frameCounter % frameSkipInterval !== 0) {
-                qf.frame.close();
+            if (frameSkipInterval > 1 && frameCounter % frameSkipInterval !== 0 && hasValidMask) {
+                // Reuse previous smoothed mask - skip inference but still apply blur
+                const skipBlurStart = performance.now();
+                let finalFrame: VideoFrame;
+                if (config.blurEnabled) {
+                    finalFrame = applyBackgroundBlur(
+                        qf.frame,
+                        smoothedMaskBuffer,
+                        config.inputWidth,
+                        config.inputHeight,
+                        { blurStrength: config.blurRadius, maskDirty: false }
+                    );
+                } else {
+                    finalFrame = qf.frame;
+                }
+                const skipBlurTime = performance.now() - skipBlurStart;
+
+                if (config.blurEnabled) {
+                    qf.frame.close();
+                }
+
+                const frameProcessingTime = performance.now() - qf.timestamp;
+                processedFrames++;
+                totalBlurTime += skipBlurTime;
+                totalProcessingTime += frameProcessingTime;
+
+                pipeline.onFrameProcessed(finalFrame, qf.sequenceNumber, frameProcessingTime);
                 continue;
             }
-
 
             // Run single-frame inference
             const inferenceStartTime = performance.now();
@@ -183,7 +211,7 @@ async function processQueue(): Promise<void> {
             const gpuBuffer = outputTensor.gpuBuffer;
 
             // Single channel - use GPU buffer directly - no splitting needed for single frame!
-            const maskInput = gpuBuffer;
+            hasValidMask = true;
 
             // Return input tensor's GPU buffer to pool for reuse
             returnPooledBuffer(inputTensor.gpuBuffer);
@@ -196,19 +224,24 @@ async function processQueue(): Promise<void> {
 
             let finalFrame: VideoFrame;
             if (config.blurEnabled) {
-                // Apply background blur
-                const blurred = await applyBackgroundBlur(
+                // Apply background blur with merged temporal smoothing (single GPU submission)
+                const smoothingAlpha = config.temporalSmoothingFactor ?? 0.3;
+                finalFrame = applyBackgroundBlur(
                     qf.frame,
-                    maskInput,
+                    smoothedMaskBuffer,
                     config.inputWidth,
                     config.inputHeight,
                     {
                         blurStrength: config.blurRadius,
+                        smoothingSource: gpuBuffer,
+                        smoothingAlpha,
                     }
                 );
-                finalFrame = blurred;
             } else {
-                // Pass through original frame without blur
+                // No blur — still need temporal smoothing as standalone
+                const smoothingAlpha = config.temporalSmoothingFactor ?? 0.3;
+                const maskSize = config.inputWidth * config.inputHeight;
+                applyTemporalSmoothing(gpuBuffer, smoothedMaskBuffer, maskSize, smoothingAlpha);
                 finalFrame = qf.frame;
             }
 
@@ -293,6 +326,10 @@ const serverImpl: SegmentationWorker = {
                 const outputBufferSize = maskSize * 4; // float32 size
                 const gpuDevice = WebGPUManager.get();
                 outputGpuBuffer = gpuDevice.createBuffer({
+                    size: outputBufferSize,
+                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+                });
+                smoothedMaskBuffer = gpuDevice.createBuffer({
                     size: outputBufferSize,
                     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
                 });
@@ -408,13 +445,15 @@ const serverImpl: SegmentationWorker = {
             session = null;
         }
 
-        // Clean up output GPU buffer
+        // Clean up GPU buffers
         outputGpuBuffer.destroy();
+        smoothedMaskBuffer.destroy();
 
         // Reset all state
         config = null;
         resolvedModelConfig = null;
         frameCounter = 0;
+        hasValidMask = false;
         processingFrame = false;
         frameSequence = 0;
 
