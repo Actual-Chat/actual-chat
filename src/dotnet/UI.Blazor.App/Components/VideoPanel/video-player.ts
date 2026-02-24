@@ -5,6 +5,8 @@ import { fastRaf } from 'fast-raf';
 import { VideoStreamer } from '../../Services/Video/video-streamer';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 import { AudioVideoSync } from 'audio-video-sync';
+import { DocumentEvents } from 'event-handling';
+import { type Subscription } from 'rxjs';
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
@@ -38,6 +40,7 @@ export class VideoPlayer {
     private decoderConfig: VideoDecoderConfig | null = null;
     private pendingFrames: VideoFrame[] = [];
     private isPlaying = false;
+    private visibilitySubscription: Subscription | null = null;
 
     // Buffer chunks until we receive a keyframe with description
     private waitingForKeyframe = true;
@@ -64,6 +67,9 @@ export class VideoPlayer {
     private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
     private latencyReportTimer: ReturnType<typeof setInterval> | null = null;
     private pipelineLatencyMs = 0;      // Smoothed video pipeline latency estimate (ms)
+    private skipFramesBelowOffsetMs = 0; // After tab restore, skip decoded frames below this offset
+    private skippedBacklogFrames = 0;
+    private rebufferDelayMs = 0;         // After tab restore, delay rendering to let buffer accumulate
 
     // Audio sync
     private startedAtMs: number;
@@ -219,6 +225,26 @@ export class VideoPlayer {
     }
 
     private onFrameDecoded(frame: VideoFrame): void {
+        // After tab restore, skip old frames from decoder's internal backlog
+        if (this.skipFramesBelowOffsetMs > 0) {
+            const frameOffsetMs = frame.timestamp / 1000; // μs → ms
+            if (frameOffsetMs < this.skipFramesBelowOffsetMs) {
+                frame.close();
+                this.skippedBacklogFrames++;
+                if (this.skippedBacklogFrames <= 3 || this.skippedBacklogFrames % 10 === 0) {
+                    debugLog?.log(
+                        `Skipping backlog frame #${this.skippedBacklogFrames}: ` +
+                        `frameOffset=${frameOffsetMs.toFixed(0)}ms, threshold=${this.skipFramesBelowOffsetMs.toFixed(0)}ms`);
+                }
+                return;
+            }
+            // Caught up — resume normal rendering
+            debugLog?.log(
+                `Decoder backlog cleared: skipped ${this.skippedBacklogFrames} frames, ` +
+                `resumed at offset ${frameOffsetMs.toFixed(0)}ms (threshold was ${this.skipFramesBelowOffsetMs.toFixed(0)}ms)`);
+            this.skipFramesBelowOffsetMs = 0;
+        }
+
         this.pendingFrames.push(frame);
         this.bufferSize++;
 
@@ -226,11 +252,9 @@ export class VideoPlayer {
         const frameOffsetMs = frame.timestamp / 1000; // μs → ms
         const capturedAtMs = this.startedAtMs + frameOffsetMs;
         const currentLatencyMs = Date.now() - capturedAtMs;
-        if (currentLatencyMs > 0) {
-            this.pipelineLatencyMs = this.pipelineLatencyMs === 0
-                ? currentLatencyMs
-                : this.pipelineLatencyMs * 0.95 + currentLatencyMs * 0.05;
-        }
+        this.pipelineLatencyMs = this.pipelineLatencyMs === 0
+            ? Math.max(currentLatencyMs, 0)
+            : this.pipelineLatencyMs * 0.95 + currentLatencyMs * 0.05;
 
         // Safety cap: prevent unbounded buffer growth (30 frames = 1s at 30fps)
         while (this.pendingFrames.length > 30) {
@@ -259,7 +283,8 @@ export class VideoPlayer {
 
         // Initialize timing anchor on first frame
         if (this.playbackStartTime === 0) {
-            this.playbackStartTime = now;
+            this.playbackStartTime = now + this.rebufferDelayMs;
+            this.rebufferDelayMs = 0;
             this.firstFrameTimestamp = this.pendingFrames[0].timestamp; // μs
         }
 
@@ -294,7 +319,7 @@ export class VideoPlayer {
         } else {
             // Wall-clock pacing (no audio to sync to)
             const elapsedUs = (now - this.playbackStartTime) * 1000; // ms → μs
-            targetTimestamp = this.firstFrameTimestamp + elapsedUs;
+            targetTimestamp = this.firstFrameTimestamp + elapsedUs - this.pipelineLatencyMs * 1000;
 
             if (now - this.lastSyncLogTime > 2000) {
                 this.lastSyncLogTime = now;
@@ -365,18 +390,32 @@ export class VideoPlayer {
             return;
         }
 
+        // After tab restore: skip stale encoded frames arriving from SignalR
+        if (this.skipFramesBelowOffsetMs > 0 && timestampMs < this.skipFramesBelowOffsetMs) {
+            return;
+        }
+
         // If we're waiting for a keyframe with description, buffer chunks
         if (this.waitingForKeyframe) {
             console.log(`[VideoPlayer] Received frame: isKey=${isKeyFrame}, descLen=${description?.length ?? 0}, dataLen=${frameData.length}`);
-            if (isKeyFrame && description && description.length > 0) {
-                // Got the keyframe with description - configure decoder and process buffered chunks
-                console.log(`[VideoPlayer] GOT KEYFRAME WITH DESCRIPTION: ${description.length} bytes, processing ${this.pendingChunks.length} buffered chunks`);
+            const needsDescription = !!this.decoderConfig?.description;
+            if (isKeyFrame && (!needsDescription || (description && description.length > 0))) {
+                // After tab restore: skip keyframes that are too old
+                if (this.skipFramesBelowOffsetMs > 0 && timestampMs < this.skipFramesBelowOffsetMs) {
+                    debugLog?.log(`Skipping old keyframe at offset ${timestampMs.toFixed(0)}ms ` +
+                        `(threshold=${this.skipFramesBelowOffsetMs.toFixed(0)}ms)`);
+                    return;
+                }
+                this.skipFramesBelowOffsetMs = 0; // Got a current keyframe, clear threshold
+
+                // Got the keyframe (with description if needed) - configure decoder and process buffered chunks
+                console.log(`[VideoPlayer] GOT KEYFRAME: descLen=${description?.length ?? 0}, needsDesc=${needsDescription}, processing ${this.pendingChunks.length} buffered chunks`);
                 this.waitingForKeyframe = false;
 
-                // Configure decoder with description
+                // Reconfigure decoder with description (only if one was provided)
                 // Note: description.buffer may be larger than the actual data if it's a view,
                 // so we need to slice it properly
-                if (this.decoder && this.decoderConfig) {
+                if (description && description.length > 0 && this.decoder && this.decoderConfig) {
                     const descBuffer = description.buffer.slice(
                         description.byteOffset,
                         description.byteOffset + description.byteLength
@@ -395,6 +434,11 @@ export class VideoPlayer {
                 // Clear buffered delta frames (they're useless without the keyframe before them)
                 this.pendingChunks = [];
             } else {
+                // After tab restore: don't buffer stale deltas
+                if (this.skipFramesBelowOffsetMs > 0 && timestampMs < this.skipFramesBelowOffsetMs) {
+                    return;
+                }
+
                 // Buffer delta frames while waiting (but limit buffer size)
                 if (this.pendingChunks.length < 30) {
                     this.pendingChunks.push({ frameData, timestampMs, durationMs, isKeyFrame, description });
@@ -462,8 +506,53 @@ export class VideoPlayer {
         this.isPlaying = true;
         debugLog?.log(`VideoPlayer started for stream ${this.streamId}`);
 
+        // Listen for tab visibility restore to avoid frame burst after backgrounding
+        this.visibilitySubscription = DocumentEvents.passive.visibilityChange$.subscribe(() => {
+            if (!document.hidden && this.isPlaying) {
+                debugLog?.log(`visibilityChange: tab became visible, decoder=${this.decoder?.state ?? 'null'}`);
+                this.onVisibilityRestored();
+            }
+        });
+
         // Report initial playing state
         void this.reportPlaying(0, true);
+    }
+
+    private onVisibilityRestored(): void {
+        if (!this.decoder || this.decoder.state !== 'configured') return;
+
+        this.skippedBacklogFrames = 0;
+        const pendingCount = this.pendingFrames.length;
+
+        // Close all pending decoded frames to avoid burst playback
+        for (const frame of this.pendingFrames) {
+            try { frame.close(); } catch { /* already closed */ }
+        }
+        this.pendingFrames = [];
+        this.bufferSize = 0;
+
+        // Reset decoder to flush its internal queue of encoded chunks instantly.
+        // Without this, 72+ queued decode() calls must complete sequentially
+        // before we get to current frames — taking ~100ms and adding latency.
+        this.decoder.reset();
+        this.decoder.configure(this.decoderConfig!);
+
+        // After reset, delta frames are useless — need a fresh keyframe
+        this.waitingForKeyframe = true;
+        this.pendingChunks = [];
+
+        // Set threshold to skip stale encoded frames arriving from SignalR.
+        // Use actual pipeline latency (typically ~200ms), not the old 2000ms floor.
+        const targetLatencyMs = Math.max(this.pipelineLatencyMs, 300);
+        this.skipFramesBelowOffsetMs = (Date.now() - this.startedAtMs) - targetLatencyMs;
+
+        warnLog?.log(
+            `Tab restored: flushed ${pendingCount} pending frames, decoder reset, ` +
+            `waiting for keyframe above offset ${this.skipFramesBelowOffsetMs.toFixed(0)}ms`);
+
+        // Reset timing anchor so playback re-syncs on next rendered frame
+        this.playbackStartTime = 0;
+        this.rebufferDelayMs = 300; // Build 300ms of buffer before rendering
     }
 
     /** Called by Blazor */
@@ -552,11 +641,19 @@ export class VideoPlayer {
         this.receivedFrameCount = 0;
         this.receivedKeyframeCount = 0;
         this.pipelineLatencyMs = 0;
+        this.skipFramesBelowOffsetMs = 0;
+        this.skippedBacklogFrames = 0;
 
         // Stop latency reporting
         if (this.latencyReportTimer !== null) {
             clearInterval(this.latencyReportTimer);
             this.latencyReportTimer = null;
+        }
+
+        // Remove visibility subscription
+        if (this.visibilitySubscription) {
+            this.visibilitySubscription.unsubscribe();
+            this.visibilitySubscription = null;
         }
 
         this.stopPull();
