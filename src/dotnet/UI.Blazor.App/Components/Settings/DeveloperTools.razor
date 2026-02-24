@@ -1,4 +1,4 @@
-@using ActualChat.UI.App.Services.NativeAppSettings
+@using ActualChat.UI.App.Services
 @inherits ComputedStateComponent<AppUIHub, DeveloperTools.Model>
 @{
     var m = State.Value;
@@ -10,22 +10,15 @@
         : "Disabled";
 }
 
-@if (NativeHostSwitcher != null) {
-    <TileTopic Topic="Host"/>
-    <Tile Class="host-switcher-tile">
-        <HostSwitcher NativeHostSwitcher="@NativeHostSwitcher" />
-    </Tile>
-}
-
-@if (MauiLogAccessor != null) {
-    <TileTopic Topic="Log viewer"/>
-    <Tile Class="log-viewer-tile">
-        <LogViewerTile MauiLogAccessor="@MauiLogAccessor" />
-    </Tile>
-}
-
 @if (m.IsAdmin) {
-    <TileTopic Topic="Early Access Features"/>
+    if (ServerInstanceSelector != null) {
+        <TileTopic Topic="Host"/>
+        <Tile Class="host-switcher-tile">
+            <ServerInstanceSelector Selector="@ServerInstanceSelector" />
+        </Tile>
+    }
+
+    <TileTopic Topic="Early Access"/>
     <Tile Class="early-access-features">
         <TileItem Click="@OnExperimentalFeatureEnabledClick">
             <Icon><i class="icon-info text-2xl"></i></Icon>
@@ -54,16 +47,23 @@
             <Toggle IsChecked="@m.IsLogUIEnabled"/>
         </Right>
     </TileItem>
+    @if (MauiLogAccessor?.GetLogFile != null) {
+        <TileItem Click="@OnGetLogFileClick">
+            <Content>
+                @MauiLogAccessor.ActionName
+            </Content>
+        </TileItem>
+    }
 </Tile>
 
 @code {
-    private IMauiHostSwitcher? NativeHostSwitcher { get; set; }
+    private AppServerInstanceSelector? ServerInstanceSelector { get; set; }
     private IMauiLogAccessor? MauiLogAccessor { get; set; }
 
     private LogUI LogUI => Hub.LogUI;
 
     protected override void OnInitialized() {
-        NativeHostSwitcher = Services.GetService<IMauiHostSwitcher>();
+        ServerInstanceSelector = Services.GetService<AppServerInstanceSelector>();
         MauiLogAccessor = Services.GetService<IMauiLogAccessor>();
     }
 
@@ -96,6 +96,14 @@
             IsLogViewerEnabled = !x.IsLogViewerEnabledOrDefault,
         });
         LogUI.IsEnabled.Invalidate();
+    }
+
+    private async Task OnGetLogFileClick() {
+        var successfully = await MauiLogAccessor!.GetLogFile!.Invoke();
+        if (successfully)
+            ToastUI.Show("Got log file successfully.", "icon-checkmark-circle-2", ToastDismissDelay.Short);
+        else
+            UICommander.ShowError(StandardError.Constraint("Failed to get log file."));
     }
 
     // Nested types
