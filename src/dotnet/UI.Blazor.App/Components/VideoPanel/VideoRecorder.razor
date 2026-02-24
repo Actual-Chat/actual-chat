@@ -34,6 +34,7 @@
     private CancellationTokenSource? _qualityCts;
     private CancellationTokenSource? _codecCts;
     private bool _autoStartPending;
+    private int _lastRemoteStreamCount = -1;
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoRecorder.create";
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
@@ -44,7 +45,7 @@
 
     [Parameter] public string? PendingCameraDeviceId { get; set; }
     [Parameter] public bool PendingBlurEnabled { get; set; }
-    [Parameter] public bool HasRemoteStreams { get; set; }
+    [Parameter] public int RemoteStreamCount { get; set; }
     [Parameter] public bool AutoStart { get; set; }
 
     public override async ValueTask DisposeAsync() {
@@ -81,6 +82,12 @@
     protected override Task OnParametersSetAsync() {
         if (AutoStart && JSRef is null)
             _autoStartPending = true;
+
+        if (JSRef is not null && RemoteStreamCount != _lastRemoteStreamCount) {
+            _lastRemoteStreamCount = RemoteStreamCount;
+            _ = JSRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -92,6 +99,8 @@
             _ = SubscribeToQualityRequests(chatId);
             _ = SubscribeToRecommendedCodec(chatId);
         }
+        if (JSRef is not null)
+            _ = JSRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -203,7 +212,7 @@
             return;
 
         // Open JoinVideoCallModal for camera settings
-        var mode = HasRemoteStreams
+        var mode = RemoteStreamCount > 0
             ? JoinVideoCallModal.VideoCallMode.Join
             : JoinVideoCallModal.VideoCallMode.Start;
         _ = ModalUI.Show(new JoinVideoCallModal.Model(chat, mode));

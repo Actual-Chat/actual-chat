@@ -19,7 +19,7 @@
             <VideoRecorder
                 PendingCameraDeviceId="@PendingCameraDeviceId"
                 PendingBlurEnabled="@PendingBlurEnabled"
-                HasRemoteStreams="@hasRemoteStreams"
+                RemoteStreamCount="@m.RemoteStreams.Length"
                 AutoStart="@_autoStartPending" />
             <div class="remote-streams">
                 @foreach (var streamInfo in m.RemoteStreams) {
