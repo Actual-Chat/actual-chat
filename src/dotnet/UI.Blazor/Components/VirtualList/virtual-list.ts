@@ -1254,7 +1254,8 @@ export class VirtualList {
 
                 const item = this.items.get(itemKey);
                 const pivotRef = this.getItemRef(itemKey);
-                if (!pivotRef || !item || item.shouldSkipKey || !item.range)
+                const isInteractive = itemKey === interactiveKey;
+                if (!pivotRef || !item || (!isInteractive && item.shouldSkipKey) || !item.range)
                     continue;
 
                 pivotRefs.push(pivotRef);
@@ -1262,7 +1263,6 @@ export class VirtualList {
                 let stickyOffset: number | null = null;
                 const itemRect = pivotRef.getBoundingClientRect();
                 const isVisible = this.isRectIntersects(itemRect, viewRect);
-                const isInteractive = itemKey === interactiveKey;
                 if (isInteractive) {
                     const isSticky = window.getComputedStyle(pivotRef).position === 'sticky';
                     if (isSticky) {
