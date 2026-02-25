@@ -4,6 +4,7 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(TranslationCollection))]
+[Trait("Category", "Nightly")]
 public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<TranslationCollection.AppHostFixture>(fixture, @out)
 {
@@ -65,7 +66,7 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
         languages.Should().BeEquivalentTo(expectedLanguages, "for text: <<<{0}>>>", text);
     }
 
-    [LocalTheory("Requests are too expensive for the build server")]
+    [Theory]
     [InlineData("hello", "en-US")]
     [InlineData("До скорых.", "ru-RU")]
     [InlineData("Попытка", "ru-RU")]

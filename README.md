@@ -4,6 +4,8 @@
 
 ![slow tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/test-slow.yml/badge.svg)
 
+![nightly tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/test-nightly.yml/badge.svg?branch=dev)
+
 **Voxt** is a real-time communication platform built with .NET, Blazor, and [ActualLab.Fusion](https://github.com/ActualLab/Fusion).
 
 Web site: [voxt.ai](https://voxt.ai)

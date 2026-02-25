@@ -4,6 +4,7 @@ using ActualChat.Testing.Host.Assertion;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(TranslationCollection))]
+[Trait("Category", "Nightly")]
 public class TranslatorTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<TranslationCollection.AppHostFixture>(fixture, @out)
 {

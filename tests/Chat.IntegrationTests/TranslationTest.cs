@@ -6,6 +6,7 @@ using ActualLab.Fusion.EntityFramework;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(TranslationCollection))]
+[Trait("Category", "Nightly")]
 public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<TranslationCollection.AppHostFixture>(fixture, @out)
 {
