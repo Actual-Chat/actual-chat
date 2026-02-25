@@ -24,6 +24,7 @@
     <PackageReference Include="TimeZoneNames" />
     <PackageReference Include="TimeZoneConverter" />
     <PackageReference Include="Google.Cloud.RecaptchaEnterprise.V1" />
+    <PackageReference Include="Svg.Skia" />
   </ItemGroup>
 
 </Project>

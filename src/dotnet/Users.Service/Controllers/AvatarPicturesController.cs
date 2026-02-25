@@ -1,7 +1,9 @@
+using ActualChat.AspNetCore;
 using ActualChat.Controllers;
 using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Uploads;
+using ActualChat.Users.AvatarIcons;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;
@@ -53,5 +55,48 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
             .Save(mediaId, uploadedFile, null, MediaKind.UserAvatarPicture, cancellationToken)
             .ConfigureAwait(false);
         return Ok(mediaRef);
+    }
+
+    [HttpGet("beam/{key}")]
+    [CacheControlImmutable(Duration = 2592000)] // 30 days
+    public ActionResult GetBeam(
+        string key,
+        [FromQuery] AvatarFormat format = AvatarFormat.Svg,
+        [FromQuery] int? size = null,
+        [FromQuery] bool square = false)
+    {
+        if (key.IsNullOrEmpty())
+            return BadRequest("Key is required");
+
+        if (format == AvatarFormat.Png) {
+            size ??= 80;
+            var pngBytes = BeamAvatars.GeneratePngBytes(key, size.Value, square: square);
+            return File(pngBytes, "image/png");
+        }
+
+        var svg = BeamAvatars.GenerateSvg(key, square: square);
+        return Content(svg, "image/svg+xml");
+    }
+
+    [HttpGet("marble/{key}")]
+    [CacheControlImmutable(Duration = 2592000)] // 30 days
+    public ActionResult GetMarble(
+        string key,
+        [FromQuery] AvatarFormat format = AvatarFormat.Svg,
+        [FromQuery] int? size = null,
+        [FromQuery] string? title = null,
+        [FromQuery] bool doNotBlur = false)
+    {
+        if (key.IsNullOrEmpty())
+            return BadRequest("Key is required");
+
+        if (format == AvatarFormat.Png) {
+            size ??= 80;
+            var pngBytes = MarbleAvatars.GeneratePngBytes(key, size.Value, title: title ?? "", doNotBlur: doNotBlur);
+            return File(pngBytes, "image/png");
+        }
+
+        var svg = MarbleAvatars.GenerateSvg(key, title: title ?? "", doNotBlur: doNotBlur);
+        return Content(svg, "image/svg+xml");
     }
 }
