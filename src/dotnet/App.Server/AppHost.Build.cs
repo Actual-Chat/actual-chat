@@ -110,6 +110,7 @@ public partial class AppHost
                     .CreateLogger();
                 logging.AddFilteringSerilog(serilog, true);
             }
+            logging.AddSanitizingLoggerFactory(c => c.HostInfo().IsProductionInstance);
         });
 
         // HostInfo

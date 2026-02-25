@@ -4,7 +4,6 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
 using CommunityToolkit.HighPerformance;
-using Cysharp.Text;
 
 namespace ActualChat;
 
@@ -32,7 +31,6 @@ public static partial class StringExt
 #pragma warning restore MA0023
     private static readonly Regex LastWordRegex = LastWordRegexFactory();
     private static readonly Regex KebabCaseRegex = KebabCaseRegexFactory();
-
 
     public static string RequireNonEmpty(this string? source, [CallerArgumentExpression(nameof(source))] string name = "")
         => source.NullIfEmpty() ?? throw StandardError.Constraint($"{name} is required here.");
@@ -63,6 +61,21 @@ public static partial class StringExt
                 .ToLower(CultureInfo.InvariantCulture)
                 .OrdinalReplace("__", "_");
 
+    public static string ToKebabCase(this string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        // Split on capital letters, but keep sequences of capitals together if followed by lowercase
+        // e.g., "XMLHttpRequest" → ["XML", "Http", "Request"]
+        string withDashes = KebabCaseRegex.Replace(
+            input,
+            "$1$3-$2$4"
+        );
+
+        return withDashes.ToLowerInvariant();
+    }
+
     public static string Capitalize(this string source)
         => source.IsNullOrEmpty() ? source : source.Capitalize(0);
 
@@ -90,6 +103,9 @@ public static partial class StringExt
         return sb.ToStringAndRelease();
     }
 
+    public static Sensitive.Private ToPrivate(this string source)
+        => new(source);
+
     public static string Pluralize(this string source, int count)
         => count == 1 ? source : source + "s";
 
@@ -113,6 +129,16 @@ public static partial class StringExt
         => source.Length <= maxLength ? source : source[..maxLength];
     public static string Truncate(this string source, int maxLength, string ellipsis)
         => source.Length <= maxLength ? source : source[..maxLength] + ellipsis;
+
+    public static string OrdinalSuffix(this string s, string separator)
+        => s.Suffix(separator, StringComparison.Ordinal);
+
+    public static string Suffix(this string s, string separator, StringComparison comparison){
+        if (s.IsNullOrEmpty())
+            return s;
+        var i = s.LastIndexOf(separator, comparison);
+        return i < 0 ? s : s[(i + separator.Length)..];
+    }
 
     public static string[] SplitIntoWords(this string text) =>
         text.Split([' ', ',', '!', '.', ':', '-'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
@@ -261,30 +287,5 @@ public static partial class StringExt
         var iStart = s.FirstIndexOf(char.IsLetterOrDigit);
         var iEnd = s.LastIndexOf(char.IsLetterOrDigit);
         return iStart < 0 || iEnd < 0 ? "" : s[iStart..(iEnd + 1)];
-    }
-
-    public static string OrdinalSuffix(this string s, string separator)
-        => s.Suffix(separator, StringComparison.Ordinal);
-
-    public static string Suffix(this string s, string separator, StringComparison comparison){
-        if (s.IsNullOrEmpty())
-            return s;
-        var i = s.LastIndexOf(separator, comparison);
-        return i < 0 ? s : s[(i + separator.Length)..];
-    }
-
-    public static string ToKebabCase(this string input)
-    {
-        if (string.IsNullOrEmpty(input))
-            return input;
-
-        // Split on capital letters, but keep sequences of capitals together if followed by lowercase
-        // e.g., "XMLHttpRequest" → ["XML", "Http", "Request"]
-        string withDashes = KebabCaseRegex.Replace(
-            input,
-            "$1$3-$2$4"
-        );
-
-        return withDashes.ToLowerInvariant();
     }
 }
