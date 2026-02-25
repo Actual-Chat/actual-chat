@@ -311,11 +311,6 @@ public static partial class Constants
         public const int ExtendedPageSize = 30;
     }
 
-    public static class Preferences
-    {
-        public const string EnableDataCollectionKey = "analytics"; // TODO(AppRename): rename to proper name
-    }
-
     public static class ServerSettings
     {
         public const string UseChatContentArranger2ChatIds = "UseChatContentArranger2ChatIds";

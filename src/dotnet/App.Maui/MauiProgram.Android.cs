@@ -106,7 +106,7 @@ public static partial class MauiProgram
     }
 
     private static bool IsDataCollectionEnabled()
-        => Preferences.Default.Get(Constants.Preferences.EnableDataCollectionKey, false);
+        => MauiPreferences.IsDataCollectionEnabled == true;
 
     private static void ActivateDataCollectionIfEnabled(Context context)
     {

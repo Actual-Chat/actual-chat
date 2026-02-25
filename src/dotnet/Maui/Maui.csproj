@@ -76,11 +76,8 @@
     <PackageReference Include="Sentry.OpenTelemetry" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
-    <PackageReference Include="sqlite-net-pcl" />
-    <!--
-      An extra package to use SQLite on MAUI:
-      https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
-    <PackageReference Include="SQLitePCLRaw.bundle_green" />
+    <PackageReference Include="sqlite-net-sqlcipher" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" />
     <PackageReference Include="Svg.Skia" />
   </ItemGroup>
 

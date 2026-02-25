@@ -19,16 +19,16 @@ public sealed class MauiAppServerInstanceSelector(UIHub hub) : AppServerInstance
 
     public override AppServerInstance Get()
     {
-        if (MauiSettings.HostOverride is null)
+        if (MauiPreferences.HostOverride is null)
             return Default;
 
-        return AppServerInstance.TryCreate(MauiSettings.HostOverride) ?? Default;
+        return AppServerInstance.TryCreate(MauiPreferences.HostOverride) ?? Default;
     }
 
     public override void Set(AppServerInstance instance)
     {
         var hostOverride = instance != Default ? instance : null;
-        MauiSettings.HostOverride = hostOverride?.HostName;
+        MauiPreferences.HostOverride = hostOverride?.HostName;
         _ = MauiSession.RemoveStored().SuppressExceptions();
         _ = ReloadUI.Clear(true, true);
     }

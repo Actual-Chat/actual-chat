@@ -1,3 +1,4 @@
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.App.Services;
 using Android.App;
 using Android.Content;
@@ -13,26 +14,23 @@ public sealed record ChatAttentionRequest(
     string Body,
     string ImageUrl);
 
-public class ChatAttentionService
+public sealed class ChatAttentionService
 {
-    private const string PreferencesKey = "ChatAttention";
     private const string NotificationTag = "ChatAttentionNotification";
     private const int MaxNotificationCount = 4;
-
     private static readonly Lock ClassSyncObject = new ();
+
     public static readonly string AlarmActionPrefix = Context.PackageName + ".ChatAttention.";
     private static readonly string AlarmAction = AlarmActionPrefix + "Alarm";
     private static readonly string SnoozeAction = AlarmActionPrefix + "Snooze";
     private static readonly string NotificationGroupKey = Context.PackageName + "n.g.attention";
     private static readonly TimeSpan RemindInterval = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan SnoozeInterval = TimeSpan.FromMinutes(60);
-
-    private readonly Lock _syncObject = new();
-    private Option<State?> _cachedState = Option<State?>.None;
-    private bool _isInitialized;
-
     private static Context Context => Platform.AppContext;
     private static DateTime UtcNow => DateTime.UtcNow;
+
+    private readonly Lock _syncObject = new();
+    private bool _isInitialized;
 
     private AlarmManager AlarmManager => field ??= (AlarmManager)Context.GetSystemService(Context.AlarmService)!;
 
@@ -83,8 +81,7 @@ public class ChatAttentionService
 
     private void AskInternal(ChatAttentionRequest request)
     {
-        var state = GetPersistedState();
-        state ??= State.None;
+        var state = GetState() ?? State.None;
         var existentRequest = state.GetRequest(request.ChatId);
         if (existentRequest != null && existentRequest.ChatPosition > request.ChatPosition)
             return;
@@ -94,13 +91,13 @@ public class ChatAttentionService
             ? requests.Select(c => c == existentRequest ? request : c).ToArray()
             : new List<ChatAttentionRequest>(requests) { request }.ToArray();
         state = new State(UtcNow, requests);
-        PersistState(state);
+        SetState(state);
         DoJob(state);
     }
 
     private void ClearInternal(ChatId chatId, long chatPosition)
     {
-        var originalState = GetPersistedState();
+        var originalState = GetState();
         var state = originalState;
         if (state != null) {
             var existentRequest = state.GetRequest(chatId);
@@ -108,7 +105,7 @@ public class ChatAttentionService
                 state = new State(UtcNow, state.Requests.Where(c => c != existentRequest).ToArray());
             if (!state.HasRequest())
                 state = null;
-            PersistState(state);
+            SetState(state);
         }
         if (!ReferenceEquals(originalState, state))
             DoJob(state ?? State.None);
@@ -119,21 +116,21 @@ public class ChatAttentionService
 
     private void DoJob(State? state)
     {
-        state ??= GetPersistedState();
+        state ??= GetState();
         Notify(state);
         ScheduleAlarm(state);
     }
 
     private void OnSnooze()
     {
-        var state = GetPersistedState();
+        var state = GetState();
         if (state is null || !state.HasRequest())
             return;
 
         var muteThreshold = DateTime.UtcNow.Add(SnoozeInterval);
         if (!state.MuteThreshold.HasValue || state.MuteThreshold < muteThreshold) {
             state = state with { MuteThreshold = muteThreshold };
-            PersistState(state);
+            SetState(state);
         }
 
         Notify(state, false, false);
@@ -282,6 +279,7 @@ public class ChatAttentionService
             _ = Task.Run(SyncAction);
         else
             SyncAction();
+        return;
 
         void SyncAction() {
             lock (_syncObject)
@@ -289,45 +287,17 @@ public class ChatAttentionService
         }
     }
 
-    private State? GetPersistedState()
+    private static State? GetState()
+        => MauiPreferences.Get<State?>(MauiPreferences.ChatAttentionStateKey);
+
+    private static void SetState(State? state)
     {
-        if (_cachedState.HasValue)
-            return _cachedState.Value;
-
-        var json = Preferences.Default.Get(PreferencesKey, "");
-        if (json.IsNullOrEmpty())
-            return null;
-
-        try {
- #pragma warning disable IL2026
-            return JsonSerializer.Deserialize<State>(json);
- #pragma warning restore IL2026
-        }
-        catch {
-            return null;
-        }
+        if (state?.MuteThreshold < DateTime.UtcNow)
+            state = state with { MuteThreshold = null };
+        MauiPreferences.Set(MauiPreferences.ChatAttentionStateKey, state);
     }
 
-    private void PersistState(State? state)
-    {
-        if (state == null)
-            Preferences.Default.Remove(PreferencesKey);
-        else {
-            state = SimplifyState();
- #pragma warning disable IL2026
-            var json = JsonSerializer.Serialize(state);
- #pragma warning restore IL2026
-            Preferences.Default.Set(PreferencesKey, json);
-        }
-        _cachedState = new Option<State?>(true, state);
-
-        State SimplifyState()
-        {
-            if (state.MuteThreshold.HasValue && state.MuteThreshold < DateTime.UtcNow)
-                state = state with { MuteThreshold = null };
-            return state;
-        }
-    }
+    // Nested types
 
     public record State(DateTime UpdatedOnUtc, ChatAttentionRequest[] Requests)
     {

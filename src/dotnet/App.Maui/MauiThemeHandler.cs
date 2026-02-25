@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Services;
+using ActualChat.Maui;
 using ActualChat.UI.Blazor.Services;
 using CommunityToolkit.Maui.Core;
 using CommunityToolkit.Maui.Core.Platform;
@@ -8,7 +9,6 @@ namespace ActualChat.App.Maui;
 
 public class MauiThemeHandler
 {
-    private const string ThemeKey = "Theme";
     public static readonly MauiThemeHandler Instance =
 #if ANDROID
         new AndroidThemeHandler();
@@ -26,7 +26,7 @@ public class MauiThemeHandler
 
     protected MauiThemeHandler()
     {
-        _serialized = Preferences.Default.Get<string>(ThemeKey, "");
+        _serialized = MauiPreferences.Theme;
         var parts = _serialized.Split('|');
         if (parts.Length == 2) {
             _theme = Enum.TryParse<Theme>(parts[0], false, out var v) ? v : null;
@@ -41,7 +41,7 @@ public class MauiThemeHandler
         var serialized = string.Join('|', themeInfo.Theme?.ToString("G") ?? "", themeInfo.Colors);
         if (!OrdinalEquals(serialized, _serialized)) {
             _serialized = serialized;
-            Preferences.Default.Set(ThemeKey, serialized);
+            MauiPreferences.Theme = serialized;
         }
         Apply();
     }

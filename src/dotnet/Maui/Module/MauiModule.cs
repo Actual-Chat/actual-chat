@@ -18,6 +18,7 @@ public class MauiModule(IServiceProvider moduleServices)
         var appCacheDir = new FilePath(FileSystem.CacheDirectory);
         services.AddSingleton(_ => new SQLiteRemoteComputedCache.Options() {
             DbPath = appCacheDir & "CCC.db3",
+            Key = MauiPreferences.DbEncryptionKey,
         });
         services.AddSingleton<IRemoteComputedCache>(c => {
             var options = c.GetRequiredService<SQLiteRemoteComputedCache.Options>();
@@ -28,7 +29,7 @@ public class MauiModule(IServiceProvider moduleServices)
         var appDataDir = new FilePath(FileSystem.AppDataDirectory);
         services.AddSingleton(c => {
             var dbPath = appDataDir & "LocalSettings.db3";
-            var backend = new SQLiteBatchingKvasBackend(dbPath, "1.0", c);
+            var backend = new SQLiteBatchingKvasBackend(dbPath, "1.0", c, MauiPreferences.DbEncryptionKey);
             return new LocalSettings.Options() {
                 BackendFactory = _ => backend,
                 ReaderWorkerPolicy = new BatchProcessorWorkerPolicy() {

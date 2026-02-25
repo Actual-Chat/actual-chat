@@ -1,6 +1,5 @@
 using ActualChat.Hosting;
 using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Storage;
 
 namespace ActualChat.Maui;
 
@@ -34,22 +33,9 @@ public static class MauiSettings
     public static readonly AppKind AppKind;
     public static readonly Color SplashBackgroundColor = Color.FromArgb("#0C003D");
 
-    private const string HostOverridePreferenceKey = "app_server_instance_override";
-
-    public static string? HostOverride {
-        get => (field ??= Preferences.Default.Get(HostOverridePreferenceKey, "")).NullIfEmpty();
-        set {
-            field = value ?? "";
-            if (value.IsNullOrEmpty())
-                Preferences.Default.Remove(HostOverridePreferenceKey);
-            else
-                Preferences.Default.Set(HostOverridePreferenceKey, value);
-        }
-    }
-
     static MauiSettings()
     {
-        Host = HostOverride ?? DefaultHost;
+        Host = MauiPreferences.HostOverride ?? DefaultHost;
         BaseUrl = "https://" + Host + "/";
         BaseUri = BaseUrl.ToUri();
 
