@@ -179,11 +179,16 @@ public class SlidingMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         // Ring buffer = 100, but each consumer channel only holds 4
         var memoizer = channel.Reader.ReadAllAsync().SlidingMemoize(100, consumerCapacity: 4);
 
+        // Signal: fast consumer releases after reading each item
+        var readSignal = new SemaphoreSlim(0);
+
         // Start a "fast" consumer that reads everything
         var fastItems = new List<int>();
         var fastTask = Task.Run(async () => {
-            await foreach (var item in memoizer.Replay(CancellationToken.None))
+            await foreach (var item in memoizer.Replay(CancellationToken.None)) {
                 fastItems.Add(item);
+                readSignal.Release();
+            }
         });
 
         // Start a "slow" consumer that blocks after subscribing, never reads
@@ -196,7 +201,7 @@ public class SlidingMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
         // Write enough items to overflow the slow consumer's bounded channel (capacity 4)
         for (var i = 0; i < 20; i++) {
             await channel.Writer.WriteAsync(i);
-            await Task.Delay(10); // give fast consumer time to drain
+            await readSignal.WaitAsync(TimeSpan.FromSeconds(5)); // wait for fast consumer to drain
         }
 
         channel.Writer.Complete();
