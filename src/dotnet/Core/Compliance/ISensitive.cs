@@ -2,6 +2,6 @@ namespace ActualChat.Compliance;
 
 /// <summary>
 /// Tagging interface for objects whose string representation
-/// changes depending on whether <see cref="Sanitizer"/> is active.
+/// may change depending on whether <see cref="Sanitizer"/> is active or not.
 /// </summary>
 public interface ISensitive;

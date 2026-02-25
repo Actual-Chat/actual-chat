@@ -52,7 +52,7 @@ public static class IncomingShareHandler
 
     private static void HandlePlainTextSendInternal(string text)
     {
-        Log.LogInformation("About to send text: '{Text}'", text);
+        Log.LogInformation("About to send text: '{Text}'", text.ToPrivate());
         _ = DispatchToBlazor(
                 c => c.GetRequiredService<IncomingShareUI>().ShareText(text),
                 "IncomingShareUI.ShareText(...)",

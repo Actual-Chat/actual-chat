@@ -7,7 +7,7 @@ namespace ActualChat.Compliance;
 /// Call <see cref="Activate"/> to enable masking for the current thread;
 /// the returned <see cref="IDisposable"/> restores the previous state.
 /// </summary>
-public sealed class Sanitizer
+public static class Sanitizer
 {
     private static readonly string[] LengthRanges = BuildLengthRanges();
 
@@ -22,20 +22,11 @@ public sealed class Sanitizer
     public static Scope Activate()
         => new();
 
-    public static string Mask(object? source)
-        => source is null || !IsActive
-            ? source?.ToString() ?? ""
-            : source switch {
-                string s => MaskPrivate(s),
-                Sensitive.Private p => MaskPrivate(p.Source),
-                ISensitive sensitive => sensitive.ToString() ?? "",
-                _ => source.ToString() ?? "",
-            };
-
-    public static string MaskPrivate(string? value)
+    [return: NotNullIfNotNull("value")]
+    public static string? MaskPrivate(string? value)
     {
         if (value.IsNullOrEmpty() || !IsActive)
-            return value ?? "";
+            return value;
 
         var length = value.Length;
         return length <= 3

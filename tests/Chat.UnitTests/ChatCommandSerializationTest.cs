@@ -55,7 +55,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Chats_UpsertTextEntry_Basic()
     {
-        var cmd = new Chats_UpsertTextEntry(TestSession, TestChatId, null, "Hello, world!");
+        var cmd = new Chats_UpsertTextEntry(TestSession, TestChatId, null) { Text = "Hello, world!" };
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -67,7 +67,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Chats_UpsertTextEntry_WithReply()
     {
-        var cmd = new Chats_UpsertTextEntry(TestSession, TestChatId, 1, "Reply text", Option.Some<long?>(5));
+        var cmd = new Chats_UpsertTextEntry(TestSession, TestChatId, 1) { Text = "Reply text", RepliedEntryLid = Option.Some<long?>(5) };
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);

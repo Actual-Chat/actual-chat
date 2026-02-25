@@ -176,7 +176,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             SuggestShareContacts([.._selectedIds]);
             var text = await SharedInputs.GetText(cancellationToken).ConfigureAwait(false);
             var fileInputs = await SharedInputs.ListFiles(cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("Text: {Text}, Files: {Files}", text, fileInputs.Count);
+            Log.LogInformation("Text: {Text}, Files: {Files}", text.ToPrivate(), fileInputs.Count);
             if (text.IsNullOrWhiteSpace() && fileInputs.Count == 0) {
                 Log.LogError("No text or files available for upload");
                 return;
@@ -224,7 +224,8 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 
     private async Task CreateChatEntry(ChatId chatId, string entryText, TextEntryAttachment[] attachmentList, CancellationToken cancellationToken)
     {
-        var cmd = new Chats_UpsertTextEntry(Session, chatId, null, entryText) {
+        var cmd = new Chats_UpsertTextEntry(Session, chatId, null) {
+            Text = entryText,
             ClientId = RandomStringGenerator.Default.Next(6),
             EntryAttachments = attachmentList,
         };

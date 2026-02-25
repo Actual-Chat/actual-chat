@@ -10,7 +10,7 @@ public class SanitizingLoggerFactoryTest
         var (loggerFactory, messages) = CreateLoggerFactory(useSanitizing: true);
         var log = loggerFactory.CreateLogger("Test");
 
-        log.LogInformation("Text: {Text}", new Sensitive("Hello world"));
+        log.LogInformation("Text: {Text}", "Hello world".ToPrivate());
 
         messages.Should().ContainSingle()
             .Which.Should().Contain("<<He* [8-15]>>");
@@ -22,7 +22,7 @@ public class SanitizingLoggerFactoryTest
         var (loggerFactory, messages) = CreateLoggerFactory(useSanitizing: false);
         var log = loggerFactory.CreateLogger("Test");
 
-        log.LogInformation("Text: {Text}", new Sensitive("Hello world"));
+        log.LogInformation("Text: {Text}", "Hello world".ToPrivate());
 
         messages.Should().ContainSingle()
             .Which.Should().Contain("Hello world");

@@ -194,7 +194,9 @@ public class EntryGroupExtractor(IEmbeddingsCalculator embeddingsCalculator, ILo
             return await EmbeddingsCalculator.CalculateVector(text, cancellationToken).ConfigureAwait(false);
         }
         catch (ExternalError e) {
-            Log.LogWarning(e, "Failed to calculate embeddings for text: {Text}", text[..Math.Min(20, text.Length)]);
+            Log.LogWarning(e,
+                "Failed to calculate embeddings for text: {Text}",
+                text[..Math.Min(20, text.Length)].ToPrivate());
             return [];
         }
     }

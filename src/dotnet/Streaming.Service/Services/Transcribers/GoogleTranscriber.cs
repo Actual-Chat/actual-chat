@@ -287,7 +287,7 @@ public partial class GoogleTranscriber : ITranscriber
         var mustAppendToUnstable = false;
         for (var i = 0; i < results.Count; i++) {
             var result = results[i];
-            DebugLog?.LogDebug("Result {Index}: {Result}", i, result);
+            DebugLog?.LogDebug("Result {Index}: {Result}", i, result.ToString().ToPrivate());
             ProcessResult(state, result, options, mustAppendToUnstable);
             mustAppendToUnstable |= !result.IsFinal;
             DebugLog?.LogDebug("Transcript {Index}: {Transcript}", i, state.Unstable);

@@ -297,8 +297,8 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
                 if (count-- <= 0)
                     return;
 
-                var command = new Chats_UpsertTextEntry(session, chatId, null, text);
-                await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
+                var cmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = text };
+                await commander.Call(cmd, CancellationToken.None).ConfigureAwait(false);
             }
     }
 }

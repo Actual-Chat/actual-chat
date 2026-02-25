@@ -2,7 +2,7 @@ namespace ActualChat.Logging;
 
 /// <summary>
 /// A logger that activates <see cref="Sanitizer"/> around each log call,
-/// so that <see cref="Sensitive"/> arguments are masked via their <c>ToString()</c>.
+/// so that <see cref="PrivateString"/> arguments are masked via their <c>ToString()</c>.
 /// </summary>
 public sealed class SanitizingLogger(ILogger inner) : ILogger
 {

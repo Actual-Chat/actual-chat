@@ -93,22 +93,24 @@ internal class PostRequestsStorageInternal : BatchingKvas
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public partial record SendMessageRequestEntry(
-    [property: DataMember, MemoryPackOrder(0)] string Uuid,
-    [property: DataMember, MemoryPackOrder(1)] Moment Now,
-    [property: DataMember, MemoryPackOrder(2)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(3)] long? LocalId,
-    [property: DataMember, MemoryPackOrder(4)] string Text,
-    [property: DataMember, MemoryPackOrder(5)] Option<long?> RepliedEntryLid,
-    [property: DataMember, MemoryPackOrder(6)] AttachFileRequestEntry[] AttachFileRequests,
-    [property: DataMember, MemoryPackOrder(7)] string ClientId,
-    [property: DataMember, MemoryPackOrder(8)] string AfterSendMessageHandlerKey,
-    [property: DataMember, MemoryPackOrder(9)] string AfterSendMessageHandlerArgs
-    ) : IHasId<string>
+public sealed partial record SendMessageRequestEntry : IHasId<string>, ISensitive
 {
+    [DataMember, MemoryPackOrder(0)] public required string Uuid { get; init; }
+    [DataMember, MemoryPackOrder(1)] public required Moment Now { get; init; }
+    [DataMember, MemoryPackOrder(2)] public required ChatId ChatId { get; init; }
+    [DataMember, MemoryPackOrder(3)] public long? LocalId { get; init; }
+    [DataMember, MemoryPackOrder(4)] public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
+    [DataMember, MemoryPackOrder(5)] public Option<long?> RepliedEntryLid { get; init; }
+    [DataMember, MemoryPackOrder(6)] public AttachFileRequestEntry[] AttachFileRequests { get; init; } = [];
+    [DataMember, MemoryPackOrder(7)] public string ClientId { get; init; } = "";
+    [DataMember, MemoryPackOrder(8)] public string AfterSendMessageHandlerKey { get; init; } = "";
+    [DataMember, MemoryPackOrder(9)] public string AfterSendMessageHandlerArgs { get; init; } = "";
+    [DataMember, MemoryPackOrder(10)] public long? NewChatEntryLocalId { get; init; }
+
     string IHasId<string>.Id => Uuid;
 
-    [DataMember, MemoryPackOrder(10)] public long? NewChatEntryLocalId { get; init; }
+    [MemoryPackConstructor, SerializationConstructor]
+    public SendMessageRequestEntry() { }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]

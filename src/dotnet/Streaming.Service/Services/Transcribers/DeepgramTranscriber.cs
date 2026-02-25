@@ -210,7 +210,7 @@ public partial class DeepgramTranscriber : ITranscriber
         ResultResponse result,
         TranscriptionOptions options)
     {
-        DebugLog?.LogDebug("Transcript received: {Result}", result);
+        DebugLog?.LogDebug("Transcript received: {Result}", result.ToString().ToPrivate());
         var isFinal = result.IsFinal ?? false;
         var isStreamFinalized = result.FromFinalize ?? false;
         var alternative = result.Channel?.Alternatives?.FirstOrDefault();

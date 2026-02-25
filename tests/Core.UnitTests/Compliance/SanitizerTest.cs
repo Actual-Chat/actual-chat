@@ -31,7 +31,7 @@ public class SanitizerTest
     }
 
     [Theory]
-    [InlineData(null, "")]
+    [InlineData(null, null)]
     [InlineData("", "")]
     [InlineData("A", "<<* [1]>>")]
     [InlineData("Hi", "<<* [2-3]>>")]
@@ -41,16 +41,16 @@ public class SanitizerTest
     [InlineData("12345678", "<<12* [8-15]>>")]
     [InlineData("Hello world", "<<He* [8-15]>>")]
     [InlineData("Hello world12345", "<<He* [16-31]>>")]
-    public void MaskPrivateWhenActive(string? input, string expected)
+    public void MaskPrivateWhenActive(string? input, string? expected)
     {
         using var _ = Sanitizer.Activate();
         Sanitizer.MaskPrivate(input).Should().Be(expected);
     }
 
     [Theory]
-    [InlineData(null, "")]
+    [InlineData(null, null)]
     [InlineData("", "")]
     [InlineData("Hello world", "Hello world")]
-    public void MaskPrivatePassesThroughWhenInactive(string? input, string expected)
+    public void MaskPrivatePassesThroughWhenInactive(string? input, string? expected)
         => Sanitizer.MaskPrivate(input).Should().Be(expected);
 }

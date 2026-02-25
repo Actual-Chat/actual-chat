@@ -14,7 +14,7 @@ namespace ActualChat.Chat;
 public sealed partial record ChatEntry(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] long Version = 0
-    ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget
+    ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget, ISensitive
 {
     public static readonly VersionEqualityComparer<ChatEntry, ChatEntryId> VersionEqualityComparer = new();
 
@@ -82,7 +82,7 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 13), MemoryPackIgnore] public Moment? ClientSideBeginsAt { get; init; }
     [DataMember(Order = 14), MemoryPackIgnore] public Moment? EndsAt { get; init; }
     [DataMember(Order = 15), MemoryPackIgnore] public Moment? ContentEndsAt { get; init; }
-    [DataMember(Order = 16), MemoryPackOrder(16)] public string Content { get; init; } = "";
+    [DataMember(Order = 16), MemoryPackOrder(16)] public string Content { get => Sanitizer.MaskPrivate(field); init; } = "";
     [DataMember(Order = 32), MemoryPackOrder(32)] public HashString ContentHash { get; init; }
     [DataMember(Order = 17), MemoryPackOrder(17)] public SystemEntry? SystemEntry { get; init; }
     [DataMember(Order = 18), MemoryPackOrder(18)] public bool HasReactions { get; init; }
@@ -94,8 +94,8 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 24), MemoryPackOrder(24)] public ChatEntryId? ForwardedChatEntryId { get; init; }
     [DataMember(Order = 25), MemoryPackOrder(25)] public AuthorId? ForwardedAuthorId { get; init; }
     [DataMember(Order = 26), MemoryPackIgnore] public Moment? ForwardedChatEntryBeginsAt { get; init; }
-    [DataMember(Order = 27), MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
-    [DataMember(Order = 28), MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
+    [DataMember(Order = 27), MemoryPackOrder(27)] public string? ForwardedChatTitle { get => Sanitizer.MaskPrivate(field); init; }
+    [DataMember(Order = 28), MemoryPackOrder(28)] public string? ForwardedAuthorName { get => Sanitizer.MaskPrivate(field); init; }
     [DataMember(Order = 31), MemoryPackOrder(31)] public Symbol[] LinkPreviewIds { get; init; } = [];
     [DataMember(Order = 30), MemoryPackOrder(30)] public LinkPreviewMode LinkPreviewMode { get; init; }
     [DataMember(Order = 33), MemoryPackOrder(33)] public bool IsThreadStartEntry { get; init; }
@@ -152,7 +152,7 @@ public sealed partial record ChatEntry(
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [method: MemoryPackConstructor, SerializationConstructor]
-public sealed partial record ChatEntryDiff() : RecordDiff
+public sealed partial record ChatEntryDiff() : RecordDiff, ISensitive
 {
     [DataMember, MemoryPackOrder(10)] public bool? IsRemoved { get; init; }
     [DataMember, MemoryPackOrder(11)] public AuthorId? AuthorId { get; init; }
@@ -160,7 +160,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff
     [DataMember, MemoryPackOrder(13)] public Option<Moment?> ClientSideBeginsAt { get; init; }
     [DataMember, MemoryPackOrder(14)] public Option<Moment?> EndsAt { get; init; }
     [DataMember, MemoryPackOrder(15)] public Option<Moment?> ContentEndsAt { get; init; }
-    [DataMember, MemoryPackOrder(16)] public string? Content { get; init; }
+    [DataMember, MemoryPackOrder(16)] public string? Content { get => Sanitizer.MaskPrivate(field); init; }
     [DataMember, MemoryPackOrder(17)] public Option<SystemEntry?> SystemEntry { get; init; }
     [DataMember, MemoryPackOrder(18)] public bool? HasReactions { get; init; }
     [DataMember, MemoryPackOrder(19)] public string? StreamId { get; init; }
@@ -171,8 +171,8 @@ public sealed partial record ChatEntryDiff() : RecordDiff
     [DataMember, MemoryPackOrder(24)] public ChatEntryId? ForwardedChatEntryId { get; init; }
     [DataMember, MemoryPackOrder(25)] public AuthorId? ForwardedAuthorId { get; init; }
     [DataMember, MemoryPackOrder(26)] public Option<Moment?> ForwardedChatEntryBeginsAt { get; init; }
-    [DataMember, MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
-    [DataMember, MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
+    [DataMember, MemoryPackOrder(27)] public string? ForwardedChatTitle { get => Sanitizer.MaskPrivate(field); init; }
+    [DataMember, MemoryPackOrder(28)] public string? ForwardedAuthorName { get => Sanitizer.MaskPrivate(field); init; }
     [DataMember, MemoryPackOrder(30)] public LinkPreviewMode? LinkPreviewMode { get; init; }
     [DataMember, MemoryPackOrder(31)] public bool IsThreadStartEntry { get; init; }
     [DataMember, MemoryPackOrder(32)] public bool IsThreadEntry { get; init; }

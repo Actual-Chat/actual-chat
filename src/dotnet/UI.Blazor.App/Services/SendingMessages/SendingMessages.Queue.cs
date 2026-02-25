@@ -7,18 +7,19 @@ partial class SendingMessages
 
     private async Task<object?> ProcessQueueItem(PostMessageQueueItem command, CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("-> ProcessQueueItem. Text: '{Text}'", command.Request.Text);
+        DebugLog?.LogDebug("-> ProcessQueueItem. Text: '{Text}'", command.Request.Text.ToPrivate());
         while (true) {
             using var cts = cancellationToken.CreateLinkedTokenSource();
             cts.CancelAfter(ProcessCommandTimeout);
             try {
                 ChatEntry chatEntry = await ProcessCommand(command, cts.Token).ConfigureAwait(false);
-                DebugLog?.LogDebug("<- ProcessQueueItem. Text: '{Text}'", command.Request.Text);
+                DebugLog?.LogDebug("<- ProcessQueueItem. Text: '{Text}'", command.Request.Text.ToPrivate());
                 return chatEntry;
             }
             catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
-                Log.LogWarning(e, "ProcessQueueItem failed for '{Text}', retrying in {Delay}s",
-                    command.Request.Text, ProcessCommandRetryDelay.TotalSeconds);
+                Log.LogWarning(e,
+                    "ProcessQueueItem failed for '{Text}', retrying in {Delay}s",
+                    command.Request.Text.ToPrivate(), ProcessCommandRetryDelay.TotalSeconds);
                 await Task.Delay(ProcessCommandRetryDelay, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -36,7 +37,9 @@ partial class SendingMessages
         var textEntryAttachments = mediaIds
             .Select(x => new TextEntryAttachment { MediaId = x })
             .ToArray();
-        var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId, request.Text, request.RepliedEntryLid) {
+        var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId) {
+            Text = request.Text,
+            RepliedEntryLid = request.RepliedEntryLid,
             ClientId = request.ClientId,
             EntryAttachments = textEntryAttachments,
         };

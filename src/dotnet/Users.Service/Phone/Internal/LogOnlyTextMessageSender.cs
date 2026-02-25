@@ -7,7 +7,7 @@ public sealed class LogOnlyTextMessageSender(IServiceProvider services) : ITextM
     public Task Send(ActualChat.Phone phone, string text)
     {
         // just for debugging purpose
-        Log.LogWarning("!!! Text message to {Phone}: {Text}", phone.E164Value, text);
+        Log.LogWarning("!!! Text message to {Phone}: {Text}", phone.E164Value, text.ToPrivate());
         return Task.CompletedTask;
     }
 }

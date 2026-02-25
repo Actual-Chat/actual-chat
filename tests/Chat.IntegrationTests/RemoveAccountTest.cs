@@ -117,7 +117,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
                 if (count-- <= 0)
                     return entries.ToArray();
 
-                var command = new Chats_UpsertTextEntry(session, chatId, null, text);
+                var command = new Chats_UpsertTextEntry(session, chatId, null) { Text = text };
                 var entry = await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
                 entries.Add(entry);
             }
