@@ -14,7 +14,6 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
     private IAuthorsUpgradeBackend AuthorsUpgradeBackend { get; }
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
-    private IUsersUpgradeBackend UsersUpgradeBackend { get; }
     private IBlobStorages Blobs { get; }
 
     public ChatsUpgradeBackend(IServiceProvider services) : base(services)
@@ -25,7 +24,6 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         AuthorsUpgradeBackend = services.GetRequiredService<IAuthorsUpgradeBackend>();
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
-        UsersUpgradeBackend = services.GetRequiredService<IUsersUpgradeBackend>();
         Blobs = Services.GetRequiredService<IBlobStorages>();
     }
 
@@ -126,9 +124,8 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
             return; // It just spawns other commands, so nothing to do here
 
         var chatPositionsBackend = Services.GetRequiredService<IChatPositionsBackend>();
-        var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
 
-        var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
+        var userIds = await ListAllAccountIds(cancellationToken).ConfigureAwait(false);
         foreach (var userId in userIds) {
             var chatIds = await AuthorsUpgradeBackend.ListChatIds(userId, cancellationToken).ConfigureAwait(false);
             foreach (var chatId in chatIds) {
@@ -156,5 +153,20 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                 await Commander.Call(setCmd, true, cancellationToken).ConfigureAwait(false);
             }
         }
+    }
+
+    private async Task<UserId[]> ListAllAccountIds(CancellationToken cancellationToken)
+    {
+        var result = new List<UserId>();
+        UserId? lastId = null;
+        while (true) {
+            var batch = await AccountsBackend.ListChanged(0, long.MaxValue, lastId, 1000, cancellationToken)
+                .ConfigureAwait(false);
+            if (batch.Length == 0)
+                break;
+            result.AddRange(batch);
+            lastId = batch[^1];
+        }
+        return result.ToArray();
     }
 }

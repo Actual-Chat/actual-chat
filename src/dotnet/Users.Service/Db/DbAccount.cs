@@ -17,7 +17,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
-    // FormatVersion: 0 = legacy (need to read Claims from DbUser), 1 = all data in DbAccount
+    // FormatVersion: always 2 for all accounts (legacy versions 0 and 1 have been migrated)
     public int FormatVersion { get; set; }
 
     [Column(TypeName = "smallint")]
@@ -49,15 +49,9 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public List<DbAccountIdentity> Identities { get; } = new();
 
-    // ToModel: for FormatVersion >= 1 accounts that have all data in DbAccount
     public AccountFull ToModel()
     {
         var identities = Identities.ToApiMap(ai => new UserIdentity(ai.Id), ai => ai.Secret);
-        // For pre-v2 accounts: if IsEmailVerified flag is set but email identity doesn't exist, add it
-        if (FormatVersion < 2 && IsEmailVerified && !Email.IsNullOrEmpty()) {
-            if (ActualChat.Email.TryParse(Email, out var email) && !identities.HasEmail(Email))
-                identities = identities.WithEmailIdentity(email);
-        }
         return new(UserId.Parse(Id), Version) {
             FormatVersion = FormatVersion,
             Status = Status,
@@ -74,42 +68,10 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         };
     }
 
-    // ToModel: uses DbUser for Identities/Name/Claims when FormatVersion == 0
-    public AccountFull ToModel(DbUser dbUser)
-    {
-        var identities = FormatVersion >= 1
-            ? Identities.ToApiMap(ai => new UserIdentity(ai.Id), ai => ai.Secret)
-            : dbUser.Identities.ToApiMap(ui => new UserIdentity(ui.Id), ui => ui.Secret);
-        // For pre-v2 accounts: if IsEmailVerified flag is set but email identity doesn't exist, add it
-        if (FormatVersion < 2 && IsEmailVerified && !Email.IsNullOrEmpty()) {
-            if (ActualChat.Email.TryParse(Email, out var email) && !identities.HasEmail(Email))
-                identities = identities.WithEmailIdentity(email);
-        }
-        return new(UserId.Parse(Id), Version) {
-            FormatVersion = FormatVersion,
-            Status = Status,
-            Email = Email,
-            Phone = !Phone.IsNullOrEmpty() ? ActualChat.Phone.Parse(Phone) : null,
-            SyncContacts = SyncContacts,
-            Name = FormatVersion >= 1 ? Name : dbUser.Name,
-            IsGreetingCompleted = IsGreetingCompleted,
-            CreatedAt = CreatedAt,
-            TimeZone = TimeZone,
-            AliasId = AliasId.IsNullOrEmpty() ? null : ActualChat.AliasId.Parse(AliasId),
-            Identities = identities,
-            Claims = FormatVersion >= 1 ? Claims.ToApiMap() : dbUser.Claims.ToApiMap(),
-        };
-    }
-
     public AccountFull ToModel(
         ApiMap<UserIdentity, string> identities,
         ApiMap<string, string> claims)
     {
-        // For pre-v2 accounts: if IsEmailVerified flag is set but email identity doesn't exist, add it
-        if (FormatVersion < 2 && IsEmailVerified && !Email.IsNullOrEmpty()) {
-            if (ActualChat.Email.TryParse(Email, out var email) && !identities.HasEmail(Email))
-                identities = identities.WithEmailIdentity(email);
-        }
         return new(UserId.Parse(Id), Version) {
             FormatVersion = FormatVersion,
             Status = Status,

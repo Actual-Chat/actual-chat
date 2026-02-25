@@ -114,10 +114,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<ISecureTokens, SecureTokens>();
         services.AddSingleton<ISecureTokensBackend, SecureTokensBackend>(); // Used by HttpSessionExt, server-side logic in AppBase, etc.
 
-        // Legacy IAuth for old clients
-#pragma warning disable CS0618 // Obsolete
-        rpcHost.AddLocalApi<ILegacyAuth, LegacyAuth>("IAuth");
-#pragma warning restore CS0618
         if (rpcHost.IsApiHost) {
             services.AddSingleton<ServerAuth>(); // Used by ApiHost-s
             services.AddSingleton<ClaimMapper>(); // Used by ServerAuth
@@ -144,8 +140,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         var usesAccountsBackendImpl = rpcHost.HostInfo.Roles.GetBackendServiceMode<IAccountsBackend>().UsesImplementation();
         if (usesAccountsBackendImpl)
             services.AddSingleton<AccountNameValidator>(); // Used by AccountsBackend
-        rpcHost.AddBackend<IUsersUpgradeBackend, UsersUpgradeBackend>();
-
         // UserPresences
         rpcHost.AddLocalApi<IUserPresences, UserPresences>(); // Used by Authors -> Chats, etc.
         rpcHost.AddBackend<IUserPresencesBackend, UserPresencesBackend>();
@@ -254,11 +248,6 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         dbModule.AddDbContextServices<UsersDbContext>(services, db => {
             // Auth-related services
             db.AddEntityResolver<string, DbSessionInfo>();
-            db.AddEntityResolver<string, DbUser>(_ => new() {
-                QueryTransformer = query => query.Include(u => u.Identities),
-            });
-            db.AddEntityResolver<string, DbUserIdentity<string>>();
-
             // Other services
             db.AddEntityResolver<string, DbKvasEntry>();
             db.AddEntityResolver<string, DbAccount>(_ => new() {

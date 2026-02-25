@@ -96,10 +96,6 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<ITimeZones>();
         rpc.AddClient<ICaptcha>();
 
-        // Legacy APIs
-#pragma warning disable CS0618 // Obsolete
-        fusion.AddClient<ILegacyAuth>("IAuth");
-#pragma warning restore CS0618
     }
 
     public void ConfigureFusionClients(FusionBuilder fusion)
