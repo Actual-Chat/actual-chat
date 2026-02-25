@@ -268,6 +268,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\build-nats.yml = .github\workflows\build-nats.yml
 		.github\workflows\build-test-deploy-dev.yml = .github\workflows\build-test-deploy-dev.yml
 		.github\workflows\create-release-branch.yml = .github\workflows\create-release-branch.yml
+		.github\workflows\test-nightly.yml = .github\workflows\test-nightly.yml
 		.github\workflows\test-slow.yml = .github\workflows\test-slow.yml
 	EndProjectSection
 EndProject
