@@ -1464,16 +1464,28 @@ export class VirtualList {
             useSmoothScroll = false; // fix for scroll to the end on chat switch
         this.updateState('scrollToEdge', this.state, { scrollTime: Date.now() });
 
-        const scrollHeight = 0;
+        let targetScrollTop = 0;
         fastRaf({
             read: () => {
                 const isFarFromEdge = edge == VirtualListEdge.End
                     ? -this.ref.scrollTop > this.ref.offsetHeight
                     : this.ref.scrollTop > this.ref.offsetHeight;
                 useSmoothScroll = useSmoothScroll && !isFarFromEdge;
+
+                // Compute target scroll position based on layout direction
+                if (this.defaultEdge === VirtualListEdge.End) {
+                    // column-reverse: scrollTop=0 is end, negative is toward start
+                    targetScrollTop = edge === VirtualListEdge.End
+                        ? 0
+                        : this.ref.clientHeight - this.ref.scrollHeight;
+                } else {
+                    // column: scrollTop=0 is start, positive is toward end
+                    targetScrollTop = edge === VirtualListEdge.Start
+                        ? 0
+                        : this.ref.scrollHeight - this.ref.clientHeight;
+                }
             },
             write: () => {
-                const targetScrollTop = edge == VirtualListEdge.End ? scrollHeight : 0;
                 if (useSmoothScroll) {
                     // Use scrollTo instead of scrollIntoView - more predictable on iOS
                     this.ref.scrollTo({
@@ -1538,7 +1550,6 @@ export class VirtualList {
         let endSpacerSize = 0;
         let totalSizeDiff = 0;
         const isInteractivePositioning = [...this.state.pivots].some(p => p.isInteractive)
-            && scrollMetadata?.scrollType !== 'sticky-edge'
             && scrollMetadata?.scrollType !== 'last-item'
             && scrollMetadata?.scrollType !== 'item';
 
@@ -1728,12 +1739,14 @@ export class VirtualList {
         if (!isInteractivePositioning) {
             scrollMetadata?.scroll?.();
             debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
+            this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
         }
         else {
-            debugLog?.log(`restoreScrollPosition: scroll skipped`, scrollMetadata?.scrollType);
+            if (this.state.stickyEdge)
+                this.setStickyEdge(null);
+            debugLog?.log(`restoreScrollPosition: scroll set interactive`, scrollMetadata?.scrollType);
+            this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
         }
-
-        this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
 
         this.updateViewportThrottled();
         // await delayAsync(50);
@@ -1829,6 +1842,22 @@ export class VirtualList {
                     cornerstoneItem.range.start + offsetDelta,
                     cornerstoneItem.range.end + offsetDelta);
                 interactivePivot.stickyOffset = null;
+            }
+            // Re-measure interactive cornerstone: DOM may have been updated by Blazor
+            // but ResizeObserver hasn't fired yet, so item.size can be stale
+            if (cornerstoneItem?.range) {
+                const itemRef = this.getItemRef(cornerstoneItem.key);
+                if (itemRef) {
+                    const rect = itemRef.getBoundingClientRect();
+                    const measuredSize = Math.ceil(rect.height + this.rowGap);
+                    if (measuredSize > 0 && measuredSize !== cornerstoneItem.size) {
+                        cornerstoneItem.size = measuredSize;
+                        cornerstoneItem.range = new NumberRange(
+                            cornerstoneItem.range.start,
+                            cornerstoneItem.range.start + measuredSize);
+                        this.sizeCache.set(cornerstoneItem.key, measuredSize);
+                    }
+                }
             }
         }
         const visibleItemKeys = [...visibleItems.keys()]
