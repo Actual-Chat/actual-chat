@@ -4,13 +4,21 @@ using Microsoft.Extensions.Options;
 
 namespace ActualChat.App.Maui.Services;
 
-[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NativeHttpClientFactory))]
-public partial class NativeHttpClientFactory(IServiceProvider services)
-    : IHttpClientFactory, IHttpMessageHandlerFactory
+#pragma warning disable CA1822 // Mark members as static
+
+[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiHttpClientFactory))]
+public class MauiHttpClientFactory(IServiceProvider services) : IHttpClientFactory, IHttpMessageHandlerFactory
 {
-    private static readonly Tracer Tracer = Tracer.Default[nameof(NativeHttpClientFactory)];
-    private readonly ConcurrentDictionary<string, LazySlim<string, NativeHttpClientFactory, HttpMessageHandler>> _messageHandlers
+    private static readonly Tracer Tracer = Tracer.Default[nameof(MauiHttpClientFactory)];
+    private readonly ConcurrentDictionary<string, LazySlim<string, MauiHttpClientFactory, HttpMessageHandler>> _messageHandlers
         = new(StringComparer.Ordinal);
+
+    public static bool IsEnabled
+#if IOS || MACCATALYST
+        => true;
+#else
+        => false;
+#endif
 
     private IServiceProvider Services { get; } = services;
     private IOptionsMonitor<HttpClientFactoryOptions> Options { get; } = services.GetRequiredService<IOptionsMonitor<HttpClientFactoryOptions>>();
@@ -31,13 +39,25 @@ public partial class NativeHttpClientFactory(IServiceProvider services)
 
                 var handler = self.CreatePlatformMessageHandler();
                 if (handler == null)
-                    throw StandardError.NotSupported<NativeHttpClientFactory>(
+                    throw StandardError.NotSupported<MauiHttpClientFactory>(
                         $"{nameof(CreatePlatformMessageHandler)} should not return null on all supported platforms except Windows.");
 
                 return self.ConfigureMessageHandler(handler, name1);
             }, this);
 
-    private partial HttpMessageHandler? CreatePlatformMessageHandler();
+    // Private methods
+
+    private HttpMessageHandler? CreatePlatformMessageHandler()
+#if IOS || MACCATALYST
+        => new NSUrlSessionHandler {
+            SslProtocols = System.Security.Authentication.SslProtocols.Tls12
+                | System.Security.Authentication.SslProtocols.Tls13,
+            UseCookies = false,
+            MaxConnectionsPerServer = 200,
+        };
+#else
+        => null;
+#endif
 
     private HttpClient ConfigureClient(HttpClient client, string name)
     {
@@ -62,7 +82,6 @@ public partial class NativeHttpClientFactory(IServiceProvider services)
             configure = Filters[i].Configure(configure);
 
         configure(builder);
-
         return builder.Build();
 
         void Configure(HttpMessageHandlerBuilder b) {

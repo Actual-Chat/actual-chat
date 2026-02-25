@@ -56,13 +56,6 @@ public static partial class MauiProgram
         "Microsoft.AspNetCore.Components.WebView.IpcReceiver", "Microsoft.AspNetCore.Components.WebView")]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All,
         "Microsoft.AspNetCore.Components.WebView.IpcReceiver", "Microsoft.AspNetCore.Components.WebView")]
-#if false // Trying to fix the issue w/ WebSockets & LLVM
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Socket))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ClientWebSocket))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ManualResetValueTaskSourceCore<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All,
-        "System.Net.WebSockets.WebSocketHandle", "System.Net.WebSockets")]
-#endif
     public static MauiApp CreateMauiApp()
     {
         using var _1 = Tracer.MethodRegion();
@@ -81,9 +74,7 @@ public static partial class MauiProgram
             FirstChanceExceptionLogger.ShouldSkip += ShouldSkipFce;
 #endif
 
-#if WINDOWS
         FixStaticContentProvider();
-#endif
 #if IOS
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
 #endif
@@ -186,9 +177,9 @@ public static partial class MauiProgram
         services.AddSingleton(dispatcher);
     }
 
-#if WINDOWS
     private static void FixStaticContentProvider()
     {
+#if WINDOWS
         var staticContentProviderType = Type.GetType(
             "Microsoft.AspNetCore.Components.WebView.Maui.StaticContentProvider, Microsoft.AspNetCore.Components.WebView.Maui");
         if (staticContentProviderType == null)
@@ -203,13 +194,15 @@ public static partial class MauiProgram
         if (contentTypeProvider == null)
             throw StandardError.Constraint("'ContentTypeProvider' field has null value.");
 
- #pragma warning disable IL2075
+#pragma warning disable IL2075
         var mappingsPropertyInfo = contentTypeProviderType.GetProperty("Mappings", BindingFlags.Instance | BindingFlags.Public);
- #pragma warning restore IL2075
+#pragma warning restore IL2075
         var mapping = (IDictionary<string,string>)mappingsPropertyInfo!.GetValue(contentTypeProvider)!;
         mapping[".mjs"] = "text/javascript";
-    }
+#else
+        // StaticContentProvider works fine on non-Windows platforms
 #endif
+    }
 
     private static void ConfigureMauiApp(MauiAppBuilder builder)
     {
@@ -293,13 +286,12 @@ public static partial class MauiProgram
     {
         using var _ = Tracer.MethodRegion();
 
-#if IOS
-        // HTTP client
-        services.RemoveAll<IHttpClientFactory>();
-        services.AddSingleton(c => new NativeHttpClientFactory(c));
-        services.AddSingleton<IHttpClientFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
-        services.AddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<NativeHttpClientFactory>());
-#endif
+        if (MauiHttpClientFactory.IsEnabled) {
+            services.RemoveAll<IHttpClientFactory>();
+            services.AddSingleton(c => new MauiHttpClientFactory(c));
+            services.AddSingleton<IHttpClientFactory>(c => c.GetRequiredService<MauiHttpClientFactory>());
+            services.AddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<MauiHttpClientFactory>());
+        }
 
         // All other (module) services
         ClientStartup.ConfigureServices(services, Constants.HostInfo, c => [
