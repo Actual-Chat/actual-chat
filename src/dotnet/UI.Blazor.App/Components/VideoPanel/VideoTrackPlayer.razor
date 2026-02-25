@@ -124,14 +124,14 @@
 
             await UnregisterViewer();
 
-            if (_jsPlayerRef != null) {
+            if (_jsPlayerRef is {} jsRef) {
                 try {
-                    await _jsPlayerRef.InvokeVoidAsync("stop");
+                    await jsRef.InvokeVoidAsync("stop");
                 }
                 catch {
                     // Ignore JS errors during disposal
                 }
-                await _jsPlayerRef.DisposeSilentlyAsync();
+                await jsRef.DisposeSilentlyAsync();
             }
 
             BlazorRef?.DisposeSilently();

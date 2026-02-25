@@ -59,20 +59,6 @@ public class StreamStore<TItem> : ProcessorBase
                 .ConfigureAwait(false);
             Log?.LogInformation("StreamStore.Get({StreamId}): got memoizer={Memoizer}", streamId, memoizer != null ? "exists" : "null");
             return memoizer?.Replay(cancellationToken);
-#if false
-            if (memoizer == null)
-                return null;
-
-            return DebugReplay();
-
-            async IAsyncEnumerable<TItem>? DebugReplay()
-            {
-                await foreach (var item in memoizer.Replay(cancellationToken).ConfigureAwait(false)) {
-                    Log?.LogInformation("Get({StreamId}): item {Item}", streamId, item);
-                    yield return item;
-                }
-            }
-#endif
         }
         catch (TimeoutException) {
             Log?.LogWarning("StreamStore.Get({StreamId}): TIMEOUT waiting for stream after {Timeout}s", streamId, ShareWaitDelay.TotalSeconds);

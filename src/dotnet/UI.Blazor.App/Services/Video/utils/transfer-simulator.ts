@@ -104,22 +104,25 @@ export class TransferSimulator {
     private async processDeliveryQueue(): Promise<void> {
         this.isProcessingQueue = true;
 
-        while (this.deliveryQueue.length > 0) {
-            const queueItem = this.deliveryQueue[0];
-            const now = performance.now();
+        try {
+            while (this.deliveryQueue.length > 0) {
+                const queueItem = this.deliveryQueue[0];
+                const now = performance.now();
 
-            // Wait until this chunk's delivery time
-            if (now < queueItem.deliveryTime) {
-                const waitTime = queueItem.deliveryTime - now;
-                await new Promise(resolve => setTimeout(resolve, waitTime));
+                // Wait until this chunk's delivery time
+                if (now < queueItem.deliveryTime) {
+                    const waitTime = queueItem.deliveryTime - now;
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
+
+                // Remove from queue and deliver
+                this.deliveryQueue.shift();
+                this.onChunkReceived(queueItem.chunk);
             }
-
-            // Remove from queue and deliver
-            this.deliveryQueue.shift();
-            this.onChunkReceived(queueItem.chunk);
         }
-
-        this.isProcessingQueue = false;
+        finally {
+            this.isProcessingQueue = false;
+        }
     }
 
 

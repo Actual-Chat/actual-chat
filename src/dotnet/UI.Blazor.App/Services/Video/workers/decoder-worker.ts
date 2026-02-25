@@ -104,7 +104,7 @@ function decodeChunk(chunkData: EncodedChunkData): void {
             }
         }
 
-    // Track keyframes for decoder recovery
+        // Track keyframes for decoder recovery
         if (chunkData.type === 'key') {
             lastKeyframeSequence = seq;
         }

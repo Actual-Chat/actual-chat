@@ -130,7 +130,9 @@
 
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
         var isAnyoneTalking = await LiveStreamUI.IsAnyoneStreaming(chatId, cancellationToken).ConfigureAwait(false);
-        var isAnyoneVideoStreaming = await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
+        var isVideoStreamingEnabled = await Hub.Features.IsVideoStreamingEnabled(cancellationToken).ConfigureAwait(false);
+        var isAnyoneVideoStreaming = isVideoStreamingEnabled
+            && await ChatVideoUI.IsAnyoneVideoStreaming(chatId, cancellationToken).ConfigureAwait(false);
         var videoStreamMemberCount = isAnyoneVideoStreaming
             ? await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken).ConfigureAwait(false)
             : 0;
