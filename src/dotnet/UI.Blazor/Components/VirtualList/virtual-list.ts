@@ -1213,6 +1213,9 @@ export class VirtualList {
             this.turnOffIsEndAnchorVisible()
             this.turnOnIsEndAnchorVisibleDebounced.reset();
             this.turnOffIsEndAnchorVisibleDebounced.reset();
+        } else {
+            debugLog?.log(`onDocumentVisibilityChange: visible, re-checking endAnchor visibility`);
+            this.turnOnIsEndAnchorVisibleDebounced();
         }
     }
 
