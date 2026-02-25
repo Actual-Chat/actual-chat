@@ -10,6 +10,7 @@ using ActualChat.UI.Blazor.App.Services;
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(TranslationUICollection))]
+[Trait("Category", "Nightly")]
 public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<TranslationAppHostFixture>(fixture, @out)
 {
