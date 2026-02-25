@@ -44,6 +44,6 @@ public static partial class MarkupExt
             NewLineMarkup => true,
             ParagraphMarkup para => para.Content.IsPlainText(),
             MarkupSeq seq => seq.Items.All(item => item.IsPlainText()),
-            _ => markup == Markup.Empty,
+            _ => markup == Markup.EmptyText,
         };
 }

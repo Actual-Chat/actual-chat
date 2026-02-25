@@ -72,7 +72,7 @@ public sealed class MarkupSeq : Markup
             return this;
 
         return items.Count switch {
-            0 => Empty,
+            0 => EmptyText,
             1 => items[0],
             _ => new MarkupSeq(items.ToArray()),
         };

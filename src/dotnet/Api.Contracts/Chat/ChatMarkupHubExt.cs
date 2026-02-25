@@ -19,7 +19,7 @@ public static class ChatMarkupHubExt
         Markup markup;
         switch (entry) {
         case { SystemEntry: { } systemEntry }:
-            markup = systemEntry.Option?.ToMarkup() ?? Markup.Empty;
+            markup = systemEntry.Option?.ToMarkup() ?? Markup.EmptyText;
             // System entries render markup w/o mention names
             markup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
@@ -29,7 +29,7 @@ public static class ChatMarkupHubExt
             break;
         default:
             markup = markupHub.Parser.Parse(translation?.Content ?? entry.Content);
-            if (ReferenceEquals(markup, Markup.Empty))
+            if (ReferenceEquals(markup, Markup.EmptyText))
                 markup = GetEmptyMarkupReplacement(entry, consumer);
             break;
         }
@@ -44,7 +44,7 @@ public static class ChatMarkupHubExt
         Markup markup;
         switch (entry) {
         case { SystemEntry: { } systemEntry }:
-            markup = systemEntry.Option?.ToMarkup() ?? Markup.Empty;
+            markup = systemEntry.Option?.ToMarkup() ?? Markup.EmptyParagraph;
             break;
         case { HasAudio: true }:
         // HasAudio covers all audio/media entries now
@@ -52,7 +52,7 @@ public static class ChatMarkupHubExt
             break;
         default:
             markup = markupHub.Parser.Parse(entry.Content);
-            if (ReferenceEquals(markup, Markup.Empty))
+            if (ReferenceEquals(markup, MarkupParser.EmptyResult))
                 markup = GetEmptyMarkupReplacement(entry, consumer);
             break;
         }
@@ -102,11 +102,11 @@ public static class ChatMarkupHubExt
     private static Markup GetEmptyMarkupReplacement(ChatEntry entry, MarkupConsumer consumer)
     {
         if (consumer is MarkupConsumer.MessageView)
-            return Markup.Empty;
+            return Markup.EmptyText;
 
         var attachments = entry.Attachments;
         if (attachments.Length == 0)
-            return Markup.Empty;
+            return Markup.EmptyText;
 
         if (consumer is MarkupConsumer.QuoteView)
             return new PlainTextMarkup("Click to see the attachment");

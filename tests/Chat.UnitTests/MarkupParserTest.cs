@@ -14,8 +14,8 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var m = Parse<MarkupSeq>(Environment.NewLine, out var text);
         m.Items.Length.Should().Be(2);
-        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
-        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
+        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
     }
 
     [Fact]
@@ -269,7 +269,7 @@ code
 ```
 2");
         m.Items.Length.Should().Be(4);
-        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
         m.Items[1].Should().BeOfType<ParagraphMarkup>();
         m.Items[2].Should().BeOfType<CodeBlockMarkup>();
         m.Items[3].Should().BeOfType<ParagraphMarkup>();
@@ -285,7 +285,7 @@ code
 ```
 2 ```cs");
         m.Items.Length.Should().Be(4);
-        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
         m.Items[1].Should().BeOfType<ParagraphMarkup>();
         m.Items[2].Should().BeOfType<CodeBlockMarkup>();
         m.Items[3].Should().BeOfType<ParagraphMarkup>();
@@ -490,7 +490,7 @@ code
         m.Items.Length.Should().Be(2);
         m.Items[0].Should().BeOfType<ListMarkup>()
             .Which.Items.Should().HaveCount(2);
-        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
     }
 
     [Fact]
@@ -507,7 +507,7 @@ code
         var m = Parse<MarkupSeq>(text);
         m.Items.Length.Should().Be(2);
         m.Items[0].Should().BeOfType<CodeBlockMarkup>();
-        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
     }
 
     [Fact]
@@ -530,7 +530,7 @@ code
             .Which.Style.Should().Be(TextStyle.Bold);
         m.Items[1].Should().BeOfType<ListMarkup>()
             .Which.Items.Should().HaveCount(2);
-        m.Items[2].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.Empty);
+        m.Items[2].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
         m.Items[3].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().BeOfType<StylizedMarkup>()
             .Which.Style.Should().Be(TextStyle.Bold);

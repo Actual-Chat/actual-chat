@@ -208,8 +208,8 @@
     private Model? _rendered;
     private ChatEntryMessage? _renderedMessage;
     private Markup? _renderedMarkup;
-    private Task<Markup> _markupTask = Task.FromResult(Markup.Empty);
-    private Markup _markup = Markup.Empty;
+    private Task<Markup> _markupTask = Task.FromResult(Markup.EmptyText);
+    private Markup _markup = Markup.EmptyText;
     private ChatEntryMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
     private bool _hasBeenRead;

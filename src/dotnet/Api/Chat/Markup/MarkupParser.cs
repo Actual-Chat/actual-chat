@@ -13,6 +13,8 @@ namespace ActualChat.Chat;
 
 public partial class MarkupParser : IMarkupParser
 {
+    public static Markup EmptyResult => Markup.EmptyParagraph;
+
     public bool UseUnparsedTextMarkup { get; init; }
     public bool MustSimplify { get; init; } = true;
 
@@ -27,11 +29,11 @@ public partial class MarkupParser : IMarkupParser
     public static Markup ParseRaw(string text, bool useUnparsedTextMarkup = false)
     {
         if (text.IsNullOrEmpty())
-            return ParagraphMarkup.Empty;
+            return EmptyResult;
 
         var parser = useUnparsedTextMarkup ? FullWithUnparsedMarkup : FullMarkup;
         var result = parser.Parse(text);
-        return result.Success ? result.Value : ParagraphMarkup.Empty;
+        return result.Success ? result.Value : EmptyResult;
     }
 
     // Character classes
