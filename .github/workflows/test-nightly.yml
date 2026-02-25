@@ -20,7 +20,7 @@ jobs:
   nightly-tests:
     name: Run nightly tests
     if: github.ref == 'refs/heads/dev'
-    uses: ./.github/workflows/run-tests.yml
+    uses: ./.github/workflows/_run-tests.yml
     with:
       build-target: nightly-tests
       report-name: Nightly tests results

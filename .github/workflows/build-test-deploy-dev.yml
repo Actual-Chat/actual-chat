@@ -260,7 +260,7 @@ jobs:
 
   integration-tests:
     name: Run Integration tests
-    uses: ./.github/workflows/run-tests.yml
+    uses: ./.github/workflows/_run-tests.yml
     with:
       build-target: integration-tests
       report-name: Integration tests results
