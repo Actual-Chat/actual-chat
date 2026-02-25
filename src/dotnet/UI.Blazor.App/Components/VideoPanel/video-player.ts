@@ -519,7 +519,7 @@ export class VideoPlayer {
     }
 
     private onVisibilityRestored(): void {
-        if (!this.decoder || this.decoder.state !== 'configured') return;
+        if (this.decoder?.state !== 'configured') return;
 
         this.skippedBacklogFrames = 0;
         const pendingCount = this.pendingFrames.length;

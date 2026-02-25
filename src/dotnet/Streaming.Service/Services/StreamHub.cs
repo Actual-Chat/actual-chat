@@ -81,6 +81,7 @@ public class StreamHub(IServiceProvider services) : Hub
         async IAsyncEnumerable<VideoFrame> ToVideoFrames(IAsyncEnumerable<byte[]> source)
         {
             var frameCount = 0;
+            var failedFrameCount = 0;
             var lastWidth = width;
             var lastHeight = height;
             await foreach (var frameBytes in source) {
@@ -89,9 +90,11 @@ public class StreamHub(IServiceProvider services) : Hub
 
                 var frame = DeserializeVideoFrame(frameBytes, codec, lastWidth, lastHeight);
                 if (frame == null) {
-                    if (frameCount <= 3)
-                        Log.LogWarning("PushVideo: failed to deserialize frame #{FrameCount}, bytes[0..8]={Hex}",
+                    failedFrameCount++;
+                    if (failedFrameCount <= 3 || failedFrameCount % 100 == 0)
+                        Log.LogWarning("PushVideo: failed to deserialize frame #{FrameCount} (total failures: {FailedCount}), bytes[0..8]={Hex}",
                             frameCount,
+                            failedFrameCount,
                             Convert.ToHexString(frameBytes.AsSpan(0, Math.Min(8, frameBytes.Length))));
                     continue;
                 }

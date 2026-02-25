@@ -354,7 +354,7 @@ export class VideoPipeline implements IVideoPipeline {
         this.reducedFrameIntervalMs = 1000 / (af?.reducedFps ?? 5);
         this.savedBitrate = config.encoderConfig.bitrate;
 
-    // Create worker instances
+        // Create worker instances
         const encoderWorkerPath = Versioning.mapPath('/dist/videoEncoderWorker.js');
         infoLog?.log('Creating encoder worker from:', encoderWorkerPath);
         this.encoderWorkerInstance = new Worker(

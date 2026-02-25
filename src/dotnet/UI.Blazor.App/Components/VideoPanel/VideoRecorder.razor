@@ -83,9 +83,9 @@
         if (AutoStart && JSRef is null)
             _autoStartPending = true;
 
-        if (JSRef is not null && RemoteStreamCount != _lastRemoteStreamCount) {
+        if (JSRef is {} jsRef && RemoteStreamCount != _lastRemoteStreamCount) {
             _lastRemoteStreamCount = RemoteStreamCount;
-            _ = JSRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
+            _ = jsRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
         }
 
         return Task.CompletedTask;
@@ -99,8 +99,8 @@
             _ = SubscribeToQualityRequests(chatId);
             _ = SubscribeToRecommendedCodec(chatId);
         }
-        if (JSRef is not null)
-            _ = JSRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
+        if (JSRef is {} jsRef)
+            _ = jsRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -163,8 +163,8 @@
             await foreach (var preset in qualityStream.ConfigureAwait(false)) {
                 Log.LogInformation("SubscribeToQualityRequests: received preset {Level} ({Width}x{Height} @ {Bitrate}bps)",
                     preset.Level, preset.Width, preset.Height, preset.Bitrate);
-                if (JSRef is not null)
-                    await JSRef.InvokeVoidAsync("reconfigure", ct, preset.Width, preset.Height, preset.Bitrate);
+                if (JSRef is {} jsRef)
+                    await jsRef.InvokeVoidAsync("reconfigure", ct, preset.Width, preset.Height, preset.Bitrate);
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
@@ -187,8 +187,8 @@
                 .ConfigureAwait(false);
             await foreach (var codec in codecStream.ConfigureAwait(false)) {
                 Log.LogInformation("SubscribeToRecommendedCodec: received codec={Codec}", codec);
-                if (JSRef is not null)
-                    await JSRef.InvokeVoidAsync("switchCodec", ct, codec);
+                if (JSRef is {} jsRef)
+                    await jsRef.InvokeVoidAsync("switchCodec", ct, codec);
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
@@ -199,8 +199,8 @@
 
     private async Task OnSettingsClick() {
         // Stop current recording
-        if (JSRef is not null)
-            await JSRef.InvokeVoidAsync("stopRecording");
+        if (JSRef is {} jsRef)
+            await jsRef.InvokeVoidAsync("stopRecording");
 
         // Get chat for modal
         var chatId = Hub.ChatUI.SelectedChatId.Value;
@@ -234,24 +234,27 @@
         // Get centralized video state
         var videoState = await ChatVideoUI.GetState(chatId, cancellationToken).ConfigureAwait(false);
 
+        if (JSRef is not { } jsRef)
+            return new (videoState);
+
         // Check if recording was stopped externally
         var wasRecording = State.Value.VideoState.IsRecording;
-        if (wasRecording && !videoState.IsRecording && JSRef is not null)
-            _ = JSRef.InvokeVoidAsync("stopRecording");
+        if (wasRecording && !videoState.IsRecording)
+            _ = jsRef.InvokeVoidAsync("stopRecording");
 
         // Detect blur state change during active recording
         var wasBlurEnabled = State.Value.VideoState.IsBackgroundBlurEnabled;
-        if (videoState.IsRecording && wasBlurEnabled != videoState.IsBackgroundBlurEnabled && JSRef is not null)
-            _ = JSRef.InvokeVoidAsync("toggleBlur", videoState.IsBackgroundBlurEnabled);
+        if (videoState.IsRecording && wasBlurEnabled != videoState.IsBackgroundBlurEnabled)
+            _ = jsRef.InvokeVoidAsync("toggleBlur", videoState.IsBackgroundBlurEnabled);
 
         // Detect recording started while panel is already open
-        if (!wasRecording && videoState.IsRecording && JSRef is not null) {
+        if (!wasRecording && videoState.IsRecording) {
             if (!string.IsNullOrEmpty(videoState.SelectedCameraDeviceId))
-                _ = JSRef.InvokeVoidAsync("setSelectedCamera", videoState.SelectedCameraDeviceId);
-            _ = JSRef.InvokeVoidAsync("setBlurEnabled", videoState.IsBackgroundBlurEnabled);
-            _ = JSRef.InvokeVoidAsync("startRecording", chatId.Value);
+                _ = jsRef.InvokeVoidAsync("setSelectedCamera", videoState.SelectedCameraDeviceId);
+            _ = jsRef.InvokeVoidAsync("setBlurEnabled", videoState.IsBackgroundBlurEnabled);
+            _ = jsRef.InvokeVoidAsync("startRecording", chatId.Value);
         }
 
-        return new Model(videoState);
+        return new (videoState);
     }
 }
