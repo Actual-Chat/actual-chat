@@ -32,5 +32,5 @@ public class BackendChatMarkupHub(IServiceProvider services, ChatId chatId) : IB
         => throw StandardError.Internal($"You should use {nameof(IChatMarkupHub)} to get {nameof(MentionSearchProvider)}.");
 
     public IMarkupFormatter EditorHtmlConverter
-        => _editorHtmlConverter ??= new MarkupEditorHtmlConverter();
+        => _editorHtmlConverter ??= MarkupEditorHtmlConverter.Instance;
 }

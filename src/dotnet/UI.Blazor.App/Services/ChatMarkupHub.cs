@@ -31,5 +31,5 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
         => field ??= new ChatMentionSearchProvider(Services, NonThreadChatId);
 
     public IMarkupFormatter EditorHtmlConverter
-        => _editorHtmlConverter ??= new MarkupEditorHtmlConverter();
+        => _editorHtmlConverter ??= MarkupEditorHtmlConverter.Instance;
 }
