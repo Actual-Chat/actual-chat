@@ -31,7 +31,7 @@ permissions:
 jobs:
   slow-tests:
     name: Run Slow tests
-    uses: ./.github/workflows/run-tests.yml
+    uses: ./.github/workflows/_run-tests.yml
     with:
       build-target: slow-tests
       report-name: Slow tests results

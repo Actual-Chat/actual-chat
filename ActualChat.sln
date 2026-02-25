@@ -270,6 +270,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\create-release-branch.yml = .github\workflows\create-release-branch.yml
 		.github\workflows\test-nightly.yml = .github\workflows\test-nightly.yml
 		.github\workflows\test-slow.yml = .github\workflows\test-slow.yml
+		.github\workflows\_run-tests.yml = .github\workflows\_run-tests.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.IntegrationTests", "tests\Contacts.IntegrationTests\Contacts.IntegrationTests.csproj", "{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}"
