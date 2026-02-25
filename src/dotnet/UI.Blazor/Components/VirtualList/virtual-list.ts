@@ -26,6 +26,7 @@ const UpdateItemVisibilityInterval = 250;
 const VisibilityEpsilon = 4;
 const EdgeEpsilon = 4;
 const ScrollDebounce = 200;
+const ScrollRestoreGuard = 100;
 const SkeletonDetectionBoundary = 200;
 const MinViewPortSize = 400;
 const RequestDataTimeout = 800;
@@ -669,6 +670,7 @@ export class VirtualList {
         let itemsWereMeasured = false;
         let notAnItem = false;
         let existingResizedCount = 0;
+        let totalExistingSizeDiff = 0;
         const itemRefsWithWrongSize = new Array<HTMLElement>();
         for (const entry of entries) {
             const rect = entry.contentRect;
@@ -694,6 +696,7 @@ export class VirtualList {
                     if (oldSize && oldSize > 0 && size > 0 && size != oldSize) {
                         existingResizedCount++;
                         itemsWereMeasured = true;
+                        totalExistingSizeDiff += size - oldSize;
                     }
                     item.size = size;
                     if (this.state.pivots.some(pivot => pivot.itemKey === key)) {
@@ -757,6 +760,18 @@ export class VirtualList {
             // Use debounced scroll restoration to batch multiple resize events together
             // This prevents jittering when returning to a chat and items are being measured
             this.restoreScrollPositionOnResizeDebounced();
+
+            // Immediate scroll compensation when items resize while not at sticky end.
+            // Container is anchored from bottom — when items grow, the container extends
+            // upward, shifting visible items. Shift the container's bottom position to
+            // compensate, avoiding scrollTop changes that trigger scroll events and iOS issues.
+            // Do not use fastRaf there as it produces jumps up-down
+            if (totalExistingSizeDiff !== 0
+                && this.defaultEdge === VirtualListEdge.End
+                && this.state.stickyEdge?.edge !== VirtualListEdge.End) {
+                const currentBottom = parseFloat(this.containerRef.style.bottom) || 0;
+                this.containerRef.style.bottom = `${currentBottom - totalExistingSizeDiff}px`;
+            }
         }
     };
 
@@ -1163,6 +1178,13 @@ export class VirtualList {
         if (!ev.isTrusted)
             return; // Ignore non-user initiated scrolls
 
+        // Ignore scroll events from programmatic scroll position restoration.
+        // Setting scrollTop in restoreScrollPosition fires a trusted scroll event
+        // that would otherwise be misidentified as user scroll, clearing pivots
+        // and causing a visual jump.
+        if (Date.now() - this.state.scrollPositionRestoredAt < ScrollRestoreGuard)
+            return;
+
         // Clear sticky edge when user is scrolling via touch/pointer drag
         if (this.isPointerDown && this.state.stickyEdge != null && !this.state.isEndAnchorVisible) {
             this.setStickyEdge(null);
@@ -1516,6 +1538,19 @@ export class VirtualList {
         if (old?.itemKey !== stickyEdge?.itemKey || old?.edge !== stickyEdge?.edge) {
             debugLog?.log(`setStickyEdge:`, stickyEdge);
             this.updateState('setStickyEdge', this.state, { stickyEdge: stickyEdge as Required<VirtualListStickyEdgeState> | null });
+
+            // Toggle class for CSS transition control
+            const addStickyEnd = stickyEdge?.edge === VirtualListEdge.End;
+            fastRaf({
+                write: () => {
+                    if (addStickyEnd) {
+                        this.ref.classList.add('sticky-end');
+                    } else {
+                        this.ref.classList.remove('sticky-end');
+                    }
+                },
+            });
+
             if (stickyEdge?.edge === VirtualListEdge.End) {
                 const lastItemRef = this.getLastItemRef();
                 if (!lastItemRef)
@@ -1738,17 +1773,17 @@ export class VirtualList {
 
         // Handle restore position synchronously after render
         options.read();
+        // Set scrollPositionRestoredAt BEFORE write/scroll to guard onScroll from false "user scroll" detection
+        this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
         options.write();
         if (!isInteractivePositioning) {
             scrollMetadata?.scroll?.();
             debugLog?.log(`restoreScrollPosition: scroll set synchronously`, scrollMetadata?.scrollType);
-            this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
         }
         else {
             if (this.state.stickyEdge)
                 this.setStickyEdge(null);
             debugLog?.log(`restoreScrollPosition: scroll set interactive`, scrollMetadata?.scrollType);
-            this.updateState('scrollRestored', this.state, { scrollPositionRestoredAt: Date.now() });
         }
 
         this.updateViewportThrottled();
