@@ -16,6 +16,11 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
     public async Task<ProcessedFile> Process(UploadedTempFile upload, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         progress?.Report(0);
+
+        // SVG is a vector format that ImageSharp can't process - pass through unchanged.
+        if (MediaTypeExt.IsSvg(upload.ContentType))
+            return new ProcessedFile(upload, null);
+
         var imageInfo = await GetImageInfo(upload).ConfigureAwait(false);
         if (imageInfo == null) {
             var fileInfo = upload with {
