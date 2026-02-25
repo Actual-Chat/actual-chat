@@ -1,6 +1,7 @@
 using ActualChat.Media;
 using ActualLab.IO;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Processing;
 
 namespace ActualChat.Uploads;
@@ -22,6 +23,11 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
             };
             return new ProcessedFile(fileInfo, null);
         }
+
+        // Do not process GIFs and other animated images.
+        if (imageInfo.FrameMetadataCollection.Count > 0
+            || imageInfo.Metadata.TryGetGifMetadata(out _))
+            return new ProcessedFile(upload, imageInfo.Size);
 
         const int sizeLimit = 1920;
         var resizeRequired = imageInfo.Height > sizeLimit || imageInfo.Width > sizeLimit;
@@ -64,7 +70,9 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
         try {
             var inputStream = await file.Open().ConfigureAwait(false);
             await using var __ = inputStream.ConfigureAwait(false);
-            return await Image.IdentifyAsync(inputStream).ConfigureAwait(false);
+            // Decode only first frame to identify whether it's an animated image or not.'
+            var options = new DecoderOptions { MaxFrames = 1 };
+            return await Image.IdentifyAsync(options, inputStream).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to extract image info from '{FileName}'", file.FileName);
