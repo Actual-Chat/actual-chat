@@ -65,14 +65,16 @@ This is why removing an API interface breaks old clients — the server no longe
 
 When a feature is removed but old clients still call its methods, you must:
 
-1. Keep a **legacy interface** (e.g., `ILegacyRoulette`) with stub implementations.
+1. Keep a **legacy interface** with stub implementations.
 2. Register it with the **original service name** so hashes match:
    ```csharp
-   rpcHost.AddLocalApi<ILegacyRoulette, LegacyRoulette>("IRoulette");
+   rpcHost.AddLocalApi<ILegacyFoo, LegacyFoo>("IFoo");
    ```
 3. Include **all methods** that old clients may call, with the same parameter counts.
 
 The legacy interface methods must have matching full names (same service name + method name + parameter count) so that the computed hashes are identical to what old clients send.
+
+> **Note:** Previously, `ILegacyRoulette` and `ILegacyAuth` served as examples of this pattern. These legacy interfaces have since been removed after all clients were updated.
 
 ## Legacy Name Overrides
 

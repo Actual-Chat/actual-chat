@@ -29,7 +29,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private ContactGreeter ContactGreeter => field ??= Services.GetRequiredService<ContactGreeter>();
     private FlowHub FlowHub => field ??= Services.FlowHub();
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
-    private IDbEntityResolver<string, DbUser> DbUserResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbUser>>();
     private UsersSettings UsersSettings => field ??= Services.GetRequiredService<UsersSettings>();
     private AccountNameValidator AccountNameValidator => field ??= Services.GetRequiredService<AccountNameValidator>();
 
@@ -46,19 +45,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             if (account == null)
                 return null;
         }
-        else if (dbAccount.FormatVersion >= 1) {
-            // FormatVersion >= 1: all data is in DbAccount, no need to fetch DbUser
-            account = dbAccount.ToModel();
-            if (IsAdmin(account))
-                account = account with { IsAdmin = true };
-        }
         else {
-            // FormatVersion == 0: need to fall back to DbUser for Name/Claims/Identities
-            var dbUser = await DbUserResolver.Get(userId.Value, cancellationToken).ConfigureAwait(false);
-            if (dbUser == null)
-                return null;
-
-            account = dbAccount.ToModel(dbUser);
+            account = dbAccount.ToModel();
             if (IsAdmin(account))
                 account = account with { IsAdmin = true };
         }
@@ -86,18 +74,12 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         var id = identity.Id;
 
-        // Try DbAccountIdentity first (for FormatVersion >= 1 accounts)
         var dbAccountIdentity = await dbContext.AccountIdentities
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
-        if (dbAccountIdentity is not null)
-            return UserId.ParseNullable(dbAccountIdentity.DbAccountId);
-
-        // Fall back to DbUserIdentity (for FormatVersion == 0 accounts)
-        var dbUserIdentity = await dbContext.UserIdentities
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-            .ConfigureAwait(false);
-        return UserId.ParseNullable(dbUserIdentity?.DbUserId);
+        return dbAccountIdentity is not null
+            ? UserId.ParseNullable(dbAccountIdentity.DbAccountId)
+            : null;
     }
 
     // [ComputeMethod]
@@ -215,11 +197,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
             var dbAccount = await dbContext.GetDbAccount(userId, true, cancellationToken).ConfigureAwait(false);
             dbAccount.Require();
-            var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
-            dbUser.Require();
 
             account = UpdateExistingAccount(existingAccount, userId);
-            await UpdateDbAccount(dbContext, dbAccount, dbUser, account, cancellationToken).ConfigureAwait(false);
+            await UpdateDbAccount(dbContext, dbAccount, account, cancellationToken).ConfigureAwait(false);
         }
 
         context.Operation.Items.KeylessSet(account);
@@ -310,8 +290,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .FirstOrDefaultAsync(a => a.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
         dbAccount = dbAccount.Require().RequireVersion(expectedVersion);
-        var dbUser = await dbContext.GetDbUser(userId, true, cancellationToken).ConfigureAwait(false);
-        dbUser.Require();
 
         var mustGreet = !account.IsGreetingCompleted && dbAccount.IsGreetingCompleted;
         var mustResetDigestFlow = !OrdinalEquals(dbAccount.TimeZone, account.TimeZone);
@@ -320,7 +298,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Name = AccountNameValidator.Normalize(account.Name),
         };
         dbAccount.UpdateFrom(account);
-        dbUser.UpdateFrom(account);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -387,17 +364,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        await dbContext.UserIdentities
-            .Where(a => a.DbUserId == userId.Value)
-            .ExecuteDeleteAsync(cancellationToken)
-            .ConfigureAwait(false);
-
         await dbContext.Accounts
-            .Where(a => a.Id == userId.Value)
-            .ExecuteDeleteAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        await dbContext.Users
             .Where(a => a.Id == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -462,18 +429,14 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Bio = "",
         };
 
-    // DbUser/DbAccount sync helpers
-
     private async Task UpdateDbAccount(
         UsersDbContext dbContext,
         DbAccount dbAccount,
-        DbUser dbUser,
         AccountFull account,
         CancellationToken cancellationToken)
     {
-        // Update DbAccount with all properties (double write)
         dbAccount.Version = VersionGenerator.NextVersion(dbAccount.Version);
-        dbAccount.FormatVersion = 2; // Upgrade to format version 2
+        dbAccount.FormatVersion = 2;
         dbAccount.Status = account.Status;
         dbAccount.Email = account.Email;
         dbAccount.IsEmailVerified = account.IsEmailVerified();
@@ -483,15 +446,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         dbAccount.IsGreetingCompleted = account.IsGreetingCompleted;
         dbAccount.TimeZone = account.TimeZone;
         dbAccount.AliasId = account.AliasId?.NormalizedValue ?? "";
-        dbAccount.Claims = dbUser.Claims; // Sync claims from DbUser
-
-        // Update DbUser
-        dbUser.UpdateFrom(account);
+        dbAccount.Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
-
-    // DbUser/DbAccount creation
 
     private async Task<DbAccount> CreateDbAccount(
         UsersDbContext dbContext, AccountFull account, CancellationToken cancellationToken)
@@ -499,7 +457,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         // Generate user ID in code - no need for a DB roundtrip
         var userId = account.Id?.Value.NullIfEmpty() ?? UserId.New().Value;
 
-        // Construct display name from claims - used for both DbUser and DbAccount
+        // Construct display name from claims
         var name = account.Claims.GetValueOrDefault(ClaimTypes.GivenName, "");
         var lastName = account.Claims.GetValueOrDefault(ClaimTypes.Surname, "");
         if (!lastName.IsNullOrEmpty())
@@ -515,16 +473,8 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             Name = name,
         };
 
-        // Acquire lock before creating User and Account (use Accounts for consistency)
+        // Acquire lock before creating Account
         await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
-
-        // Create DbUser
-        var dbUser = new DbUser() {
-            Id = userId,
-            Version = VersionGenerator.NextVersion(),
-            Name = name,
-            Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal),
-        };
 
         // Handle email identities
         var emailString = account.Claims.GetValueOrDefault(ClaimTypes.Email, "").NullIfEmpty()
@@ -533,24 +483,20 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (!emailString.IsNullOrEmpty() && ActualChat.Email.TryParse(emailString, out var email))
             account = account.WithEmailIdentity(email);
 
-        // Update dbUser with identities
-        dbUser.UpdateFrom(account);
-        dbContext.Add(dbUser);
-
-        // Create DbAccount with same data as DbUser (FormatVersion=1 means all data is in DbAccount)
+        // Create DbAccount
         var context = CommandContext.GetCurrent();
         var isAdmin = IsAdmin(account);
         var dbAccount = new DbAccount {
             Id = userId,
-            FormatVersion = 2, // New accounts start with format version 2
+            FormatVersion = 2,
             Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
-            Name = name, // Same normalized name as DbUser
+            Name = name,
             Email = emailString,
             IsEmailVerified = account.IsEmailVerified(),
             Phone = account.Phone?.Value ?? account.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
-            CreatedAt = dbUser.CreatedAt,
-            Claims = dbUser.Claims, // Sync claims to DbAccount
+            CreatedAt = Clocks.SystemClock.Now,
+            Claims = account.Claims.ToImmutableDictionary(StringComparer.Ordinal),
         };
         // Sync identities to DbAccount
         foreach (var (userIdentity, secret) in account.Identities) {
@@ -564,7 +510,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         }
         dbContext.Accounts.Add(dbAccount);
 
-        // Single commit for both User and Account
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var accountModel = dbAccount.ToModel(account.Identities, account.Claims);
