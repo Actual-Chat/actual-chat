@@ -39,13 +39,13 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
         if (isUnchanged)
             return markup;
 
-        return newItems.Count > 0 ? new ListMarkup(newItems) : Markup.Empty;
+        return newItems.Count > 0 ? new ListMarkup(newItems) : Markup.EmptyText;
     }
 
     protected override Markup VisitListItem(ListItemMarkup markup, ref State state)
     {
         if (!state.CanAppend())
-            return Markup.Empty;
+            return Markup.EmptyText;
 
         var newContent = Visit(markup.Content, ref state);
         return newContent == markup.Content ? markup
@@ -74,7 +74,7 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
     protected override Markup VisitParagraph(ParagraphMarkup markup, ref State state)
     {
         if (!state.CanAppend())
-            return Markup.Empty;
+            return Markup.EmptyText;
         var newContent = Visit(markup.Content, ref state);
         return newContent == markup.Content ? markup : new ParagraphMarkup(newContent);
     }

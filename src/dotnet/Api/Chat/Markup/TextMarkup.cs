@@ -33,7 +33,7 @@ public abstract class TextMarkup(string text) : Markup
         if (kind is not (TextMarkupKind.Plain or TextMarkupKind.Preformatted or TextMarkupKind.Unparsed))
             throw new ArgumentOutOfRangeException(nameof(kind), kind, null);
         if (text.IsNullOrEmpty())
-            return Empty;
+            return EmptyText;
         if (!parseNewLines)
             return New(kind, text);
 
