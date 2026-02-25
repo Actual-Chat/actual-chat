@@ -9,7 +9,7 @@ namespace ActualChat.Transcription;
 public readonly partial record struct StringDiff(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] int Start,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string? Suffix
-) : ICanBeNone<StringDiff>, ISensitive
+) : ICanBeNone<StringDiff>, ISanitized
 {
     public static StringDiff None => default;
 

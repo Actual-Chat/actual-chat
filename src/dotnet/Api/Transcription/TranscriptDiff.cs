@@ -7,7 +7,7 @@
 public sealed partial record TranscriptDiff(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] StringDiff TextDiff,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMapDiff TimeMapDiff
-) : ISensitive
+) : ISanitized
 {
     public static readonly TranscriptDiff None = new(StringDiff.None, LinearMapDiff.None);
 

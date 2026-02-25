@@ -12,7 +12,7 @@ namespace ActualChat.Chat;
 public sealed partial record Translation(
     [property: DataMember, MemoryPackOrder(0)] TranslationId Id,
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
-) : IHasId<TranslationId>, IHasVersion<long>, IRequirementTarget, ISensitive
+) : IHasId<TranslationId>, IHasVersion<long>, IRequirementTarget, ISanitized
 {
     [DataMember, MemoryPackOrder(2)] public string Content { get => Sanitizer.MaskPrivate(field); init; } = "";
     [DataMember, MemoryPackOrder(3)] public HashString SourceContentHash { get; init; }
@@ -41,7 +41,7 @@ public sealed partial record Translation(
 /// Represents changes to a <see cref="Translation"/> for incremental updates.
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record TranslationDiff : RecordDiff, ISensitive
+public sealed partial record TranslationDiff : RecordDiff, ISanitized
 {
     [DataMember, MemoryPackOrder(0)] public long? Version { get; init; }
     [DataMember, MemoryPackOrder(1)] public string? Content { get => Sanitizer.MaskPrivate(field); init; }

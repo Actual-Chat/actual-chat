@@ -93,7 +93,7 @@ internal class PostRequestsStorageInternal : BatchingKvas
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
-public sealed partial record SendMessageRequestEntry : IHasId<string>, ISensitive
+public sealed partial record SendMessageRequestEntry : IHasId<string>, ISanitized
 {
     [DataMember, MemoryPackOrder(0)] public required string Uuid { get; init; }
     [DataMember, MemoryPackOrder(1)] public required Moment Now { get; init; }

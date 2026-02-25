@@ -11,7 +11,7 @@ namespace ActualChat.Notification;
 public partial record Notification(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] NotificationId Id,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] long Version = 0
-    ) : IHasId<NotificationId>, IHasVersion<long>, IUnionRecord<NotificationOption?>, ISensitive
+    ) : IHasId<NotificationId>, IHasVersion<long>, IUnionRecord<NotificationOption?>, ISanitized
 {
     #region MemoryPackXxx properties
 

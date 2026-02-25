@@ -45,7 +45,7 @@ public class PrivateStringTest
     {
         var p = "test".ToPrivate();
 #pragma warning disable CS0183
-        (p is ISensitive).Should().BeTrue();
+        (p is ISanitized).Should().BeTrue();
 #pragma warning restore CS0183
     }
 

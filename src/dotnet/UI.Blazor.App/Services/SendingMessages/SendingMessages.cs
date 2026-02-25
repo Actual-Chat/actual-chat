@@ -502,7 +502,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     // Nested types
 
-    public sealed record PostMessageRequestInternal : IHasId<string>, ISensitive
+    public sealed record PostMessageRequestInternal : IHasId<string>, ISanitized
     {
         public required string Uuid { get; init; }
         public required Moment Now { get; init; }

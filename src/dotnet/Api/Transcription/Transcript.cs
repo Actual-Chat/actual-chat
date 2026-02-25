@@ -12,7 +12,7 @@ public sealed partial record Transcript(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] string Text,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] LinearMap TimeMap,
     [property: DataMember(Order = 2), MemoryPackOrder(2)] Language[] Languages
-) : ISensitive
+) : ISanitized
 {
     [GeneratedRegex(@"^\s*", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
     private static partial Regex ContentStartRegexFactory();

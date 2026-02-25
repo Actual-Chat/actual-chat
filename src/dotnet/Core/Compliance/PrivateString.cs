@@ -6,7 +6,7 @@ namespace ActualChat.Compliance;
 /// to automatically redact sensitive data in production.
 /// </summary>
 public readonly struct PrivateString(string source)
-    : ISensitive, IEquatable<PrivateString>
+    : ISanitized, IEquatable<PrivateString>
 {
     public string Source {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -14,7 +14,7 @@ namespace ActualChat.Chat;
 public sealed partial record ChatEntry(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] long Version = 0
-    ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget, ISensitive
+    ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget, ISanitized
 {
     public static readonly VersionEqualityComparer<ChatEntry, ChatEntryId> VersionEqualityComparer = new();
 
@@ -152,7 +152,7 @@ public sealed partial record ChatEntry(
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [method: MemoryPackConstructor, SerializationConstructor]
-public sealed partial record ChatEntryDiff() : RecordDiff, ISensitive
+public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
 {
     [DataMember, MemoryPackOrder(10)] public bool? IsRemoved { get; init; }
     [DataMember, MemoryPackOrder(11)] public AuthorId? AuthorId { get; init; }
