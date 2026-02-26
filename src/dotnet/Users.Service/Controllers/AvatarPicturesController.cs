@@ -64,6 +64,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        // TODO: file cache
         if (query.Format == AvatarFormat.Png) {
             var pngSize = query.Size ?? 80;
             var pngBytes = BeamAvatars.GeneratePngBytes(query.Key, pngSize);
@@ -81,6 +82,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        // TODO: file cache
         if (query.Format == AvatarFormat.Png) {
             var pngSize = query.Size ?? 80;
             var pngBytes = MarbleAvatars.GeneratePngBytes(query.Key, pngSize, title: query.Title ?? "");
