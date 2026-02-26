@@ -62,7 +62,7 @@
         }
     };
 }
-<p @ref="Ref" class="chat-message-markup @translationCls @streamingCls">
+<div @ref="Ref" class="chat-message-markup @translationCls @streamingCls">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
         <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
     }
@@ -111,7 +111,7 @@
             }
         </CascadingValue>
     }
-</p>
+</div>
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatEntryMessageInternalView.create";

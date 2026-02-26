@@ -231,3 +231,7 @@ ul.list-markup li::marker {
 .chat-message-markup {
     @apply min-h-5;
 }
+
+.chat-message-markup p.paragraph-markup + p.paragraph-markup {
+    @apply mt-2;
+}

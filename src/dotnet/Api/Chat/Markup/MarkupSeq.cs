@@ -24,8 +24,12 @@ public sealed class MarkupSeq : Markup
         Markup? prevItem = null;
         foreach (var item in Items) {
             // Auto-newline between blocks
-            if (prevItem != null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup()))
+            if (prevItem != null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup())) {
                 sb.Append(NewLineMarkup.Instance.Format());
+                // Double newline between consecutive paragraphs (paragraph break)
+                if (prevItem is ParagraphMarkup && item is ParagraphMarkup)
+                    sb.Append(NewLineMarkup.Instance.Format());
+            }
 
             sb.Append(item.Format());
             prevItem = item;
