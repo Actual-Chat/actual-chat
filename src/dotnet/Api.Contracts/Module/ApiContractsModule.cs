@@ -12,6 +12,7 @@ using ActualChat.Live;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
+using ActualChat.Rpc;
 using ActualLab.RestEase;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
@@ -113,8 +114,16 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                     var client = c.GetRequiredService<RpcWebSocketClient>();
                     var settings = client.Options;
                     var urlMapper = client.Services.UrlMapper();
+                    var wsBaseUrl = urlMapper.WebsocketBaseUrl;
+                    if (HostNameRemapper.Instance is { } hostNameRemapper) {
+                        var wsBaseHost = urlMapper.BaseUri.Host;
+                        var wsRemappedHost = hostNameRemapper.Get(wsBaseHost);
+                        if (!OrdinalEquals(wsRemappedHost, wsBaseHost))
+                            wsBaseUrl = wsBaseUrl.OrdinalReplace(wsBaseHost, wsRemappedHost);
+                    }
+
                     var sb = ActualLab.Text.StringBuilderExt.Acquire();
-                    sb.Append(urlMapper.WebsocketBaseUrl);
+                    sb.Append(wsBaseUrl);
                     sb.Append(settings.RequestPath);
                     sb.Append('?');
                     sb.Append(settings.ClientIdParameterName);
@@ -141,15 +150,6 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                         if (Constants.Rpc.Compression.IsClientSideEnabled)
                             ws.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
                         return new WebSocketOwner(peer.Ref.Address, ws, c);
-#if false
-                        // Non-native Android WebSocket stack requires SocketsHttpHandler to support TLS 1.2
-                        var handler = new SocketsHttpHandler() {
-                            SslOptions = new SslClientAuthenticationOptions() {
-                                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-                            },
-                        };
-                        return new WebSocketOwner(peer.Ref.Address, ws, c) { Handler = handler };
-#endif
                     },
                 };
             return options;

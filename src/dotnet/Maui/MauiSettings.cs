@@ -64,6 +64,7 @@ public static class MauiSettings
 #else
         AppKind = AppKind.Unknown;
 #endif
+        MauiHostNameRemapper.Use();
     }
 
     // Nested types
