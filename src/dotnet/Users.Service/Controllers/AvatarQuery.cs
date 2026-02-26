@@ -27,14 +27,6 @@ public sealed partial record AvatarQuery : IValidatableObject
     [FromQuery(Name = "title")]
     public string? Title { get; init; }
 
-    [DataMember, MemoryPackOrder(4)]
-    [FromQuery(Name = "square")]
-    public bool Square { get; init; }
-
-    [DataMember, MemoryPackOrder(5)]
-    [FromQuery(Name = "doNotBlur")]
-    public bool DoNotBlur { get; init; }
-
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (Format == AvatarFormat.Png && Size.HasValue)
