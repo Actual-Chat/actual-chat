@@ -97,7 +97,7 @@
         if (chatId != null) {
             ChatVideoUI.OnRecordingStarted(chatId);
             _ = SubscribeToQualityRequests(chatId);
-            _ = SubscribeToRecommendedCodec(chatId);
+            _ = SubscribeToSupportedDecoderCodecs(chatId);
         }
         if (JSRef is {} jsRef)
             _ = jsRef.InvokeVoidAsync("setRemoteStreamCount", RemoteStreamCount);
@@ -173,27 +173,27 @@
         }
     }
 
-    private async Task SubscribeToRecommendedCodec(ChatId chatId) {
+    private async Task SubscribeToSupportedDecoderCodecs(ChatId chatId) {
         _codecCts.CancelAndDisposeSilently();
         var cts = _codecCts = new CancellationTokenSource();
         var ct = cts.Token;
 
         try {
-            Log.LogInformation("SubscribeToRecommendedCodec: starting for ChatId={ChatId}", chatId);
+            Log.LogInformation("SubscribeToSupportedDecoderCodecs: starting for ChatId={ChatId}", chatId);
 
             var liveVideoStreams = Hub.Services.GetRequiredService<ILiveVideoStreams>();
             var codecStream = await liveVideoStreams
-                .ObserveRecommendedCodec(Session, chatId, ct)
+                .ObserveSupportedDecoderCodecs(Session, chatId, ct)
                 .ConfigureAwait(false);
-            await foreach (var codec in codecStream.ConfigureAwait(false)) {
-                Log.LogInformation("SubscribeToRecommendedCodec: received codec={Codec}", codec);
+            await foreach (var codecs in codecStream.ConfigureAwait(false)) {
+                Log.LogInformation("SubscribeToSupportedDecoderCodecs: received codecs=[{Codecs}]", string.Join(", ", codecs));
                 if (JSRef is {} jsRef)
-                    await jsRef.InvokeVoidAsync("switchCodec", ct, codec);
+                    await jsRef.InvokeVoidAsync("updateSupportedDecoderCodecs", ct, codecs.ToArray());
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception e) {
-            Log.LogWarning(e, "SubscribeToRecommendedCodec failed");
+            Log.LogWarning(e, "SubscribeToSupportedDecoderCodecs failed");
         }
     }
 

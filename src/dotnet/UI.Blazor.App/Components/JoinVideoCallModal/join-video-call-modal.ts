@@ -98,6 +98,15 @@ export class JoinVideoCallModal {
             };
 
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            // Capture the actual device ID the browser chose (important when no
+            // explicit device was requested — ensures recording uses the same camera)
+            const actualTrack = this.stream.getVideoTracks()[0];
+            if (actualTrack) {
+                const actualId = actualTrack.getSettings().deviceId;
+                if (actualId) this.selectedDeviceId = actualId;
+            }
+
             this.videoEl.srcObject = this.stream;
             // Off-DOM video elements don't honor autoplay — must call play() explicitly
             void this.videoEl.play();
@@ -160,6 +169,15 @@ export class JoinVideoCallModal {
             return success;
         }
         return true;
+    }
+
+    /**
+     * Get the actual device ID of the currently-previewing camera.
+     * Returns the device ID resolved by getUserMedia, which may differ
+     * from what was originally requested (e.g., when no device was specified).
+     */
+    public getActualDeviceId(): string | null {
+        return this.selectedDeviceId;
     }
 
     /**

@@ -18,10 +18,10 @@ public interface ILiveVideoStreams : IComputeService
     Task UnregisterVideoStreamMember(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<string> GetRecommendedCodec(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<string>> GetSupportedDecoderCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
-    Task<RpcStream<string>> ObserveRecommendedCodec(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<RpcStream<ApiArray<string>>> ObserveSupportedDecoderCodecs(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task<RpcStream<VideoFrame>?> GetVideo(Session session, StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken);
     Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(Session session, StreamId streamId, CancellationToken cancellationToken);

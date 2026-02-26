@@ -93,20 +93,20 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     }
 
     // [ComputeMethod]
-    public virtual Task<string> GetRecommendedCodec(ChatId chatId, CancellationToken cancellationToken)
+    public virtual Task<ApiArray<string>> GetSupportedDecoderCodecs(ChatId chatId, CancellationToken cancellationToken)
     {
         var chatState = GetChatState(chatId);
-        return Task.FromResult(chatState.GetRecommendedCodec());
+        return Task.FromResult(chatState.GetSupportedDecoderCodecs());
     }
 
-    public virtual async Task<RpcStream<string>> ObserveRecommendedCodec(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<RpcStream<ApiArray<string>>> ObserveSupportedDecoderCodecs(ChatId chatId, CancellationToken cancellationToken)
     {
         var shardState = ShardOwner.States[ShardScheme.GetShardIndex(chatId)].Value;
         var shardOwnership = await shardState.RequireShardOwnership(cancellationToken).ConfigureAwait(false);
         var linkedCts = shardOwnership.LockToken.LinkWith(cancellationToken);
 
         var chatState = GetChatState(chatId);
-        var observations = chatState.ObserveRecommendedCodec(linkedCts.Token);
+        var observations = chatState.ObserveSupportedDecoderCodecs(linkedCts.Token);
         return RpcStream.New(observations, isReconnectable: false);
     }
 
@@ -115,7 +115,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
         var chatState = GetChatState(chatId);
         if (chatState.RegisterMember(sessionId, supportedDecoderCodecs)) {
             InvalidateGetVideoStreamMemberCount(chatId);
-            InvalidateGetRecommendedCodec(chatId);
+            InvalidateGetSupportedDecoderCodecs(chatId);
         }
         return Task.CompletedTask;
     }
@@ -127,7 +127,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
 
         if (chatState.UnregisterMember(sessionId)) {
             InvalidateGetVideoStreamMemberCount(chatId);
-            InvalidateGetRecommendedCodec(chatId);
+            InvalidateGetSupportedDecoderCodecs(chatId);
         }
         return Task.CompletedTask;
     }
@@ -150,7 +150,7 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             InvalidateListActiveStreams(chatId);
             InvalidateGetVideoStreamingAuthorIds(chatId);
             InvalidateGetVideoStreamMemberCount(chatId);
-            InvalidateGetRecommendedCodec(chatId);
+            InvalidateGetSupportedDecoderCodecs(chatId);
             chatState.Complete(RpcRerouteException.MustReroute());
         }
     }
@@ -173,9 +173,9 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
             _ = GetVideoStreamMemberCount(chatId, default);
     }
 
-    private void InvalidateGetRecommendedCodec(ChatId chatId)
+    private void InvalidateGetSupportedDecoderCodecs(ChatId chatId)
     {
         using (Invalidation.Begin())
-            _ = GetRecommendedCodec(chatId, default);
+            _ = GetSupportedDecoderCodecs(chatId, default);
     }
 }

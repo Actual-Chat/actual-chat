@@ -331,6 +331,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // assert
         translations.Should().AllSatisfy(x => x.Should().BeNull());
+        queued.Should().AllSatisfy(x => x.Id.SourceId.ChatId.Should().Be(chatId));
 
         // act
         ClearVisibleItems(chatId);
@@ -340,7 +341,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
                 queued.Should().AllSatisfy(x => ThrottledTranslations.GetWorkItem(x.Id).Should().BeNull());
                 queued.Should().AllSatisfy(x => x.Task.IsCompleted.Should().BeTrue());
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 20 : 10));
         await TestExt.When(() => {
             ThrottledTranslations.ListQueued().Should().BeEmpty();
             ThrottledTranslations.ListRunning().Should().BeEmpty();

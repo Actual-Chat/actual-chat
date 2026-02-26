@@ -190,15 +190,31 @@ export class VideoPlayer {
     }
 
     private mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): string {
-        // If we have an avcC description, extract the actual codec profile from it
+        // Defense-in-depth: detect avcC format from description bytes regardless of declared codec.
+        // This catches the case where encoder silently falls back to H.264 but reports AV1.
+        if (description && description.byteLength >= 5) {
+            if (VideoPlayer.isAvcCDescription(description)) {
+                const bytes = new Uint8Array(description);
+                const profileIndication = bytes[1];
+                const profileCompatibility = bytes[2];
+                const levelIndication = bytes[3];
+                const codecString = `avc1.${profileIndication.toString(16).padStart(2, '0')}${profileCompatibility.toString(16).padStart(2, '0')}${levelIndication.toString(16).padStart(2, '0')}`;
+                const declaredLower = codec.toLowerCase();
+                if (declaredLower !== 'h264' && declaredLower !== 'avc1' && !declaredLower.startsWith('avc1.')) {
+                    warnLog?.log(`Codec mismatch: declared=${codec} but description is avcC, overriding to ${codecString}`);
+                }
+                return codecString;
+            }
+        }
+
+        // If we have an avcC description and declared H.264, extract the actual profile
         if (description && description.byteLength >= 4 && (codec.toLowerCase() === 'h264' || codec.toLowerCase() === 'avc1')) {
             const bytes = new Uint8Array(description);
-            // avcC structure: configurationVersion(1), profileIndication(1), profileCompatibility(1), levelIndication(1), ...
             const profileIndication = bytes[1];
             const profileCompatibility = bytes[2];
             const levelIndication = bytes[3];
             const codecString = `avc1.${profileIndication.toString(16).padStart(2, '0')}${profileCompatibility.toString(16).padStart(2, '0')}${levelIndication.toString(16).padStart(2, '0')}`;
-            console.log(`[VideoPlayer] Built codec string from avcC: ${codecString} (profile=${profileIndication}, compat=${profileCompatibility}, level=${levelIndication})`);
+            debugLog?.log(`Built codec string from avcC: ${codecString}`);
             return codecString;
         }
 
@@ -222,6 +238,24 @@ export class VideoPlayer {
             return codec;
         }
         return 'avc1.640028'; // Default to H.264 High profile
+    }
+
+    /**
+     * Detect if description bytes are in avcC (H.264 decoder configuration record) format.
+     * avcC: byte[0]===0x01 (configurationVersion), byte[1] is valid H.264 profile,
+     * byte[4] has reserved bits set (0xFC mask).
+     */
+    private static isAvcCDescription(description: ArrayBuffer): boolean {
+        if (description.byteLength < 5) return false;
+        const bytes = new Uint8Array(description);
+        // configurationVersion must be 1
+        if (bytes[0] !== 0x01) return false;
+        // profileIndication must be a known H.264 profile
+        const validProfiles = [66, 77, 88, 100, 110, 122, 244]; // Baseline, Main, Extended, High, High10, High422, High444
+        if (!validProfiles.includes(bytes[1])) return false;
+        // byte[4] reserved bits: upper 6 bits must be 1 (0xFC mask)
+        if ((bytes[4] & 0xFC) !== 0xFC) return false;
+        return true;
     }
 
     private onFrameDecoded(frame: VideoFrame): void {
@@ -462,8 +496,12 @@ export class VideoPlayer {
                         description.byteOffset,
                         description.byteOffset + description.byteLength
                     );
+                    // Re-derive codec from new description (defense-in-depth: catches codec mismatch)
+                    const derivedCodec = this.mapCodecToWebCodecs(
+                        this.decoderConfig.codec, descBuffer as ArrayBuffer);
                     const newConfig: VideoDecoderConfig = {
                         ...this.decoderConfig,
+                        codec: derivedCodec,
                         description: descBuffer,
                     };
                     this.decoder.configure(newConfig);

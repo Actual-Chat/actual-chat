@@ -28,8 +28,8 @@ public interface ILiveVideoBackend : IComputeService, IBackendService
     Task UnregisterVideoStreamMember(ChatId chatId, string sessionId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<string> GetRecommendedCodec(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<string>> GetSupportedDecoderCodecs(ChatId chatId, CancellationToken cancellationToken);
 
     [RpcMethod(LocalExecutionMode = RpcLocalExecutionMode.Unconstrained)]
-    Task<RpcStream<string>> ObserveRecommendedCodec(ChatId chatId, CancellationToken cancellationToken);
+    Task<RpcStream<ApiArray<string>>> ObserveSupportedDecoderCodecs(ChatId chatId, CancellationToken cancellationToken);
 }
