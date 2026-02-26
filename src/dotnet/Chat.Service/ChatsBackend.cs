@@ -1557,11 +1557,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             foreach (var chatEntryPair in invChats) {
                 var chatId = ChatId.Parse(chatEntryPair.Key);
                 var entryId = chatEntryPair.Value;
-                InvalidateTiles(chatId,entryId, ChangeKind.Remove, false);
-                InvalidateTiles(chatId,entryId - tileSize, ChangeKind.Remove, false);
-                InvalidateTiles(chatId,entryId - tileSize*2, ChangeKind.Remove, false);
-                InvalidateTiles(chatId,entryId - tileSize*3, ChangeKind.Remove, false);
-                InvalidateTiles(chatId,entryId - tileSize*4, ChangeKind.Remove, false);
+                InvalidateTiles(chatId, entryId, ChangeKind.Remove, false);
+                InvalidateTiles(chatId, entryId - tileSize, ChangeKind.Remove, false);
+                InvalidateTiles(chatId, entryId - tileSize*2, ChangeKind.Remove, false);
+                InvalidateTiles(chatId, entryId - tileSize*3, ChangeKind.Remove, false);
+                InvalidateTiles(chatId, entryId - tileSize*4, ChangeKind.Remove, false);
                 _ = GetEntryAttachments(TextEntryId.New(chatId, entryId), default);
             }
             return;
