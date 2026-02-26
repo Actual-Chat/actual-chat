@@ -493,6 +493,31 @@ function New-ProjectMounts {
     return $mounts
 }
 
+# Helper function: prompt user to select from a list of items
+# Returns 0-based index of selected item, or -1 if user chose the extra option
+function Read-UserSelection {
+    param(
+        [string]$Title,
+        [string[]]$Items,
+        [string]$Prompt = "Select"
+    )
+    Write-Host "${Title}:" -ForegroundColor Cyan
+    Write-Host ""
+    for ($i = 0; $i -lt $Items.Count; $i++) {
+        Write-Host "  [$($i + 1)] $($Items[$i])"
+    }
+    Write-Host ""
+    $choice = Read-Host $Prompt
+    if ($choice -match '^\d+$') {
+        $idx = [int]$choice - 1
+        if ($idx -ge 0 -and $idx -lt $Items.Count) {
+            return $idx
+        }
+    }
+    Write-Error "Invalid selection"
+    exit 1
+}
+
 # Helper function for dry run output
 function Show-DryRun {
     param(
@@ -764,8 +789,19 @@ switch ($mode) {
         # Container reuse logic (default unless --new is specified)
         if (-not $newContainer) {
             $existingContainers = @(docker ps --filter "label=worktree=$containerBaseName" --format "{{.ID}}`t{{.Names}}`t{{.Status}}" 2>$null | Where-Object { $_ })
+            $selectedContainer = $null
             if ($existingContainers.Count -eq 1) {
-                $parts = $existingContainers[0] -split "`t"
+                $selectedContainer = $existingContainers[0]
+            } elseif ($existingContainers.Count -gt 1) {
+                $displayItems = $existingContainers | ForEach-Object { $p = $_ -split "`t"; "$($p[1]) ($($p[2]))" }
+                $idx = Read-UserSelection `
+                    -Title "Multiple containers found for '$containerBaseName'" `
+                    -Items $displayItems `
+                    -Prompt "Select container"
+                $selectedContainer = $existingContainers[$idx]
+            }
+            if ($selectedContainer) {
+                $parts = $selectedContainer -split "`t"
                 $containerId = $parts[0]
                 $containerDisplayName = $parts[1]
                 if ($dryRun) {
@@ -782,46 +818,8 @@ switch ($mode) {
                     & docker @execArgs
                 }
                 exit $LASTEXITCODE
-            } elseif ($existingContainers.Count -gt 1) {
-                Write-Host "Multiple containers found for '$containerBaseName':" -ForegroundColor Cyan
-                Write-Host ""
-                for ($i = 0; $i -lt $existingContainers.Count; $i++) {
-                    $parts = $existingContainers[$i] -split "`t"
-                    Write-Host "  [$($i + 1)] $($parts[1]) ($($parts[2]))"
-                }
-                Write-Host "  [n] Create new container"
-                Write-Host ""
-                $choice = Read-Host "Select container"
-                if ($choice -eq "n") {
-                    Write-Host "Creating new container..." -ForegroundColor Cyan
-                } elseif ($choice -match '^\d+$') {
-                    $idx = [int]$choice - 1
-                    if ($idx -ge 0 -and $idx -lt $existingContainers.Count) {
-                        $parts = $existingContainers[$idx] -split "`t"
-                        $containerId = $parts[0]
-                        $containerDisplayName = $parts[1]
-                        if ($dryRun) {
-                            Write-Host ""
-                            Write-Host "=== DRY RUN (Docker - reuse) ===" -ForegroundColor Yellow
-                            Write-Host ""
-                            Write-Host "Would reuse container: $containerDisplayName" -ForegroundColor Cyan
-                            Write-Host ""
-                        } else {
-                            Write-Host "Reusing container: $containerDisplayName" -ForegroundColor Cyan
-                            $execArgs = @("exec", "-it", "-w", $dockerWorkDir, $containerId, "pwsh", $dockerScriptPath) + $dockerScriptArgs
-                            & docker @execArgs
-                        }
-                        exit $LASTEXITCODE
-                    } else {
-                        Write-Error "Invalid selection"
-                        exit 1
-                    }
-                } else {
-                    Write-Error "Invalid selection"
-                    exit 1
-                }
             }
-            # No existing containers found - fall through to create new
+            # No container selected - fall through to create new
         }
 
         # Build project path env vars for Docker
