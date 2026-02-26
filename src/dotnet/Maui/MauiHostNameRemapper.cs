@@ -1,23 +1,27 @@
 using System.Net;
 using System.Net.Sockets;
 using ActualChat.Rpc;
-using Microsoft.Maui.Storage;
 
 namespace ActualChat.Maui;
 
 public sealed class MauiHostNameRemapper : HostNameRemapper
 {
-    private const string PreferenceKeyPrefix = "host_ip_";
-
     private volatile string? _ip;
 
     public static void Use()
+#if ANDROID || WINDOWS
         => Instance = new MauiHostNameRemapper();
+#else
+    {
+        // On iOS/macCatalyst, MauiHttpClientFactory uses NSUrlSessionHandler (native stack),
+        // so SocketsHttpHandler with ConnectCallback cannot be used.
+        // See how/where HostNameRemapper.Instance is used.
+    }
+#endif
 
     private MauiHostNameRemapper()
     {
-        var key = PreferenceKeyPrefix + MauiSettings.Host;
-        _ip = Preferences.Default.Get(key, "").NullIfEmpty();
+        _ip = MauiPreferences.GetHostIp(MauiSettings.Host);
         if (_ip == null)
             _ = ResolveAsync();
     }
@@ -40,8 +44,7 @@ public sealed class MauiHostNameRemapper : HostNameRemapper
 
             var ip = ipAddress.ToString();
             Interlocked.Exchange(ref _ip, ip);
-            var key = PreferenceKeyPrefix + MauiSettings.Host;
-            Preferences.Default.Set(key, ip);
+            MauiPreferences.SetHostIp(MauiSettings.Host, ip);
         }
 #pragma warning disable RCS1075 // Avoid catching general exception
         catch (Exception) {

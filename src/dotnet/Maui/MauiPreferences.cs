@@ -11,6 +11,7 @@ public static class MauiPreferences
 
     private const string HostOverrideKey = "app_server_instance_override";
     private const string DbEncryptionKeyKey = "db_encryption_key";
+    private const string HostIpKeyPrefix = "host_ip_";
     private const string IsDataCollectionEnabledKey = "analytics";
     private const string ThemeKey = "Theme";
 
@@ -36,6 +37,12 @@ public static class MauiPreferences
         get => Get<string>(ThemeKey) ?? "";
         set => Set(ThemeKey, value);
     }
+
+    public static string? GetHostIp(string hostName)
+        => Get<string>(HostIpKeyPrefix + hostName).NullIfEmpty();
+
+    public static void SetHostIp(string hostName, string ip)
+        => Set(HostIpKeyPrefix + hostName, ip);
 
     // Public helpers
 
