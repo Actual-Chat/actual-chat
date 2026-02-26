@@ -1820,7 +1820,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             }
         }
         else {
-            var idRange = await GetIdRange(chatId,false, cancellationToken).ConfigureAwait(false);
+            var idRange = await GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
             var lastEntryId = idRange.End - 1; // Start tracking positions stat since this entry
             var shouldTrackPosition = entryLid >= lastEntryId;
             dbContext.Add(new DbReadPositionsStat() {
