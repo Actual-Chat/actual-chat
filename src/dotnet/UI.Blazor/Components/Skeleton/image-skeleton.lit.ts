@@ -4,6 +4,8 @@ import { html, LitElement, nothing } from 'lit';
 import { delayAsync } from 'promises';
 import { PROD_HOST } from '_constants';
 
+type ImageState = 'none' | 'skeleton' | 'thumbnail' | 'original';
+
 @customElement('image-skeleton')
 export class ImageSkeleton extends LitElement {
     protected createRenderRoot() {
@@ -16,6 +18,27 @@ export class ImageSkeleton extends LitElement {
     @property() title = '';
 
     private _imageRef: Ref<HTMLImageElement> = createRef();
+    private _imageState: ImageState = 'none';
+
+    connectedCallback() {
+        super.connectedCallback();
+        if (this.classList.contains('show-image-original'))
+            this._imageState = 'original';
+        else if (this.classList.contains('show-image-thumbnail'))
+            this._imageState = 'thumbnail';
+        else if (this.classList.contains('show-image-skeleton'))
+            this._imageState = 'skeleton';
+    }
+
+    updated(changedProperties: Map<string, unknown>) {
+        if (changedProperties.has('class') && this._imageState !== 'none') {
+            const stateClass = `show-image-${this._imageState}`;
+            if (!this.classList.contains(stateClass)) {
+                this.classList.remove('show-image-skeleton', 'show-image-thumbnail', 'show-image-original');
+                this.classList.add(stateClass);
+            }
+        }
+    }
 
     // for tests
     // willUpdate(changedProperties: any) {
@@ -76,6 +99,7 @@ export class ImageSkeleton extends LitElement {
     }
 
     async reloadImage(): Promise<void> {
+        this._imageState = 'skeleton';
         this.classList.remove('show-image-original');
         this.classList.add('show-image-skeleton');
 
@@ -98,13 +122,14 @@ export class ImageSkeleton extends LitElement {
     }
 
     imageLoaded(): void {
-        this.classList.remove('show-image-skeleton');
-        this.classList.remove('show-image-thumbnail');
+        this._imageState = 'original';
+        this.classList.remove('show-image-skeleton', 'show-image-thumbnail');
         if (!this.classList.contains('show-image-original'))
             this.classList.add('show-image-original');
     }
 
     thumbnailLoaded(): void {
+        this._imageState = 'thumbnail';
         this.classList.remove('show-image-skeleton');
         if (!this.classList.contains('show-image-thumbnail') && (!this.classList.contains('show-image-original')))
             this.classList.add('show-image-thumbnail');

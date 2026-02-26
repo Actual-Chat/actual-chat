@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using ActualChat.Audio;
 using ActualChat.Chat;
@@ -12,6 +13,7 @@ using ActualChat.Live;
 using ActualChat.Search;
 using ActualChat.Security;
 using ActualChat.Streaming;
+using ActualChat.Rpc;
 using ActualLab.RestEase;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
@@ -137,16 +139,33 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                             ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id);
                         if (Constants.Rpc.Compression.IsClientSideEnabled)
                             ws.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
-                        return new WebSocketOwner(peer.Ref.Address, ws, c);
-#if false
-                        // Non-native Android WebSocket stack requires SocketsHttpHandler to support TLS 1.2
-                        var handler = new SocketsHttpHandler() {
-                            SslOptions = new SslClientAuthenticationOptions() {
-                                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                        if (HostNameRemapper.Instance is not { } hostNameRemapper)
+                            return new WebSocketOwner(peer.Ref.Address, ws, c);
+
+                        // HostNameRemapper changes the host name of the WebSocket connection,
+                        // and since it's an SSL connection, plain change in the original URL
+                        // will trigger SSL certificate validation failure.
+                        // SocketsHttpHandler's ConnectCallback is the right place to make this change.
+                        var handler = new SocketsHttpHandler {
+                            ConnectCallback = async (context, cancellationToken) => {
+                                var host = context.DnsEndPoint.Host;
+                                var port = context.DnsEndPoint.Port;
+                                var remapped = hostNameRemapper.Get(host);
+                                EndPoint endPoint = IPAddress.TryParse(remapped, out var ip)
+                                    ? new IPEndPoint(ip, port)
+                                    : new DnsEndPoint(remapped, port);
+                                var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                                try {
+                                    await socket.ConnectAsync(endPoint, cancellationToken).ConfigureAwait(false);
+                                    return new NetworkStream(socket, ownsSocket: true);
+                                }
+                                catch {
+                                    socket.Dispose();
+                                    throw;
+                                }
                             },
                         };
                         return new WebSocketOwner(peer.Ref.Address, ws, c) { Handler = handler };
-#endif
                     },
                 };
             return options;
