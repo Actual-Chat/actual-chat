@@ -792,6 +792,7 @@ switch ($mode) {
         $dockerArgs = @(
             "run", "-it", "--rm"
             "--name", $containerName
+            "--label", "worktree=$containerBaseName"
             "--network", "host"
         )
 
@@ -832,6 +833,9 @@ switch ($mode) {
             Write-Host ""
             Write-Host "Command:" -ForegroundColor Cyan
             Write-Host "  claude --dangerously-skip-permissions $($claudeArgs -join ' ')"
+            Write-Host ""
+            Write-Host "Labels:" -ForegroundColor Cyan
+            Write-Host "  worktree=$containerBaseName"
             Write-Host ""
             Write-Host "Volume mounts:" -ForegroundColor Cyan
             for ($i = 0; $i -lt $volumeMounts.Count; $i += 2) {
