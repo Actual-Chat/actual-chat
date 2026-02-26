@@ -59,7 +59,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
     [HttpGet("beam/{key}")]
     [CacheControlImmutable(Duration = 2592000)] // 30 days
-    public ActionResult GetBeam(BeamAvatarQuery query)
+    public ActionResult GetBeam(AvatarQuery query)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -76,7 +76,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
     [HttpGet("marble/{key}")]
     [CacheControlImmutable(Duration = 2592000)] // 30 days
-    public ActionResult GetMarble(MarbleAvatarQuery query)
+    public ActionResult GetMarble(AvatarQuery query)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);

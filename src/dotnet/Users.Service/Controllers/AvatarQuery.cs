@@ -5,12 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace ActualChat.Users.Controllers;
 
 /// <summary>
-/// Base query parameters for avatar generation endpoints.
+/// Query parameters for avatar generation endpoints.
 /// </summary>
-[DataContract, MemoryPackable, MessagePackObject(true)]
-[MemoryPackUnion(0, typeof(BeamAvatarQuery))]
-[MemoryPackUnion(1, typeof(MarbleAvatarQuery))]
-public abstract partial record AvatarQueryBase : IValidatableObject
+[DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
+public sealed partial record AvatarQuery : IValidatableObject
 {
     [DataMember, MemoryPackOrder(0)]
     [FromRoute(Name = "key")]
@@ -25,6 +23,14 @@ public abstract partial record AvatarQueryBase : IValidatableObject
     [DataMember, MemoryPackOrder(2)]
     [FromQuery(Name = "size")]
     public int? Size { get; init; }
+
+    [DataMember, MemoryPackOrder(3)]
+    [FromQuery(Name = "title")]
+    public string? Title { get; init; }
+
+    [DataMember, MemoryPackOrder(4)]
+    [FromQuery(Name = "doNotBlur")]
+    public bool DoNotBlur { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
