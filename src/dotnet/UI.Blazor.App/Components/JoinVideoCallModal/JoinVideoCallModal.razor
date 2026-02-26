@@ -188,9 +188,17 @@
     }
 
     private async Task OnJoinClick() {
+        // Get actual device ID from JS before disposing — the browser may have
+        // picked a different camera than what was originally requested (e.g.,
+        // front camera when no device ID was specified).
+        string? deviceId = null;
+        if (_jsRef is not null)
+            deviceId = await _jsRef.InvokeAsync<string?>("getActualDeviceId");
+        if (string.IsNullOrEmpty(deviceId))
+            deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
+
         await DisposeAsync();
         var chatId = ModalModel.Chat.Id;
-        var deviceId = string.IsNullOrEmpty(_selectedDeviceId) ? null : _selectedDeviceId;
         ChatVideoUI.SetRecordingChatId(chatId, deviceId, _isBlurEnabled);
         Modal.Close();
     }

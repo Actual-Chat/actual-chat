@@ -184,6 +184,14 @@ export class VideoRecorder {
             this.cameraHeight = trackSettings.height ?? config.height;
             infoLog?.log(`Camera resolution: ${this.cameraWidth}x${this.cameraHeight}`);
 
+            // Ensure recording uses the same camera as preview
+            const previewDeviceId = trackSettings.deviceId;
+            if (previewDeviceId && !this.selectedCameraDeviceId) {
+                infoLog?.log(`Captured preview camera device ID: ${previewDeviceId}`);
+                this.selectedCameraDeviceId = previewDeviceId;
+                this.recordingService.updateConfig({ cameraDeviceId: previewDeviceId });
+            }
+
             // Start recording (this initializes the video-pipeline)
             console.warn('[VideoRecorder] Calling recordingService.start()...');
             await this.recordingService.start();
