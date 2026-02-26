@@ -40,8 +40,12 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
 
         foreach (var item in markup.Items) {
             // Auto-newline between blocks
-            if (prevItem != null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup()))
+            if (prevItem != null && (item.IsBlockMarkup() || prevItem.IsBlockMarkup())) {
                 state.Append(NewLineMarkup.Instance.Format());
+                // Double newline between consecutive paragraphs (paragraph break)
+                if (prevItem is ParagraphMarkup && item is ParagraphMarkup)
+                    state.Append(NewLineMarkup.Instance.Format());
+            }
 
             Visit(item, ref state);
             prevItem = item;

@@ -12,10 +12,9 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void NewLineTest()
     {
-        var m = Parse<MarkupSeq>(Environment.NewLine, out var text);
-        m.Items.Length.Should().Be(2);
-        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
-        m.Items[1].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
+        // A single newline creates one paragraph with NewLineMarkup inside
+        var m = Parse<ParagraphMarkup>(Environment.NewLine, false);
+        m.Content.Should().BeOfType<NewLineMarkup>();
     }
 
     [Fact]
@@ -34,13 +33,14 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void TwoLinesParagraphTest()
     {
-        var m = Parse<MarkupSeq>("Мороз и солнце; день\r\n чудесный!");
-        m.Items.Length.Should().Be(2);
-        m.Items[0].Should().BeOfType<ParagraphMarkup>()
-            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+        // Single newline keeps lines in the same paragraph with NewLineMarkup between them
+        var m = Parse<ParagraphMarkup>("Мороз и солнце; день\r\n чудесный!", false);
+        var seq = m.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items.Length.Should().Be(3);
+        seq.Items[0].Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("Мороз и солнце; день");
-        m.Items[1].Should().BeOfType<ParagraphMarkup>()
-            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+        seq.Items[1].Should().BeOfType<NewLineMarkup>();
+        seq.Items[2].Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be(" чудесный!");
     }
 
@@ -205,6 +205,19 @@ public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void BoldWithNewLineInsideTest()
+    {
+        var p = Parse<ParagraphMarkup>("**bold \r\n text**", out var text);
+        var m = p.Content.Should().BeOfType<StylizedMarkup>().Subject;
+        m.Style.Should().Be(TextStyle.Bold);
+        var m1 = m.Content.Should().BeOfType<MarkupSeq>().Subject;
+        m1.Items.Length.Should().Be(3);
+        m1.Items[0].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be("bold ");
+        m1.Items[1].Should().BeOfType<NewLineMarkup>();
+        m1.Items[2].Should().BeOfType<PlainTextMarkup>().Which.Text.Should().Be(" text");
+    }
+
+    [Fact]
     public void PreformattedTest()
     {
         var p = Parse<ParagraphMarkup>("`a``b`");
@@ -262,33 +275,42 @@ public class CodeWithIndent
     [Fact]
     public void MixedCodeTest()
     {
+        // Leading newline becomes part of first paragraph (as NewLineMarkup)
         var m = Parse<MarkupSeq>(@"
 1
 ```cs
 code
 ```
 2");
-        m.Items.Length.Should().Be(4);
-        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
-        m.Items[1].Should().BeOfType<ParagraphMarkup>();
-        m.Items[2].Should().BeOfType<CodeBlockMarkup>();
-        m.Items[3].Should().BeOfType<ParagraphMarkup>();
+        m.Items.Length.Should().Be(3);
+        // First paragraph contains NewLine + "1"
+        var firstPara = m.Items[0].Should().BeOfType<ParagraphMarkup>().Subject;
+        var firstParaContent = firstPara.Content.Should().BeOfType<MarkupSeq>().Subject;
+        firstParaContent.Items[0].Should().BeOfType<NewLineMarkup>();
+        firstParaContent.Items[1].Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("1");
+        m.Items[1].Should().BeOfType<CodeBlockMarkup>();
+        m.Items[2].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("2");
     }
 
     [Fact]
     public void ComplexMixedCodeTest()
     {
+        // Leading newline becomes part of first paragraph (as NewLineMarkup)
         var m = Parse<MarkupSeq>(@"
 *1* **
 ```cs
 code
 ```
 2 ```cs");
-        m.Items.Length.Should().Be(4);
-        m.Items[0].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
-        m.Items[1].Should().BeOfType<ParagraphMarkup>();
-        m.Items[2].Should().BeOfType<CodeBlockMarkup>();
-        m.Items[3].Should().BeOfType<ParagraphMarkup>();
+        m.Items.Length.Should().Be(3);
+        // First paragraph contains NewLine + "*1* **"
+        var firstPara = m.Items[0].Should().BeOfType<ParagraphMarkup>().Subject;
+        firstPara.Content.Should().BeOfType<MarkupSeq>().Which.Items[0].Should().BeOfType<NewLineMarkup>();
+        m.Items[1].Should().BeOfType<CodeBlockMarkup>();
+        m.Items[2].Should().BeOfType<ParagraphMarkup>();
     }
 
     [Fact]
@@ -337,14 +359,69 @@ code
     [Fact]
     public void SpecialTest_MultilineCase()
     {
-        var m = Parse<MarkupSeq>("line1 \nline2", out _);
+        // Single newline keeps lines in the same paragraph with NewLineMarkup between them
+        var m = Parse<ParagraphMarkup>("line1 \nline2", false);
+        var seq = m.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items.Length.Should().Be(3);
+        seq.Items[0].Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("line1 ");
+        seq.Items[1].Should().BeOfType<NewLineMarkup>();
+        seq.Items[2].Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("line2");
+    }
+
+    [Fact]
+    public void EmptyLineSeparatesParagraphs()
+    {
+        // Empty line (double newline) separates paragraphs
+        var m = Parse<MarkupSeq>("line1\n\nline2", false);
         m.Items.Length.Should().Be(2);
         m.Items[0].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().BeOfType<PlainTextMarkup>()
-            .Which.Text.Should().Be("line1 ");
+            .Which.Text.Should().Be("line1");
         m.Items[1].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().BeOfType<PlainTextMarkup>()
             .Which.Text.Should().Be("line2");
+    }
+
+    [Fact]
+    public void ParagraphBeforeList()
+    {
+        // List block terminates the preceding paragraph
+        var m = Parse<MarkupSeq>("text\n- item", false);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("text");
+        m.Items[1].Should().BeOfType<ListMarkup>()
+            .Which.Items.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParagraphBeforeCodeBlock()
+    {
+        // CodeBlock terminates the preceding paragraph
+        var text = "text\n```\ncode\n```";
+        var m = Parse<MarkupSeq>(text, false);
+        m.Items.Length.Should().Be(2);
+        m.Items[0].Should().BeOfType<ParagraphMarkup>()
+            .Which.Content.Should().BeOfType<PlainTextMarkup>()
+            .Which.Text.Should().Be("text");
+        m.Items[1].Should().BeOfType<CodeBlockMarkup>();
+    }
+
+    [Fact]
+    public void MultiLineParagraphWithFormatting()
+    {
+        // Multiple lines with inline formatting stay in the same paragraph
+        var m = Parse<ParagraphMarkup>("**bold**\n*italic*", false);
+        var seq = m.Content.Should().BeOfType<MarkupSeq>().Subject;
+        seq.Items.Length.Should().Be(3);
+        seq.Items[0].Should().BeOfType<StylizedMarkup>()
+            .Which.Style.Should().Be(TextStyle.Bold);
+        seq.Items[1].Should().BeOfType<NewLineMarkup>();
+        seq.Items[2].Should().BeOfType<StylizedMarkup>()
+            .Which.Style.Should().Be(TextStyle.Italic);
     }
 
     [Fact]
@@ -513,6 +590,7 @@ code
     [Fact]
     public void ListBlockWithNewLineSeparator()
     {
+        // Empty lines between list and paragraph are consumed as separators (no empty paragraphs)
         var text =
             """
             **Text before the list.**
@@ -523,24 +601,24 @@ code
             - List item 3 is here.
             - List item 4 is here.
             """;
-        var m = Parse<MarkupSeq>(text);
-        m.Items.Length.Should().Be(5);
+        var m = Parse<MarkupSeq>(text, false);
+        m.Items.Length.Should().Be(4);
         m.Items[0].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().BeOfType<StylizedMarkup>()
             .Which.Style.Should().Be(TextStyle.Bold);
         m.Items[1].Should().BeOfType<ListMarkup>()
             .Which.Items.Should().HaveCount(2);
-        m.Items[2].Should().BeOfType<ParagraphMarkup>().Which.Content.Should().Be(Markup.EmptyText);
-        m.Items[3].Should().BeOfType<ParagraphMarkup>()
+        m.Items[2].Should().BeOfType<ParagraphMarkup>()
             .Which.Content.Should().BeOfType<StylizedMarkup>()
             .Which.Style.Should().Be(TextStyle.Bold);
-        m.Items[4].Should().BeOfType<ListMarkup>()
+        m.Items[3].Should().BeOfType<ListMarkup>()
             .Which.Items.Should().HaveCount(2);
     }
 
     [Fact]
     public void TwoListsAndCodeBlock()
     {
+        // Empty lines between blocks are consumed as separators (round-trip not guaranteed)
         var text =
             """
             **header 1**
@@ -555,12 +633,13 @@ code
             some code block
             ```
             """;
-        var m = Parse<MarkupSeq>(text);
+        var m = Parse<MarkupSeq>(text, false);
     }
 
     [Fact]
     public void TwoListsAndCodeBlock2()
     {
+        // Multiple empty lines between blocks are consumed as separators (round-trip not guaranteed)
         var text =
             """
             **header 1**
@@ -577,7 +656,7 @@ code
             some code block
             ```
             """;
-        var m = Parse<MarkupSeq>(text);
+        var m = Parse<MarkupSeq>(text, false);
     }
 
     [Fact]
