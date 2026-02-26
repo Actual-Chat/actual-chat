@@ -1,4 +1,6 @@
+using ActualChat.Attributes;
 using ActualChat.Audio;
+using ActualChat.Hosting;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
 
@@ -7,6 +9,8 @@ namespace ActualChat.Streaming;
 /// <summary>
 /// Backend service for audio and transcript streaming.
 /// </summary>
+[BackendService(nameof(HostRole.AudioBackend), ServiceMode.Distributed)]
+[BackendShardScheme(nameof(HostRole.AudioBackend))]
 public interface IStreamingBackend : IRpcService, IBackendService
 {
     Task<RpcStream<byte[]>?> GetAudio(

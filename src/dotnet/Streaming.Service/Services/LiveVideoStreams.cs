@@ -88,7 +88,8 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        return await Backend.ObserveRecommendedCodec(chatId, cancellationToken).ConfigureAwait(false);
+        var remoteStream = await Backend.ObserveRecommendedCodec(chatId, cancellationToken).ConfigureAwait(false);
+        return RpcStream.New(remoteStream); // Wrap Remote → Local for re-serialization
     }
 
     public async Task<RpcStream<VideoFrame>?> GetVideo(
@@ -98,7 +99,10 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         CancellationToken cancellationToken)
     {
         var peerId = RpcInboundContext.Current?.Peer.Id.ToString() ?? "rpc-unknown";
-        return await VideoStreamingBackend.GetVideo(streamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
+        var remoteStream = await VideoStreamingBackend.GetVideo(streamId, skipTo, peerId, cancellationToken).ConfigureAwait(false);
+        return remoteStream is null
+            ? null
+            : RpcStream.New(remoteStream, isReconnectable: false);
     }
 
     public async Task<RpcStream<VideoQualityPreset>> ObserveStreamQualityRequests(
@@ -106,6 +110,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        return await VideoStreamingBackend.ObserveStreamQualityRequests(streamId, cancellationToken).ConfigureAwait(false);
+        var remoteStream = await VideoStreamingBackend.ObserveStreamQualityRequests(streamId, cancellationToken).ConfigureAwait(false);
+        return RpcStream.New(remoteStream);
     }
 }
