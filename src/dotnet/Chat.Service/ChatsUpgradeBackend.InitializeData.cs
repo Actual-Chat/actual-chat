@@ -5,6 +5,8 @@ using ActualChat.Users;
 using ActualLab.IO;
 using Microsoft.EntityFrameworkCore;
 
+#pragma warning disable CS0618 // Type or member is obsolete (AudioEntryId, ChatEntryKind.Audio)
+
 namespace ActualChat.Chat;
 
 public partial class ChatsUpgradeBackend

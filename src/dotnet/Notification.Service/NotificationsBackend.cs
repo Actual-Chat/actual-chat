@@ -410,7 +410,7 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         var chatId = entry.ChatId;
-        if (entry.AudioEntryLid.HasValue) { // Maybe has transcription
+        if (entry.HasAudio) { // Maybe has transcription
             if (changeKind != ChangeKind.Update)
                 return;
 

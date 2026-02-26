@@ -42,7 +42,6 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         foreach (var idTile in idTiles) {
             var tile = await chats.GetTile(session,
                 TestChatId,
-                ChatEntryKind.Text,
                 idTile.Range,
                 CancellationToken.None);
             ids.AddRange(tile.Entries.Select(e => e.LocalId));
@@ -90,7 +89,6 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid + 1))[^1];
         await FluentActions.Awaiting(() => chats.GetTile(session,
                 chat.Id,
-                ChatEntryKind.Text,
                 idTile.Range,
                 CancellationToken.None))
             .Should()

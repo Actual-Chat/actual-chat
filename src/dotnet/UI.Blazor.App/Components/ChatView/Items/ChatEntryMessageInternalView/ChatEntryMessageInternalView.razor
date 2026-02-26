@@ -64,7 +64,7 @@
 }
 <p @ref="Ref" class="chat-message-markup @translationCls @streamingCls">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-        <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
+        <ChatEntryKindView Kind="@(entry.HasAudio ? ChatEntryKind.Transcribed : entry.Kind)"/>
     }
     @if (m.IsStreaming) {
         @if (!sm.RetainedText.IsNullOrEmpty()) {
@@ -95,7 +95,7 @@
         @if (!_temporaryText.IsNullOrEmpty()) {
             <div class="temporary-container hide">
                 @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-                    <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
+                    <ChatEntryKindView Kind="@(entry.HasAudio ? ChatEntryKind.Transcribed : entry.Kind)"/>
                 }
                 <span>@_temporaryText</span>
             </div>
@@ -214,7 +214,7 @@
                 || _rendered.IsStreaming != stateValue.IsStreaming
                 || _rendered.Entry.ContentHash != stateValue.Entry.ContentHash
                 || _rendered.Entry.IsSending != stateValue.Entry.IsSending
-                || _rendered.Entry.HasAudioEntry != stateValue.Entry.HasAudioEntry
+                || _rendered.Entry.HasAudio != stateValue.Entry.HasAudio
                 || _rendered.Markup != stateValue.Markup
                 || _rendered.Translation != stateValue.Translation
                 || _rendered.IsUnread != stateValue.IsUnread
@@ -278,7 +278,7 @@
         if (translation.MatchesOriginal(entry.Content))
             return new(markup, entry, translation.IsStreaming ? TranslationState.Translating : TranslationState.None, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
-        var translatedMarkup = entry.HasMediaEntry
+        var translatedMarkup = entry.HasAudio
             ? new PlayableTextMarkup(translation.Content, translation.GetTimeMap(entry))
             : MarkupParser.Parse(translation.Content);
 

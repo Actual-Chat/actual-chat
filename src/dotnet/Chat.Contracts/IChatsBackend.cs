@@ -27,7 +27,6 @@ public interface IChatsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<ChatTile> GetTile(
         ChatId chatId,
-        ChatEntryKind entryKind,
         Range<long> idTileRange,
         bool includeRemoved,
         CancellationToken cancellationToken);
@@ -48,7 +47,6 @@ public interface IChatsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<Range<long>> GetIdRange(
         ChatId chatId,
-        ChatEntryKind entryKind,
         bool includeRemoved,
         CancellationToken cancellationToken);
 

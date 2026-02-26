@@ -373,11 +373,7 @@
         => entry.RepliedEntryLid is not { } repliedEntryLocalId ? null : CreateChatEntryId(entry.Kind, entry.ChatId, repliedEntryLocalId);
 
     private static ChatEntryId CreateChatEntryId(ChatEntryKind kind, ChatId chatId, long localId) {
-        return kind switch {
-            ChatEntryKind.Text => TextEntryId.New(chatId, localId),
-            ChatEntryKind.Audio => AudioEntryId.New(chatId, localId),
-            _ => throw StandardError.Constraint("Not supported"),
-        };
+        return TextEntryId.New(chatId, localId);
     }
 
     private async ValueTask<(bool IsUnread, bool IsUnreadBlockStart)> IsUnreadByOthers(

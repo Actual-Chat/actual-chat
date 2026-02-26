@@ -2,7 +2,9 @@
 @inherits FusionComponentBase<AppUIHub>
 @{
     var cls = Kind switch {
+#pragma warning disable CS0618
         ChatEntryKind.Audio => "icon-voice-message",
+#pragma warning restore CS0618
         ChatEntryKind.Transcribed => "icon-voice-to-text-message",
         _ => "icon-text",
     };

@@ -78,12 +78,11 @@ public partial class Chats(IServiceProvider services) : IChats
     public virtual async Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        ChatEntryKind entryKind,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
         await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
-        return await Backend.GetTile(chatId, entryKind, idTileRange, false, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetTile(chatId, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -102,11 +101,10 @@ public partial class Chats(IServiceProvider services) : IChats
     public virtual async Task<Range<long>> GetIdRange(
         Session session,
         ChatId chatId,
-        ChatEntryKind entryKind,
         CancellationToken cancellationToken)
     {
         await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
-        return await Backend.GetIdRange(chatId, entryKind, false, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -379,7 +377,7 @@ public partial class Chats(IServiceProvider services) : IChats
                 Attachments = command.EntryAttachments,
             };
 
-            if (textEntry.AudioEntryLid.HasValue) {
+            if (textEntry.HasAudio) {
                 // If the new text contains markup (mentions, URLs, bold, etc.),
                 // it must become a text message - audio playback can't render markup properly
                 var chatMarkupHub = ChatMarkupHubFactory[textEntry.ChatId];
@@ -387,7 +385,7 @@ public partial class Chats(IServiceProvider services) : IChats
                 if (!parsedMarkup.IsPlainText()) {
                     // Has markup: strip audio link, convert to text message
                     diff = diff with {
-                        AudioEntryLid = Option.Some<long?>(null),
+                        MediaOrStreamId = "",
                         TimeMap = LinearMap.Zero,
                     };
                 }
@@ -403,7 +401,7 @@ public partial class Chats(IServiceProvider services) : IChats
                     else {
                         // Major edit: strip audio link
                         diff = diff with {
-                            AudioEntryLid = Option.Some<long?>(null),
+                            MediaOrStreamId = "",
                             TimeMap = LinearMap.Zero,
                         };
                     }
@@ -411,7 +409,7 @@ public partial class Chats(IServiceProvider services) : IChats
                 else {
                     // Degenerate TimeMap: can't remap, strip audio
                     diff = diff with {
-                        AudioEntryLid = Option.Some<long?>(null),
+                        MediaOrStreamId = "",
                         TimeMap = LinearMap.Zero,
                     };
                 }
@@ -769,7 +767,7 @@ public partial class Chats(IServiceProvider services) : IChats
             }
         }
         {
-            var textEntryRange = await Backend.GetIdRange(newChatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+            var textEntryRange = await Backend.GetIdRange(newChatId, false, cancellationToken).ConfigureAwait(false);
             var maxEntryId = textEntryRange.End > 0 ? textEntryRange.End - 1 : 0;
             var userIds = await AuthorsBackend.ListUserIds(newChatId, cancellationToken).ConfigureAwait(false);
             var updateUserChatSettingCount = 0;
@@ -958,10 +956,6 @@ public partial class Chats(IServiceProvider services) : IChats
             throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
 
         await Remove(textEntryId).ConfigureAwait(false);
-        if (textEntry.AudioEntryLid is { } audioEntryLid) {
-            var audioEntryId = AudioEntryId.New(chat.Id, audioEntryLid);
-            await Remove(audioEntryId).ConfigureAwait(false);
-        }
         return;
 
         async Task Remove(ChatEntryId entryId1) {
@@ -987,10 +981,6 @@ public partial class Chats(IServiceProvider services) : IChats
             throw StandardError.Unauthorized("You can restore only your own messages.");
 
         await Restore(textEntryId).ConfigureAwait(false);
-        if (textEntry.AudioEntryLid is { } audioEntryLid) {
-            var audioEntryId = AudioEntryId.New(chat.Id, audioEntryLid);
-            await Restore(audioEntryId).ConfigureAwait(false);
-        }
         return;
 
         async Task Restore(ChatEntryId entryId1) {

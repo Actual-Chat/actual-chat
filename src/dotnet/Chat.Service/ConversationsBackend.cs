@@ -376,7 +376,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToList();
 
         var tiles = await idTiles
-            .Select(idTile => ChatsBackend.GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken))
+            .Select(idTile => ChatsBackend.GetTile(chatId, idTile.Range, false, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 

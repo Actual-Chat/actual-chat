@@ -28,7 +28,6 @@ public interface IChats : IComputeService
     Task<Range<long>> GetIdRange(
         Session session,
         ChatId chatId,
-        ChatEntryKind entryKind,
         CancellationToken cancellationToken);
 
     // Client-side methods always skips entries with IsRemoved flag
@@ -36,7 +35,6 @@ public interface IChats : IComputeService
     Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        ChatEntryKind entryKind,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 

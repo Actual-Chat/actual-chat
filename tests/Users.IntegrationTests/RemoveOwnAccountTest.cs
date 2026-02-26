@@ -48,7 +48,6 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
         var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid + 1))[^1];
         await FluentActions.Awaiting(() => chats.GetTile(session,
                 chat.Id,
-                ChatEntryKind.Text,
                 idTile.Range,
                 CancellationToken.None))
             .Should()
@@ -58,7 +57,6 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
         var idTileActual = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastActualEntryId, lastActualEntryId + 1))[^1];
         var tile = await chats.GetTile(session,
                 TestChatId,
-                ChatEntryKind.Text,
                 idTileActual.Range,
                 CancellationToken.None);
         tile.Entries.Should().NotContain(e => e.LocalId == lastActualEntryId);

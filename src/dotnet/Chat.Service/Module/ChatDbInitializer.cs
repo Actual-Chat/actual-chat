@@ -48,6 +48,7 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
         var chatDbInitializer = DbInitializer.GetCurrent<ChatDbInitializer>();
         await chatDbInitializer.WaitForOtherInitializers(_ => true).ConfigureAwait(false);
 
+        await MigrateAudioEntries(cancellationToken).ConfigureAwait(false);
         // await FixCorruptedReadPositions(cancellationToken).ConfigureAwait(false);
     }
 
@@ -155,6 +156,20 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
         }
 
         Log.LogInformation("{Count} 'Notes' chats has been created", userIds.Count);
+    }
+
+    private async Task MigrateAudioEntries(CancellationToken cancellationToken)
+    {
+        try {
+            Log.LogInformation("Migrating audio entries to Media model");
+            var command = new ChatsUpgradeBackend_MigrateAudioEntries();
+            await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("Audio entry migration done");
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to migrate audio entries!");
+            throw;
+        }
     }
 
     private async Task FixCorruptedReadPositions(CancellationToken cancellationToken)

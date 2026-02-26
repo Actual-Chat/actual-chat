@@ -1,8 +1,11 @@
 using ActualChat.Chat.Db;
 using ActualChat.Contacts;
+using ActualChat.Media;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
+
+#pragma warning disable CS0618 // Type or member is obsolete (ChatEntryKind.Audio)
 
 namespace ActualChat.Chat;
 
@@ -15,6 +18,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
     private IBlobStorages Blobs { get; }
+    private IMediaBackend MediaBackend { get; }
 
     public ChatsUpgradeBackend(IServiceProvider services) : base(services)
     {
@@ -25,6 +29,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
         Blobs = Services.GetRequiredService<IBlobStorages>();
+        MediaBackend = services.GetRequiredService<IMediaBackend>();
     }
 
     // [CommandHandler]
@@ -116,6 +121,110 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
     }
 
     // [CommandHandler]
+    public virtual async Task OnMigrateAudioEntries(
+        ChatsUpgradeBackend_MigrateAudioEntries command,
+        CancellationToken cancellationToken)
+    {
+        if (Invalidation.IsActive)
+            return;
+
+        const int batchSize = 100;
+        var totalMigrated = 0;
+        long lastProcessedLocalId = 0;
+
+        Log.LogInformation("Starting audio entry migration...");
+
+        while (!cancellationToken.IsCancellationRequested) {
+            var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+            await using var _ = dbContext.ConfigureAwait(false);
+
+            // Find text entries that reference audio entries but haven't been migrated yet
+            var textEntries = await dbContext.ChatEntries
+                .Where(e => e.Kind == ChatEntryKind.Text)
+                .Where(e => e.AudioEntryId != null)
+                .Where(e => e.MediaOrStreamId == null || e.MediaOrStreamId == "")
+                .Where(e => e.LocalId > lastProcessedLocalId)
+                .OrderBy(e => e.ChatId).ThenBy(e => e.LocalId)
+                .Take(batchSize)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (textEntries.Count == 0)
+                break;
+
+            foreach (var textEntry in textEntries) {
+                lastProcessedLocalId = textEntry.LocalId;
+
+                // Look up the corresponding audio entry
+                var audioEntryId = ChatEntryId.New(
+                    ChatId.Parse(textEntry.ChatId),
+                    ChatEntryKind.Audio,
+                    textEntry.AudioEntryId!.Value);
+                var audioEntryIdStr = audioEntryId.Value;
+
+                var audioDbEntry = await dbContext.ChatEntries
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(
+                        e => e.Id == audioEntryIdStr,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (audioDbEntry is null) {
+                    Log.LogWarning(
+                        "Audio entry {AudioEntryId} not found for text entry {TextEntryId}, skipping",
+                        audioEntryId, textEntry.Id);
+                    continue;
+                }
+
+                var audioBlobId = audioDbEntry.Content;
+                if (audioBlobId.IsNullOrEmpty()) {
+                    Log.LogWarning(
+                        "Audio entry {AudioEntryId} has no content (blob ID), skipping",
+                        audioEntryId);
+                    continue;
+                }
+
+                // Create a Media record with the audio blob reference and timing metadata
+                var chatId = ChatId.Parse(textEntry.ChatId);
+                var mediaId = MediaId.New(chatId.Value);
+                var metadata = PropertyBag.Empty
+                    .Set(nameof(ChatEntryAudio.BeginsAt), audioDbEntry.BeginsAt.Ticks)
+                    .Set(nameof(ChatEntryAudio.EndsAt),
+                        audioDbEntry.EndsAt.HasValue ? audioDbEntry.EndsAt.Value.Ticks : (object?)null)
+                    .Set(nameof(ChatEntryAudio.ContentEndsAt),
+                        audioDbEntry.ContentEndsAt.HasValue ? audioDbEntry.ContentEndsAt.Value.Ticks : (object?)null)
+                    .Set(nameof(ChatEntryAudio.ClientSideBeginsAt),
+                        audioDbEntry.ClientSideBeginsAt.HasValue ? audioDbEntry.ClientSideBeginsAt.Value.Ticks : (object?)null);
+
+                var media = new MediaFull(mediaId) {
+                    ContentId = audioBlobId,
+                    ContentType = "audio/webm",
+                    Metadata = metadata,
+                };
+                var mediaChange = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
+                await Commander.Call(mediaChange, cancellationToken).ConfigureAwait(false);
+
+                // Update the text entry to point to the new media
+                var opDbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+                await using var __ = opDbContext.ConfigureAwait(false);
+
+                var dbTextEntry = await opDbContext.ChatEntries
+                    .SingleAsync(e => e.Id == textEntry.Id, cancellationToken)
+                    .ConfigureAwait(false);
+                dbTextEntry.MediaOrStreamId = mediaId.Value;
+                await opDbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+                totalMigrated++;
+            }
+
+            Log.LogInformation("Migrated {Count} audio entries so far (batch of {BatchSize})",
+                totalMigrated, textEntries.Count);
+        }
+
+        Log.LogInformation("Audio entry migration complete. Total migrated: {Total}", totalMigrated);
+    }
+
+    // [CommandHandler]
     public virtual async Task OnFixCorruptedReadPositions(
         ChatsUpgradeBackend_FixCorruptedReadPositions command,
         CancellationToken cancellationToken)
@@ -135,7 +244,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                 if (position.EntryLid <= 0)
                     continue;
 
-                var idRange = await ChatsBackend.GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+                var idRange = await ChatsBackend.GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
                 var lastEntryLid = idRange.End - 1;
                 if (lastEntryLid >= position.EntryLid)
                     continue;

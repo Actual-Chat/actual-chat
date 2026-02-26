@@ -5,7 +5,7 @@
     var hasSelection = SelectionUI.HasSelection.Value;
     var isSelected = SelectionUI.IsSelected(e.Id);
     var isForwarded = e.ForwardedAuthorId is not null;
-    var showPlayButton = ScreenSize.IsNarrow() && e.AudioEntryLid.HasValue && !hasSelection;
+    var showPlayButton = ScreenSize.IsNarrow() && e.HasAudio && !hasSelection;
     var isTextEntry = e is { Kind: ChatEntryKind.Text, IsStreaming: false };
     var canDelete = CanWrite && (IsOwnEntry || IsOwner) && isTextEntry && !hasSelection;
     var canEdit = CanWrite && IsOwnEntry && isTextEntry && !isForwarded && !hasSelection;

@@ -2,11 +2,14 @@ using System.ComponentModel;
 using ActualChat.Internal;
 using ActualLab.Fusion.Blazor;
 
+#pragma warning disable CS0618 // Type or member is obsolete
+
 namespace ActualChat;
 
 /// <summary>
 /// Unique identifier for an audio chat entry (voice message).
 /// </summary>
+[Obsolete("Audio entries are no longer created. Kept for backward compatibility with existing data.")]
 #pragma warning disable CS0659, CS0660, CS0661 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 
 [DataContract, MemoryPackable(GenerateType.NoGenerate)]

@@ -103,8 +103,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var messageCount = 0;
         var topAuthorIds = new List<AuthorId>();
         var authorIds = new HashSet<AuthorId>();
-        var range = await ChatsBackend.GetIdRange(threadChatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
-        var entries = ChatsBackend.ReadEntries(threadChatId, ChatEntryKind.Text, range, false, cancellationToken);
+        var range = await ChatsBackend.GetIdRange(threadChatId, false, cancellationToken).ConfigureAwait(false);
+        var entries = ChatsBackend.ReadEntries(threadChatId, range, false, cancellationToken);
         var entryCount = 0;
         var attachmentList = new List<TextEntryAttachment>();
         const int entryCountLimit = 30;

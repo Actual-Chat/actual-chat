@@ -36,7 +36,9 @@ public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntry
     public static ChatEntryId New(ChatId chatId, ChatEntryKind kind, long localId)
         => kind switch {
             ChatEntryKind.Text => TextEntryId.New(chatId, localId),
+#pragma warning disable CS0618 // Type or member is obsolete
             ChatEntryKind.Audio => AudioEntryId.New(chatId, localId),
+#pragma warning restore CS0618
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
 
@@ -118,11 +120,13 @@ public partial class ChatEntryId : StringIdentifier, IStringIdentifier<ChatEntry
         if (!NumberExt.TryParsePositiveLong(sLocalId, out var localId))
             return false;
 
+#pragma warning disable CS0618 // Type or member is obsolete
         result = (ChatEntryKind)kind switch {
             ChatEntryKind.Text => new TextEntryId(s, chatId, localId),
             ChatEntryKind.Audio => new AudioEntryId(s, chatId, localId),
             _ => null,
         };
+#pragma warning restore CS0618
         if (result == null)
             return false;
 

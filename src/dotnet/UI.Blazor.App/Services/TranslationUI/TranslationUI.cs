@@ -62,7 +62,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
         if (!entry.SupportsTranslation(isForStreaming))
             return false;
 
-        if (!isForStreaming && !entry.HasMediaEntry)
+        if (!isForStreaming && !entry.HasAudio)
             // always for typed text entries
             return true;
 

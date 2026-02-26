@@ -2,6 +2,8 @@ using ActualChat.Chat.Db;
 using ActualChat.Media;
 using Microsoft.EntityFrameworkCore;
 
+#pragma warning disable CS0618 // Type or member is obsolete (AudioEntryId, ChatEntryKind.Audio)
+
 namespace ActualChat.Chat;
 
 public partial class ChatsBackend
@@ -22,14 +24,11 @@ public partial class ChatsBackend
             if (context.Operation.Items[typeof(ChatEntryId)] is string invLastEntrySid) {
                 Log.LogInformation("OnCopyChat({CorrelationId}): InvLastEntrySid is {EntrySid}", correlationId, invLastEntrySid);
                 InvalidateTiles(newChatId,
-                    ChatEntryKind.Text,
                     ChatEntryId.Parse(invLastEntrySid).LocalId,
                     ChangeKind.Create,
                     false);
-                _ = GetIdRange(newChatId, ChatEntryKind.Text, true, default);
-                _ = GetIdRange(newChatId, ChatEntryKind.Text, false, default);
-                _ = GetIdRange(newChatId, ChatEntryKind.Audio, true, default);
-                _ = GetIdRange(newChatId, ChatEntryKind.Audio, false, default);
+                _ = GetIdRange(newChatId, true, default);
+                _ = GetIdRange(newChatId, false, default);
             }
             return default!;
         }
@@ -74,9 +73,9 @@ public partial class ChatsBackend
                         cancellationToken)
                     .ConfigureAwait(false);
 
-            var sourceChatRange = await GetIdRange(chatId, ChatEntryKind.Text, true, cancellationToken).ConfigureAwait(false);
+            var sourceChatRange = await GetIdRange(chatId,true, cancellationToken).ConfigureAwait(false);
             if (!sourceChatRange.IsEmpty) {
-                var newChatRange = await GetIdRange(newChatId, ChatEntryKind.Text, true, cancellationToken).ConfigureAwait(false);
+                var newChatRange = await GetIdRange(newChatId,true, cancellationToken).ConfigureAwait(false);
                 var startEntryId = !newChatRange.IsEmpty ? newChatRange.End : 1;
                 var endEntryId = sourceChatRange.End;
                 if (endEntryId > startEntryId)

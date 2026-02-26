@@ -100,8 +100,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
             await AudioInitializer.WhenInitialized.ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
-            if (audioEntry.Kind != ChatEntryKind.Audio)
-                throw StandardError.NotSupported($"The entry's Type must be {ChatEntryKind.Audio}.");
+            if (!audioEntry.HasAudio)
+                throw StandardError.NotSupported("The entry must have audio (HasAudio must be true).");
             if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration) {
                 Log.LogDebug("Skipping entry={EntryId} (skipTo > duration)", audioEntry.Id);
                 return PlayTrackCommand.PlayNothingProcess;
@@ -129,7 +129,10 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Moment playAt,
         CancellationToken cancellationToken)
     {
-        var audioTask = StreamClient.GetAudio(audioEntry.StreamId, skipTo, cancellationToken);
+        var streamId = !audioEntry.MediaOrStreamId.IsNullOrEmpty()
+            ? audioEntry.MediaOrStreamId
+            : audioEntry.StreamId;
+        var audioTask = StreamClient.GetAudio(streamId, skipTo, cancellationToken);
         var chatTask = Hub.Chats.Get(Hub.Session, audioEntry.ChatId, cancellationToken);
         var authorTask = Hub.Authors.Get(Hub.Session, audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
         await Task.WhenAll(audioTask, chatTask, authorTask).ConfigureAwait(false);
@@ -163,7 +166,9 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Moment playAt,
         CancellationToken cancellationToken)
     {
-        var audioBlobUrl = UrlMapper.AudioBlobUrl(audioEntry);
+        var audioBlobUrl = UrlMapper.AudioBlobUrl(audioEntry.Audio != null
+            ? audioEntry.Audio.ContentId
+            : audioEntry.Content);
         Log.LogDebug("Downloading audio from {Url}, entry={EntryId}", audioBlobUrl, audioEntry.Id);
         var audioTask = AudioDownloader.Download(audioBlobUrl, skipTo, cancellationToken);
         var chatTask = Hub.Chats.Get(Hub.Session, audioEntry.ChatId, cancellationToken);

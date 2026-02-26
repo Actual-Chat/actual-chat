@@ -32,6 +32,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         = new Dictionary<Symbol, LinkPreview>().AsReadOnly();
     private static readonly Task<IReadOnlyDictionary<Symbol, LinkPreview>> EmptyLinkPreviewsTask
         = Task.FromResult(EmptyLinkPreviews);
+    private static readonly IReadOnlyDictionary<string, ChatEntryAudio> EmptyAudioMap
+        = new Dictionary<string, ChatEntryAudio>(StringComparer.Ordinal).AsReadOnly();
+    private static readonly Task<IReadOnlyDictionary<string, ChatEntryAudio>> EmptyAudioMapTask
+        = Task.FromResult(EmptyAudioMap);
 
     // all backend services should be requested lazily to avoid circular references!
 
@@ -207,9 +211,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chat == null)
             return null;
 
-        var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+        var idRange = await GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
         var idTile = IdTileStack.FirstLayer.GetTile(idRange.End - 1);
-        var tile = await GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken).ConfigureAwait(false);
+        var tile = await GetTile(chatId, idTile.Range, false, cancellationToken).ConfigureAwait(false);
         var lastEntry = tile.Entries.Length != 0 ? tile.Entries[^1] : null;
         return new ChatNews(idRange, lastEntry);
     }
@@ -218,17 +222,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [ComputeMethod]
     public virtual async Task<Range<long>> GetIdRange(
         ChatId chatId,
-        ChatEntryKind entryKind,
         bool includeRemoved,
         CancellationToken cancellationToken)
     {
-        var minId = await GetMinId(chatId, entryKind, cancellationToken).ConfigureAwait(false);
+        var minId = await GetMinId(chatId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value && e.Kind == entryKind)
+            .Where(e => e.ChatId == chatId.Value && e.Kind == ChatEntryKind.Text)
             .Where(e => !e.IsThreadEntry);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => !e.IsRemoved);
@@ -244,7 +247,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
         ChatId chatId,
-        ChatEntryKind entryKind,
         Range<long> idTileRange,
         bool includeRemoved,
         CancellationToken cancellationToken)
@@ -254,7 +256,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (smallerIdTiles.Length != 0) {
             var smallerChatTiles = await smallerIdTiles
                 .Select(sidTile => GetTile(chatId,
-                    entryKind,
                     sidTile.Range,
                     includeRemoved,
                     cancellationToken))
@@ -263,7 +264,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return new ChatTile(smallerChatTiles, includeRemoved);
         }
         if (!includeRemoved) {
-            var fullTile = await GetTile(chatId, entryKind, idTileRange, true, cancellationToken).ConfigureAwait(false);
+            var fullTile = await GetTile(chatId, idTileRange, true, cancellationToken).ConfigureAwait(false);
             return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToArray());
         }
 
@@ -274,7 +275,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var idRange = idTile.Range;
         var dbEntries = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value
-                && e.Kind == entryKind
+                && e.Kind == ChatEntryKind.Text
                 && e.LocalId >= idRange.Start
                 && e.LocalId < idRange.End
                 && !e.IsThreadEntry)
@@ -282,22 +283,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        // Audio or video entries can't have any attachments
-        if (entryKind != ChatEntryKind.Text)
-            return new ChatTile(
-                idTileRange,
-                true,
-                dbEntries
-                    .Select(dbe => dbe.ToModel())
-                    .ToArray());
-
         var allAttachmentsTask = GetAttachments(dbEntries, cancellationToken);
         var allLinkPreviewsTask = GetLinkPreviews();
+        var allAudioTask = GetAudioMap(dbEntries, cancellationToken);
 
-        await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).ConfigureAwait(false);
+        await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask, allAudioTask).ConfigureAwait(false);
 
         var allAttachments = await allAttachmentsTask.ConfigureAwait(false);
         var allLinkPreviews = await allLinkPreviewsTask.ConfigureAwait(false);
+        var allAudio = await allAudioTask.ConfigureAwait(false);
         var entries = dbEntries.Select(e => {
             var entryId = TextEntryId.Parse(e.Id);
             var entryAttachments = allAttachments[entryId];
@@ -305,7 +299,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Select(previewId => allLinkPreviews.GetValueOrDefault(previewId))
                 .SkipNullItems()
                 .ToArray();
-            return e.ToModel(entryAttachments, linkPreviews);
+            var audio = e.MediaOrStreamId.IsNullOrEmpty() ? null
+                : allAudio.GetValueOrDefault(e.MediaOrStreamId);
+            return e.ToModel(entryAttachments, linkPreviews, audio);
         });
         return new ChatTile(idTileRange, true, entries.ToArray());
 
@@ -337,7 +333,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         Range<long> chatIdRange;
         using (Computed.BeginIsolation())
-            chatIdRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+            chatIdRange = await GetIdRange(chatId,false, cancellationToken).ConfigureAwait(false);
         var start = tile.Start;
         var end = tile.End;
         var entryIdRanges = new List<Range<long>>();
@@ -1191,7 +1187,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var invChatEntry = context.Operation.Items.KeylessGet<ChatEntry>();
             var invBoundToThreadHasChanged = context.Operation.Items.Get<bool>(boundToThreadHasChangedKey);
             if (invChatEntry != null) {
-                InvalidateTiles(chatId, entryKind, invChatEntry.LocalId, changeKind, invBoundToThreadHasChanged);
+                InvalidateTiles(chatId,invChatEntry.LocalId, changeKind, invBoundToThreadHasChanged);
 
                 var entryTile = IdTileStack.LastLayer.GetTile(invChatEntry.LocalId);
                 _ = GetEntryRangeMeta(chatId, entryTile.Range.Start, default);
@@ -1213,16 +1209,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             case ChangeKind.Create:
                 var createdChatEntry = context.Operation.Items.Get<ChatEntryId>(CreatedChatEntryId);
                 if (createdChatEntry is { LocalId: <= 1 })
-                    _ = GetMinId(createdChatEntry.ChatId, entryKind, default);
-                _ = GetIdRange(chatId, entryKind, true, default);
-                _ = GetIdRange(chatId, entryKind, false, default);
+                    _ = GetMinId(createdChatEntry.ChatId, default);
+                _ = GetIdRange(chatId,true, default);
+                _ = GetIdRange(chatId,false, default);
                 break;
             case ChangeKind.Update when invBoundToThreadHasChanged:
-                _ = GetIdRange(chatId, entryKind, true, default);
-                _ = GetIdRange(chatId, entryKind, false, default);
+                _ = GetIdRange(chatId,true, default);
+                _ = GetIdRange(chatId,false, default);
                 break;
             case ChangeKind.Remove:
-                _ = GetIdRange(chatId, entryKind, false, default);
+                _ = GetIdRange(chatId,false, default);
                 break;
             }
             return null!;
@@ -1311,12 +1307,28 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chatId is PlaceChatId { IsRoot: false })
             await EnsurePlaceChatAuthorExists(entry.AuthorId).ConfigureAwait(false);
         if (changeKind == ChangeKind.Remove) {
+            // Clean up associated Media record when removing an entry with audio
+            if (!entry.MediaOrStreamId.IsNullOrEmpty()
+                && MediaId.TryParse(entry.MediaOrStreamId, out var removedMediaId)) {
+                await RemoveMedia(removedMediaId, cancellationToken).ConfigureAwait(false);
+            }
             await EnqueueChangedEvent().ConfigureAwait(false);
             return entry;
         }
 
         if (entry.IsStreaming)
             return entry;
+
+        // Clean up Media when audio is stripped from an entry during update
+        if (changeKind == ChangeKind.Update && oldEntry is not null) {
+            var oldMediaSid = oldEntry.MediaOrStreamId;
+            var newMediaSid = entry.MediaOrStreamId;
+            if (!oldMediaSid.IsNullOrEmpty()
+                && oldMediaSid != newMediaSid
+                && MediaId.TryParse(oldMediaSid, out var strippedMediaId)) {
+                await RemoveMedia(strippedMediaId, cancellationToken).ConfigureAwait(false);
+            }
+        }
 
         if (changeKind == ChangeKind.Create)
             AppMeters.MessageCount.Add(1);
@@ -1359,34 +1371,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 throw StandardError.Constraint("Chat Entry kind cannot be changed.");
 
             // Validation
-            switch (newEntry.Kind) {
-            case ChatEntryKind.Audio:
-                if (newEntry.AudioEntryLid.HasValue)
-                    throw StandardError.Constraint("Audio entry should not have AudioEntryLid.");
-                if (newEntry.VideoEntryLid.HasValue)
-                    throw StandardError.Constraint("Audio entry should not have VideoEntryLid.");
-                if (newEntry.RepliedEntryLid.HasValue)
-                    throw StandardError.Constraint("Audio entry should not have RepliedEntryLocalId.");
-                if (newEntry.ForwardedChatEntryId is not null)
-                    throw StandardError.Constraint("Audio entry should not have ForwardedChatEntryId.");
-                if (newEntry.ForwardedAuthorId is not null)
-                    throw StandardError.Constraint("Audio entry should not have ForwardedAuthorId.");
-                if (newEntry.Attachments.Length != 0)
-                    throw StandardError.Constraint("Audio entry should not have Attachments.");
-                if (newEntry.LinkPreviewIds.Length != 0)
-                    throw StandardError.Constraint("Audio entry should not have LinkPreviewId.");
-                break;
-            case ChatEntryKind.Text:
-                if (!isUpdate)
-                    break;
-
+            if (isUpdate) {
                 if (newEntry.AuthorId != oldAuthorId)
                     throw StandardError.Unauthorized("You can edit only your own messages.");
                 if (diff?.Content != null && newEntry.IsStreaming)
                     throw StandardError.Constraint("Only text messages can be edited.");
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat entry kind.");
             }
             return newEntry;
         }
@@ -1459,7 +1448,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (Invalidation.IsActive) {
             _ = GetEntryAttachments(entryId, default);
-            InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update, false);
+            InvalidateTiles(entryId.ChatId,entryId.LocalId, ChangeKind.Update, false);
             return default!;
         }
 
@@ -1494,7 +1483,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (Invalidation.IsActive) {
             _ = GetEntryAttachments(entryId, default);
-            InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update, false);
+            InvalidateTiles(entryId.ChatId,entryId.LocalId, ChangeKind.Update, false);
             return;
         }
 
@@ -1568,11 +1557,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             foreach (var chatEntryPair in invChats) {
                 var chatId = ChatId.Parse(chatEntryPair.Key);
                 var entryId = chatEntryPair.Value;
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId, ChangeKind.Remove, false);
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize, ChangeKind.Remove, false);
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*2, ChangeKind.Remove, false);
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*3, ChangeKind.Remove, false);
-                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*4, ChangeKind.Remove, false);
+                InvalidateTiles(chatId,entryId, ChangeKind.Remove, false);
+                InvalidateTiles(chatId,entryId - tileSize, ChangeKind.Remove, false);
+                InvalidateTiles(chatId,entryId - tileSize*2, ChangeKind.Remove, false);
+                InvalidateTiles(chatId,entryId - tileSize*3, ChangeKind.Remove, false);
+                InvalidateTiles(chatId,entryId - tileSize*4, ChangeKind.Remove, false);
                 _ = GetEntryAttachments(TextEntryId.New(chatId, entryId), default);
             }
             return;
@@ -1831,7 +1820,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             }
         }
         else {
-            var idRange = await GetIdRange(chatId, ChatEntryKind.Text, false, cancellationToken).ConfigureAwait(false);
+            var idRange = await GetIdRange(chatId,false, cancellationToken).ConfigureAwait(false);
             var lastEntryId = idRange.End - 1; // Start tracking positions stat since this entry
             var shouldTrackPosition = entryLid >= lastEntryId;
             dbContext.Add(new DbReadPositionsStat() {
@@ -1868,18 +1857,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (textEntry is null)
             return;
 
-        var audioEntryLid = textEntry.AudioEntryLid;
-        if (audioEntryLid is null)
-            // Apparently text entry was transcribed in no voice streaming mode.
+        var audio = textEntry.Audio;
+        if (audio is null)
+            // Apparently text entry was transcribed in no voice streaming mode, or has no audio.
             return;
 
-        var audioEntryId = AudioEntryId.New(textEntry.ChatId, audioEntryLid.Value);
-        var audioEntry = await this.GetEntry(audioEntryId, cancellationToken).Require().ConfigureAwait(false);
-        var audioBlobId = audioEntry.Content;
+        var audioBlobId = audio.ContentId;
         if (audioBlobId.IsNullOrEmpty())
             throw StandardError.Constraint("Audio entry has no audio blob id reference.");
 
-        Log.LogDebug("Retranscribing audio entry {AudioEntryId}...", audioEntryId);
+        Log.LogDebug("Retranscribing entry {EntryId}...", entryId);
         var audioSource = await AudioSourceDownloader.Download(audioBlobId, TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
         var options = new TranscriptionOptions {
             Language = language,
@@ -2128,14 +2115,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     [ComputeMethod]
     protected virtual async Task<long> GetMinId(
         ChatId chatId,
-        ChatEntryKind entryKind,
         CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         return await dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value && e.Kind == entryKind)
+            .Where(e => e.ChatId == chatId.Value && e.Kind == ChatEntryKind.Text)
             .OrderBy(e => e.LocalId)
             .Select(e => e.LocalId)
             .FirstOrDefaultAsync(cancellationToken)
@@ -2144,7 +2130,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     protected void InvalidateTiles(
         ChatId chatId,
-        ChatEntryKind entryKind,
         long entryId,
         ChangeKind changeKind,
         bool boundToThreadHasChanged)
@@ -2159,10 +2144,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // And the tile with includeRemoved == false is based on
             // a tile with includeRemoved == true, so we have to invalidate
             // just this tile.
-            _ = GetTile(chatId, entryKind, idTile.Range, true, default);
+            _ = GetTile(chatId, idTile.Range, true, default);
         }
 
-        if (entryKind == ChatEntryKind.Text && (changeKind is ChangeKind.Create or ChangeKind.Remove || boundToThreadHasChanged)) {
+        if (changeKind is ChangeKind.Create or ChangeKind.Remove || boundToThreadHasChanged) {
             // Invalidate GetEntryRangeMeta
             var tile = IdTileStack.LastLayer.GetTile(entryId);
             _ = GetEntryRangeMeta(chatId, tile.Start, default);
@@ -2473,6 +2458,53 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
             return attachments.SelectMany(x => x).ToLookup(x => x.EntryId);
+        }
+    }
+
+    private Task<IReadOnlyDictionary<string, ChatEntryAudio>> GetAudioMap(
+        IEnumerable<DbChatEntry> dbEntries,
+        CancellationToken cancellationToken)
+    {
+        var mediaIds = dbEntries
+            .Select(e => e.MediaOrStreamId)
+            .Where(id => !id.IsNullOrEmpty() && MediaId.TryParse(id, out _))
+            .Select(id => MediaId.Parse(id!))
+            .Distinct()
+            .ToList();
+        return mediaIds.Count > 0
+            ? ResolveAudio()
+            : EmptyAudioMapTask;
+
+        async Task<IReadOnlyDictionary<string, ChatEntryAudio>> ResolveAudio()
+        {
+            var mediaList = await mediaIds
+                .Select(mid => MediaBackend.Get(mid, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            var map = new Dictionary<string, ChatEntryAudio>(StringComparer.Ordinal);
+            foreach (var media in mediaList) {
+                if (media is null)
+                    continue;
+
+                var audio = new ChatEntryAudio {
+                    MediaId = media.Id,
+                    ContentId = media.ContentId,
+                    BeginsAt = media.Metadata[nameof(ChatEntryAudio.BeginsAt)] is { } beginsAtObj
+                        ? new Moment(Convert.ToInt64(beginsAtObj, CultureInfo.InvariantCulture))
+                        : default,
+                    EndsAt = media.Metadata[nameof(ChatEntryAudio.EndsAt)] is { } endsAtObj
+                        ? new Moment(Convert.ToInt64(endsAtObj, CultureInfo.InvariantCulture))
+                        : null,
+                    ContentEndsAt = media.Metadata[nameof(ChatEntryAudio.ContentEndsAt)] is { } contentEndsAtObj
+                        ? new Moment(Convert.ToInt64(contentEndsAtObj, CultureInfo.InvariantCulture))
+                        : null,
+                    ClientSideBeginsAt = media.Metadata[nameof(ChatEntryAudio.ClientSideBeginsAt)] is { } csbaObj
+                        ? new Moment(Convert.ToInt64(csbaObj, CultureInfo.InvariantCulture))
+                        : null,
+                };
+                map[media.Id.Value] = audio;
+            }
+            return map;
         }
     }
 

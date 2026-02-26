@@ -76,9 +76,13 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public long? AudioEntryId { get; set; }
     public long? VideoEntryId { get; set; }
+    public string? MediaOrStreamId { get; set; }
     public string? TimeMap { get; set; }
 
-    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, LinkPreview[]? linkPreviews = null)
+    public ChatEntry ToModel(
+        IEnumerable<TextEntryAttachment>? attachments = null,
+        LinkPreview[]? linkPreviews = null,
+        ChatEntryAudio? audio = null)
     {
         // fix NRE during deserialization of ApiArray at versions earlier than v0.200
         var attachmentsArray = attachments == null
@@ -105,8 +109,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
             HasReactions = HasReactions,
             StreamId = StreamId ?? "",
-            AudioEntryLid = AudioEntryId,
-            VideoEntryLid = VideoEntryId,
+            MediaOrStreamId = MediaOrStreamId ?? "",
+            Audio = audio,
             RepliedEntryLid = RepliedChatEntryId,
             ForwardedChatTitle = ForwardedChatTitle,
             ForwardedAuthorId = ActualChat.AuthorId.ParseNullable(ForwardedAuthorId),
@@ -159,8 +163,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         HasReactions = model.HasReactions;
         StreamId = model.StreamId;
-        AudioEntryId = model.AudioEntryLid;
-        VideoEntryId = model.VideoEntryLid;
+        MediaOrStreamId = model.MediaOrStreamId.NullIfEmpty();
         RepliedChatEntryId = model.RepliedEntryLid;
         ForwardedChatTitle = model.ForwardedChatTitle;
         ForwardedAuthorId = model.ForwardedAuthorId?.Value;

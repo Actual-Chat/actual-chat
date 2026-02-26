@@ -23,7 +23,8 @@ public static class ChatMarkupHubExt
             // System entries render markup w/o mention names
             markup = await markupHub.MentionNamer.Apply(markup, cancellationToken).ConfigureAwait(false);
             break;
-        case { HasMediaEntry: true }:
+        case { HasAudio: true }:
+        // HasAudio covers all audio/media entries now
             markup = new PlayableTextMarkup(translation?.Content ?? entry.Content, entry.TimeMap);
             break;
         default:
@@ -45,7 +46,8 @@ public static class ChatMarkupHubExt
         case { SystemEntry: { } systemEntry }:
             markup = systemEntry.Option?.ToMarkup() ?? Markup.Empty;
             break;
-        case { HasMediaEntry: true }:
+        case { HasAudio: true }:
+        // HasAudio covers all audio/media entries now
             markup = new PlayableTextMarkup(entry.Content, entry.TimeMap);
             break;
         default:
@@ -62,7 +64,7 @@ public static class ChatMarkupHubExt
         ChatEntry entry,
         CancellationToken cancellationToken)
     {
-        if (entry.IsSystemEntry || entry.HasMediaEntry)
+        if (entry.IsSystemEntry || entry.HasAudio)
             return entry.Content;
 
         var content = entry.Content;

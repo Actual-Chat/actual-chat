@@ -50,18 +50,6 @@ public sealed partial record ChatEntry(
         init => ContentEndsAt = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(20), IgnoreMember]
-    private ApiNullable8<long> MemoryPackAudioEntryId {
-        get => AudioEntryLid;
-        init => AudioEntryLid = value;
-    }
-
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(21), IgnoreMember]
-    private ApiNullable8<long> MemoryPackVideoEntryId {
-        get => VideoEntryLid;
-        init => VideoEntryLid = value;
-    }
-
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackInclude, MemoryPackOrder(23), IgnoreMember]
     private ApiNullable8<long> MemoryPackRepliedEntryLocalId {
         get => RepliedEntryLid;
@@ -87,8 +75,6 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 17), MemoryPackOrder(17)] public SystemEntry? SystemEntry { get; init; }
     [DataMember(Order = 18), MemoryPackOrder(18)] public bool HasReactions { get; init; }
     [DataMember(Order = 19), MemoryPackOrder(19)] public string StreamId { get; init; } = "";
-    [DataMember(Order = 20), MemoryPackIgnore] public long? AudioEntryLid { get; init; }
-    [DataMember(Order = 21), MemoryPackIgnore] public long? VideoEntryLid { get; init; }
     [DataMember(Order = 22), MemoryPackOrder(22)] public LinearMap TimeMap { get; init; }
     [DataMember(Order = 23), MemoryPackIgnore] public long? RepliedEntryLid { get; init; }
     [DataMember(Order = 24), MemoryPackOrder(24)] public ChatEntryId? ForwardedChatEntryId { get; init; }
@@ -102,9 +88,11 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 34), MemoryPackOrder(34)] public bool IsThreadEntry { get; init; }
     [DataMember(Order = 35), MemoryPackOrder(35)] public bool HasAttachmentUploads { get; init; }
     [DataMember(Order = 36), MemoryPackOrder(36)] public string ClientId { get; init; } = "";
+    [DataMember(Order = 60), MemoryPackOrder(60)] public string MediaOrStreamId { get; init; } = "";
 
     // Populated only on reads
     [DataMember(Order = 50), MemoryPackOrder(50)] public TextEntryAttachment[] Attachments { get; init; } = [];
+    [DataMember(Order = 51), MemoryPackOrder(51)] public ChatEntryAudio? Audio { get; init; }
     [DataMember(Order = 52), MemoryPackOrder(52)] public LinkPreview[] LinkPreviews { get; init; } = [];
     [DataMember(Order = 53), MemoryPackOrder(53)] public TextEntryAttachment[] AttachmentUploads { get; init; } = [];
     // Used on the client side only.
@@ -128,13 +116,9 @@ public sealed partial record ChatEntry(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsSystemEntry => SystemEntry != null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool HasAudioEntry => AudioEntryLid.HasValue;
+    public bool HasAudio => Audio != null || !MediaOrStreamId.IsNullOrEmpty();
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool HasVideoEntry => VideoEntryLid.HasValue;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool HasMediaEntry => VideoEntryLid.HasValue || AudioEntryLid.HasValue;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
-    public bool HasMarkup => Kind == ChatEntryKind.Text && !IsSystemEntry && !HasMediaEntry;
+    public bool HasMarkup => Kind == ChatEntryKind.Text && !IsSystemEntry && !HasAudio;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public bool IsSending => SendingTag is not null;
 
@@ -164,8 +148,6 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember, MemoryPackOrder(17)] public Option<SystemEntry?> SystemEntry { get; init; }
     [DataMember, MemoryPackOrder(18)] public bool? HasReactions { get; init; }
     [DataMember, MemoryPackOrder(19)] public string? StreamId { get; init; }
-    [DataMember, MemoryPackOrder(20)] public Option<long?> AudioEntryLid { get; init; }
-    [DataMember, MemoryPackOrder(21)] public Option<long?> VideoEntryLid { get; init; }
     [DataMember, MemoryPackOrder(22)] public LinearMap? TimeMap { get; init; }
     [DataMember, MemoryPackOrder(23)] public Option<long?> RepliedEntryLid { get; init; }
     [DataMember, MemoryPackOrder(24)] public ChatEntryId? ForwardedChatEntryId { get; init; }
@@ -178,6 +160,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember, MemoryPackOrder(32)] public bool IsThreadEntry { get; init; }
     [DataMember, MemoryPackOrder(33)] public bool HasAttachmentUploads { get; init; }
     [DataMember, MemoryPackOrder(34)] public string ClientId { get; init; } = "";
+    [DataMember, MemoryPackOrder(60)] public string? MediaOrStreamId { get; init; }
     [DataMember, MemoryPackOrder(50)] public TextEntryAttachment[]? Attachments { get; init; }
 
     public ChatEntryDiff(ChatEntry entry) : this()
@@ -194,8 +177,6 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
         SystemEntry = entry.SystemEntry;
         HasReactions = entry.HasReactions;
         StreamId = entry.StreamId;
-        AudioEntryLid = entry.AudioEntryLid;
-        VideoEntryLid = entry.VideoEntryLid;
         TimeMap = entry.TimeMap;
         RepliedEntryLid = entry.RepliedEntryLid;
         ForwardedChatEntryId = entry.ForwardedChatEntryId;
@@ -207,5 +188,6 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
         Attachments = entry.Attachments;
         HasAttachmentUploads = entry.HasAttachmentUploads;
         ClientId = entry.ClientId;
+        MediaOrStreamId = entry.MediaOrStreamId;
     }
 }

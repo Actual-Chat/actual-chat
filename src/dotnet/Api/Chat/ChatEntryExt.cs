@@ -10,6 +10,7 @@ public static class ChatEntryExt
     public static ChatEntry WithPopulatedValues(this ChatEntry entry, ChatEntry src)
         => entry with {
             Attachments = src.Attachments,
+            Audio = src.Audio,
             LinkPreviews = src.LinkPreviews,
         };
 
@@ -22,7 +23,7 @@ public static class ChatEntryExt
             return false;
 
         // languages are already saved for transcribed messages
-        return entry is { HasAudioEntry: false, HasVideoEntry: false };
+        return entry is { HasAudio: false };
     }
 
     public static bool SupportsTranslation([NotNullWhen(true)] this ChatEntry? entry, bool isForStreaming)

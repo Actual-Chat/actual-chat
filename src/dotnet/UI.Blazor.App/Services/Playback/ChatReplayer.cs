@@ -99,10 +99,10 @@ public sealed class ChatReplayer : ChatPlayer
 
     private async IAsyncEnumerable<ChatEntry> ListHistoricalAudioEntries(Moment minPlayAt, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
-        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
+        var textEntryReader = Hub.NewEntryReader(ChatId);
+        var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken)
             .ConfigureAwait(false);
-        var startEntry = await audioEntryReader
+        var startEntry = await textEntryReader
             .FindByMinBeginsAt(minPlayAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
         if (startEntry == null) {
@@ -112,11 +112,12 @@ public sealed class ChatReplayer : ChatPlayer
 
         idRange = (startEntry.LocalId, idRange.End);
         while (!idRange.IsEmptyOrNegative) {
-            var entries = audioEntryReader.Read(idRange, cancellationToken).Where(x => !x.IsStreaming);
+            var entries = textEntryReader.Read(idRange, cancellationToken)
+                .Where(x => x.HasAudio && !x.IsStreaming);
             await foreach (var entry in entries.ConfigureAwait(false))
                 yield return entry;
 
-            var newIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken).ConfigureAwait(false);
+            var newIdRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
             idRange = new (idRange.End, newIdRange.End);
         }
     }
@@ -127,10 +128,10 @@ public sealed class ChatReplayer : ChatPlayer
         if (offset == TimeSpan.Zero)
             return playingAt;
 
-        var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
-        var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
+        var textEntryReader = Hub.NewEntryReader(ChatId);
+        var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken)
             .ConfigureAwait(false);
-        var startEntry = await audioEntryReader
+        var startEntry = await textEntryReader
             .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
         if (startEntry == null) {
@@ -139,11 +140,11 @@ public sealed class ChatReplayer : ChatPlayer
         }
 
         idRange = (startEntry.LocalId, idRange.End);
-        var entries = audioEntryReader.Read(idRange, cancellationToken);
+        var entries = textEntryReader.Read(idRange, cancellationToken);
         var remainingOffset = offset;
         var lastPlayingAt = playingAt;
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (entry.IsStreaming) // Streaming entry
+            if (!entry.HasAudio || entry.IsStreaming)
                 continue;
             if (entry.EndsAt < playingAt)
                 // We're normally starting @ (playingAt - ChatConstants.MaxEntryDuration),
@@ -169,10 +170,10 @@ public sealed class ChatReplayer : ChatPlayer
         if (offset == TimeSpan.Zero)
             return playingAt;
 
-        var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
-        var fullIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
+        var textEntryReader = Hub.NewEntryReader(ChatId);
+        var fullIdRange = await Chats.GetIdRange(Session, ChatId, cancellationToken)
             .ConfigureAwait(false);
-        var startEntry = await audioEntryReader
+        var startEntry = await textEntryReader
             .FindByMinBeginsAt(playingAt - Constants.Chat.MaxEntryDuration, fullIdRange, cancellationToken)
             .ConfigureAwait(false);
         if (startEntry == null) {
@@ -181,10 +182,10 @@ public sealed class ChatReplayer : ChatPlayer
         }
 
         Range<long> idRange = (startEntry.LocalId, fullIdRange.End);
-        var entries = audioEntryReader.Read(idRange, cancellationToken);
+        var entries = textEntryReader.Read(idRange, cancellationToken);
         ChatEntry? lastEntry = null;
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.StreamId.IsNullOrEmpty()) // Streaming entry
+            if (!entry.HasAudio || entry.IsStreaming)
                 continue;
             if (entry.EndsAt >= playingAt) {
                 // We're normally starting @ (playingAt - ChatConstants.MaxEntryDuration),
@@ -199,11 +200,11 @@ public sealed class ChatReplayer : ChatPlayer
         }
 
         idRange = ((Range<long>)(fullIdRange.Start, lastEntry.LocalId)).MoveEnd(1);
-        var reverseEntries = audioEntryReader.ReadReverse(idRange, cancellationToken);
+        var reverseEntries = textEntryReader.ReadReverse(idRange, cancellationToken);
         var remainingOffset = offset;
         var lastPlayingAt = playingAt;
         await foreach (var entry in reverseEntries.ConfigureAwait(false)) {
-            if (!entry.StreamId.IsNullOrEmpty()) // Streaming entry
+            if (!entry.HasAudio || entry.IsStreaming)
                 continue;
             if (entry.BeginsAt >= playingAt)
                 // We normally should not enter here due to way how last entry is looked up.

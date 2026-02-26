@@ -39,12 +39,12 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         var entryIdsForThread = parentChatEntries.Where((c, i) => i is 0 or 2).Select(c => c.Id.ToTextEntryId()).ToArray();
         var chat = await CreateThreadChat(commander, chats, session, parentChat.Id, "Thread#1", entryIdsForThread, cancellationToken);
 
-        var range = await chats.GetIdRange(session, chat.Id, ChatEntryKind.Text, cancellationToken);
+        var range = await chats.GetIdRange(session, chat.Id, cancellationToken);
         range.IsEmpty.Should().BeFalse();
         var tileStack = Constants.Chat.ViewIdTileStack;
         var resultChatEntries = new List<ChatEntry>();
         foreach (var tileRange in tileStack.GetOptimalCoveringTiles(range)) {
-            var tile = await chats.GetTile(session, chat.Id, ChatEntryKind.Text, tileRange.Range, cancellationToken);
+            var tile = await chats.GetTile(session, chat.Id, tileRange.Range, cancellationToken);
             resultChatEntries.AddRange(tile.Entries);
         }
         resultChatEntries.Count.Should().Be(2);
@@ -96,12 +96,12 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
         var entryIdsForThread2 = threadChatEntries.Select(c => c.Id.ToTextEntryId()).ToArray();
         var chat2 = await CreateThreadChat(commander, chats, session, chat1.Id, "Thread#2", entryIdsForThread2, cancellationToken);
 
-        var range = await chats.GetIdRange(session, chat2.Id, ChatEntryKind.Text, cancellationToken);
+        var range = await chats.GetIdRange(session, chat2.Id, cancellationToken);
         range.IsEmpty.Should().BeFalse();
         var tileStack = Constants.Chat.ViewIdTileStack;
         var resultChatEntries = new List<ChatEntry>();
         foreach (var tileRange in tileStack.GetOptimalCoveringTiles(range)) {
-            var tile = await chats.GetTile(session, chat2.Id, ChatEntryKind.Text, tileRange.Range, cancellationToken);
+            var tile = await chats.GetTile(session, chat2.Id, tileRange.Range, cancellationToken);
             resultChatEntries.AddRange(tile.Entries);
         }
         resultChatEntries.Count.Should().Be(2);

@@ -1,5 +1,7 @@
 using ActualChat.Live;
 
+#pragma warning disable CS0618 // Type or member is obsolete (ChatEntryKind.Audio - legacy compat)
+
 namespace ActualChat.Streaming;
 
 public partial class LiveBackend
@@ -88,22 +90,36 @@ public partial class LiveBackend
 
         private async Task Populate(CancellationToken cancellationToken)
         {
-            // Look for audio entries from the last MaxEntryDuration
+            // Look for entries from the last MaxEntryDuration
             var minBeginsAt = Owner.ServerClock.Now - Constants.Chat.MaxEntryDuration;
             var entries = await Owner.ChatsBackend.ListEntries(ChatId, minBeginsAt, cancellationToken).ConfigureAwait(false);
 
-            // Find entries that are currently streaming (have StreamId set)
+            // Find entries that are currently streaming
             foreach (var entry in entries) {
-                if (!entry.IsStreaming || entry.Kind != ChatEntryKind.Audio)
+                // New model: text entry with MediaOrStreamId that is not a valid MediaId = live stream
+                if (entry.Kind == ChatEntryKind.Text
+                    && !entry.MediaOrStreamId.IsNullOrEmpty()
+                    && !MediaId.TryParse(entry.MediaOrStreamId, out _)) {
+                    var streamInfo = new LiveStreamInfo {
+                        ChatId = ChatId,
+                        AuthorId = entry.AuthorId,
+                        StreamId = entry.MediaOrStreamId,
+                        BeginsAt = entry.BeginsAt,
+                    };
+                    _streams.TryAdd(streamInfo.StreamId, streamInfo);
                     continue;
+                }
 
-                var streamInfo = new LiveStreamInfo {
-                    ChatId = ChatId,
-                    AuthorId = entry.AuthorId,
-                    StreamId = entry.StreamId,
-                    BeginsAt = entry.BeginsAt,
-                };
-                _streams.TryAdd(streamInfo.StreamId, streamInfo);
+                // Legacy model: audio entry with StreamId set
+                if (entry.IsStreaming && entry.Kind == ChatEntryKind.Audio) {
+                    var streamInfo = new LiveStreamInfo {
+                        ChatId = ChatId,
+                        AuthorId = entry.AuthorId,
+                        StreamId = entry.StreamId,
+                        BeginsAt = entry.BeginsAt,
+                    };
+                    _streams.TryAdd(streamInfo.StreamId, streamInfo);
+                }
             }
         }
     }

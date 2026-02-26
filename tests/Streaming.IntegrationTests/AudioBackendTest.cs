@@ -151,11 +151,10 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         transcribed.Should().BeGreaterThan(0);
         readSize.Should().BeLessThanOrEqualTo(writtenSize);
 
-        var idRange = await chats.GetIdRange(chat.Id, ChatEntryKind.Text, true, CancellationToken.None);
+        var idRange = await chats.GetIdRange(chat.Id, true, CancellationToken.None);
         var lastIdTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var lastTile = await chats.GetTile(
             chat.Id,
-            ChatEntryKind.Text,
             lastIdTile.Range,
             true,
             CancellationToken.None);
@@ -221,11 +220,10 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         transcribed.Should().BeGreaterThan(0);
         readSize.Should().BeLessThanOrEqualTo(writtenSize);
 
-        var idRange = await chats.GetIdRange(chat.Id, ChatEntryKind.Text, true, CancellationToken.None);
+        var idRange = await chats.GetIdRange(chat.Id, true, CancellationToken.None);
         var lastIdTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var lastTile = await chats.GetTile(
             chat.Id,
-            ChatEntryKind.Text,
             lastIdTile.Range,
             true,
             CancellationToken.None);

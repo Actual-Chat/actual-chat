@@ -24,7 +24,7 @@ public sealed partial record TextEntry(
             chatEntry.AuthorId,
             chatEntry.BeginsAt,
             chatEntry.EndsAt,
-            chatEntry.HasAudioEntry,
+            chatEntry.HasAudio,
             chatEntry.RepliedEntryLid,
             chatEntry.Attachments.Length > 0)
     { }

@@ -269,7 +269,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         Computed<Range<long>> cIdRange;
         using (Computed.BeginIsolation()) {
             cIdRange = await Computed
-                .Capture(() => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken), cancellationToken)
+                .Capture(() => Chats.GetIdRange(Session, chatId, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -284,7 +284,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return false;
         }
 
-        var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
+        var reader = Chats.NewEntryReader(Session, chatId);
         await foreach (var entry in reader.Read(idRange, cancellationToken).ConfigureAwait(false))
             if (!entry.IsSystemEntry)
                 return false;

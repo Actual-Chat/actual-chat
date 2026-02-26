@@ -29,12 +29,12 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat?.Title.Should().Be("The Actual One");
 
         await CreateChatEntries(chats, session, TestChatId, 3);
-        var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
+        var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
         var chuckBerryId = idRange.End - 1;
         var nirvanaId = chuckBerryId - 1;
         var acDcId = nirvanaId - 1;
 
-        var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
+        var reader = chats.NewEntryReader(session, TestChatId);
 
         var entry = await reader.Get(acDcId, CancellationToken.None);
         entry.Should().NotBeNull();
@@ -65,9 +65,9 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat?.Title.Should().Be("The Actual One");
 
         await CreateChatEntries(chats, session, TestChatId, 3);
-        var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
+        var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
 
-        var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
+        var reader = chats.NewEntryReader(session, TestChatId);
         var entry = await reader.FindByMinBeginsAt(clocks.Now + TimeSpan.FromDays(1), idRange, CancellationToken.None);
         entry.Should().BeNull();
         entry = await reader.FindByMinBeginsAt(default, idRange, CancellationToken.None);
@@ -110,12 +110,12 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat?.Title.Should().Be("The Actual One");
 
         await CreateChatEntries(chats, session, TestChatId, 3);
-        var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
+        var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
         var chuckBerryId = idRange.End - 1;
         var nirvanaId = chuckBerryId - 1;
         var acDcId = nirvanaId - 1;
 
-        var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
+        var reader = chats.NewEntryReader(session, TestChatId);
         var tiles = Constants.Chat.ReaderIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(acDcId, chuckBerryId));
         var result = await reader.ReadTiles(new Range<long>(tiles[0].Start, tiles[^1].End), CancellationToken.None).ToListAsync();
         result.Count.Should().BeGreaterThan(0);
@@ -145,8 +145,8 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat?.Title.Should().Be("The Actual One");
 
         await CreateChatEntries(chats, session, TestChatId, 3);
-        var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
-        var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
+        var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
+        var reader = chats.NewEntryReader(session, TestChatId);
         var tiles = await reader.ReadTilesReverse(idRange, CancellationToken.None).ToListAsync();
 
         tiles.Should().HaveCountGreaterThan(400);
@@ -190,8 +190,8 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var author = await services.GetRequiredService<IAuthors>()
             .GetOwn(session, TestChatId, CancellationToken.None)
             .Require();
-        var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
-        var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
+        var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
+        var reader = chats.NewEntryReader(session, TestChatId);
         var tile = await reader.ReadTilesReverse(idRange, CancellationToken.None).FirstAsync();
         foreach (var chatEntry in tile.Entries.TakeLast(removeLastCount))
             await services.Commander().Call(new Chats_RemoveTextEntry(session, TestChatId, chatEntry.LocalId), CancellationToken.None);
@@ -219,8 +219,8 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
-        var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
+        var reader = chats.NewEntryReader(session, TestChatId);
+        var idRange = await chats.GetIdRange(session, TestChatId, CancellationToken.None);
 
         { // Test 1
             using var cts = new CancellationTokenSource(500);
@@ -264,8 +264,8 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        var idRangeTask = chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
-        var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
+        var idRangeTask = chats.GetIdRange(session, TestChatId, CancellationToken.None);
+        var reader = chats.NewEntryReader(session, TestChatId);
 
         { // Test 1
             using var cts = new CancellationTokenSource(2000);
