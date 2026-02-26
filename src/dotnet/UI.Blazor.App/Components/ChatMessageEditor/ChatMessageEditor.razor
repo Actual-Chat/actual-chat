@@ -209,13 +209,14 @@
             try {
                 SendMessageRequest cmd;
                 if (relatedChatEntry is not null) {
-                    cmd = relatedChatEntry.Kind switch {
-                        RelatedEntryKind.Reply
-                            => SendMessageRequest.ReplyMessage(Chat.Id, relatedChatEntry.EntryId, text),
-                        RelatedEntryKind.Edit
-                            => SendMessageRequest.EditMessage(relatedChatEntry.EntryId, text),
-                        _ => throw new InternalError("Invalid RelatedEntryKind")
-                    };
+                    if (relatedChatEntry.Kind == RelatedEntryKind.Reply) {
+                        uploads = await SendingMessages.Upload([..attachmentListSnapshot.Attachments.Items], Chat.Id.Value);
+                        cmd = SendMessageRequest.ReplyMessage(Chat.Id, relatedChatEntry.EntryId, text, uploads);
+                    } else if (relatedChatEntry.Kind == RelatedEntryKind.Edit) {
+                        cmd = SendMessageRequest.EditMessage(relatedChatEntry.EntryId, text);
+                    } else {
+                        throw new InternalError("Invalid RelatedEntryKind");
+                    }
                 } else {
                     uploads = await SendingMessages.Upload([..attachmentListSnapshot.Attachments.Items], Chat.Id.Value);
                     cmd = SendMessageRequest.NewMessage(Chat.Id, text, uploads);

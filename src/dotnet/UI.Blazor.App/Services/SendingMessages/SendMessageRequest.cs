@@ -26,7 +26,7 @@ public sealed class SendMessageRequest
             Text = newText,
         };
 
-    public static SendMessageRequest ReplyMessage(ChatId chatId, TextEntryId relatedMessageId, string text)
+    public static SendMessageRequest ReplyMessage(ChatId chatId, TextEntryId relatedMessageId, string text, FilesUploadHandle? uploads = null)
     {
         if (relatedMessageId.ChatId != chatId)
             throw new ArgumentException("Related message must be in the same chat", nameof(relatedMessageId));
@@ -35,6 +35,7 @@ public sealed class SendMessageRequest
             ChatId = chatId,
             RepliedEntryLid = relatedMessageId.LocalId,
             Text = text,
+            Uploads = uploads,
         };
     }
 }
