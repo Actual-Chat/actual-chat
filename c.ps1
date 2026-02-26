@@ -508,16 +508,16 @@ function Show-DryRun {
 switch ($mode) {
     "build" {
         # Build Docker image
-        $containerName = "claude-$($projectName.ToLower())"
-        Write-Host "Building Docker image: $containerName"
+        $imageName = "claude-$($projectName.ToLower())"
+        Write-Host "Building Docker image: $imageName"
         if (-not $dryRun) {
-            docker build -t $containerName -f "$projectRoot/claude.Dockerfile" $projectRoot
+            docker build -t $imageName -f "$projectRoot/claude.Dockerfile" $projectRoot
         } else {
             Write-Host ""
             Write-Host "=== DRY RUN ===" -ForegroundColor Yellow
             Write-Host ""
             Write-Host "Command:" -ForegroundColor Cyan
-            Write-Host "  docker build -t $containerName -f `"$projectRoot/claude.Dockerfile`" $projectRoot"
+            Write-Host "  docker build -t $imageName -f `"$projectRoot/claude.Dockerfile`" $projectRoot"
             Write-Host ""
         }
     }
@@ -733,13 +733,13 @@ switch ($mode) {
         # Calculate Docker working directory
         $dockerFolderName = if ($worktree) { "$projectName-$worktree" } else { $projectName }
         $dockerWorkDir = "/proj/$dockerFolderName$relativePath"
-        $containerName = "claude-$($projectName.ToLower())"
+        $imageName = "claude-$($projectName.ToLower())"
         # Use c.ps1 from where it was originally invoked (could be main project or a worktree)
         $originalFolderName = Split-Path -Leaf $originalProjectRoot
         $dockerScriptPath = "/proj/$originalFolderName/c.ps1"
 
         if ($dryRun) {
-            Write-Host "Container: $containerName"
+            Write-Host "Container: $imageName"
             Write-Host "Docker Working Directory: $dockerWorkDir"
         }
 
@@ -801,7 +801,7 @@ switch ($mode) {
 
         $dockerArgs += @(
             "-w", $dockerWorkDir
-            $containerName
+            $imageName
             "pwsh", $dockerScriptPath
         ) + $dockerScriptArgs
 
