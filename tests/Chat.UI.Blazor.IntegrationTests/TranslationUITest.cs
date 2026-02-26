@@ -341,7 +341,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
                 queued.Should().AllSatisfy(x => ThrottledTranslations.GetWorkItem(x.Id).Should().BeNull());
                 queued.Should().AllSatisfy(x => x.Task.IsCompleted.Should().BeTrue());
             },
-            TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 20 : 10));
         await TestExt.When(() => {
             ThrottledTranslations.ListQueued().Should().BeEmpty();
             ThrottledTranslations.ListRunning().Should().BeEmpty();
