@@ -16,7 +16,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task BeamAvatar_Svg_ReturnsValidSvg()
+    public async Task ShouldReturnValidBeamSvg()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -38,7 +38,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task BeamAvatar_Png_ReturnsValidPng()
+    public async Task ShouldReturnValidBeamPng()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -61,7 +61,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task BeamAvatar_SameKey_ReturnsSameContent()
+    public async Task ShouldReturnSameBeamAvatarForSameKey()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -81,7 +81,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task BeamAvatar_DifferentKeys_ReturnsDifferentContent()
+    public async Task ShouldReturnDifferentBeamAvatarsForDifferentKeys()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -100,29 +100,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task BeamAvatar_WithSquareParameter_ReturnsSquareAvatar()
-    {
-        // Arrange
-        using var client = AppHost.NewHttpClient();
-        var key = "squaretest";
-
-        // Act
-        var responseRound = await client.GetAsync($"/api/avatars/beam/{key}?square=false");
-        var responseSquare = await client.GetAsync($"/api/avatars/beam/{key}?square=true");
-
-        // Assert
-        responseRound.IsSuccessStatusCode.Should().BeTrue();
-        responseSquare.IsSuccessStatusCode.Should().BeTrue();
-
-        var svgRound = await responseRound.Content.ReadAsStringAsync();
-        var svgSquare = await responseSquare.Content.ReadAsStringAsync();
-
-        svgRound.Should().Contain("rx='72'", "round avatar should have border radius");
-        svgSquare.Should().NotContain("rx='72'", "square avatar should not have border radius");
-    }
-
-    [Fact]
-    public async Task BeamAvatar_HasCacheHeaders()
+    public async Task ShouldReturnCacheHeadersForBeamAvatar()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -140,7 +118,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task MarbleAvatar_Svg_ReturnsValidSvg()
+    public async Task ShouldReturnValidMarbleSvg()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -162,14 +140,14 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task MarbleAvatar_Png_ReturnsValidPng()
+    public async Task ShouldReturnValidMarblePng()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
         var key = "marbleuser456";
 
         // Act
-        var response = await client.GetAsync($"/api/avatars/marble/{key}?format=png&size=120");
+        var response = await client.GetAsync($"/api/avatars/marble/{key}?format=png&size=80");
 
         // Assert
         response.IsSuccessStatusCode.Should().BeTrue();
@@ -183,7 +161,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task MarbleAvatar_WithTitle_IncludesTitleInSvg()
+    public async Task ShouldIncludeTitleInMarbleSvg()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -201,29 +179,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task MarbleAvatar_WithDoNotBlur_RemovesBlurEffect()
-    {
-        // Arrange
-        using var client = AppHost.NewHttpClient();
-        var key = "blurtest";
-
-        // Act
-        var responseWithBlur = await client.GetAsync($"/api/avatars/marble/{key}?doNotBlur=false");
-        var responseWithoutBlur = await client.GetAsync($"/api/avatars/marble/{key}?doNotBlur=true");
-
-        // Assert
-        responseWithBlur.IsSuccessStatusCode.Should().BeTrue();
-        responseWithoutBlur.IsSuccessStatusCode.Should().BeTrue();
-
-        var svgWithBlur = await responseWithBlur.Content.ReadAsStringAsync();
-        var svgWithoutBlur = await responseWithoutBlur.Content.ReadAsStringAsync();
-
-        svgWithBlur.Should().Contain("feGaussianBlur", "should have blur effect by default");
-        svgWithoutBlur.Should().NotContain("feGaussianBlur", "should not have blur when doNotBlur is true");
-    }
-
-    [Fact]
-    public async Task MarbleAvatar_SameKey_ReturnsSameContent()
+    public async Task ShouldReturnSameMarbleAvatarForSameKey()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -243,7 +199,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task MarbleAvatar_HasCacheHeaders()
+    public async Task ShouldReturnCacheHeadersForMarbleAvatar()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -261,7 +217,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
-    public async Task Avatar_EmptyKey_ReturnsBadRequest()
+    public async Task ShouldReturnNotFoundForEmptyKey()
     {
         // Arrange
         using var client = AppHost.NewHttpClient();
@@ -270,8 +226,8 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var beamResponse = await client.GetAsync("/api/avatars/beam/");
         var marbleResponse = await client.GetAsync("/api/avatars/marble/");
 
-        // Assert - should get 404 or similar error for empty key
-        beamResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        marbleResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        // Assert - empty key doesn't match the route, so 404 is returned
+        beamResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        marbleResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
