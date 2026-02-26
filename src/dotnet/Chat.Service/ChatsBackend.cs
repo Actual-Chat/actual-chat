@@ -333,7 +333,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         Range<long> chatIdRange;
         using (Computed.BeginIsolation())
-            chatIdRange = await GetIdRange(chatId,false, cancellationToken).ConfigureAwait(false);
+            chatIdRange = await GetIdRange(chatId, false, cancellationToken).ConfigureAwait(false);
         var start = tile.Start;
         var end = tile.End;
         var entryIdRanges = new List<Range<long>>();
