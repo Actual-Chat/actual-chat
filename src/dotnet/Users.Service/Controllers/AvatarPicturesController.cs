@@ -61,19 +61,16 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
     [CacheControlImmutable(Duration = 2592000)] // 30 days
     public ActionResult GetBeam(BeamAvatarQuery query)
     {
-        if (query.Key.IsNullOrEmpty())
-            return BadRequest("Key is required");
-
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
         if (query.Format == AvatarFormat.Png) {
             var pngSize = query.Size ?? 80;
-            var pngBytes = BeamAvatars.GeneratePngBytes(query.Key, pngSize, square: query.Square);
+            var pngBytes = BeamAvatars.GeneratePngBytes(query.Key, pngSize, square: false);
             return File(pngBytes, "image/png");
         }
 
-        var svg = BeamAvatars.GenerateSvg(query.Key, square: query.Square);
+        var svg = BeamAvatars.GenerateSvg(query.Key, square: false);
         return Content(svg, "image/svg+xml");
     }
 
@@ -81,9 +78,6 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
     [CacheControlImmutable(Duration = 2592000)] // 30 days
     public ActionResult GetMarble(MarbleAvatarQuery query)
     {
-        if (query.Key.IsNullOrEmpty())
-            return BadRequest("Key is required");
-
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
