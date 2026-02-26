@@ -4,6 +4,15 @@
     var url = Markup.Url;
 }
 
+@if (Markup.Kind is UrlMarkupKind.Email) {
+    @* NOTE(DF): Do not use target="_blank" for emails. It crashes Android app. *@
+    <a class="@cls" href="@_hrefUrl"
+       data-menu="@(MenuRef.New<MessageMenu>(Entry.Id.Value, bool.FalseString, url, ""))">
+        @url
+    </a>
+    return;
+}
+
 @if (_linkRenderMode is LinkRenderMode.LinkPreview)
     return;
 
@@ -64,12 +73,13 @@
         return null;
     }
 
-    private enum LinkRenderMode { Default, LinkPreview, Local }
-
     private void OnNavigateClick() {
         if (_localUrl is null)
             return;
 
         _ = History.NavigateTo(_localUrl.Value);
     }
+
+    // Nested types
+    private enum LinkRenderMode { Default, LinkPreview, Local }
 }
