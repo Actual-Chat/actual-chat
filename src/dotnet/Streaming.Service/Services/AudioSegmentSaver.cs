@@ -14,9 +14,9 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
         CancellationToken cancellationToken)
     {
         var streamIndex = closedAudioSegment.StreamId.OrdinalReplace($"{closedAudioSegment.AudioRecord.StreamId}-", "");
-        var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.StreamId.Value, streamIndex + ".opuss");
+        var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.StreamId.Value, streamIndex + ".webm");
 
-        var converter = new ActualOpusStreamConverter(Clocks, Log);
+        var converter = new WebMStreamConverter(Clocks, Log);
         var audioSource = closedAudioSegment.Audio;
         var byteStream = converter.ToByteStream(audioSource, cancellationToken);
         var blobStorage = Blobs[BlobScope.AudioRecord];
@@ -42,7 +42,7 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
 
         var media = new MediaFull(mediaId) {
             ContentId = blobId,
-            ContentType = "audio/opus",
+            ContentType = "audio/webm",
             Metadata = PropertyBag.Empty
                 .Set(nameof(ChatEntryAudio.BeginsAt), beginsAt.EpochOffsetTicks)
                 .Set(nameof(ChatEntryAudio.EndsAt), endsAt.EpochOffsetTicks)

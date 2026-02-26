@@ -1210,15 +1210,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 var createdChatEntry = context.Operation.Items.Get<ChatEntryId>(CreatedChatEntryId);
                 if (createdChatEntry is { LocalId: <= 1 })
                     _ = GetMinId(createdChatEntry.ChatId, default);
-                _ = GetIdRange(chatId,true, default);
-                _ = GetIdRange(chatId,false, default);
+                _ = GetIdRange(chatId, true, default);
+                _ = GetIdRange(chatId, false, default);
                 break;
             case ChangeKind.Update when invBoundToThreadHasChanged:
-                _ = GetIdRange(chatId,true, default);
-                _ = GetIdRange(chatId,false, default);
+                _ = GetIdRange(chatId, true, default);
+                _ = GetIdRange(chatId, false, default);
                 break;
             case ChangeKind.Remove:
-                _ = GetIdRange(chatId,false, default);
+                _ = GetIdRange(chatId, false, default);
                 break;
             }
             return null!;

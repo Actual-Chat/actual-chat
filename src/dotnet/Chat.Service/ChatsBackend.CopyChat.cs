@@ -73,9 +73,9 @@ public partial class ChatsBackend
                         cancellationToken)
                     .ConfigureAwait(false);
 
-            var sourceChatRange = await GetIdRange(chatId,true, cancellationToken).ConfigureAwait(false);
+            var sourceChatRange = await GetIdRange(chatId, true, cancellationToken).ConfigureAwait(false);
             if (!sourceChatRange.IsEmpty) {
-                var newChatRange = await GetIdRange(newChatId,true, cancellationToken).ConfigureAwait(false);
+                var newChatRange = await GetIdRange(newChatId, true, cancellationToken).ConfigureAwait(false);
                 var startEntryId = !newChatRange.IsEmpty ? newChatRange.End : 1;
                 var endEntryId = sourceChatRange.End;
                 if (endEntryId > startEntryId)

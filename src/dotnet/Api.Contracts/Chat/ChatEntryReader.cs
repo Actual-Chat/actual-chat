@@ -20,7 +20,7 @@ public sealed class ChatEntryReader(
             return null;
 
         var idTile = IdTileLayer.GetTile(id);
-        var tile = await Chats.GetTile(Session, ChatId,idTile.Range, cancellationToken).ConfigureAwait(false);
+        var tile = await Chats.GetTile(Session, ChatId, idTile.Range, cancellationToken).ConfigureAwait(false);
         return tile.Entries.SingleOrDefault(e => e.LocalId == id);
     }
 
@@ -29,7 +29,7 @@ public sealed class ChatEntryReader(
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
             var idTile = IdTileLayer.GetTile(minId);
-            var tile = await Chats.GetTile(Session, ChatId,idTile.Range, cancellationToken).ConfigureAwait(false);
+            var tile = await Chats.GetTile(Session, ChatId, idTile.Range, cancellationToken).ConfigureAwait(false);
             foreach (var entry in tile.Entries) {
                 if (entry.LocalId >= maxIdExclusive)
                     break;
@@ -46,7 +46,7 @@ public sealed class ChatEntryReader(
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
             var idTile = IdTileLayer.GetTile(minId);
-            var tile = await Chats.GetTile(Session, ChatId,idTile.Range, cancellationToken).ConfigureAwait(false);
+            var tile = await Chats.GetTile(Session, ChatId, idTile.Range, cancellationToken).ConfigureAwait(false);
             foreach (var entry in tile.Entries) {
                 if (entry.LocalId >= maxIdExclusive)
                     break;
@@ -67,7 +67,7 @@ public sealed class ChatEntryReader(
         var (minId, maxIdExclusive) = idRange;
         while (minId < maxIdExclusive) {
             var idTile = IdTileLayer.GetTile(maxIdExclusive - 1);
-            var tile = await Chats.GetTile(Session, ChatId,idTile.Range, cancellationToken).ConfigureAwait(false);
+            var tile = await Chats.GetTile(Session, ChatId, idTile.Range, cancellationToken).ConfigureAwait(false);
             for (var i = tile.Entries.Length - 1; i >= 0; i--) {
                 var entry = tile.Entries[i];
                 if (entry.LocalId < minId)
@@ -86,7 +86,7 @@ public sealed class ChatEntryReader(
         var skippedCount = 0;
         while (minId < maxIdExclusive) {
             var idTile = IdTileLayer.GetTile(maxIdExclusive - 1);
-            var tile = await Chats.GetTile(Session, ChatId,idTile.Range, cancellationToken).ConfigureAwait(false);
+            var tile = await Chats.GetTile(Session, ChatId, idTile.Range, cancellationToken).ConfigureAwait(false);
             for (var i = tile.Entries.Length - 1; i >= 0; i--) {
                 var entry = tile.Entries[i];
                 if (entry.LocalId < minId)
@@ -111,7 +111,7 @@ public sealed class ChatEntryReader(
     {
         var idTile = IdTileLayer.GetTile(id);
         var cTile = await Computed
-            .Capture(() => Chats.GetTile(Session, ChatId,idTile.Range, cancellationToken), cancellationToken)
+            .Capture(() => Chats.GetTile(Session, ChatId, idTile.Range, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
         cTile = await cTile.When(
@@ -277,10 +277,10 @@ public sealed class ChatEntryReader(
     // Private methods
 
     private Task<Range<long>> GetIdRange(CancellationToken cancellationToken)
-        => Chats.GetIdRange(Session, ChatId,cancellationToken);
+        => Chats.GetIdRange(Session, ChatId, cancellationToken);
 
     private Task<ChatTile> GetTile(Range<long> idRange, CancellationToken cancellationToken)
-        => Chats.GetTile(Session, ChatId,idRange, cancellationToken);
+        => Chats.GetTile(Session, ChatId, idRange, cancellationToken);
 
     private ValueTask<Computed<Range<long>>> CaptureIdRange(CancellationToken cancellationToken)
         => Computed.Capture(() => GetIdRange(cancellationToken), cancellationToken);
