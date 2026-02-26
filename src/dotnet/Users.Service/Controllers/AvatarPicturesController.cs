@@ -59,44 +59,41 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
     [HttpGet("beam/{key}")]
     [CacheControlImmutable(Duration = 2592000)] // 30 days
-    public ActionResult GetBeam(
-        string key,
-        [FromQuery] AvatarFormat format = AvatarFormat.Svg,
-        [FromQuery] int? size = null,
-        [FromQuery] bool square = false)
+    public ActionResult GetBeam(BeamAvatarQuery query)
     {
-        if (key.IsNullOrEmpty())
+        if (query.Key.IsNullOrEmpty())
             return BadRequest("Key is required");
 
-        if (format == AvatarFormat.Png) {
-            size ??= 80;
-            var pngBytes = BeamAvatars.GeneratePngBytes(key, size.Value, square: square);
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        if (query.Format == AvatarFormat.Png) {
+            var pngSize = query.Size ?? 80;
+            var pngBytes = BeamAvatars.GeneratePngBytes(query.Key, pngSize, square: query.Square);
             return File(pngBytes, "image/png");
         }
 
-        var svg = BeamAvatars.GenerateSvg(key, square: square);
+        var svg = BeamAvatars.GenerateSvg(query.Key, square: query.Square);
         return Content(svg, "image/svg+xml");
     }
 
     [HttpGet("marble/{key}")]
     [CacheControlImmutable(Duration = 2592000)] // 30 days
-    public ActionResult GetMarble(
-        string key,
-        [FromQuery] AvatarFormat format = AvatarFormat.Svg,
-        [FromQuery] int? size = null,
-        [FromQuery] string? title = null,
-        [FromQuery] bool doNotBlur = false)
+    public ActionResult GetMarble(MarbleAvatarQuery query)
     {
-        if (key.IsNullOrEmpty())
+        if (query.Key.IsNullOrEmpty())
             return BadRequest("Key is required");
 
-        if (format == AvatarFormat.Png) {
-            size ??= 80;
-            var pngBytes = MarbleAvatars.GeneratePngBytes(key, size.Value, title: title ?? "", doNotBlur: doNotBlur);
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        if (query.Format == AvatarFormat.Png) {
+            var pngSize = query.Size ?? 80;
+            var pngBytes = MarbleAvatars.GeneratePngBytes(query.Key, pngSize, title: query.Title ?? "", doNotBlur: query.DoNotBlur);
             return File(pngBytes, "image/png");
         }
 
-        var svg = MarbleAvatars.GenerateSvg(key, title: title ?? "", doNotBlur: doNotBlur);
+        var svg = MarbleAvatars.GenerateSvg(query.Key, title: query.Title ?? "", doNotBlur: query.DoNotBlur);
         return Content(svg, "image/svg+xml");
     }
 }

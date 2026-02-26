@@ -135,7 +135,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
         response.Headers.CacheControl.Should().NotBeNull();
         response.Headers.CacheControl!.Public.Should().BeTrue();
         response.Headers.CacheControl.MaxAge.Should().NotBeNull();
-        response.Headers.CacheControl.MaxAge!.Value.TotalDays.Should().BeGreaterOrEqualTo(29);
+        response.Headers.CacheControl.MaxAge!.Value.TotalDays.Should().BeGreaterThanOrEqualTo(29);
     }
 
     [Fact]
@@ -256,7 +256,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
         response.Headers.CacheControl.Should().NotBeNull();
         response.Headers.CacheControl!.Public.Should().BeTrue();
         response.Headers.CacheControl.MaxAge.Should().NotBeNull();
-        response.Headers.CacheControl.MaxAge!.Value.TotalDays.Should().BeGreaterOrEqualTo(29);
+        response.Headers.CacheControl.MaxAge!.Value.TotalDays.Should().BeGreaterThanOrEqualTo(29);
     }
 
     [Fact]
