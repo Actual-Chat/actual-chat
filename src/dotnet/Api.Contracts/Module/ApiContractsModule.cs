@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using ActualChat.Audio;
 using ActualChat.Chat;
@@ -114,16 +115,8 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                     var client = c.GetRequiredService<RpcWebSocketClient>();
                     var settings = client.Options;
                     var urlMapper = client.Services.UrlMapper();
-                    var wsBaseUrl = urlMapper.WebsocketBaseUrl;
-                    if (HostNameRemapper.Instance is { } hostNameRemapper) {
-                        var wsBaseHost = urlMapper.BaseUri.Host;
-                        var wsRemappedHost = hostNameRemapper.Get(wsBaseHost);
-                        if (!OrdinalEquals(wsRemappedHost, wsBaseHost))
-                            wsBaseUrl = wsBaseUrl.OrdinalReplace(wsBaseHost, wsRemappedHost);
-                    }
-
                     var sb = ActualLab.Text.StringBuilderExt.Acquire();
-                    sb.Append(wsBaseUrl);
+                    sb.Append(urlMapper.WebsocketBaseUrl);
                     sb.Append(settings.RequestPath);
                     sb.Append('?');
                     sb.Append(settings.ClientIdParameterName);
@@ -149,7 +142,33 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                             ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id);
                         if (Constants.Rpc.Compression.IsClientSideEnabled)
                             ws.Options.DangerousDeflateOptions = new WebSocketDeflateOptions();
-                        return new WebSocketOwner(peer.Ref.Address, ws, c);
+                        if (HostNameRemapper.Instance is not { } hostNameRemapper)
+                            return new WebSocketOwner(peer.Ref.Address, ws, c);
+
+                        // HostNameRemapper changes the host name of the WebSocket connection,
+                        // and since it's an SSL connection, plain change in the original URL
+                        // will trigger SSL certificate validation failure.
+                        // SocketsHttpHandler's ConnectCallback is the right place to make this change.
+                        var handler = new SocketsHttpHandler {
+                            ConnectCallback = async (context, cancellationToken) => {
+                                var host = context.DnsEndPoint.Host;
+                                var port = context.DnsEndPoint.Port;
+                                var remapped = hostNameRemapper.Get(host);
+                                EndPoint endPoint = IPAddress.TryParse(remapped, out var ip)
+                                    ? new IPEndPoint(ip, port)
+                                    : new DnsEndPoint(remapped, port);
+                                var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                                try {
+                                    await socket.ConnectAsync(endPoint, cancellationToken).ConfigureAwait(false);
+                                    return new NetworkStream(socket, ownsSocket: true);
+                                }
+                                catch {
+                                    socket.Dispose();
+                                    throw;
+                                }
+                            },
+                        };
+                        return new WebSocketOwner(peer.Ref.Address, ws, c) { Handler = handler };
                     },
                 };
             return options;

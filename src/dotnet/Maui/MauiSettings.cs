@@ -55,6 +55,7 @@ public static class MauiSettings
 
 #if ANDROID
         AppKind = AppKind.Android;
+        MauiHostNameRemapper.Use();
 #elif WINDOWS
         AppKind = AppKind.Windows;
 #elif MACCATALYST
@@ -64,7 +65,6 @@ public static class MauiSettings
 #else
         AppKind = AppKind.Unknown;
 #endif
-        MauiHostNameRemapper.Use();
     }
 
     // Nested types
