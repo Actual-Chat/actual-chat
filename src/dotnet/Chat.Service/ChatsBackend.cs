@@ -1187,7 +1187,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var invChatEntry = context.Operation.Items.KeylessGet<ChatEntry>();
             var invBoundToThreadHasChanged = context.Operation.Items.Get<bool>(boundToThreadHasChangedKey);
             if (invChatEntry != null) {
-                InvalidateTiles(chatId,invChatEntry.LocalId, changeKind, invBoundToThreadHasChanged);
+                InvalidateTiles(chatId, invChatEntry.LocalId, changeKind, invBoundToThreadHasChanged);
 
                 var entryTile = IdTileStack.LastLayer.GetTile(invChatEntry.LocalId);
                 _ = GetEntryRangeMeta(chatId, entryTile.Range.Start, default);
@@ -1448,7 +1448,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (Invalidation.IsActive) {
             _ = GetEntryAttachments(entryId, default);
-            InvalidateTiles(entryId.ChatId,entryId.LocalId, ChangeKind.Update, false);
+            InvalidateTiles(entryId.ChatId, entryId.LocalId, ChangeKind.Update, false);
             return default!;
         }
 
@@ -1483,7 +1483,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (Invalidation.IsActive) {
             _ = GetEntryAttachments(entryId, default);
-            InvalidateTiles(entryId.ChatId,entryId.LocalId, ChangeKind.Update, false);
+            InvalidateTiles(entryId.ChatId, entryId.LocalId, ChangeKind.Update, false);
             return;
         }
 

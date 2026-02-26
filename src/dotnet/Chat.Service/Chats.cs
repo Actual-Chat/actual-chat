@@ -356,7 +356,7 @@ public partial class Chats(IServiceProvider services) : IChats
             // Update
             var textEntryId = TextEntryId.New(chatId, vLocalId);
             textEntry = await this
-                .GetEntry(session,textEntryId, cancellationToken)
+                .GetEntry(session, textEntryId, cancellationToken)
                 .Require(ChatEntry.MustNotBeRemoved)
                 .ConfigureAwait(false);
 
