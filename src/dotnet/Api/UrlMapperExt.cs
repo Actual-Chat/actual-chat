@@ -1,3 +1,5 @@
+using ActualChat.UI;
+
 namespace ActualChat;
 
 /// <summary>
@@ -41,6 +43,17 @@ public static class UrlMapperExt
                 return "";
 
             return mapper.ImagePreviewUrl(pictureUrl, (int?)Constants.Attachments.MaxAvatarResolution.X, (int?)Constants.Attachments.MaxAvatarResolution.Y);
+        }
+
+        public string AvatarPngUrl(AvatarKind kind, string key, int? size = null, string? title = null)
+        {
+            var kindPath = kind is AvatarKind.Marble ? "marble" : "beam";
+            var url = $"api/avatars/{kindPath}/{Uri.EscapeDataString(key)}?format=png";
+            if (size > 0)
+                url += $"&size={size}";
+            if (kind is AvatarKind.Marble && !title.IsNullOrEmpty())
+                url += $"&title={Uri.EscapeDataString(title)}";
+            return mapper.ToAbsolute(url);
         }
 
         private string PictureUrl(Picture picture)
