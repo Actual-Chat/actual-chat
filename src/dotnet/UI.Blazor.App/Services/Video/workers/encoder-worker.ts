@@ -21,6 +21,34 @@ let resizeCanvas: OffscreenCanvas | null = null;
 let resizeCtx: OffscreenCanvasRenderingContext2D | null = null;
 let startTimestamp: number | undefined = undefined;
 
+/**
+ * Detect if description bytes are in avcC (H.264 decoder configuration record) format.
+ * Used to detect when encoder silently falls back to H.264 despite being configured for AV1.
+ */
+function isAvcCDescription(desc: ArrayBuffer): boolean {
+    if (desc.byteLength < 5) return false;
+    const bytes = new Uint8Array(desc);
+    // configurationVersion must be 1
+    if (bytes[0] !== 0x01) return false;
+    // profileIndication must be a known H.264 profile
+    const validProfiles = [66, 77, 88, 100, 110, 122, 244];
+    if (!validProfiles.includes(bytes[1])) return false;
+    // byte[4] reserved bits: upper 6 bits must be 1 (0xFC mask)
+    if ((bytes[4] & 0xFC) !== 0xFC) return false;
+    return true;
+}
+
+/**
+ * Derive avc1 codec string from avcC description bytes.
+ */
+function deriveAvcCodecFromDescription(desc: ArrayBuffer): string {
+    const bytes = new Uint8Array(desc);
+    const profile = bytes[1].toString(16).padStart(2, '0');
+    const compat = bytes[2].toString(16).padStart(2, '0');
+    const level = bytes[3].toString(16).padStart(2, '0');
+    return `avc1.${profile}${compat}${level}`;
+}
+
 // Resize frame to match encoder dimensions while preserving aspect ratio
 function resizeFrame(frame: VideoFrame, targetWidth: number, targetHeight: number): VideoFrame {
     const frameWidth = frame.displayWidth;
@@ -135,9 +163,33 @@ const serverImpl: EncoderWorker = {
                         }
                     }
 
+                    // Validate actual codec output: if configured for AV1 but output is avcC, correct it
+                    let actualCodec = encoderConfig!.codec;
+                    if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
+                        const desc = chunkData.metadata.decoderConfig.description;
+                        let descBuf: ArrayBuffer;
+                        if (desc instanceof ArrayBuffer) {
+                            descBuf = desc;
+                        } else if (ArrayBuffer.isView(desc)) {
+                            // Copy to a new ArrayBuffer to avoid SharedArrayBuffer type issues
+                            const view = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
+                            const copy = new ArrayBuffer(view.byteLength);
+                            new Uint8Array(copy).set(view);
+                            descBuf = copy;
+                        } else {
+                            descBuf = desc as unknown as ArrayBuffer;
+                        }
+                        if (isAvcCDescription(descBuf) && !encoderConfig!.codec.startsWith('avc1')) {
+                            const derivedCodec = deriveAvcCodecFromDescription(descBuf);
+                            warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec}`);
+                            actualCodec = derivedCodec;
+                            encoderConfig!.codec = derivedCodec;
+                        }
+                    }
+
                     const enrichedChunkData = {
                         ...chunkData,
-                        codec: encoderConfig!.codec,
+                        codec: actualCodec,
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         metadata: serializedMetadata,
                         sequenceNumber: chunkData.sequenceNumber

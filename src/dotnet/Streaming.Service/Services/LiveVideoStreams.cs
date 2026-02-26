@@ -71,24 +71,24 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
     }
 
     // [ComputeMethod]
-    public virtual async Task<string> GetRecommendedCodec(
+    public virtual async Task<ApiArray<string>> GetSupportedDecoderCodecs(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        return await Backend.GetRecommendedCodec(chatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.GetSupportedDecoderCodecs(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<RpcStream<string>> ObserveRecommendedCodec(
+    public async Task<RpcStream<ApiArray<string>>> ObserveSupportedDecoderCodecs(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        var remoteStream = await Backend.ObserveRecommendedCodec(chatId, cancellationToken).ConfigureAwait(false);
+        var remoteStream = await Backend.ObserveSupportedDecoderCodecs(chatId, cancellationToken).ConfigureAwait(false);
         return RpcStream.New(remoteStream); // Wrap Remote → Local for re-serialization
     }
 

@@ -193,6 +193,16 @@ export class VideoPipeline implements IVideoPipeline {
             this.firstEncodedTimestamp ??= chunkData.chunk.timestamp; // microseconds
             const normalizedTimestamp = chunkData.chunk.timestamp - this.firstEncodedTimestamp;
             // Convert microseconds to .NET TimeSpan ticks (100-nanosecond units)
+            // Use actual codec from encoder output (chunkData.codec), not configured codec.
+            // The encoder worker validates output and corrects codec if there's a mismatch
+            // (e.g., configured AV1 but actually producing H.264).
+            const actualCodec = chunkData.codec ?? this.config.encoderConfig.codec;
+            if (chunkData.type === 'key' && chunkData.codec && chunkData.codec !== this.config.encoderConfig.codec) {
+                warnLog?.log(`Encoder output codec (${chunkData.codec}) differs from configured (${this.config.encoderConfig.codec}), updating config`);
+                this.config.encoderConfig.codec = chunkData.codec;
+                this.config.decoderConfig.codec = chunkData.codec;
+            }
+
             const frame: VideoStreamFrame = {
                 offset: microsecondsToTicks(normalizedTimestamp),
                 duration: microsecondsToTicks(chunkData.chunk.duration ?? 0),
@@ -200,7 +210,7 @@ export class VideoPipeline implements IVideoPipeline {
                 width: this.config.encoderConfig.width,
                 height: this.config.encoderConfig.height,
                 data: chunkBytes,
-                codec: chunkData.type === 'key' ? (chunkData.codec ?? this.config.encoderConfig.codec) : undefined,
+                codec: chunkData.type === 'key' ? actualCodec : undefined,
             };
 
             if (chunkData.type === 'key') {

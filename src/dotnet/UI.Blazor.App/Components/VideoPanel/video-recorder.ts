@@ -1,6 +1,6 @@
 import { Log } from 'logging';
 import { RecordingService, type RecordingConfig, type RecordingState } from '../../Services/Video/services/recording-service';
-import { detectSupportedCodecs, getDefaultCodec } from '../../Services/Video/codec-support';
+import { detectSupportedCodecs, getDefaultCodec, type CodecInfo } from '../../Services/Video/codec-support';
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoRecorder');
 
@@ -26,6 +26,8 @@ export class VideoRecorder {
     private lastStatus = '';
     private cameraWidth = 0;
     private cameraHeight = 0;
+    // Cached encoder capabilities (detected at 1080p at recording start)
+    private supportedEncoderCategories: string[] = [];
 
     static create(element: HTMLElement, blazorRef: DotNet.DotNetObject): VideoRecorder {
         return new VideoRecorder(element, blazorRef);
@@ -111,11 +113,15 @@ export class VideoRecorder {
         infoLog?.log('Starting video recording...');
 
         try {
-            // Detect best supported encoder codec (AV1 preferred over H.264)
+            // Detect supported encoder codecs at 1080p (avoids resolution-dependent false positives)
             const supportedCodecs = await detectSupportedCodecs();
             const bestCodecString = getDefaultCodec(supportedCodecs);
             const codecCategory = bestCodecString.startsWith('av01') ? 'av1' as const : 'h264' as const;
             infoLog?.log(`Initial codec selection: ${codecCategory} (${bestCodecString})`);
+
+            // Cache supported encoder categories for later codec negotiation
+            this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
+            infoLog?.log(`Supported encoder categories: [${this.supportedEncoderCategories.join(', ')}]`);
 
             // Create recording service with streaming config (uses video-pipeline internally)
             const config: RecordingConfig = {
@@ -242,11 +248,24 @@ export class VideoRecorder {
     }
 
     /**
-     * Switch codec mid-stream (called from Blazor codec subscription)
+     * Update the list of decoder codecs supported by all receivers.
+     * The sender picks the best codec it can actually encode from this list.
+     * Called from Blazor when the server pushes updated decoder capabilities.
      */
-    public async switchCodec(codec: string): Promise<void> {
+    public async updateSupportedDecoderCodecs(codecs: string[]): Promise<void> {
         if (!this.recordingService) return;
-        await this.recordingService.switchCodec(codec);
+
+        // Filter server's list by sender's encoder capabilities
+        const matchingCodecs = codecs.filter(c => this.supportedEncoderCategories.includes(c));
+        const picked = matchingCodecs.length > 0 ? matchingCodecs[0] : null;
+
+        if (!picked) {
+            warnLog?.log(`updateSupportedDecoderCodecs: no match between server codecs [${codecs.join(', ')}] and encoder capabilities [${this.supportedEncoderCategories.join(', ')}], keeping current codec`);
+            return;
+        }
+
+        infoLog?.log(`Selected encoder codec: ${picked} from supported decoders: [${codecs.join(', ')}]`);
+        await this.recordingService.switchCodec(picked);
     }
 
     /**
@@ -359,6 +378,24 @@ export class VideoRecorder {
     private onRecorderError(error: Error): void {
         errorLog?.log('Recorder error:', error);
         void this.blazorRef.invokeMethodAsync('OnRecordingError', error.message);
+    }
+
+    /**
+     * Extract unique encoder codec categories from detected codec support.
+     * Returns categories like ['av1', 'h264'] based on what the encoder can actually produce.
+     */
+    private extractEncoderCategories(codecs: CodecInfo[]): string[] {
+        const categories = new Set<string>();
+        for (const c of codecs) {
+            if (c.supported) {
+                categories.add(c.category);
+            }
+        }
+        // Return in priority order: av1, h264
+        const ordered: string[] = [];
+        if (categories.has('av1')) ordered.push('av1');
+        if (categories.has('h264')) ordered.push('h264');
+        return ordered;
     }
 
     public dispose() {

@@ -199,23 +199,10 @@ export class RecordingService extends EventTarget {
         if (currentIsAV1 === targetIsAV1)
             return;
 
-        // Verify the encoder can handle this codec before switching
-        try {
-            const support = await VideoEncoder.isConfigSupported({
-                codec: codecString,
-                width: this.config.width,
-                height: this.config.height,
-                bitrate: this.config.bitrate,
-                framerate: this.config.framerate,
-            });
-            if (!support.supported) {
-                warnLog?.log(`switchCodec: ${codecString} not supported by encoder, ignoring`);
-                return;
-            }
-        } catch {
-            warnLog?.log(`switchCodec: failed to check support for ${codecString}, ignoring`);
-            return;
-        }
+        // No isConfigSupported check here — the sender already validated encoder
+        // capabilities at 1080p during recording start (cached in video-recorder.ts).
+        // Checking at current resolution can produce false positives (e.g. Android
+        // reports AV1 support at 720p but silently falls back to H.264).
 
         infoLog?.log(`Switching codec from ${this.config.codec} to ${codec} (${codecString})`);
         this.config.codec = codec as 'h264' | 'av1';

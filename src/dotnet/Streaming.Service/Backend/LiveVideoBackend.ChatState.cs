@@ -12,8 +12,8 @@ public partial class LiveVideoBackend
         private readonly Lock _membersLock = new();
 
         // Codec recommendation
-        private readonly AsyncObservable<string> _recommendedCodecChanges = new();
-        private string _currentRecommendedCodec = "av1";
+        private readonly AsyncObservable<ApiArray<string>> _supportedDecoderCodecChanges = new();
+        private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "h264"]);
         private CpuTimestamp _lastCodecDowngradeAt;
 
         public LiveVideoBackend Owner { get; } = owner;
@@ -39,10 +39,10 @@ public partial class LiveVideoBackend
                 return _members.Count;
         }
 
-        public string GetRecommendedCodec()
+        public ApiArray<string> GetSupportedDecoderCodecs()
         {
             lock (_membersLock)
-                return _currentRecommendedCodec;
+                return _currentSupportedDecoderCodecs;
         }
 
         public async IAsyncEnumerable<VideoStreamInfo> ObserveStreams(
@@ -68,20 +68,20 @@ public partial class LiveVideoBackend
             }
         }
 
-        public async IAsyncEnumerable<string> ObserveRecommendedCodec(
+        public async IAsyncEnumerable<ApiArray<string>> ObserveSupportedDecoderCodecs(
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var subscription = _recommendedCodecChanges.Subscribe();
+            var subscription = _supportedDecoderCodecChanges.Subscribe();
             await using var _ = subscription.ConfigureAwait(false);
 
             // Yield current value first
-            string currentCodec;
+            ApiArray<string> currentCodecs;
             lock (_membersLock)
-                currentCodec = _currentRecommendedCodec;
-            yield return currentCodec;
+                currentCodecs = _currentSupportedDecoderCodecs;
+            yield return currentCodecs;
 
-            await foreach (var codec in subscription.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-                yield return codec;
+            await foreach (var codecs in subscription.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+                yield return codecs;
         }
 
         public bool RegisterStream(VideoStreamInfo streamInfo)
@@ -102,7 +102,7 @@ public partial class LiveVideoBackend
                 if (_members.TryGetValue(sessionId, out var existing) && existing.SequenceEqual(supportedDecoderCodecs))
                     return false; // No change
                 _members[sessionId] = supportedDecoderCodecs;
-                RecomputeRecommendedCodecLocked();
+                RecomputeSupportedDecoderCodecsLocked();
                 return true;
             }
         }
@@ -112,7 +112,7 @@ public partial class LiveVideoBackend
             lock (_membersLock) {
                 if (!_members.Remove(sessionId))
                     return false;
-                RecomputeRecommendedCodecLocked();
+                RecomputeSupportedDecoderCodecsLocked();
                 return true;
             }
         }
@@ -120,38 +120,43 @@ public partial class LiveVideoBackend
         public void Complete(Exception? error = null)
         {
             _newStreams.TryComplete(error);
-            _recommendedCodecChanges.TryComplete(error);
+            _supportedDecoderCodecChanges.TryComplete(error);
         }
 
         // Must be called under _membersLock
-        private void RecomputeRecommendedCodecLocked()
+        private void RecomputeSupportedDecoderCodecsLocked()
         {
-            var newCodec = ComputeRecommendedCodecLocked();
-            if (newCodec == _currentRecommendedCodec)
+            var newCodecs = ComputeSupportedDecoderCodecsLocked();
+            if (_currentSupportedDecoderCodecs.SequenceEqual(newCodecs))
                 return;
 
-            // Hysteresis: delay switching UP to AV1 by CodecSwitchHysteresisWindow
-            if (newCodec == "av1" && _currentRecommendedCodec == "h264") {
+            // Hysteresis: compare primary (first) codec for up/downgrade timing
+            var currentPrimary = _currentSupportedDecoderCodecs.Count > 0 ? _currentSupportedDecoderCodecs[0] : "h264";
+            var newPrimary = newCodecs.Count > 0 ? newCodecs[0] : "h264";
+
+            // Delay switching UP to AV1 by CodecSwitchHysteresisWindow
+            if (OrdinalEquals(newPrimary, "av1") && OrdinalEquals(currentPrimary, "h264")) {
                 var elapsed = _lastCodecDowngradeAt.Elapsed;
                 if (elapsed < Constants.Video.CodecSwitchHysteresisWindow)
                     return; // Not enough time since last downgrade
             }
 
             // Track downgrade timing
-            if (newCodec == "h264" && _currentRecommendedCodec == "av1")
+            if (OrdinalEquals(newPrimary, "h264") && OrdinalEquals(currentPrimary, "av1"))
                 _lastCodecDowngradeAt = CpuTimestamp.Now;
 
-            _currentRecommendedCodec = newCodec;
-            _recommendedCodecChanges.Publish(newCodec);
+            _currentSupportedDecoderCodecs = newCodecs;
+            _supportedDecoderCodecChanges.Publish(newCodecs);
         }
 
         // Must be called under _membersLock
-        private string ComputeRecommendedCodecLocked()
+        private ApiArray<string> ComputeSupportedDecoderCodecsLocked()
         {
             if (_members.Count == 0)
-                return "av1"; // No viewers, use best codec
+                return new(["av1", "h264"]); // No viewers, all codecs available
 
             // Check if all members support AV1 decoding
+            var allSupportAv1 = true;
             foreach (var (_, codecs) in _members) {
                 var supportsAv1 = false;
                 foreach (var codec in codecs) {
@@ -160,11 +165,15 @@ public partial class LiveVideoBackend
                         break;
                     }
                 }
-                if (!supportsAv1)
-                    return "h264";
+                if (!supportsAv1) {
+                    allSupportAv1 = false;
+                    break;
+                }
             }
 
-            return "av1";
+            return allSupportAv1
+                ? new(["av1", "h264"])  // All support AV1 — priority: av1 > h264
+                : new(["h264"]);         // Not all support AV1 — h264 only
         }
     }
 }
