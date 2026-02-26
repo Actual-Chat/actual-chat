@@ -661,12 +661,35 @@ switch ($mode) {
         if ($worktree) {
             $worktreeHostPath = Join-Path $env:AC_ProjectRoot "$projectName-$worktree"
             $volumeMounts += New-VolumeMount $worktreeHostPath "/proj/$projectName-$worktree"
+
+            # Artifacts/claude-docker folder for Docker builds in worktree
+            $wtArtifactsHostPath = Join-Path $worktreeHostPath "artifacts" "claude-docker"
+            $volumeMounts += New-VolumeMount $wtArtifactsHostPath "/proj/$projectName-$worktree/artifacts" -EnsureExists
+
+            # node_modules from artifacts/claude-docker for persistence across container restarts
+            $wtNodeModulesHostPath = Join-Path $wtArtifactsHostPath "node_modules"
+            $wtNodeModulesMountPoint = Join-Path $worktreeHostPath "node_modules"
+            if (-not (Test-Path $wtNodeModulesMountPoint)) {
+                New-Item -ItemType Directory -Path $wtNodeModulesMountPoint -Force | Out-Null
+            }
+            $volumeMounts += New-VolumeMount $wtNodeModulesHostPath "/proj/$projectName-$worktree/node_modules" -EnsureExists
         }
 
         # Also mount the original worktree if different (for c.ps1 access when switching worktrees)
         if ($originalWorktree -and $originalWorktree -ne $worktree) {
             $origWorktreeHostPath = Join-Path $env:AC_ProjectRoot "$projectName-$originalWorktree"
             $volumeMounts += New-VolumeMount $origWorktreeHostPath "/proj/$projectName-$originalWorktree"
+
+            # Artifacts/claude-docker folder for original worktree too
+            $origWtArtifactsHostPath = Join-Path $origWorktreeHostPath "artifacts" "claude-docker"
+            $volumeMounts += New-VolumeMount $origWtArtifactsHostPath "/proj/$projectName-$originalWorktree/artifacts" -EnsureExists
+
+            $origWtNodeModulesHostPath = Join-Path $origWtArtifactsHostPath "node_modules"
+            $origWtNodeModulesMountPoint = Join-Path $origWorktreeHostPath "node_modules"
+            if (-not (Test-Path $origWtNodeModulesMountPoint)) {
+                New-Item -ItemType Directory -Path $origWtNodeModulesMountPoint -Force | Out-Null
+            }
+            $volumeMounts += New-VolumeMount $origWtNodeModulesHostPath "/proj/$projectName-$originalWorktree/node_modules" -EnsureExists
         }
 
         # Claude config mounts
