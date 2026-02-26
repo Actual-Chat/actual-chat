@@ -2,6 +2,7 @@ using ActualChat.AspNetCore;
 using ActualChat.Controllers;
 using ActualChat.Media;
 using ActualChat.Security;
+using ActualChat.UI;
 using ActualChat.Uploads;
 using ActualChat.Users.AvatarIcons;
 using Microsoft.AspNetCore.Mvc;
@@ -57,9 +58,9 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
         return Ok(mediaRef);
     }
 
-    [HttpGet("beam/{key}")]
+    [HttpGet("{kind}/{key}")]
     [CacheControlImmutable(Duration = 2592000, VaryByQueryKeys = ["*"])] // 30 days
-    public ActionResult GetBeam(AvatarQuery query)
+    public ActionResult GetAvatar(AvatarQuery query)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -67,29 +68,17 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
         // TODO: file cache
         if (query.Format == AvatarFormat.Png) {
             var pngSize = query.Size ?? 80;
-            var pngBytes = BeamAvatars.GeneratePngBytes(query.Key, pngSize);
+            var pngBytes = query.Kind switch {
+                AvatarKind.Marble => MarbleAvatars.GeneratePngBytes(query.Key, pngSize, title: query.Title ?? ""),
+                _ => BeamAvatars.GeneratePngBytes(query.Key, pngSize),
+            };
             return File(pngBytes, "image/png");
         }
 
-        var svg = BeamAvatars.GenerateSvg(query.Key);
-        return Content(svg, "image/svg+xml");
-    }
-
-    [HttpGet("marble/{key}")]
-    [CacheControlImmutable(Duration = 2592000, VaryByQueryKeys = ["*"])] // 30 days
-    public ActionResult GetMarble(AvatarQuery query)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        // TODO: file cache
-        if (query.Format == AvatarFormat.Png) {
-            var pngSize = query.Size ?? 80;
-            var pngBytes = MarbleAvatars.GeneratePngBytes(query.Key, pngSize, title: query.Title ?? "");
-            return File(pngBytes, "image/png");
-        }
-
-        var svg = MarbleAvatars.GenerateSvg(query.Key, title: query.Title ?? "");
+        var svg = query.Kind switch {
+            AvatarKind.Marble => MarbleAvatars.GenerateSvg(query.Key, title: query.Title ?? ""),
+            _ => BeamAvatars.GenerateSvg(query.Key),
+        };
         return Content(svg, "image/svg+xml");
     }
 }

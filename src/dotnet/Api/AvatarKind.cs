@@ -1,4 +1,4 @@
-namespace ActualChat.UI;
+namespace ActualChat;
 
 public enum AvatarKind
 {

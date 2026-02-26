@@ -56,20 +56,30 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
     }
 
     [ComputeMethod]
-    protected virtual Task<LoadedImage?> GenerateAvatar(string key, AvatarKind kind, int? size, string title, CancellationToken cancellationToken)
+    protected virtual async Task<LoadedImage?> GenerateAvatar(string key, AvatarKind kind, int? size, string title, CancellationToken cancellationToken)
     {
         var sSize = size > 0 ? $"@{size}" : "";
         var sTitle = !title.IsNullOrEmpty() ? $"#{title}" : "";
         var filePath = GetCacheFilePath($"avatar:{kind}:{key}{sSize}{sTitle}", ".png");
         if (File.Exists(filePath))
-            return Task.FromResult<LoadedImage?>(new LoadedImage(filePath, kind));
+            return new LoadedImage(filePath, kind);
 
-        EnsureIconCacheDir();
-        if (kind is AvatarKind.Marble)
-            MarbleAvatars.GeneratePng(key, filePath, title: title, size: size);
-        else
-            BeamAvatars.GeneratePng(key, filePath, size: size);
-        return Task.FromResult<LoadedImage?>(new LoadedImage(filePath, kind));
+        var url = UrlMapper.AvatarPngUrl(kind, key, size, title);
+
+        try {
+            EnsureIconCacheDir();
+            var imgStream = await HttpClient.GetStreamAsync(url, cancellationToken).ConfigureAwait(false);
+            await using var _ = imgStream.ConfigureAwait(false);
+            var fileStream = File.Create(filePath);
+            await using var _2 = fileStream.ConfigureAwait(false);
+            await imgStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+            return new LoadedImage(filePath, kind);
+        }
+        catch (Exception e) {
+            if (!e.IsCancellationOf(cancellationToken))
+                Log.LogError(e, "Failed to fetch avatar from API: '{Url}'", url);
+            return null;
+        }
     }
 
     private static void SaveSvgAsPng(Stream svgStream, FilePath filePath)
