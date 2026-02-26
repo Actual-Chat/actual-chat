@@ -1,3 +1,4 @@
+using System.Net;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;
@@ -270,7 +271,7 @@ public class AvatarEndpointsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var marbleResponse = await client.GetAsync("/api/avatars/marble/");
 
         // Assert - should get 404 or similar error for empty key
-        beamResponse.IsSuccessStatusCode.Should().BeFalse();
-        marbleResponse.IsSuccessStatusCode.Should().BeFalse();
+        beamResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        marbleResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }
