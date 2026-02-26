@@ -734,12 +734,15 @@ switch ($mode) {
         $dockerFolderName = if ($worktree) { "$projectName-$worktree" } else { $projectName }
         $dockerWorkDir = "/proj/$dockerFolderName$relativePath"
         $imageName = "claude-$($projectName.ToLower())"
+        $containerBaseName = if ($worktree) { "$($projectName.ToLower())-$($worktree.ToLower())" } else { $projectName.ToLower() }
+        $containerName = "$containerBaseName-$(Get-Date -Format 'MMdd-HHmmss')"
         # Use c.ps1 from where it was originally invoked (could be main project or a worktree)
         $originalFolderName = Split-Path -Leaf $originalProjectRoot
         $dockerScriptPath = "/proj/$originalFolderName/c.ps1"
 
         if ($dryRun) {
-            Write-Host "Container: $imageName"
+            Write-Host "Image: $imageName"
+            Write-Host "Container: $containerName"
             Write-Host "Docker Working Directory: $dockerWorkDir"
         }
 
@@ -788,6 +791,7 @@ switch ($mode) {
         # AC_InClaudeDocker tells tests not to use docker-specific config
         $dockerArgs = @(
             "run", "-it", "--rm"
+            "--name", $containerName
             "--network", "host"
         )
 
