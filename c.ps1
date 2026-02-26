@@ -819,6 +819,12 @@ switch ($mode) {
             Write-Host "Command:" -ForegroundColor Cyan
             Write-Host "  claude --dangerously-skip-permissions $($claudeArgs -join ' ')"
             Write-Host ""
+            Write-Host "Volume mounts:" -ForegroundColor Cyan
+            for ($i = 0; $i -lt $volumeMounts.Count; $i += 2) {
+                # volumeMounts is flat: -v, host:container[:ro], -v, ...
+                Write-Host "  $($volumeMounts[$i + 1])"
+            }
+            Write-Host ""
             Write-Host "Docker launch command:" -ForegroundColor Cyan
             Write-Host "  docker $($dockerArgs -join ' ')"
             Write-Host ""
