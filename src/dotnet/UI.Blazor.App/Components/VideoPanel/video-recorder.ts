@@ -22,6 +22,7 @@ export class VideoRecorder {
     private selectedCameraDeviceId: string | null = null;
     private chatId = '';
     private isBlurEnabled = false;
+    private blurToggleChain: Promise<void> = Promise.resolve();
     private disposed = false;
     private lastStatus = '';
     private cameraWidth = 0;
@@ -92,10 +93,13 @@ export class VideoRecorder {
     /**
      * Toggle blur on an active recording
      */
-    public async toggleBlur(enabled: boolean): Promise<void> {
+    public toggleBlur(enabled: boolean): void {
         this.isBlurEnabled = enabled;
         if (this.recordingService) {
-            await this.recordingService.toggleBlur(enabled);
+            const rs = this.recordingService;
+            this.blurToggleChain = this.blurToggleChain
+                .then(() => rs.toggleBlur(enabled))
+                .catch(e => warnLog?.log('Failed to toggle blur:', e));
         }
     }
 
