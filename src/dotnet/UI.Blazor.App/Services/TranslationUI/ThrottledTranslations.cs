@@ -105,14 +105,10 @@ public class ThrottledTranslations : UIWorkerBase<AppUIHub>, IComputeService, IA
             if (last is null)
                 return [];
 
-            return state is not null
-                ? ToPossibleTranslationIds(
-                    last.ItemVisibility.VisibleKeys.Except(state.ItemVisibility.VisibleKeys),
-                    last.ItemVisibility.ChatId,
-                    last.TargetLanguage)
-                : ToPossibleTranslationIds(last.ItemVisibility.VisibleKeys,
-                    last.ItemVisibility.ChatId,
-                    last.TargetLanguage);
+            var keys = state is not null
+                ? last.ItemVisibility.VisibleKeys.Except(state.ItemVisibility.VisibleKeys)
+                : last.ItemVisibility.VisibleKeys;
+            return ToPossibleTranslationIds(keys, last.ItemVisibility.ChatId, last.TargetLanguage);
         }
 
         IEnumerable<TextEntryId> GetDisappearedEntryIds(State? state)
