@@ -461,6 +461,29 @@ function New-VolumeMount {
     return @("-v", $mount)
 }
 
+# Helper function: mount a project folder with its artifacts and node_modules
+function New-ProjectMounts {
+    param(
+        [string]$HostPath,
+        [string]$ContainerPath
+    )
+    $mounts = @()
+    $mounts += New-VolumeMount $HostPath $ContainerPath
+
+    # Artifacts/claude-docker folder for Docker builds (avoids permission conflicts with host)
+    $artifactsHostPath = Join-Path $HostPath "artifacts" "claude-docker"
+    $mounts += New-VolumeMount $artifactsHostPath "$ContainerPath/artifacts" -EnsureExists
+
+    # node_modules from artifacts/claude-docker for persistence across container restarts
+    $nodeModulesHostPath = Join-Path $artifactsHostPath "node_modules"
+    $nodeModulesMountPoint = Join-Path $HostPath "node_modules"
+    if (-not (Test-Path $nodeModulesMountPoint)) {
+        New-Item -ItemType Directory -Path $nodeModulesMountPoint -Force | Out-Null
+    }
+    $mounts += New-VolumeMount $nodeModulesHostPath "$ContainerPath/node_modules" -EnsureExists
+    return $mounts
+}
+
 # Helper function for dry run output
 function Show-DryRun {
     param(
@@ -638,20 +661,7 @@ switch ($mode) {
         $volumeMounts = @()
         foreach ($proj in $Projects) {
             $hostPath = Join-Path $env:AC_ProjectRoot $proj
-            $volumeMounts += New-VolumeMount $hostPath "/proj/$proj"
-
-            # Artifacts/claude-docker folder for Docker builds (avoids permission conflicts with host)
-            $artifactsHostPath = Join-Path $env:AC_ProjectRoot $proj "artifacts" "claude-docker"
-            $volumeMounts += New-VolumeMount $artifactsHostPath "/proj/$proj/artifacts" -EnsureExists
-
-            # node_modules from artifacts/claude-docker for persistence across container restarts
-            # Also ensure the mount point exists in the host project (Docker requires it to exist in the parent mount)
-            $nodeModulesHostPath = Join-Path $env:AC_ProjectRoot $proj "artifacts" "claude-docker" "node_modules"
-            $nodeModulesMountPoint = Join-Path $env:AC_ProjectRoot $proj "node_modules"
-            if (-not (Test-Path $nodeModulesMountPoint)) {
-                New-Item -ItemType Directory -Path $nodeModulesMountPoint -Force | Out-Null
-            }
-            $volumeMounts += New-VolumeMount $nodeModulesHostPath "/proj/$proj/node_modules" -EnsureExists
+            $volumeMounts += New-ProjectMounts $hostPath "/proj/$proj"
         }
 
         # Add worktree mount if in a worktree
@@ -660,36 +670,13 @@ switch ($mode) {
         # Both are available so you can merge changes from worktree into main
         if ($worktree) {
             $worktreeHostPath = Join-Path $env:AC_ProjectRoot "$projectName-$worktree"
-            $volumeMounts += New-VolumeMount $worktreeHostPath "/proj/$projectName-$worktree"
-
-            # Artifacts/claude-docker folder for Docker builds in worktree
-            $wtArtifactsHostPath = Join-Path $worktreeHostPath "artifacts" "claude-docker"
-            $volumeMounts += New-VolumeMount $wtArtifactsHostPath "/proj/$projectName-$worktree/artifacts" -EnsureExists
-
-            # node_modules from artifacts/claude-docker for persistence across container restarts
-            $wtNodeModulesHostPath = Join-Path $wtArtifactsHostPath "node_modules"
-            $wtNodeModulesMountPoint = Join-Path $worktreeHostPath "node_modules"
-            if (-not (Test-Path $wtNodeModulesMountPoint)) {
-                New-Item -ItemType Directory -Path $wtNodeModulesMountPoint -Force | Out-Null
-            }
-            $volumeMounts += New-VolumeMount $wtNodeModulesHostPath "/proj/$projectName-$worktree/node_modules" -EnsureExists
+            $volumeMounts += New-ProjectMounts $worktreeHostPath "/proj/$projectName-$worktree"
         }
 
         # Also mount the original worktree if different (for c.ps1 access when switching worktrees)
         if ($originalWorktree -and $originalWorktree -ne $worktree) {
             $origWorktreeHostPath = Join-Path $env:AC_ProjectRoot "$projectName-$originalWorktree"
-            $volumeMounts += New-VolumeMount $origWorktreeHostPath "/proj/$projectName-$originalWorktree"
-
-            # Artifacts/claude-docker folder for original worktree too
-            $origWtArtifactsHostPath = Join-Path $origWorktreeHostPath "artifacts" "claude-docker"
-            $volumeMounts += New-VolumeMount $origWtArtifactsHostPath "/proj/$projectName-$originalWorktree/artifacts" -EnsureExists
-
-            $origWtNodeModulesHostPath = Join-Path $origWtArtifactsHostPath "node_modules"
-            $origWtNodeModulesMountPoint = Join-Path $origWorktreeHostPath "node_modules"
-            if (-not (Test-Path $origWtNodeModulesMountPoint)) {
-                New-Item -ItemType Directory -Path $origWtNodeModulesMountPoint -Force | Out-Null
-            }
-            $volumeMounts += New-VolumeMount $origWtNodeModulesHostPath "/proj/$projectName-$originalWorktree/node_modules" -EnsureExists
+            $volumeMounts += New-ProjectMounts $origWorktreeHostPath "/proj/$projectName-$originalWorktree"
         }
 
         # Claude config mounts
