@@ -331,6 +331,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
         // assert
         translations.Should().AllSatisfy(x => x.Should().BeNull());
+        queued.Should().AllSatisfy(x => x.Id.SourceId.ChatId.Should().Be(chatId));
 
         // act
         ClearVisibleItems(chatId);
