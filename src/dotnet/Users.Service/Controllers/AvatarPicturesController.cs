@@ -66,11 +66,11 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
         if (query.Format == AvatarFormat.Png) {
             var pngSize = query.Size ?? 80;
-            var pngBytes = BeamAvatars.GeneratePngBytes(query.Key, pngSize, square: query.Square);
+            var pngBytes = BeamAvatars.GeneratePngBytes(query.Key, pngSize);
             return File(pngBytes, "image/png");
         }
 
-        var svg = BeamAvatars.GenerateSvg(query.Key, square: query.Square);
+        var svg = BeamAvatars.GenerateSvg(query.Key);
         return Content(svg, "image/svg+xml");
     }
 
@@ -83,11 +83,11 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
 
         if (query.Format == AvatarFormat.Png) {
             var pngSize = query.Size ?? 80;
-            var pngBytes = MarbleAvatars.GeneratePngBytes(query.Key, pngSize, title: query.Title ?? "", doNotBlur: query.DoNotBlur);
+            var pngBytes = MarbleAvatars.GeneratePngBytes(query.Key, pngSize, title: query.Title ?? "");
             return File(pngBytes, "image/png");
         }
 
-        var svg = MarbleAvatars.GenerateSvg(query.Key, title: query.Title ?? "", doNotBlur: query.DoNotBlur);
+        var svg = MarbleAvatars.GenerateSvg(query.Key, title: query.Title ?? "");
         return Content(svg, "image/svg+xml");
     }
 }
