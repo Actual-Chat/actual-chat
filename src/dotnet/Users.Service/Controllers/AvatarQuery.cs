@@ -17,7 +17,6 @@ public sealed partial record AvatarQuery : IValidatableObject
 
     [DataMember, MemoryPackOrder(1)]
     [FromQuery(Name = "format")]
-    [Required]
     public AvatarFormat Format { get; init; } = AvatarFormat.Svg;
 
     [DataMember, MemoryPackOrder(2)]
@@ -29,6 +28,10 @@ public sealed partial record AvatarQuery : IValidatableObject
     public string? Title { get; init; }
 
     [DataMember, MemoryPackOrder(4)]
+    [FromQuery(Name = "square")]
+    public bool Square { get; init; }
+
+    [DataMember, MemoryPackOrder(5)]
     [FromQuery(Name = "doNotBlur")]
     public bool DoNotBlur { get; init; }
 
