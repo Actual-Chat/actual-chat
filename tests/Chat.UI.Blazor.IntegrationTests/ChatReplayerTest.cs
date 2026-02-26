@@ -86,18 +86,19 @@ public class ChatReplayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out
         DateTime beginsAt,
         TimeSpan duration)
     {
-        var id = AudioEntryId.New(chatId, localId);
-        var audioEntry = new DbChatEntry {
+        var id = TextEntryId.New(chatId, localId);
+        var textEntry = new DbChatEntry {
             Id = id.Value,
             ChatId = id.ChatId.Value,
             AuthorId = authorId.Value,
-            Kind = id.Kind,
+            Kind = ChatEntryKind.Text,
             LocalId = id.LocalId,
             Version = 1,
             BeginsAt = beginsAt,
             EndsAt = beginsAt.Add(duration),
+            MediaOrStreamId = $"fake-scope:{localId}", // Makes HasAudio = true
         };
-        dbContext.Add(audioEntry);
+        dbContext.Add(textEntry);
         localId++;
     }
 }
