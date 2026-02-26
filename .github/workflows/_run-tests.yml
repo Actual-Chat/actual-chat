@@ -214,7 +214,7 @@ jobs:
           CoreSettings__GoogleProjectId: ${{secrets.CORESETTINGS_GOOGLEPROJECTID}}
           CoreSettings__PromptsDir: ${{github.workspace}}/.config/prompts/
           StreamingSettings__DeepgramKey: ${{secrets.DEEPGRAM_API_KEY}}
-          ChatSettings__OpenAIApiKey: ${{secrets.OPENAI_API_KEY}}
+          ChatSettings__OpenAIKey: ${{secrets.OPENAI_API_KEY}}
         run: |-
           cat <<- 'EOF' > ./.config/gcp-key.json
           ${{secrets.GCP_KEY_JSON}}
