@@ -164,6 +164,7 @@ $fromMode = $null  # set when self-invoked (e.g., from-docker, from-wsl)
 $worktreeSuffix = $null  # set when wt argument is used (regular worktree from current branch)
 $featureWorktreeSuffix = $null  # set when fwt/bwt argument is used (worktree suffix)
 $wtType = $null  # worktree type: "feat" for fwt, "bugfix" for bwt
+$newContainer = $false
 $dryRun = $false
 $debugMode = $false
 $claudeArgs = @()
@@ -186,6 +187,7 @@ function Show-Help {
     Write-Host "  help         Show this help message"
     Write-Host ""
     Write-Host "Options:"
+    Write-Host "  --new        Always create a new Docker container (default: reuse existing for worktree)"
     Write-Host "  --dry-run    Show environment variables and command without executing"
     Write-Host "  --debug      Show debug output for troubleshooting"
     Write-Host ""
@@ -284,6 +286,13 @@ while ($argIndex -lt $args.Count) {
             Write-Error "The $currentArg command requires a worktree suffix argument"
             exit 1
         }
+        continue
+    }
+
+    # Check for --new
+    if ($currentArg -eq "--new") {
+        $newContainer = $true
+        $argIndex++
         continue
     }
 
@@ -751,6 +760,69 @@ switch ($mode) {
         if ($dryRun) { $dockerScriptArgs += "--dry-run" }
         if ($debugMode) { $dockerScriptArgs += "--debug" }
         $dockerScriptArgs += $claudeArgs
+
+        # Container reuse logic (default unless --new is specified)
+        if (-not $newContainer) {
+            $existingContainers = @(docker ps --filter "label=worktree=$containerBaseName" --format "{{.ID}}`t{{.Names}}`t{{.Status}}" 2>$null | Where-Object { $_ })
+            if ($existingContainers.Count -eq 1) {
+                $parts = $existingContainers[0] -split "`t"
+                $containerId = $parts[0]
+                $containerDisplayName = $parts[1]
+                if ($dryRun) {
+                    Write-Host ""
+                    Write-Host "=== DRY RUN (Docker - reuse) ===" -ForegroundColor Yellow
+                    Write-Host ""
+                    Write-Host "Would reuse container: $containerDisplayName" -ForegroundColor Cyan
+                    Write-Host "Command:" -ForegroundColor Cyan
+                    Write-Host "  docker exec -it -w $dockerWorkDir $containerId pwsh $dockerScriptPath $($dockerScriptArgs -join ' ')"
+                    Write-Host ""
+                } else {
+                    Write-Host "Reusing container: $containerDisplayName" -ForegroundColor Cyan
+                    $execArgs = @("exec", "-it", "-w", $dockerWorkDir, $containerId, "pwsh", $dockerScriptPath) + $dockerScriptArgs
+                    & docker @execArgs
+                }
+                exit $LASTEXITCODE
+            } elseif ($existingContainers.Count -gt 1) {
+                Write-Host "Multiple containers found for '$containerBaseName':" -ForegroundColor Cyan
+                Write-Host ""
+                for ($i = 0; $i -lt $existingContainers.Count; $i++) {
+                    $parts = $existingContainers[$i] -split "`t"
+                    Write-Host "  [$($i + 1)] $($parts[1]) ($($parts[2]))"
+                }
+                Write-Host "  [n] Create new container"
+                Write-Host ""
+                $choice = Read-Host "Select container"
+                if ($choice -eq "n") {
+                    Write-Host "Creating new container..." -ForegroundColor Cyan
+                } elseif ($choice -match '^\d+$') {
+                    $idx = [int]$choice - 1
+                    if ($idx -ge 0 -and $idx -lt $existingContainers.Count) {
+                        $parts = $existingContainers[$idx] -split "`t"
+                        $containerId = $parts[0]
+                        $containerDisplayName = $parts[1]
+                        if ($dryRun) {
+                            Write-Host ""
+                            Write-Host "=== DRY RUN (Docker - reuse) ===" -ForegroundColor Yellow
+                            Write-Host ""
+                            Write-Host "Would reuse container: $containerDisplayName" -ForegroundColor Cyan
+                            Write-Host ""
+                        } else {
+                            Write-Host "Reusing container: $containerDisplayName" -ForegroundColor Cyan
+                            $execArgs = @("exec", "-it", "-w", $dockerWorkDir, $containerId, "pwsh", $dockerScriptPath) + $dockerScriptArgs
+                            & docker @execArgs
+                        }
+                        exit $LASTEXITCODE
+                    } else {
+                        Write-Error "Invalid selection"
+                        exit 1
+                    }
+                } else {
+                    Write-Error "Invalid selection"
+                    exit 1
+                }
+            }
+            # No existing containers found - fall through to create new
+        }
 
         # Build project path env vars for Docker
         # For worktrees, the docker path includes the worktree suffix
