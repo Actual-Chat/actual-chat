@@ -24,7 +24,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         logger.LogInformation("app host init");
 
         var chatId = TestChatId;
-        var entryKind = ChatEntryKind.Text;
+        var entryKind = 0;
         var range = new Range<long>(1500, 1601);
 
         var dbHub = appHost.Services.GetRequiredService<DbHub<ChatDbContext>>();
@@ -48,7 +48,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
                 break;
             }
 
-            var entryId = ChatEntryId.New(chatId, entryKind, localId);
+            var entryId = ChatEntryId.New(chatId, localId);
             var task = Task.Run(() => MeasureDuration(
                 () => UpdateChatEntry(dbHub, entryId, TimeSpan.FromMilliseconds(duration), default),
                  logger, $"UpdateChatEntry#{localI}({localId})"));
@@ -84,7 +84,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         logger.LogInformation("app host init");
 
         var chatId = TestChatId;
-        var entryKind = ChatEntryKind.Text;
+        var entryKind = 0;
         var localId1 = 1500;
         var localId2 = 1600;
 
@@ -122,7 +122,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
     private static async Task<ChatEntry[]> ReadChatEntries(
         DbHub<ChatDbContext> dbHub,
         ChatId chatId,
-        ChatEntryKind entryKind,
+        int entryKind,
         Range<long> range,
         CancellationToken cancellationToken)
     {
@@ -180,7 +180,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
     private static async Task<Unit> ProvokeDeadlock(
         DbHub<ChatDbContext> dbHub,
         ChatId chatId,
-        ChatEntryKind entryKind,
+        int entryKind,
         long entry1LocalId,
         long entry2LocalId,
         CancellationToken cancellationToken)
@@ -188,7 +188,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         await using var dbContext = await dbHub.CreateDbContext(true, cancellationToken);
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        var entry1Id = ChatEntryId.New(chatId, entryKind, entry1LocalId);
+        var entry1Id = ChatEntryId.New(chatId, entry1LocalId);
         var dbEntry1 = await dbContext.ChatEntries.ForUpdate()
             .Where(e => e.Id == entry1Id.Value)
             .FirstOrDefaultAsync(cancellationToken)
@@ -197,7 +197,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
 
         await Task.Delay(1000, cancellationToken);
 
-        var entry2Id = ChatEntryId.New(chatId, entryKind, entry2LocalId);
+        var entry2Id = ChatEntryId.New(chatId, entry2LocalId);
         var dbEntry2 = await dbContext.ChatEntries.ForUpdate()
             .Where(e => e.Id == entry2Id.Value)
             .FirstOrDefaultAsync(cancellationToken)

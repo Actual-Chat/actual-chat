@@ -211,7 +211,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         return UpdateIndexedEntries();
 
         Task UpdateIndexedEntries()
-            => entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text
+            => entry.IsSystemEntry
                 ? Task.CompletedTask
                 : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, cancellationToken);
     }

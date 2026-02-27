@@ -7,7 +7,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class JsonSerializationOutputTest(ITestOutputHelper @out) : TestBase(@out)
 {
     private static readonly ChatId SomeChatId = ChatId.Parse("dpwo1tm0tw");
-    private static readonly TextEntryId SomeTextEntryId = TextEntryId.New(SomeChatId, 1);
+    private static readonly ChatEntryId SomeTextEntryId = ChatEntryId.New(SomeChatId, 1);
 
     [Fact]
     public void DumpWarmupJson()

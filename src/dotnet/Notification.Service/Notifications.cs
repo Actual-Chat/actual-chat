@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat;
+using ActualChat.Chat;
 using ActualChat.Users;
 
 namespace ActualChat.Notification;
@@ -43,15 +43,15 @@ public class Notifications(IServiceProvider services) : INotifications
     // [ComputeMethod]
     public virtual async Task<bool> HasNotifiedMentionedMembers(
         Session session,
-        TextEntryId textEntryId,
+        ChatEntryId chatEntryId,
         CancellationToken cancellationToken)
     {
-        var chatId = textEntryId.ChatId;
+        var chatId = chatEntryId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return false;
 
-        var chatEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        var chatEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
         if (chatEntry is null)
             return false;
 
@@ -59,7 +59,7 @@ public class Notifications(IServiceProvider services) : INotifications
         if (chatEntry.AuthorId != author.Id)
             return false;
 
-        var notificationId = GetExplicitNotificationIdForNotifyMentionedMembers(author.UserId, textEntryId);
+        var notificationId = GetExplicitNotificationIdForNotifyMentionedMembers(author.UserId, chatEntryId);
         var notification = await Backend.GetExplicit(notificationId, cancellationToken).ConfigureAwait(false);
         return notification is not null;
     }
@@ -148,7 +148,7 @@ public class Notifications(IServiceProvider services) : INotifications
                 throw StandardError.Unavailable("Alert everyone is unavailable in chats with more than 10 people.");
         }
 
-        var entryId = TextEntryId.New(author.ChatId, 0);
+        var entryId = ChatEntryId.New(author.ChatId, 0);
         var changeEntry = new ChatsBackend_ChangeEntry(entryId, null,
             Change.Create(new ChatEntryDiff {
                 AuthorId = GetWalleId(author.ChatId),
@@ -170,11 +170,11 @@ public class Notifications(IServiceProvider services) : INotifications
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, textEntryId) = command;
-        var chatId = textEntryId.ChatId;
+        var (session, ChatEntryId) = command;
+        var chatId = ChatEntryId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.IsMember().Require();
-        var chatEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).Require().ConfigureAwait(false);
+        var chatEntry = await Chats.GetEntry(session, ChatEntryId, cancellationToken).Require().ConfigureAwait(false);
         var ownAuthor = chat.Rules.Author.Require();
         if (chatEntry.AuthorId != ownAuthor.Id)
             throw StandardError.Unauthorized("Only the author is allowed to notify mentioned principals.");
@@ -185,10 +185,10 @@ public class Notifications(IServiceProvider services) : INotifications
         if (mentionedUserIds.Length == 0)
             throw StandardError.Constraint("Nobody to notify.");
 
-        var notifyCommand = new NotificationsBackend_NotifyMentionedMembers(ownUserId, textEntryId, mentionedUserIds);
+        var notifyCommand = new NotificationsBackend_NotifyMentionedMembers(ownUserId, ChatEntryId, mentionedUserIds);
         await Commander.Run(notifyCommand, cancellationToken).ConfigureAwait(false);
 
-        var notificationId = GetExplicitNotificationIdForNotifyMentionedMembers(ownUserId, textEntryId);
+        var notificationId = GetExplicitNotificationIdForNotifyMentionedMembers(ownUserId, ChatEntryId);
         var notification = new ExplicitNotification(notificationId);
         var upsertNotificationCommand = new NotificationsBackend_UpsertExplicitNotification(notification);
         await Commander.Run(upsertNotificationCommand, cancellationToken).ConfigureAwait(false);
@@ -224,6 +224,6 @@ public class Notifications(IServiceProvider services) : INotifications
     private static Exception Unauthorized()
         => StandardError.Unauthorized("You can access only your own notifications.");
 
-    private static ExplicitNotificationId GetExplicitNotificationIdForNotifyMentionedMembers(UserId accountId, TextEntryId textEntryId)
-        => ExplicitNotificationId.New(accountId, ExplicitNotificationKind.NotifyMentionedMembers, textEntryId.Value);
+    private static ExplicitNotificationId GetExplicitNotificationIdForNotifyMentionedMembers(UserId accountId, ChatEntryId chatEntryId)
+        => ExplicitNotificationId.New(accountId, ExplicitNotificationKind.NotifyMentionedMembers, chatEntryId.Value);
 }

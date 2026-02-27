@@ -66,7 +66,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
             // always for typed text entries
             return true;
 
-        return await IsForeignEntry(entry.Id.ToTextEntryId(), true, cancellationToken).ConfigureAwait(false) == true;
+        return await IsForeignEntry(entry.Id, true, cancellationToken).ConfigureAwait(false) == true;
     }
 
     [ComputeMethod]
@@ -144,7 +144,7 @@ public class TranslationUI : UIServiceBase<AppUIHub>, IComputeService
        => Task.FromResult(_mustSuggestCache.TryGetValue(chatId, out _));
 
    [ComputeMethod]
-   protected virtual async Task<bool?> IsForeignEntry(TextEntryId entryId, bool useOnlyTargetLanguage, CancellationToken cancellationToken = default)
+   protected virtual async Task<bool?> IsForeignEntry(ChatEntryId entryId, bool useOnlyTargetLanguage, CancellationToken cancellationToken = default)
    {
        var entry = await ChatUI.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
        if (entry is null)

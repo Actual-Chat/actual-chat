@@ -48,8 +48,8 @@ public class ContentLinksBackend(IServiceProvider services) : IContentLinksBacke
                     chat.Description);
             }
             case ContentKind.TextEntry: {
-                var textEntryId = (TextEntryId)id;
-                var textEntry = await ChatsBackend.GetEntry(textEntryId, cancellationToken).ConfigureAwait(false);
+                var chatEntryId = (ChatEntryId)id;
+                var textEntry = await ChatsBackend.GetEntry(chatEntryId, cancellationToken).ConfigureAwait(false);
                 if (textEntry is null)
                     return ContentLinkInfo.RemovedOrUnknown(contentId);
 

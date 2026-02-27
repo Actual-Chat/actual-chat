@@ -387,14 +387,14 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
             // This query will be executed once - no need to wrap in a compute method
             var chatEntrySid = await dbContext.ChatEntries
-                .Where(e => e.Kind == ChatEntryKind.Text && e.StreamId == streamId.Value)
+                .Where(e => e.Kind == 0 && e.StreamId == streamId.Value)
                 .Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
             if (chatEntrySid == null)
                 return null; // Already transcribed
 
-            sourceId = TranslationSourceId.New(TextEntryId.Parse(chatEntrySid));
+            sourceId = TranslationSourceId.New(ChatEntryId.Parse(chatEntrySid));
         }
 
         var translationId = TranslationId.New(sourceId, targetLanguage);
@@ -636,7 +636,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     // Private methods
 
     private async ValueTask<(ChatEntry e, Translation?)> SelectTranslationAsync(ChatEntry e, Language language, CancellationToken cancellationToken)
-        => (e, await GetInternal(TranslationId.New(TextEntryId.New(e.ChatId, e.LocalId), language), cancellationToken).ConfigureAwait(false));
+        => (e, await GetInternal(TranslationId.New(ChatEntryId.New(e.ChatId, e.LocalId), language), cancellationToken).ConfigureAwait(false));
 
     private async Task<(TranslationSource? source, Translation? translation)> GetExisting(TranslationId id, CancellationToken cancellationToken)
     {

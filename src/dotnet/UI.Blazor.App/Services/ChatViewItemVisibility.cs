@@ -12,10 +12,10 @@ public sealed record ChatViewItemVisibility(
     public long MaxMessageLid { get; } = VisibleKeys.Count == 0 ? -1 : VisibleKeys.Max(x => x.LocalId);
     public bool IsEmpty => VisibleKeys.Count == 0;
 
-    public IReadOnlyList<TextEntryId> VisibleTextEntryIds => field ??= VisibleKeys
+    public IReadOnlyList<ChatEntryId> VisibleTextEntryIds => field ??= VisibleKeys
         .Where(c => c.Kind == ChatMessageKind.None)
         .OrderBy(x => x.LocalId)
-        .Select(x => TextEntryId.New(ChatId, x.LocalId))
+        .Select(x => ChatEntryId.New(ChatId, x.LocalId))
         .ToImmutableArray();
     public IReadOnlySet<long> VisibleMessageLids => field ??= VisibleKeys.Select(x => x.LocalId).ToHashSet();
 

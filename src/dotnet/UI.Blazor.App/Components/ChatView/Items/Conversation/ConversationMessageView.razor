@@ -92,7 +92,7 @@
             return;
 
         var conversation = Message.Conversation!;
-        var chatEntryId = TextEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
+        var chatEntryId = ChatEntryId.New(conversation.Id.ChatId, conversation.Id.StartEntryLid);
         _fakeEntry = new (chatEntryId);
         _lastMessage = Message;
     }

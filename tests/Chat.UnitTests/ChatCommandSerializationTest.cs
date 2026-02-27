@@ -95,7 +95,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Chats_ForwardTextEntries_Basic()
     {
-        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var destChatId = GroupChatId.New();
         var cmd = new Chats_ForwardTextEntries(TestSession, TestChatId, [entryId], [destChatId]);
         cmd.AssertPassesThroughAllSerializers(
@@ -205,7 +205,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void Reactions_React_Basic()
     {
-        var entryId = TextEntryId.New(TestChatId, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         var reaction = new Reaction {
             Id = "reaction-1",
@@ -297,7 +297,7 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     [Fact]
     public void ChatThreads_Start_Basic()
     {
-        var entryId = TextEntryId.New(TestChatId, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var cmd = new ChatThreads_Start(TestSession, TestChatId, "Thread Title", "Description", [entryId]);
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {

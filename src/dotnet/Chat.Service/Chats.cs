@@ -189,14 +189,14 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> IsEntryReadByMentionedUser(Session session, TextEntryId textEntryId, MentionId mentionId, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsEntryReadByMentionedUser(Session session, ChatEntryId chatEntryId, MentionId mentionId, CancellationToken cancellationToken)
     {
-        var chatId = textEntryId.ChatId;
+        var chatId = chatEntryId.ChatId;
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return false;
 
-        var chatEntry = await this.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        var chatEntry = await this.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
         if (chatEntry is null)
             return false;
 
@@ -354,16 +354,16 @@ public partial class Chats(IServiceProvider services) : IChats
         ChatEntry textEntry;
         if (localId is { } vLocalId) {
             // Update
-            var textEntryId = TextEntryId.New(chatId, vLocalId);
+            var chatEntryId = ChatEntryId.New(chatId, vLocalId);
             textEntry = await this
-                .GetEntry(session, textEntryId, cancellationToken)
+                .GetEntry(session, chatEntryId, cancellationToken)
                 .Require(ChatEntry.MustNotBeRemoved)
                 .ConfigureAwait(false);
 
             // Check constraints
             if (textEntry.AuthorId != author.Id)
                 throw StandardError.Unauthorized("You can edit only your own messages.");
-            if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming)
+            if (textEntry.IsStreaming)
                 throw StandardError.Constraint("Only text messages can be edited.");
             if (textEntry.ForwardedChatEntryId is not null && !OrdinalEquals(command.Text, textEntry.Content))
                 throw StandardError.Constraint("Forwarded messages cannot be edited.");
@@ -416,7 +416,7 @@ public partial class Chats(IServiceProvider services) : IChats
             }
 
             var upsertCommand = new ChatsBackend_ChangeEntry(
-                textEntryId,
+                chatEntryId,
                 null,
                 Change.Update(diff));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
@@ -427,9 +427,9 @@ public partial class Chats(IServiceProvider services) : IChats
             if (commandResult != null)
                 return commandResult;
 
-            var textEntryId = TextEntryId.New(chatId, 0);
+            var chatEntryId = ChatEntryId.New(chatId, 0);
             var upsertCommand = new ChatsBackend_ChangeEntry(
-                textEntryId,
+                chatEntryId,
                 null,
                 Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
@@ -461,8 +461,8 @@ public partial class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
-        var textEntryId = TextEntryId.New(chatId, localId);
-        await RemoveTextEntry(session, chat, textEntryId, author, cancellationToken).ConfigureAwait(false);
+        var chatEntryId = ChatEntryId.New(chatId, localId);
+        await RemoveTextEntry(session, chat, chatEntryId, author, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -476,10 +476,10 @@ public partial class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
-        var textEntryId = TextEntryId.New(chatId, localId);
+        var chatEntryId = ChatEntryId.New(chatId, localId);
         await RestoreTextEntry(session,
                 chat,
-                textEntryId,
+                chatEntryId,
                 author,
                 cancellationToken)
             .ConfigureAwait(false);
@@ -497,8 +497,8 @@ public partial class Chats(IServiceProvider services) : IChats
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         foreach (var localId in localIds) {
-            var textEntryId = TextEntryId.New(chatId, localId);
-            await RemoveTextEntry(session, chat, textEntryId, author, cancellationToken).ConfigureAwait(false);
+            var chatEntryId = ChatEntryId.New(chatId, localId);
+            await RemoveTextEntry(session, chat, chatEntryId, author, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -514,8 +514,8 @@ public partial class Chats(IServiceProvider services) : IChats
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         foreach (var localId in localIds) {
-            var textEntryId = TextEntryId.New(chatId, localId);
-            await RestoreTextEntry(session, chat, textEntryId, author, cancellationToken).ConfigureAwait(false);
+            var chatEntryId = ChatEntryId.New(chatId, localId);
+            await RestoreTextEntry(session, chat, chatEntryId, author, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -940,12 +940,12 @@ public partial class Chats(IServiceProvider services) : IChats
     private async Task RemoveTextEntry(
         Session session,
         Chat chat,
-        TextEntryId textEntryId,
+        ChatEntryId chatEntryId,
         Author author,
         CancellationToken cancellationToken)
     {
         var textEntry = await this
-            .GetEntry(session, textEntryId, cancellationToken)
+            .GetEntry(session, chatEntryId, cancellationToken)
             .Require(ChatEntry.MustNotBeRemoved)
             .ConfigureAwait(false);
 
@@ -955,7 +955,7 @@ public partial class Chats(IServiceProvider services) : IChats
         if (textEntry.IsStreaming)
             throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
 
-        await Remove(textEntryId).ConfigureAwait(false);
+        await Remove(chatEntryId).ConfigureAwait(false);
         return;
 
         async Task Remove(ChatEntryId entryId1) {
@@ -967,11 +967,11 @@ public partial class Chats(IServiceProvider services) : IChats
     private async Task RestoreTextEntry(
         Session session,
         Chat chat,
-        TextEntryId textEntryId,
+        ChatEntryId chatEntryId,
         Author author,
         CancellationToken cancellationToken)
     {
-        var textEntry = await GetRemovedEntry(textEntryId).ConfigureAwait(false);
+        var textEntry = await GetRemovedEntry(chatEntryId).ConfigureAwait(false);
 
         // Check constraints
         if (textEntry == null)
@@ -980,7 +980,7 @@ public partial class Chats(IServiceProvider services) : IChats
         if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
             throw StandardError.Unauthorized("You can restore only your own messages.");
 
-        await Restore(textEntryId).ConfigureAwait(false);
+        await Restore(chatEntryId).ConfigureAwait(false);
         return;
 
         async Task Restore(ChatEntryId entryId1) {

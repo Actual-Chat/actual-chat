@@ -48,7 +48,7 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
     {
         var chatId = ActualChat.ChatId.ParseNullable(ChatId);
         var entryId = TextEntryLocalId is { } localId && chatId is not null
-            ? TextEntryId.New(chatId, localId)
+            ? ChatEntryId.New(chatId, localId)
             : default;
         var authorId = ActualChat.AuthorId.ParseNullable(AuthorId);
 
@@ -84,8 +84,6 @@ public class DbNotification : IHasId<string>, IHasVersion<long>, IRequirementTar
         string? authorSid = null;
         var chatEntryNotification = model.ChatEntryNotification;
         if (chatEntryNotification != null) {
-            if (chatEntryNotification.EntryId.Kind != ChatEntryKind.Text)
-                throw new ArgumentOutOfRangeException(nameof(model), "EntryId must be a Text entry Id here.");
             textEntryLocalId = chatEntryNotification.EntryId.LocalId;
             authorSid = chatEntryNotification.AuthorId.Value.NullIfEmpty();
         }

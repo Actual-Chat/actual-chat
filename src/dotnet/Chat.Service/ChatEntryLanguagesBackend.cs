@@ -46,7 +46,7 @@ public class ChatEntryLanguagesBackend(IServiceProvider services)
         IEnumerable<ChatEntryId> GetEntryIds(Range<long> range)
         {
             for (var lid = range.Start; lid < range.End; lid++)
-                yield return TextEntryId.New(chatId, lid);
+                yield return ChatEntryId.New(chatId, lid);
         }
     }
 

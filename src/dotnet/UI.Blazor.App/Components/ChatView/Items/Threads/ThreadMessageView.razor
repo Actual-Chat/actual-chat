@@ -208,7 +208,7 @@
         if (!await TranslationUI.MustTranslate(chatEntry, false, cancellationToken).ConfigureAwait(false))
             return markup;
 
-        var translation = await TranslationUI.Get(chatEntry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.Get(chatEntry.Id, cancellationToken).ConfigureAwait(false);
         if (translation is null || translation.MatchesOriginal(chatEntry.Content))
             return markup;
 

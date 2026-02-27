@@ -8,7 +8,7 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
     private TranslationUI TranslationUI => Hub.TranslationUI;
 
     [ComputeMethod]
-    public virtual async Task<StreamingState?> GetStreamingState(TextEntryId id, CancellationToken cancellationToken)
+    public virtual async Task<StreamingState?> GetStreamingState(ChatEntryId id, CancellationToken cancellationToken)
     {
         var entry = await ChatUI.GetEntry(id, cancellationToken).ConfigureAwait(false);
         if (entry is null)

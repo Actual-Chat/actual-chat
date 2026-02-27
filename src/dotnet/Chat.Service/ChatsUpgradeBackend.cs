@@ -5,8 +5,6 @@ using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
-#pragma warning disable CS0618 // Type or member is obsolete (ChatEntryKind.Audio)
-
 namespace ActualChat.Chat;
 
 public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsUpgradeBackend
@@ -140,7 +138,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
 
             // Find text entries that reference audio entries but haven't been migrated yet
             var textEntries = await dbContext.ChatEntries
-                .Where(e => e.Kind == ChatEntryKind.Text)
+                .Where(e => e.Kind == 0)
                 .Where(e => e.AudioEntryId != null)
                 .Where(e => e.MediaOrStreamId == null || e.MediaOrStreamId == "")
                 .Where(e => e.LocalId > lastProcessedLocalId)
@@ -155,12 +153,8 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
             foreach (var textEntry in textEntries) {
                 lastProcessedLocalId = textEntry.LocalId;
 
-                // Look up the corresponding audio entry
-                var audioEntryId = ChatEntryId.New(
-                    ChatId.Parse(textEntry.ChatId),
-                    ChatEntryKind.Audio,
-                    textEntry.AudioEntryId!.Value);
-                var audioEntryIdStr = audioEntryId.Value;
+                // Look up the corresponding audio entry (legacy format: chatId:1:localId)
+                var audioEntryIdStr = $"{textEntry.ChatId}:1:{textEntry.AudioEntryId!.Value}";
 
                 var audioDbEntry = await dbContext.ChatEntries
                     .AsNoTracking()
@@ -171,8 +165,8 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
 
                 if (audioDbEntry is null) {
                     Log.LogWarning(
-                        "Audio entry {AudioEntryId} not found for text entry {TextEntryId}, skipping",
-                        audioEntryId, textEntry.Id);
+                        "Audio entry {AudioEntryId} not found for text entry {ChatEntryId}, skipping",
+                        audioEntryIdStr, textEntry.Id);
                     continue;
                 }
 
@@ -180,7 +174,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                 if (audioBlobId.IsNullOrEmpty()) {
                     Log.LogWarning(
                         "Audio entry {AudioEntryId} has no content (blob ID), skipping",
-                        audioEntryId);
+                        audioEntryIdStr);
                     continue;
                 }
 

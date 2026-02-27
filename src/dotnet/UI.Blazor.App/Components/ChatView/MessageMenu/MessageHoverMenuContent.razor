@@ -58,13 +58,13 @@
     }
 
     private Task Reply(ChatEntry chatEntry)
-        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, (TextEntryId)chatEntry.Id, focusOnEditor: true);
+        => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntry.Id, focusOnEditor: true);
 
     private Task OnReactionClick() {
         var reaction = new Reaction {
             Id = Symbol.Empty,
             AuthorId = null!,
-            EntryId = Entry.Id.ToTextEntryId(),
+            EntryId = Entry.Id,
             Emoji = Emojis.ThumbsUp,
         };
         return UICommander.Run(new Reactions_React(Session, reaction));

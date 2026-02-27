@@ -24,12 +24,12 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    public Task ShowRelatedEntry(RelatedEntryKind kind, TextEntryId entryId, bool focusOnEditor, bool updateUI = true)
+    public Task ShowRelatedEntry(RelatedEntryKind kind, ChatEntryId entryId, bool focusOnEditor, bool updateUI = true)
         => ShowRelatedEntry(new RelatedEntryRef(kind, new EntryRef(entryId)), focusOnEditor, updateUI);
 
     public Task ShowRelatedEntry(RelatedEntryKind kind, ChatEntry chatEntry, bool focusOnEditor, bool updateUI = true)
     {
-        var entryRef = new EntryRef((TextEntryId)chatEntry.Id);
+        var entryRef = new EntryRef(chatEntry.Id);
         if (chatEntry.IsSending && !chatEntry.IsStored())
             entryRef = entryRef with {
                 ChatEntry = chatEntry

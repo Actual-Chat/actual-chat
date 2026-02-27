@@ -47,7 +47,7 @@ public static class ChatEntryOperations
         var now = clocks.SystemClock.Now;
         var author = await tester.GetOwnAuthor(chatId, cancellationToken).Require();
         var streamId = StreamId.New(NodeRef.ThisNodeAlias).Value;
-        var textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(TextEntryId.New(chatId, 0),
+        var textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(ChatEntryId.New(chatId, 0),
                 null,
                 Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
@@ -59,7 +59,7 @@ public static class ChatEntryOperations
                 })),
             cancellationToken: cancellationToken);
         var entryLanguage = await tester
-            .CreateEntryLanguage(textEntry.Id.ToTextEntryId(), language, textEntry.ContentHash, cancellationToken)
+            .CreateEntryLanguage(textEntry.Id, language, textEntry.ContentHash, cancellationToken)
             .ConfigureAwait(false);
         return new (textEntry, entryLanguage);
     }

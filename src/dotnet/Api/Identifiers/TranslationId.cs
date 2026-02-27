@@ -32,7 +32,7 @@ public sealed partial class TranslationId : StringIdentifier, IStringIdentifier<
 
     // Factories and constructors
 
-    public static TranslationId New(TextEntryId chatEntryId, Language language)
+    public static TranslationId New(ChatEntryId chatEntryId, Language language)
         => New(TranslationSourceId.New(chatEntryId), language);
 
     public static TranslationId New(TranslationSourceId translationSourceId, Language language)

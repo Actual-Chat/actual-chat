@@ -1,7 +1,5 @@
 using ActualChat.Live;
 
-#pragma warning disable CS0618 // Type or member is obsolete (ChatEntryKind.Audio - legacy compat)
-
 namespace ActualChat.Streaming;
 
 public partial class LiveBackend
@@ -96,26 +94,13 @@ public partial class LiveBackend
 
             // Find entries that are currently streaming
             foreach (var entry in entries) {
-                // New model: text entry with MediaOrStreamId that is not a valid MediaId = live stream
-                if (entry.Kind == ChatEntryKind.Text
-                    && !entry.MediaOrStreamId.IsNullOrEmpty()
+                // Text entry with MediaOrStreamId that is not a valid MediaId = live stream
+                if (!entry.MediaOrStreamId.IsNullOrEmpty()
                     && !MediaId.TryParse(entry.MediaOrStreamId, out _)) {
                     var streamInfo = new LiveStreamInfo {
                         ChatId = ChatId,
                         AuthorId = entry.AuthorId,
                         StreamId = entry.MediaOrStreamId,
-                        BeginsAt = entry.BeginsAt,
-                    };
-                    _streams.TryAdd(streamInfo.StreamId, streamInfo);
-                    continue;
-                }
-
-                // Legacy model: audio entry with StreamId set
-                if (entry.IsStreaming && entry.Kind == ChatEntryKind.Audio) {
-                    var streamInfo = new LiveStreamInfo {
-                        ChatId = ChatId,
-                        AuthorId = entry.AuthorId,
-                        StreamId = entry.StreamId,
                         BeginsAt = entry.BeginsAt,
                     };
                     _streams.TryAdd(streamInfo.StreamId, streamInfo);

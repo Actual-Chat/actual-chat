@@ -19,7 +19,7 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public static string ComposeId(TextEntryId entryId, AuthorId authorId)
+    public static string ComposeId(ChatEntryId entryId, AuthorId authorId)
         => $"{entryId}:{authorId}";
 
     public DbReaction() { }
@@ -30,7 +30,7 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Id = Id,
             Version = Version,
             AuthorId = ActualChat.AuthorId.Parse(AuthorId),
-            EntryId = TextEntryId.Parse(EntryId),
+            EntryId = ChatEntryId.Parse(EntryId),
             Emoji = ActualChat.Emoji.Parse(Emoji),
             ModifiedAt = ModifiedAt,
         };

@@ -14,7 +14,7 @@ public class ChatMarkupHubExtTest
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = TextEntryId.New(chatId, 1);
+        var chatEntryId = ChatEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Content = "some text",
@@ -41,7 +41,7 @@ public class ChatMarkupHubExtTest
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = TextEntryId.New(chatId, 1);
+        var chatEntryId = ChatEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Attachments = attachments.Select(Attachment).ToArray(),
@@ -68,7 +68,7 @@ public class ChatMarkupHubExtTest
         using var services = new ServiceCollection().AddTransient<IMarkupParser, MarkupParser>().BuildServiceProvider();
         var chatId = GroupChatId.New();
         var markupHub = new ChatMarkupHub(services, chatId);
-        var chatEntryId = TextEntryId.New(chatId, 1);
+        var chatEntryId = ChatEntryId.New(chatId, 1);
         var chatEntry = new ChatEntry {
             Id = chatEntryId,
             Attachments = attachments.Select(Attachment).ToArray(),

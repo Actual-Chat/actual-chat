@@ -1,10 +1,10 @@
-﻿namespace ActualChat.Chat;
+namespace ActualChat.Chat;
 
 public static class ChatEntryExt
 {
-    public static TextEntryId? GetRepliedChatEntryId(this ChatEntry entry)
+    public static ChatEntryId? GetRepliedChatEntryId(this ChatEntry entry)
         => entry.RepliedEntryLid is { } repliedEntryLid
-            ? TextEntryId.New(entry.Id.ChatId, repliedEntryLid)
+            ? ChatEntryId.New(entry.Id.ChatId, repliedEntryLid)
             : null;
 
     public static ChatEntry WithPopulatedValues(this ChatEntry entry, ChatEntry src)
@@ -31,7 +31,7 @@ public static class ChatEntryExt
         if (entry is null)
             return false;
 
-        if (entry.IsSystemEntry || entry.Kind != ChatEntryKind.Text)
+        if (entry.IsSystemEntry)
             return false;
 
         if (isForStreaming)

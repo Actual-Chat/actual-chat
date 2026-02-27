@@ -318,7 +318,7 @@
                 var replacementChatId = await Chats.GetForwardChatReplacement(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken).ConfigureAwait(false);
                 if (replacementChatId is not null) {
                     forwardedChat = await Chats.Get(Session, replacementChatId, cancellationToken).ConfigureAwait(false);
-                    forwardedChatEntryId = CreateChatEntryId(entry.ForwardedChatEntryId.Kind, replacementChatId, entry.ForwardedChatEntryId.LocalId);
+                    forwardedChatEntryId = ChatEntryId.New(replacementChatId, entry.ForwardedChatEntryId.LocalId);
                 }
             }
         }
@@ -370,11 +370,7 @@
     }
 
     private ChatEntryId? GetRepliedEntryId(ChatEntry entry)
-        => entry.RepliedEntryLid is not { } repliedEntryLocalId ? null : CreateChatEntryId(entry.Kind, entry.ChatId, repliedEntryLocalId);
-
-    private static ChatEntryId CreateChatEntryId(ChatEntryKind kind, ChatId chatId, long localId) {
-        return TextEntryId.New(chatId, localId);
-    }
+        => entry.RepliedEntryLid is not { } repliedEntryLocalId ? null : ChatEntryId.New(entry.ChatId, repliedEntryLocalId);
 
     private async ValueTask<(bool IsUnread, bool IsUnreadBlockStart)> IsUnreadByOthers(
         Chat chat,
@@ -425,7 +421,7 @@
 
     private void OnForwardedMessageAuthorClick(ChatEntryId? entryId, Author? forwardedAuthor) {
         if (entryId is not null)
-            _ = History.NavigateTo(Links.Chat(entryId.ToTextEntryId()));
+            _ = History.NavigateTo(Links.Chat(entryId));
         else if (forwardedAuthor != null)
             _ = AuthorUI.Show(forwardedAuthor.Id);
     }

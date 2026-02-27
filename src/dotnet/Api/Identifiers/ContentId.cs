@@ -49,7 +49,7 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
             return ContentKind.Chat;
         if (id is UserId)
             return ContentKind.User;
-        if (id is TextEntryId)
+        if (id is ChatEntryId)
             return ContentKind.TextEntry;
         if (id is AuthorId)
             return ContentKind.Author;
@@ -129,9 +129,9 @@ public partial class ContentId : StringIdentifier, IStringIdentifier<ContentId>
                 result = new ContentId(s, kind, chatId);
                 return true;
             case ContentKind.TextEntry:
-                if (!TextEntryId.TryParse(sTargetId, out var textEntryId))
+                if (!ChatEntryId.TryParse(sTargetId, out var chatEntryId))
                     return false;
-                result = new ContentId(s, kind, textEntryId);
+                result = new ContentId(s, kind, chatEntryId);
                 return true;
             case ContentKind.Author:
                 if (!AuthorId.TryParse(sTargetId, out var authorId))

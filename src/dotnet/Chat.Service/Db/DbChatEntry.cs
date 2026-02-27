@@ -65,7 +65,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public double Duration { get; set; }
 
-    public ChatEntryKind Kind { get; set; }
+    public int Kind { get; set; }
     public string Content { get; set; } = "";
     public string? ContentHash { get; set; } = "";
     public bool HasAttachments { get; set; }
@@ -90,7 +90,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             : attachments.OrderBy(x => x.Index).ToArray();
         var hasAttachmentUploads = attachmentsArray.Any(c => c.Media.ContentId.IsNullOrEmpty());
         var chatId = ActualChat.ChatId.Parse(ChatId);
-        var id = ChatEntryId.New(chatId, Kind, LocalId);
+        var id = ChatEntryId.New(chatId, LocalId);
         var linkPreviewIds = DeserializeLinkPreviewIds();
         linkPreviews ??= [];
         return new (id, Version) {
@@ -122,10 +122,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             LinkPreviewIds = linkPreviewIds,
             LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
             LinkPreviews = linkPreviews,
-            TimeMap = Kind == ChatEntryKind.Text
-                ? TimeMap != null
-                    ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
-                    : default
+            TimeMap = TimeMap != null
+                ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
                 : default,
         };
     }
@@ -146,7 +144,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         Id = id.Value;
         ChatId = model.ChatId.Value;
-        Kind = model.Kind;
+        Kind = 0;
         LocalId = model.LocalId;
         Version = model.Version;
         IsRemoved = model.IsRemoved;
@@ -188,7 +186,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             builder.Property(x => x.AuthorId).IsRequired();
 
             builder.HasIndex(nameof(ChatId), nameof(Version), nameof(LocalId))
-                .HasFilter($"kind = {(byte)ChatEntryKind.Text}");
+                .HasFilter("kind = 0");
         }
     }
 }

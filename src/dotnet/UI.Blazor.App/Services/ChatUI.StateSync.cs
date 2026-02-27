@@ -1,4 +1,4 @@
-﻿using ActualChat.UI.Blazor.App.Events;
+using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -106,7 +106,7 @@ public partial class ChatUI
             // ReSharper disable once PossiblyMistakenUseOfCancellationToken
             var changes = HighlightedEntryId.Computed.ChangesUntyped(FixedDelayer.Get(0.1), cancellationToken);
             await foreach (var c in changes.ConfigureAwait(false)) {
-                var cHighlightedEntryId = (Computed<TextEntryId?>)c;
+                var cHighlightedEntryId = (Computed<ChatEntryId?>)c;
                 cts.CancelAndDisposeSilently();
                 var highlightedEntryId = cHighlightedEntryId.Value;
                 if (highlightedEntryId is null)

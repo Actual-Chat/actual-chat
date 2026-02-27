@@ -57,7 +57,7 @@
             return new(true);
 
         if (!_hasRead.Value)
-            _hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntry.Id.ToTextEntryId(), Markup.Id, cancellationToken).ConfigureAwait(false);
+            _hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntry.Id, Markup.Id, cancellationToken).ConfigureAwait(false);
         return new(_hasRead);
     }
 

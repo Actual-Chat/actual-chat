@@ -12,7 +12,7 @@ public sealed partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>
 {
     [DataMember, MemoryPackOrder(0)] public required Symbol Id { get; init; }
     [DataMember, MemoryPackOrder(1)] public long Version { get; init; }
-    [DataMember, MemoryPackOrder(2)] public required TextEntryId EntryId { get; init; }
+    [DataMember, MemoryPackOrder(2)] public required ChatEntryId EntryId { get; init; }
     [DataMember, MemoryPackOrder(3)] public required Emoji Emoji { get; init; }
     [DataMember, MemoryPackOrder(4)] public required long Count { get; init; }
 

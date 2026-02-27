@@ -1,11 +1,10 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Mathematics.Internal;
+using ActualChat.Media;
 using ActualChat.Users;
 using ActualLab.IO;
 using Microsoft.EntityFrameworkCore;
-
-#pragma warning disable CS0618 // Type or member is obsolete (AudioEntryId, ChatEntryKind.Audio)
 
 namespace ActualChat.Chat;
 
@@ -207,13 +206,13 @@ public partial class ChatsUpgradeBackend
                 lastEndsAt += TimeSpan.FromSeconds(rnd.NextDouble() * 5);
                 lastBeginsAt = lastEndsAt;
                 var localId = await ChatsBackend
-                    .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
+                    .DbNextLocalId(dbContext, chatId, cancellationToken)
                     .ConfigureAwait(false);
-                var id = TextEntryId.New(chatId, localId);
+                var id = ChatEntryId.New(chatId, localId);
                 var entry = new DbChatEntry {
                     Id = id.Value,
                     ChatId = chatId.Value,
-                    Kind = ChatEntryKind.Text,
+                    Kind = 0,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
@@ -234,33 +233,26 @@ public partial class ChatsUpgradeBackend
                 lastBeginsAt = Moment.Max(lastBeginsAt, lastEndsAt + TimeSpan.FromSeconds(20 * (rnd.NextDouble() - 0.5)));
                 lastEndsAt = lastBeginsAt + duration;
 
-                var localId = await ChatsBackend
-                    .DbNextLocalId(dbContext, chatId, ChatEntryKind.Audio, cancellationToken)
-                    .ConfigureAwait(false);
-                var id = (ChatEntryId)AudioEntryId.New(chatId, localId);
                 var timeMap = ConvertOldTextToTimeMap(
                     "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}");
-                var audioEntry = new DbChatEntry {
-                    Id = id.Value,
-                    ChatId = chatId.Value,
-                    Kind = id.Kind,
-                    LocalId = localId,
-                    Version = VersionGenerator.NextVersion(),
-                    BeginsAt = lastBeginsAt,
-                    EndsAt = lastEndsAt,
-                    Content = "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm",
-                    AuthorId = author.Id.Value,
-                };
-                dbContext.Add(audioEntry);
 
-                localId = await ChatsBackend
-                    .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
+                // Create a Media record for the audio blob
+                var mediaId = MediaId.New(chatId.Value);
+                var media = new MediaFull(mediaId) {
+                    ContentId = "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm",
+                    ContentType = "audio/webm",
+                };
+                var mediaChange = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
+                await Commander.Call(mediaChange, cancellationToken).ConfigureAwait(false);
+
+                var localId = await ChatsBackend
+                    .DbNextLocalId(dbContext, chatId, cancellationToken)
                     .ConfigureAwait(false);
-                id = TextEntryId.New(chatId, localId);
+                var id = ChatEntryId.New(chatId, localId);
                 var textEntry = new DbChatEntry {
                     Id = id.Value,
                     ChatId = chatId.Value,
-                    Kind = id.Kind,
+                    Kind = 0,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
@@ -269,7 +261,7 @@ public partial class ChatsUpgradeBackend
                         "Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал "
                         + "открыв мне чудо на Земле",
                     TimeMap = timeMap,
-                    AudioEntryId = audioEntry.LocalId,
+                    MediaOrStreamId = mediaId.Value,
                     AuthorId = author.Id.Value,
                 };
                 dbContext.Add(textEntry);
@@ -287,31 +279,24 @@ public partial class ChatsUpgradeBackend
 
                 var timeMap = ConvertOldTextToTimeMap(
                     "{\"SourcePoints\":[0,5,31,35,53,63,69,76,82,119,121,126],\"TargetPoints\":[0,1.4,3,3.6,4.8,5.3,6,6.3,7,9.5,9.5,10.53]}");
-                var localId = await ChatsBackend
-                    .DbNextLocalId(dbContext, chatId, ChatEntryKind.Audio, cancellationToken)
-                    .ConfigureAwait(false);
-                var id = (ChatEntryId)AudioEntryId.New(chatId, localId);
-                var audioEntry = new DbChatEntry {
-                    Id = id.Value,
-                    ChatId = chatId.Value,
-                    Kind = id.Kind,
-                    LocalId = localId,
-                    Version = VersionGenerator.NextVersion(),
-                    BeginsAt = lastBeginsAt,
-                    EndsAt = lastEndsAt,
-                    Content = "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm",
-                    AuthorId = author.Id.Value,
-                };
-                dbContext.Add(audioEntry);
 
-                localId = await ChatsBackend
-                    .DbNextLocalId(dbContext, chatId, ChatEntryKind.Text, cancellationToken)
+                // Create a Media record for the audio blob
+                var mediaId = MediaId.New(chatId.Value);
+                var media = new MediaFull(mediaId) {
+                    ContentId = "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm",
+                    ContentType = "audio/webm",
+                };
+                var mediaChange = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
+                await Commander.Call(mediaChange, cancellationToken).ConfigureAwait(false);
+
+                var localId = await ChatsBackend
+                    .DbNextLocalId(dbContext, chatId, cancellationToken)
                     .ConfigureAwait(false);
-                id = TextEntryId.New(chatId, localId);
+                var id = ChatEntryId.New(chatId, localId);
                 var textEntry = new DbChatEntry {
                     Id = id.Value,
                     ChatId = chatId.Value,
-                    Kind = id.Kind,
+                    Kind = 0,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
@@ -320,7 +305,7 @@ public partial class ChatsUpgradeBackend
                         "утро в декабре туманом окутана под ногами белый снег предатель виден каждый "
                         + "шаг и холоду лютому слишком просто сладить с тобой",
                     TimeMap = timeMap,
-                    AudioEntryId = audioEntry.LocalId,
+                    MediaOrStreamId = mediaId.Value,
                     AuthorId = author.Id.Value,
                 };
                 dbContext.Add(textEntry);

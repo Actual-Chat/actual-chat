@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Streaming;
+namespace ActualChat.Streaming;
 
 /// <summary>
 /// Represents an active audio recording session for a chat entry.
@@ -9,7 +9,7 @@ public sealed partial record AudioRecord(
     [property: DataMember, MemoryPackOrder(1)] Session Session,
     [property: DataMember, MemoryPackOrder(2)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(3)] double ClientStartOffset,
-    [property: DataMember, MemoryPackOrder(4)] TextEntryId? RepliedEntryId
+    [property: DataMember, MemoryPackOrder(4)] ChatEntryId? RepliedEntryId
     ) : IHasId<StreamId>, IHasNodeRef
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]

@@ -13,7 +13,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void TextEntryChangedEvent_Basic()
     {
-        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         var entry = new ChatEntry(entryId, 1) {
             AuthorId = authorId,
@@ -154,7 +154,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void ReactionChangedEvent_Basic()
     {
-        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         var reactionAuthorId = AuthorId.New(TestChatId, 10);
         var entry = new ChatEntry(entryId, 1) {
@@ -162,7 +162,7 @@ public class ChatEventSerializationTest(ITestOutputHelper @out) : TestBase(@out)
             BeginsAt = new Moment(DateTime.UtcNow),
             Content = "Hello",
         };
-        var entryIdText = TextEntryId.New(TestChatId, 1);
+        var entryIdText = ChatEntryId.New(TestChatId, 1);
         var reaction = new Reaction {
             Id = "reaction-1",
             AuthorId = reactionAuthorId,

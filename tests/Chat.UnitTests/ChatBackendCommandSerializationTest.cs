@@ -64,7 +64,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     [Fact]
     public void ChatsBackend_ChangeEntry_Basic()
     {
-        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var diff = new ChatEntryDiff { Content = "Updated" };
         var cmd = new ChatsBackend_ChangeEntry(entryId, null, Change.Create(diff));
         cmd.AssertPassesThroughAllSerializers();
@@ -123,7 +123,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     [Fact]
     public void ChatsBackend_RetranscribeChatEntry_Basic()
     {
-        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var cmd = new ChatsBackend_RetranscribeChatEntry(entryId, Languages.English);
         cmd.AssertPassesThroughAllSerializers();
     }
@@ -132,7 +132,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     [Fact]
     public void ChatsBackend_CreateAttachments_Basic()
     {
-        var entryId = TextEntryId.New(TestChatId, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var mediaId = MediaId.New("scope1");
         var attachment = new TextEntryAttachment("att-1", 1) {
             EntryId = entryId,
@@ -196,7 +196,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     [Fact]
     public void ChatEntryLanguagesBackend_Detect_Basic()
     {
-        var entryId = ChatEntryId.New(TestChatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var cmd = new ChatEntryLanguagesBackend_Detect(entryId, new HashString("SHA256 Base16 abc123"));
         cmd.AssertPassesThroughAllSerializers();
     }
@@ -240,7 +240,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     [Fact]
     public void ReactionsBackend_React_Basic()
     {
-        var entryId = TextEntryId.New(TestChatId, 1);
+        var entryId = ChatEntryId.New(TestChatId, 1);
         var authorId = AuthorId.New(TestChatId, 5);
         var reaction = new Reaction {
             Id = "reaction-1",
@@ -275,7 +275,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     [Fact]
     public void TranslationsBackend_Change_Basic()
     {
-        var sourceId = TranslationSourceId.New(TextEntryId.New(TestChatId, 1));
+        var sourceId = TranslationSourceId.New(ChatEntryId.New(TestChatId, 1));
         var translationId = TranslationId.New(sourceId, Languages.Russian);
         var diff = new TranslationDiff { Content = "Translated" };
         var cmd = new TranslationsBackend_Change(translationId, null, Change.Create(diff));
@@ -285,7 +285,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     [Fact]
     public void TranslationsBackend_Translate_Basic()
     {
-        var sourceId = TranslationSourceId.New(TextEntryId.New(TestChatId, 1));
+        var sourceId = TranslationSourceId.New(ChatEntryId.New(TestChatId, 1));
         var cmd = new TranslationsBackend_Translate(sourceId, Languages.Russian, false, false);
         cmd.AssertPassesThroughAllSerializers();
     }

@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Chat;
+namespace ActualChat.Chat;
 
 /// <summary>
 /// Service for managing chat threads (reply threads attached to messages).
@@ -21,7 +21,7 @@ public interface IChatThreads : IComputeService
     // Returns author in parent chat who created the thread.
     Task<Author?> GetThreadCreator(Session session, ThreadChatId threadChatId, CancellationToken cancellationToken);
 
-    Task<(string, string)> SuggestThreadTitle(Session session, ChatId parentChatId, TextEntryId[] entryIds, CancellationToken cancellationToken);
+    Task<(string, string)> SuggestThreadTitle(Session session, ChatId parentChatId, ChatEntryId[] entryIds, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Chat> OnStart(ChatThreads_Start command, CancellationToken cancellationToken);
@@ -37,7 +37,7 @@ public sealed partial record ChatThreads_Start(
     [property: DataMember, MemoryPackOrder(1)] ChatId ParentChatId,
     [property: DataMember, MemoryPackOrder(2)] string Title,
     [property: DataMember, MemoryPackOrder(3)] string Description,
-    [property: DataMember, MemoryPackOrder(4)] TextEntryId[] EntryIds
+    [property: DataMember, MemoryPackOrder(4)] ChatEntryId[] EntryIds
 ) : ISessionCommand<Chat>, IApiCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]

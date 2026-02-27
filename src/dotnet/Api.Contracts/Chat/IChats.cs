@@ -58,7 +58,7 @@ public interface IChats : IComputeService
     Task<ReadPositionsStat> GetReadPositionsStat(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<bool> IsEntryReadByMentionedUser(Session session, TextEntryId textEntryId, MentionId mentionId, CancellationToken cancellationToken);
+    Task<bool> IsEntryReadByMentionedUser(Session session, ChatEntryId chatEntryId, MentionId mentionId, CancellationToken cancellationToken);
 
     // Commands
 

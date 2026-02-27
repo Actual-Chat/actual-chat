@@ -180,9 +180,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             db.AddEntityResolver<string, DbChat>();
 
             // DbChatEntry
-            db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
+            db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, string>(
                 dbContext => dbContext.ChatEntries,
-                (e, shardKey) => e.ChatId == shardKey.ChatId.Value && e.Kind == shardKey.Kind,
+                (e, shardKey) => e.ChatId == shardKey && e.Kind == 0,
                 e => e.LocalId);
 
             // DbAuthor

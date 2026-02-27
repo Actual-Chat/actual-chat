@@ -130,7 +130,7 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
         chatEntry.Content.Should().Be(createCmd.Text);
 
         // Get entry to verify attachments
-        var entryId = TextEntryId.New(chatId, chatEntry.LocalId);
+        var entryId = ChatEntryId.New(chatId, chatEntry.LocalId);
         var entryWith3Attachments = await chats.GetEntry(session, entryId);
         entryWith3Attachments.Should().NotBeNull();
         entryWith3Attachments.Attachments.Should().HaveCount(3);

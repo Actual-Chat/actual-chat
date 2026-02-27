@@ -62,7 +62,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
             if (sendingMessage.LoadedForDisplay)
                 continue;
 
-            var entryId = TextEntryId.New(ChatId, localId);
+            var entryId = ChatEntryId.New(ChatId, localId);
             var chatEntry = new ChatEntry(entryId, 0) {
                 AuthorId = ownAuthorId,
                 Content = sendingMessage.Content,

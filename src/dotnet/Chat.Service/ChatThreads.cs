@@ -133,13 +133,13 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
     public virtual async Task<(string, string)> SuggestThreadTitle(
         Session session,
         ChatId parentChatId,
-        TextEntryId[] entryIds,
+        ChatEntryId[] entryIds,
         CancellationToken cancellationToken)
     {
         await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
         var textEntries = new List<TextEntry>();
-        foreach (var textEntryId in entryIds) {
-            var chatEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        foreach (var chatEntryId in entryIds) {
+            var chatEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
             if (chatEntry is not null)
                 textEntries.Add(new TextEntry(chatEntry));
         }
@@ -172,8 +172,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
 
         var isFirst = true;
         Chat? threadChat = null;
-        foreach (var textEntryId in command.EntryIds.OrderBy(c => c.LocalId)) {
-            var textEntry = await Chats.GetEntry(session, textEntryId, cancellationToken).ConfigureAwait(false);
+        foreach (var chatEntryId in command.EntryIds.OrderBy(c => c.LocalId)) {
+            var textEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
             if (textEntry is null || textEntry.IsRemoved)
                 continue;
 
@@ -191,7 +191,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
 
             // Create a thread chat entry
             {
-                var textEntryId1 = TextEntryId.New(chatId, 0);
+                var textEntryId1 = ChatEntryId.New(chatId, 0);
                 var textEntryAuthorId = AuthorsBackend.Remap(textEntry.AuthorId, chatId);
                 var upsertEntryCommand = new ChatsBackend_ChangeEntry(
                     textEntryId1,
@@ -210,7 +210,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
                     ? new ChatEntryDiff { IsThreadStartEntry = true }
                     : new ChatEntryDiff { IsThreadEntry = true };
                 var upsertEntryCommand = new ChatsBackend_ChangeEntry(
-                    textEntryId,
+                    chatEntryId,
                     null,
                     Change.Update(diff));
                 await Commander.Call(upsertEntryCommand, cancellationToken).ConfigureAwait(false);

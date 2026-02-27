@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat.Db;
+using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
@@ -24,9 +24,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private const string CreatedChatEntryId = "CreatedChatEntryId";
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
-    private static readonly ILookup<TextEntryId, TextEntryAttachment> EmptyAttachments
+    private static readonly ILookup<ChatEntryId, TextEntryAttachment> EmptyAttachments
         = Array.Empty<TextEntryAttachment>().ToLookup(ta => ta.EntryId);
-    private static readonly Task<ILookup<TextEntryId, TextEntryAttachment>> EmptyAttachmentsTask
+    private static readonly Task<ILookup<ChatEntryId, TextEntryAttachment>> EmptyAttachmentsTask
         = Task.FromResult(EmptyAttachments);
     private static readonly IReadOnlyDictionary<Symbol, LinkPreview> EmptyLinkPreviews
         = new Dictionary<Symbol, LinkPreview>().AsReadOnly();
@@ -54,7 +54,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbEntityResolver<string, DbChat> DbChatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
     private IDbEntityResolver<string, DbChatCopyState> DbChatCopyStateResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatCopyState>>();
     private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
-    private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
+    private IDbShardLocalIdGenerator<DbChatEntry, string> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, string>>();
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
     private FlowHub FlowHub => field ??= Services.FlowHub();
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
@@ -105,7 +105,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         var sid = chatId.Value;
-        return await dbContext.ChatEntries.Where(x => x.Id == sid && x.Kind == ChatEntryKind.Text)
+        return await dbContext.ChatEntries.Where(x => x.Id == sid && x.Kind == 0)
             .MaxAsync(x => (long?)x.Version, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -231,7 +231,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value && e.Kind == ChatEntryKind.Text)
+            .Where(e => e.ChatId == chatId.Value && e.Kind == 0)
             .Where(e => !e.IsThreadEntry);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => !e.IsRemoved);
@@ -275,7 +275,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var idRange = idTile.Range;
         var dbEntries = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value
-                && e.Kind == ChatEntryKind.Text
+                && e.Kind == 0
                 && e.LocalId >= idRange.Start
                 && e.LocalId < idRange.End
                 && !e.IsThreadEntry)
@@ -293,7 +293,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var allLinkPreviews = await allLinkPreviewsTask.ConfigureAwait(false);
         var allAudio = await allAudioTask.ConfigureAwait(false);
         var entries = dbEntries.Select(e => {
-            var entryId = TextEntryId.Parse(e.Id);
+            var entryId = ChatEntryId.Parse(e.Id);
             var entryAttachments = allAttachments[entryId];
             var linkPreviews = e.DeserializeLinkPreviewIds()
                 .Select(previewId => allLinkPreviews.GetValueOrDefault(previewId))
@@ -514,7 +514,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var entryIds = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value
-                && e.Kind == ChatEntryKind.Text
+                && e.Kind == 0
                 && e.LocalId >= idTileRange.Start
                 && e.LocalId < idTileRange.End
                 && !e.IsRemoved)
@@ -525,7 +525,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var previousEntryId = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value
-                && e.Kind == ChatEntryKind.Text
+                && e.Kind == 0
                 && e.LocalId < idTileRange.Start
                 && !e.IsRemoved)
             .MaxAsync(e => (long?)e.LocalId, cancellationToken)
@@ -533,7 +533,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var nextEntryId = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value
-                && e.Kind == ChatEntryKind.Text
+                && e.Kind == 0
                 && e.LocalId >= idTileRange.End
                 && !e.IsRemoved)
             .MinAsync(e => (long?)e.LocalId, cancellationToken)
@@ -611,7 +611,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     [ComputeMethod]
-    protected virtual async Task<TextEntryAttachment[]> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
+    protected virtual async Task<TextEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -721,7 +721,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (query.LastLocalId == 0) {
             var dbEntries = await dbContext.ChatEntries
                 .Where(x => x.ChatId == query.ChatId.Value
-                    && x.Kind == ChatEntryKind.Text
+                    && x.Kind == 0
                     && x.Version >= query.MinVersion
                     && x.Version <= query.MaxVersion)
                 .OrderBy(x => x.Version)
@@ -734,7 +734,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var part1 = await dbContext.ChatEntries
             .Where(x => x.ChatId == query.ChatId.Value
-                && x.Kind == ChatEntryKind.Text
+                && x.Kind == 0
                 && x.Version == query.MinVersion
                 && x.LocalId > query.LastLocalId)
             .OrderBy(x => x.Version)
@@ -748,7 +748,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var part2 = await dbContext.ChatEntries
             .Where(x => x.ChatId == query.ChatId.Value
-                && x.Kind == ChatEntryKind.Text
+                && x.Kind == 0
                 && x.Version > query.MinVersion
                 && x.Version <= query.MaxVersion)
             .OrderBy(x => x.Version)
@@ -775,7 +775,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbEntries = await dbContext.ChatEntries.Where(x
                 => x.ChatId == chatId.Value
-                && x.Kind == ChatEntryKind.Text
+                && x.Kind == 0
                 && x.LocalId > minLocalIdExclusive)
             .OrderBy(x => x.LocalId)
             .Take(limit)
@@ -784,7 +784,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var allAttachments = await GetAttachments(dbEntries, cancellationToken).ConfigureAwait(false);
         return dbEntries
             .Select(x => {
-                var entryId = TextEntryId.Parse(x.Id);
+                var entryId = ChatEntryId.Parse(x.Id);
                 var entryAttachments = allAttachments[entryId];
                 return x.ToModel(entryAttachments);
             })
@@ -802,7 +802,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbEntries = await dbContext.ChatEntries
             .Where(x => x.ChatId == chatId.Value
-                && x.Kind == ChatEntryKind.Text
+                && x.Kind == 0
                 && x.BeginsAt >= from.ToDateTime())
             .OrderBy(x => x.LocalId)
             .ToListAsync(cancellationToken)
@@ -1178,7 +1178,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var chatEntryId = command.ChatEntryId;
         var chatId = chatEntryId.ChatId.Require();
         var changeKind = change.Kind;
-        var entryKind = chatEntryId.Kind;
         var expectedVersion = command.ExpectedVersion;
         var context = CommandContext.GetCurrent();
         const string boundToThreadHasChangedKey = "boundToThreadHasChanged";
@@ -1243,9 +1242,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             if (change.IsCreate(out var update)) {
                 chatId.Require();
-                var localId = await DbNextLocalId(dbContext, chatId, entryKind, cancellationToken)
+                var localId = await DbNextLocalId(dbContext, chatId, cancellationToken)
                     .ConfigureAwait(false);
-                chatEntryId = ChatEntryId.New(chatId, entryKind, localId);
+                chatEntryId = ChatEntryId.New(chatId, localId);
                 entry = new ChatEntry(chatEntryId) {
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = Clocks.SystemClock.Now,
@@ -1257,9 +1256,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 };
                 dbContext.Add(dbEntry);
                 context.Operation.Items.Set(CreatedChatEntryId, chatEntryId);
-
-                if (entryKind == ChatEntryKind.Text)
-                    await StorePreviousAndNextEntryIds(localId).ConfigureAwait(false);
+                await StorePreviousAndNextEntryIds(localId).ConfigureAwait(false);
             }
             else if (change.IsUpdate(out update)) {
                 dbEntry.RequireVersion(expectedVersion);
@@ -1288,8 +1285,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     dbEntry.UpdateFrom(entry);
 
                     var localId = entry.LocalId;
-                    if (entryKind == ChatEntryKind.Text)
-                        await StorePreviousAndNextEntryIds(localId).ConfigureAwait(false);
+                    await StorePreviousAndNextEntryIds(localId).ConfigureAwait(false);
                 }
             }
             else
@@ -1300,9 +1296,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             entry = dbEntry.ToModel().WithPopulatedValues(entry);
         }
-
-        if (entryKind != ChatEntryKind.Text)
-            return entry;
 
         if (chatId is PlaceChatId { IsRoot: false })
             await EnsurePlaceChatAuthorExists(entry.AuthorId).ConfigureAwait(false);
@@ -1341,12 +1334,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (attachmentsProto is not null) {
             if (change.Kind is ChangeKind.Update) {
-                var removeAttachmentsCmd = new ChatsBackend_RemoveAttachments(chatEntryId.ToTextEntryId());
+                var removeAttachmentsCmd = new ChatsBackend_RemoveAttachments(chatEntryId);
                 await Commander.Call(removeAttachmentsCmd, cancellationToken).ConfigureAwait(false);
             }
             var textEntryAttachments = attachmentsProto
                 .Select((x, i) => new TextEntryAttachment {
-                    EntryId = chatEntryId.ToTextEntryId(),
+                    EntryId = chatEntryId,
                     Index = i,
                     MediaId = x.MediaId,
                     ThumbnailMediaId = x.ThumbnailMediaId,
@@ -1367,8 +1360,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var newEntry = DiffEngine.Patch(originalEntry, diff) with {
                 Version = VersionGenerator.NextVersion(originalEntry.Version),
             };
-            if (newEntry.Kind != originalEntry.Kind)
-                throw StandardError.Constraint("Chat Entry kind cannot be changed.");
+            if (newEntry.Id != originalEntry.Id)
+                throw StandardError.Constraint("Chat Entry Id cannot be changed.");
 
             // Validation
             if (isUpdate) {
@@ -1411,14 +1404,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task StorePreviousAndNextEntryIds(long localEntryLid)
         {
             var previousEntryId = await dbContext.ChatEntries
-                .Where(c => c.ChatId == chatId.Value && c.Kind == ChatEntryKind.Text && !c.IsRemoved && c.LocalId < localEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.Kind == 0 && !c.IsRemoved && c.LocalId < localEntryLid)
                 .OrderByDescending(c => c.LocalId)
                 .Select(c => c.LocalId)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var nextEntryId = await dbContext.ChatEntries
-                .Where(c => c.ChatId == chatId.Value && c.Kind == ChatEntryKind.Text && !c.IsRemoved && c.LocalId > localEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.Kind == 0 && !c.IsRemoved && c.LocalId > localEntryLid)
                 .OrderBy(c => c.LocalId)
                 .Select(c => c.LocalId)
                 .FirstOrDefaultAsync(cancellationToken)
@@ -1479,7 +1472,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatsBackend_RemoveAttachments command,
         CancellationToken cancellationToken)
     {
-        var entryId = command.EntryId.ToTextEntryId();
+        var entryId = command.EntryId;
 
         if (Invalidation.IsActive) {
             _ = GetEntryAttachments(entryId, default);
@@ -1562,7 +1555,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 InvalidateTiles(chatId, entryId - tileSize*2, ChangeKind.Remove, false);
                 InvalidateTiles(chatId, entryId - tileSize*3, ChangeKind.Remove, false);
                 InvalidateTiles(chatId, entryId - tileSize*4, ChangeKind.Remove, false);
-                _ = GetEntryAttachments(TextEntryId.New(chatId, entryId), default);
+                _ = GetEntryAttachments(ChatEntryId.New(chatId, entryId), default);
             }
             return;
         }
@@ -1850,9 +1843,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return;
 
         var (entryId, language) = command;
-        if (entryId.Kind != ChatEntryKind.Text)
-            throw new ArgumentException("Text entry id must be given.");
-
         var textEntry = await this.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
         if (textEntry is null)
             return;
@@ -2007,7 +1997,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (authorName.IsNullOrEmpty())
             authorName = MentionMarkup.NotAvailableName;
 
-        var entryId = TextEntryId.New(author.ChatId, 0);
+        var entryId = ChatEntryId.New(author.ChatId, 0);
         var command = new ChatsBackend_ChangeEntry(
             entryId,
             null,
@@ -2052,7 +2042,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var (chat, oldChat, kind) = eventCommand;
         if (chat.Id.IsThread(out var threadChatId) && kind == ChangeKind.Remove) {
-            var startThreadEntryId = TextEntryId.New(threadChatId, threadChatId.ThreadId);
+            var startThreadEntryId = ChatEntryId.New(threadChatId, threadChatId.ThreadId);
             var chatEntry = await this.GetEntry(startThreadEntryId, cancellationToken).ConfigureAwait(false);
             if (chatEntry is not null && chatEntry.IsThreadStartEntry) {
                 var markChatEntryAsRemoved = new ChatsBackend_ChangeEntry(startThreadEntryId,
@@ -2121,7 +2111,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         return await dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value && e.Kind == ChatEntryKind.Text)
+            .Where(e => e.ChatId == chatId.Value && e.Kind == 0)
             .OrderBy(e => e.LocalId)
             .Select(e => e.LocalId)
             .FirstOrDefaultAsync(cancellationToken)
@@ -2284,7 +2274,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task<ChatEntry> PrepareTextEntryForSave(ChatEntry entry, ChatEntry? existing, CancellationToken cancellationToken)
     {
-        if (entry.IsSystemEntry || entry.IsStreaming || entry.Kind is not ChatEntryKind.Text)
+        if (entry.IsSystemEntry || entry.IsStreaming)
             return entry;
 
         var wasContentChanged = !OrdinalEquals(entry.Content, existing?.Content ?? "");
@@ -2380,9 +2370,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     internal Task<long> DbNextLocalId(
         ChatDbContext dbContext,
         ChatId chatId,
-        ChatEntryKind entryKind,
         CancellationToken cancellationToken)
-        => DbChatEntryIdGenerator.Next(dbContext, new DbChatEntryShardRef(chatId, entryKind), cancellationToken);
+        => DbChatEntryIdGenerator.Next(dbContext, chatId.Value, cancellationToken);
 
     private async Task<AuthorRules> GetPeerChatRules(
         PeerChatId chatId,
@@ -2442,17 +2431,17 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments(IEnumerable<DbChatEntry> dbEntries, CancellationToken cancellationToken)
+    private Task<ILookup<ChatEntryId, TextEntryAttachment>> GetAttachments(IEnumerable<DbChatEntry> dbEntries, CancellationToken cancellationToken)
     {
         var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
-            .Select(x => TextEntryId.Parse(x.Id))
+            .Select(x => ChatEntryId.Parse(x.Id))
             .ToList();
 
         return entryIdsWithAttachments.Count > 0
             ? GetAttachmentsBulk()
             : EmptyAttachmentsTask;
 
-        async Task<ILookup<TextEntryId,TextEntryAttachment>> GetAttachmentsBulk() {
+        async Task<ILookup<ChatEntryId,TextEntryAttachment>> GetAttachmentsBulk() {
             var attachments = await entryIdsWithAttachments
                 .Select(x => GetEntryAttachments(x, cancellationToken))
                 .Collect(cancellationToken)

@@ -15,7 +15,7 @@ public sealed record FoundItem(
         EntrySearchResult entry => entry.EntryId.ChatId,
         _ => throw new ArgumentOutOfRangeException()
     };
-    public TextEntryId? EntryId
+    public ChatEntryId? EntryId
         => SearchResult is EntrySearchResult entry ? entry.EntryId : null;
     public SearchMatch ContactSearchMatch
         => SearchResult is ContactSearchResult ? SearchResult.SearchMatch : SearchMatch.Empty;

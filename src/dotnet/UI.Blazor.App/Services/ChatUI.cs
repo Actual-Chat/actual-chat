@@ -23,7 +23,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly MutableState<PlaceId?> _selectedPlaceId;
     private readonly StoredState<string> _selectedNavbarGroupId;
     private readonly StoredState<IImmutableDictionary<string, ChatId>> _selectedChatIds;
-    private readonly MutableState<TextEntryId?> _highlightedEntryId;
+    private readonly MutableState<ChatEntryId?> _highlightedEntryId;
     private readonly MutableState<IImmutableSet<ConversationId>> _expandedConversations;
     private readonly SyncedState<UserNavbarSettings> _navbarSettings;
     private ChatId? _searchEnabledChatId;
@@ -54,7 +54,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public IState<ChatId?> SelectedChatId => _selectedChatId;
     public IState<PlaceId?> SelectedPlaceId => _selectedPlaceId;
     public IState<IImmutableDictionary<string, ChatId>> SelectedChatIds => _selectedChatIds;
-    public IState<TextEntryId?> HighlightedEntryId => _highlightedEntryId;
+    public IState<ChatEntryId?> HighlightedEntryId => _highlightedEntryId;
     public IState<IImmutableSet<ConversationId>> ExpandedConversations => _expandedConversations;
     public IState<UserNavbarSettings> NavbarSettings => _navbarSettings;
     public Task WhenReady => _selectedChatId.WhenRead;
@@ -84,7 +84,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 InitialValue = ImmutableDictionary<string, ChatId>.Empty,
             });
         _highlightedEntryId = StateFactory.NewMutable(
-            (TextEntryId?)null,
+            (ChatEntryId?)null,
             StateCategories.Get(type, nameof(HighlightedEntryId)));
         _expandedConversations = StateFactory.NewMutable(
             (IImmutableSet<ConversationId>)ImmutableHashSet<ConversationId>.Empty,
@@ -400,7 +400,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return hasChanged;
     }
 
-    public void HighlightEntry(TextEntryId? entryId, bool navigate, bool updateUI = true)
+    public void HighlightEntry(ChatEntryId? entryId, bool navigate, bool updateUI = true)
     {
         if (navigate) {
             if (entryId is null)

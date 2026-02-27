@@ -51,7 +51,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChatEntry_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(chatId, 1);
         var entry = new ChatEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = new Moment(DateTime.UtcNow),
@@ -76,7 +76,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChatEntry_WithNullableMoments()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 2);
+        var entryId = ChatEntryId.New(chatId, 2);
         var now = new Moment(DateTime.UtcNow);
         var entry = new ChatEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
@@ -97,7 +97,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChatEntry_WithNullMoments()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 3);
+        var entryId = ChatEntryId.New(chatId, 3);
         var entry = new ChatEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = new Moment(DateTime.UtcNow),
@@ -183,7 +183,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChatTile_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(chatId, 1);
         var entries = new[] {
             new ChatEntry(entryId, 1) {
                 AuthorId = AuthorId.New(chatId, 10),
@@ -247,7 +247,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChatEntryLanguage_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(chatId, 1);
         var lang = new ChatEntryLanguage(entryId, 1) {
             Languages = [Languages.English, Languages.Russian],
             CreatedAt = DateTime.UtcNow,
@@ -268,7 +268,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ChatLanguageTile_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(chatId, 1);
         var tile = new ChatLanguageTile(
             new Range<long>(0, 100),
             [new ChatEntryLanguage(entryId, 1) { Languages = [Languages.English] }]);
@@ -440,7 +440,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Reaction_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = TextEntryId.New(chatId, 1);
+        var entryId = ChatEntryId.New(chatId, 1);
         var authorId = AuthorId.New(chatId, 5);
         var reaction = new Reaction {
             Id = "reaction-1",
@@ -461,7 +461,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void ReactionSummary_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = TextEntryId.New(chatId, 1);
+        var entryId = ChatEntryId.New(chatId, 1);
         var authorId = AuthorId.New(chatId, 5);
         var summary = new ReactionSummary {
             Id = "summary-1",
@@ -497,7 +497,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Mention_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = ChatEntryId.New(chatId, ChatEntryKind.Text, 1);
+        var entryId = ChatEntryId.New(chatId, 1);
         var mentionId = MentionId.Parse("u:user123456");
         var mention = new Mention {
             Id = "mention-1",
@@ -544,7 +544,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void TextEntryAttachment_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var entryId = TextEntryId.New(chatId, 1);
+        var entryId = ChatEntryId.New(chatId, 1);
         var mediaId = MediaId.New("scope1");
         var attachment = new TextEntryAttachment("att-1", 1) {
             EntryId = entryId,
@@ -563,7 +563,7 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void Translation_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var sourceId = TranslationSourceId.New(TextEntryId.New(chatId, 1));
+        var sourceId = TranslationSourceId.New(ChatEntryId.New(chatId, 1));
         var translationId = TranslationId.New(sourceId, Languages.Russian);
         var translation = new Translation(translationId, 1) {
             Content = "Привет, мир!",

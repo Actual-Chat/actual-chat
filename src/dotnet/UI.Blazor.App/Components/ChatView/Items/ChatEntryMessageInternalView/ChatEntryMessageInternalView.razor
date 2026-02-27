@@ -64,7 +64,7 @@
 }
 <p @ref="Ref" class="chat-message-markup @translationCls @streamingCls">
     @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-        <ChatEntryKindView Kind="@(entry.HasAudio ? ChatEntryKind.Transcribed : entry.Kind)"/>
+        <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
     }
     @if (m.IsStreaming) {
         @if (!sm.RetainedText.IsNullOrEmpty()) {
@@ -95,7 +95,7 @@
         @if (!_temporaryText.IsNullOrEmpty()) {
             <div class="temporary-container hide">
                 @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
-                    <ChatEntryKindView Kind="@(entry.HasAudio ? ChatEntryKind.Transcribed : entry.Kind)"/>
+                    <ChatEntryKindView IsTranscribed="@entry.HasAudio"/>
                 }
                 <span>@_temporaryText</span>
             </div>
@@ -119,12 +119,12 @@
     private static readonly double AnimationDurationMs = Constants.Transcription.ThrottlePeriod.TotalMilliseconds;
     private static readonly int AnimationSpanCount = (int)Math.Round(AnimationDurationMs / (1000.0 / 15));
     private static readonly double AnimationSpanDurationMs = AnimationDurationMs / AnimationSpanCount;
-    private static readonly IThreadSafeLruCache<TextEntryId, TranscriptStreamer> StreamersCache = new ThreadSafeLruCache<TextEntryId, TranscriptStreamer>(100);
+    private static readonly IThreadSafeLruCache<ChatEntryId, TranscriptStreamer> StreamersCache = new ThreadSafeLruCache<ChatEntryId, TranscriptStreamer>(100);
 
     private string? _temporaryText;
     private Model? _rendered;
     private TranscriptStreamer _streamer = null!;
-    private TextEntryId _textEntryId = null!;
+    private ChatEntryId _textEntryId = null!;
     private ILogger Log => Hub.LogFor(GetType());
     private IMarkupParser MarkupParser => ChatContext.ChatMarkupHub.Parser;
     private ChatUI ChatUI => Hub.ChatUI;
@@ -168,7 +168,7 @@
 
     protected override void OnInitialized() {
         var messageEntry = Message.Entry;
-        _textEntryId = TextEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
+        _textEntryId = ChatEntryId.New(messageEntry.ChatId, messageEntry.LocalId);
         // Log.LogInformation("ChatEntryMessageInternalView.OnInitialized: {Id}", _textEntryId);
 
         if (StreamersCache.TryGetValue(_textEntryId, out var cached)) {
@@ -271,7 +271,7 @@
         if (!mustTranslate)
             return new(markup, entry, TranslationState.None, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 
-        var translation = await TranslationUI.Get(entry.Id.ToTextEntryId(), cancellationToken).ConfigureAwait(false);
+        var translation = await TranslationUI.Get(entry.Id, cancellationToken).ConfigureAwait(false);
         if (translation is null)
             return new(markup, entry, TranslationState.Translating, TranscriptStreamerState.None, isUnreadByOthers, isUnreadByOthersBlockStart);
 

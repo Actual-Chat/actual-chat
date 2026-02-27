@@ -463,7 +463,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             else if (nav.MustHighlight)
                 // TODO(AK): Implement highlighting of conversations
                 ChatUI.HighlightEntry(
-                    TextEntryId.New(chatId, navChatMessage.Id),
+                    ChatEntryId.New(chatId, navChatMessage.Id),
                     false);
         }
         // Determine scroll target

@@ -86,12 +86,12 @@ public class ChatReplayerTest(ChatAppHostFixture fixture, ITestOutputHelper @out
         DateTime beginsAt,
         TimeSpan duration)
     {
-        var id = TextEntryId.New(chatId, localId);
+        var id = ChatEntryId.New(chatId, localId);
         var textEntry = new DbChatEntry {
             Id = id.Value,
             ChatId = id.ChatId.Value,
             AuthorId = authorId.Value,
-            Kind = ChatEntryKind.Text,
+            Kind = 0,
             LocalId = id.LocalId,
             Version = 1,
             BeginsAt = beginsAt,

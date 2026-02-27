@@ -16,12 +16,12 @@ public class LocalIdGeneratorTest(ChatCollection.AppHostFixture fixture, ITestOu
         await using var h2 = await NewAppHost("localId2");
         var hub1 = h1.Services.DbHub<ChatDbContext>();
         var hub2 = h1.Services.DbHub<ChatDbContext>();
-        var idGenerator1 = h1.Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
-        var idGenerator2 = h2.Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
+        var idGenerator1 = h1.Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, string>>();
+        var idGenerator2 = h2.Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, string>>();
 
         idGenerator1.Should().NotBeSameAs(idGenerator2);
 
-        var shardRef = new DbChatEntryShardRef(ChatId.Parse("p-9B7NAR-Cdis8n"), ChatEntryKind.Audio);
+        var shardRef = ChatId.Parse("p-9B7NAR-Cdis8n").Value;
         var resultTasks = new List<Task<long>>();
         for (int i = 0; i < 200; i++) {
             var next1Task = BackgroundTask.Run(async () => {

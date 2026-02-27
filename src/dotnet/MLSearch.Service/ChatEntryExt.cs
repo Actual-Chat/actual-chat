@@ -7,7 +7,7 @@ public static class ChatEntryExt
 {
     public static IndexedEntry ToIndexedEntry(this ChatEntry entry)
         => new() {
-            Id = entry.Id.ToTextEntryId(),
+            Id = entry.Id,
             Content = entry.Content,
             At = entry.GetIndexedEntryDate(),
         };
