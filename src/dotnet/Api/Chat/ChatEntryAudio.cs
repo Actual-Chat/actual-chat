@@ -32,7 +32,7 @@ public sealed partial record ChatEntryAudio
 
     #endregion
 
-    [DataMember, MemoryPackOrder(0)] public MediaId MediaId { get; init; } = null!;
+    [DataMember, MemoryPackOrder(0)] public MediaId? MediaId { get; init; }
     [DataMember, MemoryPackOrder(1)] public string BlobId { get; init; } = "";
     [DataMember, MemoryPackOrder(2)] public string StreamId { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public Moment BeginsAt { get; init; }
