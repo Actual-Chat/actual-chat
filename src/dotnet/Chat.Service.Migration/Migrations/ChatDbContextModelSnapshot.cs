@@ -423,9 +423,9 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("local_id");
 
-                    b.Property<string>("MediaOrStreamId")
+                    b.Property<string>("MediaId")
                         .HasColumnType("text")
-                        .HasColumnName("media_or_stream_id")
+                        .HasColumnName("media_id")
                         .UseCollation("C");
 
                     b.Property<long?>("RepliedChatEntryId")

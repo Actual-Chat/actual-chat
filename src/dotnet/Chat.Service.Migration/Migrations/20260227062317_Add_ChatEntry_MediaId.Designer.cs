@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20260225232058_AddMediaOrStreamId")]
-    partial class AddMediaOrStreamId
+    [Migration("20260227062317_Add_ChatEntry_MediaId")]
+    partial class Add_ChatEntry_MediaId
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -426,9 +426,9 @@ namespace ActualChat.Chat.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("local_id");
 
-                    b.Property<string>("MediaOrStreamId")
+                    b.Property<string>("MediaId")
                         .HasColumnType("text")
-                        .HasColumnName("media_or_stream_id")
+                        .HasColumnName("media_id")
                         .UseCollation("C");
 
                     b.Property<long?>("RepliedChatEntryId")

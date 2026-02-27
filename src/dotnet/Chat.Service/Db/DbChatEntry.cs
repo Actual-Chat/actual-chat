@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Diagnostics;
 using ActualChat.Hashing;
 using ActualChat.Media;
 using Microsoft.EntityFrameworkCore;
@@ -77,7 +76,6 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public long? AudioEntryId { get; set; }
     public long? VideoEntryId { get; set; }
-    [Column("MediaOrStreamId")]  // Keep DB column name until migration
     public string? MediaId { get; set; }
     public string? TimeMap { get; set; }
 
