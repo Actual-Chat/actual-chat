@@ -126,6 +126,8 @@ class DataHrefGesture extends Gesture {
             TuneUI.play(Tune[tuneName]);
         if (href.startsWith('http://') || href.startsWith('https://'))
             location.href = href; // External URL
+        else if (href.startsWith('mailto:') || href.startsWith('tel:'))
+            return;
         else {
             const replaceOnPrefix = element.dataset.replaceOnPrefix;
             let mustReplace = false;
