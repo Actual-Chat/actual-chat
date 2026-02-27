@@ -1,6 +1,6 @@
 namespace ActualChat.Kubernetes.Api;
 
-public record Metadata(
+public sealed record Metadata(
     string Name,
     string? Namespace = null,
     string? ResourceVersion = null,

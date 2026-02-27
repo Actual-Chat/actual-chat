@@ -1,6 +1,6 @@
 namespace ActualChat.Kubernetes.Api;
 
-public record Change<T>(ChangeType Type, T Object);
+public sealed record Change<T>(ChangeType Type, T Object);
 
 // ReSharper disable InconsistentNaming
 [JsonConverter(typeof(JsonStringEnumConverter))]

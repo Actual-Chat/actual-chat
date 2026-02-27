@@ -1,6 +1,6 @@
 namespace ActualChat.Kubernetes.Api;
 
-public record OwnerReference(
+public sealed record OwnerReference(
     string ApiVersion,
     string Kind,
     string Name,

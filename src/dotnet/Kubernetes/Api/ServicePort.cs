@@ -1,6 +1,6 @@
 namespace ActualChat.Kubernetes.Api;
 
-public record ServicePort(
+public sealed record ServicePort(
     string? Name,
     ServiceProtocol? Protocol,
     int? Port)
