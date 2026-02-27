@@ -101,7 +101,7 @@ export class JoinVideoCallModal {
 
             // Capture the actual device ID the browser chose (important when no
             // explicit device was requested — ensures recording uses the same camera)
-            const actualTrack = this.stream.getVideoTracks()[0];
+            const actualTrack = this.stream.getVideoTracks()[0] as MediaStreamTrack | undefined;
             if (actualTrack) {
                 const actualId = actualTrack.getSettings().deviceId;
                 if (actualId) this.selectedDeviceId = actualId;

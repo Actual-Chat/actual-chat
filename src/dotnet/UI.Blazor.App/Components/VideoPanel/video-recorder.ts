@@ -99,7 +99,7 @@ export class VideoRecorder {
             const rs = this.recordingService;
             this.blurToggleChain = this.blurToggleChain
                 .then(() => rs.toggleBlur(enabled))
-                .catch(e => warnLog?.log('Failed to toggle blur:', e));
+                .catch((e: unknown) => warnLog?.log('Failed to toggle blur:', e));
         }
     }
 
