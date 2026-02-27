@@ -79,7 +79,7 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         var r1a = await t1a.ResultAwait();
         var r1b = await t1b.ResultAwait();
         var r2 = await t2.ResultAwait();
-        r1a.Error.Should().BeNull();
+        (r1a.Error is OperationCanceledException).Should().BeTrue();
         (r1b.Error is OperationCanceledException).Should().BeTrue();
         r2.Error.Should().BeNull();
     }

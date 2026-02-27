@@ -195,7 +195,7 @@ public class StreamHub(IServiceProvider services) : Hub
             return;
 
         stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.AudioBackend];
+        var nodes = MeshWatcher.State.Value.OnlineNodesByRole[HostRole.AudioBackend];
         if (nodes.Length == 0) {
             Log.LogError("No nodes serving {Role} role!", HostRole.AudioBackend);
             return; // No backends
@@ -239,7 +239,7 @@ public class StreamHub(IServiceProvider services) : Hub
             return;
 
         stopCts.CancelAfter(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
-        var nodes = MeshWatcher.State.Value.LiveNodesByRole[HostRole.VideoBackend];
+        var nodes = MeshWatcher.State.Value.OnlineNodesByRole[HostRole.VideoBackend];
         if (nodes.Length == 0) {
             Log.LogError("No nodes serving {Role} role!", HostRole.VideoBackend);
             return; // No backends

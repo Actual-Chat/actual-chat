@@ -55,7 +55,7 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
         if (peerRef.RouteState is not null) {
             // MeshRpcPeerRef with RouteState (i.e., with only a NodeRef) can be rerouted.
             // If its node is dead or doesn't exist, we must await for rerouting.
-            if (node is null || node.State is MeshNodeState.Dead)
+            if (node is null || node.State is MeshNodeState.Dead or MeshNodeState.Offline)
                 return null; // null Uri = the peer will wait for RouteState.ChangeToken cancellation and reconnect
         }
         else {

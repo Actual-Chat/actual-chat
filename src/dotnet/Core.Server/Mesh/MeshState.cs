@@ -16,6 +16,9 @@ public sealed class MeshState
     public MeshNode[] LiveNodes { get; } = [];
     public IReadOnlyDictionary<HostRole, MeshNode[]> LiveNodesByRole { get; }
         = ImmutableDictionary<HostRole, MeshNode[]>.Empty;
+    public MeshNode[] OnlineNodes { get; } = [];
+    public IReadOnlyDictionary<HostRole, MeshNode[]> OnlineNodesByRole { get; }
+        = ImmutableDictionary<HostRole, MeshNode[]>.Empty;
 
     // Indexer
     public MeshNode? this[NodeRef nodeRef] => AllNodes.GetValueOrDefault(nodeRef);
@@ -33,6 +36,11 @@ public sealed class MeshState
         LiveNodesByRole = AllRoles.Select(r => new KeyValuePair<HostRole, MeshNode[]>(
             r,
             [..LiveNodes.Where(n => n.Roles.Contains(r))])
+        ).ToDictionary();
+        OnlineNodes = [..AllNodes.Values.Where(x => x.State is MeshNodeState.Online).Order()];
+        OnlineNodesByRole = AllRoles.Select(r => new KeyValuePair<HostRole, MeshNode[]>(
+            r,
+            [..OnlineNodes.Where(n => n.Roles.Contains(r))])
         ).ToDictionary();
     }
 
@@ -70,7 +78,7 @@ public sealed class MeshState
             if (cache != null && cache.TryGetValue(shardScheme, out shardMap))
                 return shardMap;
 
-            if (!LiveNodesByRole.TryGetValue(shardScheme.HostRole, out var nodes))
+            if (!OnlineNodesByRole.TryGetValue(shardScheme.HostRole, out var nodes))
                 nodes = [];
             shardMap = new ShardMap(shardScheme, nodes);
             cache = cache == null ? new() : new Dictionary<ShardScheme, ShardMap>(cache);
