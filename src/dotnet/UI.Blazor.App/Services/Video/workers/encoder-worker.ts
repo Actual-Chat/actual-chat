@@ -1,7 +1,9 @@
 /**
  * Encoder Worker (Universal - Chrome & Safari)
  * Handles video encoding in a dedicated worker thread using RPC communication.
- * Receives VideoFrame objects and outputs encoded chunks via RPC callbacks.
+ * Receives VideoFrame objects and outputs serialized encoded chunks via RPC callbacks.
+ * Chunk serialization (copyTo + description extraction) happens here in the worker,
+ * keeping the main thread free from heavy sync operations.
  */
 
 import { rpcClientServer, rpcNoWait } from 'rpc';
@@ -58,8 +60,6 @@ function resizeFrame(frame: VideoFrame, targetWidth: number, targetHeight: numbe
     if (frameWidth === targetWidth && frameHeight === targetHeight) {
         return frame;
     }
-
-    // console.log(`[Encoder Worker] 📐 Resizing frame from ${frameWidth}x${frameHeight} to ${targetWidth}x${targetHeight} for encoding`);
 
     // Create canvas if needed
     if (resizeCanvas?.width !== targetWidth || resizeCanvas.height !== targetHeight) {
@@ -132,10 +132,18 @@ const serverImpl: EncoderWorker = {
             encoder = new WebCodecsEncoder(
                 config,
                 (chunkData) => {
-                    // Serialize metadata properly (it contains ArrayBuffer which needs special handling)
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    let serializedMetadata: any = undefined;
-                    if (chunkData.metadata?.decoderConfig?.description) {
+                    // Serialize chunk in worker: copyTo + description extraction
+                    // This keeps the main thread free from sync ArrayBuffer operations
+
+                    // 1. Copy encoded chunk bytes
+                    const chunkBuffer = new ArrayBuffer(chunkData.byteLength);
+                    chunkData.chunk.copyTo(new Uint8Array(chunkBuffer));
+
+                    // 2. Validate actual codec output: if configured for AV1 but output is avcC, correct it
+                    let actualCodec = encoderConfig!.codec;
+                    let descBuffer: ArrayBuffer | undefined;
+
+                    if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
                         const desc = chunkData.metadata.decoderConfig.description;
                         let sourceArray: Uint8Array;
                         if (desc instanceof ArrayBuffer) {
@@ -148,70 +156,44 @@ const serverImpl: EncoderWorker = {
                             sourceArray = new Uint8Array(desc as ArrayBuffer);
                         }
 
-                        const descBuffer = new ArrayBuffer(sourceArray.byteLength);
+                        descBuffer = new ArrayBuffer(sourceArray.byteLength);
                         new Uint8Array(descBuffer).set(sourceArray);
 
-                        serializedMetadata = {
-                            decoderConfig: {
-                                ...chunkData.metadata.decoderConfig,
-                                description: descBuffer
-                            }
-                        };
+                        debugLog?.log('Keyframe metadata serialized, description size:', descBuffer.byteLength);
 
-                        if (chunkData.type === 'key') {
-                            debugLog?.log('Keyframe metadata serialized, description size:', descBuffer.byteLength);
-                        }
-                    }
-
-                    // Validate actual codec output: if configured for AV1 but output is avcC, correct it
-                    let actualCodec = encoderConfig!.codec;
-                    if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
-                        const desc = chunkData.metadata.decoderConfig.description;
-                        let descBuf: ArrayBuffer;
-                        if (desc instanceof ArrayBuffer) {
-                            descBuf = desc;
-                        } else if (ArrayBuffer.isView(desc)) {
-                            // Copy to a new ArrayBuffer to avoid SharedArrayBuffer type issues
-                            const view = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
-                            const copy = new ArrayBuffer(view.byteLength);
-                            new Uint8Array(copy).set(view);
-                            descBuf = copy;
-                        } else {
-                            descBuf = desc as unknown as ArrayBuffer;
-                        }
-                        if (isAvcCDescription(descBuf) && !encoderConfig!.codec.startsWith('avc1')) {
-                            const derivedCodec = deriveAvcCodecFromDescription(descBuf);
+                        // Check for codec mismatch
+                        if (isAvcCDescription(descBuffer) && !encoderConfig!.codec.startsWith('avc1')) {
+                            const derivedCodec = deriveAvcCodecFromDescription(descBuffer);
                             warnLog?.log(`Encoder output mismatch: configured=${encoderConfig!.codec} but output is avcC, correcting to ${derivedCodec}`);
                             actualCodec = derivedCodec;
                             encoderConfig!.codec = derivedCodec;
                         }
                     }
 
-                    const enrichedChunkData = {
-                        ...chunkData,
-                        codec: actualCodec,
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                        metadata: serializedMetadata,
-                        sequenceNumber: chunkData.sequenceNumber
-                    };
-
-                    void callbacks.onEncodedChunk(enrichedChunkData, rpcNoWait);
+                    // 3. Send serialized data to main thread via RPC (zero-copy transfer of ArrayBuffers)
+                    void callbacks.onSerializedChunk(
+                        chunkBuffer,
+                        chunkData.chunk.timestamp,
+                        chunkData.chunk.duration ?? 0,
+                        chunkData.type === 'key',
+                        actualCodec,
+                        chunkData.sequenceNumber,
+                        descBuffer,
+                        rpcNoWait
+                    );
                 },
                 (error) => {
                     errorLog?.log('Encoder error:', error);
-                    // Errors during encoding will propagate through encodeFrame() promise rejection
                 }
             );
 
             encoder.initialize();
-            // console.log('[Encoder Worker] Encoder initialized via RPC');
 
             // Mark as ready to process frames
             processing = true;
             frameCount = 0;
 
             infoLog?.log('Ready to encode frames');
-            // No callback needed - initialize() returning successfully means ready
         } catch (error) {
             errorLog?.log('Failed to initialize encoder:', error);
             throw error; // RPC automatically propagates errors
@@ -260,6 +242,13 @@ const serverImpl: EncoderWorker = {
     encodeFrame: async (frame): Promise<void> => {
         if (!encoder || !processing || !encoderConfig) {
             frame.close();
+            return;
+        }
+
+        // Backpressure: drop frame if encoder queue is building up
+        if (encoder.getEncodeQueueSize() > 3) {
+            frame.close();
+            debugLog?.log('Frame dropped due to encoder backpressure (queueSize > 3)');
             return;
         }
 

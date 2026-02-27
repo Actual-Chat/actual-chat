@@ -1,23 +1,20 @@
 /**
- * Video Pipeline (UNIFIED ARCHITECTURE)
- * Universal two-worker architecture for all browsers using RPC communication.
+ * Video Pipeline
+ * Encode-only architecture: captures frames, encodes in worker, streams to server.
+ * Decoding happens on the receiver side (video-player.ts uses its own decoder worker).
  *
  * Architecture:
  * - Encoder Worker (universal, RPC-based)
- * - Decoder Worker (universal, RPC-based)
- * - TransferSimulator (local encode→decode loopback in main thread)
- * - Canvas fallbacks for browsers without MSTP/MSTG support
+ * - Optional Segmentation Worker for background blur
+ * - Canvas fallbacks for browsers without MSTP support
  */
 
 import { rpcClientServer, rpcNoWait } from 'rpc';
 import type { Disposable } from 'disposable';
 
 import type { EncoderWorker } from '../workers/encoder-worker-contract';
-import type { DecoderWorker as DecoderWorker } from '../workers/decoder-worker-contract';
 import type { SegmentationWorker, SegmentationConfig, SegmentationStats, SegmentationWorkerCallbacks } from '../workers/segmentation-worker-contract';
-import type { EncoderConfig, EncoderStats, EncodedChunkData } from '../webcodecs-encoder';
-import { TransferSimulator, type TransferConfig, type TransferStats } from '../utils/transfer-simulator';
-import type { DecoderConfig, DecoderStats } from '../webcodecs-decoder';
+import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
 import {
     VideoStreamer,
     type VideoStreamConfig,
@@ -35,8 +32,6 @@ const { debugLog, infoLog, warnLog, errorLog } = Log.get('VideoPipeline');
 
 export interface PipelineConfig {
   encoderConfig: EncoderConfig;
-  transferConfig: TransferConfig;
-  decoderConfig: DecoderConfig;
   /**
    * Background blur configuration (optional)
    * When enabled, frames are processed through segmentation before encoding
@@ -83,55 +78,36 @@ declare class MediaStreamTrackProcessor<T = VideoFrame> {
     readable: ReadableStream<T>;
 }
 
-declare class MediaStreamTrackGenerator<T = VideoFrame> extends MediaStreamTrack {
-    constructor(options: { kind: 'video' | 'audio' });
-    writable: WritableStream<T>;
-}
-
 export interface IVideoPipeline {
-  start(inputStream: MediaStream): Promise<MediaStream>;
+  start(inputStream: MediaStream): Promise<void>;
   stop(): Promise<void>;
   reconfigure(params: { bitrate: number; width: number; height: number }): Promise<void>;
   switchCodec(newCodecString: string): Promise<void>;
   toggleBlur(enabled: boolean, segmentationConfig?: SegmentationConfig): Promise<void>;
   switchSegmentationBackend(backend: 'webgpu' | 'wasm'): Promise<void>;
-  toggleAV1Decoder(useWasm: boolean): Promise<void>;
   setPreviewCallback(callback: ((frame: VideoFrame) => void) | null): void;
   getEncoderStats(): EncoderStats;
-  getTransferStats(): TransferStats;
-  getDecoderStats(): DecoderStats;
   getSegmentationStats(): SegmentationStats | null;
 }
 
 export class VideoPipeline implements IVideoPipeline {
     private readonly encoderWorkerInstance: Worker;
     private readonly encoder: (EncoderWorker & Disposable);
-    private readonly decoderWorkerInstance: Worker;
-    private readonly decoder: (DecoderWorker & Disposable);
     private segmentationWorkerInstance: Worker | null = null;
     private segmentationWorker: (SegmentationWorker & Disposable) | null = null;
     private processor: MediaStreamTrackProcessor | null = null;
     private frameReader: ReadableStreamDefaultReader<VideoFrame> | null = null;
-    private generator: MediaStreamTrackGenerator | null = null;
-    private writer: WritableStreamDefaultWriter<VideoFrame> | null = null;
 
-    // Network simulation (Chrome path only - represents boundary between sender and receiver)
-    private transferSimulator: TransferSimulator | null = null;
     // Video streaming
     private videoStream: VideoStream | null = null; // VideoStream instance
     private pendingStreamFrames: VideoStreamFrame[] = []; // Buffer frames until we get codec description
     private codecSettings: string | null = null; // Base64 encoded codec description (SPS/PPS for H.264)
     private firstEncodedTimestamp: number | null = null; // First encoded chunk timestamp (microseconds) for 0-based normalization
 
-    // Canvas fallbacks (when MSTG not available)
-    private outputCanvas: HTMLCanvasElement | null = null;
-    private outputCanvasCtx: CanvasRenderingContext2D | null = null;
-
     // Preview callback for rendering segmented frames before encoding
     private previewCallback: ((frame: VideoFrame) => void) | null = null;
 
     // Common
-    private outputStream: MediaStream | null = null;
     private processing = false;
 
     // VAD-based adaptive framerate
@@ -143,13 +119,8 @@ export class VideoPipeline implements IVideoPipeline {
     private readonly reducedFrameIntervalMs: number;
     private savedBitrate: number;
 
-    // Timestamp normalization for proper video playback
-    private firstFrameTimestamp: number | null = null;
-
     private currentStats: {
     encoder: EncoderStats;
-    transfer: TransferStats;
-    decoder: DecoderStats;
     segmentation: SegmentationStats | null;
   } = {
             encoder: {
@@ -160,79 +131,54 @@ export class VideoPipeline implements IVideoPipeline {
                 averageEncodeTime: 0,
                 hardwareAcceleration: 'unknown'
             },
-            transfer: {
-                totalBytes: 0,
-                totalChunks: 0,
-                averageChunkSize: 0,
-                averageLatency: 0,
-                packetsLost: 0,
-                throughput: 0,
-                jitter: 0,
-                currentBitrate: 0
-            },
-            decoder: {
-                decodedFrames: 0,
-                droppedFrames: 0,
-                averageDecodeTime: 0,
-                hardwareAcceleration: 'unknown',
-                resolution: 'N/A'
-            },
             segmentation: null
         };
     private statsInterval: number | null = null;
 
-    private onEncoderEncodedChunk = (chunkData: EncodedChunkData) => {
-    // const chunkSeq = chunkData.sequenceNumber ?? -1;
-    // console.log(`[Pipeline] Encoded chunk #${chunkSeq} received from sender via RPC: ${chunkData.type}, size: ${chunkData.byteLength}`);
-
+    private onSerializedChunk = (
+        chunkBytes: ArrayBuffer,
+        timestamp: number,
+        duration: number,
+        isKeyFrame: boolean,
+        codec: string,
+        sequenceNumber: number,
+        descriptionBytes?: ArrayBuffer
+    ) => {
         // Stream to server if enabled
         if (this.config.streaming?.enabled) {
-            const chunkBytes = new Uint8Array(chunkData.byteLength);
-            chunkData.chunk.copyTo(chunkBytes);
+            const chunkData = new Uint8Array(chunkBytes);
             // Normalize to 0-based offset so startedAtMs + offset gives correct epoch time
-            this.firstEncodedTimestamp ??= chunkData.chunk.timestamp; // microseconds
-            const normalizedTimestamp = chunkData.chunk.timestamp - this.firstEncodedTimestamp;
-            // Convert microseconds to .NET TimeSpan ticks (100-nanosecond units)
-            // Use actual codec from encoder output (chunkData.codec), not configured codec.
-            // The encoder worker validates output and corrects codec if there's a mismatch
-            // (e.g., configured AV1 but actually producing H.264).
-            const actualCodec = chunkData.codec ?? this.config.encoderConfig.codec;
-            if (chunkData.type === 'key' && chunkData.codec && chunkData.codec !== this.config.encoderConfig.codec) {
-                warnLog?.log(`Encoder output codec (${chunkData.codec}) differs from configured (${this.config.encoderConfig.codec}), updating config`);
-                this.config.encoderConfig.codec = chunkData.codec;
-                this.config.decoderConfig.codec = chunkData.codec;
+            this.firstEncodedTimestamp ??= timestamp; // microseconds
+            const normalizedTimestamp = timestamp - this.firstEncodedTimestamp;
+
+            const actualCodec = codec || this.config.encoderConfig.codec;
+            if (isKeyFrame && codec && codec !== this.config.encoderConfig.codec) {
+                warnLog?.log(`Encoder output codec (${codec}) differs from configured (${this.config.encoderConfig.codec}), updating config`);
+                this.config.encoderConfig.codec = codec;
             }
 
             const frame: VideoStreamFrame = {
                 offset: microsecondsToTicks(normalizedTimestamp),
-                duration: microsecondsToTicks(chunkData.chunk.duration ?? 0),
-                isKeyFrame: chunkData.type === 'key',
+                duration: microsecondsToTicks(duration),
+                isKeyFrame,
                 width: this.config.encoderConfig.width,
                 height: this.config.encoderConfig.height,
-                data: chunkBytes,
-                codec: chunkData.type === 'key' ? actualCodec : undefined,
+                data: chunkData,
+                codec: isKeyFrame ? actualCodec : undefined,
             };
 
-            if (chunkData.type === 'key') {
+            if (isKeyFrame) {
                 const offsetMs = normalizedTimestamp / 1000;
-                debugLog?.log(`Streaming keyframe: seq=${chunkData.sequenceNumber}, offsetMs=${offsetMs.toFixed(0)}, ${(chunkBytes.length / 1024).toFixed(2)} KB`);
+                debugLog?.log(`Streaming keyframe: seq=${sequenceNumber}, offsetMs=${offsetMs.toFixed(0)}, ${(chunkData.length / 1024).toFixed(2)} KB`);
             }
 
             // Extract codec description from keyframes (required for H.264 decoder)
-            if (chunkData.type === 'key' && chunkData.metadata?.decoderConfig?.description) {
-                const desc = chunkData.metadata.decoderConfig.description;
-                let descBytes: Uint8Array;
-                if (desc instanceof ArrayBuffer) {
-                    descBytes = new Uint8Array(desc);
-                } else if (ArrayBuffer.isView(desc)) {
-                    descBytes = new Uint8Array(desc.buffer, desc.byteOffset, desc.byteLength);
-                } else {
-                    descBytes = new Uint8Array(0);
-                }
+            if (isKeyFrame && descriptionBytes && descriptionBytes.byteLength > 0) {
+                const descBytes = new Uint8Array(descriptionBytes);
                 frame.description = descBytes;
 
                 // If we don't have codecSettings yet, capture it from this keyframe
-                if (!this.codecSettings && descBytes.length > 0) {
+                if (!this.codecSettings) {
                     // Convert to base64 for transmission
                     let binary = '';
                     for (const byte of descBytes) {
@@ -248,7 +194,7 @@ export class VideoPipeline implements IVideoPipeline {
                 // AV1 doesn't produce a separate codec description (SPS/PPS) like H.264,
                 // so we can create the stream on the first keyframe without codecSettings.
                 const isAV1 = this.config.encoderConfig.codec.startsWith('av01');
-                const canCreateStream = this.codecSettings ?? (isAV1 && chunkData.type === 'key');
+                const canCreateStream = this.codecSettings ?? (isAV1 && isKeyFrame);
 
                 if (canCreateStream) {
                     // We have what we need — create the stream now
@@ -285,52 +231,6 @@ export class VideoPipeline implements IVideoPipeline {
                 this.videoStream.addFrame(frame);
             }
         }
-
-        if (this.transferSimulator) {
-            void this.transferSimulator.sendChunk(chunkData);
-            // console.log(`[Pipeline] Chunk #${chunkSeq} (${chunkData.type}) delivered through network simulation to decoder`);
-        }
-    };
-
-    private onDecoderDecodedFrame = async (frame: VideoFrame) => {
-    // Normalize timestamp to be relative to first frame (fixes video playback position display)
-        this.firstFrameTimestamp ??= frame.timestamp;
-        // console.log(`[Pipeline] First frame timestamp set to: ${this.firstFrameTimestamp}μs`);
-        const normalizedTimestamp = frame.timestamp - this.firstFrameTimestamp;
-        // const originalSeconds = frame.timestamp / 1_000_000;
-        // const normalizedSeconds = normalizedTimestamp / 1_000_000;
-
-        // console.log(`[Pipeline] Received decoded frame: ${frame.displayWidth}x${frame.displayHeight}, original timestamp: ${frame.timestamp}μs (${originalSeconds.toFixed(2)}s), normalized: ${normalizedTimestamp}μs (${normalizedSeconds.toFixed(2)}s)`);
-
-        // Create new frame with normalized timestamp for proper playback
-        const normalizedFrame = new VideoFrame(frame, { timestamp: normalizedTimestamp });
-
-        try {
-            if (this.writer) {
-                await this.writer.write(normalizedFrame);
-                // console.log(`[Pipeline] Frame written to generator: ${frame.displayWidth}x${frame.displayHeight}`);
-            } else if (this.outputCanvasCtx) {
-                const frameWidth = frame.displayWidth;
-                const frameHeight = frame.displayHeight;
-
-                if (this.outputCanvas && (this.outputCanvas.width !== frameWidth || this.outputCanvas.height !== frameHeight)) {
-                    // console.log(`[Pipeline] Adjusting output canvas from ${this.outputCanvas.width}x${this.outputCanvas.height} to ${frameWidth}x${frameHeight}`);
-                    this.outputCanvas.width = frameWidth;
-                    this.outputCanvas.height = frameHeight;
-                }
-
-                this.outputCanvasCtx.drawImage(frame, 0, 0, frameWidth, frameHeight);
-                // console.log(`[Pipeline] Frame rendered to canvas: ${frameWidth}x${frameHeight}`);
-            } else {
-                errorLog?.log('No output method available, dropping frame');
-            }
-        } catch (error) {
-            errorLog?.log('Error outputting decoded frame:', error);
-        } finally {
-            // Close both frames
-            normalizedFrame.close();
-            frame.close();
-        }
     };
 
     private onSegmentationFrameProcessed = async (frame: VideoFrame, _sequenceNumber: number, _processingTime: number) => {
@@ -364,7 +264,7 @@ export class VideoPipeline implements IVideoPipeline {
         this.reducedFrameIntervalMs = 1000 / (af?.reducedFps ?? 5);
         this.savedBitrate = config.encoderConfig.bitrate;
 
-        // Create worker instances
+        // Create encoder worker instance
         const encoderWorkerPath = Versioning.mapPath('/dist/videoEncoderWorker.js');
         infoLog?.log('Creating encoder worker from:', encoderWorkerPath);
         this.encoderWorkerInstance = new Worker(
@@ -373,25 +273,11 @@ export class VideoPipeline implements IVideoPipeline {
         );
         this.encoderWorkerInstance.onerror = (e) => errorLog?.log('Encoder worker error:', e);
 
-        const decoderWorkerPath = Versioning.mapPath('/dist/videoDecoderWorker.js');
-        infoLog?.log('Creating decoder worker from:', decoderWorkerPath);
-        this.decoderWorkerInstance = new Worker(
-            decoderWorkerPath,
-            { type: 'module' }
-        );
-        this.decoderWorkerInstance.onerror = (e) => errorLog?.log('Decoder worker error:', e);
-
-        // Create RPC proxies
+        // Create RPC proxy
         this.encoder = rpcClientServer<EncoderWorker>(
             'VideoPipeline.encoder',
             this.encoderWorkerInstance,
-            { onEncodedChunk: this.onEncoderEncodedChunk }
-        );
-
-        this.decoder = rpcClientServer<DecoderWorker>(
-            'VideoPipeline.decoder',
-            this.decoderWorkerInstance,
-            { onDecodedFrame: this.onDecoderDecodedFrame }
+            { onSerializedChunk: this.onSerializedChunk }
         );
 
         // Initialize segmentation worker if background blur is enabled
@@ -417,43 +303,8 @@ export class VideoPipeline implements IVideoPipeline {
         }
     }
 
-    public async start(inputStream: MediaStream): Promise<MediaStream> {
-        infoLog?.log('Starting unified video pipeline with RPC...');
-
-        // Use unified two-worker architecture for all browsers
-        infoLog?.log('Using unified architecture: two RPC workers with canvas fallbacks when needed');
-
-        // Create output generator or canvas fallback
-        if (this.hasMSTGInWindow()) {
-            this.generator = new MediaStreamTrackGenerator({ kind: 'video' });
-            this.writer = this.generator.writable.getWriter();
-            infoLog?.log('Using MediaStreamTrackGenerator for output');
-        } else if (this.hasVTGInWindow()) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-            const vtg: any = new (globalThis as any).VideoTrackGenerator();
-            this.generator = vtg as MediaStreamTrackGenerator;
-            this.writer = (vtg as MediaStreamTrackGenerator).writable.getWriter();
-            infoLog?.log('Using VideoTrackGenerator for output');
-        } else {
-            // Canvas fallback for browsers without MSTG (older Safari)
-            infoLog?.log('MSTG not available - using canvas-based output fallback');
-            this.outputCanvas = document.createElement('canvas');
-            this.outputCanvas.width = this.config.encoderConfig.width;
-            this.outputCanvas.height = this.config.encoderConfig.height;
-            this.outputCanvasCtx = this.outputCanvas.getContext('2d', { willReadFrequently: true });
-            this.outputStream = this.outputCanvas.captureStream(this.config.encoderConfig.framerate);
-        }
-
-        // Setup transfer simulator for local encode→decode loopback
-        this.transferSimulator = new TransferSimulator(
-            this.config.transferConfig,
-            (chunkData: EncodedChunkData) => {
-                void (async () => {
-                    await this.decoder.decodeChunk(chunkData);
-                })();
-            }
-        );
-        infoLog?.log('Transfer simulator initialized in main thread (network boundary)');
+    public async start(inputStream: MediaStream): Promise<void> {
+        infoLog?.log('Starting video pipeline...');
 
         // Initialize video streaming if enabled (stream will be created when first keyframe with description arrives)
         if (this.config.streaming?.enabled) {
@@ -468,10 +319,8 @@ export class VideoPipeline implements IVideoPipeline {
             infoLog?.log('Video streaming SignalR initialized, waiting for first keyframe');
         }
 
-
         // Get input video track
         const videoTrack = inputStream.getVideoTracks()[0];
-
 
         // IMPORTANT: Set processing to true BEFORE creating frame extractor
         // This fixes a race condition in Safari where the canvas fallback's pump()
@@ -497,10 +346,9 @@ export class VideoPipeline implements IVideoPipeline {
             this.frameReader = this.createCanvasFrameExtractor(videoTrack);
         }
 
-        // Initialize RPC proxies and wait for workers to be ready
-        const initPromises = [
+        // Initialize encoder worker and wait for it to be ready
+        const initPromises: Promise<void>[] = [
             this.encoder.initialize(this.config.encoderConfig, { type: 'rpc-timeout', timeoutMs: 5000 }),
-            this.decoder.initialize(this.config.decoderConfig, { type: 'rpc-timeout', timeoutMs: 5000 })
         ];
 
         // Initialize segmentation worker if background blur is enabled
@@ -519,7 +367,6 @@ export class VideoPipeline implements IVideoPipeline {
 
         await Promise.all(initPromises);
         infoLog?.log('Encoder worker ready via RPC');
-        infoLog?.log('Decoder worker ready via RPC');
 
         // Start pumping frames to encoder worker
         // Note: this.processing was already set to true earlier (before frame extractor creation)
@@ -530,8 +377,6 @@ export class VideoPipeline implements IVideoPipeline {
             void (async () => {
                 const encoderStats = await this.encoder.getStats();
                 this.currentStats.encoder = encoderStats;
-                const decoderStats = await this.decoder.getStats();
-                this.currentStats.decoder = decoderStats;
                 if (this.segmentationWorker) {
                     try {
                         const segStats = await this.segmentationWorker.getStats();
@@ -543,23 +388,11 @@ export class VideoPipeline implements IVideoPipeline {
             })();
         }, 1000);
 
-        infoLog?.log('Pipeline started successfully with RPC: Encoder Worker (sender) -> TransferSimulator (network) -> Decoder Worker (receiver)');
-
-        if (this.generator) {
-            this.outputStream = new MediaStream([this.generator]);
-            return this.outputStream;
-        }
-
-        // Use output stream from canvas if we created one
-        if (this.outputStream) {
-            return this.outputStream;
-        }
-
-        throw new Error('Failed to create output stream');
+        infoLog?.log('Pipeline started: Encoder Worker → Server streaming');
     }
 
     public async stop(): Promise<void> {
-        infoLog?.log('Stopping unified pipeline...');
+        infoLog?.log('Stopping pipeline...');
 
         // Unsubscribe from VAD
         if (this.vadSubscription) {
@@ -595,10 +428,6 @@ export class VideoPipeline implements IVideoPipeline {
         await this.encoder.stop();
         infoLog?.log('Encoder stopped via RPC');
 
-        // Stop decoder worker via RPC
-        await this.decoder.stop();
-        infoLog?.log('Decoder stopped via RPC');
-
         // Stop segmentation worker if it exists
         if (this.segmentationWorker) {
             try {
@@ -609,30 +438,6 @@ export class VideoPipeline implements IVideoPipeline {
             }
         }
 
-        // Close writer
-        if (this.writer) {
-            try {
-                await this.writer.close();
-                infoLog?.log('Writer closed');
-            } catch (error) {
-                warnLog?.log('Writer close error:', error);
-            }
-            this.writer = null;
-        }
-
-        // Stop generator
-        if (this.generator) {
-            this.generator.stop();
-            infoLog?.log('Generator stopped');
-            this.generator = null;
-        }
-
-        // Cleanup transfer mechanism
-        if (this.transferSimulator) {
-            this.transferSimulator.reset();
-            this.transferSimulator = null;
-        }
-
         // Complete video stream if active
         if (this.videoStream) {
             this.videoStream.complete();
@@ -641,14 +446,11 @@ export class VideoPipeline implements IVideoPipeline {
         }
 
         // Reset timestamp normalization
-        this.firstFrameTimestamp = null;
         this.firstEncodedTimestamp = null;
 
         // Cleanup RPC clients and worker instances
         this.encoder.dispose();
-        this.decoder.dispose();
         this.encoderWorkerInstance.terminate();
-        this.decoderWorkerInstance.terminate();
 
         if (this.segmentationWorker) {
             this.segmentationWorker.dispose();
@@ -659,16 +461,9 @@ export class VideoPipeline implements IVideoPipeline {
             this.segmentationWorkerInstance = null;
         }
 
-        if (this.outputStream) {
-            this.outputStream.getTracks().forEach(track => track.stop());
-            this.outputStream = null;
-        }
-
         infoLog?.log('Pipeline stopped with RPC cleanup');
     }
 
-
-    // Safari-specific stop logic removed - now using unified architecture
 
     /**
    * Dynamically reconfigure encoder with new bitrate and/or resolution
@@ -693,7 +488,6 @@ export class VideoPipeline implements IVideoPipeline {
             return;
         }
 
-        // Unified: always reconfigure via RPC
         await this.encoder.reconfigure(params);
     }
 
@@ -729,9 +523,6 @@ export class VideoPipeline implements IVideoPipeline {
         // Add codec-specific format (avc needs { format: 'avc' })
         // This is handled inside the encoder's initialize(), but we update our local config
         this.config.encoderConfig = newEncoderConfig;
-
-        // Also update decoder config to match
-        this.config.decoderConfig.codec = newCodecString;
 
         // 4. Switch encoder in worker (flush + close old, create + configure new)
         await this.encoder.switchCodec(newEncoderConfig);
@@ -804,17 +595,6 @@ export class VideoPipeline implements IVideoPipeline {
 
     getEncoderStats(): EncoderStats {
         return { ...this.currentStats.encoder };
-    }
-
-    getTransferStats(): TransferStats {
-        if (this.transferSimulator) {
-            return this.transferSimulator.getStats();
-        }
-        return { ...this.currentStats.transfer };
-    }
-
-    getDecoderStats(): DecoderStats {
-        return { ...this.currentStats.decoder };
     }
 
     getSegmentationStats(): SegmentationStats | null {
@@ -903,22 +683,6 @@ export class VideoPipeline implements IVideoPipeline {
         this.config.backgroundBlur.segmentationConfig = updatedConfig;
 
         infoLog?.log(`Successfully switched segmentation backend to ${newBackend}`);
-    }
-
-    /**
-   * Toggle between WASM and built-in AV1 decoders
-   */
-    async toggleAV1Decoder(useWasm: boolean): Promise<void> {
-        infoLog?.log(`Toggling AV1 decoder to ${useWasm ? 'WASM' : 'built-in'}`);
-
-        try {
-            // Toggle the decoder type via RPC
-            await this.decoder.toggleDecoderType(useWasm);
-            infoLog?.log(`Successfully toggled AV1 decoder to ${useWasm ? 'WASM' : 'built-in'}`);
-        } catch (error) {
-            errorLog?.log('Failed to toggle AV1 decoder:', error);
-            throw error;
-        }
     }
 
     /**
@@ -1280,7 +1044,7 @@ export class VideoPipeline implements IVideoPipeline {
                         }
                     } else {
                         // Send frame directly to encoder via RPC (frame is auto-transferred)
-                        await this.encoder.encodeFrame(frame);
+                        await this.encoder.encodeFrame(frame, rpcNoWait);
                     }
                 } catch {
                     // Close frame if RPC transfer failed (e.g., worker shutting down)
@@ -1300,15 +1064,5 @@ export class VideoPipeline implements IVideoPipeline {
     private hasMSTPInWindow(): boolean {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         return typeof (globalThis as any).MediaStreamTrackProcessor === 'function';
-    }
-
-    private hasMSTGInWindow(): boolean {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-        return typeof (globalThis as any).MediaStreamTrackGenerator === 'function';
-    }
-
-    private hasVTGInWindow(): boolean {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-        return typeof (globalThis as any).VideoTrackGenerator === 'function';
     }
 }

@@ -22,11 +22,6 @@ export interface RecordingConfig {
   bitrate: number;
   framerate: number;
   cameraDeviceId?: string; // Specific camera device ID for webcam mode
-  // Transfer simulation settings
-  bandwidth: number;
-  latency: number;
-  jitter: number;
-  packetLoss: number;
   // Streaming settings
   streaming?: {
     enabled: boolean;
@@ -41,11 +36,6 @@ export interface RecordingConfig {
   frameDropping?: {
     enabled: boolean;
     dropProbability?: number;
-  };
-  // AV1 decoder settings
-  av1Decoder?: {
-    enabled: boolean;
-    backend: 'wasm' | 'builtin';
   };
   // VAD-based adaptive framerate settings
   adaptiveFramerate?: {
@@ -157,17 +147,6 @@ export class RecordingService extends EventTarget {
                 }
             };
         }
-    }
-
-    async toggleAV1Decoder(useWasm: boolean): Promise<void> {
-        infoLog?.log('Toggling AV1 decoder to', useWasm ? 'WASM' : 'built-in');
-
-        if (!this.pipeline) {
-            throw new Error('No active pipeline');
-        }
-
-        // Toggle in pipeline
-        await this.pipeline.toggleAV1Decoder(useWasm);
     }
 
     updateFrameDropping(enabled: boolean, dropProbability = 0.1): void {
@@ -373,17 +352,6 @@ export class RecordingService extends EventTarget {
                 hardwareAcceleration: 'prefer-hardware',
                 scalabilityMode: scalabilityMode
             },
-            transferConfig: {
-                bandwidth: this.config.bandwidth,
-                latency: this.config.latency,
-                jitter: this.config.jitter,
-                packetLoss: this.config.packetLoss
-            },
-            decoderConfig: {
-                codec: codecString, // Match encoder codec
-                optimizeForLatency: true,
-                hardwareAcceleration: 'prefer-hardware'
-            }
         };
 
         // Add background blur configuration if enabled

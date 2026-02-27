@@ -2,6 +2,8 @@
  * Decoder Worker (Universal - Chrome & Safari)
  * Handles video decoding in a dedicated worker thread using RPC communication.
  * Receives encoded chunks and outputs decoded frames via RPC callbacks.
+ *
+ * Used by video-player.ts for off-main-thread decoding.
  */
 
 import { rpcClientServer, rpcNoWait } from 'rpc';
@@ -123,7 +125,6 @@ function decodeChunk(chunkData: EncodedChunkData): void {
                     },
                     (error) => {
                         errorLog?.log('Decoder error:', error);
-                        // Errors during decoding will propagate through decodeChunk() promise rejection
                     }
                 );
 
@@ -137,7 +138,6 @@ function decodeChunk(chunkData: EncodedChunkData): void {
                 }
             } catch (error) {
                 errorLog?.log('Failed to recover decoder:', error);
-                // Error logged, will continue trying to decode
                 return;
             }
         }
@@ -230,11 +230,24 @@ function decodeChunk(chunkData: EncodedChunkData): void {
         // If we have a recent keyframe, try to recover
         if (lastKeyframeSequence >= 0 && reorderBuffer.has(lastKeyframeSequence)) {
             infoLog?.log(`Attempting recovery from buffered keyframe #${lastKeyframeSequence}`);
-            // Recovery will happen naturally when we process the buffered keyframe
         }
-
-    // Error logged, decoding will continue with next chunks
     }
+}
+
+/**
+ * Helper: create WebCodecsDecoder instance with standard frame callback
+ */
+function createDecoder(config: DecoderConfig): WebCodecsDecoder {
+    return new WebCodecsDecoder(
+        { ...config, description: undefined },
+        (frame: VideoFrame) => {
+            frameCount++;
+            void callbacks.onDecodedFrame(frame, rpcNoWait);
+        },
+        (error) => {
+            errorLog?.log('Decoder error:', error);
+        }
+    );
 }
 
 // RPC Server Implementation
@@ -251,22 +264,7 @@ const serverImpl: DecoderWorker = {
             currentDecoderConfig = config;
 
             // Setup decoder - auto-configure from bitstream
-            decoder = new WebCodecsDecoder(
-                {
-                    ...config,
-                    description: undefined // Don't require description - decoder will auto-configure
-                },
-                (frame: VideoFrame) => {
-                    frameCount++;
-                    void callbacks.onDecodedFrame(frame, rpcNoWait);
-                },
-                (error) => {
-                    errorLog?.log('Decoder error:', error);
-                    // Errors during decoding will be logged, decoder continues
-                }
-            );
-
-            // Initialize the decoder
+            decoder = createDecoder(config);
             decoder.initialize();
             infoLog?.log('Decoder initialized for codec:', config.codec);
 
@@ -274,10 +272,9 @@ const serverImpl: DecoderWorker = {
             processing = true;
 
             infoLog?.log('Ready to decode chunks');
-            // No callback needed - initialize() returning successfully means ready
         } catch (error) {
             errorLog?.log('Failed to initialize decoder:', error);
-            throw error; // RPC automatically propagates errors
+            throw error;
         }
     },
 
@@ -318,12 +315,12 @@ const serverImpl: DecoderWorker = {
             waitingForKeyframe = false;
         } catch (error) {
             errorLog?.log('Failed to stop decoder:', error);
-            throw error; // RPC automatically propagates errors
+            throw error;
         }
     },
 
     /**
-   * Decode an encoded chunk
+   * Decode an encoded chunk (legacy path — EncodedChunkData with EncodedVideoChunk)
    */
     // eslint-disable-next-line
     decodeChunk: async (chunkData): Promise<void> => {
@@ -333,11 +330,9 @@ const serverImpl: DecoderWorker = {
         }
 
         const seq = chunkData.sequenceNumber;
-        // console.log(`[Decoder Worker] Received ${chunkData.type} chunk #${seq} via RPC, size: ${chunkData.byteLength}`);
 
         // If we're waiting for a keyframe due to packet loss, drop all non-keyframe chunks
         if (waitingForKeyframe && chunkData.type !== 'key') {
-            // console.log(`[Decoder Worker] Dropping ${chunkData.type} chunk #${seq} while waiting for keyframe`);
             return;
         }
 
@@ -347,7 +342,6 @@ const serverImpl: DecoderWorker = {
             waitingForKeyframe = false;
             reorderBuffer.clear();
             nextExpectedSequence = seq;
-            // Process this keyframe immediately
             decodeChunk(chunkData);
             nextExpectedSequence = seq + 1;
             return;
@@ -359,11 +353,9 @@ const serverImpl: DecoderWorker = {
             debugLog?.log(`Out-of-order chunk #${seq} (expecting #${nextExpectedSequence}), gap:`, gap);
             reorderBuffer.set(seq, chunkData);
 
-            // If gap is too large, likely we have packet loss
             if (gap >= MAX_REORDER_GAP) {
                 warnLog?.log(`Gap of ${gap} detected, packet #${nextExpectedSequence} is likely lost`);
 
-                // Check if we have a keyframe in the buffer we can recover from
                 let hasKeyframeInBuffer = false;
                 let firstKeyframeSeq = -1;
                 for (const [bufSeq, bufChunk] of reorderBuffer) {
@@ -374,21 +366,15 @@ const serverImpl: DecoderWorker = {
                 }
 
                 if (hasKeyframeInBuffer) {
-                    // We have a keyframe - skip to it and discard all delta frames before it
                     infoLog?.log(`Found keyframe #${firstKeyframeSeq} in buffer, skipping to it`);
-
-                    // Remove all chunks before the keyframe
                     for (const [bufSeq] of reorderBuffer) {
                         if (bufSeq < firstKeyframeSeq) {
                             reorderBuffer.delete(bufSeq);
                         }
                     }
-
-                    // Jump to the keyframe sequence
                     nextExpectedSequence = firstKeyframeSeq;
                     processBufferedChunks();
                 } else {
-                    // No keyframe available - enter recovery mode
                     warnLog?.log(`No keyframe in buffer after lost packet #${nextExpectedSequence}, entering recovery mode`);
                     waitingForKeyframe = true;
                     reorderBuffer.clear();
@@ -396,13 +382,11 @@ const serverImpl: DecoderWorker = {
                 return;
             }
 
-            // If we received a keyframe while waiting, we can reset and skip missing packets
             if (chunkData.type === 'key') {
                 debugLog?.log(`Received keyframe #${seq} while waiting for #${nextExpectedSequence}`);
                 nextExpectedSequence = seq;
                 decodeChunk(chunkData);
                 nextExpectedSequence = seq + 1;
-                // Clear old buffered chunks before this keyframe
                 for (const [bufSeq] of reorderBuffer) {
                     if (bufSeq < seq) {
                         reorderBuffer.delete(bufSeq);
@@ -412,7 +396,6 @@ const serverImpl: DecoderWorker = {
                 return;
             }
 
-            // Try to process buffered chunks in order
             processBufferedChunks();
             return;
         }
@@ -420,10 +403,125 @@ const serverImpl: DecoderWorker = {
         // Process this chunk immediately (it's in order)
         decodeChunk(chunkData);
 
-        // Increment and try to process next buffered chunks
         if (seq !== -1) {
             nextExpectedSequence = seq + 1;
             processBufferedChunks();
+        }
+    },
+
+    /**
+     * Decode raw encoded bytes (used by video-player.ts for off-main-thread decoding).
+     * Creates EncodedVideoChunk internally from raw bytes.
+     */
+    // eslint-disable-next-line
+    decodeRawChunk: async (
+        data: ArrayBuffer,
+        timestamp: number,
+        duration: number,
+        isKeyFrame: boolean,
+        sequenceNumber: number,
+        description?: ArrayBuffer
+    ): Promise<void> => {
+        if (!decoder || !processing) {
+            return;
+        }
+
+        try {
+            // If we have a description and it's a keyframe, reconfigure the decoder
+            if (isKeyFrame && description && description.byteLength > 0) {
+                if (!decoderConfigured || description.byteLength > 0) {
+                    decoder.updateDescription(description);
+                    decoderConfigured = true;
+                }
+            }
+
+            // For AV1, we don't need a description — mark as configured on first keyframe
+            if (isKeyFrame && !decoderConfigured) {
+                const isAV1 = currentDecoderConfig?.codec.startsWith('av01');
+                if (isAV1 || !currentDecoderConfig?.description) {
+                    decoderConfigured = true;
+                }
+            }
+
+            // Create EncodedVideoChunk from raw bytes
+            const chunk = new EncodedVideoChunk({
+                type: isKeyFrame ? 'key' : 'delta',
+                timestamp,
+                duration,
+                data,
+            });
+
+            // Check decoder state
+            if (decoder.getState() !== 'configured') {
+                warnLog?.log(`Decoder not configured (state: ${decoder.getState()}), dropping chunk`);
+                return;
+            }
+
+            // Decode using the internal VideoDecoder
+            // We use a simplified path here — no reorder buffer since SignalR delivers in order
+            const nativeDecoder = (decoder as unknown as { decoder: VideoDecoder }).decoder;
+            nativeDecoder.decode(chunk);
+        } catch (error) {
+            errorLog?.log('Error decoding raw chunk:', error);
+        }
+    },
+
+    /**
+     * Reset the decoder (flush internal queue).
+     * Used for tab visibility restore.
+     */
+    // eslint-disable-next-line
+    resetDecoder: async (): Promise<void> => {
+        if (!decoder) return;
+
+        try {
+            infoLog?.log('Resetting decoder');
+
+            // Close existing decoder
+            if (decoder.getState() !== 'closed') {
+                decoder.close();
+            }
+
+            // Recreate decoder
+            if (currentDecoderConfig) {
+                decoder = createDecoder(currentDecoderConfig);
+                decoder.initialize();
+                decoderConfigured = false;
+                infoLog?.log('Decoder reset complete');
+            }
+        } catch (error) {
+            errorLog?.log('Error resetting decoder:', error);
+        }
+    },
+
+    /**
+     * Reconfigure the decoder with new config.
+     * Used after reset for tab visibility restore.
+     */
+    // eslint-disable-next-line
+    configureDecoder: async (config: DecoderConfig): Promise<void> => {
+        try {
+            infoLog?.log('Configuring decoder with:', config.codec);
+            currentDecoderConfig = config;
+
+            if (decoder && decoder.getState() !== 'closed') {
+                decoder.close();
+            }
+
+            decoder = createDecoder(config);
+            decoder.initialize();
+            decoderConfigured = false;
+
+            // If config has description, apply it
+            if (config.description) {
+                decoder.updateDescription(config.description);
+                decoderConfigured = true;
+            }
+
+            infoLog?.log('Decoder configured');
+        } catch (error) {
+            errorLog?.log('Error configuring decoder:', error);
+            throw error;
         }
     },
 
@@ -467,12 +565,7 @@ const serverImpl: DecoderWorker = {
                 throw new Error('Decoder not initialized');
             }
 
-            // For the regular decoder worker, we need to check if it supports toggling
-            // Since WebCodecsDecoder doesn't have toggle functionality, we'll just log this
             infoLog?.log('WebCodecs decoder - using WebCodecs API');
-
-            // If this is an AV1 decoder, we could potentially switch to WASM implementation
-            // But for now, we'll just log the request
         } catch (error) {
             errorLog?.log('Failed to toggle decoder type:', error);
             throw error;

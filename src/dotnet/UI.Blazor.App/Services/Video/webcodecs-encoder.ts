@@ -287,6 +287,10 @@ export class WebCodecsEncoder {
         }
     }
 
+    getEncodeQueueSize(): number {
+        return this.encoder.encodeQueueSize;
+    }
+
     getState(): CodecState {
         return this.encoder.state;
     }

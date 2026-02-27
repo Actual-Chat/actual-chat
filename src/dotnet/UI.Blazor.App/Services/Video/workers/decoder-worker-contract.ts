@@ -26,10 +26,43 @@ export interface DecoderWorker {
     stop(): Promise<void>;
 
     /**
-     * Decode an encoded chunk
+     * Decode an encoded chunk (used by pipeline loopback path — kept for backwards compat)
      * @param chunkData Encoded chunk data to decode
      */
     decodeChunk(chunkData: EncodedChunkData): Promise<void>;
+
+    /**
+     * Decode raw encoded bytes (used by video-player.ts).
+     * The worker creates EncodedVideoChunk internally from the raw bytes.
+     * ArrayBuffer args are transferable (zero-copy to worker).
+     * @param data Raw encoded bytes
+     * @param timestamp Timestamp in microseconds
+     * @param duration Duration in microseconds
+     * @param isKeyFrame Whether this is a keyframe
+     * @param sequenceNumber Chunk sequence number for ordering
+     * @param description Optional codec description bytes (transferred, zero-copy)
+     */
+    decodeRawChunk(
+        data: ArrayBuffer,
+        timestamp: number,
+        duration: number,
+        isKeyFrame: boolean,
+        sequenceNumber: number,
+        description?: ArrayBuffer
+    ): Promise<void>;
+
+    /**
+     * Reset the decoder (flush internal queue).
+     * Used for tab visibility restore handling.
+     */
+    resetDecoder(): Promise<void>;
+
+    /**
+     * Reconfigure the decoder with new config.
+     * Used after reset for tab visibility restore.
+     * @param config New decoder configuration
+     */
+    configureDecoder(config: DecoderConfig): Promise<void>;
 
     /**
      * Flush pending chunks in the decoder

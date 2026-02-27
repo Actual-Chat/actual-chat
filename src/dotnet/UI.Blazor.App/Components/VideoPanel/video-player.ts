@@ -2,11 +2,16 @@ import * as signalR from '@microsoft/signalr';
 import { decode } from '@msgpack/msgpack';
 import { Log } from 'logging';
 import { fastRaf } from 'fast-raf';
+import { rpcClientServer } from 'rpc';
+import type { Disposable } from 'disposable';
 import { VideoStreamer } from '../../Services/Video/video-streamer';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 import { AudioVideoSync } from 'audio-video-sync';
 import { DocumentEvents } from 'event-handling';
+import { Versioning } from 'versioning';
 import { type Subscription } from 'rxjs';
+import type { DecoderWorker } from '../../Services/Video/workers/decoder-worker-contract';
+import type { DecoderConfig } from '../../Services/Video/webcodecs-decoder';
 
 const { debugLog, warnLog, errorLog } = Log.get('VideoPlayer');
 
@@ -20,14 +25,6 @@ function arrayBufferEqual(a: AllowSharedBufferSource, b: AllowSharedBufferSource
     return true;
 }
 
-interface PendingChunk {
-    frameData: Uint8Array;
-    timestampMs: number;
-    durationMs: number;
-    isKeyFrame: boolean;
-    description?: Uint8Array;
-}
-
 export class VideoPlayer {
     private blazorRef: DotNet.DotNetObject;
     private streamId: string;
@@ -35,16 +32,17 @@ export class VideoPlayer {
     private canvas: HTMLCanvasElement;
     private canvasCtx: CanvasRenderingContext2D | null = null;
 
-    // WebCodecs decoder (when available)
-    private decoder: VideoDecoder | null = null;
-    private decoderConfig: VideoDecoderConfig | null = null;
+    // Decoder worker (off-main-thread decoding)
+    private decoderWorkerInstance: Worker | null = null;
+    private decoderWorker: (DecoderWorker & Disposable) | null = null;
+    private decoderConfig: DecoderConfig | null = null;
     private pendingFrames: VideoFrame[] = [];
     private isPlaying = false;
     private visibilitySubscription: Subscription | null = null;
 
     // Buffer chunks until we receive a keyframe with description
     private waitingForKeyframe = true;
-    private pendingChunks: PendingChunk[] = [];
+    private lastDescription: ArrayBuffer | null = null;
 
     // Buffering state
     private bufferSize = 0;
@@ -62,6 +60,7 @@ export class VideoPlayer {
     private receivedFrameCount = 0;     // count of received frames (for periodic logging)
     private receivedKeyframeCount = 0;   // count of received keyframes (for correlation with encoder)
     private lastSyncLogTime = 0;        // throttle sync logging
+    private sequenceNumber = 0;         // sequence number for chunks sent to decoder worker
 
     // Latency measurement
     private lastRenderedOffsetMs = 0;   // offset of the latest decoded frame (ms from stream start)
@@ -116,13 +115,13 @@ export class VideoPlayer {
             `VideoPlayer created for stream ${streamId}, codec: ${codec}, size: ${width}x${height}, ` +
             `authorId=${authorId}, startedAtMs=${startedAtMs.toFixed(0)}`);
 
-        // Initialize decoder
-        void this.initDecoder(codec, width, height, codecSettings);
+        // Initialize decoder worker
+        void this.initDecoderWorker(codec, width, height, codecSettings);
     }
 
-    private async initDecoder(codec: string, width: number, height: number, codecSettings: string): Promise<void> {
+    private async initDecoderWorker(codec: string, width: number, height: number, codecSettings: string): Promise<void> {
         if (!this.supportsWebCodecs()) {
-            warnLog?.log('WebCodecs not supported, using canvas fallback');
+            warnLog?.log('WebCodecs not supported');
             return;
         }
 
@@ -130,58 +129,50 @@ export class VideoPlayer {
             // Decode codec settings (base64 encoded SPS/PPS for H.264)
             let description: ArrayBuffer | undefined;
             if (codecSettings) {
-                console.log(`[VideoPlayer] Received codecSettings: ${codecSettings.length} base64 chars`);
-                console.log(`[VideoPlayer] codecSettings base64: ${codecSettings}`);
                 const binaryString = atob(codecSettings);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
                 }
                 description = bytes.buffer;
-                // Log first few bytes for debugging
-                const hexBytes = Array.from(bytes.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                console.log(`[VideoPlayer] Decoded description: ${bytes.length} bytes`);
-                console.log(`[VideoPlayer] Description first 20 bytes (hex): ${hexBytes}`);
+                debugLog?.log(`Decoded description: ${bytes.length} bytes`);
             }
 
-            // Map codec name to WebCodecs codec string (pass description to extract actual profile)
+            // Map codec name to WebCodecs codec string
             const codecString = this.mapCodecToWebCodecs(codec, description);
-            debugLog?.log(`Initializing WebCodecs decoder with codec: ${codecString}`);
+            debugLog?.log(`Initializing decoder worker with codec: ${codecString}`);
 
             this.decoderConfig = {
                 codec: codecString,
-                codedWidth: width,
-                codedHeight: height,
-                description: description,
-                hardwareAcceleration: 'prefer-hardware',
                 optimizeForLatency: true,
+                hardwareAcceleration: 'prefer-hardware',
+                description,
             };
 
-            // Check if codec is supported
-            const support = await VideoDecoder.isConfigSupported(this.decoderConfig);
-            if (!support.supported) {
-                errorLog?.log(`Codec ${codecString} not supported`);
-                return;
-            }
+            // Create decoder worker
+            const decoderWorkerPath = Versioning.mapPath('/dist/videoDecoderWorker.js');
+            this.decoderWorkerInstance = new Worker(decoderWorkerPath, { type: 'module' });
+            this.decoderWorkerInstance.onerror = (e) => errorLog?.log('Decoder worker error:', e);
 
-            this.decoder = new VideoDecoder({
-                output: (frame: VideoFrame) => this.onFrameDecoded(frame),
-                error: (e: DOMException) => this.onDecoderError(e),
-            });
+            // Create RPC proxy — decoded frames are transferred back from worker
+            this.decoderWorker = rpcClientServer<DecoderWorker>(
+                'VideoPlayer.decoder',
+                this.decoderWorkerInstance,
+                { onDecodedFrame: (frame: VideoFrame) => { this.onFrameDecoded(frame); return Promise.resolve(); } }
+            );
 
-            this.decoder.configure(this.decoderConfig);
-            debugLog?.log('WebCodecs decoder configured');
+            // Initialize the worker
+            await this.decoderWorker.initialize(this.decoderConfig, { type: 'rpc-timeout', timeoutMs: 5000 });
+            debugLog?.log('Decoder worker initialized');
 
-            // If we have codec settings, we don't need to wait for keyframe with description.
-            // AV1 doesn't produce separate codec description (SPS/PPS) like H.264,
-            // so the decoder can work with just the codec string.
+            // If we have codec settings or this is AV1, we don't need to wait for keyframe with description
             const isAV1 = codecString.startsWith('av01');
             if (codecSettings || isAV1) {
                 this.waitingForKeyframe = false;
-                console.log(`[VideoPlayer] Decoder configured, not waiting for keyframe with description (codecSettings=${!!codecSettings}, isAV1=${isAV1})`);
+                debugLog?.log(`Not waiting for keyframe with description (codecSettings=${!!codecSettings}, isAV1=${isAV1})`);
             }
         } catch (error) {
-            errorLog?.log('Failed to initialize WebCodecs decoder:', error);
+            errorLog?.log('Failed to initialize decoder worker:', error);
         }
     }
 
@@ -190,8 +181,7 @@ export class VideoPlayer {
     }
 
     private mapCodecToWebCodecs(codec: string, description?: ArrayBuffer): string {
-        // Defense-in-depth: detect avcC format from description bytes regardless of declared codec.
-        // This catches the case where encoder silently falls back to H.264 but reports AV1.
+        // Defense-in-depth: detect avcC format from description bytes regardless of declared codec
         if (description && description.byteLength >= 5) {
             if (VideoPlayer.isAvcCDescription(description)) {
                 const bytes = new Uint8Array(description);
@@ -220,7 +210,7 @@ export class VideoPlayer {
 
         // Map common codec names to WebCodecs codec strings
         const codecMap: Record<string, string> = {
-            'h264': 'avc1.640028', // H.264 High profile, Level 4.0 (common default)
+            'h264': 'avc1.640028',
             'avc1': 'avc1.640028',
             'h265': 'hvc1.1.6.L93.90',
             'hevc': 'hvc1.1.6.L93.90',
@@ -233,27 +223,18 @@ export class VideoPlayer {
         if (codecMap[lowerCodec]) {
             return codecMap[lowerCodec];
         }
-        // If codec already looks like a WebCodecs string, use it as-is
         if (codec.includes('.')) {
             return codec;
         }
-        return 'avc1.640028'; // Default to H.264 High profile
+        return 'avc1.640028';
     }
 
-    /**
-     * Detect if description bytes are in avcC (H.264 decoder configuration record) format.
-     * avcC: byte[0]===0x01 (configurationVersion), byte[1] is valid H.264 profile,
-     * byte[4] has reserved bits set (0xFC mask).
-     */
     private static isAvcCDescription(description: ArrayBuffer): boolean {
         if (description.byteLength < 5) return false;
         const bytes = new Uint8Array(description);
-        // configurationVersion must be 1
         if (bytes[0] !== 0x01) return false;
-        // profileIndication must be a known H.264 profile
-        const validProfiles = [66, 77, 88, 100, 110, 122, 244]; // Baseline, Main, Extended, High, High10, High422, High444
+        const validProfiles = [66, 77, 88, 100, 110, 122, 244];
         if (!validProfiles.includes(bytes[1])) return false;
-        // byte[4] reserved bits: upper 6 bits must be 1 (0xFC mask)
         if ((bytes[4] & 0xFC) !== 0xFC) return false;
         return true;
     }
@@ -306,7 +287,6 @@ export class VideoPlayer {
 
     private scheduleRender(): void {
         if (this.pendingFrames.length === 0 || !this.isPlaying) return;
-        // Key dedup: if already scheduled for this player, fastRaf returns false (no-op)
         fastRaf({ write: () => this.onRenderFrame(), key: this.renderKey });
     }
 
@@ -330,16 +310,12 @@ export class VideoPlayer {
         if (audioState) {
             const audioPlayingAtMs = AudioVideoSync.interpolatePlayingAt(audioState) * 1000;
             const rawTargetVideoOffsetMs = (audioState.recordedAtMs - this.startedAtMs) + audioPlayingAtMs;
-
-            // Compensate for pipeline latency so target is achievable
             const targetVideoOffsetMs = rawTargetVideoOffsetMs - this.pipelineLatencyMs;
-            targetTimestamp = targetVideoOffsetMs * 1000; // ms → μs
+            targetTimestamp = targetVideoOffsetMs * 1000;
 
-            // Re-anchor wall-clock to COMPENSATED target (not raw audio target)
             this.playbackStartTime = now;
             this.firstFrameTimestamp = targetTimestamp;
 
-            // Periodic sync logging
             if (now - this.lastSyncLogTime > 1000) {
                 this.lastSyncLogTime = now;
                 const driftMs = this.lastRenderedOffsetMs - targetVideoOffsetMs;
@@ -351,8 +327,7 @@ export class VideoPlayer {
                     `driftMs=${driftMs.toFixed(0)}, pending=${this.pendingFrames.length}`);
             }
         } else {
-            // Wall-clock pacing (no audio to sync to)
-            const elapsedUs = (now - this.playbackStartTime) * 1000; // ms → μs
+            const elapsedUs = (now - this.playbackStartTime) * 1000;
             targetTimestamp = this.firstFrameTimestamp + elapsedUs - this.pipelineLatencyMs * 1000;
 
             if (now - this.lastSyncLogTime > 2000) {
@@ -371,7 +346,7 @@ export class VideoPlayer {
         let frameToRender: VideoFrame | null = null;
         while (this.pendingFrames.length > 0 && this.pendingFrames[0].timestamp <= targetTimestamp) {
             if (frameToRender) {
-                frameToRender.close(); // Drop skipped frame
+                frameToRender.close();
                 this.bufferSize--;
             }
             frameToRender = this.pendingFrames.shift()!;
@@ -379,14 +354,13 @@ export class VideoPlayer {
 
         if (frameToRender) {
             this.bufferSize--;
-            this.lastRenderedOffsetMs = frameToRender.timestamp / 1000; // μs → ms
+            this.lastRenderedOffsetMs = frameToRender.timestamp / 1000;
             this.drawFrame(frameToRender);
             frameToRender.close();
         }
 
         this.updateBufferState();
 
-        // Re-schedule if more frames pending
         if (this.pendingFrames.length > 0)
             this.scheduleRender();
     }
@@ -420,7 +394,7 @@ export class VideoPlayer {
         isKeyFrame: boolean,
         description?: Uint8Array
     ): void {
-        if (!this.isPlaying) {
+        if (!this.isPlaying || !this.decoderWorker) {
             return;
         }
 
@@ -431,7 +405,6 @@ export class VideoPlayer {
 
         // If we're waiting for a keyframe with description, buffer chunks
         if (this.waitingForKeyframe) {
-            console.log(`[VideoPlayer] Received frame: isKey=${isKeyFrame}, descLen=${description?.length ?? 0}, dataLen=${frameData.length}`);
             const needsDescription = !!this.decoderConfig?.description;
             if (isKeyFrame && (!needsDescription || (description && description.length > 0))) {
                 // After tab restore: skip keyframes that are too old
@@ -440,102 +413,96 @@ export class VideoPlayer {
                         `(threshold=${this.skipFramesBelowOffsetMs.toFixed(0)}ms)`);
                     return;
                 }
-                this.skipFramesBelowOffsetMs = 0; // Got a current keyframe, clear threshold
+                this.skipFramesBelowOffsetMs = 0;
 
-                // Got the keyframe (with description if needed) - configure decoder and process buffered chunks
-                console.log(`[VideoPlayer] GOT KEYFRAME: descLen=${description?.length ?? 0}, needsDesc=${needsDescription}, processing ${this.pendingChunks.length} buffered chunks`);
+                debugLog?.log(`Got keyframe: descLen=${description?.length ?? 0}, needsDesc=${needsDescription}`);
                 this.waitingForKeyframe = false;
 
-                // Reconfigure decoder with description (only if one was provided)
-                // Note: description.buffer may be larger than the actual data if it's a view,
-                // so we need to slice it properly
-                if (description && description.length > 0 && this.decoder && this.decoderConfig) {
+                // Reconfigure decoder worker with description if needed
+                if (description && description.length > 0 && this.decoderConfig) {
                     const descBuffer = description.buffer.slice(
                         description.byteOffset,
                         description.byteOffset + description.byteLength
                     );
-                    const newConfig: VideoDecoderConfig = {
-                        ...this.decoderConfig,
-                        description: descBuffer,
-                    };
-                    this.decoder.configure(newConfig);
-                    this.decoderConfig = newConfig;
-                }
+                    this.lastDescription = descBuffer as ArrayBuffer;
 
-                // Process the keyframe first
-                this.decodeChunk(frameData, timestampMs, durationMs, isKeyFrame);
-
-                // Clear buffered delta frames (they're useless without the keyframe before them)
-                this.pendingChunks = [];
-            } else {
-                // After tab restore: don't buffer stale deltas
-                if (this.skipFramesBelowOffsetMs > 0 && timestampMs < this.skipFramesBelowOffsetMs) {
-                    return;
-                }
-
-                // Buffer delta frames while waiting (but limit buffer size)
-                if (this.pendingChunks.length < 30) {
-                    this.pendingChunks.push({ frameData, timestampMs, durationMs, isKeyFrame, description });
-                }
-                if (this.pendingChunks.length <= 5 || this.pendingChunks.length % 30 === 0)
-                    console.log(`[VideoPlayer] Waiting for keyframe with description, buffered ${this.pendingChunks.length} chunks (isKey=${isKeyFrame}, hasDesc=${!!description})`);
-            }
-            return;
-        }
-
-        // If we receive a new keyframe with description, reconfigure the decoder
-        // only when the description actually changed (avoids resetting pacing anchor
-        // every ~1s keyframe when the codec config is identical)
-        if (isKeyFrame && description && description.length > 0) {
-            const currentDesc = this.decoderConfig?.description;
-            const descChanged = !currentDesc || !arrayBufferEqual(currentDesc, description);
-            if (descChanged) {
-                debugLog?.log(`Reconfiguring decoder with new description: ${description.length} bytes`);
-                if (this.decoder && this.decoderConfig) {
-                    const descBuffer = description.buffer.slice(
-                        description.byteOffset,
-                        description.byteOffset + description.byteLength
-                    );
-                    // Re-derive codec from new description (defense-in-depth: catches codec mismatch)
+                    // Re-derive codec from description (defense-in-depth)
                     const derivedCodec = this.mapCodecToWebCodecs(
                         this.decoderConfig.codec, descBuffer as ArrayBuffer);
-                    const newConfig: VideoDecoderConfig = {
+
+                    const newConfig: DecoderConfig = {
                         ...this.decoderConfig,
                         codec: derivedCodec,
                         description: descBuffer,
                     };
-                    this.decoder.configure(newConfig);
                     this.decoderConfig = newConfig;
+                    void this.decoderWorker.configureDecoder(newConfig);
                 }
-                this.playbackStartTime = 0; // Reset pacing anchor to re-sync
+
+                // Send keyframe to decoder worker
+                this.sendToDecoderWorker(frameData, timestampMs, durationMs, isKeyFrame, description);
+            }
+            // Drop delta frames while waiting for keyframe
+            return;
+        }
+
+        // If we receive a new keyframe with description, reconfigure only if changed
+        if (isKeyFrame && description && description.length > 0) {
+            const descBuffer = description.buffer.slice(
+                description.byteOffset,
+                description.byteOffset + description.byteLength
+            );
+            const descChanged = !this.lastDescription || !arrayBufferEqual(this.lastDescription, descBuffer);
+            if (descChanged) {
+                debugLog?.log(`Reconfiguring decoder worker with new description: ${description.length} bytes`);
+                this.lastDescription = descBuffer as ArrayBuffer;
+
+                if (this.decoderConfig) {
+                    const derivedCodec = this.mapCodecToWebCodecs(
+                        this.decoderConfig.codec, descBuffer as ArrayBuffer);
+                    const newConfig: DecoderConfig = {
+                        ...this.decoderConfig,
+                        codec: derivedCodec,
+                        description: descBuffer,
+                    };
+                    this.decoderConfig = newConfig;
+                    void this.decoderWorker.configureDecoder(newConfig);
+                }
+                this.playbackStartTime = 0;
             }
         }
 
-        this.decodeChunk(frameData, timestampMs, durationMs, isKeyFrame);
+        this.sendToDecoderWorker(frameData, timestampMs, durationMs, isKeyFrame, description);
     }
 
-    private decodeChunk(
+    private sendToDecoderWorker(
         frameData: Uint8Array,
         timestampMs: number,
         durationMs: number,
-        isKeyFrame: boolean
+        isKeyFrame: boolean,
+        description?: Uint8Array
     ): void {
-        if (this.decoder?.state === 'configured') {
-            try {
-                const chunk = new EncodedVideoChunk({
-                    type: isKeyFrame ? 'key' : 'delta',
-                    timestamp: timestampMs * 1000, // Convert to microseconds
-                    duration: durationMs * 1000,
-                    data: frameData,
-                });
+        if (!this.decoderWorker) return;
 
-                this.decoder.decode(chunk);
-            } catch (error) {
-                errorLog?.log('Error decoding chunk:', error);
-            }
-        } else {
-            warnLog?.log('Decoder not available, frame dropped');
+        // Copy data to transferable ArrayBuffer
+        const dataBuffer = new ArrayBuffer(frameData.byteLength);
+        new Uint8Array(dataBuffer).set(frameData);
+
+        let descBuffer: ArrayBuffer | undefined;
+        if (description && description.length > 0) {
+            descBuffer = new ArrayBuffer(description.byteLength);
+            new Uint8Array(descBuffer).set(description);
         }
+
+        // Send raw bytes to worker — worker creates EncodedVideoChunk internally
+        void this.decoderWorker.decodeRawChunk(
+            dataBuffer,
+            timestampMs * 1000, // ms → μs
+            durationMs * 1000,  // ms → μs
+            isKeyFrame,
+            this.sequenceNumber++,
+            descBuffer
+        );
     }
 
     public start(): void {
@@ -547,7 +514,7 @@ export class VideoPlayer {
         // Listen for tab visibility restore to avoid frame burst after backgrounding
         this.visibilitySubscription = DocumentEvents.passive.visibilityChange$.subscribe(() => {
             if (!document.hidden && this.isPlaying) {
-                debugLog?.log(`visibilityChange: tab became visible, decoder=${this.decoder?.state ?? 'null'}`);
+                debugLog?.log('visibilityChange: tab became visible');
                 this.onVisibilityRestored();
             }
         });
@@ -557,7 +524,7 @@ export class VideoPlayer {
     }
 
     private onVisibilityRestored(): void {
-        if (this.decoder?.state !== 'configured') return;
+        if (!this.decoderWorker) return;
 
         this.skippedBacklogFrames = 0;
         const pendingCount = this.pendingFrames.length;
@@ -569,18 +536,13 @@ export class VideoPlayer {
         this.pendingFrames = [];
         this.bufferSize = 0;
 
-        // Reset decoder to flush its internal queue of encoded chunks instantly.
-        // Without this, 72+ queued decode() calls must complete sequentially
-        // before we get to current frames — taking ~100ms and adding latency.
-        this.decoder.reset();
-        this.decoder.configure(this.decoderConfig!);
+        // Reset decoder worker to flush its internal queue
+        void this.decoderWorker.resetDecoder();
 
         // After reset, delta frames are useless — need a fresh keyframe
         this.waitingForKeyframe = true;
-        this.pendingChunks = [];
 
-        // Set threshold to skip stale encoded frames arriving from SignalR.
-        // Use actual pipeline latency (typically ~200ms), not the old 2000ms floor.
+        // Set threshold to skip stale encoded frames arriving from SignalR
         const targetLatencyMs = Math.max(this.pipelineLatencyMs, 300);
         this.skipFramesBelowOffsetMs = (Date.now() - this.startedAtMs) - targetLatencyMs;
 
@@ -590,7 +552,7 @@ export class VideoPlayer {
 
         // Reset timing anchor so playback re-syncs on next rendered frame
         this.playbackStartTime = 0;
-        this.rebufferDelayMs = 300; // Build 300ms of buffer before rendering
+        this.rebufferDelayMs = 300;
     }
 
     /** Called by Blazor */
@@ -707,15 +669,19 @@ export class VideoPlayer {
         this.pendingFrames = [];
         this.bufferSize = 0;
 
-        // Close decoder
-        if (this.decoder) {
+        // Stop decoder worker
+        if (this.decoderWorker) {
             try {
-                await this.decoder.flush();
-                this.decoder.close();
+                await this.decoderWorker.stop();
             } catch {
                 // Ignore
             }
-            this.decoder = null;
+            this.decoderWorker.dispose();
+            this.decoderWorker = null;
+        }
+        if (this.decoderWorkerInstance) {
+            this.decoderWorkerInstance.terminate();
+            this.decoderWorkerInstance = null;
         }
 
         debugLog?.log(`VideoPlayer stopped for stream ${this.streamId}`);
@@ -729,7 +695,6 @@ export class VideoPlayer {
             warnLog?.log(`reportLatencyTick: skip — lastRendered=${this.lastRenderedOffsetMs.toFixed(0)}`);
             return;
         }
-        // lastRenderedOffsetMs is already 0-based from stream start (server frame offset)
         const streamOffsetMs = this.lastRenderedOffsetMs;
 
         const nowMs = Date.now();
@@ -741,7 +706,6 @@ export class VideoPlayer {
             `(startedAt=${this.startedAtMs.toFixed(0)}+offset=${this.lastRenderedOffsetMs.toFixed(0)}), ` +
             `latency=${latencyMs.toFixed(0)}ms`);
 
-        // Report latency via SignalR hub (same connection as GetVideo) so peerId matches
         const connection = VideoStreamer.connection;
         const sessionToken = SessionTokens.current;
         if (connection) {

@@ -4,7 +4,21 @@
  */
 
 import { RpcNoWait, RpcTimeout } from 'rpc';
-import type { EncoderConfig, EncoderStats, EncodedChunkData } from '../webcodecs-encoder';
+import type { EncoderConfig, EncoderStats } from '../webcodecs-encoder';
+
+/**
+ * Serialized chunk data sent from encoder worker to main thread.
+ * All ArrayBuffer fields are transferred (zero-copy) via postMessage.
+ */
+export interface SerializedChunkData {
+    chunkBytes: ArrayBuffer;
+    timestamp: number;
+    duration: number;
+    isKeyFrame: boolean;
+    codec: string;
+    sequenceNumber: number;
+    descriptionBytes?: ArrayBuffer;
+}
 
 /**
  * Encoder Worker API
@@ -27,8 +41,9 @@ export interface EncoderWorker {
     /**
      * Encode a single video frame
      * @param frame VideoFrame to encode (will be transferred)
+     * @param noWait Fire-and-forget flag (don't wait for response)
      */
-    encodeFrame(frame: VideoFrame): Promise<void>;
+    encodeFrame(frame: VideoFrame, noWait?: RpcNoWait): Promise<void>;
 
     /**
      * Flush pending frames in the encoder
@@ -65,9 +80,25 @@ export interface EncoderWorker {
  */
 export interface EncoderWorkerCallbacks {
     /**
-     * Called when a frame has been encoded (asynchronous event)
-     * @param chunkData Encoded chunk data with metadata
+     * Called when a frame has been encoded and serialized in the worker.
+     * All ArrayBuffer args are transferred (zero-copy) via postMessage.
+     * @param chunkBytes Raw encoded chunk bytes
+     * @param timestamp Chunk timestamp in microseconds
+     * @param duration Chunk duration in microseconds
+     * @param isKeyFrame Whether this is a keyframe
+     * @param codec Actual codec string from encoder output
+     * @param sequenceNumber Chunk sequence number for ordering
+     * @param descriptionBytes Optional codec description bytes (SPS/PPS for H.264)
      * @param noWait Fire-and-forget flag (don't wait for response)
      */
-    onEncodedChunk(chunkData: EncodedChunkData, noWait?: RpcNoWait): Promise<void>;
+    onSerializedChunk(
+        chunkBytes: ArrayBuffer,
+        timestamp: number,
+        duration: number,
+        isKeyFrame: boolean,
+        codec: string,
+        sequenceNumber: number,
+        descriptionBytes?: ArrayBuffer,
+        noWait?: RpcNoWait
+    ): Promise<void>;
 }

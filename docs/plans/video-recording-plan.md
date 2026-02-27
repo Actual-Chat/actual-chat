@@ -11,9 +11,8 @@ All core components are implemented and operational:
 - Camera/screen capture with device selection
 - H.264 / AV1 encoding via WebCodecs in dedicated workers
 - Background blur via ONNX segmentation model (WebGPU or WASM)
-- Network simulation for single-device testing
 - Real-time server streaming via SignalR
-- Remote playback with WebCodecs decoder
+- Remote playback with WebCodecs decoder (off-main-thread via worker)
 - Canvas fallbacks for Safari (no MediaStreamTrackProcessor/Generator)
 - Adaptive quality stepping based on receiver latency
 - Per-peer GOP skipping for slow connections
@@ -24,20 +23,23 @@ All core components are implemented and operational:
 Camera/Screen → RecordingService → VideoPipeline {
     MediaStreamTrackProcessor (frame extraction, canvas fallback for Safari)
     → [optional SegmentationWorker for background blur]
-    → EncoderWorker (WebCodecs H.264/AV1)
-    → TransferSimulator (local testing) or VideoStreamer (SignalR → server)
-    → DecoderWorker (WebCodecs, AV1 WASM fallback)
-    → MediaStreamTrackGenerator (output stream, canvas fallback for Safari)
+    → EncoderWorker (WebCodecs H.264/AV1, serializes chunks in worker)
+    → VideoStreamer (SignalR → server)
 }
-+ VideoStreamer (async: encoder chunks → SignalR PushVideo → StreamHub → LiveVideoBackend)
+
+Server → SignalR GetVideo → VideoPlayer {
+    SignalR pull → MessagePack deserialize
+    → DecoderWorker (off-main-thread WebCodecs decoding)
+    → VideoFrame transfer to main thread
+    → Canvas rendering (drawImage)
+}
+
 + Separate preview stream → canvas rendering in VideoRecorder
 ```
 
-### Two-Stream Design
+### Encode-Only Pipeline
 
-The system uses separate streams for preview and pipeline output:
-1. **Preview stream** — The raw camera MediaStream is rendered directly to a `<canvas>` in VideoRecorder for low-latency local preview.
-2. **Pipeline output stream** — Frames flow through encode → transfer → decode to produce a processed MediaStream, used for recording and playback verification.
+The pipeline only encodes and streams — there is no local decode loop. Chunk serialization (`copyTo()` + description extraction) happens in the encoder worker to keep the main thread free. The decoder worker is used by `video-player.ts` on the receiving side for off-main-thread decoding.
 
 ### Canvas Fallbacks
 
@@ -51,7 +53,7 @@ Safari lacks `MediaStreamTrackProcessor` and `MediaStreamTrackGenerator`. The pi
 
 | File | Purpose | Key API |
 |------|---------|---------|
-| [`services/video-pipeline.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/services/video-pipeline.ts) | Orchestrates the encode → transfer → decode pipeline using RPC workers | `start(inputStream)`, `stop()`, `reconfigure()`, `toggleBlur()`, `switchSegmentationBackend()`, `toggleAV1Decoder()` |
+| [`services/video-pipeline.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/services/video-pipeline.ts) | Encode-only pipeline: captures frames, encodes in worker, streams to server | `start(inputStream)`, `stop()`, `reconfigure()`, `toggleBlur()`, `switchSegmentationBackend()` |
 | [`services/recording-service.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/services/recording-service.ts) | High-level recording lifecycle: stream acquisition, config, state | `start()`, `stop()`, `toggleBlur()`, `updateSegmentationBackend()`, `getState()`, `getInputStream()`, `getOutputStream()` |
 | [`video-streamer.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/video-streamer.ts) | SignalR-based real-time streaming of encoded chunks to server | `VideoStreamer.init(hubUrl)`, `VideoStreamer.addStream(token, chatId, config)`, `VideoStream.addFrame()` |
 
@@ -70,7 +72,7 @@ Safari lacks `MediaStreamTrackProcessor` and `MediaStreamTrackGenerator`. The pi
 | File | Purpose | Key API |
 |------|---------|---------|
 | [`video-panel.ts`](../../src/dotnet/UI.Blazor.App/Components/VideoPanel/video-panel.ts) | UI chrome: expand/collapse, escape key | `VideoPanel.create()`, `startClosing()` |
-| [`video-player.ts`](../../src/dotnet/UI.Blazor.App/Components/VideoPanel/video-player.ts) | Remote video playback: SignalR pull, WebCodecs decode, latency reporting | `VideoPlayer.create()`, `startPull()`, `stop()` |
+| [`video-player.ts`](../../src/dotnet/UI.Blazor.App/Components/VideoPanel/video-player.ts) | Remote video playback: SignalR pull, off-main-thread WebCodecs decode via worker, latency reporting | `VideoPlayer.create()`, `startPull()`, `stop()` |
 | [`video-recorder.ts`](../../src/dotnet/UI.Blazor.App/Components/VideoPanel/video-recorder.ts) | Recording controller: camera enumeration, preview rendering, blur toggle | `VideoRecorder.create()`, `startRecording()`, `stopRecording()`, `reconfigure()` |
 | [`join-video-call-modal.ts`](../../src/dotnet/UI.Blazor.App/Components/JoinVideoCallModal/join-video-call-modal.ts) | Modal controller |
 
@@ -87,7 +89,7 @@ Safari lacks `MediaStreamTrackProcessor` and `MediaStreamTrackGenerator`. The pi
 | File | Purpose | Key RPC Methods |
 |------|---------|-----------------|
 | [`workers/encoder-worker.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/encoder-worker.ts) | WebCodecs video encoding (H.264/AV1) in dedicated thread | `initialize()`, `encodeFrame()`, `reconfigure()`, `stop()`, `getStats()` |
-| [`workers/decoder-worker.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts) | WebCodecs video decoding with frame reordering and error recovery | `initialize()`, `decodeChunk()`, `stop()`, `toggleDecoderType()`, `getStats()` |
+| [`workers/decoder-worker.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/decoder-worker.ts) | WebCodecs video decoding with frame reordering and error recovery (used by video-player.ts) | `initialize()`, `decodeRawChunk()`, `resetDecoder()`, `configureDecoder()`, `stop()`, `getStats()` |
 | [`workers/segmentation-worker.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/workers/segmentation-worker.ts) | ONNX-based person segmentation for background blur (WebGPU/WASM) | `initialize()`, `processFrame()`, `updateConfig()`, `stop()`, `getStats()` |
 
 ### Worker Contracts
@@ -111,10 +113,9 @@ Safari lacks `MediaStreamTrackProcessor` and `MediaStreamTrackGenerator`. The pi
 
 | File | Purpose |
 |------|---------|
-| [`utils/transfer-simulator.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/utils/transfer-simulator.ts) | Simulates network conditions (latency, jitter, packet loss, bandwidth) for local testing |
 | [`utils/mp4-muxer.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/utils/mp4-muxer.ts) | MediaRecorder-based video muxing to WebM/MP4 for local recording |
 
-Real network transfer uses [`video-streamer.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/video-streamer.ts) (SignalR with MessagePack).
+Network transfer uses [`video-streamer.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/video-streamer.ts) (SignalR with MessagePack).
 
 ### GPU & Segmentation Support
 
@@ -129,7 +130,7 @@ Real network transfer uses [`video-streamer.ts`](../../src/dotnet/UI.Blazor.App/
 
 | File | Purpose |
 |------|---------|
-| [`services/stats-service.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/services/stats-service.ts) | Aggregates encoder/decoder/transfer/segmentation statistics |
+| [`services/stats-service.ts`](../../src/dotnet/UI.Blazor.App/Services/Video/services/stats-service.ts) | Aggregates encoder/segmentation statistics |
 
 ### Styles
 
@@ -177,7 +178,7 @@ Encoded chunks are streamed to the server via SignalR with MessagePack serializa
 Receivers pull video from the server via SignalR:
 1. `VideoPlayer.startPull(streamId, skipToMs)` calls `StreamHub.GetVideo()` which returns `IAsyncEnumerable<byte[][]>` batches
 2. `LiveVideoBackend.GetVideo(streamId, skipTo, peerId)` retrieves frames from `StreamStore`, applying keyframe seeking and per-peer GOP skipping
-3. JS `VideoPlayer` decodes frames via WebCodecs `VideoDecoder` and renders to canvas
+3. JS `VideoPlayer` sends raw bytes to a decoder worker for off-main-thread decoding, then renders decoded `VideoFrame` objects to canvas
 4. Latency is measured and reported every 5s via `StreamHub.ReportVideoLatency()`
 5. Backend evaluates latency across all peers and may adjust sender quality (see adaptive quality in `video-streaming-plan.md`)
 

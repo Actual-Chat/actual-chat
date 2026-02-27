@@ -136,10 +136,6 @@ export class VideoRecorder {
                 height: 720,
                 bitrate: 2_000_000,
                 framerate: 30,
-                bandwidth: 10_000_000,
-                latency: 0,
-                jitter: 0,
-                packetLoss: 0,
                 cameraDeviceId: this.selectedCameraDeviceId ?? undefined,
                 backgroundBlur: {
                     enabled: this.isBlurEnabled,

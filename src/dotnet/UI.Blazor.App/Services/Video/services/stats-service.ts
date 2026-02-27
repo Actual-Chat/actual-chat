@@ -4,7 +4,6 @@
  */
 
 import type { VideoPipeline } from './video-pipeline';
-// import type { AV1VideoPipeline } from './av1-video-pipeline';
 
 export interface PipelineMetrics {
   // Input stream
@@ -18,21 +17,6 @@ export interface PipelineMetrics {
   encodingBitrate: number;
   encodingLatency: number;
   encoderHardwareAcceleration: string;
-
-  // Transfer simulation
-  transferredBytes: number;
-  transferredChunks: number;
-  transferLatency: number;
-  packetsLost: number;
-  jitter: number;
-  throughput: number;
-  currentBitrate: number;
-
-  // Decoding
-  decodedFrames: number;
-  decodingLatency: number;
-  decoderHardwareAcceleration: string;
-  decoderResolution: string;
 
   // Segmentation (background blur)
   segmentationProcessedFrames?: number;
@@ -54,7 +38,7 @@ export class StatsService extends EventTarget {
     private inputStream: MediaStream | null = null;
 
     constructor(
-    private pipeline: VideoPipeline /*| AV1VideoPipeline*/,
+    private pipeline: VideoPipeline,
     inputStream?: MediaStream
     ) {
         super();
@@ -94,10 +78,6 @@ export class StatsService extends EventTarget {
 
     private updateMetrics(): void {
         const encoderStats = this.pipeline.getEncoderStats();
-        const transferStats = this.pipeline.getTransferStats();
-        const decoderStats = /*'getAV1DecoderStats' in this.pipeline
-      ? this.pipeline.getAV1DecoderStats()
-      : */this.pipeline.getDecoderStats();
         const segmentationStats = this.pipeline.getSegmentationStats();
 
         const duration = (performance.now() - this.startTime) / 1000;
@@ -107,11 +87,8 @@ export class StatsService extends EventTarget {
             ? (encoderStats.totalBytes * 8) / duration / 1000
             : 0;
 
-        // Calculate total latency (sum of encoding, transfer, decoding, and segmentation)
-        let totalLatency =
-      encoderStats.averageEncodeTime +
-      transferStats.averageLatency +
-      decoderStats.averageDecodeTime;
+        // Calculate total latency
+        let totalLatency = encoderStats.averageEncodeTime;
 
         // Add segmentation latency if available
         if (segmentationStats) {
@@ -127,21 +104,6 @@ export class StatsService extends EventTarget {
             encodingBitrate,
             encodingLatency: encoderStats.averageEncodeTime,
             encoderHardwareAcceleration: encoderStats.hardwareAcceleration,
-
-            // Transfer
-            transferredBytes: transferStats.totalBytes,
-            transferredChunks: transferStats.totalChunks,
-            transferLatency: transferStats.averageLatency,
-            packetsLost: transferStats.packetsLost,
-            jitter: transferStats.jitter,
-            throughput: transferStats.throughput,
-            currentBitrate: transferStats.currentBitrate,
-
-            // Decoding
-            decodedFrames: decoderStats.decodedFrames,
-            decodingLatency: decoderStats.averageDecodeTime,
-            decoderHardwareAcceleration: decoderStats.hardwareAcceleration,
-            decoderResolution: decoderStats.resolution,
 
             // Segmentation (if available)
             ...(segmentationStats && {
@@ -177,17 +139,6 @@ export class StatsService extends EventTarget {
             encodingBitrate: 0,
             encodingLatency: 0,
             encoderHardwareAcceleration: 'unknown',
-            transferredBytes: 0,
-            transferredChunks: 0,
-            transferLatency: 0,
-            packetsLost: 0,
-            jitter: 0,
-            throughput: 0,
-            currentBitrate: 0,
-            decodedFrames: 0,
-            decodingLatency: 0,
-            decoderHardwareAcceleration: 'unknown',
-            decoderResolution: 'N/A',
             duration: 0,
             totalLatency: 0
         };

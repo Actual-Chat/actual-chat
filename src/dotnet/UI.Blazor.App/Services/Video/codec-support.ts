@@ -164,31 +164,25 @@ export function getDefaultCodec(supportedCodecs: CodecInfo[]): string {
     );
     if (av1HW) return av1HW.codec;
 
-    // 2. Try AV1 software fallback
-    const av1SW = supportedCodecs.find(
-        c => c.category === 'av1' && c.supported
-    );
-    if (av1SW) return av1SW.codec;
-
-    // 3. Try H.264 with hardware acceleration (prefer High profile)
+    // 2. Try H.264 with hardware acceleration (prefer High profile)
     const h264HW = supportedCodecs.find(
         c => c.category === 'h264' && c.supported && c.hardwareAccelerated && c.codec.includes('6400')
     );
     if (h264HW) return h264HW.codec;
 
-    // 4. Try any H.264 with hardware acceleration
+    // 3. Try any H.264 with hardware acceleration
     const anyH264HW = supportedCodecs.find(
         c => c.category === 'h264' && c.supported && c.hardwareAccelerated
     );
     if (anyH264HW) return anyH264HW.codec;
 
-    // 5. Try H.264 High profile software
+    // 4. Try H.264 High profile software
     const h264High = supportedCodecs.find(
         c => c.category === 'h264' && c.supported && c.codec.includes('6400')
     );
     if (h264High) return h264High.codec;
 
-    // 6. Try any H.264 software
+    // 5. Try any H.264 software
     const anyH264 = supportedCodecs.find(
         c => c.category === 'h264' && c.supported
     );
