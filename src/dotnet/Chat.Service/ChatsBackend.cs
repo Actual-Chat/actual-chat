@@ -1542,7 +1542,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         if (Invalidation.IsActive) {
-            var invChats = context.Operation.Items.KeylessGet<Dictionary<string,long>>();
+            var invChats = context.Operation.Items.KeylessGet<Dictionary<string, long>>();
             if (invChats == null)
                 return;
 
@@ -2441,7 +2441,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             ? GetAttachmentsBulk()
             : EmptyAttachmentsTask;
 
-        async Task<ILookup<ChatEntryId,TextEntryAttachment>> GetAttachmentsBulk() {
+        async Task<ILookup<ChatEntryId, TextEntryAttachment>> GetAttachmentsBulk() {
             var attachments = await entryIdsWithAttachments
                 .Select(x => GetEntryAttachments(x, cancellationToken))
                 .Collect(cancellationToken)

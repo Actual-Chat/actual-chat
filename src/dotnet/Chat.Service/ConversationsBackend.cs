@@ -311,7 +311,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             AttachmentIds = entriesInfo.Attachments.Select(c => c.Id).ToArray(),
         };
         var change = existingConversation != null
-            ? Change.Update(DiffEngine.Diff<Conversation,ConversationDiff>(existingConversation, conversation))
+            ? Change.Update(DiffEngine.Diff<Conversation, ConversationDiff>(existingConversation, conversation))
             : Change.Create(new ConversationDiff(conversation));
         var changeCommand = new ConversationBackend_Change(conversationId, expectedVersion, change);
         return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
