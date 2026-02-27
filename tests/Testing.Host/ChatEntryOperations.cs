@@ -77,7 +77,7 @@ public static class ChatEntryOperations
         textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(textEntry.Id, textEntry.Version, Change.Update(new ChatEntryDiff {
             Content = text,
             StreamId = "",
-            Audio = new ChatEntryAudio { MediaId = MediaId.Parse("fake-media-id") },
+            Audio = new ChatEntryAudio { MediaId = MediaId.Parse("fake:mediaid") },
             EndsAt = now,
         })), cancellationToken);
 
