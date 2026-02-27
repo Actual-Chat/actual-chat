@@ -42,7 +42,7 @@
         var isLocalVideoRecording = recordingChatId == chatId;
 
         var isOwnVideoStreaming = ownAuthor != null && streamingAuthorIds.Contains(ownAuthor.Id);
-        var areOthersVideoStreaming = streamingAuthorIds.Length > (isOwnVideoStreaming ? 1 : 0);
+        var areOthersVideoStreaming = streamingAuthorIds.Count > (isOwnVideoStreaming ? 1 : 0);
 
         return new(chat, isOwnVideoStreaming, areOthersVideoStreaming, isLocalVideoRecording);
     }

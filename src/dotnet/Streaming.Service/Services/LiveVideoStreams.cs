@@ -26,7 +26,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
     }
 
     // [ComputeMethod]
-    public virtual async Task<AuthorId[]> GetVideoStreamingAuthorIds(
+    public virtual async Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken)
@@ -34,7 +34,7 @@ public class LiveVideoStreams(IServiceProvider services) : ILiveVideoStreams
         var chatRules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
         var result = await Backend.GetVideoStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        Log.LogWarning("GetVideoStreamingAuthorIds(session, {ChatId}): returning {Count} authors", chatId, result.Length);
+        Log.LogWarning("GetVideoStreamingAuthorIds(session, {ChatId}): returning {Count} authors", chatId, result.Count);
         return result;
     }
 

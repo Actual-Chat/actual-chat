@@ -36,12 +36,12 @@ public partial class LiveVideoBackend : ShardComputeService, ILiveVideoBackend
     }
 
     // [ComputeMethod]
-    public virtual Task<AuthorId[]> GetVideoStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken)
+    public virtual Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
         var chatState = GetChatState(chatId);
         var result = chatState.GetStreamingAuthorIds();
         Log.LogWarning("GetVideoStreamingAuthorIds({ChatId}): returning {Count} authors: [{Authors}]",
-            chatId, result.Length, string.Join(", ", result));
+            chatId, result.Count, string.Join(", ", result));
         return Task.FromResult(result);
     }
 

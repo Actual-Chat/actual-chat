@@ -22,15 +22,15 @@ public partial class LiveVideoBackend
         public ApiArray<VideoStreamInfo> ListActiveStreams()
             => new(_streams.Values);
 
-        public AuthorId[] GetStreamingAuthorIds()
+        public ApiArray<AuthorId> GetStreamingAuthorIds()
         {
             if (_streams.IsEmpty)
-                return [];
+                return default;
 
             return _streams.Values
                 .Select(s => s.AuthorId)
                 .Distinct()
-                .ToArray();
+                .ToApiArray();
         }
 
         public int GetMemberCount()

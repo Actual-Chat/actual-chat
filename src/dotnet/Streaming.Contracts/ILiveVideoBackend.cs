@@ -16,7 +16,7 @@ public interface ILiveVideoBackend : IComputeService, IBackendService
     Task<RpcStream<VideoStreamInfo>> ObserveStreams(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<AuthorId[]> GetVideoStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken);

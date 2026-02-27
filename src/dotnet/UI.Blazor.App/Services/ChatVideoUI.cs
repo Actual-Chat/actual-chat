@@ -148,10 +148,10 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod]
-    public virtual async Task<AuthorId[]> GetVideoStreamingAuthorIds(ChatId? chatId, CancellationToken cancellationToken = default)
+    public virtual async Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(ChatId? chatId, CancellationToken cancellationToken = default)
     {
         if (chatId is null)
-            return [];
+            return default;
 
         return await LiveVideoStreams
             .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
@@ -167,7 +167,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var authorIds = await LiveVideoStreams
             .GetVideoStreamingAuthorIds(Session, chatId, cancellationToken)
             .ConfigureAwait(false);
-        return authorIds.Length > 0;
+        return authorIds.Count > 0;
     }
 
     [ComputeMethod]
@@ -188,7 +188,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return false;
 
         var authorIds = await GetVideoStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        if (authorIds.Length == 0)
+        if (authorIds.Count == 0)
             return false;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);

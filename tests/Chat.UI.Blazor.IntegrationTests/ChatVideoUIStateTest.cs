@@ -127,7 +127,7 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         // Panel shows when isRecording OR isAnyoneVideoStreaming
         async Task<bool> ShouldShowPanel(bool isRecording) {
             var authorIds = await frontend.GetVideoStreamingAuthorIds(alice.Session, chatId, CancellationToken.None);
-            var isAnyoneVideoStreaming = authorIds.Length > 0;
+            var isAnyoneVideoStreaming = authorIds.Count > 0;
             return isRecording || isAnyoneVideoStreaming;
         }
 

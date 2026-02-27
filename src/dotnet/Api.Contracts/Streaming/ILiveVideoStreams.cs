@@ -9,7 +9,7 @@ public interface ILiveVideoStreams : IComputeService
     Task<ApiArray<VideoStreamInfo>> ListActiveStreams(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<AuthorId[]> GetVideoStreamingAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> GetVideoStreamingAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<int> GetVideoStreamMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
