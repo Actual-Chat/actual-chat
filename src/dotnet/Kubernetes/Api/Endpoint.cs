@@ -1,6 +1,6 @@
 namespace ActualChat.Kubernetes.Api;
 
-public record Endpoint(
+public sealed record Endpoint(
     IReadOnlyList<string> Addresses,
     Conditions Conditions,
     TargetRef TargetRef,
@@ -8,17 +8,16 @@ public record Endpoint(
     string Zone
 );
 
-public record Conditions(
+public sealed record Conditions(
     bool Ready,
     bool Serving,
     bool Terminating
 );
 
-public record TargetRef(
+public sealed record TargetRef(
     string Kind,
     string Namespace,
     string Name,
     string Uid,
     string ResourceVersion
 );
-
