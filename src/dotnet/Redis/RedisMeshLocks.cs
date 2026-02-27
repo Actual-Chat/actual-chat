@@ -75,6 +75,17 @@ public class RedisMeshLocks : MeshLocksBase
         end
         return 0
         """;
+    private static readonly string ForceReacquireScript =
+        """
+        local key, anyLockKey, expectedValue, newValue, expiresIn = KEYS[1], KEYS[2], ARGV[1], ARGV[2], ARGV[3]
+        local rGet = redis.call('GET', key)
+        if rGet == false then return -1 end
+        if rGet ~= expectedValue then return -2 end
+        redis.call('SET', key, newValue, 'PX', expiresIn)
+        redis.call('PUBLISH', key, '')
+        redis.call('PUBLISH', anyLockKey, key)
+        return 0
+        """;
     private static readonly string RemoveKeysScript =
         """
         local pattern = ARGV[1]
@@ -264,6 +275,21 @@ public class RedisMeshLocks : MeshLocksBase
             .ConfigureAwait(false);
         if (r != 0)
             DebugLog?.LogDebug("ForceRelease: {Key} -> {Result}", $"{_fullKeyPrefix}{key}", r);
+        return r >= 0;
+    }
+
+    protected override async Task<bool> ForceReacquire(string key, string expectedHolderId, string newHolderId, TimeSpan expiresIn, CancellationToken cancellationToken)
+    {
+        // Must not auto-retry!
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var r = (long)await database
+            .ScriptEvaluateAsync(ForceReacquireScript,
+                [key, ""],
+                [expectedHolderId, newHolderId, (long)expiresIn.TotalMilliseconds],
+                CommandFlags.DemandMaster)
+            .ConfigureAwait(false);
+        if (r != 0)
+            DebugLog?.LogDebug("ForceReacquire: {Key} expected={ExpectedId} -> {Result}", $"{_fullKeyPrefix}{key}", expectedHolderId, r);
         return r >= 0;
     }
 }

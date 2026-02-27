@@ -58,6 +58,14 @@ public sealed record MeshNode(
                 State = MeshNodeState.Dead,
             };
 
+    public MeshNode ToDeadConfirmed(Moment deadAt)
+        => State is MeshNodeState.Dead
+            ? this
+            : this with {
+                State = MeshNodeState.Dead,
+                DeadAt = deadAt,
+            };
+
     // Equality: uses only Ref
 
     public bool Equals(MeshNode? other)

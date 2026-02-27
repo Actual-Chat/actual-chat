@@ -11,6 +11,7 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
     private readonly AsyncTaskMethodBuilder _whenAnnouncedSource = AsyncTaskMethodBuilderExt.New();
     private readonly MutableState<ImmutableArray<MeshNode>> _onlineNodes;
     private readonly ComputedState<MeshState> _state;
+    private readonly ConcurrentDictionary<string, Moment> _confirmedDeadEndpoints = new(StringComparer.Ordinal);
 
     private IMeshLocks EndpointLocks { get; }
     private IMeshLocks NodeLocks { get; }
@@ -21,6 +22,18 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
     public MeshNode ThisNode { get; }
     public IState<MeshState> State => _state;
     public Task WhenAnnounced => _whenAnnouncedSource.Task;
+
+    public void ConfirmNodeDead(string endpoint)
+    {
+        if (OrdinalEquals(endpoint, ThisNode.Endpoint))
+            return; // Never confirm own node as dead
+
+        _confirmedDeadEndpoints.TryAdd(endpoint, Clock.Now);
+        Log.LogWarning("ConfirmNodeDead: {Endpoint}", endpoint);
+        var computed = (Computed)_state.Computed;
+        if (!computed.IsInvalidated())
+            computed.Invalidate(true);
+    }
 
     // Settings
     public TimeSpan OfflineTimeout { get; init; } // Turns dead after this
@@ -94,8 +107,14 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
         var now = Clock.Now;
         var lastAllNodes = lastState.AllNodes;
         var onlineNodes = (await _onlineNodes.Use(cancellationToken).ConfigureAwait(false)).ToDictionary(x => x.Ref);
-        var newOnlineNodes = onlineNodes.Values.Where(x => !lastAllNodes.ContainsKey(x.Ref)).ToList();
+        var newOnlineNodes = onlineNodes.Values
+            .Where(x => !lastAllNodes.ContainsKey(x.Ref) && !_confirmedDeadEndpoints.ContainsKey(x.Endpoint))
+            .ToList();
         var allNodes = lastAllNodes.Values.Select(node => {
+            // Check if this node's endpoint was confirmed dead by K8s EndpointSlice watch
+            if (_confirmedDeadEndpoints.ContainsKey(node.Endpoint))
+                return node.ToDeadConfirmed(now);
+
             var isOnline = onlineNodes.ContainsKey(node.Ref);
             switch (node.State) {
             case MeshNodeState.Online:
@@ -112,7 +131,15 @@ public sealed class MeshWatcher : WorkerBase, IHasServices
                 throw StandardError.Internal("Unexpected MeshNode.State: " + node.State);
             }
         }).Concat(newOnlineNodes).ToImmutableDictionary(x => x.Ref);
-        allNodes = allNodes.AddRange(onlineNodes.Where(kv => !lastAllNodes.ContainsKey(kv.Key)));
+        allNodes = allNodes.AddRange(onlineNodes
+            .Where(kv => !lastAllNodes.ContainsKey(kv.Key) && !_confirmedDeadEndpoints.ContainsKey(kv.Value.Endpoint)));
+
+        // Cleanup confirmed dead endpoints once nodes are Dead in allNodes
+        foreach (var endpoint in _confirmedDeadEndpoints.Keys) {
+            var isDead = allNodes.Values.Any(n => OrdinalEquals(n.Endpoint, endpoint) && n.State is MeshNodeState.Dead);
+            if (isDead)
+                _confirmedDeadEndpoints.TryRemove(endpoint, out _);
+        }
 
         // Composing the final state
         var result = new MeshState(Clock, allNodes);

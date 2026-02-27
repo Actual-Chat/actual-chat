@@ -16,6 +16,7 @@ public sealed class KubernetesModule(IServiceProvider moduleServices)
         services.AddSingleton<KubeServices>();
         services.AddSingleton<KubeLeaseClient>();
         services.AddSingleton<KubeMeshLocks>();
+        services.AddSingleton<KubeMeshNodeHealthMonitor>();
         services.AddHttpClient(Kube.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(c => {
                 var handler = new SocketsHttpHandler {

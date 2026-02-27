@@ -130,6 +130,45 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
             (await locks.GetInfo(key, CancellationToken.None)).Should().NotBeNull();
     }
 
+    [Fact(Timeout = 30_000)]
+    public async Task ForceReacquireTest()
+    {
+        var locks = AppHost.Services.MeshLocks().WithKeyPrefix(nameof(RedisMeshLocksTest));
+        var lockOptions = locks.LockOptions with {
+            ExpirationPeriod = TimeSpan.FromSeconds(10),
+        };
+
+        var key = Alphabet.AlphaNumeric.Generator8.Next();
+
+        // Acquire lock
+        await using var h1 = await locks.Lock(key, lockOptions);
+        var info = await locks.GetInfo(key);
+        info.Should().NotBeNull();
+        info!.HolderId.Should().Be(h1.Id);
+
+        // ForceReacquire with correct holderId should succeed
+        await using var h2 = await locks.TryForceReacquire(key, h1.Id);
+        h2.Should().NotBeNull();
+        h2!.Id.Should().NotBe(h1.Id);
+
+        // Original holder should detect loss
+        await Task.Delay(locks.LockOptions.UnconditionalCheckPeriod + lockOptions.ExpirationPeriod + TimeSpan.FromSeconds(0.5));
+        h1.StopToken.IsCancellationRequested.Should().BeTrue();
+
+        // New holder should be active
+        info = await locks.GetInfo(key);
+        info.Should().NotBeNull();
+        info!.HolderId.Should().Be(h2.Id);
+
+        // ForceReacquire with wrong holderId should return null
+        var h3 = await locks.TryForceReacquire(key, "wrong-holder-id");
+        h3.Should().BeNull();
+
+        // ForceReacquire on nonexistent key should return null
+        var h4 = await locks.TryForceReacquire("nonexistent-key", h2.Id);
+        h4.Should().BeNull();
+    }
+
     [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
     public async Task RedisReconnectTest()
     {
