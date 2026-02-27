@@ -18,7 +18,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public string Scope { get; set; } = "";
     public string LocalId { get; set; } = "";
-    public string ContentId { get; set; } = "";
+    public string BlobId { get; set; } = ""; // TODO(AY): Rename to BlobId
     public string UserId { get; set; } = "";
     public string ThumbnailId { get; set; } = "";
     public string MetadataJson { get; set; } = "";
@@ -26,7 +26,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public MediaFull ToModel()
         => new (MediaId.Parse(Id)) {
             Version = Version,
-            ContentId = ContentId,
+            BlobId = BlobId,
             UserId = ActualChat.UserId.ParseNullable(UserId),
             ThumbnailId = MediaId.ParseNullable(ThumbnailId),
             Metadata = MetadataSerializer.Read(MetadataJson),
@@ -44,7 +44,7 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
             UserId = model.UserId?.Value ?? "";
         }
         Version = model.Version;
-        ContentId = model.ContentId;
+        BlobId = model.BlobId;
         ThumbnailId = model.ThumbnailId?.Value ?? "";
         MetadataJson = MetadataSerializer.Write(model.Metadata);
     }
@@ -52,6 +52,6 @@ public class DbMedia : IHasId<string>, IHasVersion<long>, IRequirementTarget
     internal class EntityConfiguration : IEntityTypeConfiguration<DbMedia>
     {
         public void Configure(EntityTypeBuilder<DbMedia> builder)
-            => builder.HasIndex(a => a.ContentId);
+            => builder.HasIndex(a => a.BlobId);
     }
 }

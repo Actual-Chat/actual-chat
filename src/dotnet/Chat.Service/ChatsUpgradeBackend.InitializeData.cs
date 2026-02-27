@@ -239,7 +239,7 @@ public partial class ChatsUpgradeBackend
                 // Create a Media record for the audio blob
                 var mediaId = MediaId.New(chatId.Value);
                 var media = new MediaFull(mediaId) {
-                    ContentId = "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm",
+                    BlobId = "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm",
                     ContentType = "audio/webm",
                 };
                 var mediaChange = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
@@ -261,7 +261,7 @@ public partial class ChatsUpgradeBackend
                         "Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал "
                         + "открыв мне чудо на Земле",
                     TimeMap = timeMap,
-                    MediaOrStreamId = mediaId.Value,
+                    MediaId = mediaId.Value,
                     AuthorId = author.Id.Value,
                 };
                 dbContext.Add(textEntry);
@@ -283,7 +283,7 @@ public partial class ChatsUpgradeBackend
                 // Create a Media record for the audio blob
                 var mediaId = MediaId.New(chatId.Value);
                 var media = new MediaFull(mediaId) {
-                    ContentId = "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm",
+                    BlobId = "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm",
                     ContentType = "audio/webm",
                 };
                 var mediaChange = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
@@ -305,7 +305,7 @@ public partial class ChatsUpgradeBackend
                         "утро в декабре туманом окутана под ногами белый снег предатель виден каждый "
                         + "шаг и холоду лютому слишком просто сладить с тобой",
                     TimeMap = timeMap,
-                    MediaOrStreamId = mediaId.Value,
+                    MediaId = mediaId.Value,
                     AuthorId = author.Id.Value,
                 };
                 dbContext.Add(textEntry);

@@ -178,7 +178,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                         if (previewUrl.IsNullOrEmpty()) {
                             var contentType = session.FileProvider.Metadata.FileType;
                             if (MediaTypeExt.IsVisualMedia(contentType))
-                                previewUrl = UrlMapper.ContentUrl(session.MediaContent.ContentId);
+                                previewUrl = UrlMapper.ContentUrl(session.MediaContent.BlobId);
                         }
                         if (!previewUrl.IsNullOrEmpty())
                             getPreviewUrl = Task.FromResult(previewUrl);

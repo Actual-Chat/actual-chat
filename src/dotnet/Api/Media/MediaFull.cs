@@ -1,5 +1,4 @@
 using ActualLab.Fusion.Blazor;
-using MemoryPack;
 
 namespace ActualChat.Media;
 
@@ -15,7 +14,8 @@ public sealed partial record MediaFull : Media
     public MediaFull(MediaId id) : base(id) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
-    public MediaFull(MediaId id, long version, string contentId, UserId? userId, PropertyBag metadata) : base(id, version, contentId, metadata)
+    public MediaFull(MediaId id, long version, string blobId, UserId? userId, PropertyBag metadata)
+        : base(id, version, blobId, metadata)
         => UserId = userId;
 
     // This record relies on referential equality

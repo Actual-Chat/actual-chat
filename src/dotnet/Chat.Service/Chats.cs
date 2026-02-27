@@ -384,34 +384,25 @@ public partial class Chats(IServiceProvider services) : IChats
                 var parsedMarkup = chatMarkupHub.Parser.Parse(text);
                 if (!parsedMarkup.IsPlainText()) {
                     // Has markup: strip audio link, convert to text message
-                    diff = diff with {
-                        MediaOrStreamId = "",
-                        TimeMap = LinearMap.Zero,
-                    };
+                    diff = diff with { Audio = null };
                 }
-                else if (!textEntry.TimeMap.IsDegenerate) {
+                else if (textEntry.Audio is { TimeMap.IsDegenerate: false } audio) {
                     // Audio-aware edit: remap TimeMap or strip audio link
                     var remapResult = LinearMapDtwRemapper.RemapWithSimilarity(
-                        textEntry.Content, text, textEntry.TimeMap,
+                        textEntry.Content, text, audio.TimeMap,
                         LinearMapAlignmentMode.UserEditedTranscript);
                     if (remapResult is { Similarity: >= LinearMapRemapResult.MinorEditSimilarityThreshold, Map.IsDegenerate: false }) {
                         // Minor edit: keep audio, update TimeMap
-                        diff = diff with { TimeMap = remapResult.Map };
+                        diff = diff with { Audio = textEntry.Audio! with { TimeMap = remapResult.Map } };
                     }
                     else {
                         // Major edit: strip audio link
-                        diff = diff with {
-                            MediaOrStreamId = "",
-                            TimeMap = LinearMap.Zero,
-                        };
+                        diff = diff with { Audio = null };
                     }
                 }
                 else {
                     // Degenerate TimeMap: can't remap, strip audio
-                    diff = diff with {
-                        MediaOrStreamId = "",
-                        TimeMap = LinearMap.Zero,
-                    };
+                    diff = diff with { Audio = null };
                 }
             }
 

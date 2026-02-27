@@ -94,13 +94,13 @@ public partial class LiveBackend
 
             // Find entries that are currently streaming
             foreach (var entry in entries) {
-                // Text entry with MediaOrStreamId that is not a valid MediaId = live stream
-                if (!entry.MediaOrStreamId.IsNullOrEmpty()
-                    && !MediaId.TryParse(entry.MediaOrStreamId, out _)) {
+                // Audio entry with a non-empty StreamId on Audio = live stream
+                if (entry.Audio is { StreamId.Length: > 0 } liveAudio
+                    && !MediaId.TryParse(liveAudio.StreamId, out _)) {
                     var streamInfo = new LiveStreamInfo {
                         ChatId = ChatId,
                         AuthorId = entry.AuthorId,
-                        StreamId = entry.MediaOrStreamId,
+                        StreamId = liveAudio.StreamId,
                         BeginsAt = entry.BeginsAt,
                     };
                     _streams.TryAdd(streamInfo.StreamId, streamInfo);

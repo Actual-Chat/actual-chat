@@ -25,7 +25,7 @@ public static class ChatMarkupHubExt
             break;
         case { HasAudio: true }:
         // HasAudio covers all audio/media entries now
-            markup = new PlayableTextMarkup(translation?.Content ?? entry.Content, entry.TimeMap);
+            markup = new PlayableTextMarkup(translation?.Content ?? entry.Content, entry.Audio?.TimeMap ?? default);
             break;
         default:
             markup = markupHub.Parser.Parse(translation?.Content ?? entry.Content);
@@ -48,7 +48,7 @@ public static class ChatMarkupHubExt
             break;
         case { HasAudio: true }:
         // HasAudio covers all audio/media entries now
-            markup = new PlayableTextMarkup(entry.Content, entry.TimeMap);
+            markup = new PlayableTextMarkup(entry.Content, entry.Audio?.TimeMap ?? default);
             break;
         default:
             markup = markupHub.Parser.Parse(entry.Content);

@@ -299,9 +299,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .Select(previewId => allLinkPreviews.GetValueOrDefault(previewId))
                 .SkipNullItems()
                 .ToArray();
-            var audio = e.MediaOrStreamId.IsNullOrEmpty() ? null
-                : allAudio.GetValueOrDefault(e.MediaOrStreamId);
-            return e.ToModel(entryAttachments, linkPreviews, audio);
+            var entry = e.ToModel(entryAttachments, linkPreviews);
+            // Enrich partial audio with MediaBackend-resolved data (BlobId, timing)
+            if (entry.Audio?.MediaId is { } mid && !mid.Value.IsNullOrEmpty()
+                && allAudio.TryGetValue(mid.Value, out var resolvedAudio))
+                entry = entry with { Audio = resolvedAudio with { TimeMap = entry.Audio.TimeMap } };
+            return entry;
         });
         return new ChatTile(idTileRange, true, entries.ToArray());
 
@@ -1271,8 +1274,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 var hasAttachments = update.Attachments is { Length: > 0 } || dbEntry.HasAttachments;
                 dbEntry.UpdateFrom(entry);
                 dbEntry.HasAttachments = hasAttachments;
-                boundToThreadHasChanged = existingChatEntry.IsThreadEntry ^ entry.IsThreadEntry
-                    || existingChatEntry.IsThreadStartEntry ^ entry.IsThreadStartEntry;
+                boundToThreadHasChanged = existingChatEntry.IsThread ^ entry.IsThread
+                    || existingChatEntry.IsThreadStart ^ entry.IsThreadStart;
             }
             else if (change.IsRemove()) {
                 dbEntry.Require();
@@ -1301,8 +1304,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             await EnsurePlaceChatAuthorExists(entry.AuthorId).ConfigureAwait(false);
         if (changeKind == ChangeKind.Remove) {
             // Clean up associated Media record when removing an entry with audio
-            if (!entry.MediaOrStreamId.IsNullOrEmpty()
-                && MediaId.TryParse(entry.MediaOrStreamId, out var removedMediaId)) {
+            if (entry.Audio?.MediaId is { } removedMediaId && !removedMediaId.Value.IsNullOrEmpty()) {
                 await RemoveMedia(removedMediaId, cancellationToken).ConfigureAwait(false);
             }
             await EnqueueChangedEvent().ConfigureAwait(false);
@@ -1314,8 +1316,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Clean up Media when audio is stripped from an entry during update
         if (changeKind == ChangeKind.Update && oldEntry is not null) {
-            var oldMediaSid = oldEntry.MediaOrStreamId;
-            var newMediaSid = entry.MediaOrStreamId;
+            var oldMediaSid = oldEntry.Audio?.MediaId.Value;
+            var newMediaSid = entry.Audio?.MediaId.Value;
             if (!oldMediaSid.IsNullOrEmpty()
                 && oldMediaSid != newMediaSid
                 && MediaId.TryParse(oldMediaSid, out var strippedMediaId)) {
@@ -1852,7 +1854,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // Apparently text entry was transcribed in no voice streaming mode, or has no audio.
             return;
 
-        var audioBlobId = audio.ContentId;
+        var audioBlobId = audio.BlobId;
         if (audioBlobId.IsNullOrEmpty())
             throw StandardError.Constraint("Audio entry has no audio blob id reference.");
 
@@ -1876,10 +1878,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             "Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'",
             textEntry.Id.Value, textEntry.Content.ToPrivate(), transcription.Text.ToPrivate());
         var timeMap = transcription.TimeMap;
-        if (timeMap.IsDegenerate && !textEntry.TimeMap.IsDegenerate) {
+        var entryTimeMap = textEntry.Audio?.TimeMap ?? default;
+        if (timeMap.IsDegenerate && !entryTimeMap.IsDegenerate) {
             timeMap = LinearMapDtwRemapper.Remap(textEntry.Content,
                 transcription.Text,
-                textEntry.TimeMap,
+                entryTimeMap,
                 LinearMapAlignmentMode.RetranscribeSameAudio);
         }
         await Commander.Run(new ChatsBackend_ChangeEntry(
@@ -1887,7 +1890,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             null,
             Change.Update(new ChatEntryDiff {
                 Content = transcription.Text,
-                TimeMap = timeMap,
+                Audio = textEntry.Audio! with { TimeMap = timeMap },
             })), cancellationToken).ConfigureAwait(false);
         return;
 
@@ -2044,7 +2047,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (chat.Id.IsThread(out var threadChatId) && kind == ChangeKind.Remove) {
             var startThreadEntryId = ChatEntryId.New(threadChatId, threadChatId.ThreadId);
             var chatEntry = await this.GetEntry(startThreadEntryId, cancellationToken).ConfigureAwait(false);
-            if (chatEntry is not null && chatEntry.IsThreadStartEntry) {
+            if (chatEntry is not null && chatEntry.IsThreadStart) {
                 var markChatEntryAsRemoved = new ChatsBackend_ChangeEntry(startThreadEntryId,
                     null,
                     Change.Update(new ChatEntryDiff { IsRemoved = true }));
@@ -2455,7 +2458,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         CancellationToken cancellationToken)
     {
         var mediaIds = dbEntries
-            .Select(e => e.MediaOrStreamId)
+            .Select(e => e.MediaId)
             .Where(id => !id.IsNullOrEmpty() && MediaId.TryParse(id, out _))
             .Select(id => MediaId.Parse(id!))
             .Distinct()
@@ -2477,7 +2480,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
                 var audio = new ChatEntryAudio {
                     MediaId = media.Id,
-                    ContentId = media.ContentId,
+                    BlobId = media.BlobId,
                     BeginsAt = media.Metadata[nameof(ChatEntryAudio.BeginsAt)] is { } beginsAtObj
                         ? new Moment(Convert.ToInt64(beginsAtObj, CultureInfo.InvariantCulture))
                         : default,

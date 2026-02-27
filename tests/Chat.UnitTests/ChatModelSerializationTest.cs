@@ -81,16 +81,12 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var entry = new ChatEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = now,
-            ClientSideBeginsAt = now,
             EndsAt = now + TimeSpan.FromMinutes(5),
-            ContentEndsAt = now + TimeSpan.FromMinutes(4),
             Content = "Test",
         };
 
         var s = entry.PassThroughAllSerializers(Out);
-        s.ClientSideBeginsAt.Should().Be(entry.ClientSideBeginsAt);
         s.EndsAt.Should().Be(entry.EndsAt);
-        s.ContentEndsAt.Should().Be(entry.ContentEndsAt);
     }
 
     [Fact]
@@ -101,16 +97,12 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var entry = new ChatEntry(entryId, 1) {
             AuthorId = AuthorId.New(chatId, 10),
             BeginsAt = new Moment(DateTime.UtcNow),
-            ClientSideBeginsAt = null,
             EndsAt = null,
-            ContentEndsAt = null,
             Content = "Test",
         };
 
         var s = entry.PassThroughAllSerializers(Out);
-        s.ClientSideBeginsAt.Should().BeNull();
         s.EndsAt.Should().BeNull();
-        s.ContentEndsAt.Should().BeNull();
     }
 
     [Fact]

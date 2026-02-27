@@ -128,7 +128,7 @@ public class AudioWidget : IDisposable
         if (chat is null)
             return new AudioWidgetChatInfo(chatId, "unknown chat", "", 0);
 
-        var picUrl = chat.Picture is not null ? UrlMapper.ContentUrl(chat.Picture.ContentId) : "";
+        var picUrl = chat.Picture is not null ? UrlMapper.ContentUrl(chat.Picture.BlobId) : "";
 
         if (!picUrl.IsNullOrEmpty() || chatId is not PeerChatId peerChatId)
             return new AudioWidgetChatInfo(chatId, chat.Title, picUrl, 0);
@@ -138,7 +138,7 @@ public class AudioWidget : IDisposable
         var peerUserId = peerChatId.AnotherUserId(ownAccount.Id);
         var peerAccount = await Accounts.Get(Session, peerUserId, CancellationToken.None).ConfigureAwait(false);
         if (peerAccount?.Avatar.Picture?.MediaContent is { } mediaContent)
-            picUrl = UrlMapper.ContentUrl(mediaContent.ContentId);
+            picUrl = UrlMapper.ContentUrl(mediaContent.BlobId);
 
         return new AudioWidgetChatInfo(chatId, chat.Title, picUrl, 0);
     }

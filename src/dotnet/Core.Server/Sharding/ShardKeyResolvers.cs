@@ -51,9 +51,8 @@ public static class ShardKeyResolvers
         Register<PeerChatId>(static x => ForString(x.Value));
         Register<PlaceId>(static x => ForString(x.Value));
         Register<PlaceChatId>(static x => ForString(x.Value));
+        Register<ChatEntryId>(static x => ForString(x.ChatId.Value));
         Register<AuthorId>(static x => ForString(x.ChatId.Value));
-        Register<ChatEntryId>(static x => ForString(x.ChatId.Value));
-        Register<ChatEntryId>(static x => ForString(x.ChatId.Value));
         Register<RoleId>(static x => ForString(x.ChatId.Value));
         Register<MentionId>(static x => ForString(x.PrincipalId.ShardKey));
         Register<UserId>(static x => ForString(x.Value));

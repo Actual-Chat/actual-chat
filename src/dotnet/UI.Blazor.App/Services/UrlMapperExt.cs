@@ -4,7 +4,7 @@ public static class UrlMapperExt
 {
     public static string AudioBlobUrl(this UrlMapper urlMapper, ChatEntry audioEntry)
     {
-        var contentId = audioEntry.Audio?.ContentId ?? audioEntry.Content;
+        var contentId = audioEntry.Audio?.BlobId ?? audioEntry.Content;
         return urlMapper.AudioBlobUrl(contentId);
     }
 

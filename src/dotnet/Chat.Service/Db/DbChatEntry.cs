@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics;
 using ActualChat.Hashing;
 using ActualChat.Media;
 using Microsoft.EntityFrameworkCore;
@@ -76,40 +77,42 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public long? AudioEntryId { get; set; }
     public long? VideoEntryId { get; set; }
-    public string? MediaOrStreamId { get; set; }
+    [Column("MediaOrStreamId")]  // Keep DB column name until migration
+    public string? MediaId { get; set; }
     public string? TimeMap { get; set; }
 
     public ChatEntry ToModel(
         IEnumerable<TextEntryAttachment>? attachments = null,
-        LinkPreview[]? linkPreviews = null,
-        ChatEntryAudio? audio = null)
+        LinkPreview[]? linkPreviews = null)
     {
         // fix NRE during deserialization of ApiArray at versions earlier than v0.200
-        var attachmentsArray = attachments == null
-            ? []
-            : attachments.OrderBy(x => x.Index).ToArray();
-        var hasAttachmentUploads = attachmentsArray.Any(c => c.Media.ContentId.IsNullOrEmpty());
+        var attachmentsArray = attachments == null ? [] : attachments.OrderBy(x => x.Index).ToArray();
+        var hasAttachmentUploads = attachmentsArray.Any(c => c.Media.BlobId.IsNullOrEmpty());
         var chatId = ActualChat.ChatId.Parse(ChatId);
         var id = ChatEntryId.New(chatId, LocalId);
         var linkPreviewIds = DeserializeLinkPreviewIds();
         linkPreviews ??= [];
+
+        var flags = ChatEntryFlags.None;
+        if (IsRemoved) flags |= ChatEntryFlags.IsRemoved;
+        if (HasReactions) flags |= ChatEntryFlags.HasReactions;
+        if (IsThreadStartEntry) flags |= ChatEntryFlags.IsThreadStart;
+        if (IsThreadEntry) flags |= ChatEntryFlags.IsThread;
+        if (HasAttachmentUploads || hasAttachmentUploads) flags |= ChatEntryFlags.HasAttachmentUploads;
+
+        // Build partial audio from DB columns (like SystemEntry pattern)
+        var audio = BuildPartialAudio();
+
         return new (id, Version) {
-            IsRemoved = IsRemoved,
+            Flags = flags,
             AuthorId = ActualChat.AuthorId.Parse(AuthorId),
-            IsThreadStartEntry = IsThreadStartEntry,
-            IsThreadEntry = IsThreadEntry,
-            HasAttachmentUploads = HasAttachmentUploads || hasAttachmentUploads,
             ClientId = ClientId,
             BeginsAt = BeginsAt,
-            ClientSideBeginsAt = ClientSideBeginsAt.ToMoment(),
             EndsAt = EndsAt.ToMoment(),
-            ContentEndsAt = ContentEndsAt.ToMoment(),
             Content = !IsSystemEntry ? Content : "",
             ContentHash = new (ContentHash ?? ""),
             SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
-            HasReactions = HasReactions,
             StreamId = StreamId ?? "",
-            MediaOrStreamId = MediaOrStreamId ?? "",
             Audio = audio,
             RepliedEntryLid = RepliedChatEntryId,
             ForwardedChatTitle = ForwardedChatTitle,
@@ -122,10 +125,22 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             LinkPreviewIds = linkPreviewIds,
             LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
             LinkPreviews = linkPreviews,
-            TimeMap = TimeMap != null
-                ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
-                : default,
         };
+    }
+
+    private ChatEntryAudio? BuildPartialAudio()
+    {
+        if (MediaId.IsNullOrEmpty())
+            return null;
+
+        var timeMap = !TimeMap.IsNullOrEmpty()
+            ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
+            : default;
+
+        // MediaId column stores either a MediaId (parseable) or a stream ID (not parseable)
+        return ActualChat.MediaId.TryParse(MediaId, out var mediaId)
+            ? new ChatEntryAudio { MediaId = mediaId, TimeMap = timeMap, BeginsAt = BeginsAt }
+            : new ChatEntryAudio { StreamId = MediaId, TimeMap = timeMap, BeginsAt = BeginsAt };
     }
 
     public Symbol[] DeserializeLinkPreviewIds()
@@ -148,20 +163,17 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         LocalId = model.LocalId;
         Version = model.Version;
         IsRemoved = model.IsRemoved;
-        IsThreadStartEntry = model.IsThreadStartEntry;
-        IsThreadEntry = model.IsThreadEntry;
+        IsThreadStartEntry = model.IsThreadStart;
+        IsThreadEntry = model.IsThread;
         HasAttachmentUploads = model.HasAttachmentUploads;
         ClientId = model.ClientId;
 
         AuthorId = model.AuthorId.Value;
         BeginsAt = model.BeginsAt;
-        ClientSideBeginsAt = model.ClientSideBeginsAt;
         EndsAt = model.EndsAt;
-        ContentEndsAt = model.ContentEndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         HasReactions = model.HasReactions;
         StreamId = model.StreamId;
-        MediaOrStreamId = model.MediaOrStreamId.NullIfEmpty();
         RepliedChatEntryId = model.RepliedEntryLid;
         ForwardedChatTitle = model.ForwardedChatTitle;
         ForwardedAuthorId = model.ForwardedAuthorId?.Value;
@@ -174,9 +186,22 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         LinkPreviewIds = model.LinkPreviewIds.Length != 0
             ? JsonSerializer.Serialize(model.LinkPreviewIds)
             : null;
-        TimeMap = !model.TimeMap.IsEmpty
-            ? JsonSerializer.Serialize(model.TimeMap)
-            : null;
+
+        // Write audio to DB columns (like SystemEntry → Content/IsSystemEntry)
+        if (model.Audio is { } modelAudio) {
+            var hasStreamId = !modelAudio.StreamId.IsNullOrEmpty();
+            var hasMediaId = modelAudio.MediaId is { Value.Length: > 0 };
+            Debug.Assert(hasStreamId ^ hasMediaId,
+                "ChatEntryAudio must have either StreamId or MediaId set, but not both");
+            MediaId = hasMediaId ? modelAudio.MediaId!.Value : modelAudio.StreamId;
+            TimeMap = !modelAudio.TimeMap.IsEmpty
+                ? JsonSerializer.Serialize(modelAudio.TimeMap)
+                : null;
+        }
+        else {
+            MediaId = null;
+            TimeMap = null;
+        }
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>

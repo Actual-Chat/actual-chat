@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Media;
 
 namespace ActualChat.Testing.Host;
 
@@ -52,10 +53,9 @@ public static class ChatEntryOperations
                 Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
                     StreamId = streamId,
-                    MediaOrStreamId = streamId,
+                    Audio = new ChatEntryAudio { StreamId = streamId },
                     Content = "",
                     BeginsAt = now,
-                    ClientSideBeginsAt = now,
                 })),
             cancellationToken: cancellationToken);
         var entryLanguage = await tester
@@ -77,9 +77,8 @@ public static class ChatEntryOperations
         textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(textEntry.Id, textEntry.Version, Change.Update(new ChatEntryDiff {
             Content = text,
             StreamId = "",
-            MediaOrStreamId = "fake-media-id",
+            Audio = new ChatEntryAudio { MediaId = MediaId.Parse("fake-media-id") },
             EndsAt = now,
-            TimeMap = LinearMap.Zero,
         })), cancellationToken);
 
         var entryLanguage = await tester.UpdateEntryLanguage(

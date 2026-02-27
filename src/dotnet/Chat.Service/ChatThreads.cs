@@ -207,8 +207,8 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
             {
                 // Mark source entry as thread entry.
                 var diff = isFirst
-                    ? new ChatEntryDiff { IsThreadStartEntry = true }
-                    : new ChatEntryDiff { IsThreadEntry = true };
+                    ? new ChatEntryDiff { IsThreadStart = true }
+                    : new ChatEntryDiff { IsThread = true };
                 var upsertEntryCommand = new ChatsBackend_ChangeEntry(
                     chatEntryId,
                     null,

@@ -15,7 +15,7 @@ public class Medias(IServiceProvider services) : IMedias
             return null;
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
-        if (!media.ContentId.IsNullOrEmpty())
+        if (!media.BlobId.IsNullOrEmpty())
             return new MediaProgress(mediaId, 0, MediaStage.Ready, 100, "");
 
         var mediaProgress = await MediaProgressBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
@@ -30,7 +30,7 @@ public class Medias(IServiceProvider services) : IMedias
             return null;
 
         await RequireOwner(session, media, cancellationToken).ConfigureAwait(false);
-        var contentId = media.ContentId;
+        var contentId = media.BlobId;
         if (contentId.IsNullOrEmpty())
             return null;
 
@@ -39,7 +39,7 @@ public class Medias(IServiceProvider services) : IMedias
             ? await MediaBackend.Get(thumbnailId, cancellationToken).ConfigureAwait(false)
             : null;
 
-        var thumbnailContentId = thumbnailMedia?.ContentId;
+        var thumbnailContentId = thumbnailMedia?.BlobId;
         return new MediaContent(mediaId, contentId, thumbnailId, thumbnailContentId);
     }
 

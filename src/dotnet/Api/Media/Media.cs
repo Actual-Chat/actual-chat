@@ -13,7 +13,7 @@ namespace ActualChat.Media;
 public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, IRequirementTarget
 {
     [DataMember, MemoryPackOrder(0)] public MediaId Id { get; init; }
-    [DataMember, MemoryPackOrder(1)] public string ContentId { get; init; } = "";
+    [DataMember, MemoryPackOrder(1)] public string BlobId { get; init; } = "";
     [DataMember, MemoryPackOrder(2)] public long Version { get; init; }
     [DataMember, MemoryPackOrder(10)] public PropertyBag Metadata { get; init; }
 
@@ -50,17 +50,17 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsReady => !ContentId.IsNullOrEmpty();
+    public bool IsReady => !BlobId.IsNullOrEmpty();
 
     public Media(MediaId id)
         => Id = id;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor, SerializationConstructor]
-    public Media(MediaId id, long version, string contentId, PropertyBag metadata)
+    public Media(MediaId id, long version, string blobId, PropertyBag metadata)
     {
         Id = id;
         Version = version;
-        ContentId = contentId;
+        BlobId = blobId;
         Metadata = metadata;
     }
 

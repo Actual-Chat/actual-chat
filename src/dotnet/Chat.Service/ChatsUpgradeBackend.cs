@@ -140,7 +140,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
             var textEntries = await dbContext.ChatEntries
                 .Where(e => e.Kind == 0)
                 .Where(e => e.AudioEntryId != null)
-                .Where(e => e.MediaOrStreamId == null || e.MediaOrStreamId == "")
+                .Where(e => e.MediaId == null || e.MediaId == "")
                 .Where(e => e.LocalId > lastProcessedLocalId)
                 .OrderBy(e => e.ChatId).ThenBy(e => e.LocalId)
                 .Take(batchSize)
@@ -191,7 +191,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                         audioDbEntry.ClientSideBeginsAt.HasValue ? audioDbEntry.ClientSideBeginsAt.Value.Ticks : (object?)null);
 
                 var media = new MediaFull(mediaId) {
-                    ContentId = audioBlobId,
+                    BlobId = audioBlobId,
                     ContentType = "audio/webm",
                     Metadata = metadata,
                 };
@@ -205,7 +205,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
                 var dbTextEntry = await opDbContext.ChatEntries
                     .SingleAsync(e => e.Id == textEntry.Id, cancellationToken)
                     .ConfigureAwait(false);
-                dbTextEntry.MediaOrStreamId = mediaId.Value;
+                dbTextEntry.MediaId = mediaId.Value;
                 await opDbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
                 totalMigrated++;

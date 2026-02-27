@@ -41,7 +41,7 @@ public sealed class AudioSegmentSaver(IServiceProvider services) : AudioProcesso
         contentEndsAt = Moment.Min(endsAt, contentEndsAt);
 
         var media = new MediaFull(mediaId) {
-            ContentId = blobId,
+            BlobId = blobId,
             ContentType = "audio/webm",
             Metadata = PropertyBag.Empty
                 .Set(nameof(ChatEntryAudio.BeginsAt), beginsAt.EpochOffsetTicks)

@@ -30,7 +30,7 @@ public class MediaDbContext(DbContextOptions<MediaDbContext> options) : DbContex
         media.Property(e => e.Id).UseCollation("C");
         media.Property(e => e.Scope).UseCollation("C");
         media.Property(e => e.LocalId).UseCollation("C");
-        media.Property(e => e.ContentId).UseCollation("C");
+        media.Property(e => e.BlobId).UseCollation("C");
         media.Property(e => e.UserId).UseCollation("C");
         media.Property(e => e.ThumbnailId).UseCollation("C");
 

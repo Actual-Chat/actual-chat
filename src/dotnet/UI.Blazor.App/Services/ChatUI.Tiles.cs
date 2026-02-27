@@ -469,7 +469,7 @@ public partial class ChatUI
         var isWelcomeBlockAdded = false;
         foreach (var (entry, conversation) in items) {
             var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
-            if (entry is { IsThreadStartEntry: true }) {
+            if (entry is { IsThreadStart: true }) {
                 var threadChatId = entry.ChatId.CreateThreadId(entry.LocalId);
                 var threadChat = await Chats.Get(Session, threadChatId, cancellationToken).ConfigureAwait(false);
                 if (threadChat is not null) {

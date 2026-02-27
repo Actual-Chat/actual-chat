@@ -61,7 +61,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbMedia = await dbContext.Media
-            .Where(x => x.ContentId == contentId)
+            .Where(x => x.BlobId == contentId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbMedia?.ToModel().ToMedia();
@@ -105,8 +105,8 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             if (dbMedia is not null) {
                 dbMedia.RequireVersion(expectedVersion);
                 media = dbMedia.ToModel();
-                if (!dbMedia.ContentId.IsNullOrEmpty())
-                    await ContentSaver.Remove(dbMedia.ContentId, cancellationToken).ConfigureAwait(false);
+                if (!dbMedia.BlobId.IsNullOrEmpty())
+                    await ContentSaver.Remove(dbMedia.BlobId, cancellationToken).ConfigureAwait(false);
                 dbContext.Remove(dbMedia);
             }
         }
@@ -182,10 +182,10 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
             if (existentMediaSidSet.Contains(mediaId.Value))
                 continue;
 
-            var contentId = dbMedia.ContentId;
+            var contentId = dbMedia.BlobId;
             // We must check if the content already exists because it can be the second attempt to copy chat media
             // and the content might be already copied in a previous attempt, which did not finish successfully.
-            var newContentId = mediaId.GetContentId(Path.GetExtension(dbMedia.ContentId));
+            var newContentId = mediaId.GetContentId(Path.GetExtension(dbMedia.BlobId));
             if (!await ContentSaver.Exists(newContentId, cancellationToken).ConfigureAwait(false))
                 await ContentSaver.Copy(contentId, newContentId, cancellationToken).ConfigureAwait(false);
             else
@@ -194,7 +194,7 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
 
             dbMedia.Id = mediaId.Value;
             dbMedia.Scope = mediaId.Scope;
-            dbMedia.ContentId = newContentId;
+            dbMedia.BlobId = newContentId;
             dbContext.Media.Add(dbMedia);
             updateCount++;
         }

@@ -28,10 +28,10 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
                 .ConfigureAwait(false);
             await SetMediaProgressToReady(mediaContent.ThumbnailMediaId!, cancellationToken).ConfigureAwait(false);
         }
-        await SaveFileContent(processedFile.File, mediaContent.ContentId, cancellationToken).ConfigureAwait(false);
+        await SaveFileContent(processedFile.File, mediaContent.BlobId, cancellationToken).ConfigureAwait(false);
         await SaveMediaMetadata(
             mediaId,
-            mediaContent.ContentId,
+            mediaContent.BlobId,
             processedFile.File,
             processedFile.Size,
             mediaContent.ThumbnailMediaId,
@@ -86,7 +86,7 @@ public sealed class MediaSaver(IServiceProvider services) : IMediaSaver
         else
             media = new MediaFull(mediaId);
         media = media with {
-            ContentId = contentId,
+            BlobId = contentId,
             FileName = file.FileName,
             Length = file.Length,
             ContentType = file.ContentType,

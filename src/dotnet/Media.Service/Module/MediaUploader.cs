@@ -43,7 +43,7 @@ public sealed class MediaUploader(Type ownerType, VersionGenerator<long> version
                 : throw StandardError.Internal($"Unknown content type: {resource.Name}.");
             var contentId = $"media/{mediaIdHash}/{mediaId.LocalId}{extension}";
             var media = new MediaFull(mediaId) {
-                ContentId = contentId,
+                BlobId = contentId,
                 FileName = resource.Name,
                 Length = resourceStream.Length,
                 ContentType = type,
@@ -67,10 +67,10 @@ public sealed class MediaUploader(Type ownerType, VersionGenerator<long> version
                 dbContext.Media.Add(new DbMedia(media));
             }
 
-            var mediaExists = await blobStorage.Exists(media.ContentId, cancellationToken).ConfigureAwait(false);
+            var mediaExists = await blobStorage.Exists(media.BlobId, cancellationToken).ConfigureAwait(false);
             if (mediaExists)
-                await blobStorage.Delete(media.ContentId, cancellationToken).ConfigureAwait(false);
-            await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, cancellationToken).ConfigureAwait(false);
+                await blobStorage.Delete(media.BlobId, cancellationToken).ConfigureAwait(false);
+            await blobStorage.Write(media.BlobId, resourceStream, media.ContentType, cancellationToken).ConfigureAwait(false);
         }
     }
 

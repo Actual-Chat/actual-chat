@@ -13,7 +13,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 
         var s = media.PassThroughAllSerializers(Out);
         s.Id.Should().Be(media.Id);
-        s.ContentId.Should().Be(media.ContentId);
+        s.BlobId.Should().Be(media.BlobId);
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var content = new MediaContent(mediaId, "content-1");
         var s = content.PassThroughAllSerializers(Out);
         s.MediaId.Should().Be(content.MediaId);
-        s.ContentId.Should().Be(content.ContentId);
+        s.BlobId.Should().Be(content.BlobId);
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
         var content = new MediaContent(mediaId, "content-1", thumbId, "thumb-content-1");
         var s = content.PassThroughAllSerializers(Out);
         s.MediaId.Should().Be(content.MediaId);
-        s.ContentId.Should().Be(content.ContentId);
+        s.BlobId.Should().Be(content.BlobId);
         s.ThumbnailMediaId.Should().Be(content.ThumbnailMediaId);
         s.ThumbnailContentId.Should().Be(content.ThumbnailContentId);
     }

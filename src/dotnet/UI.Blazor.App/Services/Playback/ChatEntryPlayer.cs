@@ -129,9 +129,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Moment playAt,
         CancellationToken cancellationToken)
     {
-        var streamId = !audioEntry.MediaOrStreamId.IsNullOrEmpty()
-            ? audioEntry.MediaOrStreamId
-            : audioEntry.StreamId;
+        var streamId = audioEntry.Audio?.StreamId.NullIfEmpty()
+            ?? audioEntry.StreamId;
         var audioTask = StreamClient.GetAudio(streamId, skipTo, cancellationToken);
         var chatTask = Hub.Chats.Get(Hub.Session, audioEntry.ChatId, cancellationToken);
         var authorTask = Hub.Authors.Get(Hub.Session, audioEntry.ChatId, audioEntry.AuthorId, cancellationToken);
@@ -142,7 +141,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
 
         var trackInfo = new ChatAudioTrackInfo(audioEntry, chat!, author!) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
-            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
+            ClientSideRecordedAt = (audioEntry.Audio?.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
         var now = Clocks.SystemClock.Now;
         var latency = now - audio.CreatedAt;
@@ -167,7 +166,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         CancellationToken cancellationToken)
     {
         var audioBlobUrl = UrlMapper.AudioBlobUrl(audioEntry.Audio != null
-            ? audioEntry.Audio.ContentId
+            ? audioEntry.Audio.BlobId
             : audioEntry.Content);
         Log.LogDebug("Downloading audio from {Url}, entry={EntryId}", audioBlobUrl, audioEntry.Id);
         var audioTask = AudioDownloader.Download(audioBlobUrl, skipTo, cancellationToken);
@@ -180,7 +179,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Log.LogDebug("Audio downloaded, format={Format}, entry={EntryId}", audio.Format, audioEntry.Id);
         var trackInfo = new ChatAudioTrackInfo(audioEntry, chat!, author!) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
-            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
+            ClientSideRecordedAt = (audioEntry.Audio?.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
         Log.LogInformation("Playing entry={EntryId}, playAt={PlayAt}", audioEntry.Id, playAt);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);

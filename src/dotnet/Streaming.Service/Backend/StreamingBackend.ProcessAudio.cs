@@ -110,7 +110,7 @@ public partial class StreamingBackend
                 cancellationToken)
             : null;
 
-        // Pass streamId for MediaOrStreamId during live phase; audio MediaId resolved after save
+        // Pass streamId for Audio.StreamId during live phase; audio MediaId resolved after save
         var liveStreamId = mustStreamVoice ? openSegment.StreamId.Value : null;
         var audioMediaIdTcs = TaskCompletionSourceExt.New<MediaId?>();
         var transcribeTask = BackgroundTask.Run(
@@ -276,7 +276,9 @@ public partial class StreamingBackend
                     AuthorId = authorId,
                     Content = "",
                     StreamId = transcriptStreamId.Value,
-                    MediaOrStreamId = liveStreamId,
+                    Audio = liveStreamId != null
+                        ? new ChatEntryAudio { StreamId = liveStreamId }
+                        : null,
                     BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
                     RepliedEntryLid = repliedEntryLid,
                 }));
@@ -300,11 +302,13 @@ public partial class StreamingBackend
                 : Change.Update(new ChatEntryDiff {
                     Content = lastTranscript.Text,
                     StreamId = "",
-                    MediaOrStreamId = audioMediaId?.Value ?? "",
+                    Audio = hasAudio && audioMediaId != null
+                        ? new ChatEntryAudio {
+                            MediaId = audioMediaId,
+                            TimeMap = lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0),
+                        }
+                        : (ChatEntryAudio?)null,
                     EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
-                    TimeMap = hasAudio
-                        ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
-                        : default,
                 });
 
             var command = new ChatsBackend_ChangeEntry(

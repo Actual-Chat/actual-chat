@@ -16,5 +16,5 @@ public static class ChatEntryExt
         => entries.Select(x => x.ToIndexedEntry());
 
     public static Moment GetIndexedEntryDate(this ChatEntry entry)
-        => entry.EndsAt ?? entry.ContentEndsAt ?? entry.BeginsAt;
+        => entry.EndsAt ?? entry.Audio?.ContentEndsAt ?? entry.BeginsAt;
 }
