@@ -242,8 +242,10 @@ public partial class ChatsUpgradeBackend
                     BlobId = "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm",
                     ContentType = "audio/webm",
                 };
-                var mediaChange = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
-                await Commander.Call(mediaChange, cancellationToken).ConfigureAwait(false);
+                var mediaChange = new MediaBackend_Change(mediaId, null, new Change<MediaFull> {
+                    Create = media,
+                });
+                await Commander.Call(mediaChange, isOutermost: true, cancellationToken).ConfigureAwait(false);
 
                 var localId = await ChatsBackend
                     .DbNextLocalId(dbContext, chatId, cancellationToken)
@@ -287,7 +289,7 @@ public partial class ChatsUpgradeBackend
                     ContentType = "audio/webm",
                 };
                 var mediaChange = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
-                await Commander.Call(mediaChange, cancellationToken).ConfigureAwait(false);
+                await Commander.Call(mediaChange, true, cancellationToken).ConfigureAwait(false);
 
                 var localId = await ChatsBackend
                     .DbNextLocalId(dbContext, chatId, cancellationToken)

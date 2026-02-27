@@ -307,7 +307,7 @@ public partial class StreamingBackend
                             MediaId = audioMediaId,
                             TimeMap = lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0),
                         }
-                        : (ChatEntryAudio?)null,
+                        : null,
                     EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
                 });
 

@@ -1316,10 +1316,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         // Clean up Media when audio is stripped from an entry during update
         if (changeKind == ChangeKind.Update && oldEntry is not null) {
-            var oldMediaSid = oldEntry.Audio?.MediaId.Value;
-            var newMediaSid = entry.Audio?.MediaId.Value;
+            var oldMediaSid = oldEntry.Audio?.MediaId?.Value;
+            var newMediaSid = entry.Audio?.MediaId?.Value;
             if (!oldMediaSid.IsNullOrEmpty()
-                && oldMediaSid != newMediaSid
+                && !OrdinalEquals(oldMediaSid, newMediaSid)
                 && MediaId.TryParse(oldMediaSid, out var strippedMediaId)) {
                 await RemoveMedia(strippedMediaId, cancellationToken).ConfigureAwait(false);
             }
