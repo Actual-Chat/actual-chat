@@ -12,6 +12,43 @@ public class ShardMapTest(ITestOutputHelper @out) : TestBase(@out)
     public void LargeNodeCountTest()
         => Test(20);
 
+    [Fact]
+    public void ReallocationTest()
+    {
+        var nodeRoles = HostRoles.Server.GetAllRoles(HostRole.OneBackendServer);
+        var shardScheme = ShardScheme.TestBackend;
+        var shardCount = shardScheme.ShardCount;
+
+        MeshNode MakeNode(int id) => new(new NodeRef($"node-{id}"), "local:80", nodeRoles, MeshNodeState.Online);
+
+        // Test: removing a node should only reallocate ~shardCount/nodeCount shards
+        var nodes3 = new[] { MakeNode(1), MakeNode(2), MakeNode(3) };
+        var nodes2 = new[] { MakeNode(1), MakeNode(2) }; // node-3 dies
+
+        var map3 = new ShardMap(shardScheme, nodes3);
+        var map2 = new ShardMap(shardScheme, nodes2);
+
+        var reallocated = 0;
+        var node3Shards = 0;
+        for (var s = 0; s < shardCount; s++) {
+            var owner3 = map3[s]?.Ref.Id.Value;
+            var owner2 = map2[s]?.Ref.Id.Value;
+            if (owner3 == "node-3")
+                node3Shards++;
+            else if (owner3 != owner2)
+                reallocated++;
+        }
+
+        WriteLine($"Shards on dead node: {node3Shards}");
+        WriteLine($"Extra reallocations (beyond dead node's shards): {reallocated}");
+        WriteLine($"Map with 3 nodes:\n{map3}");
+        WriteLine($"Map with 2 nodes:\n{map2}");
+
+        // With rendezvous hashing, extra reallocations should be very small (0-2 from rebalancing)
+        reallocated.Should().BeInRange(0, 2,
+            "rendezvous hashing should cause minimal extra reallocations beyond the dead node's shards");
+    }
+
     // Private methods
 
     private void Test(int averageNodeCount)
