@@ -106,7 +106,7 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         var range = await ChatsBackend.GetIdRange(threadChatId, false, cancellationToken).ConfigureAwait(false);
         var entries = ChatsBackend.ReadEntries(threadChatId, range, false, cancellationToken);
         var entryCount = 0;
-        var attachmentList = new List<TextEntryAttachment>();
+        var attachmentList = new List<ChatEntryAttachment>();
         const int entryCountLimit = 30;
         await foreach (var chatEntry in entries.ConfigureAwait(false)) {
             entryCount++;

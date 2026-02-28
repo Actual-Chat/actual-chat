@@ -533,12 +533,12 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void TextEntryAttachment_Basic()
+    public void ChatEntryAttachment_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
         var entryId = ChatEntryId.New(chatId, 1);
         var mediaId = MediaId.New("scope1");
-        var attachment = new TextEntryAttachment("att-1", 1) {
+        var attachment = new ChatEntryAttachment("att-1", 1) {
             EntryId = entryId,
             Index = 0,
             MediaId = mediaId,

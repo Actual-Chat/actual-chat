@@ -82,12 +82,12 @@ public class ChatMarkupHubExtTest
         rawMarkup.Should().Be(expectedMarkupText);
     }
 
-    private static TextEntryAttachment Attachment(string file)
+    private static ChatEntryAttachment Attachment(string file)
     {
         if (!FileExtensionContentTypeProvider.TryGetContentType(file, out var contentType))
             throw StandardError.Constraint($"Failed to find content type for '{file}'.");
 
-        return new TextEntryAttachment {
+        return new ChatEntryAttachment {
             Media = new Media.Media(null!) {
                 FileName = file,
                 ContentType = contentType,

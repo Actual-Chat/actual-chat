@@ -48,7 +48,7 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter, EditorRequired]
-    public TextEntryAttachment Attachment { get; set; } = null!;
+    public ChatEntryAttachment Attachment { get; set; } = null!;
     [Parameter] public bool IconOnly { get; set; }
 
     private string GetTooltipTitle() {

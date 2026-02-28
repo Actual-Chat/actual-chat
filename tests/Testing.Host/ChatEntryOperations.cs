@@ -13,10 +13,10 @@ public static class ChatEntryOperations
     {
         var cmd = new Chats_UpsertTextEntry(tester.Session, chatId, null) {
             Text = text,
-            EntryAttachments = mediaId == null
+            Attachments = mediaId == null
                 ? []
                 : [
-                    new TextEntryAttachment {
+                    new ChatEntryAttachment {
                         MediaId = mediaId,
                         Index = 0,
                     },

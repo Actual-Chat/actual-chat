@@ -14,7 +14,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbMention> Mentions { get; protected set; } = null!;
     public DbSet<DbReaction> Reactions { get; protected set; } = null!;
     public DbSet<DbReactionSummary> ReactionSummaries { get; protected set; } = null!;
-    public DbSet<DbTextEntryAttachment> TextEntryAttachments { get; protected set; } = null!;
+    public DbSet<DbChatEntryAttachment> ChatEntryAttachments { get; protected set; } = null!;
     public DbSet<DbAuthor> Authors { get; protected set; } = null!;
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
@@ -75,11 +75,11 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         reactionSummary.Property(e => e.Id).UseCollation("C");
         reactionSummary.Property(e => e.EntryId).UseCollation("C");
 
-        var textEntryAttachment = model.Entity<DbTextEntryAttachment>();
-        textEntryAttachment.Property(e => e.Id).UseCollation("C");
-        textEntryAttachment.Property(e => e.EntryId).UseCollation("C");
-        textEntryAttachment.Property(e => e.MediaId).UseCollation("C");
-        textEntryAttachment.Property(a => a.ThumbnailMediaId).UseCollation("C");
+        var ChatEntryAttachment = model.Entity<DbChatEntryAttachment>();
+        ChatEntryAttachment.Property(e => e.Id).UseCollation("C");
+        ChatEntryAttachment.Property(e => e.EntryId).UseCollation("C");
+        ChatEntryAttachment.Property(e => e.MediaId).UseCollation("C");
+        ChatEntryAttachment.Property(a => a.ThumbnailMediaId).UseCollation("C");
 
         var authors = model.Entity<DbAuthor>();
         authors.Property(e => e.Id).UseCollation("C");

@@ -105,7 +105,7 @@ public interface IChatsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task<ChatEntry> OnChangeEntry(ChatsBackend_ChangeEntry command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<TextEntryAttachment[]> OnCreateAttachments(ChatsBackend_CreateAttachments command, CancellationToken cancellationToken);
+    Task<ChatEntryAttachment[]> OnCreateAttachments(ChatsBackend_CreateAttachments command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveAttachments(ChatsBackend_RemoveAttachments command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -144,8 +144,8 @@ public interface IChatsBackend : IComputeService, IBackendService
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateAttachments(
     [property: DataMember, MemoryPackOrder(0)]
-    TextEntryAttachment[] Attachments
-) : ICommand<TextEntryAttachment[]>, IBackendCommand, IHasShardKey<ChatId>
+    ChatEntryAttachment[] Attachments
+) : ICommand<ChatEntryAttachment[]>, IBackendCommand, IHasShardKey<ChatId>
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public ChatId ShardKey => Attachments.Length > 0 ? Attachments[0].EntryId.ChatId : throw new ArgumentException("No attachments provided", nameof(Attachments));

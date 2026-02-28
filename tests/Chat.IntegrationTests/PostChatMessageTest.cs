@@ -117,12 +117,12 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // Create an entry with 3 attachments
         var attachments = new[] {
-            new TextEntryAttachment { MediaId = media1 },
-            new TextEntryAttachment { MediaId = media2 },
-            new TextEntryAttachment { MediaId = media3 },
+            new ChatEntryAttachment { MediaId = media1 },
+            new ChatEntryAttachment { MediaId = media2 },
+            new ChatEntryAttachment { MediaId = media3 },
         };
         var createCmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = "Message with 3 attachments",
-            EntryAttachments = attachments,
+            Attachments = attachments,
         };
         var chatEntry = await commander.Call(createCmd);
 
@@ -138,11 +138,11 @@ public class PostChatMessageTest(ChatCollection.AppHostFixture fixture, ITestOut
 
         // Update entry to 2 attachments (remove the third one)
         var updatedAttachments = new[] {
-            new TextEntryAttachment { MediaId = media1 },
-            new TextEntryAttachment { MediaId = media3 },
+            new ChatEntryAttachment { MediaId = media1 },
+            new ChatEntryAttachment { MediaId = media3 },
         };
         var updateCmd = new Chats_UpsertTextEntry(session, chatId, chatEntry.LocalId) { Text = "Message with 2 attachments",
-            EntryAttachments = updatedAttachments,
+            Attachments = updatedAttachments,
         };
         var updatedEntry = await commander.Call(updateCmd);
 

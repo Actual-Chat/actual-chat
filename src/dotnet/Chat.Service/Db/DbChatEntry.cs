@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ActualChat.Hashing;
 using ActualChat.Media;
@@ -79,7 +79,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? TimeMap { get; set; }
 
     public ChatEntry ToModel(
-        IEnumerable<TextEntryAttachment>? attachments = null,
+        IEnumerable<ChatEntryAttachment>? attachments = null,
         LinkPreview[]? linkPreviews = null)
     {
         // fix NRE during deserialization of ApiArray at versions earlier than v0.200

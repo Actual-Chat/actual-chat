@@ -55,4 +55,4 @@ public sealed partial record ThreadStat(
     [property: DataMember, MemoryPackOrder(0)] long MessageCount,
     [property: DataMember, MemoryPackOrder(1)] AuthorId[] TopAuthorIds,
     [property: DataMember, MemoryPackOrder(2)] int AuthorCount,
-    [property: DataMember, MemoryPackOrder(3)] TextEntryAttachment[] Attachments);
+    [property: DataMember, MemoryPackOrder(3)] ChatEntryAttachment[] Attachments);

@@ -453,7 +453,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             var entryAttachments = chatEntry.Attachments
                 .Select(c => new { Attachment = c, MediaContent = mediaContents.GetValueOrDefault(c.MediaId) })
                 .Where(c => c.MediaContent is not null)
-                .Select(c => new TextEntryAttachment {
+                .Select(c => new ChatEntryAttachment {
                     Id = c.Attachment.Id,
                     MediaId = c.MediaContent!.MediaId,
                     ThumbnailMediaId = c.MediaContent.ThumbnailMediaId,
@@ -462,7 +462,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
             // Finalize the message with attachments.
             var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId) {
                 Text = chatEntry.Content,
-                EntryAttachments = entryAttachments,
+                Attachments = entryAttachments,
                 HasUploadingAttachments = false,
             };
             chatEntry1 = await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);

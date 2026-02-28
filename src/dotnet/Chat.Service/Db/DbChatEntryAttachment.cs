@@ -6,11 +6,11 @@ namespace ActualChat.Chat.Db;
 
 [Table("TextEntryAttachments")]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
-public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequirementTarget
+public class DbChatEntryAttachment : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private const char IdSeparator = ':';
-    public DbTextEntryAttachment() { }
-    public DbTextEntryAttachment(TextEntryAttachment model) => UpdateFrom(model);
+    public DbChatEntryAttachment() { }
+    public DbChatEntryAttachment(ChatEntryAttachment model) => UpdateFrom(model);
 
     // (ChatId, EntryId, Index)
     [Key] public string Id { get; set; } = "";
@@ -26,7 +26,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public static string IdPrefix(ChatEntryId entryId)
         => entryId.Value + IdSeparator;
 
-    public static ChatEntryId? ExtractTextEntryId(Symbol id)
+    public static ChatEntryId? ExtractEntryId(Symbol id)
     {
         var i = id.Value.LastIndexOf(IdSeparator);
         if (i < 0)
@@ -36,7 +36,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
         return entryId;
     }
 
-    public TextEntryAttachment ToModel()
+    public ChatEntryAttachment ToModel()
         => new (Id, Version) {
             EntryId = ChatEntryId.Parse(EntryId),
             Index = Index,
@@ -44,7 +44,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
             ThumbnailMediaId = ActualChat.MediaId.ParseNullable(ThumbnailMediaId),
         };
 
-    public void UpdateFrom(TextEntryAttachment model)
+    public void UpdateFrom(ChatEntryAttachment model)
     {
         var id = ComposeId(model.EntryId, model.Index);
         this.RequireSameOrEmptyId(id);

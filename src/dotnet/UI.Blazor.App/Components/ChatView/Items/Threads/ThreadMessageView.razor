@@ -215,7 +215,7 @@
         return _chatMarkupHub.Parser.Parse(translation.Content);
     }
 
-    private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(TextEntryAttachment[] attachments)
+    private (ChatEntryAttachment[], ChatEntryAttachment[]) GetOrderedAttachmentList(ChatEntryAttachment[] attachments)
         => (attachments.Where(a => a.IsVisualMedia()).ToArray(),
             attachments.Where(a => !a.IsVisualMedia()).ToArray());
 
@@ -245,7 +245,7 @@
         TranslatedText Description,
         IReadOnlyList<(ChatEntry, Markup)> Entries,
         AuthorId[] TopAuthorIds,
-        TextEntryAttachment[] Attachments,
+        ChatEntryAttachment[] Attachments,
         int AuthorCount,
         long MessageCount,
         string OwnerName);

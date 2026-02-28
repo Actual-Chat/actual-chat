@@ -134,7 +134,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     {
         var entryId = ChatEntryId.New(TestChatId, 1);
         var mediaId = MediaId.New("scope1");
-        var attachment = new TextEntryAttachment("att-1", 1) {
+        var attachment = new ChatEntryAttachment("att-1", 1) {
             EntryId = entryId,
             Index = 0,
             MediaId = mediaId,

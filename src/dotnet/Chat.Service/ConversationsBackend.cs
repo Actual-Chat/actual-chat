@@ -30,7 +30,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (conversation.AttachmentIds.Length > 0) {
             var textEntryIds = conversation.AttachmentIds
-                .Select(DbTextEntryAttachment.ExtractTextEntryId)
+                .Select(DbChatEntryAttachment.ExtractEntryId)
                 .Distinct()
                 .ToArray();
             var textEntries = await textEntryIds
@@ -381,7 +381,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .ConfigureAwait(false);
 
         var textEntries = new List<TextEntry>();
-        var attachments = new List<TextEntryAttachment>();
+        var attachments = new List<ChatEntryAttachment>();
         var attachmentCount = 0;
         var chatEntries = tiles
             .SelectMany(tile => tile.Entries)
@@ -405,6 +405,6 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     // Nested types
     private record ConversationEntriesInfo(
         IReadOnlyCollection<TextEntry> TextEntries,
-        IReadOnlyCollection<TextEntryAttachment> Attachments,
+        IReadOnlyCollection<ChatEntryAttachment> Attachments,
         int AttachmentCount);
 }

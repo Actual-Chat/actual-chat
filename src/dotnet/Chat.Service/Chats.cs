@@ -347,7 +347,7 @@ public partial class Chats(IServiceProvider services) : IChats
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
-        var attachments = command.EntryAttachments;
+        var attachments = command.Attachments;
         if (string.IsNullOrWhiteSpace(text) && attachments.Length == 0 && !command.HasUploadingAttachments)
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
@@ -373,7 +373,7 @@ public partial class Chats(IServiceProvider services) : IChats
             var diff = new ChatEntryDiff {
                 Content = text,
                 RepliedEntryLid = repliedEntryLid,
-                Attachments = command.EntryAttachments,
+                Attachments = command.Attachments,
             };
 
             if (textEntry.HasAudio) {
@@ -690,7 +690,7 @@ public partial class Chats(IServiceProvider services) : IChats
                         ChatTitle = forwardedChatTitle,
                         AuthorName = forwardedAuthorName,
                     },
-                    EntryAttachments = chatEntry.Attachments.Select(x => new TextEntryAttachment {
+                    Attachments = chatEntry.Attachments.Select(x => new ChatEntryAttachment {
                         MediaId = x.MediaId,
                         ThumbnailMediaId = x.ThumbnailMediaId,
                     }).ToArray(),

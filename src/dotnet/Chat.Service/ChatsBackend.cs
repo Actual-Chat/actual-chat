@@ -24,9 +24,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private const string CreatedChatEntryId = "CreatedChatEntryId";
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
-    private static readonly ILookup<ChatEntryId, TextEntryAttachment> EmptyAttachments
-        = Array.Empty<TextEntryAttachment>().ToLookup(ta => ta.EntryId);
-    private static readonly Task<ILookup<ChatEntryId, TextEntryAttachment>> EmptyAttachmentsTask
+    private static readonly ILookup<ChatEntryId, ChatEntryAttachment> EmptyAttachments
+        = Array.Empty<ChatEntryAttachment>().ToLookup(ta => ta.EntryId);
+    private static readonly Task<ILookup<ChatEntryId, ChatEntryAttachment>> EmptyAttachmentsTask
         = Task.FromResult(EmptyAttachments);
     private static readonly IReadOnlyDictionary<Symbol, LinkPreview> EmptyLinkPreviews
         = new Dictionary<Symbol, LinkPreview>().AsReadOnly();
@@ -614,13 +614,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     [ComputeMethod]
-    protected virtual async Task<TextEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken)
+    protected virtual async Task<ChatEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = DbTextEntryAttachment.IdPrefix(entryId);
-        var dbAttachments = await dbContext.TextEntryAttachments
+        var idPrefix = DbChatEntryAttachment.IdPrefix(entryId);
+        var dbAttachments = await dbContext.ChatEntryAttachments
             .Where(x => x.Id.StartsWith(idPrefix))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -643,7 +643,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         }
         return dbAttachments.Select(x => WithMedia(x.ToModel())).SkipNullItems().ToArray();
 
-        TextEntryAttachment? WithMedia(TextEntryAttachment attachment)
+        ChatEntryAttachment? WithMedia(ChatEntryAttachment attachment)
         {
             var media = mediaMap.GetValueOrDefault(attachment.MediaId);
             if (media is null)
@@ -991,7 +991,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             await RemoveMedia(dbChat.MediaId, cancellationToken).ConfigureAwait(false);
             var attachmentMediaIds = await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId.Value && ce.HasAttachments)
-                .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea.MediaId)
+                .Join(dbContext.ChatEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea.MediaId)
                 .Distinct()
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -1005,7 +1005,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // Remove attachments
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId.Value && ce.HasAttachments)
-                .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea)
+                .Join(dbContext.ChatEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
             // Remove reaction summaries
@@ -1328,7 +1328,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (changeKind == ChangeKind.Create)
             AppMeters.MessageCount.Add(1);
 
-        TextEntryAttachment[]? attachmentsProto = null;
+        ChatEntryAttachment[]? attachmentsProto = null;
         if (change.IsCreate(out var create) && create.Attachments is { Length: > 0 } attachments1)
             attachmentsProto = attachments1;
         if (change.IsUpdate(out var update1) && update1.Attachments is { Length: > 0 } attachments2)
@@ -1339,15 +1339,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 var removeAttachmentsCmd = new ChatsBackend_RemoveAttachments(chatEntryId);
                 await Commander.Call(removeAttachmentsCmd, cancellationToken).ConfigureAwait(false);
             }
-            var textEntryAttachments = attachmentsProto
-                .Select((x, i) => new TextEntryAttachment {
+            var newAttachments = attachmentsProto
+                .Select((x, i) => new ChatEntryAttachment {
                     EntryId = chatEntryId,
                     Index = i,
                     MediaId = x.MediaId,
                     ThumbnailMediaId = x.ThumbnailMediaId,
                 })
                 .ToArray();
-            var createAttachmentsCmd = new ChatsBackend_CreateAttachments(textEntryAttachments);
+            var createAttachmentsCmd = new ChatsBackend_CreateAttachments(newAttachments);
             var createdAttachments = await Commander.Call(createAttachmentsCmd, cancellationToken).ConfigureAwait(false);
             entry = entry with { Attachments = createdAttachments };
         }
@@ -1427,7 +1427,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [CommandHandler]
-    public virtual async Task<TextEntryAttachment[]> OnCreateAttachments(
+    public virtual async Task<ChatEntryAttachment[]> OnCreateAttachments(
         ChatsBackend_CreateAttachments command,
         CancellationToken cancellationToken)
     {
@@ -1450,7 +1450,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbAttachments = new List<DbTextEntryAttachment>();
+        var dbAttachments = new List<DbChatEntryAttachment>();
         foreach (var attachment in attachments) {
             var dbChatEntry = await dbContext.ChatEntries.Get(entryId.Value, cancellationToken)
                 .Require()
@@ -1458,7 +1458,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (dbChatEntry.IsRemoved)
                 throw StandardError.Constraint("Removed chat entries cannot be modified.");
 
-            var dbAttachment = new DbTextEntryAttachment(attachment with {
+            var dbAttachment = new DbChatEntryAttachment(attachment with {
                 Version = VersionGenerator.NextVersion(),
             });
             dbContext.Add(dbAttachment);
@@ -1485,8 +1485,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = DbTextEntryAttachment.IdPrefix(entryId);
-        await dbContext.TextEntryAttachments
+        var idPrefix = DbChatEntryAttachment.IdPrefix(entryId);
+        await dbContext.ChatEntryAttachments
             .Where(x => x.Id.StartsWith(idPrefix))
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -1578,7 +1578,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             var authorId = chatAuthor.Id;
             var attachmentMediaIds = await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId && ce.HasAttachments)
-                .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea.MediaId)
+                .Join(dbContext.ChatEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea.MediaId)
                 .Distinct()
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -1588,7 +1588,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             // Remove attachments
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId && ce.HasAttachments)
-                .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea)
+                .Join(dbContext.ChatEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
             // Remove reaction summaries
@@ -2434,7 +2434,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task<ILookup<ChatEntryId, TextEntryAttachment>> GetAttachments(IEnumerable<DbChatEntry> dbEntries, CancellationToken cancellationToken)
+    private Task<ILookup<ChatEntryId, ChatEntryAttachment>> GetAttachments(IEnumerable<DbChatEntry> dbEntries, CancellationToken cancellationToken)
     {
         var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
             .Select(x => ChatEntryId.Parse(x.Id))
@@ -2444,7 +2444,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             ? GetAttachmentsBulk()
             : EmptyAttachmentsTask;
 
-        async Task<ILookup<ChatEntryId, TextEntryAttachment>> GetAttachmentsBulk() {
+        async Task<ILookup<ChatEntryId, ChatEntryAttachment>> GetAttachmentsBulk() {
             var attachments = await entryIdsWithAttachments
                 .Select(x => GetEntryAttachments(x, cancellationToken))
                 .Collect(cancellationToken)

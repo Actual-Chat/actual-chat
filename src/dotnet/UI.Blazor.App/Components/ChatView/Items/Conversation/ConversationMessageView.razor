@@ -115,7 +115,7 @@
         await ClipboardUI.WriteText(text).ConfigureAwait(false);
     }
 
-    private (TextEntryAttachment[], TextEntryAttachment[]) GetOrderedAttachmentList(TextEntryAttachment[] attachments)
+    private (ChatEntryAttachment[], ChatEntryAttachment[]) GetOrderedAttachmentList(ChatEntryAttachment[] attachments)
         => (attachments.Where(a => a.IsVisualMedia()).ToArray(),
             attachments.Where(a => !a.IsVisualMedia()).ToArray());
 }

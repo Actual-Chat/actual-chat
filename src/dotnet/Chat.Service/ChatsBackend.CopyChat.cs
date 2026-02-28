@@ -474,7 +474,7 @@ public partial class ChatsBackend
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         if (attachmentIds.Count > 0)
-            await InsertTextEntryAttachments(correlationId, dbContext, chatSid, newChatId, attachmentIds, cancellationToken).ConfigureAwait(false);
+            await InsertChatEntryAttachments(correlationId, dbContext, chatSid, newChatId, attachmentIds, cancellationToken).ConfigureAwait(false);
 
         if (reactionIds.Count > 0)
             await InsertReactions(correlationId, dbContext, chatSid, newChatId, reactionIds, migratedAuthors, cancellationToken).ConfigureAwait(false);
@@ -518,7 +518,7 @@ public partial class ChatsBackend
         return content;
     }
 
-    private async Task InsertTextEntryAttachments(
+    private async Task InsertChatEntryAttachments(
         string correlationId,
         ChatDbContext dbContext,
         string chatSid,
@@ -533,7 +533,7 @@ public partial class ChatsBackend
         var lastId = attachmentsIds[^1];
         var attachmentIdPrefix = chatSid + ":0:";
         List<string> ids = attachmentsIds.Select(entryId => attachmentIdPrefix + entryId + ":").ToList();
-        var attachments = await dbContext.TextEntryAttachments
+        var attachments = await dbContext.ChatEntryAttachments
             .Where(c => c.Id.StartsWith(attachmentIdPrefix))
  #pragma warning disable CA1310
             .Where(c => ids.Any(x => c.Id.StartsWith(x)))
@@ -562,11 +562,11 @@ public partial class ChatsBackend
         foreach (var dbAttachment in attachments) {
             var entryId = ChatEntryId.Parse(dbAttachment.EntryId);
             var newEntryId = ChatEntryId.New(newChatId, entryId.LocalId);
-            dbAttachment.Id = DbTextEntryAttachment.ComposeId(newEntryId, dbAttachment.Index);
+            dbAttachment.Id = DbChatEntryAttachment.ComposeId(newEntryId, dbAttachment.Index);
             dbAttachment.EntryId = newEntryId.Value;
             dbAttachment.MediaId = RemapMedia(dbAttachment.MediaId);
             dbAttachment.ThumbnailMediaId = RemapMedia(dbAttachment.ThumbnailMediaId);
-            dbContext.TextEntryAttachments.Add(dbAttachment);
+            dbContext.ChatEntryAttachments.Add(dbAttachment);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

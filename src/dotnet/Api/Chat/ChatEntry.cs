@@ -57,7 +57,7 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 16), MemoryPackOrder(16)] public string ClientId { get; init; } = ""; // Soon obsolete
 
     // Read-only (populated on reads)
-    [DataMember(Order = 17), MemoryPackOrder(17)] public TextEntryAttachment[] Attachments { get; init; } = [];
+    [DataMember(Order = 17), MemoryPackOrder(17)] public ChatEntryAttachment[] Attachments { get; init; } = [];
 
     // MemoryPackXxx properties
 
@@ -150,7 +150,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember, MemoryPackOrder(7)] public Option<ChatEntryAudio?> Audio { get; init; }
     [DataMember, MemoryPackOrder(8)] public Option<ChatEntryForwarded?> Forwarded { get; init; }
     [DataMember, MemoryPackOrder(9)] public Option<long?> RepliedEntryLid { get; init; }
-    [DataMember, MemoryPackOrder(10)] public TextEntryAttachment[]? Attachments { get; init; }
+    [DataMember, MemoryPackOrder(10)] public ChatEntryAttachment[]? Attachments { get; init; }
     [DataMember, MemoryPackOrder(11)] public LinkPreviewMode? LinkPreviewMode { get; init; }
     [DataMember, MemoryPackOrder(12)] public bool? HasReactions { get; init; }
     [DataMember, MemoryPackOrder(13)] public bool? IsThreadStart { get; init; }
