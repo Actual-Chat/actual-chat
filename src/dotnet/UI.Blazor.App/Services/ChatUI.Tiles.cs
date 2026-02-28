@@ -154,7 +154,7 @@ public partial class ChatUI
         var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
         var chatSendingMessagesWrapper = new IgnoreComputeArg<ChatSendingMessagesAccessor>(chatSendingMessages);
         var tiles = new List<VirtualListTile<ChatMessage>>();
-        var hasVeryFirstItem = idTiles[0].Start <= chatIdRange.Start;
+        var hasVeryFirstItem = idTiles.Count > 0 && idTiles[0].Start <= chatIdRange.Start;
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
         foreach (var idTile in idTiles) {
