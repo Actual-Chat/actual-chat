@@ -55,13 +55,14 @@ public class IosAttachmentFilePicker(IServiceProvider services) : MauiAttachment
             var representation = await item
                 .LoadInPlaceFileRepresentationAsync(contentType.Identifier)
                 .ConfigureAwait(false);
-            FilePath fileName = item.SuggestedName.NullIfEmpty() ?? representation.Path.FileName;
-            var tmpFilePath = AttachmentsDirectoryName | fileName.ToUnique();
+            FilePath tmpFileName = item.SuggestedName.NullIfEmpty() ?? representation.Path.FileName;
+            tmpFileName = tmpFileName.EnsureExt(representation.Path.Extension);
+            var tmpFilePath = AttachmentsDirectoryName | tmpFileName.ToUnique();
             await representation.Copy(tmpFilePath).ConfigureAwait(false);
             var fileProvider = new MauiFileProvider {
                 FileRef = tmpFilePath,
                 Metadata = new() {
-                    FileName = fileName,
+                    FileName = tmpFileName,
                     FileType = representation.ImplyMimeType(item),
                     Length = new FileInfo(tmpFilePath).Length,
                 },

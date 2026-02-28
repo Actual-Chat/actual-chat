@@ -35,4 +35,7 @@ public static class FilePathExt
 
     public static FilePath ToUnique(this FilePath path, int randomLength = 5)
         => path.DirectoryPath | $"{path.FileNameWithoutExtension}-{RandomStringGenerator.Default.Next(randomLength)}.{path.Extension}";
+
+    public static FilePath EnsureExt(this FilePath path, string ext)
+        => path.HasExtension && OrdinalEquals(path.Extension, ext) ? path : path.ChangeExtension(ext);
 }
