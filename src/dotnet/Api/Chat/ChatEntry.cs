@@ -54,7 +54,7 @@ public sealed partial record ChatEntry(
     [DataMember(Order = 15), MemoryPackOrder(15)] public LinkPreview[] LinkPreviews { get; init; } = [];
 
     // Client
-    [DataMember(Order = 16), MemoryPackOrder(16)] public string ClientId { get; init; } = "";
+    [DataMember(Order = 16), MemoryPackOrder(16)] public string ClientId { get; init; } = ""; // Soon obsolete
 
     // Read-only (populated on reads)
     [DataMember(Order = 17), MemoryPackOrder(17)] public TextEntryAttachment[] Attachments { get; init; } = [];
@@ -157,13 +157,10 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember, MemoryPackOrder(13)] public bool? IsThreadStart { get; init; }
     [DataMember, MemoryPackOrder(14)] public bool? IsThread { get; init; }
     [DataMember, MemoryPackOrder(15)] public bool? HasAttachmentUploads { get; init; }
-    [DataMember, MemoryPackOrder(16)] public string? ClientId { get; init; }
+    [DataMember, MemoryPackOrder(16)] public string? ClientId { get; init; } // Soon obsolete
 
     public ChatEntryDiff(ChatEntry entry) : this()
     {
-        IsRemoved = entry.IsRemoved;
-        IsThreadStart = entry.IsThreadStart;
-        IsThread = entry.IsThread;
         AuthorId = entry.AuthorId;
         BeginsAt = entry.BeginsAt;
         EndsAt = entry.EndsAt;
@@ -175,8 +172,13 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
         Forwarded = entry.Forwarded;
         Attachments = entry.Attachments;
         LinkPreviewMode = entry.LinkPreviewMode;
+        // IsXxx
+        IsRemoved = entry.IsRemoved;
+        IsThreadStart = entry.IsThreadStart;
+        IsThread = entry.IsThread;
         HasReactions = entry.HasReactions;
         HasAttachmentUploads = entry.HasAttachmentUploads;
+        // Soon obsolete
         ClientId = entry.ClientId;
     }
 }
