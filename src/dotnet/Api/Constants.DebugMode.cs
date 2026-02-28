@@ -69,5 +69,8 @@ public static partial class Constants
         public static readonly bool KubeEmulation = false;
         public static readonly bool KubeLocal = false;
         public const bool ShareSuggestions = false;
+
+        // File upload
+        public const bool VideoTranscoding = true; // TODO: false before PR!!!
     }
 }

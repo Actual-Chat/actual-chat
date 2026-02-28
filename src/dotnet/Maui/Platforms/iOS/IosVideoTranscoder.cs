@@ -10,7 +10,7 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
     private const int MaxResolution = 1080;
 
     private ILogger Log => field ??= services.LogFor<IosVideoTranscoder>();
-    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information);
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.VideoTranscoding);
 
     public async Task<VideoTranscodeResult?> TranscodeIfNeeded(
         FilePath sourceFilePath,
@@ -22,28 +22,28 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
             "TranscodeIfNeeded: '{Path}', mimeType={MimeType}",
             sourceFilePath, mimeType);
 
-        if (!NeedsTranscoding(sourceFilePath, mimeType))
+        if (!await NeedsTranscoding(sourceFilePath, mimeType).ConfigureAwait(false))
             return null;
 
-        DebugLog?.LogInformation("Starting transcoding for '{Path}'", sourceFilePath);
+        Log.LogInformation("Transcoding video '{Path}' (mimeType={MimeType})",
+            sourceFilePath, mimeType);
 
         var outputPath = await Transcode(sourceFilePath, progress, cancellationToken)
             .ConfigureAwait(false);
 
         if (outputPath == null) {
-            DebugLog?.LogInformation("Transcoding returned null for '{Path}'", sourceFilePath);
+            Log.LogWarning("Transcoding failed for '{Path}'", sourceFilePath);
             return null;
         }
 
         var fileInfo = new FileInfo(outputPath.Value);
-        DebugLog?.LogInformation(
-            "Transcoding completed: '{OutputPath}', size={Size}",
+        Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size}",
             outputPath, fileInfo.Length);
 
         return new VideoTranscodeResult(outputPath.Value, "video/mp4", fileInfo.Length);
     }
 
-    private bool NeedsTranscoding(FilePath filePath, string mimeType)
+    private async Task<bool> NeedsTranscoding(FilePath filePath, string mimeType)
     {
         if (!OrdinalIgnoreCaseEquals(mimeType, "video/mp4")) {
             DebugLog?.LogInformation(
@@ -51,7 +51,7 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
             return true;
         }
 
-        var resolution = GetVideoResolution(filePath);
+        var resolution = await GetVideoResolution(filePath).ConfigureAwait(false);
         if (resolution == null) {
             DebugLog?.LogInformation("NeedsTranscoding: false (can't read resolution)");
             return false;
@@ -98,7 +98,7 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         await progressTask.ConfigureAwait(false);
 
         if (cancellationToken.IsCancellationRequested) {
-            DebugLog?.LogInformation("Transcode: cancelled");
+            Log.LogInformation("Transcode: cancelled");
             CleanupFile(outputPath);
             throw new OperationCanceledException(cancellationToken);
         }
@@ -113,32 +113,40 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         }
 
         progress?.Report(1.0);
-        DebugLog?.LogInformation("Transcode: export completed successfully");
         return outputPath;
     }
 
-    private CGSize? GetVideoResolution(FilePath filePath)
+    private async Task<CGSize?> GetVideoResolution(FilePath filePath)
     {
-        var url = NSUrl.CreateFileUrl(filePath);
-        var asset = new AVUrlAsset(url);
-        var track = asset.TracksWithMediaType(AVMediaTypes.Video.GetConstant()!).FirstOrDefault();
-        if (track == null) {
-            DebugLog?.LogInformation("GetVideoResolution: no video track found");
+        try {
+            DebugLog?.LogInformation("GetVideoResolution: '{FilePath}'", filePath);
+            var url = NSUrl.CreateFileUrl(filePath);
+            var asset = new AVUrlAsset(url);
+            var tracks = await asset.LoadTracksWithMediaTypeAsync(AVMediaTypes.Video.GetConstant()!)
+                .ConfigureAwait(false);
+            if (tracks.Count == 0) {
+                DebugLog?.LogInformation("GetVideoResolution: no video track found in '{FilePath}'", filePath);
+                return null;
+            }
+
+            var track = tracks[0];
+            var size = track.NaturalSize;
+            var transform = track.PreferredTransform;
+
+            // Apply transform to handle rotated videos (e.g., portrait recordings)
+            var isRotated = Math.Abs(transform.A) < 0.01 && Math.Abs(transform.D) < 0.01;
+            var result = isRotated
+                ? new CGSize(Math.Abs(size.Height), Math.Abs(size.Width))
+                : new CGSize(Math.Abs(size.Width), Math.Abs(size.Height));
+            DebugLog?.LogInformation(
+                "GetVideoResolution: {Width}x{Height} (isRotated={IsRotated})",
+                (int)result.Width, (int)result.Height, isRotated);
+            return result;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "GetVideoResolution: failed to read video tracks from '{FilePath}'", filePath);
             return null;
         }
-
-        var size = track.NaturalSize;
-        var transform = track.PreferredTransform;
-
-        // Apply transform to handle rotated videos (e.g., portrait recordings)
-        var isRotated = Math.Abs(transform.A) < 0.01 && Math.Abs(transform.D) < 0.01;
-        var result = isRotated
-            ? new CGSize(Math.Abs(size.Height), Math.Abs(size.Width))
-            : new CGSize(Math.Abs(size.Width), Math.Abs(size.Height));
-        DebugLog?.LogInformation(
-            "GetVideoResolution: {Width}x{Height} (isRotated={IsRotated})",
-            (int)result.Width, (int)result.Height, isRotated);
-        return result;
     }
 
     private static async Task MonitorProgress(
