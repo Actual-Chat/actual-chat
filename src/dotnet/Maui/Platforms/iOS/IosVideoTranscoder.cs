@@ -83,17 +83,15 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
             "Transcode: exporting '{Source}' -> '{Output}'", sourcePath, outputPath);
 
         // Start progress monitoring
-        using var progressCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var progressTask = MonitorProgress(exportSession, progress, progressCts.Token);
+        var progressWorker = FuncWorker.Start(
+            ct => MonitorProgress(exportSession, progress, ct),
+            cancellationToken);
+        await using var _1 = progressWorker.ConfigureAwait(false);
 
         // Register cancellation
         await using var _ = cancellationToken.Register(() => exportSession.CancelExport()).ConfigureAwait(false);
 
         await exportSession.ExportTaskAsync().ConfigureAwait(false);
-
-        // Stop progress monitoring
-        await progressCts.CancelAsync().ConfigureAwait(false);
-        await progressTask.ConfigureAwait(false);
 
         if (cancellationToken.IsCancellationRequested) {
             Log.LogInformation("Transcode: cancelled");
@@ -155,14 +153,9 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         if (progress == null)
             return;
 
-        try {
-            while (!cancellationToken.IsCancellationRequested) {
-                await Task.Delay(250, cancellationToken).ConfigureAwait(false);
-                progress.Report(session.Progress);
-            }
-        }
-        catch (OperationCanceledException) {
-            // Expected when export completes
+        while (!cancellationToken.IsCancellationRequested) {
+            await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+            progress.Report(session.Progress);
         }
     }
 
