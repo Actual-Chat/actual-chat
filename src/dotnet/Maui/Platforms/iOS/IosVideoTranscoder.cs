@@ -154,7 +154,7 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         }
     }
 
-    private static async Task MonitorProgress(
+    private async Task MonitorProgress(
         AVAssetExportSession session,
         IProgress<double>? progress,
         CancellationToken cancellationToken)
@@ -163,8 +163,9 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
             return;
 
         while (!cancellationToken.IsCancellationRequested) {
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-            progress.Report(session.Progress);
+            await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+            progress.Report(session.Progress * 100);
+            DebugLog?.LogDebug("Video transcoding progress: {Progress:P2}", session.Progress);
         }
     }
 
