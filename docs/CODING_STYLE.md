@@ -363,6 +363,23 @@ public override async Task Require(CancellationToken cancellationToken)
    Works on any `IConvertible` / `IFormattable` type and is null-safe.
    See `src/dotnet/Core/Text/InvariantStringExt.cs` for the full API.
 
+8. **Prefer `FilePath` over `string` for file paths and file names.**
+   Use `FilePath` from `ActualLab.IO` instead of raw strings when working
+   with file paths or file names. `FilePath` provides path combination
+   via `&` and `|` operators, `RelativeTo`, `DirectoryPath`,
+   `FileNameWithoutExtension`, `Extension`, and implicit conversion
+   to/from `string`.
+
+| Instead of | Use |
+|---|---|
+| `string filePath = "/some/path"` | `FilePath filePath = "/some/path"` |
+| `Path.Combine(dir, fileName)` | `dir & fileName` or `dir \| fileName` |
+| `Path.GetFileName(path)` | `path.FileName` |
+| `Path.GetExtension(path)` | `path.Extension` |
+
+   See `ActualLab.IO.FilePath` for the full API
+   and `src/dotnet/Core/IO/FilePathExt.cs` for project-specific extensions.
+
 ### Disabled/Silenced Warnings
 
 Search for `<NoWarn>` to see the list of disabled warnings.
