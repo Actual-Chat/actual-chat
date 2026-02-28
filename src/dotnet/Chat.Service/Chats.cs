@@ -363,9 +363,9 @@ public partial class Chats(IServiceProvider services) : IChats
             // Check constraints
             if (textEntry.AuthorId != author.Id)
                 throw StandardError.Unauthorized("You can edit only your own messages.");
-            if (textEntry.IsStreaming)
-                throw StandardError.Constraint("Only text messages can be edited.");
-            if (textEntry.ForwardedChatEntryId is not null && !OrdinalEquals(command.Text, textEntry.Content))
+            if (textEntry.IsContentStreaming)
+                throw StandardError.Constraint("Streaming messages cannot be edited.");
+            if (textEntry.Forwarded is not null && !OrdinalEquals(command.Text, textEntry.Content))
                 throw StandardError.Constraint("Forwarded messages cannot be edited.");
             if (repliedEntryLid.IsSome(out var v) && textEntry.RepliedEntryLid != v)
                 throw StandardError.Constraint("Replied entry Id cannot be changed.");
@@ -426,11 +426,7 @@ public partial class Chats(IServiceProvider services) : IChats
                     AuthorId = author.Id,
                     Content = text,
                     RepliedEntryLid = repliedEntryLid,
-                    ForwardedChatTitle = command.ForwardedChatTitle,
-                    ForwardedAuthorId = command.ForwardedAuthorId,
-                    ForwardedAuthorName = command.ForwardedAuthorName,
-                    ForwardedChatEntryId = command.ForwardedChatEntryId,
-                    ForwardedChatEntryBeginsAt = command.ForwardedChatEntryBeginsAt,
+                    Forwarded = command.Forwarded,
                     Attachments = attachments.Length == 0 ? null : attachments,
                     ClientId = command.ClientId,
                     HasAttachmentUploads = command.HasAttachmentUploads,
@@ -668,19 +664,18 @@ public partial class Chats(IServiceProvider services) : IChats
             destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
 
             foreach (var chatEntry in chatEntries) {
-                var forwardedChatTitle = chatEntry.ForwardedChatTitle.IsNullOrEmpty()
-                    ? chat.Title
-                    : chatEntry.ForwardedChatTitle;
-                var forwardedChatEntryId = chatEntry.ForwardedChatEntryId is null
-                    ? chatEntry.ChatId.Kind == ChatKind.Peer
-                        ? null
-                        : chatEntry.Id
-                    : chatEntry.ForwardedChatEntryId.ChatId.Kind == ChatKind.Peer
-                        ? null
-                        : chatEntry.ForwardedChatEntryId;
-                var forwardedChatEntryBeginsAt = chatEntry.ForwardedChatEntryBeginsAt ?? chatEntry.BeginsAt;
-                var forwardedAuthorId = chatEntry.ForwardedAuthorId ?? chatEntry.AuthorId;
-                string? forwardedAuthorName = chatEntry.ForwardedAuthorName;
+                var existing = chatEntry.Forwarded;
+                var forwardedChatTitle = existing?.ChatTitle.NullIfEmpty() ?? chat.Title;
+                var forwardedChatEntryId = existing != null
+                    ? existing.ChatEntryId != default && existing.ChatEntryId.ChatId.Kind != ChatKind.Peer
+                        ? existing.ChatEntryId
+                        : default
+                    : chatEntry.ChatId.Kind == ChatKind.Peer
+                        ? default
+                        : chatEntry.Id;
+                var forwardedBeginsAt = existing?.BeginsAt ?? chatEntry.BeginsAt;
+                var forwardedAuthorId = existing?.AuthorId ?? chatEntry.AuthorId;
+                var forwardedAuthorName = existing?.AuthorName ?? "";
                 if (forwardedAuthorName.IsNullOrEmpty()) {
                     var forwardedAuthor = await AuthorsBackend
                         .Get(forwardedAuthorId.ChatId, forwardedAuthorId, RequestedAuthorKind.Full, cancellationToken)
@@ -690,11 +685,13 @@ public partial class Chats(IServiceProvider services) : IChats
 
                 var cmd = new Chats_UpsertTextEntry(session, destinationChatId, null) {
                     Text = chatEntry.Content,
-                    ForwardedAuthorId = forwardedAuthorId,
-                    ForwardedChatEntryId = forwardedChatEntryId,
-                    ForwardedAuthorName = forwardedAuthorName,
-                    ForwardedChatEntryBeginsAt = forwardedChatEntryBeginsAt,
-                    ForwardedChatTitle = forwardedChatTitle,
+                    Forwarded = new ChatEntryForwarded {
+                        ChatEntryId = forwardedChatEntryId,
+                        AuthorId = forwardedAuthorId,
+                        BeginsAt = forwardedBeginsAt,
+                        ChatTitle = forwardedChatTitle,
+                        AuthorName = forwardedAuthorName,
+                    },
                     EntryAttachments = chatEntry.Attachments.Select(x => new TextEntryAttachment {
                         MediaId = x.MediaId,
                         ThumbnailMediaId = x.ThumbnailMediaId,
@@ -943,8 +940,8 @@ public partial class Chats(IServiceProvider services) : IChats
         // Check constraints
         if (!(textEntry.AuthorId == author.Id || chat.Rules.IsOwner()))
             throw StandardError.Unauthorized("You can remove only your own messages.");
-        if (textEntry.IsStreaming)
-            throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
+        if (textEntry.IsContentStreaming)
+            throw StandardError.Constraint("Wait for the content stream end to remove this message.");
 
         await Remove(chatEntryId).ConfigureAwait(false);
         return;

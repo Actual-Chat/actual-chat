@@ -3,8 +3,8 @@
 @{
     var e = ChatEntry;
     var hasSelection = SelectionUI.HasSelection.Value;
-    var isForwarded = e.ForwardedAuthorId is not null;
-    var isTextEntry = !e.IsStreaming;
+    var isForwarded = e.Forwarded is not null;
+    var isTextEntry = !e.IsContentStreaming;
     var canEdit = isTextEntry && !isForwarded && !hasSelection && !e.HasAttachmentUploads;
     var canCopyText = isTextEntry && !e.Content.IsNullOrEmpty();
 }

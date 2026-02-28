@@ -109,8 +109,8 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
                         x => x.AuthorId == author.Id
                             && x is {
                                 HasAudio: false,
-                                IsStreaming: false,
-                                ForwardedChatEntryId: null,
+                                IsContentStreaming: false,
+                                Forwarded: null,
                             },
                         1000, // Max. 1000 entries to scan upwards
                         CancellationToken.None)

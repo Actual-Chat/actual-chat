@@ -43,6 +43,8 @@ public sealed partial record ChatEntryAudio
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     public double? Duration => EndsAt is { } endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    public bool IsStreaming => !StreamId.IsNullOrEmpty();
 
     [MemoryPackConstructor, SerializationConstructor]
     public ChatEntryAudio() { }

@@ -416,7 +416,7 @@ public class NotificationsBackend(IServiceProvider services)
 
             // When the transcribed message is being finalized, it's updated to IsStreaming = false.
             // At this moment we can notify chat users.
-            var isFinalized = oldEntry is { IsStreaming: true } && !entry.IsStreaming;
+            var isFinalized = oldEntry is { IsContentStreaming: true } && !entry.IsContentStreaming;
             if (!isFinalized)
                 return;
         }

@@ -458,7 +458,7 @@ public partial class ChatUI
         if (prevMessage is ChatEntryMessage prevEntryMessage) {
             prevEntry = prevEntryMessage.Entry;
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
-            isPrevAudio = prevEntry.HasAudio || prevEntry.IsStreaming;
+            isPrevAudio = prevEntry.HasAudio || prevEntry.IsContentStreaming;
             hasVeryFirstItem = prevMessage.Kind == ChatMessageKind.WelcomeBlock;
         }
 
@@ -486,10 +486,10 @@ public partial class ChatUI
                 // Ignore matched conversation
                 var expandedConversation = conversations.FirstOrDefault(c => c.EntryRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
-                var isForward = entry.ForwardedAuthorId is not null;
-                var isPrevForward = prevEntry is not null && prevEntry.ForwardedAuthorId is not null;
-                var isForwardFromOtherChat = prevEntry?.ForwardedAuthorId?.ChatId != entry.ForwardedAuthorId?.ChatId;
-                var isForwardFromOtherAuthor = prevEntry?.ForwardedAuthorId != entry.ForwardedAuthorId;
+                var isForward = entry.Forwarded is not null;
+                var isPrevForward = prevEntry is not null && prevEntry.Forwarded is not null;
+                var isForwardFromOtherChat = prevEntry?.Forwarded?.AuthorId.ChatId != entry.Forwarded?.AuthorId.ChatId;
+                var isForwardFromOtherAuthor = prevEntry?.Forwarded?.AuthorId != entry.Forwarded?.AuthorId;
                 var isForwardBlockStart = (isBlockStart && isForward)
                     || (isForward && (!isPrevForward || isForwardFromOtherChat));
                 var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);

@@ -1311,7 +1311,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return entry;
         }
 
-        if (entry.IsStreaming)
+        if (entry.IsContentStreaming)
             return entry;
 
         // Clean up Media when audio is stripped from an entry during update
@@ -1369,7 +1369,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (isUpdate) {
                 if (newEntry.AuthorId != oldAuthorId)
                     throw StandardError.Unauthorized("You can edit only your own messages.");
-                if (diff?.Content != null && newEntry.IsStreaming)
+                if (diff?.Content != null && newEntry.IsContentStreaming)
                     throw StandardError.Constraint("Only text messages can be edited.");
             }
             return newEntry;
@@ -2075,7 +2075,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return; // It just spawns other commands, so nothing to do here
 
         var (entry, _, kind, _) = eventCommand;
-        if (entry.IsStreaming)
+        if (entry.IsContentStreaming)
             return; // Streaming entries are not summarized
 
         await Summarize().ConfigureAwait(false);
@@ -2277,7 +2277,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     private async Task<ChatEntry> PrepareTextEntryForSave(ChatEntry entry, ChatEntry? existing, CancellationToken cancellationToken)
     {
-        if (entry.IsSystemEntry || entry.IsStreaming)
+        if (entry.IsSystemEntry || entry.IsContentStreaming)
             return entry;
 
         var wasContentChanged = !OrdinalEquals(entry.Content, existing?.Content ?? "");

@@ -16,21 +16,21 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
 
         var mustTranslate = await TranslationUI.MustTranslate(entry, true, cancellationToken).ConfigureAwait(false);
         if (!mustTranslate)
-            return entry.StreamId.IsNullOrEmpty()
+            return entry.ContentStreamId.IsNullOrEmpty()
                 ? null
-                : new StreamingState(StreamId.Parse(entry.StreamId), entry.Content, false);
+                : new StreamingState(StreamId.Parse(entry.ContentStreamId), entry.Content, false);
 
         var translation = await TranslationUI.GetExisting(id, cancellationToken).ConfigureAwait(false);
         if (translation?.StreamId is not null)
             return new StreamingState(translation.StreamId, entry.Content, true); // Already streaming translated transcript.
 
-        if (entry.StreamId is not {} entryStreamId)
+        if (entry.ContentStreamId is not {} contentStreamId)
             return null; // No source stream. We can't start a translation stream.
 
-        if (entryStreamId.IsNullOrEmpty())
+        if (contentStreamId.IsNullOrEmpty())
             return null;
 
-        var sourceStreamId = StreamId.Parse(entryStreamId);
+        var sourceStreamId = StreamId.Parse(contentStreamId);
         var language = await TranslationUI.GetTargetLanguage(id.ChatId, cancellationToken).ConfigureAwait(false);
         var streamId = StreamId.New(sourceStreamId, language ?? Languages.English);
         return new StreamingState(streamId, entry.Content, true); // We can start ad-hoc translation stream.

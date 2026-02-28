@@ -72,10 +72,10 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool HasReactions { get; set; }
     public string? LinkPreviewIds { get; set; }
     public LinkPreviewMode? LinkPreviewMode { get; set; }
-    public string? StreamId { get; set; }
+    public string? StreamId { get; set; } // Rename to ContentStreamId
 
-    public long? AudioEntryId { get; set; }
-    public long? VideoEntryId { get; set; }
+    public long? AudioEntryId { get; set; } // Remove
+    public long? VideoEntryId { get; set; } // Remove
     public string? MediaId { get; set; }
     public string? TimeMap { get; set; }
 
@@ -110,14 +110,10 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Content = !IsSystemEntry ? Content : "",
             ContentHash = new (ContentHash ?? ""),
             SystemEntry = IsSystemEntry ? SystemEntrySerializer.Read(Content) : null,
-            StreamId = StreamId ?? "",
+            ContentStreamId = StreamId ?? "",
             Audio = audio,
             RepliedEntryLid = RepliedChatEntryId,
-            ForwardedChatTitle = ForwardedChatTitle,
-            ForwardedAuthorId = ActualChat.AuthorId.ParseNullable(ForwardedAuthorId),
-            ForwardedAuthorName = ForwardedAuthorName,
-            ForwardedChatEntryId = ChatEntryId.ParseNullable(ForwardedChatEntryId),
-            ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt.ToMoment(),
+            Forwarded = BuildForwarded(),
             Attachments = !hasAttachmentUploads ? attachmentsArray : [],
             AttachmentUploads = hasAttachmentUploads ? attachmentsArray : [],
             LinkPreviewIds = linkPreviewIds,
@@ -139,6 +135,22 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         return ActualChat.MediaId.TryParse(MediaId, out var mediaId)
             ? new ChatEntryAudio { MediaId = mediaId, TimeMap = timeMap, BeginsAt = BeginsAt }
             : new ChatEntryAudio { StreamId = MediaId, TimeMap = timeMap, BeginsAt = BeginsAt };
+    }
+
+    private ChatEntryForwarded? BuildForwarded()
+    {
+        if (ForwardedAuthorId.IsNullOrEmpty())
+            return null;
+        if (ChatEntryId.ParseNullable(ForwardedChatEntryId) is not { } forwardedChatEntryId)
+            return null;
+
+        return new ChatEntryForwarded {
+            ChatEntryId = forwardedChatEntryId,
+            AuthorId = ActualChat.AuthorId.Parse(ForwardedAuthorId),
+            BeginsAt = ForwardedChatEntryBeginsAt.ToMoment() ?? default,
+            ChatTitle = ForwardedChatTitle ?? "",
+            AuthorName = ForwardedAuthorName ?? "",
+        };
     }
 
     public Symbol[] DeserializeLinkPreviewIds()
@@ -171,13 +183,22 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         EndsAt = model.EndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         HasReactions = model.HasReactions;
-        StreamId = model.StreamId;
+        StreamId = model.ContentStreamId;
         RepliedChatEntryId = model.RepliedEntryLid;
-        ForwardedChatTitle = model.ForwardedChatTitle;
-        ForwardedAuthorId = model.ForwardedAuthorId?.Value;
-        ForwardedAuthorName = model.ForwardedAuthorName;
-        ForwardedChatEntryId = model.ForwardedChatEntryId?.Value;
-        ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
+        if (model.Forwarded is { } forwarded) {
+            ForwardedChatEntryId = forwarded.ChatEntryId.Value;
+            ForwardedAuthorId = forwarded.AuthorId.Value;
+            ForwardedChatEntryBeginsAt = forwarded.BeginsAt;
+            ForwardedChatTitle = forwarded.ChatTitle.NullIfEmpty();
+            ForwardedAuthorName = forwarded.AuthorName.NullIfEmpty();
+        }
+        else {
+            ForwardedChatEntryId = null;
+            ForwardedAuthorId = null;
+            ForwardedChatEntryBeginsAt = null;
+            ForwardedChatTitle = null;
+            ForwardedAuthorName = null;
+        }
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         ContentHash = model.SystemEntry != null ? HashString.None : model.GetContentHashString();
         IsSystemEntry = model.SystemEntry != null;

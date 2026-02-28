@@ -390,7 +390,7 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
 
     private Task AssertMustTranslate(ChatEntry entry, bool expected)
         => ComputedTest.When(async ct => {
-            var mustTranslate = await TranslationUI.MustTranslate(entry, entry.IsStreaming, ct);
+            var mustTranslate = await TranslationUI.MustTranslate(entry, entry.IsContentStreaming, ct);
             mustTranslate.Should().Be(expected);
         }, TimeSpan.FromSeconds(10).Debuggable());
 

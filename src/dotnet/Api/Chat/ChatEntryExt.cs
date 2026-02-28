@@ -37,7 +37,7 @@ public static class ChatEntryExt
         if (isForStreaming)
             return true;
 
-        if (entry.IsStreaming)
+        if (entry.IsContentStreaming)
             return false;
 
         return TranslationExt.ContentSupportsTranslation(entry.Content);

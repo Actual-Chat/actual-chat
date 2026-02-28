@@ -275,7 +275,7 @@ public partial class StreamingBackend
                 Change.Create(new ChatEntryDiff {
                     AuthorId = authorId,
                     Content = "",
-                    StreamId = transcriptStreamId.Value,
+                    ContentStreamId = transcriptStreamId.Value,
                     Audio = liveStreamId != null
                         ? new ChatEntryAudio { StreamId = liveStreamId }
                         : null,
@@ -301,7 +301,7 @@ public partial class StreamingBackend
                 ? Change.Remove<ChatEntryDiff>()
                 : Change.Update(new ChatEntryDiff {
                     Content = lastTranscript.Text,
-                    StreamId = "",
+                    ContentStreamId = "",
                     Audio = hasAudio && audioMediaId != null
                         ? new ChatEntryAudio {
                             MediaId = audioMediaId,

@@ -52,7 +52,7 @@ public static class ChatEntryOperations
                 null,
                 Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
-                    StreamId = streamId,
+                    ContentStreamId = streamId,
                     Audio = new ChatEntryAudio { StreamId = streamId },
                     Content = "",
                     BeginsAt = now,
@@ -76,7 +76,7 @@ public static class ChatEntryOperations
 
         textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(textEntry.Id, textEntry.Version, Change.Update(new ChatEntryDiff {
             Content = text,
-            StreamId = "",
+            ContentStreamId = "",
             Audio = new ChatEntryAudio { MediaId = MediaId.Parse("fake:mediaid") },
             EndsAt = now,
         })), cancellationToken);

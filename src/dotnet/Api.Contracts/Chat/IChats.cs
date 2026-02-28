@@ -142,14 +142,10 @@ public sealed partial record Chats_UpsertTextEntry(
 {
     [DataMember, MemoryPackOrder(3)] public string Text { get => Sanitizer.MaskPrivate(field); init; } = "";
     [DataMember, MemoryPackOrder(4)] public Option<long?> RepliedEntryLid { get; init; }
-    [DataMember, MemoryPackOrder(6)] public ChatEntryId? ForwardedChatEntryId { get; set; }
-    [DataMember, MemoryPackOrder(7)] public AuthorId? ForwardedAuthorId { get; set; }
-    [DataMember, MemoryPackOrder(8)] public string? ForwardedChatTitle { get; set; }
-    [DataMember, MemoryPackOrder(9)] public string? ForwardedAuthorName { get; set; }
-    [DataMember, MemoryPackOrder(10)] public Moment? ForwardedChatEntryBeginsAt { get; set; }
     [DataMember, MemoryPackOrder(11)] public TextEntryAttachment[] EntryAttachments { get; set; } = [];
     [DataMember, MemoryPackOrder(12)] public bool HasAttachmentUploads { get; set; }
     [DataMember, MemoryPackOrder(13)] public string ClientId { get; set; } = "";
+    [DataMember, MemoryPackOrder(14)] public ChatEntryForwarded? Forwarded { get; set; }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]

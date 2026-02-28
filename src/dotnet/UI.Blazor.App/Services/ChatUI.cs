@@ -139,7 +139,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             Chat.Chat? lastThreadChat = null;
             Author? lastThreadCreator = null;
             if (news?.LastTextEntry is { } lastTextEntry) {
-                if (lastTextEntry.IsStreaming)
+                if (lastTextEntry.IsContentStreaming)
                     lastTextEntryText = Constants.Messages.RecordingSkeleton;
                 else if (lastTextEntry.IsThreadStart) {
                     var threadChatId = lastTextEntry.ChatId.CreateThreadId(lastTextEntry.LocalId);

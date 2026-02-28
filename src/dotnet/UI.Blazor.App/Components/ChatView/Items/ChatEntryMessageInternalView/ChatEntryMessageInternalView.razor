@@ -185,7 +185,7 @@
         }
 
         _streamer = new(_textEntryId, Hub);
-        if (Message.Entry.IsStreaming) {
+        if (Message.Entry.IsContentStreaming) {
             // Add if the entry was created as streaming
             var added = StreamersCache.GetOrAdd(_textEntryId, _ => _streamer);
             // If the instance in the cache is the newly created _streamer, start streaming.
@@ -295,6 +295,6 @@
         bool IsUnread,
         bool IsUnreadBlockStart)
     {
-        public bool IsStreaming => Entry.IsStreaming || Streaming.IsStreaming;
+        public bool IsStreaming => Entry.IsContentStreaming || Streaming.IsStreaming;
     }
 }

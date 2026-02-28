@@ -47,8 +47,8 @@ public sealed class ChatReplayer : ChatPlayer
         await foreach (var entry in ListHistoricalAudioEntries(minPlayAt, cancellationToken).ConfigureAwait(false)) {
             entryCount++;
             Log.LogDebug("Found entry {EntryId}, IsStreaming={IsStreaming}, BeginsAt={BeginsAt}",
-                entry.Id, entry.IsStreaming, entry.BeginsAt);
-            if (entry.IsStreaming)
+                entry.Id, entry.IsContentStreaming, entry.BeginsAt);
+            if (entry.IsContentStreaming)
                 continue;
 
             var playbackNow = PlaybackNow();
@@ -113,7 +113,7 @@ public sealed class ChatReplayer : ChatPlayer
         idRange = (startEntry.LocalId, idRange.End);
         while (!idRange.IsEmptyOrNegative) {
             var entries = textEntryReader.Read(idRange, cancellationToken)
-                .Where(x => x.HasAudio && !x.IsStreaming);
+                .Where(x => x.HasAudio && !x.IsContentStreaming);
             await foreach (var entry in entries.ConfigureAwait(false))
                 yield return entry;
 
@@ -144,7 +144,7 @@ public sealed class ChatReplayer : ChatPlayer
         var remainingOffset = offset;
         var lastPlayingAt = playingAt;
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.HasAudio || entry.IsStreaming)
+            if (!entry.HasAudio || entry.IsContentStreaming)
                 continue;
             if (entry.EndsAt < playingAt)
                 // We're normally starting @ (playingAt - ChatConstants.MaxEntryDuration),
@@ -185,7 +185,7 @@ public sealed class ChatReplayer : ChatPlayer
         var entries = textEntryReader.Read(idRange, cancellationToken);
         ChatEntry? lastEntry = null;
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (!entry.HasAudio || entry.IsStreaming)
+            if (!entry.HasAudio || entry.IsContentStreaming)
                 continue;
             if (entry.EndsAt >= playingAt) {
                 // We're normally starting @ (playingAt - ChatConstants.MaxEntryDuration),
@@ -204,7 +204,7 @@ public sealed class ChatReplayer : ChatPlayer
         var remainingOffset = offset;
         var lastPlayingAt = playingAt;
         await foreach (var entry in reverseEntries.ConfigureAwait(false)) {
-            if (!entry.HasAudio || entry.IsStreaming)
+            if (!entry.HasAudio || entry.IsContentStreaming)
                 continue;
             if (entry.BeginsAt >= playingAt)
                 // We normally should not enter here due to way how last entry is looked up.
