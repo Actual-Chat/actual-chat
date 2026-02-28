@@ -30,10 +30,8 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         var outputPath = await Transcode(sourceFilePath, progress, cancellationToken)
             .ConfigureAwait(false);
 
-        if (outputPath == null) {
-            Log.LogWarning("Transcoding failed for '{Path}' in {Elapsed}", sourceFilePath, startedAt.Elapsed.ToShortString());
+        if (outputPath == null)
             return null;
-        }
 
         var fileInfo = new FileInfo(outputPath.Value);
         Log.LogInformation("Transcoding completed: '{OutputPath}', size={Size} in {Elapsed}",
@@ -82,34 +80,40 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         DebugLog?.LogInformation(
             "Transcode: exporting '{Source}' -> '{Output}'", sourcePath, outputPath);
 
-        // Start progress monitoring
-        var progressWorker = FuncWorker.Start(
-            ct => MonitorProgress(exportSession, progress, ct),
-            cancellationToken);
-        await using var _1 = progressWorker.ConfigureAwait(false);
+        try {
+            // Start progress monitoring
+            var progressWorker = FuncWorker.Start(
+                ct => MonitorProgress(exportSession, progress, ct),
+                cancellationToken);
+            await using var _1 = progressWorker.ConfigureAwait(false);
 
-        // Register cancellation
-        await using var _ = cancellationToken.Register(() => exportSession.CancelExport()).ConfigureAwait(false);
+            // Register cancellation
+            await using var _ = cancellationToken.Register(() => exportSession.CancelExport()).ConfigureAwait(false);
 
-        await exportSession.ExportTaskAsync().ConfigureAwait(false);
-
-        if (cancellationToken.IsCancellationRequested) {
-            Log.LogInformation("Transcode: cancelled");
-            CleanupFile(outputPath);
+            await exportSession.ExportTaskAsync().ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-        }
 
-        if (exportSession.Status != AVAssetExportSessionStatus.Completed) {
-            Log.LogWarning(
-                "AVAssetExportSession failed with status {Status}, error: {Error}",
-                exportSession.Status,
-                exportSession.Error?.LocalizedDescription ?? "unknown");
+            if (exportSession.Status != AVAssetExportSessionStatus.Completed) {
+                Log.LogWarning(
+                    "AVAssetExportSession failed with status {Status}, error: {Error}",
+                    exportSession.Status,
+                    exportSession.Error?.LocalizedDescription ?? "unknown");
+                CleanupFile(outputPath);
+                return null;
+            }
+
+            progress?.Report(1.0);
+            return outputPath;
+        }
+        catch (OperationCanceledException e) when(e.IsCancellationOf(cancellationToken)) {
+            CleanupFile(outputPath);
+            throw;
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Transcode: failed to export '{Source}'", sourcePath);
             CleanupFile(outputPath);
             return null;
         }
-
-        progress?.Report(1.0);
-        return outputPath;
     }
 
     private async Task<CGSize?> GetVideoResolution(FilePath filePath)
