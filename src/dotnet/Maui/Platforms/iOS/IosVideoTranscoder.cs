@@ -98,7 +98,7 @@ public class IosVideoTranscoder(IServiceProvider services) : IVideoTranscoder
         if (cancellationToken.IsCancellationRequested) {
             Log.LogInformation("Transcode: cancelled");
             CleanupFile(outputPath);
-            throw new OperationCanceledException(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         if (exportSession.Status != AVAssetExportSessionStatus.Completed) {
