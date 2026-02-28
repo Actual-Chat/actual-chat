@@ -43,7 +43,7 @@ public interface INotificationsBackend : IComputeService, IBackendService
     // Events
 
     [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnReactionChangedEvent(ReactionChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]

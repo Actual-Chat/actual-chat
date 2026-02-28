@@ -11,7 +11,7 @@ public static class ChatEntryOperations
         string text,
         MediaId? mediaId = null)
     {
-        var cmd = new Chats_UpsertTextEntry(tester.Session, chatId, null) {
+        var cmd = new Chats_UpsertEntry(tester.Session, chatId, null) {
             Text = text,
             Attachments = mediaId == null
                 ? []
@@ -27,12 +27,12 @@ public static class ChatEntryOperations
 
     public static Task<ChatEntry> UpdateTextEntry(this IWebTester tester, ChatEntryId id, string text)
     {
-        var cmd = new Chats_UpsertTextEntry(tester.Session, id.ChatId, id.LocalId) { Text = text };
+        var cmd = new Chats_UpsertEntry(tester.Session, id.ChatId, id.LocalId) { Text = text };
         return tester.Commander.Call(cmd);
     }
 
     public static Task RemoveTextEntry(this IWebTester tester, ChatEntryId id)
-        => tester.Commander.Call(new Chats_RemoveTextEntry(tester.Session, id.ChatId, id.LocalId));
+        => tester.Commander.Call(new Chats_RemoveEntry(tester.Session, id.ChatId, id.LocalId));
 
     public static async Task<ChatEntry[]> CreateTextEntries(this IWebTester tester, ChatId chatId, string textPrefix, int entryCount)
     {
@@ -72,7 +72,7 @@ public static class ChatEntryOperations
     {
         var clocks = tester.AppServices.Clocks();
         var now = clocks.SystemClock.Now;
-        var textEntry = streamingEntry.TextEntry;
+        var textEntry = streamingEntry.ChatEntrySlim;
 
         textEntry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(textEntry.Id, textEntry.Version, Change.Update(new ChatEntryDiff {
             Content = text,
@@ -88,4 +88,4 @@ public static class ChatEntryOperations
     }
 }
 
-public sealed record StreamingEntry(ChatEntry TextEntry, ChatEntryLanguage EntryLanguage);
+public sealed record StreamingEntry(ChatEntry ChatEntrySlim, ChatEntryLanguage EntryLanguage);

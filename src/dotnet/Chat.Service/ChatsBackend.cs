@@ -1352,7 +1352,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             entry = entry with { Attachments = createdAttachments };
         }
 
-        // Let's enqueue the TextEntryChangedEvent
+        // Let's enqueue the ChatEntryChangedEvent
         await EnqueueChangedEvent().ConfigureAwait(false);
         return entry;
 
@@ -1400,7 +1400,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         async Task EnqueueChangedEvent() {
             var authorId = entry.AuthorId;
             var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
-            context.Operation.AddEvent(new TextEntryChangedEvent(entry, author!, changeKind, oldEntry));
+            context.Operation.AddEvent(new ChatEntryChangedEvent(entry, author!, changeKind, oldEntry));
         }
 
         async Task StorePreviousAndNextEntryIds(long localEntryLid)
@@ -1869,13 +1869,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         if (ShouldUseOriginalTranscript(textEntry, transcription)) {
             Log.LogDebug(
-                "Skip updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'",
+                "Skip updating ChatEntrySlim (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'",
                 textEntry.Id.Value, textEntry.Content.ToPrivate(), transcription.Text.ToPrivate());
             return;
         }
 
         Log.LogDebug(
-            "Updating TextEntry (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'",
+            "Updating ChatEntrySlim (id={Id}) transcription.\r\nFrom: '{From}' -> \r\nTo: '{To}'",
             textEntry.Id.Value, textEntry.Content.ToPrivate(), transcription.Text.ToPrivate());
         var timeMap = transcription.TimeMap;
         var entryTimeMap = textEntry.Audio?.TimeMap ?? default;
@@ -2069,7 +2069,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [EventHandler]
-    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here

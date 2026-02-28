@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 /// </summary>
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 [method: MemoryPackConstructor, SerializationConstructor, JsonConstructor, Newtonsoft.Json.JsonConstructor]
-public sealed partial record TextEntry(
+public sealed partial record ChatEntrySlim(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] long LocalId,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string Content,
     [property: DataMember(Order = 2), MemoryPackOrder(2)] AuthorId AuthorId,
@@ -15,9 +15,9 @@ public sealed partial record TextEntry(
     [property: DataMember(Order = 6), MemoryPackOrder(6)] long? RepliedEntryLid,
     [property: DataMember(Order = 7), MemoryPackOrder(7)] bool HasAttachments)
 {
-    public static Comparer<TextEntry> LocalIdComparer { get; } = Comparer<TextEntry>.Create((a, b) => a.LocalId.CompareTo(b.LocalId));
+    public static Comparer<ChatEntrySlim> LocalIdComparer { get; } = Comparer<ChatEntrySlim>.Create((a, b) => a.LocalId.CompareTo(b.LocalId));
 
-    public TextEntry(ChatEntry chatEntry)
+    public ChatEntrySlim(ChatEntry chatEntry)
         : this(
             chatEntry.LocalId,
             chatEntry.Content,

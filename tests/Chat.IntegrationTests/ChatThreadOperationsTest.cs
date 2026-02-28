@@ -250,7 +250,7 @@ public class ChatThreadOperationsTest(ChatCollection.AppHostFixture fixture, ITe
     {
         var parentChatEntries = new List<ChatEntry>();
         foreach (var message in messages) {
-            var cmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = message };
+            var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = message };
             var chatEntry = await commander.Call(cmd, cancellationToken);
             parentChatEntries.Add(chatEntry);
         }

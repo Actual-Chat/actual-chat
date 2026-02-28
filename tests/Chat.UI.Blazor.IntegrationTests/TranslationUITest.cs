@@ -158,16 +158,16 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         var frenchEntry = await AliceTester.CreateStreamingEntry(chatId, Languages.French, cancellationToken);
 
         // assert
-        await AssertMustTranslate(frenchEntry.TextEntry, true);
-        await AssertMustTranslate(englishEntry.TextEntry, false);
+        await AssertMustTranslate(frenchEntry.ChatEntrySlim, true);
+        await AssertMustTranslate(englishEntry.ChatEntrySlim, false);
 
         // act
         englishEntry = await AliceTester.FinalizeStreamingEntry(englishEntry, "Hello!", cancellationToken);
         frenchEntry = await AliceTester.FinalizeStreamingEntry(frenchEntry, "Bonjour!", cancellationToken);
 
         // assert
-        await AssertMustTranslate(frenchEntry.TextEntry, true);
-        await AssertMustTranslate(englishEntry.TextEntry, false);
+        await AssertMustTranslate(frenchEntry.ChatEntrySlim, true);
+        await AssertMustTranslate(englishEntry.ChatEntrySlim, false);
     }
 
     [Fact]
@@ -185,8 +185,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
         streamingEntry = await AliceTester.FinalizeStreamingEntry(streamingEntry, "Bonjour!", cancellationToken);
 
         // assert
-        await AssertMustTranslate(streamingEntry.TextEntry, true);
-        await AssertTranslation(streamingEntry.TextEntry, "Hello!");
+        await AssertMustTranslate(streamingEntry.ChatEntrySlim, true);
+        await AssertTranslation(streamingEntry.ChatEntrySlim, "Hello!");
     }
 
     [Fact(Skip = "Flaky")] // TODO: fix

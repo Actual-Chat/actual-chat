@@ -17,23 +17,23 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
-    public void Chats_RemoveTextEntry_Basic()
+    public void Chats_RemoveEntry_Basic()
     {
-        var cmd = new Chats_RemoveTextEntry(TestSession, TestChatId, 42);
+        var cmd = new Chats_RemoveEntry(TestSession, TestChatId, 42);
         cmd.AssertPassesThroughAllSerializers();
     }
 
     [Fact]
-    public void Chats_RestoreTextEntry_Basic()
+    public void Chats_RestoreEntry_Basic()
     {
-        var cmd = new Chats_RestoreTextEntry(TestSession, TestChatId, 42);
+        var cmd = new Chats_RestoreEntry(TestSession, TestChatId, 42);
         cmd.AssertPassesThroughAllSerializers();
     }
 
     [Fact]
-    public void Chats_RemoveTextEntries_Basic()
+    public void Chats_RemoveEntries_Basic()
     {
-        var cmd = new Chats_RemoveTextEntries(TestSession, TestChatId, [1L, 2L, 3L]);
+        var cmd = new Chats_RemoveEntries(TestSession, TestChatId, [1L, 2L, 3L]);
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -42,9 +42,9 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
-    public void Chats_RestoreTextEntries_Basic()
+    public void Chats_RestoreEntries_Basic()
     {
-        var cmd = new Chats_RestoreTextEntries(TestSession, TestChatId, [1L, 2L, 3L]);
+        var cmd = new Chats_RestoreEntries(TestSession, TestChatId, [1L, 2L, 3L]);
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -53,9 +53,9 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
-    public void Chats_UpsertTextEntry_Basic()
+    public void Chats_UpsertEntry_Basic()
     {
-        var cmd = new Chats_UpsertTextEntry(TestSession, TestChatId, null) { Text = "Hello, world!" };
+        var cmd = new Chats_UpsertEntry(TestSession, TestChatId, null) { Text = "Hello, world!" };
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -65,9 +65,9 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
-    public void Chats_UpsertTextEntry_WithReply()
+    public void Chats_UpsertEntry_WithReply()
     {
-        var cmd = new Chats_UpsertTextEntry(TestSession, TestChatId, 1) { Text = "Reply text", RepliedEntryLid = Option.Some<long?>(5) };
+        var cmd = new Chats_UpsertEntry(TestSession, TestChatId, 1) { Text = "Reply text", RepliedEntryLid = Option.Some<long?>(5) };
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);
@@ -93,11 +93,11 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
-    public void Chats_ForwardTextEntries_Basic()
+    public void Chats_ForwardEntries_Basic()
     {
         var entryId = ChatEntryId.New(TestChatId, 1);
         var destChatId = GroupChatId.New();
-        var cmd = new Chats_ForwardTextEntries(TestSession, TestChatId, [entryId], [destChatId]);
+        var cmd = new Chats_ForwardEntries(TestSession, TestChatId, [entryId], [destChatId]);
         cmd.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.Session.Should().Be(original.Session);

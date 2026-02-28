@@ -134,7 +134,7 @@ public interface IChatsBackend : IComputeService, IBackendService
     [EventHandler]
     Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 /// <summary>

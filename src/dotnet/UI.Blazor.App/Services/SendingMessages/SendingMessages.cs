@@ -460,7 +460,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
                 }).ToArray();
 
             // Finalize the message with attachments.
-            var cmd = new Chats_UpsertTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId) {
+            var cmd = new Chats_UpsertEntry(Session, chatEntry.ChatId, chatEntry.LocalId) {
                 Text = chatEntry.Content,
                 Attachments = entryAttachments,
                 HasUploadingAttachments = false,
@@ -493,7 +493,7 @@ public partial class SendingMessages : UIServiceBase<AppUIHub>, IComputeService,
 
     private async Task RemoveChatEntry(ChatEntryId chatEntryId, CancellationToken cancellationToken)
     {
-        var cmd = new Chats_RemoveTextEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
+        var cmd = new Chats_RemoveEntry(Session, chatEntryId.ChatId, chatEntryId.LocalId);
         await Commander.Run(cmd, cancellationToken).ConfigureAwait(false);
     }
 

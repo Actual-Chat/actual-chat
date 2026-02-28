@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat;
+using ActualChat.Chat;
 using ActualChat.Testing.Host;
 using ActualLab.Mathematics;
 
@@ -81,7 +81,7 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
                 if (count-- <= 0)
                     return entries.ToArray();
 
-                var command = new Chats_UpsertTextEntry(session, chatId, null) { Text = text };
+                var command = new Chats_UpsertEntry(session, chatId, null) { Text = text };
                 var entry = await commander.Call(command, CancellationToken.None).ConfigureAwait(false);
                 entries.Add(entry);
             }

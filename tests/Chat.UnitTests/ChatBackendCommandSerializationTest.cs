@@ -296,7 +296,7 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     public void TextEntry_Basic()
     {
         var authorId = AuthorId.New(TestChatId, 5);
-        var entry = new TextEntry(1, "Hello", authorId, new Moment(DateTime.UtcNow), null, false, null, false);
+        var entry = new ChatEntrySlim(1, "Hello", authorId, new Moment(DateTime.UtcNow), null, false, null, false);
         entry.AssertPassesThroughAllSerializers(
             (deserialized, original) => {
                 deserialized.LocalId.Should().Be(original.LocalId);

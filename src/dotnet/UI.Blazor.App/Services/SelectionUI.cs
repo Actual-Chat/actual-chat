@@ -129,14 +129,14 @@ public class SelectionUI : UIServiceBase<AppUIHub>
 
         var chatId = selection.Select(x => x.ChatId).First();
         var localIds = selection.Select(x => x.LocalId).ToArray();
-        var removeCommand = new Chats_RemoveTextEntries(Session, chatId, localIds);
+        var removeCommand = new Chats_RemoveEntries(Session, chatId, localIds);
         await UICommander.Run(removeCommand).ConfigureAwait(true);
 
         ToastUI.Show("Messages deleted", Restore, "Undo", ToastDismissDelay.Long);
         Clear();
 
         void Restore() {
-            var restoreCommand = new Chats_RestoreTextEntries(Session, chatId, localIds);
+            var restoreCommand = new Chats_RestoreEntries(Session, chatId, localIds);
             _ = UICommander.Run(restoreCommand);
         }
     }
@@ -155,7 +155,7 @@ public class SelectionUI : UIServiceBase<AppUIHub>
         if (selectedChatIds.Count == 0)
             return;
 
-        var cmd = new Chats_ForwardTextEntries(
+        var cmd = new Chats_ForwardEntries(
             Session,
             chatId,
             selection.ToArray(),

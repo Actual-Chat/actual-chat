@@ -194,7 +194,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         var reader = chats.NewEntryReader(session, TestChatId);
         var tile = await reader.ReadTilesReverse(idRange, CancellationToken.None).FirstAsync();
         foreach (var chatEntry in tile.Entries.TakeLast(removeLastCount))
-            await services.Commander().Call(new Chats_RemoveTextEntry(session, TestChatId, chatEntry.LocalId), CancellationToken.None);
+            await services.Commander().Call(new Chats_RemoveEntry(session, TestChatId, chatEntry.LocalId), CancellationToken.None);
 
         var entry = await reader.GetLast(idRange, x => x.AuthorId == author.Id, 0, CancellationToken.None);
         entry?.Content.Should().Be(expected);
@@ -297,7 +297,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
                 if (count-- <= 0)
                     return;
 
-                var cmd = new Chats_UpsertTextEntry(session, chatId, null) { Text = text };
+                var cmd = new Chats_UpsertEntry(session, chatId, null) { Text = text };
                 await commander.Call(cmd, CancellationToken.None).ConfigureAwait(false);
             }
     }

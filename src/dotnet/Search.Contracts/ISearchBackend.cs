@@ -35,7 +35,7 @@ public interface ISearchBackend : IComputeService, IBackendService
     [EventHandler]
     Task OnPlaceChangedEvent(PlaceChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
-    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+    Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnContactChangedEvent(ContactChangedEvent eventCommand, CancellationToken cancellationToken);
 }

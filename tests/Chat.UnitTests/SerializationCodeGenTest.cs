@@ -8,6 +8,6 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
     public void BasicTest()
     {
         SerializationCodeGen.ValidateType<Change<string>>();
-        SerializationCodeGen.ValidateType<TextEntry>();
+        SerializationCodeGen.ValidateType<ChatEntrySlim>();
     }
 }

@@ -228,7 +228,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         ChatEntryAttachment[] attachments,
         CancellationToken cancellationToken)
     {
-        var cmd = new Chats_UpsertTextEntry(Session, chatId, null) {
+        var cmd = new Chats_UpsertEntry(Session, chatId, null) {
             Text = text,
             ClientId = RandomStringGenerator.Default.Next(6),
             Attachments = attachments,

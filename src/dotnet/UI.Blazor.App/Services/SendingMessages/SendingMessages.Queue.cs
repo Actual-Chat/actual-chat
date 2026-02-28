@@ -37,7 +37,7 @@ partial class SendingMessages
         var attachments = mediaIds
             .Select(x => new ChatEntryAttachment { MediaId = x })
             .ToArray();
-        var cmd = new Chats_UpsertTextEntry(Session, request.ChatId, request.LocalId) {
+        var cmd = new Chats_UpsertEntry(Session, request.ChatId, request.LocalId) {
             Text = request.Text,
             RepliedEntryLid = request.RepliedEntryLid,
             ClientId = request.ClientId,

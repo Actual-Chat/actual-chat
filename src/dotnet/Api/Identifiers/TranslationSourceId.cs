@@ -35,7 +35,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
         => New(conversationId.ChatId, Map(kind), conversationId.StartEntryLid);
 
     private TranslationSourceId(string value, ChatEntryId chatEntryId)
-        : this(value, chatEntryId.ChatId, TranslationIdKind.TextEntry, chatEntryId.LocalId)
+        : this(value, chatEntryId.ChatId, TranslationIdKind.ChatEntry, chatEntryId.LocalId)
         => EntryId = chatEntryId;
 
     private TranslationSourceId(string value, ChatId chatId, TranslationIdKind kind, long refLid)
@@ -59,8 +59,8 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
 
     public ChatEntryId GetChatEntryId()
     {
-        if (Kind != TranslationIdKind.TextEntry)
-            throw StandardError.Constraint("Supported only for TextEntry TranslationId");
+        if (Kind != TranslationIdKind.ChatEntry)
+            throw StandardError.Constraint("Supported only for ChatEntry TranslationId");
 
         return EntryId!;
     }
@@ -133,7 +133,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
         if (!long.TryParse(s3, CultureInfo.InvariantCulture, out var lid) || lid <= 0)
             return false;
 
-        if (kind is TranslationIdKind.TextEntry)
+        if (kind is TranslationIdKind.ChatEntry)
             result = new TranslationSourceId(s, ChatEntryId.New(chatId, lid));
         else
             result = new TranslationSourceId(s, chatId, kind, lid);
@@ -163,7 +163,7 @@ public partial class TranslationSourceId  : StringIdentifier, IStringIdentifier<
 /// </summary>
 public enum TranslationIdKind
 {
-    TextEntry = 0,
+    ChatEntry = 0,
     ConversationTitle = 5,
     ConversationDescription = 6,
     ConversationSummary = 7,

@@ -380,7 +380,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        var textEntries = new List<TextEntry>();
+        var textEntries = new List<ChatEntrySlim>();
         var attachments = new List<ChatEntryAttachment>();
         var attachmentCount = 0;
         var chatEntries = tiles
@@ -388,7 +388,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             .Where(e => entryIdRanges.Any(r => r.Contains(e.LocalId)))
             .ToArray();
         foreach (var entry in chatEntries) {
-            textEntries.Add(new TextEntry(entry));
+            textEntries.Add(new ChatEntrySlim(entry));
             attachmentCount += entry.Attachments.Length;
             foreach(var attachment in entry.Attachments)
                 attachments.Add(attachment);
@@ -404,7 +404,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Nested types
     private record ConversationEntriesInfo(
-        IReadOnlyCollection<TextEntry> TextEntries,
+        IReadOnlyCollection<ChatEntrySlim> TextEntries,
         IReadOnlyCollection<ChatEntryAttachment> Attachments,
         int AttachmentCount);
 }

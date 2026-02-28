@@ -137,11 +137,11 @@ public class ChatThreads(IServiceProvider services) : IChatThreads
         CancellationToken cancellationToken)
     {
         await Chats.Get(session, parentChatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
-        var textEntries = new List<TextEntry>();
+        var textEntries = new List<ChatEntrySlim>();
         foreach (var chatEntryId in entryIds) {
             var chatEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
             if (chatEntry is not null)
-                textEntries.Add(new TextEntry(chatEntry));
+                textEntries.Add(new ChatEntrySlim(chatEntry));
         }
         if (textEntries.Count is 0)
             return ("", "");

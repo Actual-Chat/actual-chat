@@ -337,7 +337,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken)
+    public virtual async Task<ChatEntry> OnUpsertEntry(Chats_UpsertEntry command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return null!; // It just spawns other commands, so nothing to do here
@@ -436,7 +436,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task OnRemoveTextEntry(Chats_RemoveTextEntry command, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveEntry(Chats_RemoveEntry command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -451,7 +451,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task OnRestoreTextEntry(Chats_RestoreTextEntry command, CancellationToken cancellationToken)
+    public virtual async Task OnRestoreEntry(Chats_RestoreEntry command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -471,7 +471,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task OnRemoveTextEntries(Chats_RemoveTextEntries command, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveEntries(Chats_RemoveEntries command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -488,7 +488,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task OnRestoreTextEntries(Chats_RestoreTextEntries command, CancellationToken cancellationToken)
+    public virtual async Task OnRestoreEntries(Chats_RestoreEntries command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return; // It just spawns other commands, so nothing to do here
@@ -638,7 +638,7 @@ public partial class Chats(IServiceProvider services) : IChats
     }
 
     // [CommandHandler]
-    public virtual async Task<Unit> OnForwardTextEntries(Chats_ForwardTextEntries command, CancellationToken cancellationToken)
+    public virtual async Task<Unit> OnForwardEntries(Chats_ForwardEntries command, CancellationToken cancellationToken)
     {
         if (Invalidation.IsActive)
             return default; // It just spawns other commands, so nothing to do here
@@ -681,7 +681,7 @@ public partial class Chats(IServiceProvider services) : IChats
                     forwardedAuthorName = forwardedAuthor!.Avatar.Name;
                 }
 
-                var cmd = new Chats_UpsertTextEntry(session, destinationChatId, null) {
+                var cmd = new Chats_UpsertEntry(session, destinationChatId, null) {
                     Text = chatEntry.Content,
                     Forwarded = new ChatEntryForwarded {
                         ChatEntryId = forwardedChatEntryId,

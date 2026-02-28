@@ -249,7 +249,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
 
         async Task<TranslationResult[]> GetTranslationContext1()
         {
-            if (id.Kind is not TranslationIdKind.TextEntry)
+            if (id.Kind is not TranslationIdKind.ChatEntry)
                 return [];
 
             var chatEntryId = id.SourceId.GetChatEntryId();
@@ -600,7 +600,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     {
         var sourceId = translationId.SourceId;
         switch (sourceId.Kind) {
-            case TranslationIdKind.TextEntry: {
+            case TranslationIdKind.ChatEntry: {
                 var chatEntryId = sourceId.GetChatEntryId();
                 var entry = await ChatsBackend.GetEntry(chatEntryId, cancellationToken).ConfigureAwait(false);
                 if (entry is null)
